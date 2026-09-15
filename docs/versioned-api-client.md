@@ -16,7 +16,7 @@ Issue #203 的 Client 发布渠道为 npm 官方公开仓库 `https://registry.n
 
 ## 消费与独立升级
 
-新前端从 npm 官方 registry 安装精确版本，提交 `package.json` 与含完整性摘要的 `pnpm-lock.yaml`。使用 `pnpm install --frozen-lockfile`；不得使用 `file:`、`link:`、兄弟目录、子模块或安装时生成替代发布包。显式升级使用 `pnpm add --save-exact @crane199709/saas-forge-api-client@<版本> --registry=https://registry.npmjs.org/`，随后重新执行类型、构建和真实 Gateway 页面验收。
+新前端从 npm 官方 registry 安装精确版本，提交 `package.json` 与含完整性摘要的 `pnpm-lock.yaml`。使用 `pnpm install --frozen-lockfile`；不得使用 `file:`、`link:`、兄弟目录、子模块或安装时生成替代发布包。在前端 `.npmrc` 为自有 scope 指定上述官方 registry，显式升级使用 `pnpm add --save-exact @crane199709/saas-forge-api-client@<版本>`，随后重新执行类型、构建和真实 Gateway 页面验收。
 
 后端先交付兼容运行实现和对应 Client，前端再显式升级；不要求两个仓库同时发布。已记录支持的后端/Client/前端组合在兼容更新后仍须成立。破坏性 operation 或模型变化使用显式协议版本及 Client major 版本，不能覆盖已发布 npm 版本或修改历史契约基线。Client 包版本与后端版本独立；相同契约可以发布打包修订版本。
 
@@ -24,7 +24,7 @@ Issue #203 的 Client 发布渠道为 npm 官方公开仓库 `https://registry.n
 
 ## 验收记录
 
-真实版本与执行结果见 Issue #203 验收记录。发布包、本地打包、模拟请求和真实浏览器结果必须分别标记，不互相代替。
+真实版本与执行结果见 [Issue #203 验收记录](acceptance/issue-203-versioned-client.md)。发布包、本地打包、模拟请求和真实浏览器结果必须分别标记，不互相代替。
 
 ## 制品修订
 
