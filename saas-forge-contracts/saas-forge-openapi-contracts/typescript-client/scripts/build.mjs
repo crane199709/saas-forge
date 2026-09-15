@@ -6,7 +6,11 @@ import { fileURLToPath } from 'node:url';
 const packageRoot = fileURLToPath(new URL('../', import.meta.url));
 const repository = fileURLToPath(new URL('../../../../', import.meta.url));
 const contract = 'saas-forge-contracts/saas-forge-openapi-contracts/';
-const inputs = [`${contract}v1.yaml`, `${contract}common.yaml`, `${contract}pom.xml`, 'pom.xml'];
+const inputs = [
+  `${contract}v1.yaml`, `${contract}common.yaml`, `${contract}pom.xml`, 'pom.xml', 'LICENSE',
+  ...['package.json', 'package-lock.json', 'tsconfig.json', 'scripts/build.mjs', 'scripts/check-release.mjs']
+    .map(path => `${contract}typescript-client/${path}`),
+];
 const run = (command, args, cwd = repository) => execFileSync(command, args, { cwd, stdio: 'inherit' });
 const git = (...args) => execFileSync('git', args, { cwd: repository, encoding: 'utf8' }).trim();
 const hashes = async () => Object.fromEntries(await Promise.all(inputs.map(async path => [

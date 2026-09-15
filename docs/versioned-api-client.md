@@ -8,7 +8,7 @@ Issue #203 的 Client 发布渠道为 npm 官方公开仓库 `https://registry.n
 
 在该目录执行 `npm ci`、`npm run build`。生成使用根 POM 管理的 OpenAPI Generator，由正式 `v1.yaml` 和 `common.yaml` 生成 ESM JavaScript 与声明文件；输出位于模块自己的 `target/` 和 `dist/`，不读取或安装旧 Console。生成使用 JDK 17 和根 Maven Wrapper；消费者不需要它们。
 
-包无运行时依赖、无安装生命周期脚本；`exports` 指向编译后的 JavaScript 和 `.d.ts`。`contract-source.json` 记录包名、版本、后端提交、工作区是否有未提交输入、契约与 POM 的 SHA-256，以及生成器版本。包只包含编译制品、来源清单和 Apache-2.0 许可证。
+包无运行时依赖、无安装生命周期脚本；`exports` 指向编译后的 JavaScript 和 `.d.ts`。`contract-source.json` 记录包名、版本、后端提交、工作区是否有未提交输入、契约、POM、编译配置、锁文件、打包脚本与许可证的 SHA-256，以及生成器版本。包只包含编译制品、来源清单和 Apache-2.0 许可证。
 
 发布流程：修改明确的 SemVer 版本并同步 `package-lock.json`，完成制品导入、类型和受影响契约验证，审查并提交。`npm login --registry=https://registry.npmjs.org` 后在维护目录执行 `npm publish`。发布前钩子拒绝有未提交修改的仓库，打包时重新生成。2FA 在发布者自己的终端或 npm 网页完成，不把 OTP、Token 写入仓库、前端环境或命令记录。当前尚未配置 npm trusted publisher，不声称已有自动发布流水线。
 
@@ -25,3 +25,8 @@ Issue #203 的 Client 发布渠道为 npm 官方公开仓库 `https://registry.n
 ## 验收记录
 
 真实版本与执行结果见 Issue #203 验收记录。发布包、本地打包、模拟请求和真实浏览器结果必须分别标记，不互相代替。
+
+## 制品修订
+
+- `0.1.0`：首次独立 ESM 和类型发布。
+- `0.1.1`：来源清单新增编译配置、锁文件、打包脚本及许可证摘要；正式 v1 契约和 operation 不变，用于验证显式补丁升级。
