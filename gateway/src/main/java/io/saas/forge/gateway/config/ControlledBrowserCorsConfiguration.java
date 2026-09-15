@@ -32,6 +32,10 @@ class ControlledBrowserCorsConfiguration {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", cors);
+        CorsConfiguration discoveryCors = new CorsConfiguration(cors);
+        discoveryCors.setAllowedMethods(List.of("GET", "HEAD", "OPTIONS"));
+        discoveryCors.setAllowCredentials(false);
+        source.registerCorsConfiguration("/.well-known/jwks.json", discoveryCors);
         CorsFilter filter = new CorsFilter(source);
         DefaultCorsProcessor processor = new DefaultCorsProcessor();
         filter.setCorsProcessor((configuration, request, response) -> {

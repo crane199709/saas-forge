@@ -17,6 +17,7 @@
 
     <properties>
         <maven.deploy.skip>true</maven.deploy.skip>
+        <typescript.client.output>${maven.multiModuleProjectDirectory}/consoles/shared/api-client/.generated</typescript.client.output>
     </properties>
 
     <build>
@@ -34,7 +35,7 @@
                         <configuration>
                             <inputSpec>${maven.multiModuleProjectDirectory}/saas-forge-contracts/saas-forge-openapi-contracts/v1.yaml</inputSpec>
                             <generatorName>typescript-fetch</generatorName>
-                            <output>${maven.multiModuleProjectDirectory}/consoles/shared/api-client/.generated</output>
+                            <output>${typescript.client.output}</output>
                             <configOptions>
                                 <useSingleRequestParameter>true</useSingleRequestParameter>
                             </configOptions>
@@ -64,4 +65,27 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>standalone-typescript-client</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.openapitools</groupId>
+                        <artifactId>openapi-generator-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>generate-typescript-api-client</id>
+                                <configuration>
+                                    <configOptions>
+                                        <importFileExtension>.js</importFileExtension>
+                                    </configOptions>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

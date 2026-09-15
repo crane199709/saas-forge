@@ -1,0 +1,37 @@
+name: API Client artifact
+on:
+  pull_request:
+    paths:
+      - 'pom.xml'
+      - 'saas-forge-contracts/saas-forge-openapi-contracts/**'
+      - '.github/workflows/api-client.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.14.1'
+          registry-url: https://registry.npmjs.org
+      - name: Install build tools
+        working-directory: saas-forge-contracts/saas-forge-openapi-contracts/typescript-client
+        run: npm ci
+      - name: Generate and pack the public contract
+        working-directory: saas-forge-contracts/saas-forge-openapi-contracts/typescript-client
+        run: npm pack
+      - name: Install artifact outside the repository
+        shell: bash
+        run: |
+          consumer=$(mktemp -d)
+          npm install --prefix "$consumer" --ignore-scripts "$GITHUB_WORKSPACE"/saas-forge-contracts/saas-forge-openapi-contracts/typescript-client/*.tgz
+          cd "$consumer"
+          node --input-type=module -e 'import {Configuration,DiscoveryApi} from "@crane199709/saas-forge-api-client"; const api = new DiscoveryApi(new Configuration({basePath:"https://api.example.test"})); const request = await api.getJwksRequestOpts(); if (request.path !== "/.well-known/jwks.json" || request.method !== "GET") process.exit(1);'

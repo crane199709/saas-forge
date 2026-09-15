@@ -1,0 +1,38 @@
+{
+  "name": "@crane199709/saas-forge-api-client",
+  "version": "0.1.0",
+  "description": "Generated SaaS Forge public API Client",
+  "type": "module",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crane0927/saas-forge.git",
+    "directory": "saas-forge-contracts/saas-forge-openapi-contracts/typescript-client"
+  },
+  "files": [
+    "dist",
+    "contract-source.json",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./contract-source.json": "./contract-source.json"
+  },
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "prepack": "npm run build",
+    "prepublishOnly": "node scripts/check-release.mjs"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}

@@ -86,6 +86,31 @@ class GatewayJwksRouteTest {
     }
 
     @Test
+    void publicDiscoveryAllowsControlledConsoleOriginWithoutCredentials()
+            throws IOException, InterruptedException {
+        HttpResponse<String> response = send(HttpRequest.newBuilder(gatewayUri("/.well-known/jwks.json"))
+                .header("Origin", "https://console.saas.forge.test")
+                .GET().build());
+
+        assertEquals(200, response.statusCode());
+        assertEquals("https://console.saas.forge.test",
+                response.headers().firstValue("Access-Control-Allow-Origin").orElseThrow());
+        assertTrue(response.headers().firstValue("Access-Control-Allow-Credentials").isEmpty());
+    }
+
+    @Test
+    void publicDiscoveryRejectsUncontrolledOrigin()
+            throws IOException, InterruptedException {
+        HttpResponse<String> response = send(HttpRequest.newBuilder(gatewayUri("/.well-known/jwks.json"))
+                .header("Origin", "https://remote.saas.forge.test")
+                .GET().build());
+
+        assertEquals(403, response.statusCode());
+        assertTrue(response.body().contains("\"code\":\"BROWSER_REQUEST_REJECTED\""));
+        assertTrue(response.headers().firstValue("Access-Control-Allow-Origin").isEmpty());
+    }
+
+    @Test
     void returnsGateway503WhenNoHealthyOwningServiceInstanceExists()
             throws IOException, InterruptedException {
         for (UnavailableRoute route : List.of(
