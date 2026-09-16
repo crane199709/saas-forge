@@ -83,7 +83,7 @@
 ### 关闭核对（2026-09-13）
 
 - 本轮服务发现聚焦回归：`./mvnw -pl services/service-discovery -am -Dtest=NacosServiceEndpointsTest,DiscoveredGrpcChannelTest -Dsurefire.failIfNoSpecifiedTests=false test -q` 退出码 0；2+9=11 项，失败/错误/跳过均为 0。`git diff --check` 通过。
-- 产品代码提交 `ed9b49dbb6bad52d9d11b8a3c88df1c617d9f408` 的 [Verify 34747247761](https://github.com/crane0927/saas-forge/actions/runs/34747247761) 已重新查询为 completed/success；其 Chrome/Fresh 产物在 #170 关闭时已下载并核验同 SHA、dirty=false、全阶段 passed。当前 HEAD `314d7dbf07ac8d18396838a0fef1074a781b844e` 相比该 CI 提交仅有三份 #170 文档修改，本轮也仅更新 #165 文档；不声称 314d7db 或本轮未提交文档有新的 CI。
+- 产品代码提交 `ed9b49dbb6bad52d9d11b8a3c88df1c617d9f408` 的 [Verify 34747247761](https://github.com/crane199709/saas-forge/actions/runs/34747247761) 已重新查询为 completed/success；其 Chrome/Fresh 产物在 #170 关闭时已下载并核验同 SHA、dirty=false、全阶段 passed。当前 HEAD `314d7dbf07ac8d18396838a0fef1074a781b844e` 相比该 CI 提交仅有三份 #170 文档修改，本轮也仅更新 #165 文档；不声称 314d7db 或本轮未提交文档有新的 CI。
 - 验收 1、2、5：已有个人模板、原生说明、服务发现实现与自动化证据，加上开发者本轮 IDE 启停/变更端口/恢复实操。
 - 验收 3：两组专用 Tenant 均通过真实原生 Console 完成首个 Subscription 与管理员初始化，权威用量由 0 变 1。
 - 验收 4：真实 Nacos 从 8083/9093 变为 8183/9193 后新业务成功；停机健康实例为空、读取明确失败，恢复原端口后同一读取成功。发现异常及 gRPC 边界由上述聚焦回归补充。

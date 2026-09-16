@@ -2,7 +2,7 @@
 
 > **目的**：找出仓库中**被记录成"当前决策/当前事实"、但与实际实现不一致**的内容，供清除，避免 AI 按过时事实实现或验收。
 > **审计基线**：`2dc1edb`（2026-09-15，297 commits，默认分支 `master`）。方法：11 个文件切片逐条对照源码/配置/迁移/脚本/CI，另加机械扫描（相对链接、脚本引用、幽灵标识符、ADR 取代链）。
-> **状态**：审计已完成，**第 1、2、3 批处置均已落地**（`cdba104`、`273e4a2`、`bc69d16` + `0ee459e` + 本文所在提交）。第 3 批的 19 项决策全部裁定；国际化双轨的收敛实现本身**不在第 3 批范围**，仍由 [#199](https://github.com/crane0927/saas-forge/issues/199) 承担（受 #193–#198 阻塞），本批只修正了把未完成写成已完成的表述。
+> **状态**：审计已完成，**第 1、2、3 批处置均已落地**（`cdba104`、`273e4a2`、`bc69d16` + `0ee459e` + 本文所在提交）。第 3 批的 19 项决策全部裁定；国际化双轨的收敛实现本身**不在第 3 批范围**，仍由 [#199](https://github.com/crane199709/saas-forge/issues/199) 承担（受 #193–#198 阻塞），本批只修正了把未完成写成已完成的表述。
 >
 > **时效边界**：本文是 `2dc1edb` 时点的快照。文中"真实情况"一栏描述的是当时状态，**其中不少已被第 1、2 批修复**。把它当作"当前事实"来读同样是错的——判断现状请按 [AGENTS.md](../../AGENTS.md) 的文档权威顺序取证。第七节标注了每批的落地情况。
 
@@ -44,7 +44,7 @@
 | 维度 | 当前事实 | 权威来源 |
 | --- | --- | --- |
 | 后端工具链 | JDK 17；Spring Boot **4.0.7**（parent）；Maven Wrapper 3.9.14 + SHA-256 | `pom.xml:9-11`、`.mvn/wrapper/maven-wrapper.properties` |
-| 坐标与包名 | groupId `io.github.crane0927`；Java 包 `io.saas.forge.*` | `pom.xml:14`、各 `src/main/java/io/saas/forge/` |
+| 坐标与包名 | groupId `io.github.crane199709`；Java 包 `io.saas.forge.*` | `pom.xml:14`、各 `src/main/java/io/saas/forge/` |
 | Maven 模块 | `gateway`、`saas-forge-services`、`saas-forge-contracts`、`saas-forge-sdk`、`saas-forge-quality-gates`（`test-support` 仅 profile 激活） | `pom.xml:51-56`、`:442-457` |
 | 服务 | iam、tenant-access、entitlement、audit + service-discovery | `saas-forge-services/` |
 | 契约 | `v1.yaml` 51 条 path，仅 `/api/v1/auth/*`、`/api/v1/platform/*`、`/oauth2/token`、`/.well-known/jwks.json`；生成 5 个 API client | `v1.yaml`、`saas-forge-sdk/public-api-allowlist.json` |

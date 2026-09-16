@@ -146,14 +146,14 @@ class JavaSdkReleaseBoundaryIT {
         List<Node> managed = dependencyNodes(directChild(project, "dependencyManagement"));
         assertEquals(1, managed.size(), "消费者 dependencyManagement 只能导入 saas-forge BOM");
         Node bom = managed.get(0);
-        assertEquals("io.github.crane0927", directChildText(bom, "groupId"));
+        assertEquals("io.github.crane199709", directChildText(bom, "groupId"));
         assertEquals("saas-forge-bom", directChildText(bom, "artifactId"));
         assertEquals("${saas-forge.version}", directChildText(bom, "version"));
         assertEquals("pom", directChildText(bom, "type"));
         assertEquals("import", directChildText(bom, "scope"));
 
         List<Node> saasForgeDependencies = dependencyNodes(project).stream()
-                .filter(dependency -> "io.github.crane0927".equals(directChildText(dependency, "groupId")))
+                .filter(dependency -> "io.github.crane199709".equals(directChildText(dependency, "groupId")))
                 .toList();
         assertEquals(1, saasForgeDependencies.size(), "消费者只能直接声明一个 saas-forge 依赖");
         Node starter = saasForgeDependencies.get(0);
@@ -342,7 +342,7 @@ class JavaSdkReleaseBoundaryIT {
         for (int index = 0; index < nodes.getLength(); index++) {
             Node dependency = nodes.item(index);
             String groupId = directChildText(dependency, "groupId");
-            if (!Set.of("io.github.crane0927", "${project.groupId}").contains(groupId)) {
+            if (!Set.of("io.github.crane199709", "${project.groupId}").contains(groupId)) {
                 continue;
             }
             String artifactId = directChildText(dependency, "artifactId");

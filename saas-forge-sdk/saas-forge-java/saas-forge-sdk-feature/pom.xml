@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.github.crane0927</groupId>
+        <groupId>io.github.crane199709</groupId>
         <artifactId>saas-forge</artifactId>
         <version>${revision}</version>
         <relativePath>../../../pom.xml</relativePath>

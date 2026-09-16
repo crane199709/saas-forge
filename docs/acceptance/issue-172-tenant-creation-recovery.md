@@ -2,7 +2,7 @@
 
 > **历史证据**：本文保留当时的验收记录与命令输出，不代表当前实现或当前门禁。其中的前端包名、界面描述与门禁计数可能属于已被 [ADR 0050](../adr/0050-consoles-adopt-soybean-element-plus.md) 替换的自建 Design System / React Shell 时期；当前 Vue 实现与验证入口见 [Console 设计规范](../25-design-system.md)、[Console 认证 Runtime](../28-console-authentication-runtime.md) 与 [测试基线](../console-testing-baseline.md)，复现按 [本地分层验证](../local-verification.md)。
 
-范围：[Issue #172](https://github.com/crane0927/saas-forge/issues/172)，父规格 [Console 身份与租户初始化闭环](../30-platform-console-tenant-initialization.md)。本记录区分代码验证与真实产品验收，不代表父 Issue #170 或整个第 2 阶段完成。
+范围：[Issue #172](https://github.com/crane199709/saas-forge/issues/172)，父规格 [Console 身份与租户初始化闭环](../30-platform-console-tenant-initialization.md)。本记录区分代码验证与真实产品验收，不代表父 Issue #170 或整个第 2 阶段完成。
 
 ## 实现
 

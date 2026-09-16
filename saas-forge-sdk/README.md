@@ -24,7 +24,7 @@ Permission、Feature、Quota 与 Audit SDK 目前只是后续阶段的 Reactor �
 <dependencyManagement>
     <dependencies>
         <dependency>
-            <groupId>io.github.crane0927</groupId>
+            <groupId>io.github.crane199709</groupId>
             <artifactId>saas-forge-bom</artifactId>
             <version>${saas-forge.version}</version>
             <type>pom</type>
@@ -35,7 +35,7 @@ Permission、Feature、Quota 与 Audit SDK 目前只是后续阶段的 Reactor �
 
 <dependencies>
     <dependency>
-        <groupId>io.github.crane0927</groupId>
+        <groupId>io.github.crane199709</groupId>
         <artifactId>saas-forge-spring-boot-starter</artifactId>
     </dependency>
 </dependencies>

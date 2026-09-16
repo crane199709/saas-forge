@@ -31,7 +31,7 @@ const manifest = JSON.parse(await readFile(`${packageRoot}/package.json`, 'utf8'
 await writeFile(`${packageRoot}/contract-source.json`, JSON.stringify({
   package: manifest.name,
   version: manifest.version,
-  repository: 'https://github.com/crane0927/saas-forge',
+  repository: 'https://github.com/crane199709/saas-forge',
   commit: git('rev-parse', 'HEAD'),
   dirty: git('status', '--porcelain', '--untracked-files=normal', '--', ...inputs, `${contract}typescript-client`) !== '',
   contract: `${contract}v1.yaml`,

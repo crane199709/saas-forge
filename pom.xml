@@ -11,14 +11,14 @@
         <relativePath/>
     </parent>
 
-    <groupId>io.github.crane0927</groupId>
+    <groupId>io.github.crane199709</groupId>
     <artifactId>saas-forge</artifactId>
     <version>${revision}</version>
     <packaging>pom</packaging>
 
     <name>saas-forge</name>
     <description>An open-source foundation for single-product, multi-tenant SaaS applications.</description>
-    <url>https://github.com/crane0927/saas-forge</url>
+    <url>https://github.com/crane199709/saas-forge</url>
 
     <licenses>
         <license>
@@ -30,22 +30,22 @@
 
     <developers>
         <developer>
-            <id>crane0927</id>
-            <name>crane0927</name>
-            <url>https://github.com/crane0927</url>
+            <id>crane199709</id>
+            <name>crane199709</name>
+            <url>https://github.com/crane199709</url>
         </developer>
     </developers>
 
     <scm>
-        <connection>scm:git:https://github.com/crane0927/saas-forge.git</connection>
-        <developerConnection>scm:git:ssh://git@github.com/crane0927/saas-forge.git</developerConnection>
-        <url>https://github.com/crane0927/saas-forge</url>
+        <connection>scm:git:https://github.com/crane199709/saas-forge.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/crane199709/saas-forge.git</developerConnection>
+        <url>https://github.com/crane199709/saas-forge</url>
         <tag>HEAD</tag>
     </scm>
 
     <issueManagement>
         <system>GitHub</system>
-        <url>https://github.com/crane0927/saas-forge/issues</url>
+        <url>https://github.com/crane199709/saas-forge/issues</url>
     </issueManagement>
 
     <modules>
@@ -345,13 +345,13 @@
                                         <exclude>org.mybatis:*</exclude>
                                         <exclude>org.mybatis.spring.boot:*</exclude>
                                         <exclude>org.flywaydb:*</exclude>
-                                        <exclude>io.github.crane0927:*</exclude>
+                                        <exclude>io.github.crane199709:*</exclude>
                                     </excludes>
                                     <includes>
-                                        <include>io.github.crane0927:saas-forge-http-route-catalog</include>
-                                        <include>io.github.crane0927:saas-forge-sdk-core</include>
-                                        <include>io.github.crane0927:saas-forge-sdk-auth</include>
-                                        <include>io.github.crane0927:saas-forge-sdk-tenant</include>
+                                        <include>io.github.crane199709:saas-forge-http-route-catalog</include>
+                                        <include>io.github.crane199709:saas-forge-sdk-core</include>
+                                        <include>io.github.crane199709:saas-forge-sdk-auth</include>
+                                        <include>io.github.crane199709:saas-forge-sdk-tenant</include>
                                     </includes>
                                     <searchTransitive>true</searchTransitive>
                                 </bannedDependencies>

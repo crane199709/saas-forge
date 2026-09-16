@@ -62,7 +62,7 @@ pnpm run verify:workspace
 - Remote Chromium 行为与更新后的桌面、390px 视觉基线通过，5 个消费者浏览器测试全部成功；应用内 Browser 另行确认 1280px 与 390px 页面身份、完整 DOM、几何顺序、提交反馈和控制台健康。
 - 标准 `pnpm run verify:workspace` 通过，包含全部类型检查、Lint、格式、83 个单元测试、Design System 9 个 Chromium 浏览器测试、消费者 5 个 Chromium 浏览器测试、三个消费者生产构建和制品哈希门禁。三个消费者构建产物继续只有一个且内容完全相同的 CSS 入口。
 - 真实 Chrome 兼容入口通过：Design System 6 个行为测试和消费者 4 个行为测试成功，视觉用例按跨浏览器约定跳过。
-- GitHub Actions Run [33397338968](https://github.com/crane0927/saas-forge/actions/runs/33397338968) 中，Console browser Chrome、Edge、Firefox 与 Safari agreement（WebKit）四个独立 Job 全部成功。整个 Run 的失败来自与 #106 无关的 `Tenant lifecycle fresh-volume E2E`，不改变四浏览器门禁的直接结果。
+- GitHub Actions Run [33397338968](https://github.com/crane199709/saas-forge/actions/runs/33397338968) 中，Console browser Chrome、Edge、Firefox 与 Safari agreement（WebKit）四个独立 Job 全部成功。整个 Run 的失败来自与 #106 无关的 `Tenant lifecycle fresh-volume E2E`，不改变四浏览器门禁的直接结果。
 - 本机连续两次运行 Design System Chromium 快照时，实际图片逐字节一致；差异只位于中英文文字与数字的字形边缘，截图尺寸、卡片边框、间距、分栏和断点排列均未变化。据此独立更新本机 Darwin/Chromium 的 8 张 Design System 基线，不改动 Linux CI 基线或测试容差。
 - 本机 Edge 安装权限、Firefox headless 插件子进程和 WebKit 焦点行为仍是 macOS 本地环境边界；四浏览器兼容结论采用上述 CI 受控环境的直接结果，不再以本机安装或运行成败代替。
 

@@ -2,7 +2,7 @@
 
 > **状态**：本文是设计基线，描述长期有效的目标与约束，不代表对应功能已实现；当前实现状态见 [README 的当前状态](../README.md#当前状态) 与开放 Issues，进度勾选见 [MVP 开发计划](16-mvp-development-plan.md)。
 
-**实施 Issue：[#75](https://github.com/crane0927/saas-forge/issues/75)**
+**实施 Issue：[#75](https://github.com/crane199709/saas-forge/issues/75)**
 
 本规格交付 Gateway 平台级通用路由机制、User/Service Token 路由策略和最小 HTTP 认证 Starter。它不交付任何 Permission、Feature 或 Quota Runtime 业务 operation。架构取舍见 [ADR 0034](adr/0034-controlled-service-registry-and-route-catalog.md)，领域所有权见 [Context Map](../CONTEXT-MAP.md)。
 

@@ -85,7 +85,7 @@
 
 ## 未完成项与 #199 验收对齐
 
-本计划的页面迁移只完成了 platform-console 一端：tenant-console-shell 仍通过 `@saas-forge/admin` 的 `mountConsole` 挂载自建 `Workspace.vue`，`shared/admin` 与 `shared/i18n` 两个包都还存在。剩余工作由 [#199](https://github.com/crane0927/saas-forge/issues/199) 承担，并受 #193–#198（各页面迁入官方应用）阻塞；验收标准即该 Issue 的六条，不在本计划重复维护：
+本计划的页面迁移只完成了 platform-console 一端：tenant-console-shell 仍通过 `@saas-forge/admin` 的 `mountConsole` 挂载自建 `Workspace.vue`，`shared/admin` 与 `shared/i18n` 两个包都还存在。剩余工作由 [#199](https://github.com/crane199709/saas-forge/issues/199) 承担，并受 #193–#198（各页面迁入官方应用）阻塞；验收标准即该 Issue 的六条，不在本计划重复维护：
 
 1. 确认所有正式应用及 Remote 消费者完成迁移后，删除自建 `admin`、`i18n` 包及无人使用的依赖、样式、导出、工具和旧入口，不简单改名保留同一套自建视觉体系。
 2. 保留 `app-runtime`、生成 `api-client` 和必要业务适配；品牌原子切换、认证、原操作恢复、状态复核、challenge 单次消费、脏表单和无障碍均有新承接位置和行为验证。

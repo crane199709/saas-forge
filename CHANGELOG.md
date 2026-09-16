@@ -27,3 +27,9 @@
 - 旧 `__Host-sf_refresh` Cookie 将被清除，旧 Refresh Token Family 不迁移，也不并行支持旧单槽位协议；原有浏览器会话需要重新登录。
 - **外部消费者中断风险**：依赖旧 Cookie、缺少 `sessionSlot` 或不符合来源与槽位配对要求的现有 v1 客户端可能无法继续认证、刷新或登出。外部消费者须同步升级生成 Client 和调用协议，不能将本次变更视为向后兼容。Gateway、IAM、生成 Client、两个 Console、E2E 脚本与全部第一方消费者须原子升级。
 - 本次仅适用 [ADR 0038](docs/adr/0038-browser-sessions-use-intent-bound-slots.md) 批准的浏览器认证 v1 例外；历史兼容基线保持不变，其他 v1 契约不获得豁免。协议与迁移要求见 [Console 认证 Runtime 与浏览器会话规格](docs/28-console-authentication-runtime.md)。
+
+#### Maven 坐标跟随 GitHub 账号改名
+
+- 公开 Maven groupId 由 `io.github.crane0927` 改为 `io.github.crane199709`，根父 POM、`saas-forge-bom`、SDK 与 Starter 的坐标同步变更；artifactId、Java 包名 `io.saas.forge.*`、公开契约与运行行为不变。
+- 本次改名发生在本项目向 Maven Central 发布任何版本之前：旧坐标与新坐标在 Central 上都没有制品，也不存在 `v*.*.*` 发布标签，因此没有需要兼容的已发布版本。旧坐标保留但不再发布。
+- 依赖片段、`pom.xml` 元数据与文档链接已同步更新。规则依据 [ADR 0053](docs/adr/0053-maven-groupid-follows-github-account.md)；新命名空间注册与发布 Secrets 的核对步骤见 [Maven 构建与制品发布](docs/21-maven-build-and-release.md)。
