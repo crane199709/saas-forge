@@ -41,3 +41,9 @@
 ## 原生启动回归修复
 
 2026-09-16，用户启用受控开关后发现 ConsoleAuthenticationController 的 final 声明阻止 Spring CGLIB 方法校验代理。将真实类代理校验加入 HTTP 测试装配后，定向用例先复现相同启动异常；去掉 Controller 的 final 后，全部 5 个统一 Console HTTP 用例通过。未关闭方法校验或修改迁移，仍需用户重新启动 IAM 后继续真实 HTTPS 验收。
+
+## 正式发布与当前验收缺口
+
+Client `@crane199709/saas-forge-api-client@0.2.0` 已在 npm 正式发布，来源提交 `c904af13ad92f2ef6eafd98c7679628b09291405`，dirty=false；独立前端已精确安装，15 项测试、类型检查、ESLint 与生产构建通过。后续提交 `a7f98d6` 修复 IAM 错误响应 trace ID，复用既有请求追踪逻辑，ControllerAdvice/Filter 两条拒绝路径定向回归通过；不改变 Client 契约。
+
+Chrome 153.0.8010.48 已经真实 HTTPS Console 完成用户凭据提交。实际账号有平台权限和 1 个公司上下文，login/session 返回 200，刷新后保持 CONTEXT_SELECTION_REQUIRED；Cookie 的 HttpOnly、Secure、SameSite=Strict 与 Console 无可读 Cookie 已核验。用户确认没有仅平台权限的测试账号，因此平台首页、首页恢复、多标签整体退出和换账号主链尚未完成验收。未调整既有账号授权，不据此关闭 #204。
