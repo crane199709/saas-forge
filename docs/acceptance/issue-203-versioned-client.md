@@ -1,6 +1,6 @@
 # Issue #203：版本化 Client 与独立前端启动
 
-日期：2026-09-15。状态：代码与制品已交付，**真实 Gateway 成功读取验收尚未完成，Issue 不应关闭**。
+初验：2026-09-15；补验：2026-09-16。状态：**本票本机验收已通过，真实 Gateway 读取的 CORS 阻塞已解除**。代码与制品已交付，源码提交尚未推送。
 
 ## 基线与发布
 
@@ -33,21 +33,34 @@
 7. 用户授权的独立临时 Chrome 配置目录验证：可信 HTTPS 页面、单 Console 路由、键盘语言切换、Tab 焦点顺序、Enter 操作、失败文案即时翻译、内部 HTTP 入口禁止公开读取。未读取日常浏览器配置，未忽略证书错误。
 8. 无 API 配置的独立构建产物经 HTTPS 打开后，页面明确提示配置缺失，JWKS 请求数量为 0。
 9. 单独标记的模拟浏览器验证通过：HTTP 403 来源拒绝、连接拒绝、10 秒超时与重试恢复。它们不代表真实后端业务成功。
-10. Standards 与 Spec 并行静态审查均未发现需修复项；审查明确保留真实成功链路未完成状态。
+10. Standards 与 Spec 并行静态审查均未发现需修复项；初轮审查保留了当时真实成功链路未完成状态，后续补验见下文。
 
-## 已查明的失败与阻塞
+## 历史失败与阻塞（2026-09-16 已补验）
 
-真实 Chrome 从 Console 向 Gateway 发出正式 `getJwks`，请求无 Cookie 或 Authorization。HTTPS 受信，但运行中的 Gateway 响应没有 `Access-Control-Allow-Origin`，Chrome 实际阻止读取；页面按设计显示网络/CORS/证书排查提示。
+2026-09-15 初验时，真实 Chrome 从 Console 向 Gateway 发出正式 `getJwks`。HTTPS 受信，但当时运行中的 Gateway 响应没有 `Access-Control-Allow-Origin`，Chrome 实际阻止读取；页面按设计显示网络/CORS/证书排查提示。
 
-用户已恢复 HTTPS Edge 的 443 端口。随后对照 Edge 与 Gateway 内部 8080 的只读响应，两者都缺少 CORS 头，确认不是仅凭页面猜测。当前运行实例未体现本次 CORS 修改；仍需用户在 IDE 重新运行 Gateway，再验证受控来源成功、未允许来源失败。不得为完成验收接管用户后端进程、伪造来源或绕过 Gateway。
+用户已恢复 HTTPS Edge 的 443 端口。随后对照 Edge 与 Gateway 内部 8080 的只读响应，两者都缺少 CORS 头，确认不是仅凭页面猜测。当时运行实例未体现本次 CORS 修改，验收等待用户在 IDE 重新运行 Gateway。用户于 2026-09-16 确认已重新运行，补验结果见下节。不得为完成验收接管用户后端进程、伪造来源或绕过 Gateway。
 
 实现中的 JWKS CORS 只允许既有受控 Console Origin、GET/HEAD/OPTIONS，并关闭该匿名操作的跨域凭据许可；单元测试已经覆盖受控来源与禁止来源。**测试不能代替运行环境成功证据。**
 
 首次沙箱测试因本机端口/tsx IPC 被禁止而失败，允许对应本机测试能力后复跑通过。一次 Maven 空配置被解释为 `false` 的兼容回归已修复为独立 profile，旧入口和新包均复验通过。独立安装曾因缺失 allowBuilds 选择失败；沿用用户已有的明确选择后通过，未扩大其他依赖脚本权限。
 
+## 2026-09-16 真实 Chrome 补验
+
+用户在 IDE 重新运行 Gateway 后，本任务只启动并在验收结束时停止前端 Vite，未接管 Gateway 或 HTTPS Edge。前端源基线为 `74ffbac`（实现 `12eaf58`），消费已发布 Client `0.1.1`；后端源工作区基线为 `c100bce`（CORS 实现 `68a8a74`）。此处记录源工作区基线，未将其冒充服务公开返回的构建提交号。
+
+使用独立临时配置目录的桌面 Chrome `153.0.8010.48`，在北京时间 09:04 完成：
+
+- 真实 Console 页面 `https://console.saas.forge.test/connection` 点击“检查连接”，通过正式类型化 Client 向真实 Gateway 读取 JWKS，HTTP 200，页面显示“连接成功，已读取公开验证密钥。此结果不代表已登录。”；无页面 JavaScript 错误。
+- Chrome 的 secure context 为 true，未忽略证书错误；实际请求 Origin 为 `https://console.saas.forge.test`，完整请求头中无 Cookie、Authorization。响应允许来源精确匹配该 Origin，未包含 `Access-Control-Allow-Credentials`。
+- 使用隔离浏览器中的空白 Remote Origin 页面夹具发起请求，Origin 由浏览器产生，为 `https://remote.saas.forge.test`。真实 Gateway 返回 HTTP 403，未返回允许来源头，浏览器无法读取响应。仅发起页面为夹具，**API 响应未模拟**；403 状态由 Chrome 网络协议记录，因为 CORS 拒绝时页面层无法读取该响应。
+- 独立 HTTPS 请求同时确认禁止来源的错误码为 `BROWSER_REQUEST_REJECTED`。访问 Remote 根路径得到 404 的初次浏览器探测未产生有效 API 拒绝证据，不计为通过。
+
+上述结果补齐本票公开读取与受控来源的真实边界验证。当前前端实现与 Client 0.1.1、上述后端源基线的公开读取组合通过；不推导统一登录或受保护业务兼容性。
+
 ## 验收边界与后续动作
 
-- 真实公开成功读取尚缺；不能声明上述后端/Client/前端组合已完整兼容。
+- 真实公开读取成功与禁止来源拒绝已补验通过；兼容结论限于本票公开读取范围。
 - 未验证统一登录、Cookie/刷新/退出或受保护业务，本票不将公开读取视为登录成功。
 - 未执行 Fresh Compose、全后端服务集成、旧 Console 全工作区测试或新 CI 远端运行；本机按 Gateway/Client/新前端的实际影响范围验证。
-- 发布及兼容规则见 [版本化 API Client](../versioned-api-client.md)。后续需同步已提交源码、让用户重启 Gateway，并补录真实 Chrome 成功与来源拒绝结果后再关闭 Issue。
+- 发布及兼容规则见 [版本化 API Client](../versioned-api-client.md)。真实 Chrome 成功与来源拒绝证据已补齐；源码提交尚需同步远端，本任务未操作 GitHub Issue 状态。
