@@ -589,7 +589,14 @@ class AuthenticationHttpIT {
 
     @org.springframework.boot.test.context.TestConfiguration(proxyBeanMethods = false)
     @EnableWebMvc
-    static class ConsoleWebConfiguration { }
+    static class ConsoleWebConfiguration {
+        @Bean
+        static org.springframework.validation.beanvalidation.MethodValidationPostProcessor consoleMethodValidation() {
+            var validation = new org.springframework.validation.beanvalidation.MethodValidationPostProcessor();
+            validation.setProxyTargetClass(true);
+            return validation;
+        }
+    }
 
     @Test
     @Order(1)

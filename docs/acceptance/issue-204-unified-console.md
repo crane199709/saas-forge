@@ -37,3 +37,7 @@
 - 后端 Standards 与 Spec 双轴复审无未解决代码问题；前端焦点保留修复和真实浏览器验收继续推进。
 
 未执行：正式 npm Client 0.2.0 发布及独立前端精确版本安装、生产构建、真实 Chrome 多标签页/HTTPS Cookie/权限撤销联调、真实 Gateway 与全部直达服务的协议切换验收、完整 CI。npm 初次登录检查返回 401，用户重新登录后身份已确认；等待验证和提交完成后发布。用户已确认迁移并重启本机后端；联调时 IAM v2 bootstrap 仍为 404，已请开发者确认受控开关生效。未代替开发者管理应用进程。
+
+## 原生启动回归修复
+
+2026-09-16，用户启用受控开关后发现 ConsoleAuthenticationController 的 final 声明阻止 Spring CGLIB 方法校验代理。将真实类代理校验加入 HTTP 测试装配后，定向用例先复现相同启动异常；去掉 Controller 的 final 后，全部 5 个统一 Console HTTP 用例通过。未关闭方法校验或修改迁移，仍需用户重新启动 IAM 后继续真实 HTTPS 验收。

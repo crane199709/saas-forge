@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @ConditionalOnProperty(name = "security.browser.console-enabled", havingValue = "true")
-public final class ConsoleAuthenticationController implements ConsoleAuthenticationApi {
+public class ConsoleAuthenticationController implements ConsoleAuthenticationApi {
     static final String SLOT_COOKIE = "__Host-sf_console_slot";
     static final String REFRESH_COOKIE = "__Host-sf_console_refresh";
     static final List<String> LEGACY_COOKIES = List.of("__Host-sf_platform_refresh", "__Host-sf_tenant_refresh", "__Host-sf_refresh");
