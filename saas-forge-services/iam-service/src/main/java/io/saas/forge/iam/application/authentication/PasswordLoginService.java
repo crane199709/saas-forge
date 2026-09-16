@@ -4,14 +4,12 @@ import io.saas.forge.iam.domain.authorization.PlatformRoleAssignmentRepository;
 import io.saas.forge.iam.domain.identity.CredentialType;
 import io.saas.forge.iam.domain.identity.Identity;
 import io.saas.forge.iam.domain.identity.IdentityRepository;
-import io.saas.forge.iam.domain.identity.NormalizedEmail;
 import io.saas.forge.iam.domain.identity.PasswordCredential;
 import io.saas.forge.iam.domain.session.RefreshTokenFamilyPurpose;
 import io.saas.forge.iam.domain.session.RefreshTokenFamilyRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 public final class PasswordLoginService {
     private static final int ACCESSIBLE_MEMBERSHIP_LIMIT = 100;
@@ -58,28 +56,11 @@ public final class PasswordLoginService {
             String selectedRefreshToken,
             String traceId) {
         requireAvailableSlot(BrowserSessionSlot.forLogin(contextType), selectedRefreshToken);
-        NormalizedEmail normalizedEmail = NormalizedEmail.from(email);
-        if (loginProtection.isLocked(normalizedEmail)) {
-            throw new AuthenticationFailedException();
-        }
-        Instant now = clock.instant();
-        Optional<Identity> identity = identities.findByEmail(normalizedEmail);
-        List<PasswordCredential> credentials = identity.map(value -> activePasswords(value, now)).orElseGet(List::of);
-        if (credentials.isEmpty()) {
-            passwordVerifier.dummyMatches(password);
-            failCredential(normalizedEmail);
-        }
-        Optional<PasswordCredential> credential = credentials.stream()
-                .filter(candidate -> passwordVerifier.matches(password, candidate.passwordHash()))
-                .findFirst();
-        if (credential.isEmpty()) {
-            failCredential(normalizedEmail);
-        }
-
-        // 密码已经验证成功；后续访问上下文或基础设施失败不得继续累积锁定次数。
-        loginProtection.clearCredentialFailures(normalizedEmail);
-        Identity authenticatedIdentity = identity.orElseThrow();
-        PasswordCredential authenticatedCredential = credential.orElseThrow();
+        var authenticated = new PasswordAuthenticator(identities, loginProtection, passwordVerifier, clock)
+                .authenticate(email, password);
+        Instant now = authenticated.authenticatedAt();
+        Identity authenticatedIdentity = authenticated.identity();
+        PasswordCredential authenticatedCredential = authenticated.credential();
         if (authenticatedCredential.type() == CredentialType.INITIAL_PLATFORM_PASSWORD) {
             if (contextType != LoginContextType.PLATFORM) {
                 throw new BrowserRequestRejectedException();
@@ -159,19 +140,4 @@ public final class PasswordLoginService {
         return new ContextSelectionLoginResult(memberships, refreshToken.value(), cookieMaxAge);
     }
 
-    private List<PasswordCredential> activePasswords(Identity identity, Instant now) {
-        return identities.findCredentials(identity.id()).stream()
-                .filter(credential -> credential.isValidAt(now))
-                .sorted((left, right) -> Integer.compare(priority(left.type()), priority(right.type())))
-                .toList();
-    }
-
-    private static int priority(CredentialType type) {
-        return type == CredentialType.INITIAL_PLATFORM_PASSWORD ? 0 : 1;
-    }
-
-    private void failCredential(NormalizedEmail email) {
-        loginProtection.recordCredentialFailure(email);
-        throw new AuthenticationFailedException();
-    }
 }

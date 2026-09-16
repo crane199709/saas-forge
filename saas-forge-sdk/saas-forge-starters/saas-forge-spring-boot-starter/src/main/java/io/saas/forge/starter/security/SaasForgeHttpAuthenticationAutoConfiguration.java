@@ -105,7 +105,8 @@ public class SaasForgeHttpAuthenticationAutoConfiguration {
         @Bean
         UserAccessTokenSignatureVerifier saasForgeUserSignatures(IamJwksKeyResolver keys, Environment environment) {
             return new UserAccessTokenSignatureVerifier(keys, Clock.systemUTC(),
-                    environment.getRequiredProperty("security.jwt.issuer"), "saas.forge-api", Duration.ofSeconds(30));
+                    environment.getRequiredProperty("security.jwt.issuer"), "saas.forge-api", Duration.ofSeconds(30),
+                    environment.getProperty("security.browser.console-enabled", Boolean.class, false));
         }
 
         @Bean

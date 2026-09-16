@@ -65,6 +65,9 @@ public final class HttpRouteCatalogGenerator {
         OpenAPI openApi = parseOpenApi(repository.resolve("saas-forge-contracts/saas-forge-openapi-contracts/v1.yaml"));
         validateSecuritySchemes(openApi, scopesByName);
         List<Route> routes = new ArrayList<>(generateRoutes(openApi, servicesById, scopesByName));
+        OpenAPI consoleApi = parseOpenApi(repository.resolve("saas-forge-contracts/saas-forge-openapi-contracts/v2.yaml"));
+        validateConsoleSecuritySchemes(consoleApi);
+        routes.addAll(generateRoutes(consoleApi, servicesById, scopesByName));
         if (openApiOverlay != null) {
             OpenAPI testOpenApi = parseOpenApi(openApiOverlay);
             validateSecuritySchemes(testOpenApi, scopesByName);
@@ -74,6 +77,8 @@ public final class HttpRouteCatalogGenerator {
                     .thenComparing(Route::path)
                     .thenComparing(Route::operationId));
         }
+        validateDistinctRoutes(routes);
+        routes.sort(Comparator.comparing(Route::method).thenComparing(Route::path).thenComparing(Route::operationId));
         validateRouteEligibility(routes, servicesById);
         Files.createDirectories(output.getParent());
         JSON.writeValue(output.toFile(), new Catalog(SCHEMA_VERSION, routes));
@@ -279,6 +284,17 @@ public final class HttpRouteCatalogGenerator {
                 "ServiceOAuth2 必须精确声明可用于公网的固定 Scope");
     }
 
+    private static void validateConsoleSecuritySchemes(OpenAPI openApi) {
+        var schemes = openApi.getComponents().getSecuritySchemes();
+        for (var entry : Map.of("ConsoleSlotCookieAuth", "__Host-sf_console_slot",
+                "ConsoleRefreshCookieAuth", "__Host-sf_console_refresh").entrySet()) {
+            var scheme = schemes.get(entry.getKey());
+            require(scheme != null && scheme.getType() == SecurityScheme.Type.APIKEY
+                    && scheme.getIn() == SecurityScheme.In.COOKIE && entry.getValue().equals(scheme.getName()),
+                    entry.getKey() + " 非法");
+        }
+    }
+
     private static List<Route> generateRoutes(
             OpenAPI openApi, Map<String, ServiceEntry> services, Map<String, ScopeEntry> scopes) {
         require(openApi.getPaths() != null && !openApi.getPaths().isEmpty(), "OpenAPI paths 不能为空");
@@ -333,11 +349,18 @@ public final class HttpRouteCatalogGenerator {
                     operation.getOperationId() + " 的 Browser Session Slot 不允许 Scope");
             return new Credential("BROWSER_SESSION_SLOT_REQUIRED", List.of());
         }
+        if (security.size() == 1 && security.get(0).keySet()
+                .equals(Set.of("ConsoleSlotCookieAuth", "ConsoleRefreshCookieAuth"))) {
+            require(security.get(0).values().stream().allMatch(List::isEmpty),
+                    operation.getOperationId() + " 的 Console Cookie 不允许 Scope");
+            return new Credential("CONSOLE_SESSION_REQUIRED", List.of());
+        }
         require(security.size() == 1 && security.get(0).size() == 1,
                 operation.getOperationId() + " security alternatives 必须互斥且唯一");
         Map.Entry<String, List<String>> requirement = security.get(0).entrySet().iterator().next();
         List<String> requiredScopes = requirement.getValue() == null ? List.of() : requirement.getValue();
         return switch (requirement.getKey()) {
+            case "ConsoleSlotCookieAuth" -> noScopes(operation, requiredScopes, "CONSOLE_SLOT_REQUIRED");
             case "UserBearerAuth" -> noScopes(operation, requiredScopes, "USER_REQUIRED");
             case "PlatformRefreshCookieAuth" -> noScopes(
                     operation, requiredScopes, "PLATFORM_REFRESH_COOKIE_REQUIRED");

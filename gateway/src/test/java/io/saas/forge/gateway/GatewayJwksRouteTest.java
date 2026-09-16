@@ -77,6 +77,21 @@ class GatewayJwksRouteTest {
     }
 
     @Test
+    void unifiedConsolePreflightAcceptsRevisionOnlyFromConsole() throws Exception {
+        for (String origin : List.of("https://console.saas.forge.test", "https://platform.saas.forge.test")) {
+            var response = send(HttpRequest.newBuilder(gatewayUri("/api/v2/auth/refresh"))
+                    .header("Origin", origin).header("Access-Control-Request-Method", "POST")
+                    .header("Access-Control-Request-Headers", "content-type,if-match,idempotency-key,x-sf-csrf")
+                    .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+            assertEquals(origin.contains("console.") ? 200 : 403, response.statusCode());
+            if (response.statusCode() == 200) {
+                assertEquals(origin, response.headers().firstValue("Access-Control-Allow-Origin").orElseThrow());
+                assertTrue(response.headers().firstValue("Access-Control-Expose-Headers").orElse("").contains("ETag"));
+            }
+        }
+    }
+
+    @Test
     void proxiesJwksFromIam() throws IOException, InterruptedException {
         HttpResponse<String> response = send("GET", "/.well-known/jwks.json");
 

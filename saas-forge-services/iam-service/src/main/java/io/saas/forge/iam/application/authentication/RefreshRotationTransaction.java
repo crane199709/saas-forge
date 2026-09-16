@@ -65,6 +65,22 @@ public class RefreshRotationTransaction {
             IssuedAccessToken accessToken,
             Instant at,
             String traceId) {
+        return commitRotation(presentedToken, nextToken, idempotencyKeyDigest, expectedContextVersion,
+                membershipId, tenantId, accessToken, at, traceId, false);
+    }
+
+    /** Console 由 Slot 的持久 ENDING 流程在提交后交付重放撤销。 */
+    @Transactional
+    public Result commitConsole(RefreshTokenMaterial presentedToken, RefreshTokenMaterial nextToken,
+            Sha256Digest idempotencyKeyDigest, long expectedContextVersion, UUID membershipId, UUID tenantId,
+            IssuedAccessToken accessToken, Instant at, String traceId) {
+        return commitRotation(presentedToken, nextToken, idempotencyKeyDigest, expectedContextVersion,
+                membershipId, tenantId, accessToken, at, traceId, true);
+    }
+
+    private Result commitRotation(RefreshTokenMaterial presentedToken, RefreshTokenMaterial nextToken,
+            Sha256Digest idempotencyKeyDigest, long expectedContextVersion, UUID membershipId, UUID tenantId,
+            IssuedAccessToken accessToken, Instant at, String traceId, boolean console) {
         if (accessToken != null) {
             issuanceFence.assertIssuable(membershipId, tenantId);
         }
@@ -92,14 +108,14 @@ public class RefreshRotationTransaction {
             return new Result(rotation.status(), OptionalLong.of(cookieMaxAge(at, rotation.family())));
         }
         if (rotation.status() == RefreshRotation.Status.REPLAYED) {
-            revokeReplayedFamily(rotation.family(), at, traceId);
+            revokeReplayedFamily(rotation.family(), at, traceId, console);
         }
         return new Result(rotation.status(), OptionalLong.empty());
     }
 
-    private void revokeReplayedFamily(RefreshTokenFamily family, Instant at, String traceId) {
+    private void revokeReplayedFamily(RefreshTokenFamily family, Instant at, String traceId, boolean console) {
         List<AccessTokenIssuance> active = issuances.findUnexpiredByFamilyId(family.id(), at);
-        for (AccessTokenIssuance issuance : active) {
+        if (!console) for (AccessTokenIssuance issuance : active) {
             revocationIndex.revokeJti(issuance.jti(), issuance.expiresAt(), at);
         }
         for (AccessTokenIssuance issuance : active) {

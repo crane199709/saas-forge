@@ -33,11 +33,11 @@
     <select id="insertFamily" resultMap="familyRow" affectData="true" flushCache="true">
         INSERT INTO iam_refresh_token_families
             (identity_id, family_purpose, initial_credential_id, membership_id, tenant_id,
-             context_version, last_used_at, absolute_expires_at, revoked_at)
+             context_version, last_used_at, absolute_expires_at, revoked_at, session_protocol)
         VALUES
             (#{row.identityId}, #{row.familyPurpose}, #{row.initialCredentialId},
              #{row.membershipId}, #{row.tenantId}, #{row.contextVersion},
-             #{row.lastUsedAt}, #{row.absoluteExpiresAt}, #{row.revokedAt})
+             #{row.lastUsedAt}, #{row.absoluteExpiresAt}, #{row.revokedAt}, #{row.sessionProtocol})
         RETURNING id, identity_id, family_purpose, initial_credential_id, membership_id, tenant_id,
                   context_version, last_used_at, absolute_expires_at, revoked_at
     </select>

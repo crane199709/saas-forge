@@ -36,6 +36,16 @@ public class MyBatisRefreshTokenFamilyRepository implements RefreshTokenFamilyRe
     }
 
     @Override
+    @Transactional
+    public RefreshTokenFamily createConsole(RefreshTokenFamily family, Sha256Digest tokenDigest, Instant issuedAt) {
+        var row = toRow(family);
+        row.setSessionProtocol("CONSOLE_V2");
+        var persisted = toDomain(mapper.insertFamily(row));
+        mapper.insertToken(tokenRow(persisted.id(), tokenDigest, issuedAt));
+        return persisted;
+    }
+
+    @Override
     public Optional<RefreshTokenFamily> findById(UUID familyId) {
         return Optional.ofNullable(mapper.findFamilyById(familyId)).map(MyBatisRefreshTokenFamilyRepository::toDomain);
     }

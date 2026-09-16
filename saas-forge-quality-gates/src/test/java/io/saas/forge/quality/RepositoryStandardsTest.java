@@ -350,6 +350,8 @@ class RepositoryStandardsTest {
     void routeCatalogMatchesOpenApiOwnershipAndCredentialSecurity() throws Exception {
         List<OpenApiOperation> operations = parseOpenApiOperations(
                 REPOSITORY.resolve("saas-forge-contracts/saas-forge-openapi-contracts/v1.yaml"));
+        operations.addAll(parseOpenApiOperations(
+                REPOSITORY.resolve("saas-forge-contracts/saas-forge-openapi-contracts/v2.yaml")));
         Map<String, HttpRouteCatalog.Route> routes = new HashMap<>();
         for (HttpRouteCatalog.Route route : HttpRouteCatalogLoader.load().routes()) {
             if (isAcceptanceRoute(route)) {
@@ -749,6 +751,8 @@ class RepositoryStandardsTest {
         boolean userBearer = false;
         boolean platformRefreshCookie = false;
         boolean tenantRefreshCookie = false;
+        boolean consoleSlotCookie = false;
+        boolean consoleRefreshCookie = false;
         boolean oauthClientBasic = false;
         boolean anonymousAlternative = false;
         boolean readingSecurity = false;
@@ -762,7 +766,7 @@ class RepositoryStandardsTest {
                             path, method, tags, owner, operationId, ownerDeclarations,
                             credentialRequirement(explicitSecurity, userBearer,
                                     platformRefreshCookie, tenantRefreshCookie,
-                                    oauthClientBasic, anonymousAlternative)));
+                                    oauthClientBasic, anonymousAlternative, consoleSlotCookie, consoleRefreshCookie)));
                     method = null;
                     tags = Set.of();
                     owner = null;
@@ -772,6 +776,8 @@ class RepositoryStandardsTest {
                     userBearer = false;
                     platformRefreshCookie = false;
                     tenantRefreshCookie = false;
+                    consoleSlotCookie = false;
+                    consoleRefreshCookie = false;
                     oauthClientBasic = false;
                     anonymousAlternative = false;
                     readingSecurity = false;
@@ -787,7 +793,7 @@ class RepositoryStandardsTest {
                             path, method, tags, owner, operationId, ownerDeclarations,
                             credentialRequirement(explicitSecurity, userBearer,
                                     platformRefreshCookie, tenantRefreshCookie,
-                                    oauthClientBasic, anonymousAlternative)));
+                                    oauthClientBasic, anonymousAlternative, consoleSlotCookie, consoleRefreshCookie)));
                 }
                 method = methodMatcher.group(1);
                 tags = Set.of();
@@ -798,6 +804,8 @@ class RepositoryStandardsTest {
                 userBearer = false;
                 platformRefreshCookie = false;
                 tenantRefreshCookie = false;
+                consoleSlotCookie = false;
+                consoleRefreshCookie = false;
                 oauthClientBasic = false;
                 anonymousAlternative = false;
                 readingSecurity = false;
@@ -808,10 +816,12 @@ class RepositoryStandardsTest {
                 continue;
             }
             if (readingSecurity) {
-                if (line.startsWith("        - ")) {
+                if (line.startsWith("        - ") || line.startsWith("          Console")) {
                     userBearer |= line.contains("UserBearerAuth");
                     platformRefreshCookie |= line.contains("PlatformRefreshCookieAuth");
                     tenantRefreshCookie |= line.contains("TenantRefreshCookieAuth");
+                    consoleSlotCookie |= line.contains("ConsoleSlotCookieAuth");
+                    consoleRefreshCookie |= line.contains("ConsoleRefreshCookieAuth");
                     oauthClientBasic |= line.contains("OAuthClientBasic");
                     anonymousAlternative |= line.trim().equals("- {}");
                     continue;
@@ -845,6 +855,8 @@ class RepositoryStandardsTest {
                 userBearer |= inlineSecurity.contains("UserBearerAuth");
                 platformRefreshCookie |= inlineSecurity.contains("PlatformRefreshCookieAuth");
                 tenantRefreshCookie |= inlineSecurity.contains("TenantRefreshCookieAuth");
+                consoleSlotCookie |= inlineSecurity.contains("ConsoleSlotCookieAuth");
+                consoleRefreshCookie |= inlineSecurity.contains("ConsoleRefreshCookieAuth");
                 oauthClientBasic |= inlineSecurity.contains("OAuthClientBasic");
                 anonymousAlternative |= inlineSecurity.contains("{}");
                 readingSecurity = inlineSecurity.isBlank();
@@ -855,7 +867,7 @@ class RepositoryStandardsTest {
                     path, method, tags, owner, operationId, ownerDeclarations,
                     credentialRequirement(explicitSecurity, userBearer,
                             platformRefreshCookie, tenantRefreshCookie,
-                            oauthClientBasic, anonymousAlternative)));
+                            oauthClientBasic, anonymousAlternative, consoleSlotCookie, consoleRefreshCookie)));
         }
         return operations;
     }
@@ -866,9 +878,14 @@ class RepositoryStandardsTest {
             boolean platformRefreshCookie,
             boolean tenantRefreshCookie,
             boolean oauthClientBasic,
-            boolean anonymousAlternative) {
+            boolean anonymousAlternative,
+            boolean consoleSlotCookie,
+            boolean consoleRefreshCookie) {
         if (!explicitSecurity) {
             return "ANONYMOUS";
+        }
+        if (consoleSlotCookie) {
+            return consoleRefreshCookie ? "CONSOLE_SESSION_REQUIRED" : "CONSOLE_SLOT_REQUIRED";
         }
         if (platformRefreshCookie && tenantRefreshCookie) {
             return "BROWSER_SESSION_SLOT_REQUIRED";

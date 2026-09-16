@@ -28,7 +28,9 @@ import io.saas.forge.contracts.tenantaccess.membership.v1.ListAccessibleMembersh
 import io.saas.forge.contracts.tenantaccess.membership.v1.MembershipValidationServiceGrpc;
 import io.saas.forge.contracts.tenantaccess.membership.v1.ValidateMembershipRequest;
 import io.saas.forge.contracts.tenantaccess.membership.v1.ValidateMembershipResponse;
-import io.saas.forge.iam.application.authentication.AccessibleMemberships;
+import io.saas.forge.iam.application.authentication.*;
+import io.saas.forge.iam.domain.session.ConsoleSessionRepository;
+import io.saas.forge.iam.domain.outbox.OutboxEventRepository;
 import io.saas.forge.iam.application.authentication.InitialPasswordChangeService;
 import io.saas.forge.iam.application.authentication.MembershipValidation;
 import io.saas.forge.iam.application.authentication.PasswordSetupChallengeToken;
@@ -355,6 +357,239 @@ class AuthenticationHttpIT {
         SIGNING_GATE.set(null);
         ensureReservedIamServiceClient();
     }
+
+    @Test
+    @Order(10000)
+    void unifiedConsoleLifecycleRejectsStaleCommandsAndRevokesEveryIssuedToken() throws Exception {
+        var http = unifiedConsole();
+        createUser("unified-platform@example.test", "Console-password!", true, Credential.REGULAR);
+        var bootstrap = http.perform(consolePost("bootstrap").content("{}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.sessionPresent").value(false)).andReturn();
+        Cookie locator = bootstrap.getResponse().getCookie("__Host-sf_console_slot");
+        assertNotNull(locator);
+        var login = http.perform(consolePost("login").cookie(locator).header("If-Match", "\"0\"")
+                .content("{\"email\":\"unified-platform@example.test\",\"password\":\"Console-password!\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.state").value("AUTHENTICATED"))
+                .andExpect(jsonPath("$.activeContext.type").value("PLATFORM")).andReturn();
+        mockMvc.perform(get("/api/v1/platform/oauth-clients").header("Authorization", "Bearer " + accessToken(login)))
+                .andExpect(status().isOk());
+        Cookie refresh = login.getResponse().getCookie("__Host-sf_console_refresh");
+        String revision = login.getResponse().getHeader("ETag");
+        String firstAccess = json(login.getResponse().getContentAsByteArray()).get("accessToken").asString();
+        http.perform(consolePost("login").cookie(locator).header("If-Match", "\"0\"")
+                .content("{\"email\":\"unified-platform@example.test\",\"password\":\"wrong\"}"))
+                .andExpect(status().isPreconditionFailed()).andExpect(header().doesNotExist("Set-Cookie"));
+        http.perform(get("/api/v2/auth/session").cookie(locator, refresh)
+                .header("Origin", "https://console.saas.forge.test").header("Sec-Fetch-Site", "same-site"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.accessToken").doesNotExist());
+        var rotated = http.perform(consolePost("refresh").cookie(locator, refresh).header("If-Match", revision)
+                .header("Idempotency-Key", uuidV7(80401)).content("{}"))
+                .andExpect(status().isOk()).andReturn();
+        String secondAccess = json(rotated.getResponse().getContentAsByteArray()).get("accessToken").asString();
+        var ended = http.perform(consolePost("logout").cookie(locator).header("If-Match", revision)
+                .header("Idempotency-Key", uuidV7(80402)).content("{}"))
+                .andExpect(status().isNoContent()).andExpect(cookie().maxAge("__Host-sf_console_refresh", 0)).andReturn();
+        for (String access : List.of(firstAccess, secondAccess)) {
+            mockMvc.perform(get("/api/v1/auth/session").header("Authorization", "Bearer " + access))
+                    .andExpect(status().isUnauthorized());
+        }
+        createUser("unified-next@example.test", "Console-password!", true, Credential.REGULAR);
+        var next = http.perform(consolePost("login").cookie(locator).header("If-Match", ended.getResponse().getHeader("ETag"))
+                .content("{\"email\":\"unified-next@example.test\",\"password\":\"Console-password!\"}"))
+                .andExpect(status().isOk()).andReturn();
+        http.perform(consolePost("logout").cookie(locator).header("If-Match", revision)
+                .header("Idempotency-Key", uuidV7(80402)).content("{}"))
+                .andExpect(status().isNoContent()).andExpect(header().doesNotExist("Set-Cookie"));
+        http.perform(get("/api/v2/auth/session").cookie(locator, refresh)
+                .header("Origin", "https://console.saas.forge.test").header("Sec-Fetch-Site", "same-site"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SESSION_COOKIE_MISMATCH"))
+                .andExpect(header().doesNotExist("Set-Cookie"));
+        http.perform(get("/api/v2/auth/session").cookie(locator, next.getResponse().getCookie("__Host-sf_console_refresh"))
+                .header("Origin", "https://console.saas.forge.test").header("Sec-Fetch-Site", "same-site"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.identity.email").value("unified-next@example.test"));
+    }
+
+    @Test
+    @Order(10000)
+    void unifiedConsoleKeepsNoPermissionAndInitialCredentialSessionsRestricted() throws Exception {
+        var http = unifiedConsole();
+        for (boolean initial : List.of(false, true)) {
+            String email = initial ? "unified-initial@example.test" : "unified-empty@example.test";
+            createUser(email, "Console-password!", initial, initial ? Credential.ACTIVE_INITIAL : Credential.REGULAR);
+            var bootstrap = http.perform(consolePost("bootstrap").content("{}")).andReturn();
+            Cookie locator = bootstrap.getResponse().getCookie("__Host-sf_console_slot");
+            var login = http.perform(consolePost("login").cookie(locator).header("If-Match", "\"0\"")
+                    .content("{\"email\":\"" + email + "\",\"password\":\"Console-password!\"}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.state").value(initial
+                            ? "PASSWORD_CHANGE_REQUIRED" : "NO_AVAILABLE_CONTEXT"))
+                    .andExpect(jsonPath("$.accessToken").doesNotExist())
+                    .andExpect(jsonPath("$.activeContext").doesNotExist()).andReturn();
+            if (initial) assertEquals(Set.of("sessionId", "revision", "state"),
+                    json(login.getResponse().getContentAsByteArray()).propertyNames());
+            if (initial) http.perform(consolePost("refresh").cookie(locator, login.getResponse().getCookie("__Host-sf_console_refresh"))
+                    .header("If-Match", login.getResponse().getHeader("ETag")).header("Idempotency-Key", uuidV7(80403)).content("{}"))
+                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("INITIAL_CREDENTIAL_RESTRICTED"))
+                    .andExpect(header().doesNotExist("Set-Cookie"));
+        }
+        http.perform(consolePost("bootstrap").header("Origin", "https://platform.saas.forge.test").content("{}"))
+                .andExpect(status().isForbidden()).andExpect(header().doesNotExist("Set-Cookie"));
+        http.perform(consolePost("login").content("{}"))
+                .andExpect(status().is(428)).andExpect(header().doesNotExist("Set-Cookie"));
+    }
+
+    @Test
+    @Order(10000)
+    void unifiedConsoleLogoutRemainsPendingUntilRevocationIsConfirmed() throws Exception {
+        var http = unifiedConsole();
+        createUser("unified-pending@example.test", "Console-password!", true, Credential.REGULAR);
+        var bootstrap = http.perform(consolePost("bootstrap").content("{}")).andReturn();
+        Cookie locator = bootstrap.getResponse().getCookie("__Host-sf_console_slot");
+        var login = http.perform(consolePost("login").cookie(locator).header("If-Match", "\"0\"")
+                .content("{\"email\":\"unified-pending@example.test\",\"password\":\"Console-password!\"}"))
+                .andExpect(status().isOk()).andReturn();
+        String revision = login.getResponse().getHeader("ETag");
+        revocationIndex.markNotReady();
+        try {
+            http.perform(consolePost("logout").cookie(locator).header("If-Match", revision)
+                    .header("Idempotency-Key", uuidV7(80404)).content("{}"))
+                    .andExpect(status().isServiceUnavailable()).andExpect(header().doesNotExist("Set-Cookie"));
+            var pending = http.perform(consolePost("bootstrap").cookie(locator).content("{}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.transition").value("ENDING")).andReturn();
+            http.perform(consolePost("login").cookie(locator).header("If-Match", pending.getResponse().getHeader("ETag"))
+                    .content("{\"email\":\"unified-pending@example.test\",\"password\":\"Console-password!\"}"))
+                    .andExpect(status().isServiceUnavailable());
+        } finally { revocationIndexRecovery.recover(); }
+        http.perform(consolePost("logout").cookie(locator).header("If-Match", revision)
+                .header("Idempotency-Key", uuidV7(80404)).content("{}"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @Order(9999)
+    void unifiedBootstrapEndsBothLegacyCookieFamiliesBeforeCreatingSlot() throws Exception {
+        var platform = createUser("unified-legacy-platform@example.test", "Console-password!", true, Credential.REGULAR);
+        var tenant = createUser("unified-legacy-tenant@example.test", "Console-password!", false, Credential.REGULAR);
+        accessibleMemberships(tenant.identity().id(), membership(uuidV7(80410), uuidV7(80411), "Legacy tenant"));
+        var legacyPlatform = login("unified-legacy-platform@example.test", "Console-password!", "PLATFORM")
+                .andExpect(status().isOk()).andReturn();
+        var legacyTenant = login("unified-legacy-tenant@example.test", "Console-password!", "TENANT")
+                .andExpect(status().isOk()).andReturn();
+        var http = unifiedConsole();
+        MvcResult retired = null;
+        for (int batch = 0; batch < 20; batch++) {
+            retired = http.perform(consolePost("bootstrap").cookie(
+                    legacyPlatform.getResponse().getCookie("__Host-sf_platform_refresh"),
+                    legacyTenant.getResponse().getCookie("__Host-sf_tenant_refresh")).content("{}")).andReturn();
+            if (retired.getResponse().getStatus() == 200) break;
+            assertEquals(503, retired.getResponse().getStatus());
+            assertEquals(null, retired.getResponse().getHeader("Set-Cookie"));
+        }
+        assertNotNull(retired);
+        assertEquals(200, retired.getResponse().getStatus());
+        assertEquals(0, retired.getResponse().getCookie("__Host-sf_platform_refresh").getMaxAge());
+        assertEquals(0, retired.getResponse().getCookie("__Host-sf_tenant_refresh").getMaxAge());
+        unifiedConsole().perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isGone()).andExpect(jsonPath("$.code").value("AUTH_PROTOCOL_RETIRED"));
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM iam_refresh_token_families WHERE session_protocol = 'LEGACY_V1' AND console_retired_at IS NULL", Integer.class));
+        assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> jdbc.update(
+                "INSERT INTO iam_refresh_tokens(family_id, token_digest, issued_at) SELECT id, ?, CURRENT_TIMESTAMP FROM iam_refresh_token_families WHERE identity_id = ? LIMIT 1",
+                new byte[32], platform.identity().id()));
+        for (var legacy : List.of(legacyPlatform, legacyTenant)) {
+            var claims = json(Base64.getUrlDecoder().decode(json(legacy.getResponse().getContentAsByteArray())
+                    .get("accessToken").asString().split("\\.")[1]));
+            assertTrue(revocationIndex.isJtiRevoked(UUID.fromString(claims.get("jti").asString())));
+        }
+    }
+
+    @Test
+    @Order(10000)
+    void unifiedRevocationSurvivesReplayDeliveryFailureAndLostPlatformAuthority() throws Exception {
+        var failDelivery = new AtomicBoolean();
+        var http = unifiedConsole(failDelivery);
+        var user = createUser("unified-replay@example.test", "Console-password!", true, Credential.REGULAR);
+        var bootstrap = http.perform(consolePost("bootstrap").content("{}")).andReturn();
+        Cookie locator = bootstrap.getResponse().getCookie("__Host-sf_console_slot");
+        var login = http.perform(consolePost("login").cookie(locator).header("If-Match", "\"0\"")
+                .content("{\"email\":\"unified-replay@example.test\",\"password\":\"Console-password!\"}"))
+                .andExpect(status().isOk()).andReturn();
+        Cookie oldRefresh = login.getResponse().getCookie("__Host-sf_console_refresh");
+        String revision = login.getResponse().getHeader("ETag");
+        var rotation = http.perform(consolePost("refresh").cookie(locator, oldRefresh).header("If-Match", revision)
+                .header("Idempotency-Key", uuidV7(80420)).content("{}"))
+                .andExpect(status().isOk()).andReturn();
+        // 强制租约过期后以不同操作键重放；不会等待真实租约窗口。
+        var leaseKeys = redis.keys("sf:test:iam-service:refresh-rotation-lease:v1:*");
+        if (leaseKeys != null && !leaseKeys.isEmpty()) redis.delete(leaseKeys);
+        failDelivery.set(true);
+        try {
+            http.perform(consolePost("refresh").cookie(locator, oldRefresh).header("If-Match", revision)
+                    .header("Idempotency-Key", uuidV7(80421)).content("{}"))
+                    .andExpect(status().isServiceUnavailable()).andExpect(header().doesNotExist("Set-Cookie"));
+            assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM iam_access_token_issuances WHERE identity_id = ? AND revoked_at IS NULL", Integer.class, user.identity().id()));
+        } finally { failDelivery.set(false); revocationIndexRecovery.recover(); }
+        http.perform(consolePost("refresh").cookie(locator, rotation.getResponse().getCookie("__Host-sf_console_refresh"))
+                .header("If-Match", revision).header("Idempotency-Key", uuidV7(80422)).content("{}"))
+                .andExpect(status().isPreconditionFailed()).andExpect(header().doesNotExist("Set-Cookie"));
+        for (var issued : List.of(login, rotation)) mockMvc.perform(get("/api/v1/platform/oauth-clients")
+                .header("Authorization", "Bearer " + accessToken(issued))).andExpect(status().isUnauthorized());
+
+        var clean = http.perform(consolePost("bootstrap").content("{}")).andReturn();
+        Cookie nextLocator = clean.getResponse().getCookie("__Host-sf_console_slot");
+        var current = http.perform(consolePost("login").cookie(nextLocator).header("If-Match", "\"0\"")
+                .content("{\"email\":\"unified-replay@example.test\",\"password\":\"Console-password!\"}"))
+                .andExpect(status().isOk()).andReturn();
+        jdbc.update("UPDATE iam_platform_role_assignments SET revoked_at = CURRENT_TIMESTAMP WHERE identity_id = ?", user.identity().id());
+        http.perform(get("/api/v2/auth/session").cookie(nextLocator, current.getResponse().getCookie("__Host-sf_console_refresh"))
+                .header("Origin", "https://console.saas.forge.test").header("Sec-Fetch-Site", "same-site"))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CURRENT_CONTEXT_REVOKED"));
+        mockMvc.perform(get("/api/v1/platform/oauth-clients").header("Authorization", "Bearer " + accessToken(current)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder consolePost(String operation) {
+        return post("/api/v2/auth/" + operation).header("Origin", "https://console.saas.forge.test")
+                .header("Sec-Fetch-Site", "same-site").header("X-SF-CSRF", "1").contentType(MediaType.APPLICATION_JSON);
+    }
+
+    private final java.util.List<org.springframework.web.context.support.AnnotationConfigWebApplicationContext> consoleContexts = new java.util.ArrayList<>();
+
+    @org.junit.jupiter.api.AfterEach
+    void closeConsoleContexts() {
+        consoleContexts.forEach(org.springframework.context.support.AbstractApplicationContext::close);
+        consoleContexts.clear();
+    }
+
+    private MockMvc unifiedConsole() {
+        return unifiedConsole(new AtomicBoolean());
+    }
+
+    private MockMvc unifiedConsole(AtomicBoolean failDelivery) {
+        var context = new org.springframework.web.context.support.AnnotationConfigWebApplicationContext();
+        context.setParent(webApplicationContext);
+        // 只在外部撤销写入边界注入故障；签名、租约、数据库与实际恢复仍使用真实设施。
+        context.addBeanFactoryPostProcessor(factory -> factory.registerSingleton("revocationIndex",
+                java.lang.reflect.Proxy.newProxyInstance(RevocationIndex.class.getClassLoader(),
+                        new Class<?>[]{RevocationIndex.class}, (proxy, method, arguments) -> {
+                            if (failDelivery.get() && method.getName().equals("revokeJti"))
+                                throw new RevocationIndexUnavailableException();
+                            try { return method.invoke(revocationIndex, arguments); }
+                            catch (java.lang.reflect.InvocationTargetException failure) { throw failure.getCause(); }
+                        })));
+        context.setServletContext(webApplicationContext.getServletContext());
+        context.getEnvironment().getPropertySources().addFirst(new org.springframework.core.env.MapPropertySource(
+                "console-test", Map.of("security.browser.console-enabled", "true")));
+        context.register(io.saas.forge.iam.config.ConsoleSessionConfiguration.class,
+                ConsoleAuthenticationController.class, ConsoleBrowserRequestFilter.class,
+                ConsoleAuthenticationExceptionHandler.class, ConsoleWebConfiguration.class);
+        context.refresh();
+        consoleContexts.add(context);
+        return MockMvcBuilders.webAppContextSetup(context)
+                .addFilters(context.getBean(ConsoleBrowserRequestFilter.class)).build();
+    }
+
+    @org.springframework.boot.test.context.TestConfiguration(proxyBeanMethods = false)
+    @EnableWebMvc
+    static class ConsoleWebConfiguration { }
 
     @Test
     @Order(1)
@@ -2657,6 +2892,10 @@ class AuthenticationHttpIT {
                     SET key_status = 'ACTIVE', revoked_at = NULL
                     WHERE kid = 'active-login-kid'
                     """);
+            // 恢复共享测试密钥时同步清理其撤销标记，保留已撤销 Token 的 JTI 记录。
+            String restoredKidDigest = java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest("active-login-kid".getBytes(StandardCharsets.UTF_8)));
+            redis.delete("sf:test:iam-service:signing-kid-revocation:v1:" + restoredKidDigest);
             try (Connection connection = DriverManager.getConnection(
                     iamJdbcUrl(), "iam_migrator", "iam-migrator-password")) {
                 try (var statement = connection.prepareStatement(
@@ -3032,7 +3271,8 @@ class AuthenticationHttpIT {
                 membership(switchCurrentMembership, switchCurrentTenant, "Current"),
                 membership(switchTargetMembership, switchTargetTenant, "Target"));
         UUID jti = UUID.fromString(tokenClaims(session).get("jti").asString());
-        REDIS.stop();
+        REDIS.getDockerClient().stopContainerCmd(REDIS.getContainerId()).exec();
+        try {
         refresh(refreshToken(refreshSession), uuidV7(52_001))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value("REFRESH_ROTATION_UNAVAILABLE"))
@@ -3073,6 +3313,26 @@ class AuthenticationHttpIT {
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value("AUTHENTICATION_PROTECTION_UNAVAILABLE"))
                 .andExpect(header().doesNotExist("Set-Cookie"));
+        } finally {
+            REDIS.getDockerClient().startContainerCmd(REDIS.getContainerId()).exec();
+            var binding = REDIS.getDockerClient().inspectContainerCmd(REDIS.getContainerId()).exec()
+                    .getNetworkSettings().getPorts().getBindings().get(com.github.dockerjava.api.model.ExposedPort.tcp(6379))[0];
+            var factory = (LettuceConnectionFactory) redis.getConnectionFactory();
+            factory.stop();
+            factory.getStandaloneConfiguration().setPort(Integer.parseInt(binding.getHostPortSpec()));
+            factory.start();
+            long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+            while (true) {
+                try {
+                    ((LettuceConnectionFactory) redis.getConnectionFactory()).resetConnection();
+                    revocationIndexRecovery.recover();
+                    break;
+                } catch (RevocationIndexUnavailableException | org.springframework.data.redis.RedisConnectionFailureException unavailable) {
+                    if (System.nanoTime() >= deadline) throw unavailable;
+                    Thread.sleep(100);
+                }
+            }
+        }
     }
 
     @Test

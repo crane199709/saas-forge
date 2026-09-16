@@ -11,6 +11,10 @@ public interface RefreshTokenFamilyRepository {
 
     RefreshTokenFamily create(RefreshTokenFamily family, Sha256Digest tokenDigest, Instant issuedAt);
 
+    default RefreshTokenFamily createConsole(RefreshTokenFamily family, Sha256Digest tokenDigest, Instant issuedAt) {
+        throw new UnsupportedOperationException("Console Family persistence is not configured");
+    }
+
     Optional<RefreshTokenFamily> findById(UUID familyId);
 
     /** 调用方事务内锁定 Family，供跨 Repository 的安全变更编排。 */

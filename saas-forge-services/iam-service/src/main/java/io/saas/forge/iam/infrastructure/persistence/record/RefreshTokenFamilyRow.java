@@ -4,6 +4,9 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public class RefreshTokenFamilyRow {
+    private String sessionProtocol = "LEGACY_V1";
+    public String getSessionProtocol() { return sessionProtocol; }
+    public void setSessionProtocol(String value) { sessionProtocol = value; }
     private UUID id;
     private UUID identityId;
     private String familyPurpose;

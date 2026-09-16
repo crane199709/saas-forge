@@ -32,11 +32,13 @@ class BrowserRequestSecurityFilter extends OncePerRequestFilter {
             "/api/v1/auth/password-setups");
 
     private final Set<String> controlledOrigins;
+    private final String consoleOrigin;
     private final GatewayProblemDetailsWriter problems;
 
     BrowserRequestSecurityFilter(
             @Value("${browser.rootDomain}") String rootDomain,
             GatewayProblemDetailsWriter problems) {
+        this.consoleOrigin = "https://console." + rootDomain;
         this.controlledOrigins = Set.of(
                 "https://platform." + rootDomain,
                 "https://console." + rootDomain);
@@ -45,6 +47,7 @@ class BrowserRequestSecurityFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
+        if (request.getRequestURI().startsWith("/api/v2/auth/")) return HttpMethod.OPTIONS.matches(request.getMethod());
         if (HttpMethod.GET.matches(request.getMethod())
                 || HttpMethod.HEAD.matches(request.getMethod())
                 || HttpMethod.OPTIONS.matches(request.getMethod())
@@ -73,6 +76,11 @@ class BrowserRequestSecurityFilter extends OncePerRequestFilter {
 
     private String rejectionReason(HttpServletRequest request) {
         String origin = request.getHeader(HttpHeaders.ORIGIN);
+        if (request.getRequestURI().startsWith("/api/v2/auth/")) {
+            if (!java.util.Collections.list(request.getHeaders(HttpHeaders.ORIGIN)).equals(java.util.List.of(consoleOrigin))) return "ORIGIN";
+            if (!Set.of("same-site", "same-origin").contains(String.valueOf(request.getHeader(FETCH_SITE_HEADER)))) return "FETCH_SITE";
+            if (HttpMethod.GET.matches(request.getMethod())) return null;
+        }
         if (origin == null || !controlledOrigins.contains(origin)) {
             return "ORIGIN";
         }

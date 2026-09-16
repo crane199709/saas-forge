@@ -1,0 +1,430 @@
+openapi: 3.0.3
+info:
+  title: SaaS Forge Unified Console Authentication
+  version: 2.0.0
+  description: >-
+    Explicit unified browser session protocol. Cookies are browser-managed and never
+    operation parameters. A Slot identifies one current Family; reads do not renew it.
+    All responses are no-store. Unknown, stale and replayed responses never change cookies.
+paths:
+  /api/v2/auth/bootstrap:
+    post:
+      tags: [ConsoleAuthentication]
+      operationId: bootstrapConsoleSession
+      x-saas.forge-service: iam-service
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ConsoleCsrf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsoleEmptyRequest'
+      responses:
+        '200':
+          description: Authoritative result; ETag is the Slot revision.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ConsoleETag'
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsoleBootstrapResult'
+        '400':
+          $ref: '#/components/responses/ConsoleProblem'
+        '401':
+          $ref: '#/components/responses/ConsoleProblem'
+        '403':
+          $ref: '#/components/responses/ConsoleProblem'
+        '409':
+          $ref: '#/components/responses/ConsoleProblem'
+        '412':
+          $ref: '#/components/responses/ConsoleProblem'
+        '428':
+          $ref: '#/components/responses/ConsoleProblem'
+        '503':
+          $ref: '#/components/responses/ConsoleProblem'
+  /api/v2/auth/login:
+    post:
+      tags: [ConsoleAuthentication]
+      operationId: loginConsoleSession
+      x-saas.forge-service: iam-service
+      security:
+        - ConsoleSlotCookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ConsoleCsrf'
+        - $ref: '#/components/parameters/ConsoleRevision'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsoleLoginRequest'
+      responses:
+        '200':
+          description: Authoritative result; ETag is the Slot revision.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ConsoleETag'
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsoleAuthenticationResult'
+        '400':
+          $ref: '#/components/responses/ConsoleProblem'
+        '401':
+          $ref: '#/components/responses/ConsoleProblem'
+        '403':
+          $ref: '#/components/responses/ConsoleProblem'
+        '409':
+          $ref: '#/components/responses/ConsoleProblem'
+        '412':
+          $ref: '#/components/responses/ConsoleProblem'
+        '428':
+          $ref: '#/components/responses/ConsoleProblem'
+        '503':
+          $ref: '#/components/responses/ConsoleProblem'
+  /api/v2/auth/session:
+    get:
+      tags: [ConsoleAuthentication]
+      operationId: getConsoleSession
+      x-saas.forge-service: iam-service
+      security:
+        - ConsoleSlotCookieAuth: []
+          ConsoleRefreshCookieAuth: []
+      responses:
+        '200':
+          description: Authoritative result; ETag is the Slot revision.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ConsoleETag'
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsoleSessionSnapshot'
+        '400':
+          $ref: '#/components/responses/ConsoleProblem'
+        '401':
+          $ref: '#/components/responses/ConsoleProblem'
+        '403':
+          $ref: '#/components/responses/ConsoleProblem'
+        '409':
+          $ref: '#/components/responses/ConsoleProblem'
+        '412':
+          $ref: '#/components/responses/ConsoleProblem'
+        '428':
+          $ref: '#/components/responses/ConsoleProblem'
+        '503':
+          $ref: '#/components/responses/ConsoleProblem'
+  /api/v2/auth/contexts:
+    get:
+      tags: [ConsoleAuthentication]
+      operationId: getAvailableWorkContexts
+      x-saas.forge-service: iam-service
+      security:
+        - ConsoleSlotCookieAuth: []
+          ConsoleRefreshCookieAuth: []
+      responses:
+        '200':
+          description: Authoritative result; ETag is the Slot revision.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ConsoleETag'
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsoleAvailableContextsResult'
+        '400':
+          $ref: '#/components/responses/ConsoleProblem'
+        '401':
+          $ref: '#/components/responses/ConsoleProblem'
+        '403':
+          $ref: '#/components/responses/ConsoleProblem'
+        '409':
+          $ref: '#/components/responses/ConsoleProblem'
+        '412':
+          $ref: '#/components/responses/ConsoleProblem'
+        '428':
+          $ref: '#/components/responses/ConsoleProblem'
+        '503':
+          $ref: '#/components/responses/ConsoleProblem'
+  /api/v2/auth/refresh:
+    post:
+      tags: [ConsoleAuthentication]
+      operationId: refreshConsoleSession
+      x-saas.forge-service: iam-service
+      security:
+        - ConsoleSlotCookieAuth: []
+          ConsoleRefreshCookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ConsoleCsrf'
+        - $ref: '#/components/parameters/ConsoleRevision'
+        - $ref: '#/components/parameters/ConsoleIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsoleEmptyRequest'
+      responses:
+        '200':
+          description: Authoritative result; ETag is the Slot revision.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ConsoleETag'
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsoleAuthenticationResult'
+        '400':
+          $ref: '#/components/responses/ConsoleProblem'
+        '401':
+          $ref: '#/components/responses/ConsoleProblem'
+        '403':
+          $ref: '#/components/responses/ConsoleProblem'
+        '409':
+          $ref: '#/components/responses/ConsoleProblem'
+        '412':
+          $ref: '#/components/responses/ConsoleProblem'
+        '428':
+          $ref: '#/components/responses/ConsoleProblem'
+        '503':
+          $ref: '#/components/responses/ConsoleProblem'
+  /api/v2/auth/logout:
+    post:
+      tags: [ConsoleAuthentication]
+      operationId: logoutConsoleSession
+      x-saas.forge-service: iam-service
+      security:
+        - ConsoleSlotCookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ConsoleCsrf'
+        - $ref: '#/components/parameters/ConsoleRevision'
+        - $ref: '#/components/parameters/ConsoleIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsoleEmptyRequest'
+      responses:
+        '204':
+          description: Authoritative result; ETag is the Slot revision.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ConsoleETag'
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+        '400':
+          $ref: '#/components/responses/ConsoleProblem'
+        '401':
+          $ref: '#/components/responses/ConsoleProblem'
+        '403':
+          $ref: '#/components/responses/ConsoleProblem'
+        '409':
+          $ref: '#/components/responses/ConsoleProblem'
+        '412':
+          $ref: '#/components/responses/ConsoleProblem'
+        '428':
+          $ref: '#/components/responses/ConsoleProblem'
+        '503':
+          $ref: '#/components/responses/ConsoleProblem'
+components:
+  securitySchemes:
+    ConsoleSlotCookieAuth:
+      type: apiKey
+      in: cookie
+      name: __Host-sf_console_slot
+      description: Locator only; cannot read identity, refresh or authorize business operations.
+    ConsoleRefreshCookieAuth:
+      type: apiKey
+      in: cookie
+      name: __Host-sf_console_refresh
+      description: Rotating proof bound to the current Slot Family.
+  parameters:
+    ConsoleCsrf:
+      in: header
+      name: X-SF-CSRF
+      required: true
+      schema:
+        type: string
+        enum: ['1']
+    ConsoleRevision:
+      in: header
+      name: If-Match
+      required: true
+      description: Quoted decimal Slot revision; rejected before credentials or tokens are consumed.
+      schema:
+        type: string
+        pattern: '^"(0|[1-9][0-9]*)"$'
+    ConsoleIdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: true
+      schema:
+        $ref: './common.yaml#/components/schemas/UuidV7'
+  headers:
+    ConsoleETag:
+      required: true
+      schema:
+        type: string
+        pattern: '^"(0|[1-9][0-9]*)"$'
+  responses:
+    ConsoleProblem:
+      description: >-
+        Stable Problem Details. Codes and recovery actions follow unified-authentication-protocol.md.
+        Errors never set or clear authentication cookies. Retry-After bounds transient retries.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/problem+json:
+          schema:
+            $ref: './common.yaml#/components/schemas/ProblemDetails'
+  schemas:
+    ConsoleRevisionValue:
+      type: string
+      pattern: '^(0|[1-9][0-9]*)$'
+    ConsoleEmptyRequest:
+      type: object
+      additionalProperties: false
+    ConsoleLoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          writeOnly: true
+    ConsoleBootstrapResult:
+      type: object
+      additionalProperties: false
+      required: [revision, sessionPresent, transition]
+      properties:
+        revision:
+          $ref: '#/components/schemas/ConsoleRevisionValue'
+        sessionPresent:
+          type: boolean
+        transition:
+          type: string
+          enum: [NONE, SWITCH_PENDING, CONTEXT_REFRESH_REQUIRED, ENDING]
+    ConsoleIdentity:
+      type: object
+      additionalProperties: false
+      required: [identityId, email]
+      properties:
+        identityId:
+          $ref: './common.yaml#/components/schemas/UuidV7'
+        email:
+          type: string
+          format: email
+    ConsoleCompany:
+      type: object
+      additionalProperties: false
+      required: [membershipId, tenantId, tenantDisplayName]
+      properties:
+        membershipId:
+          $ref: './common.yaml#/components/schemas/UuidV7'
+        tenantId:
+          $ref: './common.yaml#/components/schemas/UuidV7'
+        tenantDisplayName:
+          type: string
+    ConsoleAvailableContexts:
+      type: object
+      additionalProperties: false
+      required: [platform, companies]
+      properties:
+        platform:
+          type: boolean
+        companies:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsoleCompany'
+    ConsoleActiveContext:
+      type: object
+      nullable: true
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [PLATFORM, TENANT]
+        membershipId:
+          $ref: './common.yaml#/components/schemas/UuidV7'
+        tenantId:
+          $ref: './common.yaml#/components/schemas/UuidV7'
+    ConsoleAvailableContextsResult:
+      type: object
+      required: [sessionId, revision, availableContexts]
+      properties:
+        sessionId:
+          $ref: './common.yaml#/components/schemas/UuidV7'
+        revision:
+          $ref: '#/components/schemas/ConsoleRevisionValue'
+        availableContexts:
+          $ref: '#/components/schemas/ConsoleAvailableContexts'
+    ConsoleSessionSnapshot:
+      type: object
+      description: Initial credentials return only sessionId, revision and state; other states also return identity and availableContexts.
+      x-class-extra-annotation: "@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)"
+      required: [sessionId, revision, state]
+      properties:
+        sessionId:
+          $ref: './common.yaml#/components/schemas/UuidV7'
+        revision:
+          $ref: '#/components/schemas/ConsoleRevisionValue'
+        state:
+          type: string
+          enum: [PASSWORD_CHANGE_REQUIRED, NO_AVAILABLE_CONTEXT, CONTEXT_SELECTION_REQUIRED, AUTHENTICATED]
+        identity:
+          $ref: '#/components/schemas/ConsoleIdentity'
+        activeContext:
+          $ref: '#/components/schemas/ConsoleActiveContext'
+        availableContexts:
+          $ref: '#/components/schemas/ConsoleAvailableContexts'
+    ConsoleAuthenticationResult:
+      x-class-extra-annotation: "@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)"
+      allOf:
+        - $ref: '#/components/schemas/ConsoleSessionSnapshot'
+        - type: object
+          description: Access Token fields exist only for AUTHENTICATED, never for a restricted state.
+          properties:
+            accessToken:
+              type: string
+            tokenType:
+              type: string
+              enum: [Bearer]
+            expiresIn:
+              type: integer
+              format: int64
+              minimum: 1

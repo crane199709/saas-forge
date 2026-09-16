@@ -82,6 +82,20 @@
                                     </configOptions>
                                 </configuration>
                             </execution>
+                            <execution>
+                                <id>generate-console-typescript-api-client</id>
+                                <phase>generate-sources</phase>
+                                <goals><goal>generate</goal></goals>
+                                <configuration>
+                                    <inputSpec>${maven.multiModuleProjectDirectory}/saas-forge-contracts/saas-forge-openapi-contracts/v2.yaml</inputSpec>
+                                    <generatorName>typescript-fetch</generatorName>
+                                    <output>${typescript.client.output}/console</output>
+                                    <configOptions>
+                                        <useSingleRequestParameter>true</useSingleRequestParameter>
+                                        <importFileExtension>.js</importFileExtension>
+                                    </configOptions>
+                                </configuration>
+                            </execution>
                         </executions>
                     </plugin>
                 </plugins>

@@ -31,6 +31,11 @@ class ControlledBrowserCorsConfiguration {
         cors.setMaxAge(600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration consoleCors = new CorsConfiguration(cors);
+        consoleCors.setAllowedOrigins(List.of("https://console." + rootDomain));
+        consoleCors.setAllowedHeaders(List.of("Content-Type", "Idempotency-Key", "If-Match", "X-SF-CSRF", "traceparent", "tracestate"));
+        consoleCors.setExposedHeaders(List.of("ETag", "Retry-After"));
+        source.registerCorsConfiguration("/api/v2/auth/**", consoleCors);
         source.registerCorsConfiguration("/api/**", cors);
         CorsConfiguration discoveryCors = new CorsConfiguration(cors);
         discoveryCors.setAllowedMethods(List.of("GET", "HEAD", "OPTIONS"));

@@ -28,11 +28,12 @@ class GatewayUserTokenConfiguration {
             LoadBalancerClient loadBalancer,
             StringRedisTemplate redis,
             @Value("${security.jwt.issuer}") String issuer,
-            @Value("${saas.forge.environment:dev}") String environment) {
+            @Value("${saas.forge.environment:dev}") String environment,
+            @Value("${security.browser.console-enabled:false}") boolean consoleEnabled) {
         ServiceJwtVerificationKeyResolver keys = kid -> findByKid(loadBalancer, kid);
         return new GatewayUserAccessTokenVerifier(
                 new UserAccessTokenSignatureVerifier(
-                        keys, Clock.systemUTC(), issuer, "saas.forge-api", Duration.ofSeconds(30)),
+                        keys, Clock.systemUTC(), issuer, "saas.forge-api", Duration.ofSeconds(30), consoleEnabled),
                 new RedisGatewayUserTokenRevocationChecker(redis, environment));
     }
 

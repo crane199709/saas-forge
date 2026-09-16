@@ -87,10 +87,11 @@ public class OAuthClientManagementConfiguration {
             RevocationIndex revocations,
             PlatformRoleAssignmentRepository roles,
             Clock clock,
-            @Value("${security.jwt.issuer}") String issuer) {
+            @Value("${security.jwt.issuer}") String issuer,
+            @Value("${security.browser.console-enabled:false}") boolean consoleEnabled) {
         UserAccessTokenSignatureVerifier signatures = new UserAccessTokenSignatureVerifier(
                 new IamJwtVerificationKeyResolver(signingKeys), clock, issuer,
-                "saas.forge-api", Duration.ofSeconds(30));
+                "saas.forge-api", Duration.ofSeconds(30), consoleEnabled);
         return new OAuthClientManagementAuthorizer(signatures, revocations, roles, clock);
     }
 }

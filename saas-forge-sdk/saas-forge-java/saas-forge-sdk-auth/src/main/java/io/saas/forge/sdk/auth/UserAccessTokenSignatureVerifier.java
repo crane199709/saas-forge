@@ -25,6 +25,7 @@ public final class UserAccessTokenSignatureVerifier {
     private final String issuer;
     private final String audience;
     private final Duration clockSkew;
+    private final boolean requireConsoleProtocol;
 
     public UserAccessTokenSignatureVerifier(
             ServiceJwtVerificationKeyResolver keys,
@@ -32,6 +33,12 @@ public final class UserAccessTokenSignatureVerifier {
             String issuer,
             String audience,
             Duration clockSkew) {
+        this(keys, clock, issuer, audience, clockSkew, false);
+    }
+
+    public UserAccessTokenSignatureVerifier(ServiceJwtVerificationKeyResolver keys, Clock clock,
+            String issuer, String audience, Duration clockSkew, boolean requireConsoleProtocol) {
+        this.requireConsoleProtocol = requireConsoleProtocol;
         if (keys == null || clock == null
                 || issuer == null || issuer.isBlank()
                 || audience == null || audience.isBlank()
@@ -75,7 +82,16 @@ public final class UserAccessTokenSignatureVerifier {
 
     private VerifiedUserAccessTokenClaims claims(SignedJWT jwt, String kid) throws Exception {
         var claims = jwt.getJWTClaimsSet();
-        Set<String> names = claims.getClaims().keySet();
+        Set<String> names = new java.util.HashSet<>(claims.getClaims().keySet());
+        boolean console = "CONSOLE_V2".equals(claims.getStringClaim("sessionProtocol"));
+        if (requireConsoleProtocol && !console) throw new UserAccessTokenInvalidException();
+        if (console) {
+            canonicalUuidV7(claims.getStringClaim("sessionId"));
+            String version = claims.getStringClaim("contextVersion");
+            if (version == null || !version.matches("0|[1-9][0-9]*")) throw new UserAccessTokenInvalidException();
+            Long.parseLong(version);
+            names.removeAll(Set.of("sessionProtocol", "sessionId", "contextVersion"));
+        }
         if (!names.equals(PLATFORM_CLAIMS) && !names.equals(TENANT_CLAIMS)
                 || !issuer.equals(claims.getIssuer())
                 || !List.of(audience).equals(claims.getAudience())) {

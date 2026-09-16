@@ -50,6 +50,17 @@ public final class UserAccessTokenIssuer {
     }
 
     public IssuedAccessToken issueUserToken(UUID identityId, UUID membershipId, UUID tenantId) {
+        return issue(identityId, membershipId, tenantId, null, 0);
+    }
+
+    public IssuedAccessToken issueConsoleToken(UUID identityId, UUID membershipId, UUID tenantId,
+                                              UUID sessionId, long contextVersion) {
+        if (sessionId == null || contextVersion < 0) throw new IllegalArgumentException("Console Token 上下文不合法");
+        return issue(identityId, membershipId, tenantId, sessionId, contextVersion);
+    }
+
+    private IssuedAccessToken issue(UUID identityId, UUID membershipId, UUID tenantId,
+                                    UUID sessionId, long contextVersion) {
         if ((membershipId == null) != (tenantId == null)) {
             throw new IllegalArgumentException("Membership 与 Tenant 声明必须成对出现");
         }
@@ -57,7 +68,13 @@ public final class UserAccessTokenIssuer {
         Instant issuedAt = clock.instant().truncatedTo(ChronoUnit.SECONDS);
         Instant expiresAt = issuedAt.plus(ttl);
         UUID jti = uuidV7Generator.next();
-        String encodedClaims = encodeJson(claims(identityId, membershipId, tenantId, jti, issuedAt, expiresAt));
+        var tokenClaims = claims(identityId, membershipId, tenantId, jti, issuedAt, expiresAt);
+        if (sessionId != null) {
+            tokenClaims.put("sessionProtocol", "CONSOLE_V2");
+            tokenClaims.put("sessionId", sessionId.toString());
+            tokenClaims.put("contextVersion", Long.toString(contextVersion));
+        }
+        String encodedClaims = encodeJson(tokenClaims);
         JwtSignature signature = signingService.sign(ttl, kid -> signingInput(kid, encodedClaims));
         String encodedSigningInput = new String(signingInput(signature.kid(), encodedClaims).bytes(), StandardCharsets.US_ASCII);
         String token = encodedSigningInput + "." + Base64.getUrlEncoder().withoutPadding().encodeToString(signature.bytes());

@@ -38,6 +38,8 @@ public record HttpRouteCatalog(int schemaVersion, List<Route> routes) {
     public enum CredentialRequirement {
         ANONYMOUS,
         BROWSER_SESSION_SLOT_REQUIRED,
+        CONSOLE_SLOT_REQUIRED,
+        CONSOLE_SESSION_REQUIRED,
         PLATFORM_REFRESH_COOKIE_REQUIRED,
         TENANT_REFRESH_COOKIE_REQUIRED,
         OAUTH_CLIENT_BASIC_REQUIRED,

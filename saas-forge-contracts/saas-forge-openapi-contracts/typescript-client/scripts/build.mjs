@@ -1,13 +1,13 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFile, readFile, rm, writeFile } from 'node:fs/promises';
+import { appendFile, copyFile, readFile, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 const packageRoot = fileURLToPath(new URL('../', import.meta.url));
 const repository = fileURLToPath(new URL('../../../../', import.meta.url));
 const contract = 'saas-forge-contracts/saas-forge-openapi-contracts/';
 const inputs = [
-  `${contract}v1.yaml`, `${contract}common.yaml`, `${contract}pom.xml`, 'pom.xml', 'LICENSE',
+  `${contract}v1.yaml`, `${contract}v2.yaml`, `${contract}common.yaml`, `${contract}pom.xml`, 'pom.xml', 'LICENSE',
   ...['package.json', 'package-lock.json', 'tsconfig.json', 'scripts/build.mjs', 'scripts/check-release.mjs']
     .map(path => `${contract}typescript-client/${path}`),
 ];
@@ -24,6 +24,7 @@ run(`${repository}/mvnw`, ['--batch-mode', '--no-transfer-progress', '-pl',
   'saas-forge-contracts/saas-forge-openapi-contracts', '-am',
   `-Dtypescript.client.output=${packageRoot}/target/generated`,
   '-Pstandalone-typescript-client', 'generate-sources']);
+await appendFile(`${packageRoot}/target/generated/index.ts`, '\nexport * as Console from "./console/index.js";\n');
 run(process.execPath, [`${packageRoot}/node_modules/typescript/bin/tsc`, '--project', 'tsconfig.json'], packageRoot);
 if (JSON.stringify(before) !== JSON.stringify(await hashes())) throw new Error('Contract changed during build');
 const manifest = JSON.parse(await readFile(`${packageRoot}/package.json`, 'utf8'));
@@ -34,6 +35,7 @@ await writeFile(`${packageRoot}/contract-source.json`, JSON.stringify({
   commit: git('rev-parse', 'HEAD'),
   dirty: git('status', '--porcelain', '--untracked-files=normal', '--', ...inputs, `${contract}typescript-client`) !== '',
   contract: `${contract}v1.yaml`,
+  contracts: [`${contract}v1.yaml`, `${contract}v2.yaml`],
   sha256: before,
   generator: { name: 'typescript-fetch', version: (await readFile(`${packageRoot}/target/generated/.openapi-generator/VERSION`, 'utf8')).trim(), importFileExtension: '.js' },
 }, null, 2) + '\n');

@@ -61,6 +61,26 @@ class UserAccessTokenVerifierTest {
     }
 
     @Test
+    void consoleCutoverRejectsLegacyAndMalformedConsoleClaims() throws Exception {
+        var publicKey = new ServiceJwtVerificationKey(key.getKeyID(), key.getModulus().toString(), key.getPublicExponent().toString());
+        var strict = new UserAccessTokenSignatureVerifier(kid -> Optional.of(publicKey),
+                Clock.fixed(NOW, ZoneOffset.UTC), "https://iam.test", "saas.forge-api", Duration.ZERO, true);
+        var console = Map.<String, Object>of("sessionProtocol", "CONSOLE_V2", "sessionId", JTI.toString(), "contextVersion", "0");
+        assertEquals(IDENTITY_ID, strict.verify("Bearer " + token(console, NOW, NOW.plusSeconds(900))).identityId());
+        assertThrows(UserAccessTokenInvalidException.class, () -> strict.verify("Bearer " + token(Map.of(), NOW, NOW.plusSeconds(900))));
+        for (Object version : java.util.List.of("-1", "01", "9223372036854775808", 1)) {
+            var invalid = new java.util.HashMap<>(console); invalid.put("contextVersion", version);
+            assertThrows(UserAccessTokenInvalidException.class, () -> strict.verify("Bearer " + token(invalid, NOW, NOW.plusSeconds(900))));
+        }
+        for (String claim : console.keySet()) {
+            var missing = new java.util.HashMap<>(console); missing.remove(claim);
+            assertThrows(UserAccessTokenInvalidException.class, () -> strict.verify("Bearer " + token(missing, NOW, NOW.plusSeconds(900))));
+        }
+        var invalidId = new java.util.HashMap<>(console); invalidId.put("sessionId", UUID.randomUUID().toString());
+        assertThrows(UserAccessTokenInvalidException.class, () -> strict.verify("Bearer " + token(invalidId, NOW, NOW.plusSeconds(900))));
+    }
+
+    @Test
     void rejectsTenantRoleAndPermissionClaims() throws Exception {
         UserAccessTokenVerifier verifier = verifier((jti, kid) -> false);
 
