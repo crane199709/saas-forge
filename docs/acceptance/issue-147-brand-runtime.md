@@ -36,8 +36,8 @@
 
 2026-09-08，提交 `5587a7339e716e3159e41aebdf0481512b136958`：
 
-- [PR Verify](https://github.com/crane0927/saas-forge/actions/runs/34171356002)：全部 8 个任务通过，包含 JDK 17/21、Tenant 生命周期、Nacos 与四浏览器兼容验证。
-- [PR Fresh Compose 五浏览器验收](https://github.com/crane0927/saas-forge/actions/runs/34171355987)：Firefox、WebKit、Chromium、Chrome、Edge 分别 30/30 通过，全部 0 失败、0 跳过；随后四项兼容命令全部通过。
+- [PR Verify](https://github.com/crane199709/saas-forge/actions/runs/34171356002)：全部 8 个任务通过，包含 JDK 17/21、Tenant 生命周期、Nacos 与四浏览器兼容验证。
+- [PR Fresh Compose 五浏览器验收](https://github.com/crane199709/saas-forge/actions/runs/34171355987)：Firefox、WebKit、Chromium、Chrome、Edge 分别 30/30 通过，全部 0 失败、0 跳过；随后四项兼容命令全部通过。
 - CI 曾暴露 Remote 断言将浏览器重取现有 favicon 误计为 Remote 素材请求。Chrome 本地重现后，仅豁免浏览器 `other` 类型对 Shell 原有 favicon 的同 URL 请求，并继续断言 favicon 未变、单 Provider、无图片/Fetch/Context 请求；本地 Chrome 复验 30/30，最终五通道 CI 全部通过。
 - 早期单次 Cookie 数量与 WebKit 多标签页断言失败未确定根因，未放宽原断言；增加的 Cookie 诊断仅输出数量，后续上述提交的相关检查通过。另一次重复 push 验收在 Compose 启动阶段失败，未将其作为产品验收成功；新增受限状态摘要只输出已知服务的运行状态、健康状态与退出码。
 

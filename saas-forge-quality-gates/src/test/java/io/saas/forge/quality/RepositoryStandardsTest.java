@@ -700,7 +700,7 @@ class RepositoryStandardsTest {
                 org.w3c.dom.Node dependency = dependencies.item(index);
                 String groupId = childText(dependency, "groupId");
                 String artifactId = childText(dependency, "artifactId");
-                assertFalse("io.github.crane0927".equals(groupId) && SERVICE_ARTIFACTS.contains(artifactId),
+                assertFalse("io.github.crane199709".equals(groupId) && SERVICE_ARTIFACTS.contains(artifactId),
                         pomFile + " 不得依赖领域服务实现 " + artifactId);
             }
         }

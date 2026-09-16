@@ -4,7 +4,7 @@
 >
 > **模板裁定（2026-09-15）**：下表条目 2 与本页父规格映射第 1 项的"五份模板""模板检查"**已不成立**。仓库中没有本地配置模板文件，5 处 `maven-jar-plugin` 也不再排除 `application-local.yml.example`；「本地开发」规范与各服务原生启动说明统一为"配置由开发者在 Git 忽略的文件中自行维护，仓库不提供可提交模板"。此处只更正结论，原记录文字按历史事实保留。
 
-2026-09-13，依据 [#169](https://github.com/crane0927/saas-forge/issues/169) 与父规格 [#161](https://github.com/crane0927/saas-forge/issues/161)。本轮开始 HEAD 为 `917039ff54a3d02389196bc7214af5247696d00b`，工作区干净。修改仅涉及开发与验收文档，没有修改应用代码、API、迁移、运行配置、CI 或应用生命周期。
+2026-09-13，依据 [#169](https://github.com/crane199709/saas-forge/issues/169) 与父规格 [#161](https://github.com/crane199709/saas-forge/issues/161)。本轮开始 HEAD 为 `917039ff54a3d02389196bc7214af5247696d00b`，工作区干净。修改仅涉及开发与验收文档，没有修改应用代码、API、迁移、运行配置、CI 或应用生命周期。
 
 默认入口为[原生本地开发](../native-local-development.md)，完整复现与 CI 覆盖统一见[分层验证](../local-verification.md)。根 README、贡献指南、Console 中英文 README、部署入口、Compose 中英文说明及脚本目录均区分原生日常流程与旧工具的集成验收职责。Console README 修正了日常启动重复生成 Client 及旧 JDK 矩阵说明。
 
@@ -66,7 +66,7 @@
 
 ## 本轮核实与验证
 
-- PASS：GitHub 实时读取前置 Issue 状态、父规格和 #169；最新列出的 Verify [34747247761](https://github.com/crane0927/saas-forge/actions/runs/34747247761) 为 completed/success，SHA `ed9b49dbb6bad52d9d11b8a3c88df1c617d9f408`。该 SHA 到本轮开始 HEAD 仅有五份文档差异；不声称当前 HEAD 或本轮未提交文档有新 CI。
+- PASS：GitHub 实时读取前置 Issue 状态、父规格和 #169；最新列出的 Verify [34747247761](https://github.com/crane199709/saas-forge/actions/runs/34747247761) 为 completed/success，SHA `ed9b49dbb6bad52d9d11b8a3c88df1c617d9f408`。该 SHA 到本轮开始 HEAD 仅有五份文档差异；不声称当前 HEAD 或本轮未提交文档有新 CI。
 - PASS：Node 24.14.1、pnpm 11.22.0、PATH 中 Oracle JDK 17.0.12；系统 `/usr/libexec/java_home` 未登记该 JDK，不代表 PATH 的 Java 不可用。
 - PASS：五个 Java HTTP 监听 8080–8084 和两个 Node 监听 5173/5174 均存在。该观测不作为业务通过或 IDE 启动耗时证据；本轮没有启停这些应用。
 - PASS：正常权限下 `bash scripts/local-https-development.sh doctor` 退出 0，CA/leaf、hosts、系统信任、现有 HTTPS Edge、Docker 与工具链六项正常。

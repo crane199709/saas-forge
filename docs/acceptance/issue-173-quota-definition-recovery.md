@@ -6,7 +6,7 @@
 
 2026-09-12 本地实现、回归及真实 Chrome/Fresh Compose 验收完成。产品套件 **35/35 通过**，随后 Compose 重置及 Chrome 浏览器门禁通过，正式脚本退出码 0。通过的源码提交为 `652a788d775be167f2b55f392f217f947406390d`，启动时 tracked 工作区干净；后续提交仅更新文档与证据。
 
-完整后端、完整前端门禁均已通过，最后后端改动另外完成 Entitlement 全量复验。最终远端 CI、验收清单与关闭状态见 [Issue #173 的完成记录](https://github.com/crane0927/saas-forge/issues/173)。
+完整后端、完整前端门禁均已通过，最后后端改动另外完成 Entitlement 全量复验。最终远端 CI、验收清单与关闭状态见 [Issue #173 的完成记录](https://github.com/crane199709/saas-forge/issues/173)。
 
 ## 范围
 

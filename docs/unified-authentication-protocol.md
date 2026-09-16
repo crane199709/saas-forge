@@ -2,7 +2,7 @@
 
 > 状态：协议设计已确认，2026-09-15 用户完成 Q1–Q10 及完整方案确认。未修改正式 OpenAPI、运行代码或历史迁移；本票只完成协议准备，不代表业务实现或业务验收完成。
 >
-> 来源：[父 PRD #201](https://github.com/crane0927/saas-forge/issues/201)、[Issue #202](https://github.com/crane0927/saas-forge/issues/202)。2026-09-15 用户确认 Q1–Q10；其中 Q6 明确使用平台管理、公司工作台两组卡片，公司组直接展示所有有权限的公司，Q7 明确“旧登录直接停止”。
+> 来源：[父 PRD #201](https://github.com/crane199709/saas-forge/issues/201)、[Issue #202](https://github.com/crane199709/saas-forge/issues/202)。2026-09-15 用户确认 Q1–Q10；其中 Q6 明确使用平台管理、公司工作台两组卡片，公司组直接展示所有有权限的公司，Q7 明确“旧登录直接停止”。
 
 ## 已确认的用户可见行为
 

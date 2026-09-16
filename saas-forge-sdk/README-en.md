@@ -24,7 +24,7 @@ Import the BOM and declare only the Starter. The four supported consumer artifac
 <dependencyManagement>
     <dependencies>
         <dependency>
-            <groupId>io.github.crane0927</groupId>
+            <groupId>io.github.crane199709</groupId>
             <artifactId>saas-forge-bom</artifactId>
             <version>${saas-forge.version}</version>
             <type>pom</type>
@@ -35,7 +35,7 @@ Import the BOM and declare only the Starter. The four supported consumer artifac
 
 <dependencies>
     <dependency>
-        <groupId>io.github.crane0927</groupId>
+        <groupId>io.github.crane199709</groupId>
         <artifactId>saas-forge-spring-boot-starter</artifactId>
     </dependency>
 </dependencies>

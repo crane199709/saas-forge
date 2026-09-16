@@ -157,8 +157,8 @@ flowchart TD
 - [x] 复用已完成的普通登出撤销模型，实现成员禁用所需的按 Membership 批量会话与 `jti` 撤销能力，并完成 Tenant Suspension 的按 Tenant 批量撤销与状态迁移；IAM 在批量撤销前建立 Revocation Fence，阻止目标范围并发签发或使用未被扫描的新 Token。Gateway 同步完成最小用户 Token 验签、`jti`/`kid` 与 Revocation Fence 检查、Revocation Index Ready 检查，Redis 不可用或索引未就绪时必须 fail-closed。Invitation 激活、Password Recovery 和成员禁用公开工作流在第 4 阶段随成员闭环完成。
 - [x] 在已前移的最小签发与校验链路上，按 [Client Credentials 管理规格](22-oauth-client-credentials-management.md)补全仅服务间使用的 OAuth 2.0 Client Credentials 管理：Secret 一次展示、重叠轮换和吊销；服务 Token 不建立用户 Tenant Context。
 - [x] 完成 Gateway 用户/服务 Token 路由策略与三类成功事实审计总项；只有以下两个可独立验收的子项均有直接证据后才勾选：
-  - [x] [Issue #75](https://github.com/crane0927/saas-forge/issues/75)：按 [Gateway 通用路由目录与 User/Service Token Scope 策略](23-gateway-service-scope-routing.md)建立受控 Service/Scope Registry、共享不可变 Route Catalog、Gateway与 Starter双重校验，以及真实 IAM/Redis/Nacos和非生产接收端验收。首个生产 Runtime operation仍由后续对应领域 Issue交付。
-  - [x] [Issue #76](https://github.com/crane0927/saas-forge/issues/76)：按 [三类成功事实的 Audit Record 消费闭环](24-audit-success-fact-consumption.md)将 Session Started、Tenant Created、Tenant Context Switched映射为只追加 Audit Record，完成真实 Kafka/PostgreSQL去重、重试、隔离、重放和最小权限验收。
+  - [x] [Issue #75](https://github.com/crane199709/saas-forge/issues/75)：按 [Gateway 通用路由目录与 User/Service Token Scope 策略](23-gateway-service-scope-routing.md)建立受控 Service/Scope Registry、共享不可变 Route Catalog、Gateway与 Starter双重校验，以及真实 IAM/Redis/Nacos和非生产接收端验收。首个生产 Runtime operation仍由后续对应领域 Issue交付。
+  - [x] [Issue #76](https://github.com/crane199709/saas-forge/issues/76)：按 [三类成功事实的 Audit Record 消费闭环](24-audit-success-fact-consumption.md)将 Session Started、Tenant Created、Tenant Context Switched映射为只追加 Audit Record，完成真实 Kafka/PostgreSQL去重、重试、隔离、重放和最小权限验收。
 
 **Console 交互**
 
@@ -168,7 +168,7 @@ flowchart TD
   - #171 的原生 Chrome、Fresh Compose、IAM HTTP 与共享 Runtime 证据覆盖认证及恢复；最新提交 CI 再次通过完整认证产品路径。
 - [x] Platform Console 完成“Quota Definition/Plan → Tenant → Subscription → Tenant Administrator 初始化”产品路径，读取结果必须来自真实服务权威状态。
   - #172～#177 完成最小权益、历史零额度兼容、Tenant/Subscription、管理员初始化及独立通知读取/重发；真实 Quota 消费、补偿、恢复和拒绝均有证据。
-  - 验证提交 `ed9b49dbb6bad52d9d11b8a3c88df1c617d9f408` 的 [Verify CI](https://github.com/crane0927/saas-forge/actions/runs/34747247761) 三项门禁全部成功；下载产物确认同 SHA、dirty=false、Chrome/Fresh 全阶段通过。**该结论无法从 master 复现**：`ed9b49d`（2026-09-13）只存在于 `feature/161-native-local-development` 分支，不在 `master` 历史中（`git merge-base --is-ancestor ed9b49d HEAD` 为假），且早于 Vue 切换 `8d4c570`，其前端结论只对应当时的 React/Ant Design 控制台。本次仅汇总已有验收，不表示重新运行本机完整环境，也不代表 #165 或整个第 2 阶段完成。
+  - 验证提交 `ed9b49dbb6bad52d9d11b8a3c88df1c617d9f408` 的 [Verify CI](https://github.com/crane199709/saas-forge/actions/runs/34747247761) 三项门禁全部成功；下载产物确认同 SHA、dirty=false、Chrome/Fresh 全阶段通过。**该结论无法从 master 复现**：`ed9b49d`（2026-09-13）只存在于 `feature/161-native-local-development` 分支，不在 `master` 历史中（`git merge-base --is-ancestor ed9b49d HEAD` 为假），且早于 Vue 切换 `8d4c570`，其前端结论只对应当时的 React/Ant Design 控制台。本次仅汇总已有验收，不表示重新运行本机完整环境，也不代表 #165 或整个第 2 阶段完成。
 - [x] Tenant Console 完成“Password Setup → Tenant Administrator 登录 → Accessible Membership 选择 → Tenant Context Switch”，刷新页面后从权威状态恢复当前 Session 与资源上下文。
 - [x] Platform Console 完成 Tenant Suspension、显式恢复和恢复失败处理；Tenant Console 可观察旧 Token 被拒绝、Session 失效及重新登录后的恢复结果。
 - [x] Platform Console 完成 OAuth Client 创建、Secret 一次展示、结果不确定恢复、重叠轮换和吊销；Secret 不得进入浏览器持久存储、日志或重复读取接口。

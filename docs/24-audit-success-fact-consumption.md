@@ -2,7 +2,7 @@
 
 > **状态**：本文是设计基线，描述长期有效的目标与约束，不代表对应功能已实现；当前实现状态见 [README 的当前状态](../README.md#当前状态) 与开放 Issues，进度勾选见 [MVP 开发计划](16-mvp-development-plan.md)。涉及前端界面的部分写作于自建 Design System / React Shell 时期，已由 [ADR 0050](adr/0050-consoles-adopt-soybean-element-plus.md) 替代；现行实现是 Vue 3 + Element Plus + Soybean Admin。
 
-**实施 Issue：[#76](https://github.com/crane0927/saas-forge/issues/76)**
+**实施 Issue：[#76](https://github.com/crane199709/saas-forge/issues/76)**
 
 本规格只将 Session Started、Tenant Created、Tenant Context Switched 三类已提交成功事实映射为只追加 Audit Record，并完成真实 Kafka/PostgreSQL消费、去重、重试、隔离和受控重放。架构取舍见 [ADR 0023](adr/0023-audit-records-use-append-only-runtime-privileges.md)、[ADR 0024](adr/0024-service-owned-transactional-outbox.md) 与 [ADR 0035](adr/0035-audit-records-do-not-use-tenant-rls.md)。
 

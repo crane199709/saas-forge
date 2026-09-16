@@ -87,9 +87,9 @@ Fresh 清单记录 `scope=--full`、`dirty=false`、`status=passed`；Maven/work
 
 此修复的开发静态 Remote 三浏览器回归均通过（`.scratch/issue-159/opaque-frame-{chromium,webkit,chrome}`，本机临时证据，已不存在，不可复现）；最新 Fresh 产品回归为 `.scratch/issue-159/fresh-b9afa30-product`（本机临时证据，已不存在，不可复现），三个浏览器各 33/33、零跳过、32 个安全探针、`errors=[]`，兼容门禁通过。该轮同样为 `--product`，仅验收文档未提交；随机项目 `saas-forge-console-1788973726-67311-b51dba` 的容器和卷已清理。脱敏汇总为 `/private/tmp/sf-159-fresh-b9afa30-product.log`（本机临时证据，已不存在，不可复现）。
 
-另行记录的失败：[Verify 34381031337](https://github.com/crane0927/saas-forge/actions/runs/34381031337) 的 Tenant lifecycle fresh-volume E2E 两次在 Redis 停启探针失败，`POST /api/v1/platform/tenants` 预期 503、实际 201（脚本第 792 行）。本任务未修改该脚本或后端业务，但尚未定位失败原因，不能据此断言因果关系。该项不属于 #159 的四域产品门禁；不得将本记录表述为全部 CI、整个第 1 阶段或 MVP 发布门禁通过。
+另行记录的失败：[Verify 34381031337](https://github.com/crane199709/saas-forge/actions/runs/34381031337) 的 Tenant lifecycle fresh-volume E2E 两次在 Redis 停启探针失败，`POST /api/v1/platform/tenants` 预期 503、实际 201（脚本第 792 行）。本任务未修改该脚本或后端业务，但尚未定位失败原因，不能据此断言因果关系。该项不属于 #159 的四域产品门禁；不得将本记录表述为全部 CI、整个第 1 阶段或 MVP 发布门禁通过。
 
-最终源码 `b9afa302e037df1b71895d4c11a17945ea3ff0ac` 的 [五浏览器产品 CI 34381031323](https://github.com/crane0927/saas-forge/actions/runs/34381031323) 已通过；[脱敏 artifact](https://github.com/crane0927/saas-forge/actions/runs/34381031323/artifacts/10117219594) 为 `four-domain-browser-evidence-b9afa302e037df1b71895d4c11a17945ea3ff0ac`，本地核对副本为 `.scratch/issue-159/ci-b9afa30-passed`（本机临时证据，已不存在，不可复现）。
+最终源码 `b9afa302e037df1b71895d4c11a17945ea3ff0ac` 的 [五浏览器产品 CI 34381031323](https://github.com/crane199709/saas-forge/actions/runs/34381031323) 已通过；[脱敏 artifact](https://github.com/crane199709/saas-forge/actions/runs/34381031323/artifacts/10117219594) 为 `four-domain-browser-evidence-b9afa302e037df1b71895d4c11a17945ea3ff0ac`，本地核对副本为 `.scratch/issue-159/ci-b9afa30-passed`（本机临时证据，已不存在，不可复现）。
 
 | CI 浏览器 | 版本 | 产品测试 | 安全探针 | 静态 Remote |
 | --- | --- | --- | --- | --- |

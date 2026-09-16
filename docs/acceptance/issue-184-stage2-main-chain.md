@@ -2,7 +2,7 @@
 
 > **历史证据**：本文保留当时的验收记录与命令输出，不代表当前实现或当前门禁。其中的前端包名、界面描述与门禁计数可能属于已被 [ADR 0050](../adr/0050-consoles-adopt-soybean-element-plus.md) 替换的自建 Design System / React Shell 时期；当前 Vue 实现与验证入口见 [Console 设计规范](../25-design-system.md)、[Console 认证 Runtime](../28-console-authentication-runtime.md) 与 [测试基线](../console-testing-baseline.md)，复现按 [本地分层验证](../local-verification.md)。
 
-关联 [Issue #184](https://github.com/crane0927/saas-forge/issues/184) 与父规格 [#183](https://github.com/crane0927/saas-forge/issues/183)。
+关联 [Issue #184](https://github.com/crane199709/saas-forge/issues/184) 与父规格 [#183](https://github.com/crane199709/saas-forge/issues/183)。
 
 > [!IMPORTANT]
 > **证据时效边界**：本文全部绿色结果（含下文"第十八轮完整通过"）的基线是 `adaaf43c109067355e4153c4fe6d79476105393e`，它是 `8d4c570`（2026-09-15，切换正式业务页面至 Vue 并清除旧 UI）的**祖先**。该提交同时把 `consoles/integration-test/stage2-main-chain.mjs` 的选择器由 `.ant-select-dropdown` / `.sf-form-field` 改为 `.el-select-dropdown` / `.el-form-item`，并在提交信息中声明"真实后端、四域联调及 Fresh Compose 未执行"。

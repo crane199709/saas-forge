@@ -4,7 +4,7 @@
 
 ## 目标与实现
 
-对应 [Issue #167](https://github.com/crane0927/saas-forge/issues/167)，基准 `3c55589d306dde301febba9fca2b60cef21751f9`。用户确认测试接缝为实际 CLI 进程及其运行结果、退出码。用法及边界升级表见 [本地分层验证](../local-verification.md)。
+对应 [Issue #167](https://github.com/crane199709/saas-forge/issues/167)，基准 `3c55589d306dde301febba9fca2b60cef21751f9`。用户确认测试接缝为实际 CLI 进程及其运行结果、退出码。用法及边界升级表见 [本地分层验证](../local-verification.md)。
 
 - `backend-local` 仅跳过 OpenAPI 的前端聚合执行；原默认 `./mvnw verify` 保持完整行为。
 - `verify-frontend-workspace.sh --package` 复用指定包现有 `verify`，未传参数仍走全工作区；拒绝无匹配、通配符、缺失脚本，保留失败退出码。

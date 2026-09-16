@@ -14,7 +14,7 @@
 | CI Verify | 全部通过：四个兼容渠道、JDK 17/21、Nacos、生命周期 E2E |
 | 完整产品聚合 | Maven/workspace、独立生产构建、五次 Fresh Compose / TLS / 产品测试和四个兼容门禁全部通过 |
 
-直接结果：[Verify](https://github.com/crane0927/saas-forge/actions/runs/33650682545)、[完整产品聚合](https://github.com/crane0927/saas-forge/actions/runs/33650682486)。以下历史记录保留各轮失败、修复与证据范围。
+直接结果：[Verify](https://github.com/crane199709/saas-forge/actions/runs/33650682545)、[完整产品聚合](https://github.com/crane199709/saas-forge/actions/runs/33650682486)。以下历史记录保留各轮失败、修复与证据范围。
 
 ## 已确认的测试边界
 
@@ -218,7 +218,7 @@ CI 的 Linux 浏览器信任按官方入口配置：[Chromium NSS](https://chrom
 
 ## 首轮远端 CI 失败与修复
 
-提交 `3f912e4` 已推送到 `codex/issue-115-console-authentication-e2e`，触发 [Verify](https://github.com/crane0927/saas-forge/actions/runs/33620094798) 和 [五浏览器真实产品验收](https://github.com/crane0927/saas-forge/actions/runs/33620094928)。以下是已取得的失败证据，不把仍运行的任务推断为成功。
+提交 `3f912e4` 已推送到 `codex/issue-115-console-authentication-e2e`，触发 [Verify](https://github.com/crane199709/saas-forge/actions/runs/33620094798) 和 [五浏览器真实产品验收](https://github.com/crane199709/saas-forge/actions/runs/33620094928)。以下是已取得的失败证据，不把仍运行的任务推断为成功。
 
 - Verify 的 Chrome、Edge、Firefox、WebKit 均在加载消费者测试时无法解析 `shared/api-client/.generated/index`；浏览器安装步骤最终成功，测试尚未进入行为断言。独立矩阵此前只有依赖和浏览器安装，缺少正式 Client 生成。工作流补上 JDK 17 与既有 `pnpm run generate:api`，不提交生成工件。
 - 本地临时移开生成目录后，Chrome 消费者测试以相同导入错误失败；恢复目录并执行工作流新增的生成命令后，原消费者测试 6 通过、1 个非 Chromium 视觉快照按约定跳过。生成命令、工作流 YAML/步骤顺序和 Shell 语法检查通过。
@@ -227,7 +227,7 @@ CI 的 Linux 浏览器信任按官方入口配置：[Chromium NSS](https://chrom
 - 首轮产品失败仅输出 runner 临时诊断路径，原始日志未上传且任务结束后不可获取，无法据此断定 WebKit 根因。新增 CLI 只输出 TAP 失败编号、已知测试源码位置、固定断言错误码和统计，不输出标题、原始错误、actual/expected 或任意堆栈。公开 CLI 回归先 RED 后 GREEN，验证敏感诊断值不出现在输出中；lint/格式及脚本语法通过。原始日志继续只留受限临时目录。
 - 已定位的 Client 生成和会话夹具修复，以及 WebKit 定位所需的安全摘要，均需提交后复验；不能将新增诊断当作 WebKit 产品故障已修复。
 
-提交 `82ad2e3` 已推送并触发 [第二轮 Verify](https://github.com/crane0927/saas-forge/actions/runs/33622146190) 和 [第二轮产品验收](https://github.com/crane0927/saas-forge/actions/runs/33622146203)。Chrome、Edge、Firefox、Linux WebKit 四个独立兼容任务已全部通过，证实正式 Client 生成步骤修复了原导入失败；第二轮 Verify 最终全部通过，包括生命周期 E2E、JDK 17/21 和 Nacos；独立产品任务仍在 Linux WebKit 失败；摘要定位到 `82ad2e3` 的 `console-authentication.test.mjs:127`，首次改密响应并非 204。该轮只有 6 条顶层测试被执行（5 通过、1 失败），后续嵌套会话用例尚未进入，不能归因于多标签页竞争。
+提交 `82ad2e3` 已推送并触发 [第二轮 Verify](https://github.com/crane199709/saas-forge/actions/runs/33622146190) 和 [第二轮产品验收](https://github.com/crane199709/saas-forge/actions/runs/33622146203)。Chrome、Edge、Firefox、Linux WebKit 四个独立兼容任务已全部通过，证实正式 Client 生成步骤修复了原导入失败；第二轮 Verify 最终全部通过，包括生命周期 E2E、JDK 17/21 和 Nacos；独立产品任务仍在 Linux WebKit 失败；摘要定位到 `82ad2e3` 的 `console-authentication.test.mjs:127`，首次改密响应并非 204。该轮只有 6 条顶层测试被执行（5 通过、1 失败），后续嵌套会话用例尚未进入，不能归因于多标签页竞争。
 
 ## Linux WebKit 首次改密诊断
 
@@ -236,13 +236,13 @@ CI 的 Linux 浏览器信任按官方入口配置：[Chromium NSS](https://chrom
 - 摘要现在只读取 TAP 的结构化字段，多行 error/actual 内容不能冒充失败编号或代码位置。公开 CLI 回归覆盖仿造多行响应和有限状态摘要，分别先 RED 后 GREEN；lint/格式通过。
 - 各产品渠道仍使用独立数据卷，将 WebKit 提前以缩短失败定位等待，不跳过其他渠道或 Maven/workspace 门禁。上述诊断需推送后从下一轮 CI 获取证据，尚未宣称首次改密故障已修复。
 
-提交 `449104e` 已触发 [第三轮 Verify](https://github.com/crane0927/saas-forge/actions/runs/33624326375) 与 [第三轮产品验收](https://github.com/crane0927/saas-forge/actions/runs/33624326355)。第三轮 Verify 全部通过；产品任务在 Linux WebKit 首次改密处失败，安全诊断为 `status=401 cookieStored=false cookieObserved=false requestMatches=true problem=PASSWORD_CHANGE_SESSION_INVALID`。已确认请求密码匹配，尚不能区分登录响应未设置 Cookie、旧响应清除 Cookie 或浏览器拒收。
+提交 `449104e` 已触发 [第三轮 Verify](https://github.com/crane199709/saas-forge/actions/runs/33624326375) 与 [第三轮产品验收](https://github.com/crane199709/saas-forge/actions/runs/33624326355)。第三轮 Verify 全部通过；产品任务在 Linux WebKit 首次改密处失败，安全诊断为 `status=401 cookieStored=false cookieObserved=false requestMatches=true problem=PASSWORD_CHANGE_SESSION_INVALID`。已确认请求密码匹配，尚不能区分登录响应未设置 Cookie、旧响应清除 Cookie 或浏览器拒收。
 
 新增观察逻辑的本地 WebKit 聚焦验证通过：项目 `saas-forge-console-1788348327-88682-8a43ec`，受信 TLS、首次改密及全部 16 条产品用例均通过，失败/跳过为 0；聚焦命令退出 0，仅代表该渠道，不包含 Maven/workspace 或其他渠道复验。
 
 为区分上述原因，继续补充首次登录到改密间按响应顺序排列的 Cookie 元数据：固定 operation、HTTP 状态、set/clear/none/mixed 与安全属性是否符合约定；不输出 Cookie 值。公开摘要 CLI 回归先 RED 后 GREEN，覆盖允许字段与恶意多行内容隔离，12 条 Console 边界/诊断测试和相关 lint 通过；产品断言及 Cookie 安全设置保持不变。
 
-提交 `26f95a8` 已推送；[第四轮 Verify](https://github.com/crane0927/saas-forge/actions/runs/33626041136) 全部通过；[第四轮产品验收](https://github.com/crane0927/saas-forge/actions/runs/33626041247) 的 Maven、构建、引导与 TLS 就绪均通过，Linux WebKit 再次在首次改密返回 401。响应顺序为 `refresh 401 clear → login 200 set → password-changes 401 clear`，三次 Cookie 均符合已检查的 Secure、HttpOnly、SameSite=Strict、Path=/、无 Domain 属性；浏览器在登录后未观察到 Platform Cookie，密码请求匹配。没有观察到登录后、改密前的清除响应。
+提交 `26f95a8` 已推送；[第四轮 Verify](https://github.com/crane199709/saas-forge/actions/runs/33626041136) 全部通过；[第四轮产品验收](https://github.com/crane199709/saas-forge/actions/runs/33626041247) 的 Maven、构建、引导与 TLS 就绪均通过，Linux WebKit 再次在首次改密返回 401。响应顺序为 `refresh 401 clear → login 200 set → password-changes 401 clear`，三次 Cookie 均符合已检查的 Secure、HttpOnly、SameSite=Strict、Path=/、无 Domain 属性；浏览器在登录后未观察到 Platform Cookie，密码请求匹配。没有观察到登录后、改密前的清除响应。
 
 CI 安装的是 libsoup `3.4.4-5ubuntu0.7`。[libsoup Cookie 接收逻辑](https://github.com/GNOME/libsoup/blob/3.4.4/libsoup/cookies/soup-cookie-jar.c) 通过基础域判断第三方 Cookie；[基础域实现](https://github.com/GNOME/libsoup/blob/master/libsoup/soup-tld.c) 对未识别顶级域返回空值，Cookie 接收逻辑随后比较完整主机名。这与 `.test` 下两个不同子域被当作第三方、macOS WebKit 成功而 Linux 失败的现象一致，但尚未完成更换根域的对照实验，不能宣称最终根因或修复已证实。
 
@@ -254,27 +254,27 @@ CI 安装的是 libsoup `3.4.4-5ubuntu0.7`。[libsoup Cookie 接收逻辑](https
 
 新增 Linux libsoup 公共函数对照观察，只输出两组公开域名是否具有相同基础域，不输出 Cookie 或凭据。本地 12 条边界/诊断测试、相关 ESLint、JS/Shell 语法、YAML 和 diff 检查通过；使用占位配置验证两个根域均准确传入 Gateway、IAM 和三个入口。尚待本次 CI 的真实产品结果；未修改本机 hosts、信任库或浏览器安装，未修改远端 Issue 验收条款。
 
-提交 `1efe67b` 的 [Verify](https://github.com/crane0927/saas-forge/actions/runs/33635862151) 全部通过。[产品对照](https://github.com/crane0927/saas-forge/actions/runs/33635862213) 直接输出 `saas.forge.test sharedBase=false`、`saas.forge.example.com sharedBase=true`。WebKit 首次改密及其后的双槽位、Membership、Tenant Switch、多标签页、Lease 回退、路由错误与正式 Client 场景已进入并通过；共执行 16 条，13 通过、3 失败（两个叶子断言失败及其父测试）。剩余断言位于存储安全检查和请求错误检查，二者的会话键白名单正则仍写死 `.saas.forge.test`。本次只将这两处改为配置根域下的精确键名比较，继续限制 PLATFORM/TENANT、generation/logoutPending 以及原有值校验；相关 lint/格式通过，需下一轮 CI 复验。
+提交 `1efe67b` 的 [Verify](https://github.com/crane199709/saas-forge/actions/runs/33635862151) 全部通过。[产品对照](https://github.com/crane199709/saas-forge/actions/runs/33635862213) 直接输出 `saas.forge.test sharedBase=false`、`saas.forge.example.com sharedBase=true`。WebKit 首次改密及其后的双槽位、Membership、Tenant Switch、多标签页、Lease 回退、路由错误与正式 Client 场景已进入并通过；共执行 16 条，13 通过、3 失败（两个叶子断言失败及其父测试）。剩余断言位于存储安全检查和请求错误检查，二者的会话键白名单正则仍写死 `.saas.forge.test`。本次只将这两处改为配置根域下的精确键名比较，继续限制 PLATFORM/TENANT、generation/logoutPending 以及原有值校验；相关 lint/格式通过，需下一轮 CI 复验。
 
-提交 `9600669` 的[产品验收](https://github.com/crane0927/saas-forge/actions/runs/33637759472)中，WebKit、Chromium 均为 16/16、0 失败/跳过，证明根域对照和存储检查已通过。Firefox 随后在初始导航阶段 6/6 失败，尚未进入认证断言，Chrome/Edge 产品渠道未执行。[Verify](https://github.com/crane0927/saas-forge/actions/runs/33637759471) 的 Nacos 初始化首次失败于 `nacos-init` 退出 1，同一提交单独重跑该任务后 4m23s 通过，其他门禁均通过；首次初始化失败的具体原因尚未确定，未修改 Nacos 代码或配置。
+提交 `9600669` 的[产品验收](https://github.com/crane199709/saas-forge/actions/runs/33637759472)中，WebKit、Chromium 均为 16/16、0 失败/跳过，证明根域对照和存储检查已通过。Firefox 随后在初始导航阶段 6/6 失败，尚未进入认证断言，Chrome/Edge 产品渠道未执行。[Verify](https://github.com/crane199709/saas-forge/actions/runs/33637759471) 的 Nacos 初始化首次失败于 `nacos-init` 退出 1，同一提交单独重跑该任务后 4m23s 通过，其他门禁均通过；首次初始化失败的具体原因尚未确定，未修改 Nacos 代码或配置。
 
 检查实际缓存的 Firefox 1538 `playwright.cfg` 及[官方源码](https://github.com/microsoft/playwright/blob/main/browser_patches/firefox/preferences/playwright.cfg)，确认策略通过 `PLAYWRIGHT_FIREFOX_POLICIES_JSON` 指定，而原工作流仅写普通 Firefox 的 distribution 目录。现将相同证书安装策略保存在本次临时 TLS 目录并导出该环境变量；不设置忽略 TLS、不调整浏览器安全边界。新增预检用本次证书在回环随机端口提供临时 HTTPS，并由每个所需浏览器正常验证三个受控 Host，提前发现信任问题；正式产品仍必须通过 443 与全部真实服务。CI 优先运行 Firefox，但保留所有渠道及原断言。上述修正尚待 CI 复验，未在本机安装或运行 Firefox/Edge。
 
 ## Firefox 安全负向的观察边界
 
-提交 `647191d` 的 [Verify](https://github.com/crane0927/saas-forge/actions/runs/33640770715) 首次运行全部通过。[产品验收](https://github.com/crane0927/saas-forge/actions/runs/33640770708) 五渠道临时 TLS 导航均通过，Firefox 正式产品 15/16、0 跳过；首次改密、双槽位、多标签页、Lease 回退等产品路径已通过。唯一失败位于 `console-authentication.test.mjs:920`：非法 CSRF 请求的 fetch 已被拒绝，但观察器未收到匹配的 CORS 控制台文本。其前的正常请求 204 和浏览器管理的 Origin / same-site 断言已通过；尚不能凭该日志判断控制台消息缺失的具体原因。
+提交 `647191d` 的 [Verify](https://github.com/crane199709/saas-forge/actions/runs/33640770715) 首次运行全部通过。[产品验收](https://github.com/crane199709/saas-forge/actions/runs/33640770708) 五渠道临时 TLS 导航均通过，Firefox 正式产品 15/16、0 跳过；首次改密、双槽位、多标签页、Lease 回退等产品路径已通过。唯一失败位于 `console-authentication.test.mjs:920`：非法 CSRF 请求的 fetch 已被拒绝，但观察器未收到匹配的 CORS 控制台文本。其前的正常请求 204 和浏览器管理的 Origin / same-site 断言已通过；尚不能凭该日志判断控制台消息缺失的具体原因。
 
 修正只涉及验收取证：复用现有随机 `acceptanceProbe`，由隔离 TLS 代理记录原样转发的上游响应是否为 403、是否存在 Access-Control-Allow-Origin，不输出响应体、头值或凭据。两个 CORS 负向请求必须同时满足浏览器 fetch 拒绝、真实 Gateway 403、无允许头、前后健康请求 204 与最终无 Cookie；不依赖各引擎的控制台文案。Intent 403、opaque cross-site 和全部安全策略保持原样。相关 ESLint、格式、语法与 diff 检查通过，真实五渠道仍待下一轮 CI；未本地执行 Firefox/Edge。
 
 ## 五渠道产品通过，兼容汇总待定位
 
-提交 `cef0569` 的 [Verify](https://github.com/crane0927/saas-forge/actions/runs/33643294888) 全部通过。[完整产品任务](https://github.com/crane0927/saas-forge/actions/runs/33643294905) 按 Firefox → WebKit → Chromium → Chrome → Edge 执行，每个渠道均为 16 通过、0 失败、0 跳过，各自重新创建数据卷、引导账户、启动服务并验证受信 TLS。CORS 负向修正已由五渠道真实 Gateway 403 / 无允许头及浏览器拒绝证据通过验证。
+提交 `cef0569` 的 [Verify](https://github.com/crane199709/saas-forge/actions/runs/33643294888) 全部通过。[完整产品任务](https://github.com/crane199709/saas-forge/actions/runs/33643294905) 按 Firefox → WebKit → Chromium → Chrome → Edge 执行，每个渠道均为 16 通过、0 失败、0 跳过，各自重新创建数据卷、引导账户、启动服务并验证受信 TLS。CORS 负向修正已由五渠道真实 Gateway 403 / 无允许头及浏览器拒绝证据通过验证。
 
 产品之后的 `console-browser-compatibility` 返回非零。该阶段原先只保留 runner 临时原始日志，未输出安全摘要，任务结束后无法取得具体失败；不能用同提交独立兼容任务均通过推断汇总成功。现将相同四个兼容命令分别记账，并扩展摘要支持 Vitest / Node spec reporter 的固定错误码和已知测试位置；不输出测试标题、断言值、任意堆栈或响应。公开 CLI 回归先 RED 后 GREEN，全部 13 条边界/诊断测试、lint、格式、Shell 语法与 diff 检查通过。未调整产品行为或测试时序，待 CI 给出剩余失败证据。
 
 ## 兼容命令的 Corepack 工作目录
 
-提交 `7b50b20` 的 [Verify](https://github.com/crane0927/saas-forge/actions/runs/33647127433) 全部通过；[完整产品](https://github.com/crane0927/saas-forge/actions/runs/33647127405) 再次五渠道各 16/16、0 失败/跳过，但首个 `console-browser-chrome` 在测试开始前失败，原摘要没有识别该启动错误码。
+提交 `7b50b20` 的 [Verify](https://github.com/crane199709/saas-forge/actions/runs/33647127433) 全部通过；[完整产品](https://github.com/crane199709/saas-forge/actions/runs/33647127405) 再次五渠道各 16/16、0 失败/跳过，但首个 `console-browser-chrome` 在测试开始前失败，原摘要没有识别该启动错误码。
 
 已有 `scripts/verify-frontend-workspace.sh` 明确在 `consoles` 内启动 pnpm；聚合末尾此前从仓库根目录使用 `pnpm --dir`，Corepack 会先按 cwd 解析版本。[Corepack 官方说明](https://github.com/nodejs/corepack#known-good-releases)明确，无 packageManager 的目录使用 Known Good Release。在临时 Corepack home 中仅引用已缓存的 pnpm 10.33.2 / 11.22.0、禁用网络并将默认版本设为 10.33.2：根目录 `corepack pnpm --dir consoles --version` 输出 10.33.2，而进入 `consoles` 后为 11.22.0；同一 `test:boundaries` 命令前者报 `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`、退出 1，后者 13/13、退出 0。临时目录已清理，未安装依赖或修改全局 Corepack 配置。
 

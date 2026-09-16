@@ -2,7 +2,7 @@
 
 > **历史证据**：本文保留当时的验收记录与命令输出，不代表当前实现或当前门禁。其中的前端包名、界面描述与门禁计数可能属于已被 [ADR 0050](../adr/0050-consoles-adopt-soybean-element-plus.md) 替换的自建 Design System / React Shell 时期；当前 Vue 实现与验证入口见 [Console 设计规范](../25-design-system.md)、[Console 认证 Runtime](../28-console-authentication-runtime.md) 与 [测试基线](../console-testing-baseline.md)，复现按 [本地分层验证](../local-verification.md)。
 
-核对日期：2026-09-13。范围为 [Issue #170](https://github.com/crane0927/saas-forge/issues/170) 的 35 个用户故事及八项验收，复核 GitHub 子任务正文/完成评论、仓库验收记录、产品验收脚本和当前提交 CI。#171～#178 均为 CLOSED，清单全部完成。未发现该 PRD 范围内剩余验收缺口。
+核对日期：2026-09-13。范围为 [Issue #170](https://github.com/crane199709/saas-forge/issues/170) 的 35 个用户故事及八项验收，复核 GitHub 子任务正文/完成评论、仓库验收记录、产品验收脚本和当前提交 CI。#171～#178 均为 CLOSED，清单全部完成。未发现该 PRD 范围内剩余验收缺口。
 
 ## 逐项核对
 
@@ -20,7 +20,7 @@
 ## 当前提交 CI 复核
 
 - 验证提交：`ed9b49dbb6bad52d9d11b8a3c88df1c617d9f408`，与核对开始时本地 HEAD 一致，工作区干净。
-- [Verify 34747247761](https://github.com/crane0927/saas-forge/actions/runs/34747247761)：completed / success。Nacos configuration and permissions、Tenant lifecycle fresh-volume E2E、JDK 17 and Console authentication / JDK 17, Fresh Compose and trusted TLS (Chrome) 三项均成功。
+- [Verify 34747247761](https://github.com/crane199709/saas-forge/actions/runs/34747247761)：completed / success。Nacos configuration and permissions、Tenant lifecycle fresh-volume E2E、JDK 17 and Console authentication / JDK 17, Fresh Compose and trusted TLS (Chrome) 三项均成功。
 - 已下载 `four-domain-browser-evidence-ed9b49dbb6bad52d9d11b8a3c88df1c617d9f408` 并核验 `acceptance-run.json`：commit 与上述 SHA 一致，dirty=false、mode=fresh-compose、target=ci、scope=--product、status=passed；全部阶段（含 product-chrome、compose-reset、console-browser-chrome）及 Chrome 渠道 passed。本机下载位置 `/tmp/issue170-ci-evidence` 为临时目录，长期证据以 CI 产物为准。
 - 当前产品脚本包含 Tenant、Quota Definition、Plan、Subscription、初始化、通知及 OAuth Client 的真实产品验收调用，并保留原认证和浏览器安全检查。
 

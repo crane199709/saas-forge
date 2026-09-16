@@ -38,7 +38,7 @@
 
 ## Maven Central 发布
 
-公开 Maven 坐标使用 `io.github.crane0927`；Java 包名继续使用 `io.saas.forge.*`。原因见 [ADR 0012](adr/0012-maven-coordinates-use-github-namespace.md)。
+公开 Maven 坐标使用 `io.github.crane199709`；Java 包名继续使用 `io.saas.forge.*`。坐标绑定维护者当前 GitHub 账号名的规则见 [ADR 0053](adr/0053-maven-groupid-follows-github-account.md)，"使用可验证 GitHub 命名空间、不依赖品牌域名"的原始决策见 [ADR 0012](adr/0012-maven-coordinates-use-github-namespace.md)。
 
 Maven Central 发布白名单为：
 
@@ -62,3 +62,9 @@ GitHub Actions 需要配置以下 Secrets：
 - `MAVEN_GPG_PASSPHRASE`
 
 发布构建以标签提交时间覆盖 `project.build.outputTimestamp`，并在 Job Summary 记录版本、提交 SHA、JDK、Maven 与 SDK/Starter JAR 的 SHA-256。正式发布只允许由 CI 执行，本地 `deploy` 不作为发布路径。
+
+## 坐标改名与命名空间重注册
+
+维护者 GitHub 账号改名会改变公开坐标，规则与冻结条件见 [ADR 0053](adr/0053-maven-groupid-follows-github-account.md)。账号改名后，新命名空间必须在 Central Publisher Portal 重新注册并通过归属校验，`CENTRAL_USERNAME` 与 `CENTRAL_PASSWORD` 也必须对应可发布该命名空间的账号；`MAVEN_GPG_PRIVATE_KEY` 与 `MAVEN_GPG_PASSPHRASE` 不受改名影响。旧命名空间保留但不再发布任何版本。
+
+改名后的首次发布前必须核对：根 POM 与各模块 POM 的 `<groupId>`、发布白名单以及 `JavaSdkReleaseBoundaryIT`、`RepositoryStandardsTest` 中的坐标断言一致；全仓只剩 ADR 0012 与 ADR 0048 中标注为历史坐标 `io.github.crane0927` 的注释；Central 上不存在新命名空间的已发布制品或命名冲突。

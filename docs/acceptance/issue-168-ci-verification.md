@@ -69,10 +69,10 @@ bash scripts/verify-console-authentication-e2e.sh --development
 
 | CI 运行 | 状态 | 实际耗时 |
 | --- | --- | --- |
-| [Verify 34432705163](https://github.com/crane0927/saas-forge/actions/runs/34432705163) | 全部 job success | JDK 17 job 778 秒，其中 Maven 732 秒；JDK 21 job 782 秒，其中 Maven 735 秒 |
+| [Verify 34432705163](https://github.com/crane199709/saas-forge/actions/runs/34432705163) | 全部 job success | JDK 17 job 778 秒，其中 Maven 732 秒；JDK 21 job 782 秒，其中 Maven 735 秒 |
 | 同上独立浏览器 | 四渠道 success | Chrome 123、Edge 121、Firefox 86、WebKit 109 秒（job 时间） |
 | 同上专项 | success | Tenant fresh 865 秒；Nacos 248 秒（job 时间） |
-| [认证 34432705190](https://github.com/crane0927/saas-forge/actions/runs/34432705190) | success | job 2106 秒，完整验收脚本 step 2000 秒；日志 RUN/PASS 时间戳确认其中 Maven 727.471 秒，额外 Remote 构建 0.280 秒 |
+| [认证 34432705190](https://github.com/crane199709/saas-forge/actions/runs/34432705190) | success | job 2106 秒，完整验收脚本 step 2000 秒；日志 RUN/PASS 时间戳确认其中 Maven 727.471 秒，额外 Remote 构建 0.280 秒 |
 
 来源为 GitHub jobs 的 startedAt/completedAt，精度为秒，不含排队；并行 job 耗时不能相加当作墙钟耗时。原始读取存于 `.scratch/issue-168/before-*-run.json`，认证阶段时间戳分析见 `before-authentication-stage-times.json`（均为本机临时证据，已不存在，不可复现）。这两个旧运行只用于调整前基线，不能作为当前修改的通过证据。
 
@@ -81,7 +81,7 @@ bash scripts/verify-console-authentication-e2e.sh --development
 - PASS：真实 `--product` 入口隔离文件系统回归，缺少八类前置文件及歧义 JAR 均在环境初始化前失败；与现有 pnpm/Maven 入口回归合计 16/16、0 skipped。红灯与绿灯记录位于 `.scratch/issue-168/`（本机临时证据，已不存在，不可复现）。
 - PASS：修改工作流的 YAML 解析、Bash 语法、`git diff --check`。
 - PASS：本机 `./mvnw --batch-mode --no-transfer-progress verify` 退出 0，26 个 Reactor 模块全部 SUCCESS；Maven 641 tests、0 failures、0 errors、0 skipped，前端全工作区类型检查、lint、格式、单元测试、Chromium 与构建门禁通过。macOS 27.0 arm64、JDK 17.0.12、Node 24.14.1、pnpm 11.22.0，复用已有依赖/构建缓存及 Docker；墙钟 414.56 秒，单命令最大 RSS 1,214,447,616 bytes（不是所有子进程或 Docker VM 总和）。原始记录 `.scratch/issue-168/full-verify.log`（本机临时证据，已不存在，不可复现）；本机时间不能与旧 CI 直接相减宣称加速。
-- PASS：源码 `2a1d7ae502e7b267068c4739acba8c34c5f3244b` 的 [Verify 34465680489](https://github.com/crane0927/saas-forge/actions/runs/34465680489) 实际完成，8 个必要 job 全部 success；JDK 17/21、独立四浏览器、五渠道 Fresh 产品及 Nacos/Tenant 专项均执行。
+- PASS：源码 `2a1d7ae502e7b267068c4739acba8c34c5f3244b` 的 [Verify 34465680489](https://github.com/crane199709/saas-forge/actions/runs/34465680489) 实际完成，8 个必要 job 全部 success；JDK 17/21、独立四浏览器、五渠道 Fresh 产品及 Nacos/Tenant 专项均执行。
 
 ### 调整后真实 CI
 
@@ -95,7 +95,7 @@ bash scripts/verify-console-authentication-e2e.sh --development
 
 调整前 9 个 job，累计 5218 job-seconds；调整后 8 个 job，累计 4627 job-seconds。完整 Maven 从三次变为两次。最长 job 从 2106 秒变为 2199 秒，**本次观测没有证明整体墙钟提速**。基线与本次之间还包含 #163–#167 等实现，且 runner、缓存与网络存在差异；这些是实际观测值，不是相同源码 A/B 测试，不据此计算或承诺优化比例。
 
-[脱敏 artifact 10148655272](https://github.com/crane0927/saas-forge/actions/runs/34465680489/artifacts/10148655272) 对应同一源码；核对副本为 `.scratch/issue-168/ci-evidence/`（本机临时证据，已不存在，不可复现）。`acceptance-run.json` 的 `commit` 与 CI SHA 一致、`dirty=false`、`target=ci`、`scope=--product`、`status=passed`，五个产品渠道、四个产品环境兼容渠道、镜像、TLS 就绪及 Compose reset 全部 passed；最终 passed 由成功清理后的出口记录。独立 Maven step 的 success 与此 JSON 合并构成本次完整 CI 证据，不改写 scope。
+[脱敏 artifact 10148655272](https://github.com/crane199709/saas-forge/actions/runs/34465680489/artifacts/10148655272) 对应同一源码；核对副本为 `.scratch/issue-168/ci-evidence/`（本机临时证据，已不存在，不可复现）。`acceptance-run.json` 的 `commit` 与 CI SHA 一致、`dirty=false`、`target=ci`、`scope=--product`、`status=passed`，五个产品渠道、四个产品环境兼容渠道、镜像、TLS 就绪及 Compose reset 全部 passed；最终 passed 由成功清理后的出口记录。独立 Maven step 的 success 与此 JSON 合并构成本次完整 CI 证据，不改写 scope。
 
 | 产品渠道 | 实际版本 | 安全探针 | 未预期错误 / 页面错误 | Remote 资源与策略 |
 | --- | --- | --- | --- | --- |
@@ -119,7 +119,7 @@ JDK 17/21 CI 完整 Maven 日志各核对 641 tests、0 failures、0 errors、0 
 
 ## Tenant Fresh 失败复查（2026-09-11）
 
-后续文档提交 `d759442` 的 [Verify 34469298907](https://github.com/crane0927/saas-forge/actions/runs/34469298907) 为 7/8 job 成功；Tenant Fresh 在第二个撤销索引故障探针失败：预期 HTTP 503，实际 201。Redis 停机探针已通过；失败位于重启 Redis、等待 Ready、人工 `SET Ready=0` 之后。不能用前一次成功结果覆盖这次失败。
+后续文档提交 `d759442` 的 [Verify 34469298907](https://github.com/crane199709/saas-forge/actions/runs/34469298907) 为 7/8 job 成功；Tenant Fresh 在第二个撤销索引故障探针失败：预期 HTTP 503，实际 201。Redis 停机探针已通过；失败位于重启 Redis、等待 Ready、人工 `SET Ready=0` 之后。不能用前一次成功结果覆盖这次失败。
 
 IAM 的 `RevocationIndexRecovery.recoverIfNeeded()` 默认每 5 秒检查索引，发现未就绪就重建；`RedisRevocationIndex.rebuild()` 最后写回 Ready=1。原探针未隔离这个写入方，注入到请求之间存在自动恢复窗口。
 
@@ -129,4 +129,4 @@ IAM 的 `RevocationIndexRecovery.recoverIfNeeded()` 默认每 5 秒检查索引�
 - PASS：独立 Redis 8.8.1 对照中，撤销 `SET` 后 IAM 使用的写入命令被拒绝，Ready 可读取且保持 0；恢复权限后可写回 1。该检查不替代完整 HTTP 验收。
 - PASS：真实 Bash 探针的编排回归先失败（expected=503 actual=201），修复后五项通过；包含固定竞争恢复时序、禁止写入失败、注入失败、请求失败和响应断言失败，验证失败传播及权限恢复。Compose/HTTP 在此测试中为边界替身，不能替代真实 Fresh 结果。
 - PASS：相关 CLI 回归、Bash 语法、两份工作流 YAML 解析、格式与 diff 检查。
-- 本次修复提交时，正式 Tenant Fresh 入口及修复提交的完整 CI 复验结果仍待完成；最终通过或失败必须以 [Issue #168](https://github.com/crane0927/saas-forge/issues/168) 后续闭环评论中关联的提交、运行及证据为准，不能引用旧运行替代。
+- 本次修复提交时，正式 Tenant Fresh 入口及修复提交的完整 CI 复验结果仍待完成；最终通过或失败必须以 [Issue #168](https://github.com/crane199709/saas-forge/issues/168) 后续闭环评论中关联的提交、运行及证据为准，不能引用旧运行替代。

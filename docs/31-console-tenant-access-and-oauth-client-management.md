@@ -1,6 +1,6 @@
 # Console 租户访问、冻结与接入凭据管理
 
-**状态：客户体验与范围已于 2026-09-14 经逐项讨论确认，并发布为 [GitHub Issue #181](https://github.com/crane0927/saas-forge/issues/181)，标记 `ready-for-agent`；实现与本机验收记录见 [Issue #181 验证记录](acceptance/issue-181-console-access-management.md)。**
+**状态：客户体验与范围已于 2026-09-14 经逐项讨论确认，并发布为 [GitHub Issue #181](https://github.com/crane199709/saas-forge/issues/181)，标记 `ready-for-agent`；实现与本机验收记录见 [Issue #181 验证记录](acceptance/issue-181-console-access-management.md)。**
 
 本规格承接 [MVP 开发计划第 2 阶段](16-mvp-development-plan.md)剩余三项 Console 交互。前置的平台登录、Tenant 创建、订阅与管理员初始化复用[已有规格](30-platform-console-tenant-initialization.md)。本文记录本轮 Q1～Q10 的确认结果，不表示第 2 阶段完成。
 

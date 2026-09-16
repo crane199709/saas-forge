@@ -1,12 +1,12 @@
 # Console 国际化基线
 
-状态：公开接口、资源门禁与验收矩阵已实现，**两个 Console 的 Locale 收敛未完成**。Q1–Q14 的公开接口、交付顺序及验收矩阵已按本文交付，PRD [Issue #117](https://github.com/crane0927/saas-forge/issues/117) 已关闭；资源门禁 `pnpm --dir consoles run validate:i18n` 已接入 `build:workspace` 与 `verify:workspace`。本文继续作为实施规格；包名与当前实现状态见下方说明与[当前仓库事实与衔接点](#当前仓库事实与衔接点)，已确认但未达成的项集中在[未达成项](#未达成项)。
+状态：公开接口、资源门禁与验收矩阵已实现，**两个 Console 的 Locale 收敛未完成**。Q1–Q14 的公开接口、交付顺序及验收矩阵已按本文交付，PRD [Issue #117](https://github.com/crane199709/saas-forge/issues/117) 已关闭；资源门禁 `pnpm --dir consoles run validate:i18n` 已接入 `build:workspace` 与 `verify:workspace`。本文继续作为实施规格；包名与当前实现状态见下方说明与[当前仓库事实与衔接点](#当前仓库事实与衔接点)，已确认但未达成的项集中在[未达成项](#未达成项)。
 
 > **包名更新**：本文原先以 `@saas-forge/react-shell` 与 `@saas-forge/design-system` 表述共享 UI 载体，二者已按 [ADR 0050](adr/0050-consoles-adopt-soybean-element-plus.md) 替换为 `@saas-forge/admin`（Vue 3 + Element Plus + Soybean Admin）。正文已按当前仓库更新，语言解析、偏好存储、资源门禁与回退语义不变。
 
 关联：[MVP 开发计划](16-mvp-development-plan.md)、[Console 设计规范](25-design-system.md)、[认证 Runtime](28-console-authentication-runtime.md)、[Locale 偏好边界 ADR](adr/0040-console-locale-is-a-local-ui-preference.md)。
 
-PRD：[Issue #117 — 建立 Console 中英文国际化基线与可扩展 Locale 契约](https://github.com/crane0927/saas-forge/issues/117)，属于阶段交付总计划 #88。
+PRD：[Issue #117 — 建立 Console 中英文国际化基线与可扩展 Locale 契约](https://github.com/crane199709/saas-forge/issues/117)，属于阶段交付总计划 #88。
 
 ## 已确认决策
 
@@ -111,7 +111,7 @@ PRD：[Issue #117 — 建立 Console 中英文国际化基线与可扩展 Locale
 
 ### 未达成项
 
-以下各点本文正文已作要求，但当前实现尚未满足。它们既是 [#199](https://github.com/crane0927/saas-forge/issues/199) 需要承接的范围，也是阅读本文时不能把正文当作现状的地方：
+以下各点本文正文已作要求，但当前实现尚未满足。它们既是 [#199](https://github.com/crane199709/saas-forge/issues/199) 需要承接的范围，也是阅读本文时不能把正文当作现状的地方：
 
 - **§12 的"标签页重新激活时重新读取"只在 admin 侧成立**。`@saas-forge/admin` 的 `useLocale()` 监听了 `visibilitychange`（`shared/admin/src/runtime/context.ts`），而 platform-console 的 `src/locales/index.ts` 只监听 `storage` 与 `languagechange`，没有 `visibilitychange`；platform-console 激活标签页后不会重读存储中的最新偏好。
 - **platform-console 的语言集合写死为两个值**。`platform-console/src/locales/index.ts` 用 `type Locale = 'zh-CN' | 'en-US'` 与同值的 `supported()`，不读 `@saas-forge/i18n` 的语言注册表。因此 §5「新语言扩展」在 platform-console 上无法只改注册表完成，必须同时改这个文件。

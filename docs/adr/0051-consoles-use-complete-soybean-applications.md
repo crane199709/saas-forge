@@ -2,7 +2,7 @@
 
 > 目标已由 #201/#202 更新：改为已有 saas-forge-web 中一个完整 Soybean Console。#193–#199 已按计划变更关闭，不再是前置任务，也不代表旧验收通过；统一协议见 [ADR 0052](0052-unified-console-authentication-uses-versioned-session-protocol.md)（已确认、未实施）。以下状态与双 Console 范围保留为当时记录，不作为当前实施指令。
 
-> **状态**：**已确认，未实施**。实施由 [Issue #199](https://github.com/crane0927/saas-forge/issues/199) 追踪，且被 #193–#198（各页面迁入官方应用）阻塞。
+> **状态**：**已确认，未实施**。实施由 [Issue #199](https://github.com/crane199709/saas-forge/issues/199) 追踪，且被 #193–#198（各页面迁入官方应用）阻塞。
 >
 > 正文用完成时语态描述**目标状态**，不代表已经落地：目前只有 platform-console 已按官方应用结构切换；tenant-console-shell 仍通过 `@saas-forge/admin` 的 `mountConsole` 与自建 `Workspace.vue` 挂载，待迁移。`@saas-forge/admin` 与 `@saas-forge/i18n` 两个包当前都仍然存在。迁移范围与待办见[重构计划](../plans/console-soybean-element-plus-refactoring.md)。
 

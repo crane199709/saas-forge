@@ -6,7 +6,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/crane0927/saas-forge.git",
+    "url": "git+https://github.com/crane199709/saas-forge.git",
     "directory": "saas-forge-contracts/saas-forge-openapi-contracts/typescript-client"
   },
   "files": [

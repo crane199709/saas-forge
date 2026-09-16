@@ -2,7 +2,7 @@
 
 > **历史证据**：本文保留当时的验收记录与命令输出，不代表当前实现或当前门禁。其中的前端包名、界面描述与门禁计数可能属于已被 [ADR 0050](../adr/0050-consoles-adopt-soybean-element-plus.md) 替换的自建 Design System / React Shell 时期；当前 Vue 实现与验证入口见 [Console 设计规范](../25-design-system.md)、[Console 认证 Runtime](../28-console-authentication-runtime.md) 与 [测试基线](../console-testing-baseline.md)，复现按 [本地分层验证](../local-verification.md)。
 
-- 规格：[Issue #180](https://github.com/crane0927/saas-forge/issues/180)。
+- 规格：[Issue #180](https://github.com/crane199709/saas-forge/issues/180)。
 - 实现起点：`b49abfee0f4e2620755ba6202a3b74e15d4e86fe`；本记录对应当前实现工作区。
 - 覆盖登记与复现命令：[共享前端测试基线](../console-testing-baseline.md)。
 - 日期：2026-09-13。本地执行、远端 CI 与 Fresh 产品验收分别记录；未执行不能视为通过。
@@ -53,7 +53,7 @@ bash scripts/verify-console-authentication-e2e.sh --product
 
 首次 SMTP 恢复 503 在未修改代码的复跑中未复现，当时根因尚未确定；后续复现与修复见下节。本记录保留该间歇失败，不以重试通过证明其稳定性已解决；本轮没有为获得通过而跳过测试、延长超时或放宽断言。完整受限诊断保留在 `sf-console-e2e-diagnostics.7TR06F`，不得直接上传原始日志。
 
-远端 [Verify 34791131200](https://github.com/crane0927/saas-forge/actions/runs/34791131200) 对应 `2969536`：JDK 17/Fresh Chrome、Tenant lifecycle Fresh 和 Nacos 三个 Job 通过；视觉 Job 的 94+40 个测试通过（94 个组件测试属于已删除的 Design System 代际，现不可复现），但临时目录清理失败，整个 Job 失败。当时 MVP 对应事项保持未勾选、Issue 保持 OPEN；最终状态见下节。
+远端 [Verify 34791131200](https://github.com/crane199709/saas-forge/actions/runs/34791131200) 对应 `2969536`：JDK 17/Fresh Chrome、Tenant lifecycle Fresh 和 Nacos 三个 Job 通过；视觉 Job 的 94+40 个测试通过（94 个组件测试属于已删除的 Design System 代际，现不可复现），但临时目录清理失败，整个 Job 失败。当时 MVP 对应事项保持未勾选、Issue 保持 OPEN；最终状态见下节。
 
 ## 代码审查
 
@@ -87,6 +87,6 @@ bash scripts/verify-console-authentication-e2e.sh --product
 
 ## 最终完成确认（2026-09-14）
 
-实现提交 `c6b451484d4815db14d63d4e007474b540a4664d` 的 [Verify 34794778921](https://github.com/crane0927/saas-forge/actions/runs/34794778921) 已完成且成功：Linux Chromium 视觉、JDK 17/Fresh Chrome、Tenant lifecycle Fresh、Nacos 四个 Job 全部通过。视觉入口及清理最终退出码 0；Fresh Chrome 产品 40/40、0 失败/跳过。
+实现提交 `c6b451484d4815db14d63d4e007474b540a4664d` 的 [Verify 34794778921](https://github.com/crane199709/saas-forge/actions/runs/34794778921) 已完成且成功：Linux Chromium 视觉、JDK 17/Fresh Chrome、Tenant lifecycle Fresh、Nacos 四个 Job 全部通过。视觉入口及清理最终退出码 0；Fresh Chrome 产品 40/40、0 失败/跳过。
 
 据覆盖清单与本地/CI证据，Issue #180 的 16 项验收已完成，MVP 第 1 阶段对应共享测试事项勾选。此处仅完成本项，不代表其他阶段或其他业务闭环完成。此前失败、跳过及阻塞记录保留为历史事实。

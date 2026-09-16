@@ -2,7 +2,7 @@
 
 > **状态**：本文是设计基线，描述长期有效的目标与约束，不代表对应功能已实现；当前实现状态见 [README 的当前状态](../README.md#当前状态) 与开放 Issues，进度勾选见 [MVP 开发计划](16-mvp-development-plan.md)。涉及前端界面的部分写作于自建 Design System / React Shell 时期，已由 [ADR 0050](adr/0050-consoles-adopt-soybean-element-plus.md) 替代；现行实现是 Vue 3 + Element Plus + Soybean Admin。
 
-> 原始交付来源为 [GitHub Issue #64](https://github.com/crane0927/saas-forge/issues/64)；本文的写读边界已按当前实现更新（Client 列表、操作记录与凭据状态查询已作为增量交付，见 [OAuth Client 读取验收记录](acceptance/issue-178-oauth-client-reads.md)）。
+> 原始交付来源为 [GitHub Issue #64](https://github.com/crane199709/saas-forge/issues/64)；本文的写读边界已按当前实现更新（Client 列表、操作记录与凭据状态查询已作为增量交付，见 [OAuth Client 读取验收记录](acceptance/issue-178-oauth-client-reads.md)）。
 
 本规格对应 [MVP 开发计划第 2 阶段](16-mvp-development-plan.md)中的 OAuth 2.0 Client Credentials 管理条目，建立在已完成的最小 Client Credentials Token 签发、Service Access Token 校验和保留服务 Client bootstrap 之上。领域语言以 [IAM Context](../saas-forge-services/iam-service/CONTEXT.md) 为准，架构取舍见 [ADR 0033](adr/0033-oauth-client-management-uses-immediate-revocation-and-replacement-recovery.md)。
 
