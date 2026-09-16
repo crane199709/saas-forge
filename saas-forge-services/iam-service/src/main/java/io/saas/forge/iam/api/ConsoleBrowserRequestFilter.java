@@ -34,7 +34,7 @@ public final class ConsoleBrowserRequestFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String path = request.getRequestURI();
         if (path.startsWith("/api/v1/auth/") && !Set.of("/api/v1/auth/logout", "/api/v1/auth/password-setups").contains(path)) {
-            reject(response, 410, "AUTH_PROTOCOL_RETIRED"); return;
+            reject(request, response, 410, "AUTH_PROTOCOL_RETIRED"); return;
         }
         if (!path.startsWith("/api/v2/auth/")) { chain.doFilter(request, response); return; }
         response.setHeader("Cache-Control", "no-store");
@@ -42,13 +42,13 @@ public final class ConsoleBrowserRequestFilter extends OncePerRequestFilter {
         if (!Collections.list(request.getHeaders("Origin")).equals(java.util.List.of(origin))
                 || !Set.of("same-site", "same-origin").contains(String.valueOf(request.getHeader("Sec-Fetch-Site")))
                 || mutation && (!Collections.list(request.getHeaders("X-SF-CSRF")).equals(java.util.List.of("1")) || !json(request))) {
-            reject(response, 403, "BROWSER_REQUEST_REJECTED"); return;
+            reject(request, response, 403, "BROWSER_REQUEST_REJECTED"); return;
         }
         if (mutation && !Set.of("/api/v2/auth/bootstrap", "/api/v2/auth/password-setups").contains(path)) {
             var revisions = Collections.list(request.getHeaders("If-Match"));
-            if (revisions.isEmpty()) { reject(response, 428, "SESSION_REVISION_REQUIRED"); return; }
+            if (revisions.isEmpty()) { reject(request, response, 428, "SESSION_REVISION_REQUIRED"); return; }
             if (revisions.size() != 1 || !revisions.get(0).matches("\"(0|[1-9][0-9]*)\"")) {
-                reject(response, 400, "VALIDATION_FAILED"); return;
+                reject(request, response, 400, "VALIDATION_FAILED"); return;
             }
         }
         chain.doFilter(request, response);
@@ -59,10 +59,10 @@ public final class ConsoleBrowserRequestFilter extends OncePerRequestFilter {
         catch (IllegalArgumentException invalid) { return false; }
     }
 
-    private void reject(HttpServletResponse response, int status, String code) throws IOException {
+    private void reject(HttpServletRequest request, HttpServletResponse response, int status, String code) throws IOException {
         response.setStatus(status);
         response.setHeader("Cache-Control", "no-store");
         response.setContentType("application/problem+json");
-        json.writeValue(response.getOutputStream(), ConsoleAuthenticationExceptionHandler.problem(status, code));
+        json.writeValue(response.getOutputStream(), ConsoleAuthenticationExceptionHandler.problem(status, code, request));
     }
 }

@@ -345,7 +345,7 @@ public class AuthenticationExceptionHandler {
                 .build();
     }
 
-    private static String traceId(HttpServletRequest request) {
+    static String traceId(HttpServletRequest request) {
         Matcher matcher = TRACE_PARENT.matcher(request.getHeader("traceparent") == null
                 ? ""
                 : request.getHeader("traceparent"));

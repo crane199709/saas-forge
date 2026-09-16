@@ -427,14 +427,17 @@ class AuthenticationHttpIT {
             if (initial) assertEquals(Set.of("sessionId", "revision", "state"),
                     json(login.getResponse().getContentAsByteArray()).propertyNames());
             if (initial) http.perform(consolePost("refresh").cookie(locator, login.getResponse().getCookie("__Host-sf_console_refresh"))
+                    .header("traceparent", "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01")
                     .header("If-Match", login.getResponse().getHeader("ETag")).header("Idempotency-Key", uuidV7(80403)).content("{}"))
                     .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("INITIAL_CREDENTIAL_RESTRICTED"))
+                    .andExpect(jsonPath("$.traceId").value("0123456789abcdef0123456789abcdef"))
                     .andExpect(header().doesNotExist("Set-Cookie"));
         }
         http.perform(consolePost("bootstrap").header("Origin", "https://platform.saas.forge.test").content("{}"))
                 .andExpect(status().isForbidden()).andExpect(header().doesNotExist("Set-Cookie"));
-        http.perform(consolePost("login").content("{}"))
-                .andExpect(status().is(428)).andExpect(header().doesNotExist("Set-Cookie"));
+        http.perform(consolePost("login").header("traceparent", "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01").content("{}"))
+                .andExpect(status().is(428)).andExpect(header().doesNotExist("Set-Cookie"))
+                .andExpect(jsonPath("$.traceId").value("0123456789abcdef0123456789abcdef"));
     }
 
     @Test
