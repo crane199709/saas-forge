@@ -44,7 +44,7 @@ public class InitialPasswordChangeService {
 
     /** 凭据替换、受限 Family 撤销和 password.changed Outbox 必须共享同一事务。 */
     @Transactional
-    public void change(String refreshToken, String newPassword, String traceId) {
+    public java.util.UUID change(String refreshToken, String newPassword, String traceId) {
         String normalizedPassword = passwordPolicy.normalizeForChange(newPassword);
         if (compromisedPasswords.isCompromised(normalizedPassword)) {
             throw new PasswordCompromisedException();
@@ -67,5 +67,6 @@ public class InitialPasswordChangeService {
         PasswordCredential regular = identities.replaceInitialPassword(initial, PasswordCredential.regular(
                 family.identityId(), passwordVerifier.hash(normalizedPassword), changedAt));
         outboxEvents.append(eventFactory.create(family, regular, changedAt, traceId));
+        return regular.id();
     }
 }

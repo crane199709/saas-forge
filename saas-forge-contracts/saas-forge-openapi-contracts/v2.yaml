@@ -301,6 +301,53 @@ paths:
           $ref: '#/components/responses/ConsoleProblem'
         '503':
           $ref: '#/components/responses/ConsoleProblem'
+  /api/v2/auth/password-changes:
+    post:
+      tags: [ConsoleAuthentication]
+      operationId: changeConsoleInitialPassword
+      x-saas.forge-service: iam-service
+      security:
+        - ConsoleSlotCookieAuth: []
+          ConsoleRefreshCookieAuth: []
+      description: |
+        Consumes an initial credential and ends its restricted session atomically.
+        Login with the new password is required. Same-key replay returns the original
+        result without changing credentials or clearing a later session cookie.
+        A different newPassword with the same key is rejected. No password is stored in operation records.
+      parameters:
+        - $ref: '#/components/parameters/ConsoleCsrf'
+        - $ref: '#/components/parameters/ConsoleRevision'
+        - $ref: '#/components/parameters/ConsoleIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsolePasswordChangeRequest'
+      responses:
+        '204':
+          description: Authoritative result; ETag is the Slot revision.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ConsoleETag'
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+        '400':
+          $ref: '#/components/responses/ConsoleProblem'
+        '401':
+          $ref: '#/components/responses/ConsoleProblem'
+        '403':
+          $ref: '#/components/responses/ConsoleProblem'
+        '409':
+          $ref: '#/components/responses/ConsoleProblem'
+        '412':
+          $ref: '#/components/responses/ConsoleProblem'
+        '428':
+          $ref: '#/components/responses/ConsoleProblem'
+        '503':
+          $ref: '#/components/responses/ConsoleProblem'
 components:
   securitySchemes:
     ConsoleSlotCookieAuth:
@@ -356,6 +403,18 @@ components:
           schema:
             $ref: './common.yaml#/components/schemas/ProblemDetails'
   schemas:
+    ConsolePasswordChangeRequest:
+      type: object
+      additionalProperties: false
+      required: [newPassword]
+      properties:
+        newPassword:
+          type: string
+          format: password
+          writeOnly: true
+          minLength: 12
+          maxLength: 128
+
     ConsoleRevisionValue:
       type: string
       pattern: '^(0|[1-9][0-9]*)$'

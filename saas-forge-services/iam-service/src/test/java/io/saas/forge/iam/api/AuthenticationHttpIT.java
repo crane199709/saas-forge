@@ -715,6 +715,50 @@ class AuthenticationHttpIT {
         consoleContexts.clear();
     }
 
+    @Test
+    @Order(10000)
+    void unifiedInitialPasswordChangeIsAtomicAndReplayCannotClearLaterLogin() throws Exception {
+        var http = unifiedConsole();
+        createUser("unified-change@example.test", "Console-password!", true, Credential.ACTIVE_INITIAL);
+        var bootstrap = http.perform(consolePost("bootstrap").content("{}")).andReturn();
+        Cookie locator = bootstrap.getResponse().getCookie("__Host-sf_console_slot");
+        var login = http.perform(consolePost("login").cookie(locator).header("If-Match", "\"0\"")
+                .content("{\"email\":\"unified-change@example.test\",\"password\":\"Console-password!\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.state").value("PASSWORD_CHANGE_REQUIRED")).andReturn();
+        Cookie refresh = login.getResponse().getCookie("__Host-sf_console_refresh");
+        String revision = login.getResponse().getHeader("ETag");
+        UUID key = uuidV7(80901);
+        String body = "{\"newPassword\":\"New-console-password!\"}";
+        http.perform(consolePost("password-changes").cookie(locator, refresh).header("If-Match", "\"0\"")
+                .header("Idempotency-Key", key).content(body)).andExpect(status().is(412));
+        http.perform(consolePost("password-changes").cookie(locator, refresh).header("If-Match", revision)
+                .header("Idempotency-Key", key).content("{\"newPassword\":\"short\"}"))
+                .andExpect(status().isBadRequest());
+        var changed = http.perform(consolePost("password-changes").cookie(locator, refresh).header("If-Match", revision)
+                .header("Idempotency-Key", key).content(body))
+                .andExpect(status().isNoContent()).andExpect(cookie().maxAge("__Host-sf_console_refresh", 0)).andReturn();
+        String ended = changed.getResponse().getHeader("ETag");
+        http.perform(consolePost("login").cookie(locator).header("If-Match", ended)
+                .content("{\"email\":\"unified-change@example.test\",\"password\":\"Console-password!\"}"))
+                .andExpect(status().isUnauthorized());
+        var regular = http.perform(consolePost("login").cookie(locator).header("If-Match", ended)
+                .content("{\"email\":\"unified-change@example.test\",\"password\":\"New-console-password!\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.state").value("AUTHENTICATED")).andReturn();
+        http.perform(consolePost("password-changes").cookie(locator).header("If-Match", revision)
+                .header("Idempotency-Key", key).content(body))
+                .andExpect(status().isNoContent()).andExpect(header().doesNotExist("Set-Cookie"))
+                .andExpect(header().string("ETag", ended));
+        http.perform(consolePost("password-changes").cookie(locator).header("If-Match", revision)
+                .header("Idempotency-Key", key).content("{\"newPassword\":\"Different-password!\"}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REUSED"));
+        http.perform(consolePost("password-changes").cookie(locator, regular.getResponse().getCookie("__Host-sf_console_refresh"))
+                .header("If-Match", regular.getResponse().getHeader("ETag"))
+                .header("Idempotency-Key", uuidV7(80902)).content(body)).andExpect(status().isUnauthorized());
+        http.perform(get("/api/v2/auth/session").cookie(locator, regular.getResponse().getCookie("__Host-sf_console_refresh"))
+                .header("Origin", "https://console.saas.forge.test").header("Sec-Fetch-Site", "same-site"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.state").value("AUTHENTICATED"));
+    }
+
     private MockMvc unifiedConsole() {
         return unifiedConsole(new AtomicBoolean());
     }

@@ -117,6 +117,9 @@ Refresh Cookie 保留现行闲置期限与绝对期限的较小 Max-Age。两个
 
 Idempotency-Key 使用现行 UUIDv7 约束。上下文选择、退出、首次改密持久保存非敏感结果/状态及指纹；同键改请求为 409。没有 Token 的 204 可以稳定重放。login 无通用幂等响应：结果未知先 bootstrap 判断是否已有 Session；若 Cookie 已收到则 refresh，否则结束已建立但无法恢复的会话后重新登录，不能自动重复提交密码。
 
+首次改密的非敏感结果记录引用本次建立的 Credential ID；同键重放使用该 Credential 既有的 Argon2id 哈希核对 NFC 密码，不另存密码、快速摘要或 Token。凭据替换、原受限 Family 撤销、Slot 清空并递增 revision、Outbox 和结果记录在同一事务提交。原键重放不清除后来建立的 Refresh Cookie；失败输入不消费受限会话。前端只保留非敏感操作键及原 Session/revision，未知结果先 bootstrap 核查，不持久化或自动重发新密码。
+
+
 bootstrap 的 `transition` 为 `NONE | SWITCH_PENDING | CONTEXT_REFRESH_REQUIRED | ENDING`，只用于恢复协调，不携带 Identity。`SWITCH_PENDING` 时 session/contexts/refresh/新选择返回503 `SESSION_TRANSITION_PENDING`，原切换键可恢复，退出可以终止该流程；`CONTEXT_REFRESH_REQUIRED` 时读取和新选择返回409，允许refresh及退出；`ENDING` 时读取、refresh、选择及新login都返回503，只有退出恢复可以继续。不得返回可操作的 AUTHENTICATED Snapshot 让其他标签页绕过未完成转换。每个 Session 最多一个退出根流程；本地原键丢失时，在同 Slot、最新 revision 下提交的新退出键绑定既有结束流程，不新建或改变退出目标。
 
 密码类请求不持久化明文密码、Challenge 或可用于离线猜测密码的无密钥指纹；需要判定同键不同密码时使用受保护服务端密钥计算的指纹，密钥由既有外部凭据机制注入，不写入配置中心。初始会话调用 refresh 返回403 `INITIAL_CREDENTIAL_RESTRICTED`；页面恢复通过只读 Session Snapshot，不能轮换延长受限会话。

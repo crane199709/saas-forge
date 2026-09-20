@@ -27,10 +27,12 @@ public class ConsoleAuthenticationController implements ConsoleAuthenticationApi
     private final ConsoleSessionService sessions;
     private final ConsoleContextSelectionService selections;
     private final ConsoleSessionTermination termination;
+    private final io.saas.forge.iam.application.authentication.ConsolePasswordChangeService passwords;
 
     public ConsoleAuthenticationController(ConsoleSessionService sessions, ConsoleContextSelectionService selections,
-            ConsoleSessionTermination termination) {
-        this.sessions = sessions; this.selections = selections; this.termination = termination;
+            ConsoleSessionTermination termination,
+            io.saas.forge.iam.application.authentication.ConsolePasswordChangeService passwords) {
+        this.sessions = sessions; this.selections = selections; this.termination = termination; this.passwords = passwords;
     }
 
     @Override
@@ -89,6 +91,19 @@ public class ConsoleAuthenticationController implements ConsoleAuthenticationApi
         requireEmpty(body);
         var result = termination.logout(cookie(SLOT_COOKIE), revision, key);
         var response = ResponseEntity.noContent().eTag(Long.toString(result.revision())).header(HttpHeaders.CACHE_CONTROL, "no-store");
+        if (result.clearRefreshCookie()) response.header(HttpHeaders.SET_COOKIE, cookie(REFRESH_COOKIE, "", 0));
+        return response.build();
+    }
+
+    @Override
+    public ResponseEntity<Void> changeConsoleInitialPassword(String csrf, String revision, UUID key,
+            ConsolePasswordChangeRequest body) {
+        var request = ((org.springframework.web.context.request.ServletRequestAttributes)
+                org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes()).getRequest();
+        var result = passwords.change(cookie(SLOT_COOKIE), cookie(REFRESH_COOKIE), revision, key,
+                body.getNewPassword(), AuthenticationExceptionHandler.traceId(request));
+        var response = ResponseEntity.noContent().eTag(Long.toString(result.revision()))
+                .header(HttpHeaders.CACHE_CONTROL, "no-store");
         if (result.clearRefreshCookie()) response.header(HttpHeaders.SET_COOKIE, cookie(REFRESH_COOKIE, "", 0));
         return response.build();
     }

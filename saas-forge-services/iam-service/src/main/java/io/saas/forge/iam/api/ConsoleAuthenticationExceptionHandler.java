@@ -28,6 +28,21 @@ public final class ConsoleAuthenticationExceptionHandler {
         return response(status, error.code().name(), request);
     }
 
+    @ExceptionHandler(PasswordPolicyException.class)
+    ResponseEntity<ConsoleProblem> passwordPolicy(PasswordPolicyException error, HttpServletRequest request) {
+        return response(400, error.code(), request);
+    }
+
+    @ExceptionHandler(PasswordCompromisedException.class)
+    ResponseEntity<ConsoleProblem> compromised(PasswordCompromisedException error, HttpServletRequest request) {
+        return response(400, PasswordCompromisedException.CODE, request);
+    }
+
+    @ExceptionHandler(PasswordChangeSessionInvalidException.class)
+    ResponseEntity<ConsoleProblem> passwordSession(PasswordChangeSessionInvalidException error, HttpServletRequest request) {
+        return response(401, PasswordChangeSessionInvalidException.CODE, request);
+    }
+
     @ExceptionHandler(AuthenticationFailedException.class)
     ResponseEntity<ConsoleProblem> credentials(AuthenticationFailedException error, HttpServletRequest request) {
         return response(401, "AUTHENTICATION_FAILED", request);

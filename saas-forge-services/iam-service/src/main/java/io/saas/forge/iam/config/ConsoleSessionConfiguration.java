@@ -48,6 +48,14 @@ public class ConsoleSessionConfiguration {
     }
 
     @Bean
+    ConsolePasswordChangeService consolePasswordChangeService(ConsoleSessionAccess access,
+            ConsoleSessionRepository slots, InitialPasswordChangeService passwords, IdentityRepository identities,
+            PasswordVerifier verifier, PlatformTransactionManager manager) {
+        return new ConsolePasswordChangeService(access, slots, passwords, identities, verifier,
+                new TransactionTemplate(manager));
+    }
+
+    @Bean
     ConsoleSessionService consoleSessionService(ConsoleSessionAccess access, ConsoleSessionRepository slots,
             RefreshTokenFamilyRepository families, AccessTokenIssuanceRepository issuances,
             IdentityRepository identities, LoginProtection protection, PasswordVerifier verifier,

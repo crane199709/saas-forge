@@ -1,6 +1,6 @@
 {
   "name": "@crane199709/saas-forge-api-client",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Generated SaaS Forge public API Client",
   "type": "module",
   "license": "Apache-2.0",

@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
+import { X509Certificate } from "node:crypto";
 import { constants } from "node:fs";
 import {
   access,
@@ -71,19 +72,14 @@ export function developmentHttpsPaths(repositoryRoot) {
 }
 
 export async function certificateCoversExpectedHosts(certificate) {
-  const result = run(
-    "openssl",
-    ["x509", "-in", certificate, "-noout", "-ext", "subjectAltName"],
-    {
-      allowFailure: true,
-    },
-  );
-  return (
-    result.status === 0 &&
-    developmentHosts.every((host) =>
-      (result.stdout.match(/DNS:([^,\s]+)/gu) ?? []).includes(`DNS:${host}`),
-    )
-  );
+  try {
+    const parsed = new X509Certificate(await readFile(certificate));
+    return developmentHosts.every(
+      (host) => parsed.checkHost(host, { subject: "never", wildcards: false }) === host,
+    );
+  } catch {
+    return false;
+  }
 }
 
 export async function ensureCertificateMaterial(paths) {

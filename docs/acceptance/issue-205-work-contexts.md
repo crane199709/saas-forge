@@ -1,6 +1,6 @@
 # Issue #205：公司工作台与双身份切换
 
-状态：2026-09-20，后端切换与 Client 候选制品已实现并完成下列定向验证；前端适配、正式 Client 发布和真实 Chrome 业务验收未完成。不得据此关闭 Issue。
+状态：2026-09-20，后端切换已实现并完成下列定向验证，正式 Client 0.3.0 已发布；独立前端已接入并完成本地代码检查，真实 Chrome 业务验收未完成。不得据此关闭 Issue。
 
 ## 后端实现
 
@@ -39,8 +39,35 @@ mvn -o -pl saas-forge-services/iam-service -am test \
 
 ## 尚未完成的交付与验收
 
-- `@crane199709/saas-forge-api-client@0.3.0` 仅为本地候选，来源标记为 `dirty=true`，不得将此次 tarball 作为正式发布证据。正式发布要求先提交审阅后的源码，再重新构建，核对干净来源并发布。
-- 独立前端仍精确使用已发布 `0.2.0`，未修改为兄弟仓库、file/link 或临时 HTTP 调用。按父 PRD 顺序，正式 Client 和兼容后端可用后再升级前端。
-- 尚需在 saas-forge-web 实现分组公司卡片、租户工作台、显式切换、多标签及脏表单协调、晚到响应隔离、权威品牌原子应用、路由边界与中英文/键盘/焦点验证。
-- 尚需开发者启动兼容后端；前端连接该环境，用真实单身份及双身份账号完成 Chrome 业务证据。当前 HTTP 测试不代替真实 Console、Gateway 或全部直达实例验收。
+- 正式 `@crane199709/saas-forge-api-client@0.3.0` 已于 2026-09-20 发布到 npm；重新构建的来源为提交 `282f3b07c1348a57aef0d3f3cdd589c9e4a557a5`，`dirty=false`，已通过发布检查。registry shasum 为 `5f9e78f10aacb27aa001e170b1da117e2d573194`。此前本地候选不作为正式发布证据。
+- saas-forge-web 已精确升级正式 0.3.0，实现公司卡片、工作台、显式切换、跨标签失效通知与确认保护、晚到响应隔离和品牌整体回退。未采用兄弟仓库、file/link 或临时 HTTP 调用。前端细节与本地验证见该仓库 `docs/acceptance/issue-205-work-contexts.md`。
+- 兼容后端和受信 HTTPS 入口已就绪；尚需用真实单身份及双身份账号完成 Chrome 业务证据。当前 HTTP 测试不代替真实 Console、Gateway 或全部直达实例验收。
 - 未执行完整 CI、完整 AuthenticationHttpIT、Fresh Compose 或其他专项完整矩阵。
+
+## 本机联调阻塞（2026-09-20）
+
+开发者提供的 Audit 日志显示应用已启动，定时任务因 `audit_isolation_deliveries` 缺失失败。只读查询本机 `compose-postgres-1` 的 `audit_db`，确认没有业务表及 Flyway 历史；已有 `audit-migrate info` 显示空 schema、V1–V5 全部 Pending。应用固定关闭 Flyway，IDE 重启不执行初始化。开发者明确选择暂不执行迁移，因此未运行 migrate、repair 或数据重建，也未启停任何后端应用。此结果不构成真实联调通过。
+
+## 联调恢复与入口检查（2026-09-20）
+
+开发者随后确认后端启动成功；只读检查 Audit readiness 返回 UP。独立前端通过原生 `pnpm run dev` 启动。共享 HTTPS Edge 起初停止，其域名证书检查误用本机 LibreSSL 不支持的 `x509 -ext`，导致已有完整四域 SAN 证书被误判。改用 Node 内置 X509Certificate、禁用通配符与 Subject 回退后，同一实际证书检查由失败转为通过，没有更换证书或放宽验证。
+
+入口回归 `node --test consoles/test/local-https-development.test.mjs`：14 项通过（含证书复用、缺域升级、HTTPS 转发、HMR 和未知域拒绝）；1 项失败，原因是旧 consoles 工作区的 Rolldown 1.1.5 原生依赖缺失，不能计作通过。
+
+本机 /etc/hosts 缺少四域映射。开发者已授权添加固定四域到 127.0.0.1；已有安装函数因 sudo 身份验证失败未写入，等待开发者完成系统验证。此前对 Audit 迁移的“不执行”决定未被代理更改。
+
+开发者已完成四域 hosts 映射，并显式安装现有本地 CA 到系统钥匙串。Edge 启动后状态 RUNNING，未跳过 TLS 校验的 Console HTTPS 请求返回 200；IAM、Tenant Access、Entitlement、Audit readiness 均返回 UP。Chrome 已打开真实 Console 登录页；首次加载时 Vite 优化新增依赖并触发重载，随后登录表单正常显示，尚待有效账号登录。
+
+开发者确认没有账号后，授权使用其指定邮箱初始化本机平台管理员。2026-09-20 14:14，通过已有 PlatformAdminBootstrapApplication 执行一次性引导，返回 INITIALIZED；未直接写 SQL、运行迁移或重启后端。随机初始密码仅保存在 Git 忽略目录中的 600 权限文件，24 小时内有效；尚待开发者在已有 Platform 页面完成首次改密。该账号只有平台角色，不作为双身份验收证据。
+
+按锁文件 SHA-512 校验恢复缺失的 Rolldown 1.1.5 原生文件后，正式生成旧 Platform 页面所需 API Client，并通过原生 pnpm run dev 启动首次改密入口；Chrome 已显示其 HTTPS 登录表单。入口回归重跑 15/15 通过（本机监听需在沙箱外运行）；这不替代待完成的账号业务验收。
+
+### 更正：首次改密入口不可用
+
+开发者实际登录旧 Platform 页面得到 HTTP 410 / AUTH_PROTOCOL_RETIRED。本机 IAM 无凭据探针 `POST /api/v1/auth/login` 同样返回 410；ConsoleBrowserRequestFilter 在统一 Console 启用时明确拒绝该旧入口。此前将页面可打开视为可用于首次改密的判断错误，不能以恢复旧协议绕过。当前 v2 OpenAPI 只有 bootstrap、login、session、contexts、refresh、context-selections、logout，没有首次改密 operation；新 Console 仅处理 PASSWORD_CHANGE_REQUIRED 受限状态。管理员创建成功不代表其已能完成正式登录。
+
+核对 GitHub #204，其明确把初始凭据流程留给后续票；#206 实际负责两仓独立验证交接，并非首次改密实现。父 #201 要求保留该能力。当前需补齐统一协议下的首次改密契约、实现和页面，再由开发者完成改密，才能继续以此新管理员准备真实验收。
+
+## 统一 Console 首次改密补齐（2026-09-20）
+
+经开发者确认扩展范围，新增 v2 changeConsoleInitialPassword；复用既有密码策略与初始凭据事务，使用已存在的 PASSWORD_CHANGE 操作记录，无新增迁移、无恢复旧协议。新建接口的真实集成测试覆盖版本拒绝、输入拒绝不消费、改密后旧密码失效、重新登录、原键重放不清 Cookie、同键不同密码拒绝与正式凭据不能使用首次改密接口。统一认证 9 项、路由契约及仓库规范检查通过。Client 升级至 0.4.0，发布与真实浏览器结果需单独记录。

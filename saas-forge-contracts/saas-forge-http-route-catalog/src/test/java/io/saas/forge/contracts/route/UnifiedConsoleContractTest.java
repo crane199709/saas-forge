@@ -16,7 +16,7 @@ class UnifiedConsoleContractTest {
                 .map(HttpRouteCatalog.Route::operationId).collect(Collectors.toSet());
         assertEquals(Set.of("bootstrapConsoleSession", "loginConsoleSession", "getConsoleSession",
                 "getAvailableWorkContexts", "refreshConsoleSession", "selectConsoleContext",
-                "logoutConsoleSession"), operations);
+                "logoutConsoleSession", "changeConsoleInitialPassword"), operations);
         assertEquals(1, catalog.routes().stream()
                 .filter(route -> route.operationId().equals("listOAuthClients"))
                 .filter(route -> route.credentialRequirement() == HttpRouteCatalog.CredentialRequirement.USER_REQUIRED)
