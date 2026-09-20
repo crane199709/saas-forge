@@ -14,6 +14,43 @@ import org.junit.jupiter.api.Test;
 class RefreshTokenFamilyTest {
 
     @Test
+    void workViewSwitchKeepsIdentityAndSessionDeadlinesAcrossPlatformAndTenant() {
+        Instant loginAt = Instant.parse("2026-08-20T00:00:00Z");
+        RefreshTokenFamily original = RefreshTokenFamily.start(UUID.randomUUID(),
+                RefreshTokenFamilyPurpose.USER_TENANT_SELECTION, null, null, loginAt)
+                .identifiedBy(UUID.randomUUID());
+        UUID membership = UUID.randomUUID(), tenant = UUID.randomUUID();
+        RefreshTokenFamily selected = original.selectWorkContext(
+                RefreshTokenFamilyPurpose.USER_TENANT, membership, tenant);
+        assertSame(selected, selected.selectWorkContext(RefreshTokenFamilyPurpose.USER_TENANT, membership, tenant));
+        RefreshTokenFamily platform = selected.selectWorkContext(RefreshTokenFamilyPurpose.USER_PLATFORM, null, null);
+        assertEquals(original.id(), platform.id());
+        assertEquals(original.identityId(), platform.identityId());
+        assertEquals(original.lastUsedAt(), platform.lastUsedAt());
+        assertEquals(original.absoluteExpiresAt(), platform.absoluteExpiresAt());
+        assertEquals(2, platform.contextVersion());
+        assertEquals(RefreshTokenFamilyPurpose.USER_PLATFORM, platform.purpose());
+        assertEquals(null, platform.membershipId());
+        assertEquals(null, platform.tenantId());
+    }
+
+    @Test
+    void workViewSwitchRejectsRestrictedSessionsAndIncompleteTargets() {
+        Instant loginAt = Instant.parse("2026-08-20T00:00:00Z");
+        RefreshTokenFamily restricted = RefreshTokenFamily.startInitialPasswordChange(
+                UUID.randomUUID(), UUID.randomUUID(), loginAt, loginAt.plusSeconds(600));
+        assertThrows(IllegalStateException.class,
+                () -> restricted.selectWorkContext(RefreshTokenFamilyPurpose.USER_PLATFORM, null, null));
+        RefreshTokenFamily platform = RefreshTokenFamily.start(UUID.randomUUID(), null, null, loginAt);
+        assertThrows(IllegalArgumentException.class,
+                () -> platform.selectWorkContext(RefreshTokenFamilyPurpose.USER_TENANT, UUID.randomUUID(), null));
+        assertThrows(IllegalArgumentException.class,
+                () -> platform.selectWorkContext(RefreshTokenFamilyPurpose.USER_PLATFORM, null, UUID.randomUUID()));
+        assertThrows(IllegalArgumentException.class,
+                () -> platform.selectWorkContext(RefreshTokenFamilyPurpose.USER_TENANT_SELECTION, null, null));
+    }
+
+    @Test
     void refreshKeepsOriginalAbsoluteExpiryAndCarriesNewContext() {
         Instant loginAt = Instant.parse("2026-08-20T00:00:00Z");
         UUID identityId = UUID.randomUUID();

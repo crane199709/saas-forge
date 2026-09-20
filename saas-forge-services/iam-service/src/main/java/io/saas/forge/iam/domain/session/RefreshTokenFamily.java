@@ -152,6 +152,30 @@ public final class RefreshTokenFamily {
                 contextVersion + 1, lastUsedAt, absoluteExpiresAt, revokedAt);
     }
 
+    /**
+     * 统一 Console 的工作视图切换：平台管理与 Tenant 工作台之间改变 Purpose 与当前上下文，
+     * 只推进 Context Version，不更换 Identity，也不延长会话期限。
+     */
+    public RefreshTokenFamily selectWorkContext(
+            RefreshTokenFamilyPurpose nextPurpose, UUID nextMembershipId, UUID nextTenantId) {
+        if (purpose == RefreshTokenFamilyPurpose.INITIAL_PASSWORD_CHANGE) {
+            throw new IllegalStateException("受限首次改密会话不能选择工作视图");
+        }
+        if (nextPurpose != RefreshTokenFamilyPurpose.USER_PLATFORM
+                && nextPurpose != RefreshTokenFamilyPurpose.USER_TENANT) {
+            throw new IllegalArgumentException("工作视图只能是平台管理或 Tenant");
+        }
+        if ((nextPurpose == RefreshTokenFamilyPurpose.USER_PLATFORM) != (nextMembershipId == null)) {
+            throw new IllegalArgumentException("平台工作视图必须且只能没有 Membership");
+        }
+        if (purpose == nextPurpose && contextMatches(nextMembershipId, nextTenantId)) {
+            return this;
+        }
+        return new RefreshTokenFamily(
+                id, identityId, nextPurpose, null, nextMembershipId, nextTenantId,
+                contextVersion + 1, lastUsedAt, absoluteExpiresAt, revokedAt);
+    }
+
     public RefreshTokenFamily revoke(Instant at) {
         if (at == null) {
             throw new IllegalArgumentException("撤销时间不能为空");

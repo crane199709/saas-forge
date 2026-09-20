@@ -105,6 +105,28 @@ public class MyBatisRefreshTokenFamilyRepository implements RefreshTokenFamilyRe
 
     @Override
     @Transactional
+    public RefreshTokenFamilyContextChange switchWorkContext(
+            UUID familyId, RefreshTokenFamilyPurpose purpose, UUID membershipId, UUID tenantId) {
+        RefreshTokenFamilyRow locked = mapper.lockFamilyById(familyId);
+        if (locked == null) {
+            return new RefreshTokenFamilyContextChange(
+                    RefreshTokenFamilyContextChange.Status.NOT_FOUND, null);
+        }
+        RefreshTokenFamily family = toDomain(locked);
+        RefreshTokenFamily changed = family.selectWorkContext(purpose, membershipId, tenantId);
+        if (changed == family) {
+            return new RefreshTokenFamilyContextChange(
+                    RefreshTokenFamilyContextChange.Status.UNCHANGED, family);
+        }
+        if (mapper.updateFamily(toRow(changed)) != 1) {
+            throw new IllegalStateException("Refresh Token Family 工作视图保存失败");
+        }
+        return new RefreshTokenFamilyContextChange(
+                RefreshTokenFamilyContextChange.Status.CHANGED, changed);
+    }
+
+    @Override
+    @Transactional
     public RefreshRotation rotateForRefresh(
             Sha256Digest presentedDigest,
             Sha256Digest nextDigest,

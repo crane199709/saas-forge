@@ -1,8 +1,10 @@
 package io.saas.forge.iam.api;
 
+import io.saas.forge.iam.application.authentication.ConsoleContextSelectionService;
 import io.saas.forge.iam.application.authentication.ConsoleSessionService;
 import io.saas.forge.iam.application.authentication.ConsoleSessionTermination;
 import io.saas.forge.iam.application.authentication.ConsoleSessionException;
+import io.saas.forge.iam.application.authentication.TenantBrandProfileSnapshot;
 import io.saas.forge.iam.console.contract.api.ConsoleAuthenticationApi;
 import io.saas.forge.iam.console.contract.model.*;
 import io.saas.forge.iam.domain.session.RefreshTokenFamilyPurpose;
@@ -23,10 +25,12 @@ public class ConsoleAuthenticationController implements ConsoleAuthenticationApi
     static final String REFRESH_COOKIE = "__Host-sf_console_refresh";
     static final List<String> LEGACY_COOKIES = List.of("__Host-sf_platform_refresh", "__Host-sf_tenant_refresh", "__Host-sf_refresh");
     private final ConsoleSessionService sessions;
+    private final ConsoleContextSelectionService selections;
     private final ConsoleSessionTermination termination;
 
-    public ConsoleAuthenticationController(ConsoleSessionService sessions, ConsoleSessionTermination termination) {
-        this.sessions = sessions; this.termination = termination;
+    public ConsoleAuthenticationController(ConsoleSessionService sessions, ConsoleContextSelectionService selections,
+            ConsoleSessionTermination termination) {
+        this.sessions = sessions; this.selections = selections; this.termination = termination;
     }
 
     @Override
@@ -73,6 +77,14 @@ public class ConsoleAuthenticationController implements ConsoleAuthenticationApi
     }
 
     @Override
+    public ResponseEntity<Void> selectConsoleContext(String csrf, String revision, UUID key,
+            ConsoleContextSelectionRequest body) {
+        var target = selectionTarget(body);
+        long selected = selections.select(cookie(SLOT_COOKIE), cookie(REFRESH_COOKIE), revision, key, target);
+        return ResponseEntity.noContent().eTag(Long.toString(selected)).header(HttpHeaders.CACHE_CONTROL, "no-store").build();
+    }
+
+    @Override
     public ResponseEntity<Void> logoutConsoleSession(String csrf, String revision, UUID key, Object body) {
         requireEmpty(body);
         var result = termination.logout(cookie(SLOT_COOKIE), revision, key);
@@ -99,21 +111,48 @@ public class ConsoleAuthenticationController implements ConsoleAuthenticationApi
                 .body(body);
     }
 
+    private static ConsoleContextSelectionService.Target selectionTarget(ConsoleContextSelectionRequest body) {
+        if (body == null || body.getType() == null)
+            throw new ConsoleSessionException(ConsoleSessionException.Code.VALIDATION_FAILED);
+        UUID membershipId = body.getMembershipId();
+        return switch (body.getType()) {
+            case PLATFORM -> {
+                if (membershipId != null) throw new ConsoleSessionException(ConsoleSessionException.Code.VALIDATION_FAILED);
+                yield ConsoleContextSelectionService.Target.platform();
+            }
+            case TENANT -> {
+                if (membershipId == null || membershipId.version() != 7 || membershipId.variant() != 2)
+                    throw new ConsoleSessionException(ConsoleSessionException.Code.VALIDATION_FAILED);
+                yield ConsoleContextSelectionService.Target.tenant(membershipId);
+            }
+        };
+    }
+
     private static ConsoleSessionSnapshot snapshot(io.saas.forge.iam.application.authentication.ConsoleSessionSnapshot result) {
         var family = result.family();
         var snapshot = new ConsoleSessionSnapshot(family.id(), Long.toString(result.revision()),
                 ConsoleSessionSnapshot.StateEnum.valueOf(result.state().name()));
         if (result.state() == io.saas.forge.iam.application.authentication.ConsoleSessionSnapshot.State.PASSWORD_CHANGE_REQUIRED)
             return snapshot;
+        var companies = result.companies().stream().map(company -> new ConsoleCompany(company.membershipId(),
+                company.tenantId(), company.tenantDisplayName()).brand(brand(company.brandProfile()))).toList();
         ConsoleActiveContext active = null;
-        if (result.state() == io.saas.forge.iam.application.authentication.ConsoleSessionSnapshot.State.AUTHENTICATED)
+        if (result.state() == io.saas.forge.iam.application.authentication.ConsoleSessionSnapshot.State.AUTHENTICATED) {
+            var current = result.companies().stream()
+                    .filter(company -> company.membershipId().equals(family.membershipId())).findFirst();
             active = new ConsoleActiveContext(family.purpose() == RefreshTokenFamilyPurpose.USER_PLATFORM
                     ? ConsoleActiveContext.TypeEnum.PLATFORM : ConsoleActiveContext.TypeEnum.TENANT)
-                    .membershipId(family.membershipId()).tenantId(family.tenantId());
-        var companies = result.companies().stream().map(company -> new ConsoleCompany(company.membershipId(),
-                company.tenantId(), company.tenantDisplayName())).toList();
+                    .membershipId(family.membershipId()).tenantId(family.tenantId())
+                    .brand(current.map(company -> brand(company.brandProfile())).orElse(null));
+        }
         return snapshot.identity(new ConsoleIdentity(result.identity().id(), result.identity().email().value()))
                 .activeContext(active).availableContexts(new ConsoleAvailableContexts(result.platform(), companies));
+    }
+
+    private static ConsoleTenantBrand brand(TenantBrandProfileSnapshot profile) {
+        return profile == null ? null : new ConsoleTenantBrand(
+                profile.displayName(), profile.primaryColor(), profile.accentColor())
+                .logoUrl(profile.logoUrl()).faviconUrl(profile.faviconUrl());
     }
 
     private String cookie(String name) {

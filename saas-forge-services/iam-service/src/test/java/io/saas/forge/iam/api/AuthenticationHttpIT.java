@@ -424,6 +424,10 @@ class AuthenticationHttpIT {
                             ? "PASSWORD_CHANGE_REQUIRED" : "NO_AVAILABLE_CONTEXT"))
                     .andExpect(jsonPath("$.accessToken").doesNotExist())
                     .andExpect(jsonPath("$.activeContext").doesNotExist()).andReturn();
+            consoleSelect(http, locator, login.getResponse().getCookie("__Host-sf_console_refresh"),
+                    login.getResponse().getHeader("ETag"), uuidV7(initial ? 80801 : 80802), "{\"type\":\"PLATFORM\"}")
+                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value(initial
+                            ? "INITIAL_CREDENTIAL_RESTRICTED" : "TARGET_CONTEXT_UNAVAILABLE"));
             if (initial) assertEquals(Set.of("sessionId", "revision", "state"),
                     json(login.getResponse().getContentAsByteArray()).propertyNames());
             if (initial) http.perform(consolePost("refresh").cookie(locator, login.getResponse().getCookie("__Host-sf_console_refresh"))
@@ -547,6 +551,155 @@ class AuthenticationHttpIT {
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CURRENT_CONTEXT_REVOKED"));
         mockMvc.perform(get("/api/v1/platform/oauth-clients").header("Authorization", "Bearer " + accessToken(current)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @Order(10000)
+    void unifiedContextSelectionUsesAuthorityAndRevokesPreviousWorkView() throws Exception {
+        var http = unifiedConsole();
+        var user = createUser("console-dual@example.test", "Console-password!", true, Credential.REGULAR);
+        UUID first = uuidV7(80501), second = uuidV7(80502);
+        UUID tenantA = uuidV7(80511), tenantB = uuidV7(80512);
+        accessibleMemberships(user.identity().id(), membership(first, tenantA, "Company A"),
+                membership(second, tenantB, "Company B"));
+        tenantBrandProfile(tenantA, "Brand A", null, null, "#123456", "#654321");
+        var bootstrap = http.perform(consolePost("bootstrap").content("{}")).andExpect(status().isOk()).andReturn();
+        Cookie locator = bootstrap.getResponse().getCookie("__Host-sf_console_slot");
+        var login = consoleLogin(http, locator, "console-dual@example.test")
+                .andExpect(jsonPath("$.state").value("CONTEXT_SELECTION_REQUIRED"))
+                .andExpect(jsonPath("$.accessToken").doesNotExist())
+                .andExpect(jsonPath("$.availableContexts.platform").value(true)).andReturn();
+        Cookie refresh = login.getResponse().getCookie("__Host-sf_console_refresh");
+        String revision = login.getResponse().getHeader("ETag");
+        String family = json(login.getResponse().getContentAsByteArray()).get("sessionId").asString();
+        String previousToken = null;
+        int step = 0;
+        for (String target : List.of("{\"type\":\"PLATFORM\"}",
+                "{\"type\":\"TENANT\",\"membershipId\":\"" + first + "\"}",
+                "{\"type\":\"TENANT\",\"membershipId\":\"" + second + "\"}",
+                "{\"type\":\"PLATFORM\"}")) {
+            UUID key = uuidV7(80520 + step++);
+            var selected = consoleSelect(http, locator, refresh, revision, key, target)
+                    .andExpect(status().isNoContent()).andExpect(header().doesNotExist("Set-Cookie")).andReturn();
+            String selectedRevision = selected.getResponse().getHeader("ETag");
+            consoleSelect(http, locator, refresh, revision, key, target)
+                    .andExpect(status().isNoContent()).andExpect(header().string("ETag", selectedRevision));
+            consoleSelect(http, locator, refresh, selectedRevision, uuidV7(80540 + step), target)
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTEXT_REFRESH_REQUIRED"));
+            http.perform(get("/api/v2/auth/session").cookie(locator, refresh)
+                    .header("Origin", "https://console.saas.forge.test").header("Sec-Fetch-Site", "same-site"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTEXT_REFRESH_REQUIRED"));
+            if (previousToken != null) mockMvc.perform(get("/api/v1/auth/session")
+                    .header("Authorization", "Bearer " + previousToken)).andExpect(status().isUnauthorized());
+            var rotated = http.perform(consolePost("refresh").cookie(locator, refresh)
+                    .header("If-Match", selectedRevision).header("Idempotency-Key", uuidV7(80560 + step)).content("{}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.sessionId").value(family))
+                    .andExpect(jsonPath("$.state").value("AUTHENTICATED")).andReturn();
+            var body = json(rotated.getResponse().getContentAsByteArray());
+            assertEquals(target.contains("PLATFORM") ? "PLATFORM" : "TENANT", body.get("activeContext").get("type").asString());
+            if (target.contains(first.toString())) {
+                assertEquals(tenantA.toString(), body.get("activeContext").get("tenantId").asString());
+                assertEquals("Brand A", body.get("activeContext").get("brand").get("displayName").asString());
+            }
+            refresh = rotated.getResponse().getCookie("__Host-sf_console_refresh");
+            revision = selectedRevision;
+            previousToken = accessToken(rotated);
+            // 同目标选择不推进版本；已完成操作重放也不能撤销刚刷新得到的 Token。
+            consoleSelect(http, locator, refresh, revision, uuidV7(80580 + step), target)
+                    .andExpect(status().isNoContent()).andExpect(header().string("ETag", revision));
+            consoleSelect(http, locator, refresh, "\"1\"", key, target).andExpect(status().isNoContent());
+            mockMvc.perform(get(target.contains("PLATFORM") ? "/api/v1/auth/session" : "/api/v1/auth/context")
+                    .header("Authorization", "Bearer " + previousToken)).andExpect(status().isOk());
+            if (!target.contains("PLATFORM")) mockMvc.perform(get("/api/v1/platform/oauth-clients")
+                    .header("Authorization", "Bearer " + previousToken)).andExpect(status().isForbidden());
+        }
+    }
+
+    @Test
+    @Order(10000)
+    void unifiedSelectionRejectsUnauthorizedTargetsAndMalformedRequests() throws Exception {
+        var http = unifiedConsole();
+        createUser("console-platform-only@example.test", "Console-password!", true, Credential.REGULAR);
+        var bootstrap = http.perform(consolePost("bootstrap").content("{}")).andReturn();
+        Cookie locator = bootstrap.getResponse().getCookie("__Host-sf_console_slot");
+        var login = consoleLogin(http, locator, "console-platform-only@example.test").andReturn();
+        Cookie refresh = login.getResponse().getCookie("__Host-sf_console_refresh");
+        String revision = login.getResponse().getHeader("ETag");
+        String tenantTarget = "{\"type\":\"TENANT\",\"membershipId\":\"" + uuidV7(80601) + "\"}";
+        consoleSelect(http, locator, refresh, revision, uuidV7(80602), tenantTarget)
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("TARGET_CONTEXT_UNAVAILABLE"));
+        for (String malformed : List.of("{}", "{\"type\":\"TENANT\"}",
+                "{\"type\":\"PLATFORM\",\"membershipId\":\"" + uuidV7(80601) + "\"}",
+                "{\"type\":\"PLATFORM\",\"tenantId\":\"" + uuidV7(80601) + "\"}")) {
+            consoleSelect(http, locator, refresh, revision, uuidV7(80603), malformed)
+                    .andExpect(status().isBadRequest()).andExpect(header().doesNotExist("Set-Cookie"));
+        }
+        consoleSelect(http, locator, refresh, "\"0\"", uuidV7(80604), "{\"type\":\"PLATFORM\"}")
+                .andExpect(status().isPreconditionFailed());
+        consoleSelect(http, locator, refresh, revision, uuidV7(80605), "{\"type\":\"PLATFORM\"}")
+                .andExpect(status().isNoContent());
+        consoleSelect(http, locator, refresh, revision, uuidV7(80605), tenantTarget)
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REUSED"));
+        mockMvc.perform(get("/api/v1/auth/session").header("Authorization", "Bearer " + accessToken(login)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @Order(10000)
+    void unifiedSelectionResumesPendingRevocationAndEndsRevokedCurrentMembership() throws Exception {
+        var failing = new AtomicBoolean();
+        var http = unifiedConsole(failing);
+        var user = createUser("console-switch-retry@example.test", "Console-password!", false, Credential.REGULAR);
+        UUID membershipId = uuidV7(80701), tenant = uuidV7(80702), next = uuidV7(80703);
+        accessibleMemberships(user.identity().id(), membership(membershipId, tenant, "Current"));
+        var bootstrap = http.perform(consolePost("bootstrap").content("{}")).andReturn();
+        Cookie locator = bootstrap.getResponse().getCookie("__Host-sf_console_slot");
+        var login = consoleLogin(http, locator, "console-switch-retry@example.test")
+                .andExpect(jsonPath("$.activeContext.type").value("TENANT")).andReturn();
+        Cookie refresh = login.getResponse().getCookie("__Host-sf_console_refresh");
+        String revision = login.getResponse().getHeader("ETag");
+        accessibleMemberships(user.identity().id(), membership(membershipId, tenant, "Current"),
+                membership(next, uuidV7(80704), "Next"));
+        String target = "{\"type\":\"TENANT\",\"membershipId\":\"" + next + "\"}";
+        failing.set(true);
+        try {
+            consoleSelect(http, locator, refresh, revision, uuidV7(80705), target)
+                    .andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.code").value("SESSION_TRANSITION_PENDING"))
+                    .andExpect(header().doesNotExist("Set-Cookie"));
+            var pending = http.perform(consolePost("bootstrap").cookie(locator).content("{}"))
+                    .andExpect(jsonPath("$.transition").value("SWITCH_PENDING")).andReturn();
+            consoleSelect(http, locator, refresh, pending.getResponse().getHeader("ETag"), uuidV7(80706), target)
+                    .andExpect(status().isServiceUnavailable());
+            http.perform(consolePost("refresh").cookie(locator, refresh)
+                    .header("If-Match", pending.getResponse().getHeader("ETag"))
+                    .header("Idempotency-Key", uuidV7(80707)).content("{}"))
+                    .andExpect(status().isServiceUnavailable());
+        } finally { failing.set(false); }
+        var completed = consoleSelect(http, locator, refresh, revision, uuidV7(80705), target)
+                .andExpect(status().isNoContent()).andReturn();
+        mockMvc.perform(get("/api/v1/auth/session").header("Authorization", "Bearer " + accessToken(login)))
+                .andExpect(status().isUnauthorized());
+        // 当前公司失效时不能通过选择其他仍有效公司逃逸；整个 Family 必须结束。
+        accessibleMemberships(user.identity().id(), membership(membershipId, tenant, "Current"));
+        http.perform(consolePost("refresh").cookie(locator, refresh)
+                .header("If-Match", completed.getResponse().getHeader("ETag"))
+                .header("Idempotency-Key", uuidV7(80708)).content("{}"))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CURRENT_CONTEXT_REVOKED"));
+        http.perform(consolePost("bootstrap").cookie(locator).content("{}"))
+                .andExpect(jsonPath("$.sessionPresent").value(false));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions consoleLogin(MockMvc http, Cookie locator, String email)
+            throws Exception {
+        return http.perform(consolePost("login").cookie(locator).header("If-Match", "\"0\"")
+                .content(new ObjectMapper().writeValueAsBytes(Map.of("email", email, "password", "Console-password!"))))
+                .andExpect(status().isOk());
+    }
+
+    private org.springframework.test.web.servlet.ResultActions consoleSelect(MockMvc http, Cookie locator, Cookie refresh,
+            String revision, UUID key, String target) throws Exception {
+        return http.perform(consolePost("context-selections").cookie(locator, refresh).header("If-Match", revision)
+                .header("Idempotency-Key", key).content(target));
     }
 
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder consolePost(String operation) {

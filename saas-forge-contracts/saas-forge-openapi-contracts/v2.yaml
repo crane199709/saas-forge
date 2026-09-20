@@ -211,6 +211,55 @@ paths:
           $ref: '#/components/responses/ConsoleProblem'
         '503':
           $ref: '#/components/responses/ConsoleProblem'
+  /api/v2/auth/context-selections:
+    post:
+      tags: [ConsoleAuthentication]
+      operationId: selectConsoleContext
+      x-saas.forge-service: iam-service
+      summary: Select or switch the current work context
+      description: |
+        Completes the initial Accessible Membership selection and switches between the
+        platform work view and authorized company work views. The identity comes only from
+        the Slot Family; the target is strictly PLATFORM or one authorized membershipId and
+        never accepts a caller supplied tenantId. A committed switch rejects the previous
+        context's unexpired tokens and requires a refresh before the new context is usable.
+      security:
+        - ConsoleSlotCookieAuth: []
+          ConsoleRefreshCookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ConsoleCsrf'
+        - $ref: '#/components/parameters/ConsoleRevision'
+        - $ref: '#/components/parameters/ConsoleIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsoleContextSelectionRequest'
+      responses:
+        '204':
+          description: Authoritative result; ETag is the Slot revision.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ConsoleETag'
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+        '400':
+          $ref: '#/components/responses/ConsoleProblem'
+        '401':
+          $ref: '#/components/responses/ConsoleProblem'
+        '403':
+          $ref: '#/components/responses/ConsoleProblem'
+        '409':
+          $ref: '#/components/responses/ConsoleProblem'
+        '412':
+          $ref: '#/components/responses/ConsoleProblem'
+        '428':
+          $ref: '#/components/responses/ConsoleProblem'
+        '503':
+          $ref: '#/components/responses/ConsoleProblem'
   /api/v2/auth/logout:
     post:
       tags: [ConsoleAuthentication]
@@ -360,6 +409,39 @@ components:
           $ref: './common.yaml#/components/schemas/UuidV7'
         tenantDisplayName:
           type: string
+        brand:
+          $ref: '#/components/schemas/ConsoleTenantBrand'
+    ConsoleTenantBrand:
+      type: object
+      description: Authoritative Tenant Brand Profile of the current or candidate company.
+      additionalProperties: false
+      required: [displayName, primaryColor, accentColor]
+      properties:
+        displayName:
+          type: string
+        logoUrl:
+          type: string
+        faviconUrl:
+          type: string
+        primaryColor:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+        accentColor:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+    ConsoleContextSelectionRequest:
+      type: object
+      description: >-
+        Strictly one of two targets. membershipId is required when type is TENANT and
+        forbidden when type is PLATFORM; service resolved tenantId is never accepted.
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [PLATFORM, TENANT]
+        membershipId:
+          $ref: './common.yaml#/components/schemas/UuidV7'
     ConsoleAvailableContexts:
       type: object
       additionalProperties: false
@@ -383,6 +465,8 @@ components:
           $ref: './common.yaml#/components/schemas/UuidV7'
         tenantId:
           $ref: './common.yaml#/components/schemas/UuidV7'
+        brand:
+          $ref: '#/components/schemas/ConsoleTenantBrand'
     ConsoleAvailableContextsResult:
       type: object
       required: [sessionId, revision, availableContexts]

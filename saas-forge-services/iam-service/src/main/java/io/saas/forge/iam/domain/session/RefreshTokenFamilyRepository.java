@@ -35,6 +35,15 @@ public interface RefreshTokenFamilyRepository {
             UUID membershipId,
             UUID tenantId);
 
+    /** 统一 Console Family 的平台/Tenant 工作视图切换；调用方必须在同一事务内持有 Slot 锁。 */
+    default RefreshTokenFamilyContextChange switchWorkContext(
+            UUID familyId,
+            RefreshTokenFamilyPurpose purpose,
+            UUID membershipId,
+            UUID tenantId) {
+        throw new UnsupportedOperationException("Console work context switching is not configured");
+    }
+
     RefreshRotation rotateForRefresh(
             Sha256Digest presentedDigest,
             Sha256Digest nextDigest,

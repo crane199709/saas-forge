@@ -15,7 +15,7 @@ class UnifiedConsoleContractTest {
                 .peek(route -> assertEquals("iam-service", route.serviceId()))
                 .map(HttpRouteCatalog.Route::operationId).collect(Collectors.toSet());
         assertEquals(Set.of("bootstrapConsoleSession", "loginConsoleSession", "getConsoleSession",
-                "getAvailableWorkContexts", "refreshConsoleSession",
+                "getAvailableWorkContexts", "refreshConsoleSession", "selectConsoleContext",
                 "logoutConsoleSession"), operations);
         assertEquals(1, catalog.routes().stream()
                 .filter(route -> route.operationId().equals("listOAuthClients"))

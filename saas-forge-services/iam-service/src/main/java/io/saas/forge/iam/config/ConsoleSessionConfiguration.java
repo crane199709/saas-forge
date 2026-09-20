@@ -37,6 +37,17 @@ public class ConsoleSessionConfiguration {
     }
 
     @Bean
+    ConsoleContextSelectionService consoleContextSelectionService(ConsoleSessionAccess access,
+            ConsoleSessionRepository slots, RefreshTokenFamilyRepository families,
+            AccessTokenIssuanceRepository issuances, ConsoleSessionAuthority authority,
+            ConsoleSessionTermination termination, RevocationIndex revocations, OutboxEventRepository outbox,
+            TenantContextSwitchedEventFactory switchedEvents, UserTokenIssuanceFence issuanceFence,
+            PlatformTransactionManager manager, UuidV7Generator keys, Clock clock) {
+        return new ConsoleContextSelectionService(access, slots, families, issuances, authority, termination,
+                revocations, outbox, switchedEvents, issuanceFence, new TransactionTemplate(manager), keys, clock);
+    }
+
+    @Bean
     ConsoleSessionService consoleSessionService(ConsoleSessionAccess access, ConsoleSessionRepository slots,
             RefreshTokenFamilyRepository families, AccessTokenIssuanceRepository issuances,
             IdentityRepository identities, LoginProtection protection, PasswordVerifier verifier,
