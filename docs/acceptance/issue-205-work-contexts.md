@@ -101,3 +101,14 @@ mvn -o -pl saas-forge-services/iam-service -am test \
 远端 CI 复核：[317b8b9 的 Verify](https://github.com/crane199709/saas-forge/actions/runs/35682122207) 发现 HttpRouteCatalogLoaderTest 仍断言 62 条正式路由，而 selectConsoleContext 与 changeConsoleInitialPassword 增加后实际为 64。同步此总数断言，保留 UnifiedConsoleContractTest 对全部八个 v2 operation 的精确集合校验和仓库规范对 OpenAPI/路由/认证边界的一致性校验。JDK 17 执行 `mvn -o -pl saas-forge-contracts/saas-forge-http-route-catalog -am test`，整个模块 5 项通过，零失败、零错误、零跳过。
 
 范围限制：本机未重跑完整 CI、Fresh Compose 或所有直达实例安全矩阵；不能将上述定向通过描述为完整矩阵通过。推送后的 CI 结果以对应 commit 的 GitHub Actions 为准，已知路由计数失败已修复并定向复测。
+
+## 后端 CI 后续修复（2026-09-22）
+
+`9d590b5` 的 Verify 未通过，不能视为完整交付门禁通过：
+
+- Tenant lifecycle fresh-volume E2E 在拉取 PostgreSQL 18 时遇到 Docker Hub `connection reset by peer`，业务验收尚未开始；保留原验收流程，通过下一次 CI 重新验证。
+- Console prerequisites 中旧 Tenant Console 的默认入口测试断言一次 refresh，实际两次。本机 `SF_BROWSER_CHANNEL=chrome node --test consoles/integration-test/console-default-realm.test.mjs` 复现同一失败。无凭据时序记录确认测试过早释放第一个响应，第二页随后才开始恢复；测试把异步 `navigator.locks.query()` 放进 `waitForFunction`，安装的 Playwright 1.62.1 在轮询中将返回的 Promise 本身视为真值，未等待查询的布尔结果。
+- 修复仅涉及测试屏障：Node 侧显式等待 `page.evaluate` 的异步布尔结果，直到每页开始 refresh 或出现原生持锁者/等待者再放行。保留一次 refresh、跨页语言同步和布局断言，不修改认证实现、缩减套件或放宽超时。
+- 修复后 Chrome 执行 `console-default-realm.test.mjs` 与 `session-tabs.test.mjs` 共 4 项通过；原失败 Tenant 用例额外连续 3 次通过。改动文件 ESLint、Prettier 与 `git diff --check` 通过；临时时序日志已移除。
+
+上述是本机定向结果，修复提交的完整 Verify 仍需以远端执行结果确认。

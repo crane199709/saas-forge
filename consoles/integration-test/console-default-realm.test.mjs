@@ -82,19 +82,7 @@ for (const [application, directory, heading] of [
     // 原生队列证明另一页已经开始恢复；不要覆写 LockManager 实例方法，
     // WebKit 下该观察器可能漏报，而公开 query 已显示持锁者和等待者。
     const lockName = `sf:session:https://api.saas.forge.test:${application.toUpperCase()}`;
-    await Promise.all(
-      pages.map((page) =>
-        page.waitForFunction(async (name) => {
-          if (window.sessionOperationStarted) return true;
-          if (navigator.locks === undefined) return false;
-          const locks = await navigator.locks.query();
-          return (
-            locks.held.some((lock) => lock.name === name) &&
-            locks.pending.some((lock) => lock.name === name)
-          );
-        }, lockName),
-      ),
-    );
+    await Promise.all(pages.map((page) => waitForSessionOperation(page, lockName)));
     release();
     for (const page of pages) {
       await page.getByRole('heading', { name: heading, exact: true }).waitFor();
@@ -197,4 +185,24 @@ async function selectConsoleLocale(page, application, name) {
   const { optionRole, open } = localeControl(page, application);
   await open();
   await page.getByRole(optionRole, { name, exact: true }).click();
+}
+
+// waitForFunction 的轮询条件不能返回 Promise：Promise 本身会提前满足真值判断。
+// 在 Node 侧等待 evaluate 的异步结果，确保另一标签确实发出 Refresh 或进入原生锁队列。
+async function waitForSessionOperation(page, lockName) {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const started = await page.evaluate(async (name) => {
+      if (window.sessionOperationStarted) return true;
+      if (navigator.locks === undefined) return false;
+      const locks = await navigator.locks.query();
+      return (
+        locks.held.some((lock) => lock.name === name) &&
+        locks.pending.some((lock) => lock.name === name)
+      );
+    }, lockName);
+    if (started) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.fail('each tab must start session recovery before releasing the refresh response');
 }
