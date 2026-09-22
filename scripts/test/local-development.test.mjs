@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -8,7 +7,7 @@ import {
   localDevelopmentPlan,
 } from "../local-development.mjs";
 
-test("provides one daily interface for setup, frontend, replacement, and restore", () => {
+test("provides one daily interface for setup, replacement, and restore", () => {
   assert.deepEqual(
     localDevelopmentPlan(["setup"]).map(({ script, arguments: arguments_ }) => [
       script,
@@ -20,21 +19,10 @@ test("provides one daily interface for setup, frontend, replacement, and restore
       ["local-https-development.sh", "trust-ca"],
     ],
   );
-  for (const operation of ["start", "status", "stop"]) {
-    assert.deepEqual(localDevelopmentPlan(["frontend", operation, "tenant"]), [
-      {
-        script: "local-https-development.sh",
-        arguments: [operation, "tenant"],
-      },
-    ]);
-    assert.deepEqual(
-      localDevelopmentPlan(["frontend", operation, "platform"]),
-      [
-        {
-          script: "local-https-development.sh",
-          arguments: [operation, "platform"],
-        },
-      ],
+  for (const target of ["platform", "tenant", "all"]) {
+    assert.equal(
+      localDevelopmentPlan(["frontend", "start", target]),
+      undefined,
     );
   }
   assert.equal(localDevelopmentPlan(["frontend"]), undefined);
@@ -60,7 +48,7 @@ test("status and doctor cover all five targets even when one check fails", () =>
   assert.deepEqual(
     status.map((step) => step.arguments.at(-1)),
     [
-      "all",
+      "edge",
       "gateway",
       "iam-service",
       "tenant-access-service",
@@ -91,44 +79,6 @@ test("rejects incomplete and obsolete frontend CLI invocations with safe usage",
       encoding: "utf8",
     });
     assert.equal(result.status, 2);
-    assert.match(result.stderr, /frontend <start\|status\|stop> platform/u);
+    assert.match(result.stderr, /<setup\|doctor\|status>/u);
   }
-});
-
-test("the acceptance matrix covers every target and preserves images and volumes", async () => {
-  const matrix = await readFile(
-    new URL("../verify-local-development-matrix.sh", import.meta.url),
-    "utf8",
-  );
-  for (const target of [
-    "gateway",
-    "iam-service",
-    "tenant-access-service",
-    "entitlement-service",
-    "audit-service",
-  ]) {
-    assert.match(matrix, new RegExp(`\\b${target}\\b`, "u"));
-  }
-  assert.match(matrix, /snapshot_images/u);
-  assert.match(matrix, /snapshot_volumes/u);
-  assert.match(matrix, /verify-local-development-security-browser\.mjs/u);
-  assert.doesNotMatch(matrix, /docker\s+(?:compose\s+)?build/u);
-  assert.doesNotMatch(matrix, /down\s+--volumes/u);
-});
-
-test("plans explicit all operations and rejects extra arguments", () => {
-  for (const operation of ["start", "status", "stop"]) {
-    assert.deepEqual(localDevelopmentPlan(["frontend", operation, "all"]), [
-      { script: "local-https-development.sh", arguments: [operation, "all"] },
-    ]);
-    assert.equal(
-      localDevelopmentPlan(["frontend", operation, "all", "extra"]),
-      undefined,
-    );
-  }
-  assert.deepEqual(localDevelopmentPlan(["status"])[0], {
-    script: "local-https-development.sh",
-    arguments: ["status", "all"],
-    continueOnFailure: true,
-  });
 });

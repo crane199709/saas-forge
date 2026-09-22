@@ -17,7 +17,7 @@
 
     <properties>
         <maven.deploy.skip>true</maven.deploy.skip>
-        <typescript.client.output>${maven.multiModuleProjectDirectory}/consoles/shared/api-client/.generated</typescript.client.output>
+        <typescript.client.output>${project.build.directory}/generated-typescript-client</typescript.client.output>
     </properties>
 
     <build>
@@ -39,26 +39,6 @@
                             <configOptions>
                                 <useSingleRequestParameter>true</useSingleRequestParameter>
                             </configOptions>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>verify-consoles</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>bash</executable>
-                            <skip>${saas.forge.frontend.skip}</skip>
-                            <arguments>
-                                <argument>${maven.multiModuleProjectDirectory}/scripts/verify-frontend-workspace.sh</argument>
-                            </arguments>
                         </configuration>
                     </execution>
                 </executions>

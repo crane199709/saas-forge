@@ -3,10 +3,7 @@ import { readFile } from "node:fs/promises";
 
 const artifactRoot = process.env.SF_REMOTE_STATIC_DIRECTORY
   ? new URL(`file://${process.env.SF_REMOTE_STATIC_DIRECTORY}/`)
-  : new URL(
-      "../../../consoles/dist/static-remote-acceptance/",
-      import.meta.url,
-    );
+  : new URL("./remote-artifacts/", import.meta.url);
 const rootDomain = process.env.SF_ACCEPTANCE_ROOT_DOMAIN ?? "saas.forge.test";
 const contentTypes = {
   "remote.js": "text/javascript; charset=utf-8",

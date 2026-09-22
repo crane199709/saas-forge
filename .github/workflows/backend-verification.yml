@@ -1,0 +1,79 @@
+name: Backend verification
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: JDK 17 backend and contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Protect published v1 contract baselines
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+            exit 0
+          fi
+          baseline_root="saas-forge-contracts/compatibility-baselines/v1"
+          previous_root="$baseline_root"
+          if ! git cat-file -e "$BASE_SHA:$previous_root" 2>/dev/null; then
+            previous_root="contracts/compatibility-baselines/v1"
+          fi
+          # ADR 0048 明确授权的基线重建：仅允许这两个完整目录树之间的精确转换。
+          previous_tree="$(git rev-parse "$BASE_SHA:$previous_root")"
+          current_tree="$(git rev-parse "$GITHUB_SHA:$baseline_root")"
+          if [[ "$previous_tree" == "480604adff04497f2d1814a305108a984cf3245b" && "$current_tree" == "c7d85d4d409b59c7b6b2372613e29e2c443098da" ]]; then
+            exit 0
+          fi
+          # 比较目录树内容，允许模块目录搬迁，但仍拒绝既有快照的修改、删除或重命名。
+          changes="$(git diff --no-renames --name-status "$BASE_SHA:$previous_root" "$GITHUB_SHA:$baseline_root")"
+          if [[ -n "$(printf '%s\n' "$changes" | awk '$1 !~ /^A/')" ]]; then
+            echo "已发布 v1 契约基线不可修改或删除；仅允许新增快照目录。" >&2
+            printf '%s\n' "$changes" >&2
+            exit 1
+          fi
+          while IFS= read -r tag; do
+            [[ -z "$tag" ]] && continue
+            if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "新增 v1 契约基线目录必须使用待发布 Git tag: $tag" >&2
+              exit 1
+            fi
+            baseline="saas-forge-contracts/compatibility-baselines/v1/$tag"
+            diff -u saas-forge-contracts/saas-forge-openapi-contracts/v1.yaml "$baseline/openapi/v1.yaml"
+            diff -u saas-forge-contracts/saas-forge-openapi-contracts/common.yaml "$baseline/openapi/common.yaml"
+            diff -u \
+              <(find saas-forge-contracts/saas-forge-protobuf-contracts -path '*/v1/*.proto' -type f | sed 's#^saas-forge-contracts/saas-forge-protobuf-contracts/##' | sort) \
+              <(find "$baseline/protobuf" -type f -name '*.proto' | sed "s#^$baseline/protobuf/##" | sort)
+            while IFS= read -r proto; do
+              diff -u "saas-forge-contracts/saas-forge-protobuf-contracts/$proto" "$baseline/protobuf/$proto"
+            done < <(find saas-forge-contracts/saas-forge-protobuf-contracts -path '*/v1/*.proto' -type f | sed 's#^saas-forge-contracts/saas-forge-protobuf-contracts/##' | sort)
+            diff -u \
+              <(find saas-forge-contracts/saas-forge-event-contracts -type f -name '*.v1.schema.json' | sed 's#^saas-forge-contracts/saas-forge-event-contracts/##' | sort) \
+              <(find "$baseline/events" -type f -name '*.v1.schema.json' | sed "s#^$baseline/events/##" | sort)
+            while IFS= read -r schema; do
+              diff -u "saas-forge-contracts/saas-forge-event-contracts/$schema" "$baseline/events/$schema"
+            done < <(find saas-forge-contracts/saas-forge-event-contracts -type f -name '*.v1.schema.json' | sed 's#^saas-forge-contracts/saas-forge-event-contracts/##' | sort)
+          done < <(git diff --no-renames --name-only --diff-filter=A "$BASE_SHA:$previous_root" "$GITHUB_SHA:$baseline_root" \
+            | awk -F/ 'NF >= 2 {print $1}' | sort -u)
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24.14.1"
+      - name: Verify backend tooling and environment boundaries
+        run: node --test --test-concurrency=1 scripts/test/*.test.mjs
+      - name: Verify JDK 17 backend and contracts
+        run: ./mvnw --batch-mode --no-transfer-progress verify

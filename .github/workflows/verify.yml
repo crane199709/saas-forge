@@ -9,32 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  console-authentication:
-    name: JDK 17 and Console authentication
-    uses: ./.github/workflows/console-authentication-e2e.yml
-
-  console-visual:
-    name: Shared Console visual baseline (Linux Chromium)
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: maven
-      - name: Generate the formal TypeScript Client
-        run: ./mvnw --batch-mode --no-transfer-progress -pl saas-forge-contracts/saas-forge-openapi-contracts -am generate-sources
-      - name: Compare shared component and consumer baselines
-        run: bash scripts/verify-console-visual.sh
-      - name: Preserve visual reports and differences
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: console-visual-${{ github.sha }}
-          if-no-files-found: error
-          path: .scratch/issue-180-visual/
+  backend:
+    name: Backend verification
+    uses: ./.github/workflows/backend-verification.yml
 
   tenant-lifecycle-e2e:
     name: Tenant lifecycle fresh-volume E2E

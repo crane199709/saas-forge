@@ -49,9 +49,10 @@
 - 日常必要验证以 5 分钟内反馈为优化目标，优先保证验证期间电脑仍可正常开发；目标冲突时允许延长耗时。避免无依据地并行启动重型验证，未实测不得承诺耗时、资源占用或改善比例。
 - 验证记录区分通过、失败、跳过和未执行；本地相关检查通过不等于完整验收通过，配置文件检查或进程启动成功也不等于联调成功。
 
-### Console 国际化资源
+### 前端仓库与历史检查
 
-- `@saas-forge/admin` 自有消息资源必须按可独立 tree-shake 的组件模块拆分（例如 `shared/admin/src/messages/authentication/`、`messages/recovery/`）；新增或移动资源目录必须接入 `consoles/scripts/validate-i18n-resources.mjs`，并通过 `pnpm --dir consoles run validate:i18n` 与 `pnpm --dir consoles run build:workspace`。不得因共享翻译入口将未使用组件文案打入 Console 或 Remote 首屏制品。
+- 正式统一 Console 在独立 `saas-forge-web` 仓库维护；本仓 `consoles/` 已迁出，后端构建和 CI 不读取前端源码或运行浏览器。
+- 修改跨仓验证、前端迁移或旧验收入口时，先读 [迁出记录与待迁检查](docs/acceptance/consoles-extraction.md)。本机备份不是前端交付物；未迁业务、安全、国际化、视觉和无障碍覆盖继续由 #206 及对应业务票跟踪，不能因旧入口移除而勾选通过。
 
 ### 文档与证据的权威顺序
 

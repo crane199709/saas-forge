@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
-  <title id="title">SaaS Forge Connected Core logo</title>
-  <circle cx="32" cy="32" r="13" fill="#2563EB"/>
-  <path d="M32 7a25 25 0 0 1 21.65 12.5l-8.66 5A15 15 0 0 0 32 17V7ZM10.35 19.5A25 25 0 0 0 32 57V47a15 15 0 0 1-12.99-22.5l-8.66-5ZM53.65 44.5A25 25 0 0 1 43 54.83l-5-8.66a15 15 0 0 0 6.99-6.67l8.66 5Z" fill="#93C5FD"/>
-  <circle cx="53.5" cy="19.5" r="6" fill="#C026D3"/>
-  <circle cx="10.5" cy="19.5" r="4" fill="#FFFFFF" stroke="#2563EB" stroke-width="3"/>
-</svg>

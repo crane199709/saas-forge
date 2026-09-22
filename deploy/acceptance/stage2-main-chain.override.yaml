@@ -1,5 +1,0 @@
-# 主链使用正式 Tenant 制品，不加载 Remote/故障测试的路由包装。
-services:
-  tenant-console:
-    volumes:
-      - ../../consoles/tenant-console-shell/dist:/app/dist:ro

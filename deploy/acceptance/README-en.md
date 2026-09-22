@@ -1,5 +1,7 @@
 # Complete Compose Integration Acceptance
 
+> 2026-09-22: Legacy Console builds and browser acceptance entry points have been exported. Related commands below are historical, not current backend instructions. Backend migrations, bootstrap and service acceptance remain available. See [the extraction record](../../docs/acceptance/consoles-extraction.md).
+
 This directory composes complete integration acceptance from service-owned definitions and restores startup gates. For independent daily lifecycles, see the [environment guide](../compose/README-en.md). Maintenance commands below target the acceptance project. Use a dedicated `.env` and absolute Secret paths; do not copy old relative paths unchanged.
 
 

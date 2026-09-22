@@ -12,12 +12,10 @@ ENVIRONMENT = ROOT / 'deploy/compose/compose.yaml'
 ACCEPTANCE = ROOT / 'deploy/acceptance/compose.yaml'
 APPLICATIONS = [ROOT / 'gateway/compose.yaml',
                 *sorted((ROOT / 'saas-forge-services').glob('*/compose.yaml')),
-                *sorted((ROOT / 'consoles').glob('*/compose.yaml')),
                 *sorted((ROOT / 'test-support').glob('*/compose.yaml'))]
 OVERLAYS = sorted(ACCEPTANCE.parent.glob('*.override.yaml'))
 INFRASTRUCTURE = {'postgres', 'redis', 'kafka', 'mailpit', 'otel-collector', 'nacos', 'nacos-init'}
 FILES = [ENVIRONMENT, ACCEPTANCE, *APPLICATIONS, *OVERLAYS,
-         ENVIRONMENT.parent / 'console-tls.yaml',
          ENVIRONMENT.parent / 'local-https-development.override.yaml']
 
 # 仅构造语法校验占位值；不继承用户凭据、项目名或 COMPOSE_* 配置。
@@ -82,16 +80,7 @@ def main():
     for project in ('acceptance-layout-a', 'acceptance-layout-b'):
         for overlay in [None, *OVERLAYS]:
             scenario = [ACCEPTANCE]
-            if overlay and overlay.name == 'stage2-main-chain.override.yaml':
-                scenario.append(ACCEPTANCE.parent / 'console-authentication.override.yaml')
             model = configuration(scenario + ([overlay] if overlay else []), project)
-            if overlay and overlay.name == 'stage2-main-chain.override.yaml':
-                mounts = model['services']['tenant-console']['volumes']
-                by_target = {mount['target']: mount for mount in mounts}
-                assert by_target['/app/dist']['source'] == str(ROOT / 'consoles/tenant-console-shell/dist')
-                assert by_target['/app/dist']['read_only']
-                for target in ('/app/serve.mjs', '/app/remote-static.mjs', '/app/browser-security-evidence.mjs'):
-                    assert target in by_target and by_target[target]['read_only']
             assert model['networks']['default'].get('external', False) is False
             assert model['networks']['default']['name'] == f'{project}_default'
             assert all(v['name'].startswith(project + '_') for v in model['volumes'].values())

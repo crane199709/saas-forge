@@ -1,5 +1,7 @@
 # 第四域开发静态资源验收（Issue #156）
 
+> 2026-09-22：旧双 Console、前端构建及浏览器验收入口已迁出。本页相关命令仅供历史追溯，不再是当前后端操作入口；服务端迁移、引导及专项服务验收仍保留。当前边界和待迁检查见 [迁出记录](acceptance/consoles-extraction.md)。
+
 日常运行两个 Console 请使用 [Console 原生本地开发](native-console-development.md)。本页保留第四域静态资源专项验收与旧环境升级说明。
 
 本切片遵循 ADR 0009、0038、0039，补齐 Local Browser Topology 的 `remote.saas.forge.test`。它不实现 Manifest、业务 Remote、Remote HMR，也不修改认证 API、Browser Session Slot 或数据库。静态文件是公开制品；CORS 是浏览器读取许可，不是私有下载鉴权。

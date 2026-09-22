@@ -94,9 +94,17 @@ test("declares a fixed module and host port for each additional service", () => 
     ),
     {
       "audit-service": ["saas-forge-services/audit-service", 8084, undefined],
-      "entitlement-service": ["saas-forge-services/entitlement-service", 8083, 9093],
+      "entitlement-service": [
+        "saas-forge-services/entitlement-service",
+        8083,
+        9093,
+      ],
       gateway: ["gateway", 8080, undefined],
-      "tenant-access-service": ["saas-forge-services/tenant-access-service", 8082, 9092],
+      "tenant-access-service": [
+        "saas-forge-services/tenant-access-service",
+        8082,
+        9092,
+      ],
     },
   );
 });
@@ -261,16 +269,6 @@ test("recreates only the stateless Edge before checking trusted HTTPS", async ()
     "--force-recreate",
     "local-https-edge",
   ]);
-
-  const browserE2e = await readFile(
-    new URL("../verify-local-service-replacement-e2e.sh", import.meta.url),
-    "utf8",
-  );
-  const preflight = browserE2e.indexOf("\nassert_platform_https_edge\n");
-  const replacement = browserE2e.indexOf('"$lifecycle_tool" replace "$target"');
-  assert.match(browserE2e, /--cacert/u);
-  assert.ok(preflight >= 0);
-  assert.ok(replacement > preflight);
 });
 
 test("classifies container, local, unavailable, and duplicate IAM states", () => {

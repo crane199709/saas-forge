@@ -12,6 +12,17 @@ test("HTTPS Edge exposes standalone commands without selecting a Console", () =>
   }
 });
 
+test("HTTPS infrastructure refuses retired application lifecycle commands", () => {
+  for (const target of ["platform", "tenant", "all"]) {
+    for (const command of ["start", "status", "stop"]) {
+      assert.equal(
+        httpsDevelopment.localHttpsDevelopmentCommand([command, target]),
+        undefined,
+      );
+    }
+  }
+});
+
 function fixture({
   exists = true,
   running = true,

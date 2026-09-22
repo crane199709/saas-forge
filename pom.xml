@@ -65,7 +65,6 @@
         <project.build.outputTimestamp>1980-01-01T00:00:02Z</project.build.outputTimestamp>
         <maven.deploy.skip>false</maven.deploy.skip>
         <saas.forge.public-api-boundary.skip>true</saas.forge.public-api-boundary.skip>
-        <saas.forge.frontend.skip>false</saas.forge.frontend.skip>
         <jacoco.line.minimum>0.80</jacoco.line.minimum>
         <jacoco.branch.minimum>0.70</jacoco.branch.minimum>
         <jacoco.critical.line.minimum>0.90</jacoco.critical.line.minimum>
@@ -432,12 +431,9 @@
     </build>
 
     <profiles>
-        <!-- 日常后端验证只跳过前端聚合门禁；单元、集成与契约检查仍按所选模块执行。 -->
+        <!-- 保留既有本机命令的 profile 名称；默认 verify 已独立验证后端。 -->
         <profile>
             <id>backend-local</id>
-            <properties>
-                <saas.forge.frontend.skip>true</saas.forge.frontend.skip>
-            </properties>
         </profile>
         <profile>
             <id>sdk-external-consumer-acceptance</id>

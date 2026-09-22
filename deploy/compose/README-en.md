@@ -28,8 +28,6 @@ The default project remains `compose`, preserving `compose_postgres-data`, `comp
 | Tenant Access | `saas-forge-services/tenant-access-service/` |
 | Entitlement | `saas-forge-services/entitlement-service/` |
 | Audit | `saas-forge-services/audit-service/` |
-| Platform Console | `consoles/platform-console/` |
-| Tenant Console | `consoles/tenant-console-shell/` |
 
 Copy and fill in `.env.example` in the selected directory, then run:
 
@@ -64,7 +62,7 @@ Prefix these invocations with `docker compose`. Maintenance tasks do not run dur
 
 ## HTTPS and complete acceptance
 
-`local-https-development.override.yaml` retains the native HTTPS Edge and no longer starts Gateway through `depends_on`. `console-tls.yaml` defines the shared container Console TLS entry point, imported by complete acceptance.
+`local-https-development.override.yaml` retains the native HTTPS Edge and no longer starts Gateway through `depends_on`. Legacy Console TLS and browser acceptance definitions were exported; see [the extraction record](../../docs/acceptance/consoles-extraction.md).
 
 [`deploy/acceptance`](../acceptance/README-en.md) owns complete compositions and scenario overrides, reuses application definitions with `extends`, and retains cross-service startup ordering. Shared Dockerfiles are in [`deploy/docker`](../docker/). Acceptance projects own isolated networks and volumes rather than joining the daily environment.
 

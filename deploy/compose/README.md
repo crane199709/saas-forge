@@ -28,8 +28,6 @@ PostgreSQL 首次创建数据卷时执行集群引导，创建四个数据库和
 | Tenant Access | `saas-forge-services/tenant-access-service/` |
 | Entitlement | `saas-forge-services/entitlement-service/` |
 | Audit | `saas-forge-services/audit-service/` |
-| Platform Console | `consoles/platform-console/` |
-| Tenant Console | `consoles/tenant-console-shell/` |
 
 在对应目录复制并填写 `.env.example`，然后执行：
 
@@ -64,7 +62,7 @@ IAM 首次环境准备可从仓库根目录执行 `bash scripts/initialize-local
 
 ## HTTPS 与完整验收
 
-`local-https-development.override.yaml` 保留原生开发 HTTPS Edge；它只连接已有后端，不再通过 `depends_on` 启动 Gateway。`console-tls.yaml` 是容器 Console 的共享 TLS 入口定义，由完整验收组合引用。
+`local-https-development.override.yaml` 保留原生开发 HTTPS Edge；它只连接已有后端，不再通过 `depends_on` 启动 Gateway。旧 Console 的容器 TLS/浏览器验收入口已迁出，见[迁出记录](../../docs/acceptance/consoles-extraction.md)。
 
 完整组合和场景覆盖文件位于 [`deploy/acceptance`](../acceptance/README.md)，通过 `extends` 复用应用定义并保留跨服务启动顺序。共用构建文件位于 [`deploy/docker`](../docker/)。完整验收项目使用自己的网络和数据卷，不接入日常共享网络。
 

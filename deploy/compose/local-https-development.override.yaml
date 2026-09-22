@@ -1,4 +1,4 @@
-# 仅用于 macOS Docker Desktop 上的 Platform/Tenant Console 日常开发；不替代生产或 Fresh Compose 验收入口。
+# 本地 HTTPS 基础设施；前端由独立仓库自行启动，不托管应用进程。
 services:
   local-https-edge:
     image: node:24.14.1-alpine
@@ -19,6 +19,7 @@ services:
       SF_LOCAL_HTTPS_API_TARGET_FILE: /run/config/api-target.json
       SF_LOCAL_HTTPS_VITE_HOST: host.docker.internal
       SF_LOCAL_HTTPS_VITE_PORT: "5173"
+      # 可在个人 override 中只读挂载独立准备的 Remote 验收制品；缺失时返回 404。
       SF_REMOTE_STATIC_DIRECTORY: /app/remote-artifacts
     ports:
       - "127.0.0.1:443:8443"
@@ -26,12 +27,6 @@ services:
       - ./local-https-development/edge.mjs:/app/edge.mjs:ro
       - ./local-https-development/remote-static.mjs:/app/remote-static.mjs:ro
       - ./local-https-development/browser-security-evidence.mjs:/app/browser-security-evidence.mjs:ro
-      - type: bind
-        source: ../../consoles/dist/static-remote-acceptance
-        target: /app/remote-artifacts
-        read_only: true
-        bind:
-          create_host_path: false
       - type: bind
         source: ${SF_LOCAL_HTTPS_API_TARGET_FILE:?SF_LOCAL_HTTPS_API_TARGET_FILE is required}
         target: /run/config/api-target.json

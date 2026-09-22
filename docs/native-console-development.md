@@ -1,5 +1,7 @@
 # Console 原生本地开发
 
+> 2026-09-22：旧双 Console、前端构建及浏览器验收入口已迁出。本页相关命令仅供历史追溯，不再是当前后端操作入口；服务端迁移、引导及专项服务验收仍保留。当前边界和待迁检查见 [迁出记录](acceptance/consoles-extraction.md)。
+
 适用于 Issue #162，遵循 ADR 0043、0044。两个 Console 的进程由各自终端控制；受信 HTTPS Edge 和已有后端独立运行。浏览器仍访问 Controlled Browser Origin，经 Gateway 使用正式 API 和 Browser Session Slot。
 
 ## 一次性准备与契约更新

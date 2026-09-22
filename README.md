@@ -41,27 +41,23 @@ Tenant ── Subscription Version
 
 ## 当前状态
 
-当前仓库处于分阶段实现期。已建立 Maven 多模块构建（Gateway、四个领域服务、服务发现支持库、SDK/Starter、契约模块与质量门）、最小 Compose 基础设施拓扑和两个 Vue 3 控制台。已交付并有验收记录的切片包括：IAM 的浏览器认证、会话槽位与 OAuth Client 管理；Tenant Access 的 Tenant 创建与生命周期、管理员密码投递、品牌档案；Entitlement 的 Plan、Quota Definition 与 Subscription。通用 Tenant RBAC（Organization、Role、Permission 目录与 Invitation 激活）、Feature 运行时闭环、Audit 查询与导出、业务 Remote 仍未实现；领域定义不代表对应功能已经全部交付。当前开放工作见 GitHub Issues。
+当前仓库处于分阶段实现期。已建立 Maven 多模块构建（Gateway、四个领域服务、服务发现支持库、SDK/Starter、契约模块与质量门）、最小 Compose 基础设施拓扑；统一 Console 在独立 saas-forge-web 仓库维护。已交付并有验收记录的切片包括：IAM 的浏览器认证、会话槽位与 OAuth Client 管理；Tenant Access 的 Tenant 创建与生命周期、管理员密码投递、品牌档案；Entitlement 的 Plan、Quota Definition 与 Subscription。通用 Tenant RBAC（Organization、Role、Permission 目录与 Invitation 激活）、Feature 运行时闭环、Audit 查询与导出、业务 Remote 仍未实现；领域定义不代表对应功能已经全部交付。当前开放工作见 GitHub Issues。
 
 ## 本地开发
 
-从[原生本地开发总入口](docs/native-local-development.md)完成一次性依赖、证书、域名和个人配置准备。两个 Console 分别在应用目录执行 `pnpm run dev`，五个后端由 IDE 直接 Run/Debug；日志、停止和重启由各自终端或 IDE 管理，跨服务联调使用 Nacos 服务发现。
+从[原生本地开发总入口](docs/native-local-development.md)完成一次性依赖、证书、域名和个人配置准备。前端在独立 `saas-forge-web` 应用目录执行 `pnpm run dev`，五个后端由 IDE 直接 Run/Debug；日志、停止和重启由各自终端或 IDE 管理，跨服务联调使用 Nacos 服务发现。
 
 普通修改按[本地分层验证](docs/local-verification.md)选择受影响范围；完整门禁和本机复现入口见下文。组合验收的已完成证据与缺口见 [Issue #169](docs/acceptance/issue-169-native-development.md)。
 
 ## 完整构建与验收
 
-当前开发阶段仅支持 JDK 17 和桌面 Chrome 当前稳定版；Chromium 用于日常功能与视觉测试。全仓库验证还要求 Node 24.14.1、pnpm 11.22.0，并先在 `consoles` 完成冻结 lockfile 安装；Maven 不安装前端工具或依赖。
+后端使用 JDK 17，Maven 默认验证不依赖前端源码、Node、pnpm 或浏览器。涉及集成测试时需要 Docker/Testcontainers。
 
 ```bash
-cd consoles
-corepack enable
-pnpm install --frozen-lockfile
-cd ..
 ./mvnw verify
 ```
 
-`./mvnw verify` 会正式生成 TypeScript API Client，并调用一次前端聚合门禁；前端开发、独立构建和根命令详见 [consoles/README.md](consoles/README.md)。
+TypeScript Client 仍由正式 OpenAPI 生成；默认输出在契约模块的 `target/generated-typescript-client`，独立 npm 制品构建与发布见 [Client 说明](docs/versioned-api-client.md)。旧 Console 已按用户要求备份迁出，浏览器及未迁业务检查的归属见[迁出记录](docs/acceptance/consoles-extraction.md)。本仓 CI 通过不代表新前端浏览器或完整组合验收完成。
 
 ## 目录
 
@@ -70,7 +66,6 @@ cd ..
 - saas-forge-contracts/：HTTP 路由目录、OpenAPI、Protobuf 与事件契约。
 - saas-forge-sdk/：Java SDK、BOM 与 Spring Boot Starter。
 - saas-forge-quality-gates/：JaCoCo 聚合等工程门禁。
-- consoles/：Platform Console、Tenant Console Shell 与共享前端包；`business-remotes/` 目前只有验收夹具，尚无产品 Remote。
 - examples/：官方示例的预留位置，随 SDK 与领域闭环具备后实现。
 - deploy/：Compose 基础设施、验收组合、Nacos 配置清单、Helm 接入契约、systemd 与共享 Dockerfile。
 

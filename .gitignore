@@ -37,7 +37,6 @@ dist/
 coverage/
 playwright-report/
 test-results/
-consoles/shared/api-client/.generated/
 
 # 本地覆盖配置
 application-local.yml

@@ -23,14 +23,6 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "24.14.1"
-      - run: corepack enable
-      - run: pnpm install --frozen-lockfile
-        working-directory: consoles
-      - run: pnpm exec playwright install --with-deps chromium
-        working-directory: consoles
       - name: Verify release version
         shell: bash
         run: |
@@ -39,7 +31,7 @@ jobs:
             exit 1
           fi
           version="${GITHUB_REF_NAME#v}"
-          SF_VISUAL_SNAPSHOTS=false ./mvnw --batch-mode --no-transfer-progress -Drevision="$version" verify
+          ./mvnw --batch-mode --no-transfer-progress -Drevision="$version" verify
 
   publish:
     name: Publish Maven Central artifacts
@@ -65,20 +57,11 @@ jobs:
           server-password: CENTRAL_PASSWORD
           gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "24.14.1"
-      - run: corepack enable
-      - run: pnpm install --frozen-lockfile
-        working-directory: consoles
-      - run: pnpm exec playwright install --with-deps chromium
-        working-directory: consoles
       - name: Publish
         env:
           CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
-          SF_VISUAL_SNAPSHOTS: "false"
         run: >-
           ./mvnw --batch-mode --no-transfer-progress
           -Prelease

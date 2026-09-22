@@ -1,8 +1,0 @@
-**/.generated/**
-**/dist/**
-**/node_modules/**
-pnpm-lock.yaml
-# Retain the pinned upstream Soybean source verbatim.
-shared/admin/src/vendor/soybean/**
-
-platform-console/src/vendor/soybean/**

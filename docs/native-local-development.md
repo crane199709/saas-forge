@@ -22,20 +22,16 @@
 
 自身 HTTP 注册端口必须与监听一致，gRPC 使用实例自身的 `grpc.port` metadata；不要配置调用方的下游实例地址或静态回退。
 
-在仓库根完成前端准备：
+在后端仓库根准备共享 HTTPS 基础设施：
 
 ```bash
-corepack enable
-pnpm --dir consoles install --frozen-lockfile
-pnpm --dir consoles run generate:api
-pnpm --dir consoles run build:static-remote
 bash scripts/local-https-development.sh setup
 bash scripts/local-https-development.sh hosts
 bash scripts/local-https-development.sh trust-ca
 bash scripts/local-https-development.sh doctor
 ```
 
-hosts 和系统信任变更遵循工具已有授权流程。证书、信任或网络检查失败时先排查，不使用忽略证书错误选项。详细说明见 [Console 原生开发](native-console-development.md)。正式 OpenAPI 或生成器 POM 输入变化后重新执行 `generate:api`；日常启动只检查生成物，不重新运行 Maven。
+hosts 和系统信任变更遵循工具已有授权流程。证书、信任或网络检查失败时先排查，不使用忽略证书错误选项。前端依赖与运行命令以独立仓库为准；正式 Client 按[版本化交付说明](versioned-api-client.md)生成和发布。
 
 ## 2. 日常启动和停止
 
@@ -50,21 +46,7 @@ bash scripts/local-https-development.sh status edge
 
 本机 Gateway 的入口目标按 [Gateway/IAM 说明](native-platform-auth-development.md#真实浏览器认证)设置 `deploy/compose/.secrets/local-service-replacement/api-target.json`。该文件仅表示 Edge → Gateway；Gateway 及内部调用继续使用 Nacos。Edge 在 Docker 时，Gateway 监听需对它可达，不能将容器内 `127.0.0.1` 当作宿主机地址。
 
-两个终端分别从仓库根进入应用目录：
-
-```bash
-cd consoles/platform-console
-pnpm run dev
-```
-
-```bash
-cd consoles/tenant-console-shell
-pnpm run dev
-```
-
-浏览器打开 `https://platform.saas.forge.test` 和 `https://console.saas.forge.test`；API 走 `https://api.saas.forge.test`，静态 Remote 走第四域。日志直接留在各终端，Ctrl+C 只停止当前 Console，另一个 Console 和 Edge 不随之停止。后端停止使用 IDE Stop；独立入口用 `bash scripts/local-https-development.sh stop edge` 停止，不自动接管或恢复任何应用。
-
-内部 5173/5174 或健康探针地址不作为浏览器入口。Cookie、Origin、Fetch Metadata 由浏览器管理，Console 只调用共享类型化正式 operation。保留精确 CORS、CSRF 和两个 Browser Session Slot；不得用 HTTP localhost、Mock 登录或手工注入安全头替代联调。
+前端从独立 `saas-forge-web` 仓库按其 README 安装依赖并运行 `pnpm run dev`；使用既有受信 HTTPS Console/Gateway 入口。后端不再提供 Platform/Tenant 应用托管命令。停止前端使用所属终端，停止后端使用 IDE；HTTPS Edge 独立管理。
 
 ## 3. 修改与反馈
 
