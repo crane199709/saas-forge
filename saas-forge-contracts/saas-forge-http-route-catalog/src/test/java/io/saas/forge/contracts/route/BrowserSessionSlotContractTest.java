@@ -32,8 +32,9 @@ class BrowserSessionSlotContractTest {
     }
 
     @Test
-    void firstPartyCallersUseTheAtomicSessionSlotProtocol() throws IOException {
-        for (String directory : List.of("scripts", "consoles", "test-support")) {
+    void backendRepositoryCallersUseTheAtomicSessionSlotProtocol() throws IOException {
+        // 前端调用方已迁出；本仓只扫描自有调用方，缺失目录仍应使检查失败。
+        for (String directory : List.of("scripts", "test-support")) {
             try (var paths = Files.walk(REPOSITORY_ROOT.resolve(directory))) {
                 for (Path path : paths.filter(Files::isRegularFile).toList()) {
                     if (path.toString().contains("node_modules") || path.toString().contains("target")) {

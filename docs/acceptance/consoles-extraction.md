@@ -32,6 +32,7 @@
 | 覆盖 | 归档来源 | 新归属与完成条件 |
 | --- | --- | --- |
 | Runtime 状态、并发刷新、多标签、晚到响应、失权与未知结果 | `shared/app-runtime/test/`、`integration-test/session-tabs.test.mjs`、`console-default-realm.test.mjs` | 新前端统一会话 Runtime；适配单 Console，保留负例；#205 已有证据不代替全量旧覆盖迁移 |
+| 前端调用方会话协议静态检查 | 原 `BrowserSessionSlotContractTest` 对 `consoles/` 的扫描 | #206：在前端按统一会话协议验证调用方；后端继续检查 `scripts/`、`test-support/`，不跨仓读取源码 |
 | Cookie/Origin/CORS/CSRF、Token 撤销、Redis 故障、四域/Remote 隔离 | `integration-test/browser-session-security.mjs`、`browser-api-security.mjs`、`static-remote.test.mjs` 等 | 前端 Chrome + 后端独立探针，同轮关联版本、Fresh 环境标识与清理责任；#183–#189 要求仍有效 |
 | Tenant、Plan、Quota、Subscription、管理员初始化、密码投递、OAuth/Secret 恢复 | `integration-test/*-acceptance.mjs`、`stage2-main-chain.test.mjs` | 各业务迁移票按真实统一 Console 页面完成，不以直接 API 建状态替代页面业务验收 |
 | 国际化、格式化、键盘/焦点、无障碍、品牌/主题、视觉与生产错误边界 | `shared/admin/`、`shared/i18n/`、`integration-test/`、视觉配置及基线 | 新前端适配 Soybean 组件，保留有效断言与安全错误显示，不机械复用旧控件定位 |
@@ -44,5 +45,5 @@
 - 通过：Compose 布局校验，6 个独立应用、4 个验收场景，网络/卷隔离、挂载和迁移门禁均通过。
 - 通过：从旧目录迁回后端的 22 项 TLS、精确 CORS、静态 Remote、HMR 与 Gateway 转发测试，零失败、零跳过。
 - 通过：独立 TypeScript Client 的 `npm run build`（正式 v1/v2 生成及 TypeScript 编译）、19 项 RepositoryStandardsTest、变更 YAML 解析与差异空白检查。未发布新的 npm 版本。
-- 待确认：本次提交触发的新后端 CI；前端浏览器覆盖明确退出本仓，不能与此前完整浏览器矩阵混称。
+- 失败与修复：[迁出提交 CI](https://github.com/crane199709/saas-forge/actions/runs/35694634609) 的 Maven 检查因 `BrowserSessionSlotContractTest` 仍扫描已迁出的 `consoles/` 而失败；工具测试、Tenant Fresh Compose 和 Nacos 检查通过。后续修复将扫描范围限定为本仓调用方，保留协议断言和缺失目录失败行为。修复提交的完整 CI 结果以对应运行记录为准。
 - 未执行：已迁出的旧浏览器产品矩阵；本次明确不修补旧双 Console 页面，也不把归档视为新前端交付完成。
