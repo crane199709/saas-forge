@@ -1,6 +1,6 @@
 # Issue #205：公司工作台与双身份切换
 
-状态：2026-09-20，后端切换已实现并完成下列定向验证，正式 Client 0.3.0 已发布；独立前端已接入并完成本地代码检查，真实 Chrome 业务验收未完成。不得据此关闭 Issue。
+状态：2026-09-22，后端定向验证重新通过，正式 Client 0.4.0 已发布且独立前端安装验证通过；真实 Chrome 业务验收尚未完成，不得据此关闭 Issue。早期记录保留历史事实，最新结果见文末。
 
 ## 后端实现
 
@@ -71,3 +71,13 @@ mvn -o -pl saas-forge-services/iam-service -am test \
 ## 统一 Console 首次改密补齐（2026-09-20）
 
 经开发者确认扩展范围，新增 v2 changeConsoleInitialPassword；复用既有密码策略与初始凭据事务，使用已存在的 PASSWORD_CHANGE 操作记录，无新增迁移、无恢复旧协议。新建接口的真实集成测试覆盖版本拒绝、输入拒绝不消费、改密后旧密码失效、重新登录、原键重放不清 Cookie、同键不同密码拒绝与正式凭据不能使用首次改密接口。统一认证 9 项、路由契约及仓库规范检查通过。Client 升级至 0.4.0，发布与真实浏览器结果需单独记录。
+
+## 2026-09-22 交付复核
+
+- 通过：JDK 17 执行上文定向 Maven 命令，48 项测试全部通过，零失败、零错误、零跳过：统一认证 HTTP 9、RefreshTokenFamily 7、持久化 12、v2 路由契约 1、仓库规范 19。HTTP 使用隔离 Testcontainers PostgreSQL、Redis、Kafka；首次沙箱内运行因 Docker 不可访问失败，在允许访问 Docker 后完整重跑通过。
+- 通过：npm registry 已提供正式 Client 0.4.0；独立前端安装包的来源为 `ebff4b338d0c4b39e51488ac1e9b98885318d438`，`dirty=false`。修复前端 manifest 0.4.0、锁文件和已安装包 0.3.0 不一致，锁文件仅升级该 Client；frozen-lockfile 安装及供应链校验通过。
+- 通过：独立前端 35 项测试、类型检查、全部改动 TS/Vue 文件 ESLint、生产构建与差异空白检查。
+- 初次入口检查：不跳过 TLS 校验的真实 HTTPS 探针中，`https://console.saas.forge.test` 返回 502，API readiness 返回 502 / `UPSTREAM_UNAVAILABLE`。已请求开发者启动或重载兼容后端并提供真实单租户、双身份验收账号；未代替开发者启停后端、修改授权或执行开发数据库迁移。
+- 未执行：本轮真实 Chrome 登录、公司选择与双向切换、刷新/多标签/休眠协调、真实失权、路由与 API 越权、品牌及语言/主题/键盘/焦点验收；完整 CI 与 Fresh Compose。不能用自动化测试或构建结果代替这些证据，Issue 六项仍不能整体勾选。
+
+开发者随后确认后端已启动，并提供本机受限凭据目录。独立前端以 `pnpm run dev` 原生启动后，受信 Console HTTPS 返回 200，Gateway 正式 bootstrap 对无浏览器来源探针返回 403。先前 502 已不作为当前阻塞；页面与业务链路仍需 Chrome 验证。
