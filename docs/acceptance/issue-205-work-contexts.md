@@ -1,6 +1,6 @@
 # Issue #205：公司工作台与双身份切换
 
-状态：2026-09-22，后端定向验证重新通过，正式 Client 0.4.0 已发布且独立前端安装验证通过；真实 Chrome 业务验收尚未完成，不得据此关闭 Issue。早期记录保留历史事实，最新结果见文末。
+状态：2026-09-22，六项验收均已通过，真实 Chrome、后端权限检查与前端回归证据已归档。早期阻塞记录保留历史事实，以文末最终验收为准；完整 CI 状态单独记录，不等同于本票定向验收。
 
 ## 后端实现
 
@@ -81,3 +81,23 @@ mvn -o -pl saas-forge-services/iam-service -am test \
 - 未执行：本轮真实 Chrome 登录、公司选择与双向切换、刷新/多标签/休眠协调、真实失权、路由与 API 越权、品牌及语言/主题/键盘/焦点验收；完整 CI 与 Fresh Compose。不能用自动化测试或构建结果代替这些证据，Issue 六项仍不能整体勾选。
 
 开发者随后确认后端已启动，并提供本机受限凭据目录。独立前端以 `pnpm run dev` 原生启动后，受信 Console HTTPS 返回 200，Gateway 正式 bootstrap 对无浏览器来源探针返回 403。先前 502 已不作为当前阻塞；页面与业务链路仍需 Chrome 验证。
+
+
+## 2026-09-22 最终验收与交付
+
+真实浏览器采用桌面 Chrome 153.0.8010.53、受信 HTTPS Console/Gateway、正式 Client 0.4.0 和开发者已启动的后端。前端提交 [6caa885](https://github.com/crane199709/saas-forge-web/commit/6caa885fdb68ebb48c2ba8f4492a2e5084817358)，完整逐项记录与脱敏 HTTP/截图证据见[前端验收报告](https://github.com/crane199709/saas-forge-web/blob/6caa885fdb68ebb48c2ba8f4492a2e5084817358/docs/acceptance/issue-205-work-contexts.md)。
+
+六项验收结论：
+
+1. 单租户登录、双身份初选、平台与公司双向切换、公司间切换及刷新恢复通过；无上下文账号失败关闭。
+2. 服务端决定候选和当前工作视图。单租户访问平台 API 返回 403，选择他人的 Membership 被拒绝；只有平台角色的管理员公司候选仍为零。
+3. 两个真实标签在切换中与丢失真实 204 响应时同时遮蔽旧身份，原操作重试可恢复；晚到的真实 session 响应不能覆盖新上下文，冻结标签恢复后重新复核。
+4. 临时撤销专用测试账号当前 Membership 后，两页隐藏旧身份，session 返回 CURRENT_CONTEXT_REVOKED，旧 Token 返回 401；恢复授权后旧 Token 仍然无效。
+5. 公司完整品牌和平台回退原子应用，中英文、深浅色、键盘、焦点及实际对比度通过。前端修复菜单 Teleport 目标时序与深色品牌可读性，五种菜单布局真实双标签回归零页面错误。
+6. 后端独立 48 项定向测试、前端 35 项测试/类型/lint/生产构建通过；真实业务链路未模拟授权或业务成功响应。
+
+账号与恢复：用户授权使用既有受限重置入口重新签发管理员初始凭据，并亲自完成首次改密与重新登录。另按授权在本机数据库准备三个专用测试身份、两个租户和三条 Membership；仅临时禁用的一条 Membership 已精确恢复，三条均为 ENABLED。随机密码仅保存在 Git 忽略的受限文件中。夹具准备不作为租户创建/邀请流程的验收证据，未接管后端进程或运行迁移。
+
+远端 CI 复核：[317b8b9 的 Verify](https://github.com/crane199709/saas-forge/actions/runs/35682122207) 发现 HttpRouteCatalogLoaderTest 仍断言 62 条正式路由，而 selectConsoleContext 与 changeConsoleInitialPassword 增加后实际为 64。同步此总数断言，保留 UnifiedConsoleContractTest 对全部八个 v2 operation 的精确集合校验和仓库规范对 OpenAPI/路由/认证边界的一致性校验。JDK 17 执行 `mvn -o -pl saas-forge-contracts/saas-forge-http-route-catalog -am test`，整个模块 5 项通过，零失败、零错误、零跳过。
+
+范围限制：本机未重跑完整 CI、Fresh Compose 或所有直达实例安全矩阵；不能将上述定向通过描述为完整矩阵通过。推送后的 CI 结果以对应 commit 的 GitHub Actions 为准，已知路由计数失败已修复并定向复测。

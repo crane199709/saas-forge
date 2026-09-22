@@ -17,7 +17,7 @@ class HttpRouteCatalogLoaderTest {
                 .count();
 
         assertEquals(HttpRouteCatalogLoader.SUPPORTED_SCHEMA_VERSION, catalog.schemaVersion());
-        assertEquals(62 + acceptanceRoutes, catalog.routes().size());
+        assertEquals(64 + acceptanceRoutes, catalog.routes().size());
         var clients = catalog.routes().stream().filter(route -> route.operationId().equals("listOAuthClients"))
                 .findFirst().orElseThrow();
         assertEquals("iam-service", clients.serviceId());
