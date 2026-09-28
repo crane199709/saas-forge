@@ -1,5 +1,7 @@
 # 浏览器界面只使用一个共享 Design System
 
+> 当前载体：完整 Soybean 单 Console 已在独立 saas-forge-web 维护，见 [ADR 0052](0052-unified-console-authentication-uses-versioned-session-protocol.md) 与[#207 清理记录](../acceptance/issue-207-cleanup.md)。下文自建包、React Shell、旧 `consoles/` 路径及迁移时态保留历史事实，不作为现行入口；单一展示来源、权威品牌原子应用和无凭据 Remote 边界继续有效。
+
 Platform Console、Tenant Console Shell 与全部官方业务 Remote 只通过一个版本化的 `@saas-forge/design-system` 包获得全局样式、Design Token、图标、无领域含义的控件、标准交互模式和测试工具。包内部可以使用稳定子路径组织不同职责，但消费者不得直接导入内部文件、底层组件基础或另一套同类 UI 实现；缺少通用能力时必须先扩展共享包。具体视觉与交互规则见 [Design System 规范](../25-design-system.md)。
 
 Design System 独占全局样式入口、Theme Provider 和全部公共组件外观。现有 `app-runtime` 保持为无 UI 的启动状态机；Console 与 Remote 只能使用局部作用域的领域样式，不得定义全局 reset、覆盖 Design System 内部选择器或重写受控 Token。Tenant Brand Profile 继续遵循 ADR 0036，只能原子改变允许的品牌素材、主色和强调色，不能改变状态颜色、布局、组件、交互或无障碍约束。

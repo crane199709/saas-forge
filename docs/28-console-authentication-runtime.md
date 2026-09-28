@@ -1,6 +1,8 @@
 # Console 认证 Runtime 与浏览器会话规格
 
-> **目标更新**：本文的双 Console、登录前 Intent、独立槽位退出属于现行 v1 与历史规格。#201/#202 已确认新版统一 Console，协议见[统一认证方案](unified-authentication-protocol.md)与 [ADR 0052](adr/0052-unified-console-authentication-uses-versioned-session-protocol.md)（已确认、未实施）。本文既有验收仍仅证明原版本，不证明新版已完成；历史基线与一次性兼容例外不变。
+> **2026-09-29 前端迁移状态**：统一 Console 已在独立 saas-forge-web 实现，v2 已实现但启用须受控切换，见 [ADR 0052](adr/0052-unified-console-authentication-uses-versioned-session-protocol.md)。下文双 Console、自建包、`consoles/`、旧命令/截图数量及其完成时态保留原设计或历史事实，不代表当前入口与验收。当前检查见[测试归属](console-testing-baseline.md)，未迁及待聚合项见[#207 清单](acceptance/issue-207-cleanup.md)；原历史勾选不自动证明父 #201 完成。
+
+> **目标更新**：本文的双 Console、登录前 Intent、独立槽位退出属于现行 v1 与历史规格。#201/#202 已确认新版统一 Console，协议见[统一认证方案](unified-authentication-protocol.md)与 [ADR 0052](adr/0052-unified-console-authentication-uses-versioned-session-protocol.md)（v2 已实现，启用仍须受控切换）。本文既有验收仍仅证明原版本，不证明新版已完成；历史基线与一次性兼容例外不变。
 
 **状态：认证 Runtime、双 Browser Session Slot、两个 Console 认证 Shell、Tenant Context Switch 与多标签页协调已有实现与验收记录；品牌统一解析、素材预加载与原子应用已实现，证据见 [Issue #147 验收记录](acceptance/issue-147-brand-runtime.md)。本文是规格而不是当前构建通过证据。**
 

@@ -1,5 +1,7 @@
 # MVP 开发计划清单
 
+> **2026-09-29 前端迁移状态**：统一 Console 已在独立 saas-forge-web 实现，v2 已实现但启用须受控切换，见 [ADR 0052](adr/0052-unified-console-authentication-uses-versioned-session-protocol.md)。下文双 Console、自建包、`consoles/`、旧命令/截图数量及其完成时态保留原设计或历史事实，不代表当前入口与验收。当前检查见[测试归属](console-testing-baseline.md)，未迁及待聚合项见[#207 清单](acceptance/issue-207-cleanup.md)；原历史勾选不自动证明父 #201 完成。
+
 > **状态**：本文是设计基线，描述长期有效的目标与约束，不代表对应功能已实现；当前实现状态见 [README 的当前状态](../README.md#当前状态) 与开放 Issues。涉及前端界面的部分写作于自建 Design System / React Shell 时期，已由 [ADR 0050](adr/0050-consoles-adopt-soybean-element-plus.md) 替代；现行实现是 Vue 3 + Element Plus + Soybean Admin。勾选项只表示当时该条目的证据成立，**不表示当前仍可直接复用**；引用已删除包、依赖或浏览器矩阵的历史证据按原事实保留。
 
 ## 目标、边界与当前起点
@@ -129,7 +131,7 @@ flowchart TD
 - [x] 建立最终产品形态的 Platform Console、Tenant Console Shell 与共享 Runtime；通过稳定包入口接入生成的 TypeScript API Client，形成可独立构建、发布静态制品和测试的应用 Shell，不建设一次性验收 Console。此项不证明登录、真实 API、受控 TLS Origin、Remote 或真实浏览器产品闭环。
 - [x] 建立唯一共享 UI 载体（当前为 `@saas-forge/admin`，Vue 3 + Element Plus + Soybean Admin），统一颜色、排版、间距、图标、表单、表格、反馈、空态、加载态、错误态、危险操作确认、键盘与焦点恢复；Platform Console、Tenant Console 和 Remote 不得覆盖全局样式或重复实现同类组件。共享边界与替代关系见 [ADR 0050](adr/0050-consoles-adopt-soybean-element-plus.md)；原自建 `@saas-forge/design-system` 与固定 Ant Design 6.6.2 已删除，见 [ADR 0037](adr/0037-browser-surfaces-use-one-shared-design-system.md) 的替代说明。
 - [ ] 提供响应式栅格和标准分栏布局；以桌面管理场景为主，窄屏不得破坏核心流程，并满足语义化控件、键盘操作、可见焦点和基础无障碍要求。**现状：Soybean 布局已提供侧栏与内容区，并有 1024 / 1440 两个宽度的浅色与深色快照；窄屏（≤ 768px）与完整无障碍矩阵尚未验证**，因此保持未勾选。
-- [x] 采用 Soybean Admin Element Plus（Vue 3、Element Plus、Vue Router、Pinia、TypeScript、Vite）作为应用结构与组件基础，业务页面直接使用 Element Plus；不重新引入旧 React 页面、旧 UI 包、Ant Design 工具或双框架兼容层。约束见 [ADR 0050](adr/0050-consoles-adopt-soybean-element-plus.md) 与 [consoles/AGENTS.md](../consoles/AGENTS.md)。
+- [x] 采用 Soybean Admin Element Plus（Vue 3、Element Plus、Vue Router、Pinia、TypeScript、Vite）作为应用结构与组件基础，业务页面直接使用 Element Plus；不重新引入旧 React 页面、旧 UI 包、Ant Design 工具或双框架兼容层。约束见 [ADR 0050](adr/0050-consoles-adopt-soybean-element-plus.md) 与 历史 `consoles/AGENTS.md`（按[历史追溯](acceptance/console-history-reproduction.md)恢复）。
 - [x] 按 [Console 认证 Runtime 与浏览器会话规格](28-console-authentication-runtime.md)建立共享认证状态机、类型化 HTTP Client、Problem Details 映射、全局导航和分层错误边界；两个 Console 复用同一实现，分别在受控 Origin 维护绑定 Login Context Intent 的 Browser Session Slot 与内存 Access Token。交付顺序为“契约→Gateway/IAM 安全→无 UI Runtime→共享 admin 应用→Platform→Tenant/Tenant Switch→多 Origin/多标签页/Fresh Compose 验收”；只有全部切片与最终浏览器证据成立时才能勾选。
 - [x] 按 [Console 国际化基线](29-console-internationalization.md)建立 `zh-CN` 与 `en-US` 国际化基线：浏览器语言决定初始 Locale，用户切换只保存为非敏感本地 UI 偏好；构建门禁保证双语翻译键一致。向 Remote 传递 Locale 的部分**随 Remote 实现后才成立**，当前只有静态夹具验证。
 - [x] 建立完整 Platform Brand Profile，以及“Runtime 只发布权威 Context 快照、共享 `@saas-forge/admin` 唯一解析并原子应用”的品牌运行时缝。未取得权威 Tenant Context、Context 读取中、切换已提交但新 Context 未恢复，或 Tenant Brand Profile 任一字段结构、颜色、受控素材引用及加载结果无效时，均完整使用平台品牌；只有一个不可变 Resolved Brand Profile 可以同时驱动显示名称、Logo、favicon、标签页标题和浅色/深色 Brand Token Set。品牌链路已实现；原证据为 React/Ant Design 时期并以五浏览器 Fresh Compose 聚合验收，按 [ADR 0046](adr/0046-development-supports-chrome-and-jdk17.md) 该矩阵不再是现行兼容要求，记录见 [Issue #147 验收记录](acceptance/issue-147-brand-runtime.md)；详见 [Console 设计规范](25-design-system.md#认证品牌与业务)、[Console 认证 Runtime 与浏览器会话规格](28-console-authentication-runtime.md#54-tenant-context-switch) 与 [ADR 0042](adr/0042-browser-surfaces-atomically-apply-one-resolved-brand.md)。

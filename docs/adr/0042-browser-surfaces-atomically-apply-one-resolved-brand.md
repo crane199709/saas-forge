@@ -1,5 +1,7 @@
 # 浏览器界面只原子应用一个 Resolved Brand Profile
 
+> 当前载体：完整 Soybean 单 Console 已在独立 saas-forge-web 维护，见 [ADR 0052](0052-unified-console-authentication-uses-versioned-session-protocol.md) 与[#207 清理记录](../acceptance/issue-207-cleanup.md)。下文自建包、React Shell、旧 `consoles/` 路径及迁移时态保留历史事实，不作为现行入口；单一展示来源、权威品牌原子应用和无凭据 Remote 边界继续有效。
+
 Tenant Access 继续按 [ADR 0036](0036-tenant-access-owns-controlled-tenant-brand-profiles.md) 拥有 Tenant Brand Profile，Design System 继续按 [ADR 0037](0037-browser-surfaces-use-one-shared-design-system.md) 拥有唯一 Theme Provider，`app-runtime` 与共享 React Shell 继续按 [ADR 0039](0039-consoles-share-one-authentication-runtime.md) 分别拥有无 UI 认证状态与 React 组合。MVP 的 Platform Brand Profile 由 Design System 内的版本化构建期常量提供，不扩展 Runtime Config；它与 Tenant Brand Profile 都由显示名称、Logo、favicon、主色和强调色组成。未建立权威 Tenant Context 时只使用平台品牌，已发布 v1 契约仍兼容可选 Logo/favicon，但新写入只产生五字段完整 Tenant Profile，旧快照缺失任一字段时整份无效。
 
 `app-runtime` 只原子发布权威 Tenant Context 与原始品牌快照，不解析视觉语义；Design System 是唯一品牌解析边界，它必须在提交前整体校验 Profile、受控同站素材引用、Logo/favicon 加载与允许 MIME，并生成包含规范化完整 Profile、浅色/深色 Brand Token Set 与 `platform | tenant` 来源的不可变 Resolved Brand Profile。共享 React Shell 是唯一运行时应用缝；Theme Provider、显示名称、Logo、favicon 与标签页标题只能消费同一 Resolved Brand Profile，Console 与 Remote 不得直接消费原始 Profile。Remote 只继承 Shell 已提交的 Brand Token Set，不获取或渲染品牌素材。

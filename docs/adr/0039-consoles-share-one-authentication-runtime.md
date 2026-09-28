@@ -1,6 +1,6 @@
 # 两个 Console 共用一个认证 Runtime
 
-> 目标更新：#201/#202 已确认一个 Console、同 Origin 标签页共用当前 Identity 和工作上下文；见 [ADR 0052](0052-unified-console-authentication-uses-versioned-session-protocol.md)（已确认、未实施）。每 Realm 一个 Runtime、无 UI 认证边界和正式类型化 Client 继续有效；下文双应用/双槽位与旧 UI 迁移描述仅供现行实现和历史追溯。
+> 目标更新：#201/#202 已确认一个 Console、同 Origin 标签页共用当前 Identity 和工作上下文；见 [ADR 0052](0052-unified-console-authentication-uses-versioned-session-protocol.md)（v2 已实现，启用仍须受控切换）。每 Realm 一个 Runtime、无 UI 认证边界和正式类型化 Client 继续有效；下文双应用/双槽位与旧 UI 迁移描述仅供历史追溯。
 
 Platform Console 与 Tenant Console Shell 使用同一套认证状态、HTTP、Problem Details、导航和错误恢复语义，但分别在各自受控 Origin 创建实例并只持有对应 Browser Session Slot 的内存 Access Token。`@saas-forge/app-runtime` 保持无 UI 框架依赖，以纯 TypeScript 状态转换、类型化 `ConsoleApiClient`、内存 Token 与 Problem 规范化封装生成 API Client；另一个共享 UI 包拥有 Provider、路由守卫、全局导航和根/路由错误边界，并由共享组件包提供它们的统一视觉与交互实现（当前载体是 `@saas-forge/admin`，见文末说明；[ADR 0051](0051-consoles-use-complete-soybean-applications.md) 已决定把该载体迁入两个官方应用结构，尚未实施）。
 

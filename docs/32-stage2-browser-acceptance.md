@@ -1,5 +1,7 @@
 # 第 2 阶段浏览器聚合验收
 
+> **2026-09-29 前端迁移状态**：统一 Console 已在独立 saas-forge-web 实现，v2 已实现但启用须受控切换，见 [ADR 0052](adr/0052-unified-console-authentication-uses-versioned-session-protocol.md)。下文双 Console、自建包、`consoles/`、旧命令/截图数量及其完成时态保留原设计或历史事实，不代表当前入口与验收。当前检查见[测试归属](console-testing-baseline.md)，未迁及待聚合项见[#207 清单](acceptance/issue-207-cleanup.md)；原历史勾选不自动证明父 #201 完成。
+
 状态：2026-09-14，Q1～Q8 已逐项确认，验收边界已收敛，并发布为 [GitHub Issue #183](https://github.com/crane199709/saas-forge/issues/183)，标记 `ready-for-agent`，关联总计划 #88。本文是验收规格，不代表本轮聚合验收已实现、执行或通过。
 
 关联：[MVP 开发计划](16-mvp-development-plan.md#2-身份与租户最小闭环)、[Platform Console 初始化闭环](30-platform-console-tenant-initialization.md)、[租户访问与 OAuth Client 管理](31-console-tenant-access-and-oauth-client-management.md)。

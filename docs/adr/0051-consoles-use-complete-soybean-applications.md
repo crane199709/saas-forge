@@ -1,6 +1,6 @@
 # 两个 Console 直接基于完整 Soybean 应用开发
 
-> 目标已由 #201/#202 更新：改为已有 saas-forge-web 中一个完整 Soybean Console。#193–#199 已按计划变更关闭，不再是前置任务，也不代表旧验收通过；统一协议见 [ADR 0052](0052-unified-console-authentication-uses-versioned-session-protocol.md)（已确认、未实施）。以下状态与双 Console 范围保留为当时记录，不作为当前实施指令。
+> 目标已由 #201/#202 更新：改为已有 saas-forge-web 中一个完整 Soybean Console。#193–#199 已按计划变更关闭，不再是前置任务，也不代表旧验收通过；统一协议见 [ADR 0052](0052-unified-console-authentication-uses-versioned-session-protocol.md)（v2 已实现，启用仍须受控切换）。以下状态与双 Console 范围保留为当时记录，不作为当前实施指令。
 
 > **状态**：**已确认，未实施**。实施由 [Issue #199](https://github.com/crane199709/saas-forge/issues/199) 追踪，且被 #193–#198（各页面迁入官方应用）阻塞。
 >

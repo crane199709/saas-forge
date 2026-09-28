@@ -1,5 +1,7 @@
 # Console 国际化基线
 
+> **2026-09-29 前端迁移状态**：统一 Console 已在独立 saas-forge-web 实现，v2 已实现但启用须受控切换，见 [ADR 0052](adr/0052-unified-console-authentication-uses-versioned-session-protocol.md)。下文双 Console、自建包、`consoles/`、旧命令/截图数量及其完成时态保留原设计或历史事实，不代表当前入口与验收。当前检查见[测试归属](console-testing-baseline.md)，未迁及待聚合项见[#207 清单](acceptance/issue-207-cleanup.md)；原历史勾选不自动证明父 #201 完成。
+
 状态：公开接口、资源门禁与验收矩阵已实现，**两个 Console 的 Locale 收敛未完成**。Q1–Q14 的公开接口、交付顺序及验收矩阵已按本文交付，PRD [Issue #117](https://github.com/crane199709/saas-forge/issues/117) 已关闭；资源门禁 `pnpm --dir consoles run validate:i18n` 已接入 `build:workspace` 与 `verify:workspace`。本文继续作为实施规格；包名与当前实现状态见下方说明与[当前仓库事实与衔接点](#当前仓库事实与衔接点)，已确认但未达成的项集中在[未达成项](#未达成项)。
 
 > **包名更新**：本文原先以 `@saas-forge/react-shell` 与 `@saas-forge/design-system` 表述共享 UI 载体，二者已按 [ADR 0050](adr/0050-consoles-adopt-soybean-element-plus.md) 替换为 `@saas-forge/admin`（Vue 3 + Element Plus + Soybean Admin）。正文已按当前仓库更新，语言解析、偏好存储、资源门禁与回退语义不变。

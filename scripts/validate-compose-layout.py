@@ -44,9 +44,7 @@ def configuration(files, project=None):
             if mount['type'] != 'bind' or mount['target'].startswith('/run/'):
                 continue
             source = Path(mount['source'])
-            # 前端制品由构建阶段生成；本检查不要求预先构建或创建占位目录。
-            if 'dist' not in source.parts:
-                assert source.exists(), f'挂载源丢失: {source}'
+            assert source.exists(), f'挂载源丢失: {source}'
         if isinstance(service.get('build'), dict):
             build = service['build']
             assert (Path(build['context']) / build['dockerfile']).is_file(), 'Dockerfile 路径失效'
@@ -72,7 +70,7 @@ def main():
             if name.endswith('-migrate'):
                 application = name.removesuffix('-migrate') + '-service'
                 assert services[application]['depends_on'][name]['condition'] == 'service_completed_successfully'
-            elif name not in ('gateway', 'platform-console', 'tenant-console') and not name.endswith('-service'):
+            elif name != 'gateway' and not name.endswith('-service'):
                 assert service.get('profiles'), f'维护任务 {name} 会随普通启动执行'
         declared = set(re.findall(r'^([A-Z][A-Z0-9_]*)=', (file.parent / '.env.example').read_text(), re.M))
         required = set(re.findall(r'\$\{([A-Z][A-Z0-9_]*)', file.read_text()))

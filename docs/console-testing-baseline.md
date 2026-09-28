@@ -1,20 +1,18 @@
-# 共享前端测试基线
+# 前端检查与后端验证归属
 
-> 2026-09-22：旧双 Console、前端构建及浏览器验收入口已迁出。本页相关命令仅供历史追溯，不再是当前后端操作入口；服务端迁移、引导及专项服务验收仍保留。当前边界和待迁检查见 [迁出记录](acceptance/consoles-extraction.md)。
+正式 Console 在独立 [saas-forge-web](https://github.com/crane199709/saas-forge-web) 维护，复用完整 Soybean Admin Element Plus。所有前端命令在该仓库执行，不读取后端源码，不运行 Maven/JDK，不启动后端。
 
-当前技术栈为 Vue 3 / Soybean Admin Element Plus。历史验收仍保留原事实；迁移后的检查不以旧截图作为新界面基线。
-
-| 边界 | 当前入口 |
+| 检查 | 当前入口与证据边界 |
 | --- | --- |
-| 类型与格式 | `pnpm --dir consoles run typecheck`、`lint`、`format:check` |
-| 纯 Runtime / API / 品牌 | `pnpm --dir consoles run test` |
-| 凭据、品牌、依赖、语言资源与本地开发边界 | `pnpm --dir consoles run test:boundaries` |
-| 正式产品路由、创建未知、原操作恢复、退出保护与权限 | `consoles/integration-test/console-vue-products.test.mjs` |
-| 跨标签会话、失效隐藏、恢复与语言 Origin 隔离 | `console-default-realm.test.mjs`、`session-tabs.test.mjs` |
-| 浅色/深色布局、双语认证、键盘、axe 与截图 | `pnpm --dir consoles run test:browser:consumers` |
-| 固定 Linux 截图比较 | `bash scripts/verify-console-visual.sh` |
-| 产物及共享版本 | `pnpm --dir consoles run build:workspace` |
+| 类型、只读 Lint、Runtime/业务测试、生产构建 | `pnpm run verify`，失败立即向上传播 |
+| 正式 Client、会话协议、精确数字/金额/日期 | `tests/console-client.test.ts`、`console-protocol.test.ts`、`locale-format.test.ts`，由 `pnpm run test` 执行 |
+| 真实登录、上下文、刷新、多标签冒烟、退出、语言/主题、键盘/焦点/Cookie | `pnpm run verify:browser -- <handoff.json> <新产物目录>`，连接已启动的受信 HTTPS 环境 |
+| Remote 冻结制品与消费 | `pnpm run build:static-remote`、`scripts/remote-browser-checks.mjs`；真实资源/CORS 证据见前端 #10 |
+| TLS、精确 CORS、静态 Remote、Gateway 转发 | 后端 `scripts/test/`；Java 服务与契约保留后端 Maven 门禁 |
+| Fresh、业务主链、Token/Redis 故障与完整安全矩阵 | #183–#189 与父 #201，同轮交接后分别执行后端探针与前端页面验证 |
+| 完整视觉像素基线、自动无障碍、布局与生产错误边界 | #103 / #201 仍待适配；当前冒烟截图不等于完整视觉回归通过 |
+| 完整 ICU/语言资源与 Session Tabs 负例 | #201 与专项责任表继续跟踪；现有格式化和会话冒烟不替代全量覆盖 |
 
-视觉候选通过 `bash scripts/verify-console-visual.sh --update` 在隔离副本生成；审阅后才更新基线。保留缺失基线及差异失败传播。布局夹具、模拟 HTTP 和真实服务验收是不同证据。
+交接格式、失败传播及未迁覆盖见[独立验证](acceptance/independent-verification.md)。完整检查由各自 CI 承担；后端 CI 不运行浏览器。没有新增永久 skip，也不把缺少环境或缺少基线标记为通过。
 
-真实产品与四域安全验收仍执行 `bash scripts/verify-console-authentication-e2e.sh --product` 及相应 Issue 要求，使用 Chrome、受信 HTTPS、Gateway 和本次运行数据。日常改动不自动启动完整 Compose 或接管开发者服务。
+旧 `consoles/`、Vitest 配置及截图属于历史实现。旧视觉容器脚本只调用已迁出配置，没有独立测试断言；#207 清理失效包装入口，不删除历史基线或覆盖要求。复现旧源码见[历史追溯](acceptance/console-history-reproduction.md)，清理与待聚合清单见[#207 记录](acceptance/issue-207-cleanup.md)。

@@ -59,6 +59,8 @@ Tenant ── Subscription Version
 
 TypeScript Client 仍由正式 OpenAPI 生成；默认输出在契约模块的 `target/generated-typescript-client`，独立 npm 制品构建与发布见 [Client 说明](docs/versioned-api-client.md)。旧 Console 已按用户要求备份迁出，浏览器及未迁业务检查的归属见[迁出记录](docs/acceptance/consoles-extraction.md)。本仓 CI 通过不代表新前端浏览器或完整组合验收完成。
 
+旧入口清理、T1 兼容边界与最终待聚合验证项见[#207 收尾记录](docs/acceptance/issue-207-cleanup.md)。
+
 ## 目录
 
 - gateway/：唯一公网入口模块。

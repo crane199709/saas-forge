@@ -90,4 +90,4 @@ node scripts/acceptance-handoff.mjs correlate "$SF_ROUND_DIR/handoff.json" \
 
 适用入口已迁入：前端 `tests/console-session.test.ts` / `console-client.test.ts`（Runtime/正式 Client）、`console-protocol.test.ts`（原调用方会话门禁）、`locale-format.test.ts`（原精确格式化）、`scripts/verify-browser.mjs`（真实登录/展示/焦点/Cookie）、`scripts/remote-browser-checks.mjs`（Remote）。业务状态测试保留在前端 `tests/`。后端 `scripts/test/` 的 TLS/精确 CORS/Remote/Edge 检查及 Java 服务测试不迁到前端。
 
-尚未全量迁入的独有覆盖：旧 `consoles/integration-test/` 的完整 Session Tabs/错误与撤销 Token/Redis/Fresh 业务聚合；旧 `browser-test/` 的完整布局/视觉基线、自动无障碍矩阵、生产错误边界；旧 i18n 的 ICU/资源完整性覆盖按 Vue i18n 适配。它们保留在 Git 历史和迁出清单中，由 #183–#189、#103、#201 及相应业务票继续承担，不因新冒烟入口通过而删除或勾选。旧 `scripts/run-console-visual-container.sh` 仅是历史载体，不是当前可运行入口，也未用于后端 CI。
+尚未全量迁入的独有覆盖：旧 `consoles/integration-test/` 的完整 Session Tabs/错误与撤销 Token/Redis/Fresh 业务聚合；旧 `browser-test/` 的完整布局/视觉基线、自动无障碍矩阵、生产错误边界；旧 i18n 的 ICU/资源完整性覆盖按 Vue i18n 适配。它们保留在 Git 历史和迁出清单中，由 #183–#189、#103、#201 及相应业务票继续承担，不因新冒烟入口通过而删除或勾选。旧视觉包装入口已由 #207 清理，可从 Git 历史恢复；当前可运行检查见[测试归属](../console-testing-baseline.md)。
