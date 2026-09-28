@@ -47,3 +47,7 @@
 - 通过：独立 TypeScript Client 的 `npm run build`（正式 v1/v2 生成及 TypeScript 编译）、19 项 RepositoryStandardsTest、变更 YAML 解析与差异空白检查。未发布新的 npm 版本。
 - 失败与修复：[迁出提交 CI](https://github.com/crane199709/saas-forge/actions/runs/35694634609) 的 Maven 检查因 `BrowserSessionSlotContractTest` 仍扫描已迁出的 `consoles/` 而失败；工具测试、Tenant Fresh Compose 和 Nacos 检查通过。后续修复将扫描范围限定为本仓调用方，保留协议断言和缺失目录失败行为。修复提交的完整 CI 结果以对应运行记录为准。
 - 未执行：已迁出的旧浏览器产品矩阵；本次明确不修补旧双 Console 页面，也不把归档视为新前端交付完成。
+
+## #206 交接入口
+
+当前两仓检查、同轮交接和专项责任见 [独立验证与环境交接](independent-verification.md)，历史提交与制品策略见 [历史复现](console-history-reproduction.md)。这些入口不将本页待迁独有覆盖自动改为通过。

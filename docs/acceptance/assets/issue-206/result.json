@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "runId": "aa8d11c9-513b-4782-94e2-7dc514fd86eb",
+  "handoffSha256": "bdf9dc343f5aa75f0f6c758fff48c9121d13fa54c329ea39e203b90c6fd78400",
+  "status": "passed",
+  "scope": "handoff-smoke-only",
+  "backendSha256": "f2a57c0c3317d4c4397c628706e3105962a1abe01ef69b38f930041cb934783d",
+  "browserSha256": "83d629563a18f6c690e438be75a2cc6e8859062b08b724a8023244643d8bbb9b"
+}

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "runId": "aa8d11c9-513b-4782-94e2-7dc514fd86eb",
+  "status": "ready",
+  "readyAt": "2026-09-28T08:43:12.376Z",
+  "expiresAt": "2026-09-29T08:43:12.377Z",
+  "consoleOrigin": "https://console.saas.forge.test",
+  "apiOrigin": "https://api.saas.forge.test",
+  "backend": {
+    "commit": "da4567c859b200d375b4eed6d69e9d557cf60048",
+    "dirty": true,
+    "versionSource": "source-checkout-only-runtime-unverified"
+  },
+  "isolation": {
+    "kind": "existing-environment"
+  },
+  "cleanup": {
+    "owner": "environment-preparer",
+    "automatic": false
+  },
+  "jwksSha256": "750b02b5ac5f80589fa1a28d8a3e28a2eb890870f568ffd424e063564ffde61c"
+}
