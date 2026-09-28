@@ -1,0 +1,29 @@
+{
+  "startedAt": "2026-09-28T09:26:55.456Z",
+  "kind": "fresh-account-onboarding",
+  "status": "passed",
+  "requests": [
+    {
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/auth/login",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/auth/password-changes",
+      "status": 204
+    },
+    {
+      "origin": "https://api.saas.forge.test",
+      "path": "/api/v2/auth/password-changes",
+      "failed": "net::ERR_ABORTED"
+    }
+  ],
+  "finishedAt": "2026-09-28T09:26:59.835Z"
+}

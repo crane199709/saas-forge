@@ -27,7 +27,7 @@ node scripts/acceptance-handoff.mjs probe "$SF_ROUND_DIR/handoff.json" "$SF_ROUN
 node scripts/acceptance-handoff.mjs prepare "$SF_ROUND_DIR" "$SF_CONSOLE_ORIGIN" "$SF_API_ORIGIN"
 ```
 
-这一步不启动任何应用，只创建 `preparation.json` 和本轮 Compose overlay。overlay 使用唯一项目/镜像名，所有基础设施及内部服务不暴露端口；Gateway 只使用随机回环端口。此生成文件是本轮产物，不是可提交的个人配置模板。
+这一步不启动任何应用，只创建 `preparation.json` 和本轮 Compose overlay。overlay 使用唯一项目/镜像名，所有基础设施及内部服务不暴露端口；Gateway 只使用随机回环端口。Kafka 镜像的两个临时目录使用 tmpfs，避免隐式创建无项目归属的匿名卷，数据仍落独立 kafka-data 卷。此生成文件是本轮产物，不是可提交的个人配置模板。
 
 环境准备方自行维护 Git 忽略且权限受限的 `$SF_ACCEPTANCE_ENV`，采用专用 Secret 目录、新签名私钥和引导账号，不能复用开发者环境文件或数据卷。非敏感配置与 Secret 规则不变。先记录轮次，再准备环境：
 
@@ -43,13 +43,15 @@ compose_round() {
 compose_round build
 COMPOSE_PROJECT_NAME="$SF_PROJECT" LOCAL_COMPOSE_ENV_FILE="$SF_ACCEPTANCE_ENV" \
   LOCAL_COMPOSE_OVERRIDE_FILE="$SF_OVERRIDE" bash scripts/initialize-local-iam-signing-key.sh
-compose_round --profile bootstrap run --rm --no-build iam-platform-admin-bootstrap
-compose_round --profile service-client-bootstrap run --rm --no-build iam-reserved-service-client-bootstrap
+compose_round --profile bootstrap run --rm --pull never iam-platform-admin-bootstrap
+compose_round --profile service-client-bootstrap run --rm --pull never iam-reserved-service-client-bootstrap
 compose_round up --detach --no-build gateway iam-service tenant-access-service entitlement-service audit-service
 compose_round port gateway 8080
 ```
 
 前述命令只供已获授权的环境准备方执行，不由前端调用。先检查每一步退出码，失败就停止。准备方配置独立受信 HTTPS Edge，使 Console 指向本轮前端、API 指向上述随机 Gateway；不要接管开发者现有 443/进程，不自动修改系统信任。#183–#189 还需要 Remote、攻击来源、Mailpit 和测试 Receiver 等各自 overlay，按下面责任表添加，不由基础交接伪造这些能力。业务资源通过真实页面建立，首次改密也由正式页面完成。
+
+统一 Console 的受控开关默认关闭。准备方还须按 [#204 切换说明](issue-204-unified-console.md#受控切换)，在专用环境所有参与实例上统一启用 `security.browser.console-enabled` 并受控重建；默认 Compose 启动成功不代表 v2 会话入口可用。本地专项可在 Git 忽略、受限的本轮部署覆盖中明确该决定，不把个人配置模板提交到仓库，不修改共享环境或动态刷新安全开关。新建空环境没有旧会话；复用数据的环境必须另行完成切换授权及旧协议退役步骤。
 
 环境 Ready 后运行：
 

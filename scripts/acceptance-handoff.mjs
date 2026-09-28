@@ -37,6 +37,8 @@ function prepare(directory, consoleOrigin, apiOrigin) {
   // Gateway 只在随机回环端口开放；受信 HTTPS Edge 由环境准备方另行配置。
   const gatewayIndex = overlay.indexOf('  gateway:');
   overlay[gatewayIndex + 1] = '    ports: !override ["127.0.0.1::8080"]';
+  // Kafka 镜像声明的两个临时 VOLUME 会产生无项目归属的匿名卷。
+  overlay.splice(overlay.indexOf('  kafka:') + 2, 0, '    tmpfs:', '      - /etc/kafka/secrets', '      - /mnt/shared/config');
   for (const name of ['iam-platform-admin-bootstrap', 'iam-platform-admin-credential-reset',
     'iam-reserved-service-client-bootstrap', 'iam-reserved-service-client-replacement']) {
     overlay.push(`  ${name}:`, `    image: saas.forge/acceptance-${runId}/iam-service:local`);
