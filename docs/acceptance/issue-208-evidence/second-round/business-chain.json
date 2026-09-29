@@ -1,0 +1,4262 @@
+{
+  "runId": "373c3295-07d4-4eca-bf9c-c3500902b8f7",
+  "startedAt": "2026-09-29T02:21:51.286Z",
+  "chrome": "154.0.8037.58",
+  "status": "diagnostic-completed-not-final-combination",
+  "checks": [
+    {
+      "name": "tenant-subscription-initialization-via-console",
+      "status": "passed",
+      "at": "2026-09-29T02:22:06.311Z"
+    },
+    {
+      "name": "tenant-subscription-initialization-via-console",
+      "status": "passed",
+      "at": "2026-09-29T02:23:21.859Z"
+    },
+    {
+      "name": "real-mail-password-setup-and-login",
+      "status": "passed",
+      "at": "2026-09-29T02:25:22.234Z"
+    },
+    {
+      "name": "second-real-membership-created",
+      "status": "passed",
+      "at": "2026-09-29T02:25:28.083Z"
+    },
+    {
+      "name": "tenant-context-switch-and-refresh",
+      "status": "passed",
+      "at": "2026-09-29T02:25:47.366Z"
+    },
+    {
+      "name": "real-remote-version-assets-anonymous-requests-and-cleanup",
+      "status": "passed",
+      "at": "2026-09-29T02:25:47.637Z"
+    },
+    {
+      "name": "oauth-create-rotate-real-consumer",
+      "status": "passed",
+      "at": "2026-09-29T02:25:54.128Z"
+    },
+    {
+      "name": "oauth-scope-denial",
+      "status": "passed",
+      "at": "2026-09-29T02:25:55.752Z"
+    },
+    {
+      "name": "oauth-create-committed-loss-and-one-time-recovery",
+      "status": "passed",
+      "at": "2026-09-29T02:28:46.056Z"
+    },
+    {
+      "name": "oauth-rotation-loss-recovers-and-keeps-stable-secret",
+      "status": "passed",
+      "at": "2026-09-29T02:28:49.209Z"
+    },
+    {
+      "name": "second-secret-recovery-denied",
+      "status": "passed",
+      "at": "2026-09-29T02:29:44.554Z"
+    },
+    {
+      "name": "dual-identity-and-cross-actor-secret-denial",
+      "status": "passed",
+      "at": "2026-09-29T02:29:51.078Z"
+    },
+    {
+      "name": "oauth-overlap-expiry-injection",
+      "status": "passed",
+      "at": "2026-09-29T02:29:52.319Z"
+    },
+    {
+      "name": "oauth-ten-minute-recovery-expiry-injection",
+      "status": "passed",
+      "at": "2026-09-29T02:29:53.355Z"
+    },
+    {
+      "name": "no-authorized-context-fails-closed",
+      "status": "passed",
+      "at": "2026-09-29T02:29:56.310Z"
+    },
+    {
+      "name": "recovery-keeps-original-24-hour-overlap-deadline",
+      "status": "passed",
+      "at": "2026-09-29T02:31:13.731Z"
+    },
+    {
+      "name": "language-switch-preserves-form-without-post-and-persists",
+      "status": "passed",
+      "at": "2026-09-29T02:31:17.906Z"
+    },
+    {
+      "name": "english-credential-denial",
+      "status": "passed",
+      "at": "2026-09-29T02:31:18.486Z"
+    },
+    {
+      "name": "real-remote-exact-formatting-keyboard-focus-and-text-escaping",
+      "status": "passed",
+      "at": "2026-09-29T02:31:20.333Z"
+    },
+    {
+      "name": "english-freeze-removes-workspace-within-30s",
+      "status": "passed",
+      "at": "2026-09-29T02:31:48.411Z"
+    },
+    {
+      "name": "resume-keeps-old-session-invalid-and-english-relogin-restores",
+      "status": "passed",
+      "at": "2026-09-29T02:31:51.596Z"
+    },
+    {
+      "name": "wrong-token-unauthorized-context-refresh-replay-and-family-revocation",
+      "status": "passed",
+      "at": "2026-09-29T02:33:22.876Z"
+    },
+    {
+      "name": "late-platform-response-cannot-resurrect-old-account-after-cross-tab-logout",
+      "status": "passed",
+      "at": "2026-09-29T02:33:37.106Z"
+    },
+    {
+      "name": "redis-fails-closed-with-console-feedback",
+      "status": "passed",
+      "at": "2026-09-29T02:35:18.129Z"
+    },
+    {
+      "name": "redis-restoration-and-authoritative-relogin-recovers-console",
+      "status": "passed",
+      "at": "2026-09-29T02:36:51.210Z"
+    },
+    {
+      "name": "notification-resend-keeps-initialization-success",
+      "status": "passed",
+      "at": "2026-09-29T02:36:58.650Z"
+    },
+    {
+      "name": "dialog-keyboard-cancel-restores-trigger-focus",
+      "status": "passed",
+      "at": "2026-09-29T02:38:22.713Z"
+    },
+    {
+      "name": "oauth-revoke-confirmed-denies-issuance-and-unexpired-token",
+      "status": "passed",
+      "at": "2026-09-29T02:39:26.082Z"
+    },
+    {
+      "name": "all-visible-buttons-have-accessible-names-and-no-hidden-tab-stop",
+      "status": "passed",
+      "at": "2026-09-29T02:41:27.466Z"
+    }
+  ],
+  "requests": [
+    {
+      "phase": "login",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648513365
+    },
+    {
+      "phase": "login",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648514010
+    },
+    {
+      "phase": "login",
+      "context": "context-1",
+      "path": "/api/v2/auth/login",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648514647
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648515789
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648515874
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648515954
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenant-creations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648517523
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648517524
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants",
+      "status": 201,
+      "method": "POST",
+      "at": 1790648518063
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648519074
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648519138
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648519191
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648519299
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648519301
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648519303
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648519688
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648519708
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648519734
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648519735
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648519735
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648519812
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648521142
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648521247
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648521328
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648521428
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648521831
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscriptions",
+      "status": 201,
+      "method": "POST",
+      "at": 1790648523080
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648523649
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648523776
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648523872
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648524443
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648524445
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648524506
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648525076
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648525076
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initializations",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648525660
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648525716
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648525727
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648525824
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648525957
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648525957
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648525959
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648525971
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648525999
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648526007
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648526007
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648546182
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648576222
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-3",
+      "path": "/api/v1/auth/password-setups",
+      "status": 204,
+      "method": "POST",
+      "at": 1790648604493
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648606183
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648636629
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648666195
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648696406
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-3",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648720179
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-3",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648720810
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-3",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648721448
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-3",
+      "path": "/api/v2/auth/login",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648722016
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648723015
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648723074
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648723130
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648723484
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenant-creations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648723510
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants",
+      "status": 201,
+      "method": "POST",
+      "at": 1790648723784
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648724431
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648724434
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648724436
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648724533
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648724533
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648724649
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648724651
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648724652
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648724743
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648724745
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648724745
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648724796
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648725813
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648725914
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648725983
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648726057
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648726135
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscriptions",
+      "status": 201,
+      "method": "POST",
+      "at": 1790648726244
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648726288
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648726332
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648726380
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648727199
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648727202
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648727253
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648727840
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648727840
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initializations",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648727977
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648728018
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648728018
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648728074
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648728218
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648728221
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648728222
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648728222
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648728287
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648728287
+    },
+    {
+      "phase": "tenant-initialization",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648728288
+    },
+    {
+      "phase": "tenant-switch-remote",
+      "context": "context-4",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648744672
+    },
+    {
+      "phase": "tenant-switch-remote",
+      "context": "context-4",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648745182
+    },
+    {
+      "phase": "tenant-switch-remote",
+      "context": "context-4",
+      "path": "/api/v2/auth/login",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648745589
+    },
+    {
+      "phase": "tenant-switch-remote",
+      "context": "context-4",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648746235
+    },
+    {
+      "phase": "tenant-switch-remote",
+      "context": "context-4",
+      "path": "/api/v2/auth/context-selections",
+      "status": 204,
+      "method": "POST",
+      "at": 1790648746326
+    },
+    {
+      "phase": "tenant-switch-remote",
+      "context": "context-4",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648746374
+    },
+    {
+      "phase": "tenant-switch-remote",
+      "context": "context-4",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648746827
+    },
+    {
+      "phase": "tenant-switch-remote",
+      "context": "context-4",
+      "path": "/api/v2/auth/context-selections",
+      "status": 204,
+      "method": "POST",
+      "at": 1790648746870
+    },
+    {
+      "phase": "tenant-switch-remote",
+      "context": "context-4",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648746921
+    },
+    {
+      "phase": "tenant-switch-remote",
+      "context": "context-4",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648747250
+    },
+    {
+      "phase": "tenant-switch-remote",
+      "context": "context-4",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648747268
+    },
+    {
+      "phase": "tenant-switch-remote",
+      "context": "context-4",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648747306
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648748467
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648748488
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648748568
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648749041
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648749091
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648749696
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 201,
+      "method": "POST",
+      "at": 1790648749844
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648749906
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648752449
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648752543
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648752627
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648752788
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648752801
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648752840
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648753466
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648753489
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648753506
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/secret-rotations",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648753535
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648753562
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648753581
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648753613
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648754551
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648754596
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648754635
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648754735
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648754735
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648754857
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648755253
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 201,
+      "method": "POST",
+      "at": 1790648755282
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648755315
+    },
+    {
+      "phase": "oauth-basic",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648784837
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648814934
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648815688
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648815816
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648815985
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648816262
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648816271
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648816475
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648816932
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648818100
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648818162
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648818205
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648818323
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648818323
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648818376
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648848410
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648878468
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648908400
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648924026
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648924199
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648924316
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648924591
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648924591
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648924755
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648925290
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/secret-issuance-recoveries",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648925415
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648925494
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648926481
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648926515
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648926553
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648926648
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648926656
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648926701
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648926824
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648926851
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648926870
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648926933
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648926954
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648926975
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648927872
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648927919
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648927972
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648928100
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648928112
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648928201
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648928334
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/secret-issuance-recoveries",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648928369
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648928396
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648958249
+    },
+    {
+      "phase": "identity-fixtures",
+      "context": "context-5",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648987593
+    },
+    {
+      "phase": "identity-fixtures",
+      "context": "context-5",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648988113
+    },
+    {
+      "phase": "identity-fixtures",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790648988160
+    },
+    {
+      "phase": "identity-fixtures",
+      "context": "context-5",
+      "path": "/api/v2/auth/login",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648988314
+    },
+    {
+      "phase": "identity-fixtures",
+      "context": "context-5",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648988731
+    },
+    {
+      "phase": "identity-fixtures",
+      "context": "context-5",
+      "path": "/api/v2/auth/context-selections",
+      "status": 204,
+      "method": "POST",
+      "at": 1790648988872
+    },
+    {
+      "phase": "identity-fixtures",
+      "context": "context-5",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648989029
+    },
+    {
+      "phase": "identity-fixtures",
+      "context": "context-5",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648989867
+    },
+    {
+      "phase": "identity-fixtures",
+      "context": "context-5",
+      "path": "/api/v2/auth/context-selections",
+      "status": 204,
+      "method": "POST",
+      "at": 1790648989918
+    },
+    {
+      "phase": "identity-fixtures",
+      "context": "context-5",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648989994
+    },
+    {
+      "phase": "identity-fixtures",
+      "context": "context-5",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648990840
+    },
+    {
+      "phase": "identity-fixtures",
+      "context": "context-5",
+      "path": "/api/v2/auth/context-selections",
+      "status": 204,
+      "method": "POST",
+      "at": 1790648990944
+    },
+    {
+      "phase": "identity-fixtures",
+      "context": "context-5",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648991002
+    },
+    {
+      "phase": "no-permission-fixture",
+      "context": "context-6",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648994999
+    },
+    {
+      "phase": "no-permission-fixture",
+      "context": "context-6",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648995542
+    },
+    {
+      "phase": "no-permission-fixture",
+      "context": "context-6",
+      "path": "/api/v2/auth/login",
+      "status": 200,
+      "method": "POST",
+      "at": 1790648996008
+    },
+    {
+      "phase": "no-permission-fixture",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649018272
+    },
+    {
+      "phase": "no-permission-fixture",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649048257
+    },
+    {
+      "phase": "english-language-form",
+      "context": "context-7",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649076445
+    },
+    {
+      "phase": "english-language-form",
+      "context": "context-7",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649077822
+    },
+    {
+      "phase": "english-wrong-password",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649078133
+    },
+    {
+      "phase": "english-wrong-password",
+      "context": "context-7",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649078225
+    },
+    {
+      "phase": "english-wrong-password",
+      "context": "context-7",
+      "path": "/api/v2/auth/login",
+      "status": 401,
+      "method": "POST",
+      "at": 1790649078478,
+      "code": "AUTHENTICATION_FAILED"
+    },
+    {
+      "phase": "english-tenant",
+      "context": "context-7",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649078574
+    },
+    {
+      "phase": "english-tenant",
+      "context": "context-7",
+      "path": "/api/v2/auth/login",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649079328
+    },
+    {
+      "phase": "english-tenant",
+      "context": "context-7",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649079672
+    },
+    {
+      "phase": "english-tenant",
+      "context": "context-7",
+      "path": "/api/v2/auth/context-selections",
+      "status": 204,
+      "method": "POST",
+      "at": 1790649079748
+    },
+    {
+      "phase": "english-tenant",
+      "context": "context-7",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649079803
+    },
+    {
+      "phase": "english-tenant",
+      "context": "context-7",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649080054
+    },
+    {
+      "phase": "english-tenant",
+      "context": "context-7",
+      "path": "/api/v2/auth/context-selections",
+      "status": 204,
+      "method": "POST",
+      "at": 1790649080170
+    },
+    {
+      "phase": "english-tenant",
+      "context": "context-7",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649080201
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649081172
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649081205
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649081255
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082284
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082286
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082290
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082295
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082295
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082436
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082437
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082437
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082438
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082441
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082508
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082618
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082620
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082638
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082670
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082722
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082722
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649082725
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649083247
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/suspensions",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649084835
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649084921
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649084993
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-7",
+      "path": "/api/v2/auth/session",
+      "status": 401,
+      "method": "GET",
+      "at": 1790649108064,
+      "code": "SESSION_INVALID"
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649108819
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-7",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649109344
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649109511
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-7",
+      "path": "/api/v2/auth/logout",
+      "status": 204,
+      "method": "POST",
+      "at": 1790649109574
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-7",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649109740
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/suspensions",
+      "status": 200,
+      "method": "DELETE",
+      "at": 1790649109904
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649110013
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-7",
+      "path": "/api/v2/auth/login",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649110059
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649110086
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-7",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649110831
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-7",
+      "path": "/api/v2/auth/context-selections",
+      "status": 204,
+      "method": "POST",
+      "at": 1790649111009
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-7",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649111118
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649111351
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649141649
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649171496
+    },
+    {
+      "phase": "security-probes",
+      "context": "context-8",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649193461
+    },
+    {
+      "phase": "security-probes",
+      "context": "context-8",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649193948
+    },
+    {
+      "phase": "security-probes",
+      "context": "context-8",
+      "path": "/api/v2/auth/login",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649194237
+    },
+    {
+      "phase": "security-probes",
+      "context": "context-8",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649195038
+    },
+    {
+      "phase": "security-probes",
+      "context": "context-8",
+      "path": "/api/v2/auth/context-selections",
+      "status": 204,
+      "method": "POST",
+      "at": 1790649195089
+    },
+    {
+      "phase": "security-probes",
+      "context": "context-8",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649195156
+    },
+    {
+      "phase": "security-probes",
+      "context": "context-8",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649195701
+    },
+    {
+      "phase": "security-probes",
+      "context": "context-8",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649195723
+    },
+    {
+      "phase": "security-probes",
+      "context": "context-8",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649195753
+    },
+    {
+      "phase": "security-probes",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649202124
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649204686
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649205579
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/login",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649205989
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649207155
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649207270
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649207449
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649208031
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649208075
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649208115
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v1/platform/tenant-creations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649209433
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649210612
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/logout",
+      "status": 204,
+      "method": "POST",
+      "at": 1790649210705
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649210722
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649211134
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/login",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649211418
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649211434
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649211455
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649211523
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649212252
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/context-selections",
+      "status": 204,
+      "method": "POST",
+      "at": 1790649212341
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649212439
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649212488
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649212626
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649212725
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649216131
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649216523
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-9",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649216941
+    },
+    {
+      "phase": "late-response-account-switch",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649231504
+    },
+    {
+      "phase": "redis-failure",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649259812
+    },
+    {
+      "phase": "redis-failure",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649259963
+    },
+    {
+      "phase": "redis-recovery",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649327935
+    },
+    {
+      "phase": "redis-recovery",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649328222
+    },
+    {
+      "phase": "redis-recovery",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 401,
+      "method": "GET",
+      "at": 1790649328232,
+      "code": "SESSION_INVALID"
+    },
+    {
+      "phase": "redis-recovery",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649407987
+    },
+    {
+      "phase": "redis-recovery",
+      "context": "context-1",
+      "path": "/api/v2/auth/logout",
+      "status": 204,
+      "method": "POST",
+      "at": 1790649408083
+    },
+    {
+      "phase": "redis-recovery",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649409106
+    },
+    {
+      "phase": "redis-recovery",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649409750
+    },
+    {
+      "phase": "redis-recovery",
+      "context": "context-1",
+      "path": "/api/v2/auth/login",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649410123
+    },
+    {
+      "phase": "redis-recovery",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649410995
+    },
+    {
+      "phase": "redis-recovery",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649411039
+    },
+    {
+      "phase": "redis-recovery",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649411088
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649412044
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649412080
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649412126
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649412342
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenant-creations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649412361
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants",
+      "status": 201,
+      "method": "POST",
+      "at": 1790649412738
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649413210
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649413210
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649413212
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649413227
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649413228
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649413229
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649413269
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649413278
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649413289
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649413320
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649413321
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649413340
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649414498
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649414632
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649414671
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649414708
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649414743
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscriptions",
+      "status": 201,
+      "method": "POST",
+      "at": 1790649414913
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649414951
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649414984
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649415025
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649415727
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649415727
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649415764
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649416254
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649416268
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initializations",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649416497
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649416535
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649416536
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649416589
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649416721
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649416734
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649416762
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649416804
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649416893
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649416934
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649416936
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649417250
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649417769
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setups",
+      "status": 204,
+      "method": "POST",
+      "at": 1790649418003
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649418135
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649418818
+    },
+    {
+      "phase": "notification",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649442312
+    },
+    {
+      "phase": "oauth-revocation",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649460517
+    },
+    {
+      "phase": "oauth-revocation",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649460594
+    },
+    {
+      "phase": "oauth-revocation",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649460656
+    },
+    {
+      "phase": "oauth-revocation",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649460781
+    },
+    {
+      "phase": "oauth-revocation",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649460793
+    },
+    {
+      "phase": "oauth-revocation",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649460870
+    },
+    {
+      "phase": "oauth-revocation",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649462191
+    },
+    {
+      "phase": "oauth-revocation",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649462366
+    },
+    {
+      "phase": "oauth-revocation",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649462422
+    },
+    {
+      "phase": "oauth-revocation",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/revocations",
+      "status": 204,
+      "method": "POST",
+      "at": 1790649462517
+    },
+    {
+      "phase": "oauth-revocation",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649462535
+    },
+    {
+      "phase": "oauth-revocation",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649462557
+    },
+    {
+      "phase": "oauth-revocation",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649462590
+    },
+    {
+      "phase": "oauth-revocation",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649490881
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649500917
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649500996
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649501144
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649502087
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649502089
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649502121
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649502154
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649502155
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649502255
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649502398
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649502401
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649502428
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649502429
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649502505
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649502771
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649502809
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649502809
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649502826
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649503047
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649503061
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649503064
+    },
+    {
+      "phase": "visual-dialog-keyboard",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649531364
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649561668
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649561884
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649562017
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649562289
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649562306
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649562624
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649563052
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 201,
+      "method": "POST",
+      "at": 1790649563205
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649563277
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649564959
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649565042
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649565131
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649565292
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649565294
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649565344
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649565981
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649566009
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649566022
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/revocations",
+      "status": 204,
+      "method": "POST",
+      "at": 1790649566052
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649566071
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649566097
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649566141
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649595395
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649625311
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649655763
+    },
+    {
+      "phase": "oauth-revoke-confirmed",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649685394
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649686773
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649686861
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST",
+      "at": 1790649686966
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649687678
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649687679
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649687680
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649687680
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649687683
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649687970
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649687986
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649687986
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649687987
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649687996
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649688235
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649688378
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649688396
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649688399
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649688400
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649688465
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649688488
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649688489
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649717244
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649719983
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649719984
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649719988
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649719989
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649720237
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649720305
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649720479
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649720521
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649720560
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649720628
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649720631
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649747200
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649777289
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649807164
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649837223
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649867293
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649897171
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649927255
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649957179
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790649987229
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790650017208
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790650047181
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790650077216
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790650107246
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790650137428
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790650167377
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790650197201
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790650227396
+    },
+    {
+      "phase": "a11y-after-fix",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET",
+      "at": 1790650257182
+    }
+  ],
+  "errors": [
+    {
+      "phase": "oauth-create-response-loss",
+      "context": "context-1",
+      "kind": "console-error",
+      "path": "/api/v1/platform/oauth-clients",
+      "at": 1790648816973
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "context": "context-1",
+      "kind": "console-error",
+      "path": "/api/v1/platform/oauth-clients/:id/secret-rotations",
+      "at": 1790648926909
+    },
+    {
+      "phase": "english-wrong-password",
+      "context": "context-7",
+      "kind": "console-error",
+      "path": "/api/v2/auth/login",
+      "at": 1790649078479
+    },
+    {
+      "phase": "english-wrong-password",
+      "context": "context-7",
+      "path": "/api/v2/auth/login",
+      "status": 401,
+      "method": "POST",
+      "at": 1790649078478,
+      "code": "AUTHENTICATION_FAILED",
+      "kind": "http-error"
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-7",
+      "kind": "console-error",
+      "path": "/api/v2/auth/session",
+      "at": 1790649108066
+    },
+    {
+      "phase": "english-lifecycle",
+      "context": "context-7",
+      "path": "/api/v2/auth/session",
+      "status": 401,
+      "method": "GET",
+      "at": 1790649108064,
+      "code": "SESSION_INVALID",
+      "kind": "http-error"
+    },
+    {
+      "phase": "redis-recovery",
+      "context": "context-1",
+      "kind": "console-error",
+      "path": "/api/v2/auth/session",
+      "at": 1790649328234
+    },
+    {
+      "phase": "redis-recovery",
+      "context": "context-1",
+      "path": "/api/v2/auth/session",
+      "status": 401,
+      "method": "GET",
+      "at": 1790649328232,
+      "code": "SESSION_INVALID",
+      "kind": "http-error"
+    }
+  ],
+  "failure": {
+    "phase": "tenant-initialization",
+    "kind": "TimeoutError"
+  },
+  "driverFailures": [
+    {
+      "phase": "tenant-initialization",
+      "kind": "TimeoutError"
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "kind": "TimeoutError"
+    },
+    {
+      "phase": "redis-recovery",
+      "kind": "TimeoutError"
+    },
+    {
+      "phase": "oauth-revocation",
+      "kind": "AssertionError"
+    }
+  ],
+  "remote": [
+    {
+      "version": "v1",
+      "border": "7px",
+      "dimensions": [
+        24,
+        16
+      ]
+    },
+    {
+      "version": "v2",
+      "border": "11px",
+      "dimensions": [
+        32,
+        20
+      ]
+    }
+  ],
+  "remoteRequests": [
+    {
+      "path": "/static-acceptance/v1/remote.js",
+      "request": {
+        "cookie": false,
+        "authorization": false,
+        "csrf": false
+      },
+      "status": 200,
+      "allowedOrigin": "https://console.saas.forge.test",
+      "allowCredentials": false,
+      "extra": {
+        "cookie": false,
+        "authorization": false,
+        "csrf": false
+      }
+    },
+    {
+      "path": "/static-acceptance/v1/styles.css",
+      "request": {
+        "cookie": false,
+        "authorization": false,
+        "csrf": false
+      },
+      "status": 200,
+      "allowedOrigin": "https://console.saas.forge.test",
+      "allowCredentials": false,
+      "extra": {
+        "cookie": false,
+        "authorization": false,
+        "csrf": false
+      }
+    },
+    {
+      "path": "/static-acceptance/v1/image.svg",
+      "request": {
+        "cookie": false,
+        "authorization": false,
+        "csrf": false
+      },
+      "status": 200,
+      "allowedOrigin": "https://console.saas.forge.test",
+      "allowCredentials": false,
+      "extra": {
+        "cookie": false,
+        "authorization": false,
+        "csrf": false
+      }
+    },
+    {
+      "path": "/static-acceptance/v2/remote.js",
+      "request": {
+        "cookie": false,
+        "authorization": false,
+        "csrf": false
+      },
+      "status": 200,
+      "allowedOrigin": "https://console.saas.forge.test",
+      "allowCredentials": false,
+      "extra": {
+        "cookie": false,
+        "authorization": false,
+        "csrf": false
+      }
+    },
+    {
+      "path": "/static-acceptance/v2/styles.css",
+      "request": {
+        "cookie": false,
+        "authorization": false,
+        "csrf": false
+      },
+      "status": 200,
+      "allowedOrigin": "https://console.saas.forge.test",
+      "allowCredentials": false,
+      "extra": {
+        "cookie": false,
+        "authorization": false,
+        "csrf": false
+      }
+    },
+    {
+      "path": "/static-acceptance/v2/image.svg",
+      "request": {
+        "cookie": false,
+        "authorization": false,
+        "csrf": false
+      },
+      "status": 200,
+      "allowedOrigin": "https://console.saas.forge.test",
+      "allowCredentials": false,
+      "extra": {
+        "cookie": false,
+        "authorization": false,
+        "csrf": false
+      }
+    }
+  ],
+  "remoteLifecycle": {
+    "cancelled": true,
+    "remounted": true,
+    "cleanup": true
+  },
+  "expectedLosses": [
+    {
+      "phase": "oauth-create-response-loss",
+      "path": "/api/v1/platform/oauth-clients",
+      "serverStatus": 201,
+      "at": 1790648816971
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v1/platform/oauth-clients/:id/secret-rotations",
+      "serverStatus": 200,
+      "at": 1790648926908
+    }
+  ],
+  "overlap": {
+    "secondsFromOriginalRotation": 86400,
+    "actualWait24Hours": false
+  },
+  "preciseFormatting": {
+    "longDecimal": true,
+    "trailingZeros": true,
+    "currency": true,
+    "calendarDate": true,
+    "keyboardFeedback": true,
+    "visibleFocus": true,
+    "escapedText": true
+  },
+  "lifecycle": {
+    "foreground": true,
+    "accessRemovedMs": 26955,
+    "oldTokenStatus": 401
+  },
+  "securityProbes": [
+    {
+      "name": "wrong-user-token",
+      "status": 401
+    },
+    {
+      "name": "unauthorized-platform-context",
+      "status": 403,
+      "code": "TARGET_CONTEXT_UNAVAILABLE"
+    },
+    {
+      "name": "refresh-replay-after-lease",
+      "status": 401,
+      "code": "SESSION_INVALID"
+    },
+    {
+      "name": "replay-revokes-unexpired-access-token",
+      "status": 401
+    },
+    {
+      "name": "console-no-workspace-after-replay",
+      "status": "passed"
+    }
+  ],
+  "lateResponse": {
+    "serverStatus": 200,
+    "delivery": "response-stage-held-until-new-account-active",
+    "oldIdentityResurrected": false,
+    "uncaughtErrors": 0
+  },
+  "redis": {
+    "status": 503,
+    "elapsedMs": 60312,
+    "consoleAlerts": [
+      "无法确认当前会话，已隐藏受保护内容。"
+    ],
+    "recovery": "authoritative-old-session-invalid-then-real-relogin"
+  },
+  "oauthRevocation": {
+    "issuance": 401,
+    "unexpiredToken": 401,
+    "afterServerConfirmed204": true
+  },
+  "accessibleNames": {
+    "before": 7,
+    "after": 0
+  },
+  "updatedAt": "2026-09-29T02:51:08.694Z",
+  "versions": {
+    "backend": "5f48e956a24395091860f316fe76d3d8736d81c3",
+    "frontendAtStart": "f4db8fd804fa3f8afb67cd49d12812f72f77e3c6",
+    "frontendChangedDuringDiagnostics": true,
+    "finalFrontend": "ee0f1a75c04296e0139ff10cbeb38017d8ef067b"
+  }
+}

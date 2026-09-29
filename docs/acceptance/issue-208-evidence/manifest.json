@@ -1,17 +1,48 @@
 {
-  "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
-  "status": "partial",
-  "backendCommit": "21385e3574ef8a08f65d1f58979a4138b80a210f",
-  "frontendCommit": "f4db8fd804fa3f8afb67cd49d12812f72f77e3c6",
+  "status": "pending-final-fresh-acceptance",
   "clientVersion": "0.4.0",
+  "versions": {
+    "historicalFirstRound": {
+      "backend": "21385e3574ef8a08f65d1f58979a4138b80a210f",
+      "frontend": "f4db8fd804fa3f8afb67cd49d12812f72f77e3c6",
+      "files": "root diagnostic files"
+    },
+    "secondRound": {
+      "backend": "5f48e956a24395091860f316fe76d3d8736d81c3",
+      "frontendAtStart": "f4db8fd804fa3f8afb67cd49d12812f72f77e3c6",
+      "frontendChangedDuringDiagnostics": true,
+      "files": "second-round/"
+    },
+    "finalNativeAndCI": {
+      "backend": "5f48e956a24395091860f316fe76d3d8736d81c3",
+      "frontend": "ee0f1a75c04296e0139ff10cbeb38017d8ef067b",
+      "files": [
+        "native-final-combination.json",
+        "final-build-ci.json"
+      ]
+    }
+  },
+  "privacy": {
+    "knownSensitiveValuesScanned": 14,
+    "matchedTextFiles": 0,
+    "jwtLikeValues": 0,
+    "screenshotsVisuallyChecked": true
+  },
   "sha256": {
     "audit.json": "abc90cf769907f1920ffb297a3a4fc42a1f696aeb94b04e174a5d0034913e3c2",
+    "browser.json": "c6e4653638251142d768d93621a001c1d0acdc09a5c33247f758ce6e60c24592",
     "business-chain.json": "1fb9711e36f8db8585113595f9a0fc70a072b999ad1927e49efd7be81cad791c",
+    "checks.json": "65314e5e65ac8dea5bde51b1a8f2851929e2362b729ae7caada609f8f9cd63ee",
+    "final-build-ci.json": "448667dd032f434ac290cf731ca5c8500cee7b37af324ac7b170a60479fd0a96",
     "injections.json": "76678378ec465ed9d27c145e0799a218849d0da5bacccda758cc090dd0b86691",
     "main-chain.json": "c9939023a28fb3b9940daa882f35a5aa4537b760aa41fd9abfa2c28c0bde10b0",
-    "trace-fix-tests.json": "f94599547f2b66e05c9193c01d8ec17e4fbb1faeb8bd493f66d804fb0fbae9ed",
-    "checks.json": "65314e5e65ac8dea5bde51b1a8f2851929e2362b729ae7caada609f8f9cd63ee",
+    "native-final-combination.json": "71222d52d41fec0aa0b2fa63985f03fd1bf866d1ff2d88a23aafd3e2aad9b5d7",
     "native-runtime-check.json": "aab23000e83805c8350f2b6247d2ddb898aab86eb39e46b890f2d6db987f1824",
-    "browser.json": "c6e4653638251142d768d93621a001c1d0acdc09a5c33247f758ce6e60c24592"
+    "second-round/audit.json": "c5f167c445c8c967401476016304fd495290d693b19e3cdb11cd02f742a29d18",
+    "second-round/business-chain.json": "481cc6a022cc21ee07db7fd58888db086cb7573ed1aa86061d55951ee08f36d5",
+    "second-round/error-classification.json": "4f28d3d2b7a71c83a6aea6bb9b01116daca9c2811c42c35180663906ee19238b",
+    "second-round/injections.json": "c9a3bf7399994576e65d828f3a31cc6b380f9230f931bb3849ae957c217d44bd",
+    "second-round/main-chain.json": "fd68a81ba6ee66949b66538bfb7dd440754fcd9d557dbd91b5b89f6617a17181",
+    "trace-fix-tests.json": "f94599547f2b66e05c9193c01d8ec17e4fbb1faeb8bd493f66d804fb0fbae9ed"
   }
 }

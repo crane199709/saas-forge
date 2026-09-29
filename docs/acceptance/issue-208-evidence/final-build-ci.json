@@ -1,0 +1,27 @@
+{
+  "backend": {
+    "commit": "5f48e956a24395091860f316fe76d3d8736d81c3",
+    "url": "https://github.com/crane199709/saas-forge/actions/runs/36511629634",
+    "conclusion": "success",
+    "jobs": [
+      "JDK 17 backend and contracts",
+      "Tenant lifecycle fresh-volume E2E",
+      "Nacos configuration and permissions"
+    ],
+    "initialFailure": "Maven Central HTTP 502 downloading plexus-compiler-manager 2.15.0; failed job rerun succeeded"
+  },
+  "frontend": {
+    "commit": "ee0f1a75c04296e0139ff10cbeb38017d8ef067b",
+    "url": "https://github.com/crane199709/saas-forge-web/actions/runs/36514362774",
+    "conclusion": "success"
+  },
+  "local": {
+    "backendTests": 725,
+    "frontendTests": 216,
+    "frontendTypecheck": "passed",
+    "frontendLint": "passed",
+    "frontendBuild": "passed",
+    "frontendCleanAtFinalBuild": true,
+    "originalBackendUnrelatedDockerignorePreserved": true
+  }
+}

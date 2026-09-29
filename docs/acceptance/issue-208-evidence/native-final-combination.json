@@ -1,0 +1,132 @@
+{
+  "kind": "native-startup",
+  "backendCommit": "5f48e956a24395091860f316fe76d3d8736d81c3",
+  "jdk": "17.0.12",
+  "sourceClassesUsed": true,
+  "services": [
+    {
+      "name": "gateway",
+      "main": "io.saas.forge.gateway.GatewayApplication",
+      "classCount": 39,
+      "classesMatchVerifiedJar": true,
+      "runningMainClass": true,
+      "httpCheck": 200
+    },
+    {
+      "name": "iam-service",
+      "main": "io.saas.forge.iam.IamServiceApplication",
+      "classCount": 532,
+      "classesMatchVerifiedJar": true,
+      "runningMainClass": true,
+      "httpCheck": 200
+    },
+    {
+      "name": "tenant-access-service",
+      "main": "io.saas.forge.tenantaccess.TenantAccessServiceApplication",
+      "classCount": 258,
+      "classesMatchVerifiedJar": true,
+      "runningMainClass": true,
+      "httpCheck": 200
+    },
+    {
+      "name": "entitlement-service",
+      "main": "io.saas.forge.entitlement.EntitlementServiceApplication",
+      "classCount": 245,
+      "classesMatchVerifiedJar": true,
+      "runningMainClass": true,
+      "httpCheck": 200
+    },
+    {
+      "name": "audit-service",
+      "main": "io.saas.forge.audit.AuditServiceApplication",
+      "classCount": 41,
+      "classesMatchVerifiedJar": true,
+      "runningMainClass": true,
+      "httpCheck": 200
+    }
+  ],
+  "existingDeveloperProcessesTouched": false,
+  "browser": {
+    "kind": "real-chrome-native-main-classes",
+    "backend": "5f48e956a24395091860f316fe76d3d8736d81c3",
+    "frontend": "ee0f1a75c04296e0139ff10cbeb38017d8ef067b",
+    "startedAt": "2026-09-29T02:56:36.051Z",
+    "status": "passed",
+    "requests": [
+      {
+        "path": "/api/v2/auth/bootstrap",
+        "status": 200
+      },
+      {
+        "path": "/api/v2/auth/bootstrap",
+        "status": 200
+      },
+      {
+        "path": "/api/v2/auth/login",
+        "status": 200
+      },
+      {
+        "path": "/api/v2/auth/bootstrap",
+        "status": 200
+      },
+      {
+        "path": "/api/v2/auth/context-selections",
+        "status": 204
+      },
+      {
+        "path": "/api/v2/auth/refresh",
+        "status": 200
+      },
+      {
+        "path": "/api/v2/auth/bootstrap",
+        "status": 200
+      },
+      {
+        "path": "/api/v2/auth/session",
+        "status": 200
+      },
+      {
+        "path": "/api/v2/auth/refresh",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/platform/tenants",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/platform/tenant-creations",
+        "status": 200
+      },
+      {
+        "path": "/api/v2/auth/bootstrap",
+        "status": 200
+      },
+      {
+        "path": "/api/v2/auth/session",
+        "status": 200
+      },
+      {
+        "path": "/api/v2/auth/refresh",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/platform/plans",
+        "status": 200
+      },
+      {
+        "path": "/api/v1/platform/plan-operations",
+        "status": 200
+      }
+    ],
+    "errors": [],
+    "checks": [
+      "native-authentication-and-platform-context",
+      "native-gateway-nacos-real-tenant-read",
+      "native-entitlement-read",
+      "no-visible-nameless-buttons"
+    ],
+    "chrome": "154.0.8037.58",
+    "unnamedButtons": 0,
+    "finishedAt": "2026-09-29T02:56:41.119Z"
+  }
+}

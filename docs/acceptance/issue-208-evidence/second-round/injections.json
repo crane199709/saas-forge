@@ -1,0 +1,82 @@
+[
+  {
+    "runId": "373c3295-07d4-4eca-bf9c-c3500902b8f7",
+    "name": "dedicated-member-platform-role",
+    "status": "applied",
+    "at": "2026-09-29T02:29:45.447Z",
+    "rows": 1
+  },
+  {
+    "runId": "373c3295-07d4-4eca-bf9c-c3500902b8f7",
+    "name": "dedicated-member-platform-role",
+    "status": "restored",
+    "at": "2026-09-29T02:29:51.463Z",
+    "rows": 1
+  },
+  {
+    "runId": "373c3295-07d4-4eca-bf9c-c3500902b8f7",
+    "name": "oauth-overlap-time",
+    "status": "injected",
+    "at": "2026-09-29T02:29:52.231Z",
+    "rows": 1,
+    "original": "2026-09-30T02:28:46.893+00:00",
+    "injected": "2026-09-29 02:29:50.978041+00",
+    "actualWait24Hours": false
+  },
+  {
+    "runId": "373c3295-07d4-4eca-bf9c-c3500902b8f7",
+    "name": "oauth-overlap-time",
+    "status": "restored",
+    "at": "2026-09-29T02:29:52.590Z",
+    "rows": 1
+  },
+  {
+    "runId": "373c3295-07d4-4eca-bf9c-c3500902b8f7",
+    "name": "oauth-recovery-time",
+    "status": "injected",
+    "at": "2026-09-29T02:29:53.323Z",
+    "rows": 1,
+    "original": "2026-09-29 02:25:53.524+00",
+    "injected": "2026-09-29 02:18:53.057859+00",
+    "actualWaitTenMinutes": false
+  },
+  {
+    "runId": "373c3295-07d4-4eca-bf9c-c3500902b8f7",
+    "name": "oauth-recovery-time",
+    "status": "restored",
+    "at": "2026-09-29T02:29:53.612Z",
+    "rows": 1
+  },
+  {
+    "runId": "373c3295-07d4-4eca-bf9c-c3500902b8f7",
+    "name": "dedicated-member-memberships",
+    "status": "disabled",
+    "at": "2026-09-29T02:29:54.132Z",
+    "rows": 2
+  },
+  {
+    "runId": "373c3295-07d4-4eca-bf9c-c3500902b8f7",
+    "name": "dedicated-member-memberships",
+    "status": "restored",
+    "at": "2026-09-29T02:29:56.771Z",
+    "rows": 2
+  },
+  {
+    "runId": "373c3295-07d4-4eca-bf9c-c3500902b8f7",
+    "name": "tenant-lifecycle",
+    "status": "restored-via-console",
+    "at": "2026-09-29T02:31:49.217Z"
+  },
+  {
+    "runId": "373c3295-07d4-4eca-bf9c-c3500902b8f7",
+    "name": "isolated-redis",
+    "status": "stopped",
+    "at": "2026-09-29T02:34:17.813Z"
+  },
+  {
+    "runId": "373c3295-07d4-4eca-bf9c-c3500902b8f7",
+    "name": "isolated-redis",
+    "status": "restored-healthy",
+    "at": "2026-09-29T02:35:24.285Z"
+  }
+]

@@ -1,0 +1,297 @@
+{
+  "runId": "373c3295-07d4-4eca-bf9c-c3500902b8f7",
+  "startedAt": "2026-09-29T02:20:25.903Z",
+  "kind": "real-chrome-main-chain",
+  "status": "passed",
+  "checks": [
+    {
+      "name": "fresh-initial-credential-password-change",
+      "status": "passed",
+      "at": "2026-09-29T02:20:37.049Z"
+    },
+    {
+      "name": "platform-authoritative-context",
+      "status": "passed",
+      "at": "2026-09-29T02:20:39.495Z"
+    },
+    {
+      "name": "quota-created-and-activated-via-console",
+      "status": "passed",
+      "at": "2026-09-29T02:20:47.184Z"
+    },
+    {
+      "name": "positive-plan-created-and-activated-via-console",
+      "status": "passed",
+      "at": "2026-09-29T02:20:52.361Z"
+    }
+  ],
+  "requests": [
+    {
+      "phase": "initial-login",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "initial-login",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "initial-login",
+      "path": "/api/v2/auth/login",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "initial-login",
+      "path": "/api/v2/auth/password-changes",
+      "status": 204,
+      "method": "POST"
+    },
+    {
+      "phase": "platform-login",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "platform-login",
+      "path": "/api/v2/auth/login",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "platform-login",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "platform-login",
+      "path": "/api/v2/auth/context-selections",
+      "status": 204,
+      "method": "POST"
+    },
+    {
+      "phase": "platform-login",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "quota",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "quota",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "quota",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "quota",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "quota",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "quota",
+      "path": "/api/v1/platform/quota-definition-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "quota",
+      "path": "/api/v1/platform/quota-definition-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "quota",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "quota",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 201,
+      "method": "POST"
+    },
+    {
+      "phase": "quota",
+      "path": "/api/v1/platform/quota-definitions/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "quota",
+      "path": "/api/v1/platform/quota-definition-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "quota",
+      "path": "/api/v1/platform/quota-definition-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "quota",
+      "path": "/api/v1/platform/quota-definitions/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "quota",
+      "path": "/api/v1/platform/quota-definitions/:id/activations",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "quota",
+      "path": "/api/v1/platform/quota-definitions/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "quota",
+      "path": "/api/v1/platform/quota-definition-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v1/platform/plan-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v1/platform/plan-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v1/platform/plans",
+      "status": 201,
+      "method": "POST"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v1/platform/plans/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v1/platform/plan-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v1/platform/plan-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v1/platform/plans/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v1/platform/plans/:id/activations",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v1/platform/plans/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "plan",
+      "path": "/api/v1/platform/plan-operations",
+      "status": 200,
+      "method": "GET"
+    }
+  ],
+  "errors": [],
+  "chrome": "154.0.8037.58",
+  "finishedAt": "2026-09-29T02:20:52.363Z"
+}

@@ -1,0 +1,158 @@
+{
+  "kind": "scenario-and-time-correlated-errors",
+  "maximumTimeDeltaMs": 2000,
+  "matched": [
+    {
+      "observed": {
+        "phase": "oauth-create-response-loss",
+        "context": "context-1",
+        "kind": "console-error",
+        "path": "/api/v1/platform/oauth-clients",
+        "at": 1790648816973
+      },
+      "correlatedWith": {
+        "phase": "oauth-create-response-loss",
+        "path": "/api/v1/platform/oauth-clients",
+        "serverStatus": 201,
+        "at": 1790648816971
+      }
+    },
+    {
+      "observed": {
+        "phase": "oauth-rotation-response-loss",
+        "context": "context-1",
+        "kind": "console-error",
+        "path": "/api/v1/platform/oauth-clients/:id/secret-rotations",
+        "at": 1790648926909
+      },
+      "correlatedWith": {
+        "phase": "oauth-rotation-response-loss",
+        "path": "/api/v1/platform/oauth-clients/:id/secret-rotations",
+        "serverStatus": 200,
+        "at": 1790648926908
+      }
+    },
+    {
+      "observed": {
+        "phase": "english-wrong-password",
+        "context": "context-7",
+        "kind": "console-error",
+        "path": "/api/v2/auth/login",
+        "at": 1790649078479
+      },
+      "correlatedWith": {
+        "phase": "english-wrong-password",
+        "context": "context-7",
+        "path": "/api/v2/auth/login",
+        "status": 401,
+        "method": "POST",
+        "at": 1790649078478,
+        "code": "AUTHENTICATION_FAILED"
+      }
+    },
+    {
+      "observed": {
+        "phase": "english-wrong-password",
+        "context": "context-7",
+        "path": "/api/v2/auth/login",
+        "status": 401,
+        "method": "POST",
+        "at": 1790649078478,
+        "code": "AUTHENTICATION_FAILED",
+        "kind": "http-error"
+      },
+      "correlatedWith": {
+        "phase": "english-wrong-password",
+        "context": "context-7",
+        "path": "/api/v2/auth/login",
+        "status": 401,
+        "method": "POST",
+        "at": 1790649078478,
+        "code": "AUTHENTICATION_FAILED",
+        "kind": "http-error"
+      }
+    },
+    {
+      "observed": {
+        "phase": "english-lifecycle",
+        "context": "context-7",
+        "kind": "console-error",
+        "path": "/api/v2/auth/session",
+        "at": 1790649108066
+      },
+      "correlatedWith": {
+        "phase": "english-lifecycle",
+        "context": "context-7",
+        "path": "/api/v2/auth/session",
+        "status": 401,
+        "method": "GET",
+        "at": 1790649108064,
+        "code": "SESSION_INVALID"
+      }
+    },
+    {
+      "observed": {
+        "phase": "english-lifecycle",
+        "context": "context-7",
+        "path": "/api/v2/auth/session",
+        "status": 401,
+        "method": "GET",
+        "at": 1790649108064,
+        "code": "SESSION_INVALID",
+        "kind": "http-error"
+      },
+      "correlatedWith": {
+        "phase": "english-lifecycle",
+        "context": "context-7",
+        "path": "/api/v2/auth/session",
+        "status": 401,
+        "method": "GET",
+        "at": 1790649108064,
+        "code": "SESSION_INVALID",
+        "kind": "http-error"
+      }
+    },
+    {
+      "observed": {
+        "phase": "redis-recovery",
+        "context": "context-1",
+        "kind": "console-error",
+        "path": "/api/v2/auth/session",
+        "at": 1790649328234
+      },
+      "correlatedWith": {
+        "phase": "redis-recovery",
+        "context": "context-1",
+        "path": "/api/v2/auth/session",
+        "status": 401,
+        "method": "GET",
+        "at": 1790649328232,
+        "code": "SESSION_INVALID"
+      }
+    },
+    {
+      "observed": {
+        "phase": "redis-recovery",
+        "context": "context-1",
+        "path": "/api/v2/auth/session",
+        "status": 401,
+        "method": "GET",
+        "at": 1790649328232,
+        "code": "SESSION_INVALID",
+        "kind": "http-error"
+      },
+      "correlatedWith": {
+        "phase": "redis-recovery",
+        "context": "context-1",
+        "path": "/api/v2/auth/session",
+        "status": 401,
+        "method": "GET",
+        "at": 1790649328232,
+        "code": "SESSION_INVALID",
+        "kind": "http-error"
+      }
+    }
+  ],
+  "unknown": [],
+  "uncaughtPageErrors": 0
+}
