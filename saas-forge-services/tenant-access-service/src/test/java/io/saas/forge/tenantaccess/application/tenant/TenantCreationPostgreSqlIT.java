@@ -745,7 +745,8 @@ class TenantCreationPostgreSqlIT {
                     uuidV7(5), uuidV7(6), "Kafka Tenant", Instant.now().plusSeconds(3600), null);
 
             outboxPublisher.publishNext();
-            ConsumerRecord<String, String> event = awaitEvent(consumer);
+            // Topic 保留同类其他用例的消息，必须等待本次创建事实。
+            ConsumerRecord<String, String> event = awaitEventContaining(consumer, tenant.id().toString());
 
             assertEquals(tenant.id().toString(), event.key());
             assertTrue(event.value().contains("com.saas.forge.tenant.created.v1"));
@@ -1321,17 +1322,6 @@ class TenantCreationPostgreSqlIT {
 
     private static UUID uuidV7(long value) {
         return UUID.fromString("019535d9-0000-7000-8000-" + String.format("%012x", value));
-    }
-
-    private static ConsumerRecord<String, String> awaitEvent(KafkaConsumer<String, String> consumer) {
-        Instant deadline = Instant.now().plusSeconds(15);
-        while (Instant.now().isBefore(deadline)) {
-            var records = consumer.poll(Duration.ofMillis(500));
-            if (!records.isEmpty()) {
-                return records.iterator().next();
-            }
-        }
-        throw new AssertionError("未收到 Tenant Access Outbox 事件");
     }
 
     private static ConsumerRecord<String, String> awaitEventContaining(

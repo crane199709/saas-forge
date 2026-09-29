@@ -49,6 +49,13 @@ const record = (state, facts) => {
 function restore() {
   if (!saved) return;
   const { id, clientId, original, injected, alias } = saved;
+  if (saved.kind === 'recovery') {
+    mutate(`UPDATE iam_oauth_client_management_operations SET completed_at='${original}' WHERE id='${id}' AND client_id='${clientId}' AND completed_at='${injected}'`);
+    assert.equal(query(`SELECT completed_at='${original}' FROM iam_oauth_client_management_operations WHERE id='${id}'`), 't');
+    record('recovery-restored', { client: alias, affectedRows: 1, original });
+    saved = undefined;
+    return;
+  }
   const unchanged = query(`SELECT valid_until='${original}' FROM iam_oauth_client_secrets WHERE id='${id}' AND client_id='${clientId}'`);
   if (unchanged === 't') { saved = undefined; record('unchanged', { client: alias }); return; }
   mutate(`UPDATE iam_oauth_client_secrets SET valid_until='${original}' WHERE id='${id}'
@@ -66,9 +73,24 @@ try {
     if (request && request.requestId !== previous) {
       assert.equal(request.runId, handoff.runId);
       assert.match(request.requestId, /^[0-9a-f]{32}$/);
-      assert.ok(['expired', 'restored', 'logs'].includes(request.state));
+      assert.ok(['expired', 'restored', 'recovery-expired', 'logs'].includes(request.state));
       const clientId = uuid(request.clientId);
-      if (request.state === 'expired') {
+      if (request.state === 'recovery-expired') {
+        assert.equal(saved, undefined);
+        const id = uuid(request.operationId);
+        const row = JSON.parse(query(`SELECT row_to_json(o) FROM (SELECT o.completed_at,c.display_name,c.created_at FROM iam_oauth_client_management_operations o JOIN iam_oauth_clients c ON c.id=o.client_id WHERE o.id='${id}' AND o.client_id='${clientId}' AND o.operation_type IN ('CREATE','ROTATE') AND o.outcome='SUCCEEDED') o`));
+        assert.ok(row.display_name.includes(handoff.runId));
+        assert.ok(Date.parse(row.created_at) >= Date.parse(handoff.startedAt));
+        const original = timestamp(row.completed_at);
+        assert.ok(Date.parse(original) >= Date.parse(handoff.startedAt));
+        assert.ok(Date.now() - Date.parse(original) < 600000);
+        const injected = timestamp(query("SELECT clock_timestamp()-interval '11 minutes'"));
+        const alias = createHash('sha256').update(clientId).digest('hex');
+        saved = { kind: 'recovery', id, clientId, original, injected, alias, at: Date.now() };
+        writeFileSync(resolve(directory, 'restore.json'), JSON.stringify(saved), { mode: 0o600 });
+        mutate(`UPDATE iam_oauth_client_management_operations SET completed_at='${injected}' WHERE id='${id}' AND client_id='${clientId}' AND completed_at='${original}'`);
+        record('recovery-expired', { client: alias, original, injected, affectedRows: 1, actualWaitTenMinutes: false });
+      } else if (request.state === 'expired') {
         assert.equal(saved, undefined);
         const client = JSON.parse(query(`SELECT row_to_json(c) FROM (SELECT display_name,created_at,client_type,client_status
           FROM iam_oauth_clients WHERE id='${clientId}') c`));

@@ -1,0 +1,864 @@
+{
+  "kind": "diagnostic-history-not-acceptance",
+  "rounds": [
+    {
+      "round": 1,
+      "runId": "459cf54c-03aa-4394-877a-cfa8fae3f6c6",
+      "backend": {
+        "commit": "406c95c8dc6f8e6469525f2fe892614ca3702977",
+        "dirty": false,
+        "versionSource": "source-checkout"
+      },
+      "status": "failed",
+      "reports": {
+        "security": {
+          "status": "failed",
+          "startedAt": "2026-09-29T12:29:55.171Z",
+          "finishedAt": "2026-09-29T12:31:33.590Z",
+          "frontend": {
+            "commit": "d89bd87b74758245dfa1ee9225564554464db974",
+            "dirty": true,
+            "sourceSha256": "34216ca383e3becda7cf4427cf6778e78720db1150db0b8a34bcc7dc096b8199",
+            "lockSha256": "180ae2697376beb325956b9cb30132a660eac0673da9c9b63186bc9570c7725a"
+          },
+          "client": {
+            "name": "@crane199709/saas-forge-api-client",
+            "version": "0.4.0",
+            "sourceCommit": "ebff4b338d0c4b39e51488ac1e9b98885318d438"
+          },
+          "chrome": "154.0.8037.58",
+          "failure": {
+            "phase": "stage2-locale",
+            "kind": "TimeoutError"
+          },
+          "checks": [
+            {
+              "name": "fresh-console-bootstrap-two-tenants-and-real-mail-password-setup",
+              "status": "failed"
+            },
+            {
+              "name": "unauthorized-tenant-context",
+              "status": "not-run"
+            },
+            {
+              "name": "wrong-user-token",
+              "status": "not-run"
+            },
+            {
+              "name": "rotated-refresh-replay-rejected",
+              "status": "not-run"
+            },
+            {
+              "name": "replay-revokes-unexpired-token-and-console-hides-workspace",
+              "status": "not-run"
+            },
+            {
+              "name": "redis-fails-closed-and-console-does-not-blame-password",
+              "status": "not-run"
+            },
+            {
+              "name": "redis-restored-authoritative-probe-and-console-login",
+              "status": "not-run"
+            },
+            {
+              "name": "same-identity-tenant-switch-and-refresh",
+              "status": "passed"
+            },
+            {
+              "name": "locale-english-input-persistence-and-identity-path",
+              "status": "not-run"
+            },
+            {
+              "name": "suspension-rejects-old-token-resumption-requires-login",
+              "status": "not-run"
+            }
+          ],
+          "sourceSha256": "dda7c2d5d9316c2aaa6d2e7791369cf006790fb09a5b907ec9439d352fa6e875"
+        }
+      }
+    },
+    {
+      "round": 2,
+      "runId": "d5130cc4-b23a-4c4f-b8b5-b185204c1ecd",
+      "backend": {
+        "commit": "406c95c8dc6f8e6469525f2fe892614ca3702977",
+        "dirty": true,
+        "versionSource": "source-checkout"
+      },
+      "status": "failed",
+      "reports": {
+        "security": {
+          "status": "failed",
+          "startedAt": "2026-09-29T12:39:36.826Z",
+          "finishedAt": "2026-09-29T12:41:40.821Z",
+          "frontend": {
+            "commit": "d89bd87b74758245dfa1ee9225564554464db974",
+            "dirty": true,
+            "sourceSha256": "34216ca383e3becda7cf4427cf6778e78720db1150db0b8a34bcc7dc096b8199",
+            "lockSha256": "180ae2697376beb325956b9cb30132a660eac0673da9c9b63186bc9570c7725a"
+          },
+          "client": {
+            "name": "@crane199709/saas-forge-api-client",
+            "version": "0.4.0",
+            "sourceCommit": "ebff4b338d0c4b39e51488ac1e9b98885318d438"
+          },
+          "chrome": "154.0.8037.58",
+          "failure": {
+            "phase": "stage2-suspension",
+            "kind": "TimeoutError",
+            "location": "stage2-main-chain.mjs:109:30"
+          },
+          "checks": [
+            {
+              "name": "fresh-console-bootstrap-two-tenants-and-real-mail-password-setup",
+              "status": "failed"
+            },
+            {
+              "name": "unauthorized-tenant-context",
+              "status": "not-run"
+            },
+            {
+              "name": "wrong-user-token",
+              "status": "not-run"
+            },
+            {
+              "name": "rotated-refresh-replay-rejected",
+              "status": "not-run"
+            },
+            {
+              "name": "replay-revokes-unexpired-token-and-console-hides-workspace",
+              "status": "not-run"
+            },
+            {
+              "name": "redis-fails-closed-and-console-does-not-blame-password",
+              "status": "not-run"
+            },
+            {
+              "name": "redis-restored-authoritative-probe-and-console-login",
+              "status": "not-run"
+            },
+            {
+              "name": "same-identity-tenant-switch-and-refresh",
+              "status": "passed"
+            },
+            {
+              "name": "locale-english-input-persistence-and-identity-path",
+              "status": "passed"
+            },
+            {
+              "name": "suspension-rejects-old-token-resumption-requires-login",
+              "status": "not-run"
+            }
+          ],
+          "sourceSha256": "315c6aa0b9587ed5bb076d859584e6730f82af110da5cbf6daecc3c6ca29a773"
+        },
+        "oauth": {
+          "status": "failed",
+          "startedAt": "2026-09-29T12:44:19.498Z",
+          "finishedAt": "2026-09-29T12:45:04.420Z",
+          "frontend": {
+            "commit": "d89bd87b74758245dfa1ee9225564554464db974",
+            "dirty": true,
+            "sourceSha256": "34216ca383e3becda7cf4427cf6778e78720db1150db0b8a34bcc7dc096b8199",
+            "lockSha256": "180ae2697376beb325956b9cb30132a660eac0673da9c9b63186bc9570c7725a"
+          },
+          "client": {
+            "name": "@crane199709/saas-forge-api-client",
+            "version": "0.4.0",
+            "sourceCommit": "ebff4b338d0c4b39e51488ac1e9b98885318d438"
+          },
+          "chrome": "154.0.8037.58",
+          "failure": {
+            "phase": "stage2-rotation-response-loss",
+            "kind": "Error",
+            "location": "verify-oauth-lifecycle.mjs:539:5"
+          },
+          "checks": [
+            {
+              "name": "same-run-admin-platform-context",
+              "status": "passed"
+            },
+            {
+              "name": "same-issuance-replay-cannot-reread-secret",
+              "status": "passed"
+            },
+            {
+              "name": "runtime-create-close-refresh-navigation-no-secret-reread",
+              "status": "passed"
+            },
+            {
+              "name": "real-overlap-denial-chinese-and-english",
+              "status": "passed"
+            },
+            {
+              "name": "second-console-regular-rotation-rejected-with-stable-24h-window",
+              "status": "passed"
+            },
+            {
+              "name": "real-service-scope-insufficient",
+              "status": "passed"
+            },
+            {
+              "name": "old-secret-expired-new-secret-valid",
+              "status": "passed"
+            },
+            {
+              "name": "revocation-rejects-new-token-and-existing-unexpired-token",
+              "status": "passed"
+            },
+            {
+              "name": "real-oauth-detail-accessibility-and-keyboard-create-close",
+              "status": "passed"
+            },
+            {
+              "name": "committed-create-response-loss-and-original-actor-recovery",
+              "status": "passed"
+            },
+            {
+              "name": "recovery-rejects-second-use-and-other-actor",
+              "status": "not-run",
+              "reason": "other-platform-actor-authorization-required"
+            }
+          ],
+          "sourceSha256": "f982184e570b093e9f9fa52b9abf92bda8eec00073283bb922b659ce650646de"
+        }
+      }
+    },
+    {
+      "round": 3,
+      "runId": "11a9ac54-8ba8-4a41-b761-7f7b7822ebcc",
+      "backend": {
+        "commit": "406c95c8dc6f8e6469525f2fe892614ca3702977",
+        "dirty": true,
+        "versionSource": "source-checkout"
+      },
+      "status": "failed",
+      "reports": {
+        "security": {
+          "status": "failed",
+          "startedAt": "2026-09-29T12:53:15.436Z",
+          "finishedAt": "2026-09-29T12:54:04.542Z",
+          "frontend": {
+            "commit": "d89bd87b74758245dfa1ee9225564554464db974",
+            "dirty": true,
+            "sourceSha256": "34216ca383e3becda7cf4427cf6778e78720db1150db0b8a34bcc7dc096b8199",
+            "lockSha256": "180ae2697376beb325956b9cb30132a660eac0673da9c9b63186bc9570c7725a"
+          },
+          "client": {
+            "name": "@crane199709/saas-forge-api-client",
+            "version": "0.4.0",
+            "sourceCommit": "ebff4b338d0c4b39e51488ac1e9b98885318d438"
+          },
+          "chrome": "154.0.8037.58",
+          "driverSha256": {
+            "verify-token-security.mjs": "99a4f2bd812d1ee3bdd7ad9e881fa6618d558f0d6b1af7ec08a3a51cc971ac4b",
+            "stage2-main-chain.mjs": "396f3a6854840a67660d2c400cef43f95826e77cb1b338bac571f2ce7f8bd13a",
+            "tenant-context-security.mjs": "86d70515ad36487b5c573d29f4d42ad64bdf4171b02e88878a96766f99b91762"
+          },
+          "failure": {
+            "phase": "fresh-console-prerequisites",
+            "kind": "TimeoutError",
+            "location": "verify-token-security.mjs:399:14"
+          },
+          "checks": [
+            {
+              "name": "fresh-console-bootstrap-two-tenants-and-real-mail-password-setup",
+              "status": "failed"
+            },
+            {
+              "name": "unauthorized-tenant-context",
+              "status": "not-run"
+            },
+            {
+              "name": "wrong-user-token",
+              "status": "not-run"
+            },
+            {
+              "name": "rotated-refresh-replay-rejected",
+              "status": "not-run"
+            },
+            {
+              "name": "replay-revokes-unexpired-token-and-console-hides-workspace",
+              "status": "not-run"
+            },
+            {
+              "name": "redis-fails-closed-and-console-does-not-blame-password",
+              "status": "not-run"
+            },
+            {
+              "name": "redis-restored-authoritative-probe-and-console-login",
+              "status": "not-run"
+            },
+            {
+              "name": "same-identity-tenant-switch-and-refresh",
+              "status": "not-run"
+            },
+            {
+              "name": "locale-english-input-persistence-and-identity-path",
+              "status": "not-run"
+            },
+            {
+              "name": "suspension-rejects-old-token-resumption-requires-login",
+              "status": "not-run"
+            }
+          ],
+          "sourceSha256": "97d55904223ffdb2e9bd1b64ceee173997f7ade15654c7bed49d857f42700c3a"
+        }
+      }
+    },
+    {
+      "round": 4,
+      "runId": "baadc561-c87e-4012-b3b3-396ec0f0fa02",
+      "backend": {
+        "commit": "406c95c8dc6f8e6469525f2fe892614ca3702977",
+        "dirty": true,
+        "versionSource": "source-checkout"
+      },
+      "status": "failed",
+      "reports": {
+        "security": {
+          "status": "failed",
+          "startedAt": "2026-09-29T13:02:06.739Z",
+          "finishedAt": "2026-09-29T13:02:41.789Z",
+          "frontend": {
+            "commit": "d89bd87b74758245dfa1ee9225564554464db974",
+            "dirty": true,
+            "sourceSha256": "34216ca383e3becda7cf4427cf6778e78720db1150db0b8a34bcc7dc096b8199",
+            "lockSha256": "180ae2697376beb325956b9cb30132a660eac0673da9c9b63186bc9570c7725a"
+          },
+          "client": {
+            "name": "@crane199709/saas-forge-api-client",
+            "version": "0.4.0",
+            "sourceCommit": "ebff4b338d0c4b39e51488ac1e9b98885318d438"
+          },
+          "chrome": "154.0.8037.58",
+          "driverSha256": {
+            "verify-token-security.mjs": "c71e4b66602d535e46f5aa488756eabc00f94a310864c8928181503b9702ba02",
+            "stage2-main-chain.mjs": "030f64a7d2400dcefe2bc234e1cebcad5be592265937369e5f0ad5f674533061",
+            "tenant-context-security.mjs": "86d70515ad36487b5c573d29f4d42ad64bdf4171b02e88878a96766f99b91762"
+          },
+          "failure": {
+            "phase": "fresh-console-prerequisites",
+            "kind": "TimeoutError",
+            "location": "verify-token-security.mjs:245:28"
+          },
+          "checks": [
+            {
+              "name": "fresh-console-bootstrap-two-tenants-and-real-mail-password-setup",
+              "status": "failed"
+            },
+            {
+              "name": "unauthorized-tenant-context",
+              "status": "not-run"
+            },
+            {
+              "name": "wrong-user-token",
+              "status": "not-run"
+            },
+            {
+              "name": "rotated-refresh-replay-rejected",
+              "status": "not-run"
+            },
+            {
+              "name": "replay-revokes-unexpired-token-and-console-hides-workspace",
+              "status": "not-run"
+            },
+            {
+              "name": "redis-fails-closed-and-console-does-not-blame-password",
+              "status": "not-run"
+            },
+            {
+              "name": "redis-restored-authoritative-probe-and-console-login",
+              "status": "not-run"
+            },
+            {
+              "name": "same-identity-tenant-switch-and-refresh",
+              "status": "not-run"
+            },
+            {
+              "name": "locale-english-input-persistence-and-identity-path",
+              "status": "not-run"
+            },
+            {
+              "name": "suspension-rejects-old-token-resumption-requires-login",
+              "status": "not-run"
+            }
+          ],
+          "sourceSha256": "1eadd367e21c4c5ea009ef4bfd4bfc134d933b3de8758f43fcc4d730a1cc4c1b"
+        },
+        "oauth": {
+          "status": "failed",
+          "startedAt": "2026-09-29T13:07:43.815Z",
+          "finishedAt": "2026-09-29T13:09:08.725Z",
+          "frontend": {
+            "commit": "d89bd87b74758245dfa1ee9225564554464db974",
+            "dirty": true,
+            "sourceSha256": "34216ca383e3becda7cf4427cf6778e78720db1150db0b8a34bcc7dc096b8199",
+            "lockSha256": "180ae2697376beb325956b9cb30132a660eac0673da9c9b63186bc9570c7725a"
+          },
+          "client": {
+            "name": "@crane199709/saas-forge-api-client",
+            "version": "0.4.0",
+            "sourceCommit": "ebff4b338d0c4b39e51488ac1e9b98885318d438"
+          },
+          "chrome": "154.0.8037.58",
+          "driverSha256": {
+            "verify-oauth-lifecycle.mjs": "c2396eadb298905684de41a738f06481a68220d4bbbd464cc7bdf850f9e8695e",
+            "stage2-oauth-recovery.mjs": "92941255a762b6a12460d64d4002ea78aace07706cb9b74a437dcd81555a2ef8",
+            "tenant-context-security.mjs": "86d70515ad36487b5c573d29f4d42ad64bdf4171b02e88878a96766f99b91762"
+          },
+          "failure": {
+            "phase": "error-and-privacy-audit",
+            "kind": "AssertionError",
+            "location": "verify-oauth-lifecycle.mjs:634:10"
+          },
+          "classification": {
+            "unknownErrors": 0,
+            "unexpectedRequests": 0
+          },
+          "checks": [
+            {
+              "name": "same-run-admin-platform-context",
+              "status": "passed"
+            },
+            {
+              "name": "same-issuance-replay-cannot-reread-secret",
+              "status": "passed"
+            },
+            {
+              "name": "runtime-create-close-refresh-navigation-no-secret-reread",
+              "status": "passed"
+            },
+            {
+              "name": "real-overlap-denial-chinese-and-english",
+              "status": "passed"
+            },
+            {
+              "name": "second-console-regular-rotation-rejected-with-stable-24h-window",
+              "status": "passed"
+            },
+            {
+              "name": "real-service-scope-insufficient",
+              "status": "passed"
+            },
+            {
+              "name": "old-secret-expired-new-secret-valid",
+              "status": "passed"
+            },
+            {
+              "name": "revocation-rejects-new-token-and-existing-unexpired-token",
+              "status": "passed"
+            },
+            {
+              "name": "real-oauth-detail-accessibility-and-keyboard-create-close",
+              "status": "passed"
+            },
+            {
+              "name": "committed-create-response-loss-and-original-actor-recovery",
+              "status": "passed"
+            },
+            {
+              "name": "recovery-rejects-second-use-and-other-actor",
+              "status": "not-run",
+              "reason": "other-platform-actor-authorization-required"
+            },
+            {
+              "name": "committed-rotation-response-loss-recovery-preserves-overlap",
+              "status": "passed"
+            },
+            {
+              "name": "ten-minute-expiry-injection-rejects-recovery-and-restores",
+              "status": "passed"
+            },
+            {
+              "name": "visible-secret-cleared-on-refresh-leave-and-cross-tab-session-loss",
+              "status": "passed"
+            },
+            {
+              "name": "same-run-service-logs-contain-no-known-sensitive-material",
+              "status": "passed"
+            },
+            {
+              "name": "request-correlated-errors-and-no-sensitive-browser-storage-or-logs",
+              "status": "passed"
+            }
+          ],
+          "sourceSha256": "23593490ce8f210ba4ce6366994b73b4287e8537e7acc2679c5d844c9fcf864f"
+        }
+      }
+    },
+    {
+      "round": 5,
+      "runId": "f4bbe94c-9539-46f8-b3fe-a24c5c9009f3",
+      "backend": {
+        "commit": "406c95c8dc6f8e6469525f2fe892614ca3702977",
+        "dirty": true,
+        "versionSource": "source-checkout"
+      },
+      "status": "failed",
+      "reports": {
+        "security": {
+          "status": "failed",
+          "startedAt": "2026-09-29T13:16:10.348Z",
+          "finishedAt": "2026-09-29T13:16:51.220Z",
+          "frontend": {
+            "commit": "d89bd87b74758245dfa1ee9225564554464db974",
+            "dirty": true,
+            "sourceSha256": "34216ca383e3becda7cf4427cf6778e78720db1150db0b8a34bcc7dc096b8199",
+            "lockSha256": "180ae2697376beb325956b9cb30132a660eac0673da9c9b63186bc9570c7725a"
+          },
+          "client": {
+            "name": "@crane199709/saas-forge-api-client",
+            "version": "0.4.0",
+            "sourceCommit": "ebff4b338d0c4b39e51488ac1e9b98885318d438"
+          },
+          "chrome": "154.0.8037.58",
+          "driverSha256": {
+            "verify-token-security.mjs": "c71e4b66602d535e46f5aa488756eabc00f94a310864c8928181503b9702ba02",
+            "stage2-main-chain.mjs": "4f3943f7258dd43aef9549b65f171a5ffe311d3f2c25b55b022f72925abdf16b",
+            "tenant-context-security.mjs": "86d70515ad36487b5c573d29f4d42ad64bdf4171b02e88878a96766f99b91762"
+          },
+          "failure": {
+            "phase": "fresh-console-prerequisites",
+            "kind": "TimeoutError",
+            "location": "verify-token-security.mjs:395:70"
+          },
+          "checks": [
+            {
+              "name": "fresh-console-bootstrap-two-tenants-and-real-mail-password-setup",
+              "status": "failed"
+            },
+            {
+              "name": "unauthorized-tenant-context",
+              "status": "not-run"
+            },
+            {
+              "name": "wrong-user-token",
+              "status": "not-run"
+            },
+            {
+              "name": "rotated-refresh-replay-rejected",
+              "status": "not-run"
+            },
+            {
+              "name": "replay-revokes-unexpired-token-and-console-hides-workspace",
+              "status": "not-run"
+            },
+            {
+              "name": "redis-fails-closed-and-console-does-not-blame-password",
+              "status": "not-run"
+            },
+            {
+              "name": "redis-restored-authoritative-probe-and-console-login",
+              "status": "not-run"
+            },
+            {
+              "name": "same-identity-tenant-switch-and-refresh",
+              "status": "not-run"
+            },
+            {
+              "name": "locale-english-input-persistence-and-identity-path",
+              "status": "not-run"
+            },
+            {
+              "name": "suspension-rejects-old-token-resumption-requires-login",
+              "status": "not-run"
+            }
+          ],
+          "sourceSha256": "8bce8bda19b2836e03926cff84f6b338f7ec2cd5a17b00dcd1149845c7ad114c"
+        }
+      },
+      "execution": {
+        "kind": "stage2-execution",
+        "status": "failed",
+        "stages": [
+          {
+            "name": "main-chain-security-locale-lifecycle",
+            "status": "failed",
+            "exitCode": 1
+          }
+        ],
+        "runId": "f4bbe94c-9539-46f8-b3fe-a24c5c9009f3"
+      }
+    },
+    {
+      "round": 6,
+      "runId": "d23a7410-dfaf-401f-acf4-0c057edd407d",
+      "backend": {
+        "commit": "406c95c8dc6f8e6469525f2fe892614ca3702977",
+        "dirty": true,
+        "versionSource": "source-checkout"
+      },
+      "status": "failed",
+      "reports": {
+        "security-initial": {
+          "status": "failed",
+          "startedAt": "2026-09-29T13:32:08.407Z",
+          "finishedAt": "2026-09-29T13:32:55.592Z",
+          "frontend": {
+            "commit": "d89bd87b74758245dfa1ee9225564554464db974",
+            "dirty": true,
+            "sourceSha256": "34216ca383e3becda7cf4427cf6778e78720db1150db0b8a34bcc7dc096b8199",
+            "lockSha256": "180ae2697376beb325956b9cb30132a660eac0673da9c9b63186bc9570c7725a"
+          },
+          "client": {
+            "name": "@crane199709/saas-forge-api-client",
+            "version": "0.4.0",
+            "sourceCommit": "ebff4b338d0c4b39e51488ac1e9b98885318d438"
+          },
+          "chrome": "154.0.8037.58",
+          "failure": {
+            "phase": "fresh-console-prerequisites",
+            "kind": "TimeoutError",
+            "location": "verify-token-security.mjs:240:27"
+          },
+          "checks": [
+            {
+              "name": "fresh-console-bootstrap-two-tenants-and-real-mail-password-setup",
+              "status": "failed"
+            },
+            {
+              "name": "unauthorized-tenant-context",
+              "status": "not-run"
+            },
+            {
+              "name": "wrong-user-token",
+              "status": "not-run"
+            },
+            {
+              "name": "rotated-refresh-replay-rejected",
+              "status": "not-run"
+            },
+            {
+              "name": "replay-revokes-unexpired-token-and-console-hides-workspace",
+              "status": "not-run"
+            },
+            {
+              "name": "redis-fails-closed-and-console-does-not-blame-password",
+              "status": "not-run"
+            },
+            {
+              "name": "redis-restored-authoritative-probe-and-console-login",
+              "status": "not-run"
+            },
+            {
+              "name": "same-identity-tenant-switch-and-refresh",
+              "status": "not-run"
+            },
+            {
+              "name": "locale-english-input-persistence-and-identity-path",
+              "status": "not-run"
+            },
+            {
+              "name": "suspension-rejects-old-token-resumption-requires-login",
+              "status": "not-run"
+            }
+          ],
+          "sourceReportSha256": "afea007d41a9fbf4d98e45f0c0a920c039f6c01979b595843a20ea38e0b5ae2b"
+        },
+        "security-retry": {
+          "status": "failed",
+          "startedAt": "2026-09-29T13:35:47.402Z",
+          "finishedAt": "2026-09-29T13:39:31.971Z",
+          "frontend": {
+            "commit": "d89bd87b74758245dfa1ee9225564554464db974",
+            "dirty": true,
+            "sourceSha256": "34216ca383e3becda7cf4427cf6778e78720db1150db0b8a34bcc7dc096b8199",
+            "lockSha256": "180ae2697376beb325956b9cb30132a660eac0673da9c9b63186bc9570c7725a"
+          },
+          "client": {
+            "name": "@crane199709/saas-forge-api-client",
+            "version": "0.4.0",
+            "sourceCommit": "ebff4b338d0c4b39e51488ac1e9b98885318d438"
+          },
+          "chrome": "154.0.8037.58",
+          "failure": {
+            "phase": "redis-recovery",
+            "kind": "AssertionError",
+            "location": "verify-token-security.mjs:625:10"
+          },
+          "classification": {
+            "unexpectedRequests": 1,
+            "unknownErrors": 1
+          },
+          "checks": [
+            {
+              "name": "fresh-console-bootstrap-two-tenants-and-real-mail-password-setup",
+              "status": "passed"
+            },
+            {
+              "name": "unauthorized-tenant-context",
+              "status": "passed"
+            },
+            {
+              "name": "wrong-user-token",
+              "status": "passed"
+            },
+            {
+              "name": "rotated-refresh-replay-rejected",
+              "status": "passed"
+            },
+            {
+              "name": "replay-revokes-unexpired-token-and-console-hides-workspace",
+              "status": "passed"
+            },
+            {
+              "name": "redis-fails-closed-and-console-does-not-blame-password",
+              "status": "passed"
+            },
+            {
+              "name": "redis-restored-authoritative-probe-and-console-login",
+              "status": "passed"
+            },
+            {
+              "name": "same-identity-tenant-switch-and-refresh",
+              "status": "passed"
+            },
+            {
+              "name": "locale-english-input-persistence-and-identity-path",
+              "status": "passed"
+            },
+            {
+              "name": "suspension-rejects-old-token-resumption-requires-login",
+              "status": "passed"
+            }
+          ],
+          "sourceReportSha256": "688226a1286a5b0ec67ccaffbbbfcccb8153b962031b3383fe5455b921ba4f12"
+        },
+        "oauth-diagnostic": {
+          "status": "failed",
+          "startedAt": "2026-09-29T13:40:54.104Z",
+          "finishedAt": "2026-09-29T13:41:54.419Z",
+          "frontend": {
+            "commit": "d89bd87b74758245dfa1ee9225564554464db974",
+            "dirty": true,
+            "sourceSha256": "34216ca383e3becda7cf4427cf6778e78720db1150db0b8a34bcc7dc096b8199",
+            "lockSha256": "180ae2697376beb325956b9cb30132a660eac0673da9c9b63186bc9570c7725a"
+          },
+          "client": {
+            "name": "@crane199709/saas-forge-api-client",
+            "version": "0.4.0",
+            "sourceCommit": "ebff4b338d0c4b39e51488ac1e9b98885318d438"
+          },
+          "chrome": "154.0.8037.58",
+          "failure": {
+            "phase": "error-and-privacy-audit",
+            "kind": "AssertionError",
+            "location": "verify-oauth-lifecycle.mjs:636:10"
+          },
+          "classification": {
+            "unknownErrors": 0,
+            "unexpectedRequests": 0
+          },
+          "checks": [
+            {
+              "name": "same-run-admin-platform-context",
+              "status": "passed"
+            },
+            {
+              "name": "same-issuance-replay-cannot-reread-secret",
+              "status": "passed"
+            },
+            {
+              "name": "runtime-create-close-refresh-navigation-no-secret-reread",
+              "status": "passed"
+            },
+            {
+              "name": "real-overlap-denial-chinese-and-english",
+              "status": "passed"
+            },
+            {
+              "name": "second-console-regular-rotation-rejected-with-stable-24h-window",
+              "status": "passed"
+            },
+            {
+              "name": "real-service-scope-insufficient",
+              "status": "passed"
+            },
+            {
+              "name": "old-secret-expired-new-secret-valid",
+              "status": "passed"
+            },
+            {
+              "name": "revocation-rejects-new-token-and-existing-unexpired-token",
+              "status": "passed"
+            },
+            {
+              "name": "real-oauth-detail-accessibility-and-keyboard-create-close",
+              "status": "passed"
+            },
+            {
+              "name": "committed-create-response-loss-and-original-actor-recovery",
+              "status": "passed"
+            },
+            {
+              "name": "recovery-rejects-second-use-and-other-actor",
+              "status": "not-run",
+              "reason": "other-platform-actor-authorization-required"
+            },
+            {
+              "name": "committed-rotation-response-loss-recovery-preserves-overlap",
+              "status": "passed"
+            },
+            {
+              "name": "ten-minute-expiry-injection-rejects-recovery-and-restores",
+              "status": "passed"
+            },
+            {
+              "name": "visible-secret-cleared-on-refresh-leave-and-cross-tab-session-loss",
+              "status": "passed"
+            },
+            {
+              "name": "same-run-service-logs-contain-no-known-sensitive-material",
+              "status": "passed"
+            },
+            {
+              "name": "request-correlated-errors-and-no-sensitive-browser-storage-or-logs",
+              "status": "passed"
+            }
+          ],
+          "sourceReportSha256": "7e4a2068d3758cd3b69b245a128c501e9b7893aa3f263155570e4b119bf30c92"
+        },
+        "audit": {
+          "status": "passed",
+          "startedAt": "2026-09-29T13:40:49.303Z",
+          "finishedAt": "2026-09-29T13:40:51.103Z",
+          "classification": {
+            "unknownErrors": 0,
+            "unexpectedRequests": 0
+          },
+          "checks": [
+            {
+              "name": "SESSION_STARTED",
+              "status": "passed"
+            },
+            {
+              "name": "TENANT_CREATED",
+              "status": "passed"
+            },
+            {
+              "name": "TENANT_CONTEXT_SWITCHED",
+              "status": "passed"
+            }
+          ],
+          "sourceReportSha256": "f9851bfa271d4cfe0e0088a2159046839c263f9a87f5d5d573a36de18bd0287f"
+        },
+        "runtime": {
+          "status": "failed",
+          "startedAt": "2026-09-29T13:45:11.181Z",
+          "finishedAt": "2026-09-29T13:45:11.920Z",
+          "failure": {
+            "kind": "AssertionError"
+          },
+          "classification": {
+            "unknownErrors": 2,
+            "unexpectedRequests": 0
+          },
+          "checks": [],
+          "sourceReportSha256": "6c3c0cc63d7a1f824aed2d5446d3a624ebc287b2c69b1e85d96fcfe3d26f81c0"
+        }
+      },
+      "note": "同一环境诊断重试，不替代全新同轮验收；冻结处理中分类修复尚未真实重跑。"
+    }
+  ]
+}
