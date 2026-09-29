@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "kind": "browser",
+  "runId": "46dde443-c012-4a49-8a71-3beb50693057",
+  "handoffSha256": "4f67a07db92d2d3a5f0364df416335a0954efc47e052b59b9705ac156de706e4",
+  "startedAt": "2026-09-29T03:56:20.460Z",
+  "frontend": {
+    "commit": "ee0f1a75c04296e0139ff10cbeb38017d8ef067b",
+    "dirty": false,
+    "sourceSha256": "685b18605de3159d1eb4a1fc2fb2e8d6af104a24488c292c66b0746e6702099d",
+    "lockSha256": "0b652291d8b3804ded0f742cdad661432e6526dcc7a577c9eb37097f581599e7",
+    "versionSource": "served-html-provenance-matched"
+  },
+  "client": {
+    "name": "@crane199709/saas-forge-api-client",
+    "version": "0.4.0",
+    "sourceCommit": "ebff4b338d0c4b39e51488ac1e9b98885318d438"
+  },
+  "checks": [
+    {
+      "name": "trusted-console-and-same-gateway",
+      "status": "passed"
+    },
+    {
+      "name": "served-frontend-and-client-match-checkout",
+      "status": "passed"
+    },
+    {
+      "name": "login-language-theme-and-visual-captures",
+      "status": "passed"
+    },
+    {
+      "name": "real-login-authoritative-platform-context-heading-focus",
+      "status": "passed"
+    },
+    {
+      "name": "browser-managed-host-only-secure-httponly-cookies",
+      "status": "passed"
+    },
+    {
+      "name": "refresh-restores-workspace",
+      "status": "passed"
+    },
+    {
+      "name": "second-tab-restores-same-context",
+      "status": "passed"
+    },
+    {
+      "name": "logout-remains-anonymous-after-reload",
+      "status": "passed"
+    },
+    {
+      "name": "no-unexpected-console-page-or-api-errors",
+      "status": "passed"
+    }
+  ],
+  "requests": [
+    {
+      "phase": "login-page",
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "phase": "login",
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "phase": "login",
+      "path": "/api/v2/auth/login",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "phase": "context-selection",
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "phase": "context-selection",
+      "path": "/api/v2/auth/context-selections",
+      "method": "POST",
+      "status": 204
+    },
+    {
+      "phase": "context-selection",
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "phase": "refresh",
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "phase": "refresh",
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "refresh",
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "phase": "second-tab",
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "phase": "second-tab",
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "second-tab",
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "phase": "logout",
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "phase": "logout",
+      "path": "/api/v2/auth/logout",
+      "method": "POST",
+      "status": 204
+    },
+    {
+      "phase": "logout",
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200
+    }
+  ],
+  "status": "passed",
+  "chrome": "154.0.8037.58",
+  "playwright": "1.62.1",
+  "finishedAt": "2026-09-29T03:56:29.184Z",
+  "unexpectedErrors": 0
+}

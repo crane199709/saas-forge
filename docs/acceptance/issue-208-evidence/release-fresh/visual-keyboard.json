@@ -1,0 +1,20 @@
+{
+  "baseline": "7613bd206cd42001b40e3eafceeb895dcbc277a8",
+  "frontend": "ee0f1a75c04296e0139ff10cbeb38017d8ef067b",
+  "realBrand": "SaaS Forge",
+  "checks": [
+    "baseline-header-56px-layout-brand-favicon-and-named-buttons",
+    "create-drawer-keyboard-open-escape-and-focus-return",
+    "lifecycle-dialog-escape-and-focus-return",
+    "login-keyboard-order-and-explicit-input-labels",
+    "login-1024px-no-horizontal-overflow"
+  ],
+  "desktop": {
+    "headerHeight": 56,
+    "sidebarWidth": 220,
+    "overflow": false,
+    "brandLink": true,
+    "favicon": true,
+    "primary": "100 108 255"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "kind": "fixed-soybean-source-comparison",
+  "baseline": "7613bd206cd42001b40e3eafceeb895dcbc277a8",
+  "frontend": "ee0f1a75c04296e0139ff10cbeb38017d8ef067b",
+  "areas": {
+    "src/theme": {
+      "baselineFiles": 2,
+      "changedFiles": []
+    },
+    "src/styles": {
+      "baselineFiles": 7,
+      "changedFiles": []
+    },
+    "packages/materials": {
+      "baselineFiles": 20,
+      "changedFiles": []
+    }
+  },
+  "limitation": "Source identity complements rendered visual checks; not screenshot equivalence."
+}

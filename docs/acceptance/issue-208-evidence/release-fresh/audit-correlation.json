@@ -1,0 +1,36 @@
+{
+  "kind": "real-browser-outbox-kafka-audit-correlation",
+  "runId": "46dde443-c012-4a49-8a71-3beb50693057",
+  "results": [
+    {
+      "action": "SESSION_STARTED",
+      "event": "9d3972ae07e0926b",
+      "actor": "dc8cb92a916d4641",
+      "resource": "12083d41c5951384",
+      "trace": "73ed12d57eaf9312",
+      "published": true,
+      "matchedBrowserResource": true,
+      "eventActorResourceTraceMatch": true
+    },
+    {
+      "action": "TENANT_CONTEXT_SWITCHED",
+      "event": "eb580d7a8323115c",
+      "actor": "dc8cb92a916d4641",
+      "resource": "12083d41c5951384",
+      "trace": "a4205e215913e7a4",
+      "published": true,
+      "matchedBrowserResource": true,
+      "eventActorResourceTraceMatch": true
+    },
+    {
+      "action": "TENANT_CREATED",
+      "event": "7f5306ed37dbdb1a",
+      "actor": "28e0b00ed7fe318f",
+      "resource": "166dfc0ea0df07cb",
+      "trace": "2205ea6e475c5047",
+      "published": true,
+      "matchedBrowserResource": true,
+      "eventActorResourceTraceMatch": true
+    }
+  ]
+}

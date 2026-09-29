@@ -1,0 +1,237 @@
+{
+  "kind": "per-scenario-error-classification",
+  "plannedExpected": [
+    {
+      "observed": {
+        "phase": "oauth-create-response-loss",
+        "context": "context-1",
+        "kind": "console-error",
+        "path": "/api/v1/platform/oauth-clients",
+        "at": 1790654528285
+      },
+      "correlatedWith": {
+        "phase": "oauth-create-response-loss",
+        "path": "/api/v1/platform/oauth-clients",
+        "serverStatus": 201,
+        "at": 1790654528282
+      }
+    },
+    {
+      "observed": {
+        "phase": "oauth-rotation-response-loss",
+        "context": "context-1",
+        "kind": "console-error",
+        "path": "/api/v1/platform/oauth-clients/:id/secret-rotations",
+        "at": 1790654532521
+      },
+      "correlatedWith": {
+        "phase": "oauth-rotation-response-loss",
+        "path": "/api/v1/platform/oauth-clients/:id/secret-rotations",
+        "serverStatus": 200,
+        "at": 1790654532519
+      }
+    },
+    {
+      "observed": {
+        "phase": "english-wrong-password",
+        "context": "context-8",
+        "kind": "console-error",
+        "path": "/api/v2/auth/login",
+        "at": 1790654617407
+      },
+      "correlatedWith": {
+        "phase": "english-wrong-password",
+        "context": "context-8",
+        "path": "/api/v2/auth/login",
+        "status": 401,
+        "method": "POST",
+        "at": 1790654617406,
+        "code": "AUTHENTICATION_FAILED"
+      }
+    },
+    {
+      "observed": {
+        "phase": "english-wrong-password",
+        "context": "context-8",
+        "path": "/api/v2/auth/login",
+        "status": 401,
+        "method": "POST",
+        "at": 1790654617406,
+        "code": "AUTHENTICATION_FAILED",
+        "kind": "http-error"
+      },
+      "correlatedWith": {
+        "phase": "english-wrong-password",
+        "context": "context-8",
+        "path": "/api/v2/auth/login",
+        "status": 401,
+        "method": "POST",
+        "at": 1790654617406,
+        "code": "AUTHENTICATION_FAILED"
+      }
+    },
+    {
+      "observed": {
+        "phase": "english-lifecycle",
+        "context": "context-8",
+        "kind": "console-error",
+        "path": "/api/v2/auth/session",
+        "at": 1790654646947
+      },
+      "correlatedWith": {
+        "phase": "english-lifecycle",
+        "context": "context-8",
+        "path": "/api/v2/auth/session",
+        "status": 401,
+        "method": "GET",
+        "at": 1790654646943,
+        "code": "SESSION_INVALID"
+      }
+    },
+    {
+      "observed": {
+        "phase": "english-lifecycle",
+        "context": "context-8",
+        "path": "/api/v2/auth/session",
+        "status": 401,
+        "method": "GET",
+        "at": 1790654646943,
+        "code": "SESSION_INVALID",
+        "kind": "http-error"
+      },
+      "correlatedWith": {
+        "phase": "english-lifecycle",
+        "context": "context-8",
+        "path": "/api/v2/auth/session",
+        "status": 401,
+        "method": "GET",
+        "at": 1790654646943,
+        "code": "SESSION_INVALID"
+      }
+    },
+    {
+      "observed": {
+        "phase": "english-wrong-password",
+        "context": "context-9",
+        "kind": "console-error",
+        "path": "/api/v2/auth/login",
+        "at": 1790654991244
+      },
+      "correlatedWith": {
+        "phase": "english-wrong-password",
+        "context": "context-9",
+        "path": "/api/v2/auth/login",
+        "status": 401,
+        "method": "POST",
+        "at": 1790654991243,
+        "code": "AUTHENTICATION_FAILED"
+      }
+    },
+    {
+      "observed": {
+        "phase": "english-wrong-password",
+        "context": "context-9",
+        "path": "/api/v2/auth/login",
+        "status": 401,
+        "method": "POST",
+        "at": 1790654991243,
+        "code": "AUTHENTICATION_FAILED",
+        "kind": "http-error"
+      },
+      "correlatedWith": {
+        "phase": "english-wrong-password",
+        "context": "context-9",
+        "path": "/api/v2/auth/login",
+        "status": 401,
+        "method": "POST",
+        "at": 1790654991243,
+        "code": "AUTHENTICATION_FAILED"
+      }
+    },
+    {
+      "observed": {
+        "phase": "english-lifecycle",
+        "context": "context-9",
+        "kind": "console-error",
+        "path": "/api/v2/auth/session",
+        "at": 1790655020718
+      },
+      "correlatedWith": {
+        "phase": "english-lifecycle",
+        "context": "context-9",
+        "path": "/api/v2/auth/session",
+        "status": 401,
+        "method": "GET",
+        "at": 1790655020717,
+        "code": "SESSION_INVALID"
+      }
+    },
+    {
+      "observed": {
+        "phase": "english-lifecycle",
+        "context": "context-9",
+        "path": "/api/v2/auth/session",
+        "status": 401,
+        "method": "GET",
+        "at": 1790655020717,
+        "code": "SESSION_INVALID",
+        "kind": "http-error"
+      },
+      "correlatedWith": {
+        "phase": "english-lifecycle",
+        "context": "context-9",
+        "path": "/api/v2/auth/session",
+        "status": 401,
+        "method": "GET",
+        "at": 1790655020717,
+        "code": "SESSION_INVALID"
+      }
+    }
+  ],
+  "resolvedDiagnostic": [
+    {
+      "observed": {
+        "phase": "tenant-initialization",
+        "context": "context-3",
+        "kind": "console-error",
+        "path": "/api/v2/auth/session",
+        "at": 1790654137230
+      },
+      "cause": "driver reloaded before selection/refresh settled",
+      "protectedContentHidden": true,
+      "resolvedBy": "settled-tenant-context-switch-and-refresh",
+      "limitation": "No claim of uninterrupted session continuity during an in-flight context change."
+    },
+    {
+      "observed": {
+        "phase": "tenant-initialization",
+        "context": "context-3",
+        "path": "/api/v2/auth/session",
+        "status": 401,
+        "method": "GET",
+        "at": 1790654137230,
+        "code": "SESSION_INVALID",
+        "kind": "http-error"
+      },
+      "cause": "driver reloaded before selection/refresh settled",
+      "protectedContentHidden": true,
+      "resolvedBy": "settled-tenant-context-switch-and-refresh",
+      "limitation": "No claim of uninterrupted session continuity during an in-flight context change."
+    },
+    {
+      "observed": {
+        "phase": "settled-context-switch",
+        "context": "context-4",
+        "kind": "console-error",
+        "path": "/static-acceptance/v1/remote.js",
+        "at": 1790654272908
+      },
+      "cause": "acceptance-only frozen Remote artifacts missing after production build cleaned dist",
+      "repair": "existing build-static-remote.mjs verified checksums and copied immutable artifacts",
+      "resolvedBy": "real-remote-version-assets-anonymous-requests-and-cleanup"
+    }
+  ],
+  "unknown": [],
+  "uncaughtPageErrors": 0,
+  "noBlanketStatusIgnore": true
+}

@@ -1,0 +1,97 @@
+[
+  {
+    "runId": "46dde443-c012-4a49-8a71-3beb50693057",
+    "name": "dedicated-member-platform-role",
+    "status": "applied",
+    "at": "2026-09-29T04:02:15.644Z",
+    "rows": 1
+  },
+  {
+    "runId": "46dde443-c012-4a49-8a71-3beb50693057",
+    "name": "dedicated-member-platform-role",
+    "status": "restored",
+    "at": "2026-09-29T04:02:20.048Z",
+    "rows": 1
+  },
+  {
+    "runId": "46dde443-c012-4a49-8a71-3beb50693057",
+    "name": "oauth-overlap-time",
+    "status": "injected",
+    "at": "2026-09-29T04:02:20.813Z",
+    "rows": 1,
+    "original": "2026-09-30T04:02:12.497+00:00",
+    "injected": "2026-09-29 04:02:19.541318+00",
+    "actualWait24Hours": false
+  },
+  {
+    "runId": "46dde443-c012-4a49-8a71-3beb50693057",
+    "name": "oauth-overlap-time",
+    "status": "restored",
+    "at": "2026-09-29T04:02:21.189Z",
+    "rows": 1
+  },
+  {
+    "runId": "46dde443-c012-4a49-8a71-3beb50693057",
+    "name": "oauth-recovery-time",
+    "status": "injected",
+    "at": "2026-09-29T04:02:21.960Z",
+    "rows": 1,
+    "original": "2026-09-29 04:02:04.331+00",
+    "injected": "2026-09-29 03:51:21.702529+00",
+    "actualWaitTenMinutes": false
+  },
+  {
+    "runId": "46dde443-c012-4a49-8a71-3beb50693057",
+    "name": "oauth-recovery-time",
+    "status": "restored",
+    "at": "2026-09-29T04:02:22.311Z",
+    "rows": 1
+  },
+  {
+    "runId": "46dde443-c012-4a49-8a71-3beb50693057",
+    "name": "dedicated-member-memberships",
+    "status": "disabled",
+    "at": "2026-09-29T04:02:22.823Z",
+    "rows": 2
+  },
+  {
+    "runId": "46dde443-c012-4a49-8a71-3beb50693057",
+    "name": "dedicated-member-memberships",
+    "status": "restored",
+    "at": "2026-09-29T04:02:25.836Z",
+    "rows": 2
+  },
+  {
+    "runId": "46dde443-c012-4a49-8a71-3beb50693057",
+    "name": "tenant-lifecycle",
+    "status": "restored-via-console",
+    "at": "2026-09-29T04:04:07.667Z"
+  },
+  {
+    "runId": "46dde443-c012-4a49-8a71-3beb50693057",
+    "name": "tenant-lifecycle",
+    "status": "confirmed-restored-via-console",
+    "at": "2026-09-29T04:09:46.682Z",
+    "httpStatus": 200,
+    "method": "DELETE",
+    "state": "COMPLETED"
+  },
+  {
+    "runId": "46dde443-c012-4a49-8a71-3beb50693057",
+    "name": "tenant-lifecycle",
+    "status": "confirmed-restored-via-console",
+    "at": "2026-09-29T04:10:21.731Z"
+  },
+  {
+    "runId": "46dde443-c012-4a49-8a71-3beb50693057",
+    "name": "isolated-redis",
+    "status": "stopped",
+    "at": "2026-09-29T04:14:27.564Z"
+  },
+  {
+    "runId": "46dde443-c012-4a49-8a71-3beb50693057",
+    "name": "isolated-redis",
+    "status": "restored-healthy",
+    "at": "2026-09-29T04:15:42.705Z"
+  }
+]

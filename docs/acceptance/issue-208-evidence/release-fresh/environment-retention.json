@@ -1,0 +1,7 @@
+{
+  "mailpitOwnPersistentVolumeAttached": true,
+  "mailpitDatabaseFileNonEmpty": true,
+  "redisFinalHealth": "healthy",
+  "existingDeveloperEnvironmentTouched": false,
+  "automaticDeletion": false
+}

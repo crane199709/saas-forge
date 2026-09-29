@@ -1,5 +1,5 @@
 {
-  "status": "pending-final-fresh-acceptance",
+  "status": "final-combination-completed-and-reviewed",
   "clientVersion": "0.4.0",
   "versions": {
     "historicalFirstRound": {
@@ -20,13 +20,23 @@
         "native-final-combination.json",
         "final-build-ci.json"
       ]
+    },
+    "finalFresh": {
+      "backend": "5f48e956a24395091860f316fe76d3d8736d81c3",
+      "frontend": "ee0f1a75c04296e0139ff10cbeb38017d8ef067b",
+      "client": "0.4.0",
+      "runId": "46dde443-c012-4a49-8a71-3beb50693057",
+      "files": "release-fresh/"
     }
   },
   "privacy": {
-    "knownSensitiveValuesScanned": 14,
-    "matchedTextFiles": 0,
-    "jwtLikeValues": 0,
-    "screenshotsVisuallyChecked": true
+    "historicalKnownSensitiveValues": 14,
+    "finalFresh": {
+      "knownSensitiveValues": 22,
+      "matchedFiles": 0,
+      "jwtLikeValues": 0,
+      "screenshotsReviewed": true
+    }
   },
   "sha256": {
     "audit.json": "abc90cf769907f1920ffb297a3a4fc42a1f696aeb94b04e174a5d0034913e3c2",
@@ -38,6 +48,22 @@
     "main-chain.json": "c9939023a28fb3b9940daa882f35a5aa4537b760aa41fd9abfa2c28c0bde10b0",
     "native-final-combination.json": "71222d52d41fec0aa0b2fa63985f03fd1bf866d1ff2d88a23aafd3e2aad9b5d7",
     "native-runtime-check.json": "aab23000e83805c8350f2b6247d2ddb898aab86eb39e46b890f2d6db987f1824",
+    "release-fresh/audit-correlation.json": "255969dbeeaf55656f6d5421d7ecc3a56969183410016a0eac9725b4ef71a384",
+    "release-fresh/audit.json": "1837b8d8a1761d21ed7db13c42e487e7f9f80b57bd2da537a98ed61a7bf6ebd8",
+    "release-fresh/backend.json": "e9f96110bff56cd4866d7113c54d54d8571fddbe6fef8c9eb28413dda5dac98f",
+    "release-fresh/browser.json": "d637291bd8557f51f7698ea2cbdf8af5f48d386d84e0f773c9ac71546d0dc351",
+    "release-fresh/business-chain.json": "9cce9016030172489e177afb84963e096cf12edb2ac607a29cca0da30afc4ea9",
+    "release-fresh/environment-retention.json": "c8fd595ff99557425549000525d2d449aeace4d3cb640b14cacf40534c9c64ee",
+    "release-fresh/error-classification.json": "4c0362d565fd9a68d0eb00818cf68649b1a803e28861c9d6842bd1db5e49428f",
+    "release-fresh/handoff.json": "4f67a07db92d2d3a5f0364df416335a0954efc47e052b59b9705ac156de706e4",
+    "release-fresh/injections.json": "884832b3dc0d971f64f40594c572a11d79520e8be90a6318f1585983ba4d6603",
+    "release-fresh/main-chain.json": "031a9d3048bd977314f0869573f24e6bae7e5e58fb96905ab444e855dcc2577f",
+    "release-fresh/privacy.json": "03f1cbe2237883d561edc8ce0ed34eae0c646395711d5781178d0c65844ea810",
+    "release-fresh/soybean-baseline.json": "dede769c6a1b8894ed8232aef29a1fe09b40845b541c2b6f8d21387733ad5173",
+    "release-fresh/visual-keyboard.json": "38108149b18e65f79e1e94aa4a049c5a4580e582b2bb8ee2a8f3e1d4becaa65d",
+    "release-fresh/visual-login-zh.png": "3f4e79386dcf1b0070a6281f15fcc8d7a5a4248212593eb7e3169ac82f59bfdc",
+    "release-fresh/visual-platform-zh.png": "562d15f0407ce208cb6bb9c8459f2d6788df8395cb526eb8ccf5f69c0c232c9c",
+    "release-fresh/visual-remote-en.png": "8d1f7e129f37b46d7c7de715f3759a5d9f37fa5c30aa029140f9ac2cea139159",
     "second-round/audit.json": "c5f167c445c8c967401476016304fd495290d693b19e3cdb11cd02f742a29d18",
     "second-round/business-chain.json": "481cc6a022cc21ee07db7fd58888db086cb7573ed1aa86061d55951ee08f36d5",
     "second-round/error-classification.json": "4f28d3d2b7a71c83a6aea6bb9b01116daca9c2811c42c35180663906ee19238b",
