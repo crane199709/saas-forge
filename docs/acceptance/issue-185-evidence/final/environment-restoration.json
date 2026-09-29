@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "runId": "e18a1cd7-ebdf-45a7-84ef-5132d6028557",
+  "redisHealthyBeforeTeardown": true,
+  "currentRoundContainersStopped": 12,
+  "dataVolumesDeleted": false,
+  "previouslyPausedContainersStarted": 11,
+  "restorationScope": "exactly-the-11-user-authorized-paused-containers",
+  "at": "2026-09-29T09:53:03.634377+00:00",
+  "boundary": "Container running state verified; prior environment full readiness not revalidated"
+}

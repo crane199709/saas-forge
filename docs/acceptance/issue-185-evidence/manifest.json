@@ -1,8 +1,18 @@
 {
   "schemaVersion": 1,
   "files": {
-    "handoff.json": "da1701770658fb13df3e3b94eaaab292e1fd5845cd0b965eed0af28690421abb",
+    "checks.json": "3d71948e91c6c6758906c0fc34f0699e0fd3c1bfaba6f324274c0c3f1897ca6d",
     "diagnostic-1/security.json": "4aad1fca6fb012968763058b9d67aeb9e32cc78198aad6ad6647fe6707e91beb",
-    "checks.json": "593c1c97bd4daf9d94dee5365443f56ec299455df0df1deeb260eb372576f051"
+    "diagnostic-2/security.json": "41df72bd6a956674806a68a0c532e3fe6da51053b77bdb69c6b197bc40bd6ec2",
+    "diagnostic-3/handoff.json": "d4dc8886e13171468b5db48f406e790ee534f338e7731e2341790e17827f780e",
+    "diagnostic-3/security.json": "f8e348af9d7ded8c3bf8197dc086b89e27406a3eec6594c04005a5295e81c38a",
+    "diagnostic-4/handoff.json": "341d02a1c933803ceafc035c7983366ed84b7376c9dc78c96cf3b69ca3e9b8dc",
+    "diagnostic-4/security.json": "4bf6046446f903f126b4d90a155ba40ee7e8348627556080c3964fb7ed0eadcf",
+    "final/backend-probe.json": "ce33a11287e31d59f618e3c9908b689145ba41477660b81d36fb1fd51b283e8b",
+    "final/correlation.json": "8b824216d8a0db955e443aef3c3664971bf946fa08b1f167526e3284ed490ccb",
+    "final/environment-restoration.json": "fcb31b88065a1cf7bf7fe0556d2c8662afb9003ebacd502c7849929efe4da2c2",
+    "final/handoff.json": "3dde24827b3cd72f8fa730b9427a6a6ed044d3a3ac8f52270bcb0ef2a1d5b650",
+    "final/security.json": "8bb366b78edd2202e6ee066838d3e55ec37ecc9269dd00cf7f73bd588c085d79",
+    "handoff.json": "da1701770658fb13df3e3b94eaaab292e1fd5845cd0b965eed0af28690421abb"
   }
 }

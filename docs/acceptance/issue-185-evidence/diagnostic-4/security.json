@@ -1,0 +1,1438 @@
+{
+  "schemaVersion": 1,
+  "kind": "token-security",
+  "runId": "fa277960-0fd7-4e45-a4e3-7ad28261ce08",
+  "handoffSha256": "341d02a1c933803ceafc035c7983366ed84b7376c9dc78c96cf3b69ca3e9b8dc",
+  "frontend": {
+    "commit": "f25c2a85914ff182322224ac1216079e9a38b9af",
+    "dirty": true,
+    "sourceSha256": "87cd549af1e8c715820871e7d5b55f63d9bfbae4fd10942a52cea98506466ae2",
+    "lockSha256": "180ae2697376beb325956b9cb30132a660eac0673da9c9b63186bc9570c7725a"
+  },
+  "client": {
+    "name": "@crane199709/saas-forge-api-client",
+    "version": "0.4.0",
+    "sourceCommit": "ebff4b338d0c4b39e51488ac1e9b98885318d438"
+  },
+  "startedAt": "2026-09-29T09:41:56.413Z",
+  "status": "failed",
+  "checks": [
+    {
+      "name": "fresh-console-bootstrap-two-tenants-and-real-mail-password-setup",
+      "status": "passed"
+    },
+    {
+      "name": "unauthorized-tenant-context",
+      "status": "passed"
+    },
+    {
+      "name": "wrong-user-token",
+      "status": "passed"
+    },
+    {
+      "name": "rotated-refresh-replay-rejected",
+      "status": "passed",
+      "traceId": "4001c30188f621195dc153d725d2c165",
+      "statusCode": 401,
+      "code": "SESSION_INVALID"
+    },
+    {
+      "name": "replay-revokes-unexpired-token-and-console-hides-workspace",
+      "status": "failed"
+    },
+    {
+      "name": "redis-fails-closed-and-console-does-not-blame-password",
+      "status": "not-run"
+    },
+    {
+      "name": "redis-restored-authoritative-probe-and-console-login",
+      "status": "not-run"
+    }
+  ],
+  "requests": [
+    {
+      "phase": "fresh-console-prerequisites",
+      "source": "independent-probe",
+      "path": "/__test/platform-mechanism/identity",
+      "method": "GET",
+      "traceId": "2a8e96f66ff91fe43f9505057974f0ad",
+      "startedAt": "2026-09-29T09:41:58.370Z",
+      "finishedAt": "2026-09-29T09:41:58.512Z",
+      "status": 401,
+      "code": "ACCESS_TOKEN_INVALID"
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674922517
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674923317
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/login",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674923713
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/password-changes",
+      "method": "POST",
+      "status": 204,
+      "at": 1790674924164
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674924797
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674925304
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/login",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674926688
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674927428
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/context-selections",
+      "method": "POST",
+      "status": 204,
+      "at": 1790674927490
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674927609
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674928218
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674928283
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674928333
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674932668
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definition-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674932668
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674932701
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definition-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674933455
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674933649
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "method": "POST",
+      "status": 201,
+      "at": 1790674934213
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674934916
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definition-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674935180
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definition-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674935367
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674935526
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions/:id/activations",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674935821
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674935878
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definition-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674935944
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674936562
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674936715
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674936838
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plan-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674937198
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674937200
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674937400
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plan-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674937523
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plan-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674937860
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674937932
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "method": "POST",
+      "status": 201,
+      "at": 1790674938268
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674938775
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674938867
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plan-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674938955
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plan-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674939110
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674939170
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674939223
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans/:id/activations",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674939317
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674939370
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674939418
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plan-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674939479
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674940229
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674940285
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674940338
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674941789
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenant-creations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674941789
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants",
+      "method": "POST",
+      "status": 201,
+      "at": 1790674942472
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674943154
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674943179
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674943192
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674943196
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674943209
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674943243
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674943303
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674943337
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674943370
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674943375
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674943401
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674943852
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674944433
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674944602
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674944690
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674944761
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674944830
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscriptions",
+      "method": "POST",
+      "status": 201,
+      "at": 1790674945155
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674945517
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674945637
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674945753
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674947211
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674947212
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674947542
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674948314
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674948337
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initializations",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674949448
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674949539
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674949543
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674949651
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674949864
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674949873
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674949947
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674949947
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674950303
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674950303
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674950304
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 2,
+      "path": "/api/v1/auth/password-setups",
+      "method": "POST",
+      "status": 204,
+      "at": 1790674953072
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 2,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674953173
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674953875
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674953978
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674954068
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674954803
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenant-creations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674954868
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants",
+      "method": "POST",
+      "status": 201,
+      "at": 1790674955585
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674957058
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674957070
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674957072
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674957354
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674957361
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674957370
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674957410
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674957432
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674957497
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674957509
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674957529
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674957654
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674959133
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674959646
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674959893
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674960050
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674960209
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscriptions",
+      "method": "POST",
+      "status": 201,
+      "at": 1790674960500
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674960607
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674960767
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674960939
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674961791
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674961817
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674961934
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674963018
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674963033
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initializations",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674963294
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674963368
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674963377
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674963828
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674963980
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674963986
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674963988
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674964015
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674964061
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674964061
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674964064
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 3,
+      "path": "/api/v1/auth/password-setups",
+      "method": "POST",
+      "status": 204,
+      "at": 1790674966989
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 3,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674967136
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674968650
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674969241
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 4,
+      "path": "/api/v2/auth/login",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674969583
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674970325
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 4,
+      "path": "/api/v2/auth/context-selections",
+      "method": "POST",
+      "status": 204,
+      "at": 1790674970440
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 4,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674970511
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 5,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674971460
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 5,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674971902
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 5,
+      "path": "/api/v2/auth/login",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674972393
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 5,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674973005
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 5,
+      "path": "/api/v2/auth/context-selections",
+      "method": "POST",
+      "status": 204,
+      "at": 1790674973080
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 5,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674973151
+    },
+    {
+      "phase": "unauthorized-tenant-context",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674974071
+    },
+    {
+      "phase": "unauthorized-tenant-context",
+      "contextId": 4,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674974164
+    },
+    {
+      "phase": "unauthorized-tenant-context",
+      "contextId": 4,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674974287
+    },
+    {
+      "phase": "wrong-user-token",
+      "source": "independent-probe",
+      "path": "/__test/platform-mechanism/identity",
+      "method": "GET",
+      "traceId": "2f7dc04fd16fdb50ba0b2b364ee95514",
+      "startedAt": "2026-09-29T09:42:54.477Z",
+      "finishedAt": "2026-09-29T09:42:54.486Z",
+      "status": 401,
+      "code": "ACCESS_TOKEN_INVALID"
+    },
+    {
+      "phase": "refresh-replay",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674975343
+    },
+    {
+      "phase": "refresh-replay",
+      "contextId": 4,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674975420
+    },
+    {
+      "phase": "refresh-replay",
+      "contextId": 4,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674975640
+    },
+    {
+      "phase": "refresh-replay",
+      "source": "independent-probe",
+      "path": "/__test/platform-mechanism/identity",
+      "method": "GET",
+      "traceId": "0a695564213c94348fbb062a2d6edef0",
+      "startedAt": "2026-09-29T09:42:55.723Z",
+      "finishedAt": "2026-09-29T09:43:00.162Z",
+      "status": 200
+    },
+    {
+      "phase": "refresh-replay",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790674984459
+    },
+    {
+      "phase": "refresh-replay",
+      "source": "independent-probe",
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "traceId": "4001c30188f621195dc153d725d2c165",
+      "startedAt": "2026-09-29T09:43:06.284Z",
+      "finishedAt": "2026-09-29T09:43:06.388Z",
+      "status": 401,
+      "code": "SESSION_INVALID"
+    },
+    {
+      "phase": "refresh-replay",
+      "source": "independent-probe",
+      "path": "/__test/platform-mechanism/identity",
+      "method": "GET",
+      "traceId": "da0be9cd849deda5d242dec92c483aa6",
+      "startedAt": "2026-09-29T09:43:06.391Z",
+      "finishedAt": "2026-09-29T09:43:06.433Z",
+      "status": 401,
+      "code": "ACCESS_TOKEN_INVALID"
+    },
+    {
+      "phase": "refresh-replay",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790674987293
+    },
+    {
+      "phase": "refresh-replay",
+      "contextId": 4,
+      "path": "/api/v2/auth/logout",
+      "method": "POST",
+      "status": 204,
+      "at": 1790674987367
+    },
+    {
+      "phase": "refresh-replay",
+      "contextId": 5,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790675001695
+    }
+  ],
+  "errors": [],
+  "chrome": "154.0.8037.58",
+  "tenantContext": {
+    "scenario": "unauthorized-tenant-context",
+    "status": "passed",
+    "runId": "fa277960-0fd7-4e45-a4e3-7ad28261ce08",
+    "injection": "independent-context-selection-request-with-other-identity-membership",
+    "attackerTenant": "e4268d9c74849d4d027aef21a8c572e4fd169398b8957ff01210d6ff251e61c5",
+    "targetTenant": "e7d5269d5e9622c690feaa65280ee6f38de883b4975f704989e04d60ba6e38b0",
+    "targetMembership": "322fd5f996a1a259c8cd1ffe341d1a6233b2b1b033dfe2883a54f140384331b2",
+    "targetExistsAndOwnedByDifferentIdentity": true,
+    "targetAbsentFromAttackerAuthority": true,
+    "unchangedSessionAndRevisionAfterRejection": true,
+    "unchangedContextAfterBrowserRefresh": true,
+    "requests": [
+      {
+        "path": "/api/v2/auth/session",
+        "method": "GET",
+        "traceId": "5eba3f40ca0ca79b456d5f107fd164a0",
+        "startedAt": "2026-09-29T09:42:53.191Z",
+        "finishedAt": "2026-09-29T09:42:53.250Z",
+        "status": 200
+      },
+      {
+        "path": "/api/v2/auth/session",
+        "method": "GET",
+        "traceId": "22474cdd4da23608805ca921a6e7e989",
+        "startedAt": "2026-09-29T09:42:53.251Z",
+        "finishedAt": "2026-09-29T09:42:53.290Z",
+        "status": 200
+      },
+      {
+        "path": "/api/v2/auth/context-selections",
+        "method": "POST",
+        "traceId": "e8a6591e27c40d5533ed3a504bde55d2",
+        "startedAt": "2026-09-29T09:42:53.293Z",
+        "finishedAt": "2026-09-29T09:42:53.393Z",
+        "status": 403,
+        "code": "TARGET_CONTEXT_UNAVAILABLE"
+      },
+      {
+        "path": "/api/v2/auth/session",
+        "method": "GET",
+        "traceId": "301a71b79ccd0ebe96dcf299e6cb0a64",
+        "startedAt": "2026-09-29T09:42:53.394Z",
+        "finishedAt": "2026-09-29T09:42:53.423Z",
+        "status": 200
+      },
+      {
+        "path": "/api/v2/auth/session",
+        "method": "GET",
+        "traceId": "30fb3bf6af1bbfbc33137364a4a9798a",
+        "startedAt": "2026-09-29T09:42:54.360Z",
+        "finishedAt": "2026-09-29T09:42:54.474Z",
+        "status": 200
+      }
+    ]
+  },
+  "replayInjection": {
+    "startedAt": "2026-09-29T09:43:06.284Z"
+  },
+  "failure": {
+    "phase": "refresh-replay",
+    "kind": "TimeoutError"
+  },
+  "finishedAt": "2026-09-29T09:43:32.372Z"
+}

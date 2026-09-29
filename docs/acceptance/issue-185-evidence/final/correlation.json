@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "scope": "issue-185-token-tenant-redis-security",
+  "runId": "e18a1cd7-ebdf-45a7-84ef-5132d6028557",
+  "handoffSha256": "3dde24827b3cd72f8fa730b9427a6a6ed044d3a3ac8f52270bcb0ef2a1d5b650",
+  "status": "passed",
+  "securitySha256": "8bb366b78edd2202e6ee066838d3e55ec37ecc9269dd00cf7f73bd588c085d79",
+  "backendProbeSha256": "ce33a11287e31d59f618e3c9908b689145ba41477660b81d36fb1fd51b283e8b",
+  "executedHarnessSha256": {
+    "saas-forge/scripts/token-security-redis-control.mjs": "f0ed9cacf66d51e09d1cd0baf5691d0c839d4e58ad90dd8f3fa51200d55ea7fc",
+    "saas-forge-web/scripts/verify-token-security.mjs": "75ff8eec73f8586d11a977b80d113527c0065cfb5f87399a4d0d44869560a9c3",
+    "saas-forge-web/scripts/tenant-context-security.mjs": "86d70515ad36487b5c573d29f4d42ad64bdf4171b02e88878a96766f99b91762"
+  }
+}

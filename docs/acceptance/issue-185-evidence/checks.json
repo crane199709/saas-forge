@@ -51,8 +51,10 @@
     },
     {
       "name": "real-chrome-security",
-      "status": "failed",
-      "reason": "HTTPS Console navigation timed out before business API requests; no attacks or Redis fault executed"
+      "status": "passed",
+      "scenarios": 7,
+      "runId": "e18a1cd7-ebdf-45a7-84ef-5132d6028557",
+      "evidence": "final/security.json"
     },
     {
       "name": "complete-ci",
