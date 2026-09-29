@@ -1,0 +1,141 @@
+{
+  "kind": "real-fresh-audit-read-only",
+  "identifiers": "sha256 truncated 16; consistent aliases within evidence",
+  "summary": {
+    "SESSION_STARTED": 10,
+    "TENANT_CREATED": 2,
+    "TENANT_CONTEXT_SWITCHED": 1
+  },
+  "rows": [
+    {
+      "action": "SESSION_STARTED",
+      "source_type": "com.saas.forge.iam.session.started.v1",
+      "actor_identity_id": "33d28aa21fc5e6de",
+      "tenant_id": null,
+      "resource_type": "REFRESH_TOKEN_FAMILY",
+      "resource_id": "aff83c564e57e993",
+      "trace_id": null,
+      "occurred_at": "2026-09-28T23:59:13.336+00:00"
+    },
+    {
+      "action": "SESSION_STARTED",
+      "source_type": "com.saas.forge.iam.session.started.v1",
+      "actor_identity_id": "33d28aa21fc5e6de",
+      "tenant_id": null,
+      "resource_type": "REFRESH_TOKEN_FAMILY",
+      "resource_id": "4b5ae524247f7551",
+      "trace_id": null,
+      "occurred_at": "2026-09-28T23:59:14.212+00:00"
+    },
+    {
+      "action": "SESSION_STARTED",
+      "source_type": "com.saas.forge.iam.session.started.v1",
+      "actor_identity_id": "33d28aa21fc5e6de",
+      "tenant_id": null,
+      "resource_type": "REFRESH_TOKEN_FAMILY",
+      "resource_id": "24dab28e01eede54",
+      "trace_id": null,
+      "occurred_at": "2026-09-29T00:01:55.622+00:00"
+    },
+    {
+      "action": "TENANT_CREATED",
+      "source_type": "com.saas.forge.tenant.created.v1",
+      "actor_identity_id": "33d28aa21fc5e6de",
+      "tenant_id": "b03d51ec92b1cfa1",
+      "resource_type": "TENANT",
+      "resource_id": "b03d51ec92b1cfa1",
+      "trace_id": "7220c86d7a949666",
+      "occurred_at": "2026-09-29T00:02:22.309+00:00"
+    },
+    {
+      "action": "SESSION_STARTED",
+      "source_type": "com.saas.forge.iam.session.started.v1",
+      "actor_identity_id": "abfafd9a25504b83",
+      "tenant_id": null,
+      "resource_type": "REFRESH_TOKEN_FAMILY",
+      "resource_id": "74f3d9864bcc939f",
+      "trace_id": null,
+      "occurred_at": "2026-09-29T00:07:07.687+00:00"
+    },
+    {
+      "action": "TENANT_CREATED",
+      "source_type": "com.saas.forge.tenant.created.v1",
+      "actor_identity_id": "33d28aa21fc5e6de",
+      "tenant_id": "c16cf788764c3faa",
+      "resource_type": "TENANT",
+      "resource_id": "c16cf788764c3faa",
+      "trace_id": "0dbcb5d8c19f4942",
+      "occurred_at": "2026-09-29T00:07:29.729+00:00"
+    },
+    {
+      "action": "TENANT_CONTEXT_SWITCHED",
+      "source_type": "com.saas.forge.iam.tenant-context-switched.v1",
+      "actor_identity_id": "abfafd9a25504b83",
+      "tenant_id": "c16cf788764c3faa",
+      "resource_type": "REFRESH_TOKEN_FAMILY",
+      "resource_id": "74f3d9864bcc939f",
+      "trace_id": null,
+      "occurred_at": "2026-09-29T00:08:03.106+00:00"
+    },
+    {
+      "action": "SESSION_STARTED",
+      "source_type": "com.saas.forge.iam.session.started.v1",
+      "actor_identity_id": "abfafd9a25504b83",
+      "tenant_id": null,
+      "resource_type": "REFRESH_TOKEN_FAMILY",
+      "resource_id": "371c7ca035ac1516",
+      "trace_id": null,
+      "occurred_at": "2026-09-29T00:18:29.142+00:00"
+    },
+    {
+      "action": "SESSION_STARTED",
+      "source_type": "com.saas.forge.iam.session.started.v1",
+      "actor_identity_id": "abfafd9a25504b83",
+      "tenant_id": null,
+      "resource_type": "REFRESH_TOKEN_FAMILY",
+      "resource_id": "91ad1937b4400823",
+      "trace_id": null,
+      "occurred_at": "2026-09-29T00:19:52.933+00:00"
+    },
+    {
+      "action": "SESSION_STARTED",
+      "source_type": "com.saas.forge.iam.session.started.v1",
+      "actor_identity_id": "abfafd9a25504b83",
+      "tenant_id": null,
+      "resource_type": "REFRESH_TOKEN_FAMILY",
+      "resource_id": "71901313d1395be8",
+      "trace_id": null,
+      "occurred_at": "2026-09-29T00:21:11.845+00:00"
+    },
+    {
+      "action": "SESSION_STARTED",
+      "source_type": "com.saas.forge.iam.session.started.v1",
+      "actor_identity_id": "33d28aa21fc5e6de",
+      "tenant_id": null,
+      "resource_type": "REFRESH_TOKEN_FAMILY",
+      "resource_id": "d2f6167c86b6185d",
+      "trace_id": null,
+      "occurred_at": "2026-09-29T00:30:18.901+00:00"
+    },
+    {
+      "action": "SESSION_STARTED",
+      "source_type": "com.saas.forge.iam.session.started.v1",
+      "actor_identity_id": "abfafd9a25504b83",
+      "tenant_id": null,
+      "resource_type": "REFRESH_TOKEN_FAMILY",
+      "resource_id": "719c1602a8fa40c7",
+      "trace_id": null,
+      "occurred_at": "2026-09-29T00:30:56.83+00:00"
+    },
+    {
+      "action": "SESSION_STARTED",
+      "source_type": "com.saas.forge.iam.session.started.v1",
+      "actor_identity_id": "abfafd9a25504b83",
+      "tenant_id": null,
+      "resource_type": "REFRESH_TOKEN_FAMILY",
+      "resource_id": "2c06286ab21077ec",
+      "trace_id": null,
+      "occurred_at": "2026-09-29T00:34:24.804+00:00"
+    }
+  ]
+}

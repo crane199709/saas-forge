@@ -52,7 +52,7 @@ public class ConsoleAuthenticationController implements ConsoleAuthenticationApi
 
     @Override
     public ResponseEntity<ConsoleAuthenticationResult> loginConsoleSession(String csrf, String revision, ConsoleLoginRequest body) {
-        return authentication(sessions.login(cookie(SLOT_COOKIE), revision, body.getEmail(), body.getPassword()));
+        return authentication(sessions.login(cookie(SLOT_COOKIE), revision, body.getEmail(), body.getPassword(), traceId()));
     }
 
     @Override
@@ -82,7 +82,7 @@ public class ConsoleAuthenticationController implements ConsoleAuthenticationApi
     public ResponseEntity<Void> selectConsoleContext(String csrf, String revision, UUID key,
             ConsoleContextSelectionRequest body) {
         var target = selectionTarget(body);
-        long selected = selections.select(cookie(SLOT_COOKIE), cookie(REFRESH_COOKIE), revision, key, target);
+        long selected = selections.select(cookie(SLOT_COOKIE), cookie(REFRESH_COOKIE), revision, key, target, traceId());
         return ResponseEntity.noContent().eTag(Long.toString(selected)).header(HttpHeaders.CACHE_CONTROL, "no-store").build();
     }
 
@@ -106,6 +106,12 @@ public class ConsoleAuthenticationController implements ConsoleAuthenticationApi
                 .header(HttpHeaders.CACHE_CONTROL, "no-store");
         if (result.clearRefreshCookie()) response.header(HttpHeaders.SET_COOKIE, cookie(REFRESH_COOKIE, "", 0));
         return response.build();
+    }
+
+    private static String traceId() {
+        var request = ((org.springframework.web.context.request.ServletRequestAttributes)
+                org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes()).getRequest();
+        return AuthenticationExceptionHandler.traceId(request);
     }
 
     private ConsoleSessionSnapshot snapshot() {

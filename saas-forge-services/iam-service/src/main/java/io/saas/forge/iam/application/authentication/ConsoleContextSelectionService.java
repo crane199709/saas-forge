@@ -42,7 +42,7 @@ public final class ConsoleContextSelectionService {
     }
 
     /** 返回权威 Slot revision；实际切换后的下一次操作必须先 refresh 取得新上下文 Token。 */
-    public long select(String locator, String refresh, String revision, UUID key, Target target) {
+    public long select(String locator, String refresh, String revision, UUID key, Target target, String traceId) {
         ConsoleSessionAccess.requireKey(key);
         String fingerprint = target.fingerprint();
         long[] lockedRevision = {0};
@@ -70,7 +70,7 @@ public final class ConsoleContextSelectionService {
                             slot.revision());
                 }
                 issuanceFence.assertIssuable(resolved.membershipId(), resolved.tenantId());
-                commit(slot, family, resolved);
+                commit(slot, family, resolved, traceId);
                 return created;
             });
         } catch (ConsoleSessionException failure) {
@@ -138,7 +138,7 @@ public final class ConsoleContextSelectionService {
     }
 
     /** 数据库权威事实先提交并进入 SWITCH_PENDING；旧 Token 交付确认后才允许 refresh。 */
-    private void commit(ConsoleSlot slot, RefreshTokenFamily family, Target target) {
+    private void commit(ConsoleSlot slot, RefreshTokenFamily family, Target target, String traceId) {
         var now = clock.instant();
         RefreshTokenFamilyContextChange change = families.switchWorkContext(
                 family.id(), target.purpose(), target.membershipId(), target.tenantId());
@@ -152,7 +152,7 @@ public final class ConsoleContextSelectionService {
         // 平台工作视图没有 Tenant 上下文；只有 Tenant 之间的切换才有既有审计事实。
         if (family.membershipId() != null && target.membershipId() != null) {
             outbox.append(switchedEvents.create(family.id(), family.identityId(), family.membershipId(),
-                    target.membershipId(), target.tenantId(), now, null));
+                    target.membershipId(), target.tenantId(), now, traceId));
         }
     }
 

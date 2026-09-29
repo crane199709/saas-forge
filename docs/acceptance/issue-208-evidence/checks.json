@@ -1,0 +1,49 @@
+{
+  "recordedAt": "2026-09-28T23:52:36.295067+00:00",
+  "backendCommit": "21385e3574ef8a08f65d1f58979a4138b80a210f",
+  "frontendCommit": "f4db8fd804fa3f8afb67cd49d12812f72f77e3c6",
+  "clientVersion": "0.4.0",
+  "soybeanBaseline": "7613bd206cd42001b40e3eafceeb895dcbc277a8",
+  "frontend": {
+    "installation": "passed",
+    "typecheck": "passed",
+    "lint": "passed",
+    "tests": {
+      "passed": 216,
+      "failed": 0,
+      "skipped": 0
+    },
+    "build": "passed-after-restoring-git-metadata",
+    "devHttp": "200"
+  },
+  "backend": {
+    "initialVerify": "failed-redis-connection-initialization-timeout",
+    "authenticationRetry": "passed",
+    "fullVerify": {
+      "status": "passed",
+      "tests": 724,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "toolTests": {
+      "initialPassed": 60,
+      "initialFailed": 2,
+      "handoffRetryPassed": 5,
+      "note": "Initial 2 failures lacked Git metadata; handoff retry 5/5 passed."
+    },
+    "composeLayout": "passed"
+  },
+  "ci": [
+    {
+      "repository": "saas-forge",
+      "runId": 36497551683,
+      "status": "success"
+    },
+    {
+      "repository": "saas-forge-web",
+      "runId": 36404390450,
+      "status": "success"
+    }
+  ]
+}

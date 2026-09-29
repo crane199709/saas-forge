@@ -63,7 +63,7 @@ public final class ConsoleSessionService {
         return new Bootstrap(slot, material.value());
     }
 
-    public Authentication login(String locator, String revision, String email, String password) {
+    public Authentication login(String locator, String revision, String email, String password, String traceId) {
         termination.requireLegacyRetirement();
         return guarded(locator, slot -> {
             access.requireRevision(slot, revision);
@@ -96,7 +96,7 @@ public final class ConsoleSessionService {
             var token = issue(snapshot);
             if (token != null) issuances.create(new AccessTokenIssuance(token.jti(), family.id(), family.identityId(),
                     family.membershipId(), family.tenantId(), token.kid(), token.issuedAt(), token.expiresAt()));
-            outbox.append(startedEvents.create(family, now, null));
+            outbox.append(startedEvents.create(family, now, traceId));
             return new Authentication(snapshot, token, refresh.value(), cookieLifetime(family));
         });
     }

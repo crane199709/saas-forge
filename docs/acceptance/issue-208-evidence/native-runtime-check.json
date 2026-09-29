@@ -1,0 +1,122 @@
+[
+  {
+    "mainClasses": [
+      "io.saas.forge.tenantaccess.TenantAccessServiceApplication"
+    ],
+    "jdk17": true,
+    "classComparisons": [
+      {
+        "module": "saas-forge-services/tenant-access-service",
+        "classCount": 258,
+        "matchesCleanBuild": true
+      },
+      {
+        "module": "saas-forge-services/saas-forge-service-discovery",
+        "classCount": 4,
+        "matchesCleanBuild": true
+      },
+      {
+        "module": "saas-forge-contracts/saas-forge-protobuf-contracts",
+        "classCount": 267,
+        "matchesCleanBuild": true
+      },
+      {
+        "module": "saas-forge-sdk/saas-forge-java/saas-forge-sdk-auth",
+        "classCount": 25,
+        "matchesCleanBuild": true
+      }
+    ]
+  },
+  {
+    "mainClasses": [
+      "io.saas.forge.entitlement.EntitlementServiceApplication"
+    ],
+    "jdk17": true,
+    "classComparisons": [
+      {
+        "module": "saas-forge-services/entitlement-service",
+        "classCount": 245,
+        "matchesCleanBuild": true
+      },
+      {
+        "module": "saas-forge-services/saas-forge-service-discovery",
+        "classCount": 4,
+        "matchesCleanBuild": true
+      },
+      {
+        "module": "saas-forge-contracts/saas-forge-protobuf-contracts",
+        "classCount": 267,
+        "matchesCleanBuild": true
+      },
+      {
+        "module": "saas-forge-sdk/saas-forge-java/saas-forge-sdk-auth",
+        "classCount": 25,
+        "matchesCleanBuild": true
+      }
+    ]
+  },
+  {
+    "mainClasses": [
+      "io.saas.forge.iam.IamServiceApplication"
+    ],
+    "jdk17": true,
+    "classComparisons": [
+      {
+        "module": "saas-forge-services/iam-service",
+        "classCount": 532,
+        "matchesCleanBuild": true
+      },
+      {
+        "module": "saas-forge-services/saas-forge-service-discovery",
+        "classCount": 4,
+        "matchesCleanBuild": true
+      },
+      {
+        "module": "saas-forge-contracts/saas-forge-protobuf-contracts",
+        "classCount": 267,
+        "matchesCleanBuild": true
+      },
+      {
+        "module": "saas-forge-sdk/saas-forge-java/saas-forge-sdk-auth",
+        "classCount": 25,
+        "matchesCleanBuild": true
+      }
+    ]
+  },
+  {
+    "mainClasses": [
+      "io.saas.forge.audit.AuditServiceApplication"
+    ],
+    "jdk17": true,
+    "classComparisons": [
+      {
+        "module": "saas-forge-services/audit-service",
+        "classCount": 41,
+        "matchesCleanBuild": true
+      }
+    ]
+  },
+  {
+    "mainClasses": [
+      "io.saas.forge.gateway.GatewayApplication"
+    ],
+    "jdk17": true,
+    "classComparisons": [
+      {
+        "module": "gateway",
+        "classCount": 39,
+        "matchesCleanBuild": true
+      },
+      {
+        "module": "saas-forge-sdk/saas-forge-java/saas-forge-sdk-auth",
+        "classCount": 25,
+        "matchesCleanBuild": true
+      },
+      {
+        "module": "saas-forge-contracts/saas-forge-http-route-catalog",
+        "classCount": 5,
+        "matchesCleanBuild": true
+      }
+    ]
+  }
+]

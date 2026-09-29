@@ -1,0 +1,17 @@
+{
+  "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
+  "status": "partial",
+  "backendCommit": "21385e3574ef8a08f65d1f58979a4138b80a210f",
+  "frontendCommit": "f4db8fd804fa3f8afb67cd49d12812f72f77e3c6",
+  "clientVersion": "0.4.0",
+  "sha256": {
+    "audit.json": "abc90cf769907f1920ffb297a3a4fc42a1f696aeb94b04e174a5d0034913e3c2",
+    "business-chain.json": "1fb9711e36f8db8585113595f9a0fc70a072b999ad1927e49efd7be81cad791c",
+    "injections.json": "76678378ec465ed9d27c145e0799a218849d0da5bacccda758cc090dd0b86691",
+    "main-chain.json": "c9939023a28fb3b9940daa882f35a5aa4537b760aa41fd9abfa2c28c0bde10b0",
+    "trace-fix-tests.json": "f94599547f2b66e05c9193c01d8ec17e4fbb1faeb8bd493f66d804fb0fbae9ed",
+    "checks.json": "65314e5e65ac8dea5bde51b1a8f2851929e2362b729ae7caada609f8f9cd63ee",
+    "native-runtime-check.json": "aab23000e83805c8350f2b6247d2ddb898aab86eb39e46b890f2d6db987f1824",
+    "browser.json": "c6e4653638251142d768d93621a001c1d0acdc09a5c33247f758ce6e60c24592"
+  }
+}

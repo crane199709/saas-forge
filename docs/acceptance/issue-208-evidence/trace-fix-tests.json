@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "scope": "full-backend-verify",
+  "source": "baseline-plus-4-file-trace-fix",
+  "counts": {
+    "tests": 725,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "redBeforeFix": {
+    "test": "unifiedConsolePreservesRequestTraceInLoginAndSwitchEvents",
+    "result": "failed",
+    "reason": "expected request trace; event trace absent"
+  },
+  "review": {
+    "standardsFindings": 0,
+    "specFindings": 0
+  }
+}

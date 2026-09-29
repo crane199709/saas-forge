@@ -689,6 +689,44 @@ class AuthenticationHttpIT {
                 .andExpect(jsonPath("$.sessionPresent").value(false));
     }
 
+    @Test
+    @Order(10000)
+    void unifiedConsolePreservesRequestTraceInLoginAndSwitchEvents() throws Exception {
+        var http = unifiedConsole();
+        var user = createUser("console-trace@example.test", "Console-password!", false, Credential.REGULAR);
+        UUID first = uuidV7(80901), second = uuidV7(80902);
+        accessibleMemberships(user.identity().id(), membership(first, uuidV7(80911), "First"));
+        var bootstrap = http.perform(consolePost("bootstrap").content("{}")).andReturn();
+        Cookie locator = bootstrap.getResponse().getCookie("__Host-sf_console_slot");
+        String loginTrace = "0123456789abcdef0123456789abcdef";
+        String switchTrace = "1123456789abcdef0123456789abcdef";
+        var login = http.perform(consolePost("login").cookie(locator).header("If-Match", "\"0\"")
+                .header("traceparent", "00-" + loginTrace + "-0123456789abcdef-01")
+                .content(new ObjectMapper().writeValueAsBytes(Map.of(
+                        "email", "console-trace@example.test", "password", "Console-password!"))))
+                .andExpect(status().isOk()).andReturn();
+        accessibleMemberships(user.identity().id(), membership(first, uuidV7(80911), "First"),
+                membership(second, uuidV7(80912), "Second"));
+        Cookie refresh = login.getResponse().getCookie("__Host-sf_console_refresh");
+        String revision = login.getResponse().getHeader("ETag");
+        UUID key = uuidV7(80921);
+        String target = new ObjectMapper().writeValueAsString(Map.of("type", "TENANT", "membershipId", second));
+        http.perform(consolePost("context-selections").cookie(locator, refresh).header("If-Match", revision)
+                .header("Idempotency-Key", key).header("traceparent", "00-" + switchTrace + "-0123456789abcdef-01")
+                .content(target)).andExpect(status().isNoContent());
+        consoleSelect(http, locator, refresh, revision, key, target).andExpect(status().isNoContent());
+        var events = jdbc.queryForList("SELECT event_snapshot::TEXT FROM iam_outbox_events WHERE ordering_key = ?",
+                String.class, user.identity().id().toString());
+        assertEquals(2, events.size());
+        var traces = new java.util.HashMap<String, String>();
+        for (String event : events) {
+            var snapshot = json(event.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            traces.put(snapshot.get("type").asString(), snapshot.path("traceId").asString());
+        }
+        assertEquals(loginTrace, traces.get("com.saas.forge.iam.session.started.v1"));
+        assertEquals(switchTrace, traces.get("com.saas.forge.iam.tenant-context-switched.v1"));
+    }
+
     private org.springframework.test.web.servlet.ResultActions consoleLogin(MockMvc http, Cookie locator, String email)
             throws Exception {
         return http.perform(consolePost("login").cookie(locator).header("If-Match", "\"0\"")

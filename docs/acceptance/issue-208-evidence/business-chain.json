@@ -1,0 +1,3152 @@
+{
+  "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
+  "startedAt": "2026-09-29T00:01:52.552Z",
+  "chrome": "154.0.8037.58",
+  "status": "partial",
+  "checks": [
+    {
+      "name": "tenant-created-through-console",
+      "status": "passed",
+      "at": "2026-09-29T00:02:22.988Z"
+    },
+    {
+      "name": "subscription-configured-via-console",
+      "status": "passed",
+      "at": "2026-09-29T00:04:32.194Z"
+    },
+    {
+      "name": "administrator-initialized-via-console",
+      "status": "passed",
+      "at": "2026-09-29T00:05:20.536Z"
+    },
+    {
+      "name": "real-mail-password-setup-submitted",
+      "status": "passed",
+      "at": "2026-09-29T00:06:42.918Z"
+    },
+    {
+      "name": "second-company-membership-created-via-console",
+      "status": "passed",
+      "at": "2026-09-29T00:07:34.984Z"
+    },
+    {
+      "name": "real-mail-password-established-tenant-login",
+      "status": "passed",
+      "at": "2026-09-29T00:08:02.698Z"
+    },
+    {
+      "name": "membership-selection-switch-and-refresh-authority",
+      "status": "passed",
+      "at": "2026-09-29T00:08:03.887Z"
+    },
+    {
+      "name": "real-remote-v1-v2-css-image-and-unmount",
+      "status": "passed",
+      "at": "2026-09-29T00:08:04.173Z"
+    },
+    {
+      "name": "oauth-created-once-secret-memory-only-and-gateway-nacos-receiver-consumed",
+      "status": "passed",
+      "at": "2026-09-29T00:10:29.982Z"
+    },
+    {
+      "name": "normal-rotation-new-and-old-credentials-consume",
+      "status": "passed",
+      "at": "2026-09-29T00:11:26.553Z"
+    },
+    {
+      "name": "real-committed-create-loss-recovery-and-replaced-secret-denial",
+      "status": "passed",
+      "at": "2026-09-29T00:12:21.976Z"
+    },
+    {
+      "name": "real-rotation-loss-recovery-keeps-old-stable-and-invalidates-replaced-secret",
+      "status": "passed",
+      "at": "2026-09-29T00:14:51.782Z"
+    },
+    {
+      "name": "second-recovery-denied",
+      "status": "passed",
+      "httpStatus": 409,
+      "code": "CLIENT_SECRET_RECOVERY_NOT_ALLOWED"
+    },
+    {
+      "name": "other-platform-actor-denied-owner-recoverable-operation",
+      "status": "passed",
+      "at": "2026-09-29T00:18:30.387Z"
+    },
+    {
+      "name": "dual-identity-platform-tenant-platform-switch",
+      "status": "passed",
+      "at": "2026-09-29T00:18:31.578Z"
+    },
+    {
+      "name": "rotation-recovery-overlap-equals-original-rotation-plus-24-hours",
+      "status": "passed",
+      "at": "2026-09-29T00:19:18.337Z"
+    },
+    {
+      "name": "guarded-overlap-expiry-old-denied-new-consumes",
+      "status": "passed",
+      "at": "2026-09-29T00:19:19.353Z"
+    },
+    {
+      "name": "guarded-ten-minute-recovery-expiry-denied",
+      "status": "passed",
+      "at": "2026-09-29T00:19:20.659Z"
+    },
+    {
+      "name": "no-available-context-fails-closed-in-real-console",
+      "status": "passed",
+      "at": "2026-09-29T00:19:54.261Z"
+    },
+    {
+      "name": "english-switch-preserves-form-without-post-and-persists",
+      "status": "passed",
+      "at": "2026-09-29T00:21:11.255Z"
+    },
+    {
+      "name": "english-tenant-login-and-context-selection",
+      "status": "passed",
+      "at": "2026-09-29T00:21:12.662Z"
+    },
+    {
+      "name": "suspension-revokes-token-and-resume-does-not-restore-session",
+      "status": "passed",
+      "at": "2026-09-29T00:29:31.251Z"
+    },
+    {
+      "name": "english-relogin-after-resume",
+      "status": "passed",
+      "at": "2026-09-29T00:30:57.981Z"
+    },
+    {
+      "name": "english-freeze-removes-foreground-workspace-within-30s",
+      "status": "passed",
+      "at": "2026-09-29T00:31:12.870Z"
+    },
+    {
+      "name": "redis-service-sdk-fails-closed",
+      "status": "passed",
+      "at": "2026-09-29T00:33:34.393Z"
+    },
+    {
+      "name": "redis-service-recovers-without-restart",
+      "status": "passed",
+      "at": "2026-09-29T00:33:40.117Z"
+    },
+    {
+      "name": "redis-console-recovers-after-restoration",
+      "status": "passed",
+      "at": "2026-09-29T00:34:21.345Z"
+    },
+    {
+      "name": "wrong-token-unauthorized-context-refresh-replay-and-family-revocation",
+      "status": "passed",
+      "at": "2026-09-29T00:34:33.291Z"
+    },
+    {
+      "name": "oauth-insufficient-scope-rejected-by-real-receiver",
+      "status": "passed",
+      "at": "2026-09-29T00:35:38.164Z"
+    },
+    {
+      "name": "oauth-console-revoke-denies-issuance-and-existing-token",
+      "status": "passed",
+      "at": "2026-09-29T00:36:58.758Z"
+    },
+    {
+      "name": "english-invalid-login-rejected",
+      "status": "passed",
+      "at": "2026-09-29T00:38:36.927Z"
+    },
+    {
+      "name": "password-setup-notification-resend-independent-of-initialization",
+      "status": "passed",
+      "at": "2026-09-29T00:41:20.212Z"
+    },
+    {
+      "name": "late-platform-response-cannot-resurrect-old-account-after-cross-tab-logout",
+      "status": "passed",
+      "at": "2026-09-29T00:41:32.157Z"
+    },
+    {
+      "name": "notification-resend-delivered-to-real-mailpit",
+      "status": "passed",
+      "at": "2026-09-29T00:44:22.770Z"
+    }
+  ],
+  "requests": [
+    {
+      "phase": "login",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "login",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "login",
+      "path": "/api/v2/auth/login",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "login",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "login",
+      "path": "/api/v2/auth/context-selections",
+      "status": 204,
+      "method": "POST"
+    },
+    {
+      "phase": "login",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v1/platform/tenants",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v1/platform/tenant-creations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v1/platform/tenants",
+      "status": 201,
+      "method": "POST"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant-create",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "subscription",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "subscription",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "subscription",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "subscription",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "subscription",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "subscription",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "subscription",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "subscription",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "subscription",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "subscription",
+      "path": "/api/v1/platform/tenants/:id/subscriptions",
+      "status": 201,
+      "method": "POST"
+    },
+    {
+      "phase": "subscription",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "subscription",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "subscription",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/administrator-initializations",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "initialization",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "real-mail-password-setup",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "real-mail-password-setup",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/login",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/context-selections",
+      "status": 204,
+      "method": "POST"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "real-mail-password-setup",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenant-creations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants",
+      "status": 201,
+      "method": "POST"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/subscriptions",
+      "status": 201,
+      "method": "POST"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/administrator-initializations",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/context-selections",
+      "status": 204,
+      "method": "POST"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "second-membership-via-product",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-consume",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-create-consume",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-consume",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-create-consume",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-consume",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-consume",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-consume",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 201,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-create-consume",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-consume",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-consume",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-consume",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-consume",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-normal-rotation",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-normal-rotation",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-normal-rotation",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-normal-rotation",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-normal-rotation",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-normal-rotation",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-normal-rotation",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-normal-rotation",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-normal-rotation",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-normal-rotation",
+      "path": "/api/v1/platform/oauth-clients/:id/secret-rotations",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-normal-rotation",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-normal-rotation",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-normal-rotation",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-normal-rotation",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-response-loss",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-recovery",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-create-recovery",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-recovery",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-create-recovery",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-recovery",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-recovery",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-recovery",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-recovery",
+      "path": "/api/v1/platform/oauth-clients/:id/secret-issuance-recoveries",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-create-recovery",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-recovery",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-create-recovery",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-recovery",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-rotation-recovery",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-recovery",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-rotation-recovery",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-recovery",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-recovery",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-recovery",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-recovery",
+      "path": "/api/v1/platform/oauth-clients/:id/secret-issuance-recoveries",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-rotation-recovery",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-recovery",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-recovery",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-recovery",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-recovery",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-recovery",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-recovery",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-rotation-recovery",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "dual-identity-and-other-actor",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-time-boundaries",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "no-permission",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "no-permission",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "no-permission",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-locale-form-preservation",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-locale-form-preservation",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-locale-form-preservation",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-locale-form-preservation",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-locale-form-preservation",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-locale-form-preservation",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-locale-form-preservation",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-locale-form-preservation",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-locale-form-preservation",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id/suspensions",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 401,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-retest",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-retest",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-retest",
+      "path": "/api/v1/platform/tenants/:id/suspensions",
+      "status": 200,
+      "method": "DELETE"
+    },
+    {
+      "phase": "english-lifecycle-retest",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-retest",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-retest",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-retest",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-retest",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-freeze-timed",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-freeze-timed",
+      "path": "/api/v1/platform/tenants/:id/suspensions",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "english-freeze-timed",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-freeze-timed",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-freeze-timed",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-freeze-timed",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-freeze-timed",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-freeze-timed",
+      "path": "/api/v1/platform/tenants/:id/suspensions",
+      "status": 200,
+      "method": "DELETE"
+    },
+    {
+      "phase": "english-freeze-timed",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-freeze-timed",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-freeze-timed",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "redis-failure",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "redis-failure-retest",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "redis-failure-retest",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "redis-recovered",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "redis-recovered",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "redis-recovered",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "redis-recovered",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "redis-recovered",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "redis-recovered",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "redis-recovered",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "security-probes",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-scope-and-revocation",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-scope-and-revocation",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-scope-and-revocation",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-scope-and-revocation",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-scope-and-revocation",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-scope-and-revocation",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-scope-and-revocation",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-scope-and-revocation",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-scope-and-revocation",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 201,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-scope-and-revocation",
+      "path": "/api/v1/platform/oauth-clients",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-scope-and-revocation",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v1/platform/oauth-clients/:id/revocations",
+      "status": 204,
+      "method": "POST"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v1/platform/oauth-client-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "oauth-revoke",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-login-error",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "english-login-error",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenant-creations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants",
+      "status": 201,
+      "method": "POST"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/subscriptions",
+      "status": 201,
+      "method": "POST"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-initializations",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setups",
+      "status": 204,
+      "method": "POST"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setups",
+      "status": 204,
+      "method": "POST"
+    },
+    {
+      "phase": "notification-resend",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "late-response-account-switch",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "late-response-account-switch",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "late-response-account-switch",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "visual-platform",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "visual-platform",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "visual-platform",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v2/auth/bootstrap",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v2/auth/refresh",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/quota-definitions",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/tenants/:id",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/plans",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "phase": "notification-verification",
+      "path": "/api/v2/auth/session",
+      "status": 200,
+      "method": "GET"
+    }
+  ],
+  "errors": [
+    {
+      "phase": "oauth-create-response-loss",
+      "kind": "console-error"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "kind": "console-error"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 401,
+      "method": "GET"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "kind": "console-error",
+      "path": "/api/v2/auth/session",
+      "at": "2026-09-29T00:28:35.498Z"
+    },
+    {
+      "phase": "english-lifecycle-retest",
+      "kind": "console-error",
+      "path": "/api/v2/auth/session",
+      "at": "2026-09-29T00:28:40.864Z"
+    },
+    {
+      "phase": "english-lifecycle-retest",
+      "kind": "console-error",
+      "path": "/api/v2/auth/session",
+      "at": "2026-09-29T00:29:42.744Z"
+    },
+    {
+      "phase": "english-freeze-timed",
+      "kind": "console-error",
+      "path": "/api/v2/auth/session",
+      "at": "2026-09-29T00:31:12.840Z"
+    },
+    {
+      "phase": "english-login-error",
+      "kind": "console-error",
+      "path": "/api/v2/auth/login",
+      "at": "2026-09-29T00:38:36.912Z"
+    }
+  ],
+  "expectedLosses": [
+    {
+      "phase": "oauth-create-response-loss",
+      "path": "/api/v1/platform/oauth-clients",
+      "serverStatus": 201,
+      "at": "2026-09-29T00:12:19.745Z"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "path": "/api/v1/platform/oauth-clients/:id/secret-rotations",
+      "serverStatus": 200,
+      "at": "2026-09-29T00:13:24.428Z"
+    }
+  ],
+  "lifecycle": {
+    "status": "passed",
+    "accessRemovedMs": 14878,
+    "foreground": true
+  },
+  "redis": {
+    "failureStatus": 503,
+    "elapsedMs": 60209
+  },
+  "securityProbes": [
+    {
+      "name": "wrong-user-token",
+      "status": 401
+    },
+    {
+      "name": "unauthorized-platform-context",
+      "status": 403,
+      "code": "TARGET_CONTEXT_UNAVAILABLE"
+    },
+    {
+      "name": "refresh-replay-after-lease",
+      "status": 401,
+      "code": "SESSION_INVALID"
+    },
+    {
+      "name": "replay-revokes-unexpired-access-token",
+      "status": 401
+    },
+    {
+      "name": "console-no-workspace-after-replay",
+      "status": "passed"
+    }
+  ],
+  "scope": {
+    "tokenStatus": 200,
+    "consumeStatus": 403,
+    "code": "ACCESS_TOKEN_SCOPE_INSUFFICIENT"
+  },
+  "oauthRevocation": {
+    "issuanceStatus": 401,
+    "existingUnexpiredTokenStatus": 401
+  },
+  "lateResponse": {
+    "serverStatus": 200,
+    "delivery": "response-stage-held-until-new-account-active",
+    "oldIdentityResurrected": false,
+    "observationLimit": "DOM identity assertions only; full pageerror/console observer requires retest"
+  },
+  "notification": {
+    "mailpitDeliveries": 3,
+    "initialization": "SUCCEEDED",
+    "resendOperation": "ended-before-reload"
+  },
+  "blockers": [
+    "Audit SESSION_STARTED and TENANT_CONTEXT_SWITCHED lack trace on tested backend baseline",
+    "Final fixed commit requires fresh full acceptance and CI"
+  ],
+  "backendCommit": "21385e3574ef8a08f65d1f58979a4138b80a210f",
+  "frontendCommit": "f4db8fd804fa3f8afb67cd49d12812f72f77e3c6",
+  "finishedAt": "2026-09-29T00:46:19.746Z",
+  "expectedErrors": [
+    {
+      "phase": "oauth-create-response-loss",
+      "kind": "console-error",
+      "classification": "deliberate committed-response drop"
+    },
+    {
+      "phase": "oauth-rotation-response-loss",
+      "kind": "console-error",
+      "classification": "deliberate committed-response drop"
+    },
+    {
+      "phase": "tenant",
+      "path": "/api/v2/auth/session",
+      "status": 401,
+      "method": "GET",
+      "classification": "revoked session after scoped tenant suspension"
+    },
+    {
+      "phase": "english-lifecycle-freeze",
+      "kind": "console-error",
+      "path": "/api/v2/auth/session",
+      "at": "2026-09-29T00:28:35.498Z",
+      "classification": "revoked session after scoped tenant suspension"
+    },
+    {
+      "phase": "english-lifecycle-retest",
+      "kind": "console-error",
+      "path": "/api/v2/auth/session",
+      "at": "2026-09-29T00:28:40.864Z",
+      "classification": "revoked session after scoped tenant suspension"
+    },
+    {
+      "phase": "english-lifecycle-retest",
+      "kind": "console-error",
+      "path": "/api/v2/auth/session",
+      "at": "2026-09-29T00:29:42.744Z",
+      "classification": "revoked session after scoped tenant suspension"
+    },
+    {
+      "phase": "english-freeze-timed",
+      "kind": "console-error",
+      "path": "/api/v2/auth/session",
+      "at": "2026-09-29T00:31:12.840Z",
+      "classification": "revoked session after scoped tenant suspension"
+    },
+    {
+      "phase": "english-login-error",
+      "kind": "console-error",
+      "path": "/api/v2/auth/login",
+      "at": "2026-09-29T00:38:36.912Z",
+      "classification": "deliberate wrong password"
+    }
+  ],
+  "updatedAt": "2026-09-29T00:46:19.749Z"
+}

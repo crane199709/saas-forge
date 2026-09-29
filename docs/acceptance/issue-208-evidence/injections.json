@@ -1,0 +1,101 @@
+[
+  {
+    "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
+    "name": "dedicated-member-platform-role",
+    "status": "restored-after-harness-returning-parse-failure",
+    "at": "2026-09-29T00:17:58.974Z",
+    "rows": 1
+  },
+  {
+    "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
+    "name": "dedicated-member-platform-role",
+    "status": "applied",
+    "at": "2026-09-29T00:18:25.672Z",
+    "rows": 1
+  },
+  {
+    "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
+    "name": "dedicated-member-platform-role",
+    "status": "restored",
+    "at": "2026-09-29T00:18:31.861Z",
+    "rows": 1
+  },
+  {
+    "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
+    "name": "oauth-overlap-time",
+    "status": "injected",
+    "at": "2026-09-29T00:19:19.110Z",
+    "rows": 1,
+    "original": "2026-09-30T00:13:24.418+00:00",
+    "injected": "2026-09-29 00:19:17.823317+00",
+    "actualWait24Hours": false
+  },
+  {
+    "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
+    "name": "oauth-overlap-time",
+    "status": "restored",
+    "at": "2026-09-29T00:19:19.716Z",
+    "rows": 1
+  },
+  {
+    "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
+    "name": "oauth-recovery-time",
+    "status": "injected",
+    "at": "2026-09-29T00:19:20.550Z",
+    "rows": 1,
+    "original": "2026-09-29 00:11:25.975+00",
+    "injected": "2026-09-29 00:08:20.24702+00",
+    "actualWaitTenMinutes": false
+  },
+  {
+    "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
+    "name": "oauth-recovery-time",
+    "status": "restored",
+    "at": "2026-09-29T00:19:20.975Z",
+    "rows": 1
+  },
+  {
+    "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
+    "name": "dedicated-member-memberships",
+    "status": "disabled",
+    "at": "2026-09-29T00:19:48.232Z",
+    "rows": 2
+  },
+  {
+    "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
+    "name": "dedicated-member-memberships",
+    "status": "restored",
+    "at": "2026-09-29T00:19:54.744Z",
+    "rows": 2
+  },
+  {
+    "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
+    "name": "tenant-lifecycle",
+    "status": "restored-via-console",
+    "at": "2026-09-29T00:31:13.722Z"
+  },
+  {
+    "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
+    "name": "isolated-redis",
+    "status": "stopped",
+    "at": "2026-09-29T00:31:41.780Z"
+  },
+  {
+    "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
+    "name": "isolated-redis",
+    "status": "restored-healthy",
+    "at": "2026-09-29T00:32:02.773Z"
+  },
+  {
+    "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
+    "name": "isolated-redis",
+    "status": "stopped",
+    "at": "2026-09-29T00:32:34.183Z"
+  },
+  {
+    "runId": "65da8356-45b3-4a2e-82c2-ff92aa6c4037",
+    "name": "isolated-redis",
+    "status": "restored-healthy",
+    "at": "2026-09-29T00:33:39.965Z"
+  }
+]
