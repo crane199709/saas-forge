@@ -1,0 +1,47 @@
+{
+  "usedAsFinalAcceptance": false,
+  "redOverlap": {
+    "runId": "cb4fc6d9-be0f-4033-8d8f-0f0fff9d4b63",
+    "status": "failed",
+    "startedAt": "2026-09-29T10:56:49.152Z",
+    "finishedAt": "2026-09-29T10:57:39.831Z",
+    "failure": {
+      "phase": "rotation-and-overlap-rejection",
+      "kind": "TimeoutError"
+    },
+    "response": {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v1/platform/oauth-clients/:id/secret-rotations",
+      "method": "POST",
+      "status": 409,
+      "at": 1790679429580,
+      "code": "CLIENT_SECRET_ROTATION_OVERLAP_ACTIVE"
+    },
+    "finding": "Console retained unknown-result lock after authoritative overlap rejection; expected explicit localized rejection was absent"
+  },
+  "otherFailedAttempts": [
+    {
+      "phase": "environment preparation",
+      "cause": "receiver profile and reserved service identity configuration corrected before final fresh run"
+    },
+    {
+      "phase": "browser driver",
+      "cause": "hidden checkbox, CDP preflight interception, response body navigation race, logout selector corrected"
+    },
+    {
+      "phase": "product accessibility",
+      "cause": "recovery table header contrast and keyboard scroll region fixed; axe scope explicitly product app root"
+    },
+    {
+      "phase": "sandbox verification",
+      "cause": "localhost listening blocked in sandbox; rerun with approved local-network access passed"
+    },
+    {
+      "phase": "locale command",
+      "cause": "initial command omitted tsx loader; official command with tsx passed"
+    }
+  ],
+  "finalAcceptance": "oauth.json is a separate full fresh run; no diagnostic results spliced into it"
+}

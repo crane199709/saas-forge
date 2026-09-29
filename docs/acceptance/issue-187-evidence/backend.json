@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "kind": "backend-probe",
+  "runId": "05a5f07e-af4a-4b19-bf90-10d249cb2dd9",
+  "handoffSha256": "3f6b4279a294f3cab2dc256d108fecf61119d40ecb366e10657e096f26447bd1",
+  "startedAt": "2026-09-29T11:20:33.321Z",
+  "checks": [
+    {
+      "name": "gateway-public-key-environment",
+      "status": "passed"
+    },
+    {
+      "name": "console-origin-allowed",
+      "status": "passed"
+    },
+    {
+      "name": "untrusted-origin-denied",
+      "status": "passed"
+    }
+  ],
+  "status": "passed",
+  "finishedAt": "2026-09-29T11:20:33.612Z"
+}

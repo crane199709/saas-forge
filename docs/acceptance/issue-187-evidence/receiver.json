@@ -1,0 +1,11 @@
+{
+  "runId": "05a5f07e-af4a-4b19-bf90-10d249cb2dd9",
+  "service": "platform-mechanism-receiver",
+  "imageId": "sha256:85f5ff5b8835652ed1a83182ad16887b65cd8c088846f76dfbb5cba6efaffea7",
+  "containerId": "da59ddbc8cef49c53354c4d19c6887ed603fe8deaedce372e3e1743d7376437a",
+  "createdAt": "2026-09-29T11:18:30.814235501Z",
+  "sourceCommit": "bde45e24e666f0e906bf5415634b2a4c31e06b03",
+  "sourceDirty": "true",
+  "jdkMajor": 17,
+  "productionRuntime": false
+}

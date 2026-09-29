@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "runId": "05a5f07e-af4a-4b19-bf90-10d249cb2dd9",
+  "status": "passed",
+  "scope": "issue-187-oauth-platform-mechanism-only",
+  "handoffSha256": "3f6b4279a294f3cab2dc256d108fecf61119d40ecb366e10657e096f26447bd1",
+  "backendSha256": "dd2f1dddfd33deb826b927a2f22495305c9918d5ceb6d0679711b8721ddcf863",
+  "oauthSha256": "407a592739a1dc555a42a9b5d9245fc0f4ecef3499415f164c30d4923586e255",
+  "injectionsSha256": "46cb4c7367fb3cf5fd80ac74ba95ce40440607c4a137fee131bb253378546303",
+  "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+  "sameRun": true,
+  "injectionRestored": true,
+  "actualWait24Hours": false,
+  "productionRuntime": false
+}

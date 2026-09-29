@@ -1,0 +1,33 @@
+{
+  "runId": "05a5f07e-af4a-4b19-bf90-10d249cb2dd9",
+  "actualWait24Hours": false,
+  "records": [
+    {
+      "state": "expired",
+      "at": "2026-09-29T11:21:39.329Z",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "original": "2026-09-30T11:21:29.168+00:00",
+      "injected": "2026-09-29 11:21:38.067375+00",
+      "affectedRows": 1
+    },
+    {
+      "state": "restored",
+      "at": "2026-09-29T11:21:41.707Z",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "affectedRows": 1,
+      "original": "2026-09-30T11:21:29.168+00:00"
+    },
+    {
+      "state": "logs-collected",
+      "at": "2026-09-29T11:21:56.462Z",
+      "services": [
+        "gateway",
+        "iam-service",
+        "tenant-access-service",
+        "entitlement-service",
+        "audit-service",
+        "platform-mechanism-receiver"
+      ]
+    }
+  ]
+}

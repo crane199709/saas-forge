@@ -1,0 +1,1546 @@
+{
+  "schemaVersion": 1,
+  "kind": "oauth-lifecycle-platform-mechanism",
+  "runId": "05a5f07e-af4a-4b19-bf90-10d249cb2dd9",
+  "handoffSha256": "3f6b4279a294f3cab2dc256d108fecf61119d40ecb366e10657e096f26447bd1",
+  "frontend": {
+    "commit": "54981ce25d60c7dc2d1926842d48870baf62972d",
+    "dirty": true,
+    "sourceSha256": "34216ca383e3becda7cf4427cf6778e78720db1150db0b8a34bcc7dc096b8199",
+    "lockSha256": "180ae2697376beb325956b9cb30132a660eac0673da9c9b63186bc9570c7725a"
+  },
+  "client": {
+    "name": "@crane199709/saas-forge-api-client",
+    "version": "0.4.0",
+    "sourceCommit": "ebff4b338d0c4b39e51488ac1e9b98885318d438"
+  },
+  "startedAt": "2026-09-29T11:20:53.347Z",
+  "status": "passed",
+  "checks": [
+    {
+      "name": "fresh-admin-initial-password-change-and-platform-context",
+      "status": "passed"
+    },
+    {
+      "name": "same-issuance-replay-cannot-reread-secret",
+      "status": "passed",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26"
+    },
+    {
+      "name": "runtime-create-close-refresh-navigation-no-secret-reread",
+      "status": "passed",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26"
+    },
+    {
+      "name": "real-overlap-denial-chinese-and-english",
+      "status": "passed"
+    },
+    {
+      "name": "second-console-regular-rotation-rejected-with-stable-24h-window",
+      "status": "passed",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "rotationUpdatedAt": "2026-09-29T11:21:29.168Z",
+      "overlapEndsAt": "2026-09-30T11:21:29.168Z",
+      "denialStatus": 409,
+      "denialCode": "CLIENT_SECRET_ROTATION_OVERLAP_ACTIVE",
+      "credentialsRemainValid": true,
+      "injection": "second-real-request-delayed-until-first-commit"
+    },
+    {
+      "name": "real-service-scope-insufficient",
+      "status": "passed"
+    },
+    {
+      "name": "old-secret-expired-new-secret-valid",
+      "status": "passed",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "actualWait24Hours": false
+    },
+    {
+      "name": "revocation-rejects-new-token-and-existing-unexpired-token",
+      "status": "passed",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "expiresAt": 1790681201
+    },
+    {
+      "name": "real-oauth-detail-accessibility-and-keyboard-create-close",
+      "status": "passed",
+      "violations": 0,
+      "scope": "product-app-root",
+      "developerToolsExcluded": true
+    },
+    {
+      "name": "visible-secret-cleared-on-refresh-leave-and-cross-tab-session-loss",
+      "status": "passed"
+    },
+    {
+      "name": "same-run-service-logs-contain-no-known-sensitive-material",
+      "status": "passed"
+    },
+    {
+      "name": "request-correlated-errors-and-no-sensitive-browser-storage-or-logs",
+      "status": "passed",
+      "unexpectedErrors": 0
+    }
+  ],
+  "requests": [
+    {
+      "source": "console",
+      "phase": "fresh-console-bootstrap",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680862030
+    },
+    {
+      "source": "console",
+      "phase": "fresh-console-bootstrap",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680862989
+    },
+    {
+      "source": "console",
+      "phase": "fresh-console-bootstrap",
+      "contextId": 1,
+      "path": "/api/v2/auth/login",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680863527
+    },
+    {
+      "source": "console",
+      "phase": "fresh-console-bootstrap",
+      "contextId": 1,
+      "path": "/api/v2/auth/password-changes",
+      "method": "POST",
+      "status": 204,
+      "at": 1790680863875
+    },
+    {
+      "source": "console",
+      "phase": "fresh-console-bootstrap",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680864443
+    },
+    {
+      "source": "console",
+      "phase": "fresh-console-bootstrap",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680864945
+    },
+    {
+      "source": "console",
+      "phase": "fresh-console-bootstrap",
+      "contextId": 1,
+      "path": "/api/v2/auth/login",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680865934
+    },
+    {
+      "source": "console",
+      "phase": "fresh-console-bootstrap",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680866563
+    },
+    {
+      "source": "console",
+      "phase": "fresh-console-bootstrap",
+      "contextId": 1,
+      "path": "/api/v2/auth/context-selections",
+      "method": "POST",
+      "status": 204,
+      "at": 1790680866635
+    },
+    {
+      "source": "console",
+      "phase": "fresh-console-bootstrap",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680866778
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680867359
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680867449
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680867595
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680869984
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680869991
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680870520
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "POST",
+      "status": 201,
+      "at": 1790680870649
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680870741
+    },
+    {
+      "source": "independent-consumer",
+      "phase": "create-and-real-consumption",
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "POST",
+      "traceId": "53f484e8470267faf0ab2d46d93775c8",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "startedAt": "2026-09-29T11:21:10.713Z",
+      "finishedAt": "2026-09-29T11:21:10.815Z",
+      "status": 409,
+      "code": "CLIENT_SECRET_ALREADY_REVEALED"
+    },
+    {
+      "source": "independent-consumer",
+      "phase": "create-and-real-consumption",
+      "path": "/oauth2/token",
+      "method": "POST",
+      "traceId": "aa843bae8b5838fa3942ca1992ab5234",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "startedAt": "2026-09-29T11:21:10.815Z",
+      "finishedAt": "2026-09-29T11:21:10.912Z",
+      "status": 200
+    },
+    {
+      "source": "independent-consumer",
+      "phase": "create-and-real-consumption",
+      "path": "/__test/platform-mechanism",
+      "method": "POST",
+      "traceId": "f30c6e1cf2e60412a8f35c7c45e25f20",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "startedAt": "2026-09-29T11:21:10.913Z",
+      "finishedAt": "2026-09-29T11:21:14.354Z",
+      "status": 200
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680875268
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680875439
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680875573
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680876328
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680876342
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680877949
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680878859
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680879034
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680879271
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680879278
+    },
+    {
+      "source": "console",
+      "phase": "create-and-real-consumption",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680879326
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680880291
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680880401
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680880616
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680880954
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680880979
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680881443
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680881942
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v2/auth/login",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680882347
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680883162
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v2/auth/context-selections",
+      "method": "POST",
+      "status": 204,
+      "at": 1790680883233
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680883415
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680884758
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680885560
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680885901
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680886339
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680886341
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680886417
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680886613
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680886709
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680886772
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680888144
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680888430
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680888515
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680888670
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680888673
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680888700
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680889069
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680889130
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680889156
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id/secret-rotations",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680889221
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680889270
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680889294
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680889334
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680890682
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680890818
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680890884
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680891107
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680891107
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680891168
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v1/platform/oauth-clients/:id/secret-rotations",
+      "method": "POST",
+      "status": 409,
+      "at": 1790680891273,
+      "code": "CLIENT_SECRET_ROTATION_OVERLAP_ACTIVE"
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680891323
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680891371
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680891426
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680893774
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680893969
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680894084
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680894363
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680894364
+    },
+    {
+      "source": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680894535
+    },
+    {
+      "source": "independent-consumer",
+      "phase": "rotation-and-overlap-rejection",
+      "path": "/oauth2/token",
+      "method": "POST",
+      "traceId": "1618221f0721f1cea19223fb95df6a56",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "startedAt": "2026-09-29T11:21:34.583Z",
+      "finishedAt": "2026-09-29T11:21:34.660Z",
+      "status": 200
+    },
+    {
+      "source": "independent-consumer",
+      "phase": "rotation-and-overlap-rejection",
+      "path": "/__test/platform-mechanism",
+      "method": "POST",
+      "traceId": "a6a8c057bf741346b69d9e4d5586001c",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "startedAt": "2026-09-29T11:21:34.667Z",
+      "finishedAt": "2026-09-29T11:21:35.605Z",
+      "status": 200
+    },
+    {
+      "source": "independent-consumer",
+      "phase": "rotation-and-overlap-rejection",
+      "path": "/oauth2/token",
+      "method": "POST",
+      "traceId": "c637684992930672ae488a3814130b2c",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "startedAt": "2026-09-29T11:21:35.606Z",
+      "finishedAt": "2026-09-29T11:21:35.829Z",
+      "status": 200
+    },
+    {
+      "source": "independent-consumer",
+      "phase": "rotation-and-overlap-rejection",
+      "path": "/__test/platform-mechanism",
+      "method": "POST",
+      "traceId": "dd2e9c25ccc705b17f0595426d40b290",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "startedAt": "2026-09-29T11:21:35.829Z",
+      "finishedAt": "2026-09-29T11:21:35.959Z",
+      "status": 200
+    },
+    {
+      "source": "console",
+      "phase": "scope-denial",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680897051
+    },
+    {
+      "source": "console",
+      "phase": "scope-denial",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680897167
+    },
+    {
+      "source": "console",
+      "phase": "scope-denial",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680897253
+    },
+    {
+      "source": "console",
+      "phase": "scope-denial",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680897453
+    },
+    {
+      "source": "console",
+      "phase": "scope-denial",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680897454
+    },
+    {
+      "source": "console",
+      "phase": "scope-denial",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680897781
+    },
+    {
+      "source": "console",
+      "phase": "scope-denial",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680898219
+    },
+    {
+      "source": "console",
+      "phase": "scope-denial",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "POST",
+      "status": 201,
+      "at": 1790680898264
+    },
+    {
+      "source": "console",
+      "phase": "scope-denial",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680898310
+    },
+    {
+      "source": "independent-consumer",
+      "phase": "scope-denial",
+      "path": "/oauth2/token",
+      "method": "POST",
+      "traceId": "d0f0a659adade7ea3ffc9ac75d0e236d",
+      "client": "7ee9cae7a9bb71f14537f053ce5b753b8fa4f9b7cf502bf8ad34e92ea037870a",
+      "startedAt": "2026-09-29T11:21:38.296Z",
+      "finishedAt": "2026-09-29T11:21:38.314Z",
+      "status": 200
+    },
+    {
+      "source": "independent-consumer",
+      "phase": "scope-denial",
+      "path": "/__test/platform-mechanism",
+      "method": "POST",
+      "traceId": "082c54b891c075e1f60053808a5fd1bb",
+      "client": "7ee9cae7a9bb71f14537f053ce5b753b8fa4f9b7cf502bf8ad34e92ea037870a",
+      "startedAt": "2026-09-29T11:21:38.314Z",
+      "finishedAt": "2026-09-29T11:21:38.329Z",
+      "status": 403,
+      "code": "ACCESS_TOKEN_SCOPE_INSUFFICIENT"
+    },
+    {
+      "source": "independent-consumer",
+      "phase": "overlap-expiry-injection",
+      "path": "/oauth2/token",
+      "method": "POST",
+      "traceId": "32ed7d5fc3d898c4e812a6592adf8cb6",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "startedAt": "2026-09-29T11:21:39.835Z",
+      "finishedAt": "2026-09-29T11:21:39.896Z",
+      "status": 401,
+      "code": "CLIENT_CREDENTIALS_INVALID"
+    },
+    {
+      "source": "independent-consumer",
+      "phase": "overlap-expiry-injection",
+      "path": "/oauth2/token",
+      "method": "POST",
+      "traceId": "c489b4c22be663f14dc84427d787e5d9",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "startedAt": "2026-09-29T11:21:39.896Z",
+      "finishedAt": "2026-09-29T11:21:39.928Z",
+      "status": 200
+    },
+    {
+      "source": "independent-consumer",
+      "phase": "overlap-expiry-injection",
+      "path": "/__test/platform-mechanism",
+      "method": "POST",
+      "traceId": "33be0c46fbe778a3454e683179ebf759",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "startedAt": "2026-09-29T11:21:39.928Z",
+      "finishedAt": "2026-09-29T11:21:40.002Z",
+      "status": 200
+    },
+    {
+      "source": "console",
+      "phase": "overlap-expiry-injection",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680900541
+    },
+    {
+      "source": "console",
+      "phase": "overlap-expiry-injection",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680900618
+    },
+    {
+      "source": "console",
+      "phase": "overlap-expiry-injection",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680900680
+    },
+    {
+      "source": "console",
+      "phase": "overlap-expiry-injection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680900876
+    },
+    {
+      "source": "console",
+      "phase": "overlap-expiry-injection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680900884
+    },
+    {
+      "source": "console",
+      "phase": "overlap-expiry-injection",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680900914
+    },
+    {
+      "source": "independent-consumer",
+      "phase": "revocation",
+      "path": "/oauth2/token",
+      "method": "POST",
+      "traceId": "d33818f48e050fa2bbfeeaa381db7874",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "startedAt": "2026-09-29T11:21:41.923Z",
+      "finishedAt": "2026-09-29T11:21:41.990Z",
+      "status": 200
+    },
+    {
+      "source": "independent-consumer",
+      "phase": "revocation",
+      "path": "/__test/platform-mechanism",
+      "method": "POST",
+      "traceId": "40ba72bb76ddf422c87e59a1069c7e8c",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "startedAt": "2026-09-29T11:21:41.991Z",
+      "finishedAt": "2026-09-29T11:21:42.060Z",
+      "status": 200
+    },
+    {
+      "source": "console",
+      "phase": "revocation",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680903702
+    },
+    {
+      "source": "console",
+      "phase": "revocation",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680904110
+    },
+    {
+      "source": "console",
+      "phase": "revocation",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680904245
+    },
+    {
+      "source": "console",
+      "phase": "revocation",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680904514
+    },
+    {
+      "source": "console",
+      "phase": "revocation",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680904520
+    },
+    {
+      "source": "console",
+      "phase": "revocation",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680904584
+    },
+    {
+      "source": "console",
+      "phase": "revocation",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680905125
+    },
+    {
+      "source": "console",
+      "phase": "revocation",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680905187
+    },
+    {
+      "source": "console",
+      "phase": "revocation",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680905233
+    },
+    {
+      "source": "console",
+      "phase": "revocation",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id/revocations",
+      "method": "POST",
+      "status": 204,
+      "at": 1790680905380
+    },
+    {
+      "source": "independent-consumer",
+      "phase": "revocation",
+      "path": "/oauth2/token",
+      "method": "POST",
+      "traceId": "e3f0b04d0195121342c2f8478aee4e6b",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "startedAt": "2026-09-29T11:21:45.381Z",
+      "finishedAt": "2026-09-29T11:21:45.419Z",
+      "status": 401,
+      "code": "CLIENT_CREDENTIALS_INVALID"
+    },
+    {
+      "source": "console",
+      "phase": "revocation",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680905486
+    },
+    {
+      "source": "independent-consumer",
+      "phase": "revocation",
+      "path": "/__test/platform-mechanism",
+      "method": "POST",
+      "traceId": "c1d5310d7109d1e8268af7ee8723392b",
+      "client": "6dd120f422b0618ce382afbe65b8660c14842a7052c12bcb51ef1e5fcdd11c26",
+      "startedAt": "2026-09-29T11:21:45.419Z",
+      "finishedAt": "2026-09-29T11:21:45.510Z",
+      "status": 401,
+      "code": "ACCESS_TOKEN_INVALID"
+    },
+    {
+      "source": "console",
+      "phase": "oauth-accessibility-and-keyboard",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients/:id/credential-status",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680905602
+    },
+    {
+      "source": "console",
+      "phase": "oauth-accessibility-and-keyboard",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680905753
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680907016
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680907249
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680907427
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680907707
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680907719
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680908141
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "POST",
+      "status": 201,
+      "at": 1790680908196
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680908252
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680909164
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680909215
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680909265
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680909414
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680909414
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680909895
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "POST",
+      "status": 201,
+      "at": 1790680909938
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680909982
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680910616
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680910651
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680910691
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680910797
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680910797
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680910862
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680911322
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "POST",
+      "status": 201,
+      "at": 1790680911356
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680911438
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680912185
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680912260
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680912321
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-clients",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680912554
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v1/platform/oauth-client-operations",
+      "method": "GET",
+      "status": 200,
+      "at": 1790680912554
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680913785
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v2/auth/logout",
+      "method": "POST",
+      "status": 204,
+      "at": 1790680914182
+    },
+    {
+      "source": "console",
+      "phase": "secret-visible-refresh-leave-session-loss",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680914222
+    },
+    {
+      "source": "console",
+      "phase": "error-and-privacy-audit",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "method": "POST",
+      "status": 200,
+      "at": 1790680914743
+    }
+  ],
+  "errors": [
+    {
+      "kind": "console",
+      "phase": "rotation-and-overlap-rejection",
+      "contextId": 2,
+      "at": 1790680891274,
+      "resourceFailure": true,
+      "path": "/api/v1/platform/oauth-clients/:id/secret-rotations"
+    }
+  ],
+  "chrome": "154.0.8037.58",
+  "delayedRequest": {
+    "method": "POST",
+    "phase": "rotation-and-overlap-rejection"
+  },
+  "finishedAt": "2026-09-29T11:21:56.934Z"
+}

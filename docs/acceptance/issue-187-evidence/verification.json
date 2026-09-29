@@ -1,0 +1,66 @@
+{
+  "date": "2026-09-29",
+  "backend": {
+    "baseline": "bde45e24e666f0e906bf5415634b2a4c31e06b03",
+    "runtimeCodeChanged": false,
+    "jdk": 17,
+    "maven": {
+      "command": "./mvnw -o -Pplatform-mechanism-acceptance verify",
+      "status": "passed",
+      "reportFiles": 157,
+      "tests": 726,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "node": {
+      "command": "node --test --test-concurrency=1 scripts/test/*.test.mjs",
+      "status": "passed",
+      "tests": 62,
+      "failed": 0
+    }
+  },
+  "frontend": {
+    "commit": "54981ce25d60c7dc2d1926842d48870baf62972d",
+    "dirty": true,
+    "sourceSha256": "34216ca383e3becda7cf4427cf6778e78720db1150db0b8a34bcc7dc096b8199",
+    "lockSha256": "180ae2697376beb325956b9cb30132a660eac0673da9c9b63186bc9570c7725a",
+    "typecheck": "passed",
+    "lint": "passed",
+    "locales": {
+      "status": "passed",
+      "keys": 733
+    },
+    "node": {
+      "status": "passed",
+      "tests": 223,
+      "failed": 0
+    },
+    "productionBuild": "passed",
+    "mockChromiumUI": {
+      "status": "passed",
+      "tests": 13,
+      "failed": 0,
+      "realBackend": false
+    }
+  },
+  "realChrome": {
+    "version": "154.0.8037.58",
+    "runId": "05a5f07e-af4a-4b19-bf90-10d249cb2dd9",
+    "checks": 12,
+    "status": "passed",
+    "realBackend": true,
+    "accessibilityScope": "product #app; development tools excluded"
+  },
+  "ci": "not-executed",
+  "hostClockChanged": false,
+  "actualWait24Hours": false,
+  "reviews": {
+    "standards": "no remaining findings",
+    "spec": "no remaining findings"
+  },
+  "driverSha256": {
+    "backend/scripts/oauth-overlap-time-control.mjs": "4125fda2eed1dffc1d4c21616589a48197db7fcda28625acd2adc4b81bbe976d",
+    "frontend/scripts/verify-oauth-lifecycle.mjs": "7df188b52f85e454e7d03395acfb3e3492775b07267ce5b95a871cfde6721324"
+  }
+}
