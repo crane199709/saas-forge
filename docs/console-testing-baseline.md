@@ -10,8 +10,9 @@
 | Remote 冻结制品与消费 | `pnpm run build:static-remote`、`scripts/remote-browser-checks.mjs`；真实资源/CORS 证据见前端 #10 |
 | TLS、精确 CORS、静态 Remote、Gateway 转发 | 后端 `scripts/test/`；Java 服务与契约保留后端 Maven 门禁 |
 | Fresh、业务主链、Token/Redis 故障与完整安全矩阵 | #183–#189 与父 #201，同轮交接后分别执行后端探针与前端页面验证 |
-| 完整视觉像素基线、自动无障碍、布局与生产错误边界 | #103 / #201 仍待适配；当前冒烟截图不等于完整视觉回归通过 |
-| 完整 ICU/语言资源与 Session Tabs 负例 | #201 与专项责任表继续跟踪；现有格式化和会话冒烟不替代全量覆盖 |
+| 页面视觉、自动无障碍、布局与生产错误门禁 | 前端 `pnpm run verify:ui`：生产构建 + 模拟 HTTP，登录/恢复、1440/1024 浅深工作台、Tenant 列表/抽屉/详情、语言重载与键盘/焦点；PNG 比较、axe 和错误断言失败即阻断。范围及基线见前端 `docs/locale-and-ui-verification.md`，不能替代真实浏览器/Fresh |
+| 语言资源与回退 | 前端 `pnpm run verify:locales` 和 `tests/locale-messages.test.ts` 检查 Vue i18n 语法、key、插值签名、安全回退；英文统一 `en`，旧 `en-US` 偏好回默认中文，不作为兼容别名 |
+| ICU 表达迁移与 Session Tabs 负例 | 当前资源沿用 Vue i18n 语法；ICU 表达不能直接使用，需等效转换。Session Tabs 完整负例仍由 #201 与专项责任表跟踪，现有格式化和会话冒烟不替代全量覆盖 |
 
 交接格式、失败传播及未迁覆盖见[独立验证](acceptance/independent-verification.md)。完整检查由各自 CI 承担；后端 CI 不运行浏览器。没有新增永久 skip，也不把缺少环境或缺少基线标记为通过。
 

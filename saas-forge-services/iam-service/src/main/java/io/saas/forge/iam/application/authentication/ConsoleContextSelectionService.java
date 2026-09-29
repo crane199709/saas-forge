@@ -59,7 +59,7 @@ public final class ConsoleContextSelectionService {
                 if (family.purpose() == RefreshTokenFamilyPurpose.INITIAL_PASSWORD_CHANGE)
                     throw new ConsoleSessionException(INITIAL_CREDENTIAL_RESTRICTED);
                 ConsoleSessionAuthority.Contexts contexts = authority.contexts(family.identityId());
-                if (!currentAuthorized(family, contexts)) throw new ConsoleSessionException(CURRENT_CONTEXT_REVOKED);
+                if (!contexts.authorizes(family)) throw new ConsoleSessionException(CURRENT_CONTEXT_REVOKED);
                 Target resolved = resolve(target, contexts);
                 ConsoleOperation created = new ConsoleOperation(slot.id(), key, family.id(),
                         ConsoleOperation.Kind.SELECT_CONTEXT, fingerprint, null);
@@ -103,17 +103,6 @@ public final class ConsoleContextSelectionService {
                 || !existing.fingerprint().equals(fingerprint))
             throw new ConsoleSessionException(IDEMPOTENCY_KEY_REUSED);
         return existing;
-    }
-
-    private static boolean currentAuthorized(RefreshTokenFamily family, ConsoleSessionAuthority.Contexts contexts) {
-        return switch (family.purpose()) {
-            case USER_PLATFORM -> contexts.platform();
-            case USER_TENANT -> contexts.companies().stream().anyMatch(company ->
-                    company.membershipId().equals(family.membershipId())
-                            && company.tenantId().equals(family.tenantId()));
-            case USER_TENANT_SELECTION -> true;
-            case INITIAL_PASSWORD_CHANGE -> false;
-        };
     }
 
     private static Target resolve(Target target, ConsoleSessionAuthority.Contexts contexts) {

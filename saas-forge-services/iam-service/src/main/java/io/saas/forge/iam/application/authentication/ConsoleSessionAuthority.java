@@ -37,9 +37,7 @@ public final class ConsoleSessionAuthority {
         }
         var contexts = contexts(family.identityId());
         boolean selected = family.purpose() != RefreshTokenFamilyPurpose.USER_TENANT_SELECTION;
-        if (selected && (family.purpose() == RefreshTokenFamilyPurpose.USER_PLATFORM ? !contexts.platform()
-                : contexts.companies().stream().noneMatch(company -> company.membershipId().equals(family.membershipId())
-                        && company.tenantId().equals(family.tenantId()))))
+        if (!contexts.authorizes(family))
             throw new ConsoleSessionException(CURRENT_CONTEXT_REVOKED);
         var state = selected ? ConsoleSessionSnapshot.State.AUTHENTICATED
                 : contexts.count() == 0 ? ConsoleSessionSnapshot.State.NO_AVAILABLE_CONTEXT
@@ -49,6 +47,17 @@ public final class ConsoleSessionAuthority {
 
     public record Contexts(boolean platform, List<AccessibleMembership> companies) {
         public Contexts { companies = List.copyOf(companies); }
+        /** 当前会话读取与上下文切换共享同一权威资格规则。 */
+        public boolean authorizes(RefreshTokenFamily family) {
+            return switch (family.purpose()) {
+                case USER_PLATFORM -> platform;
+                case USER_TENANT -> companies.stream().anyMatch(company ->
+                        company.membershipId().equals(family.membershipId())
+                                && company.tenantId().equals(family.tenantId()));
+                case USER_TENANT_SELECTION -> true;
+                case INITIAL_PASSWORD_CHANGE -> false;
+            };
+        }
         public int count() { return companies.size() + (platform ? 1 : 0); }
     }
 }
