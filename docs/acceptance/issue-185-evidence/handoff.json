@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "runId": "8ab1501b-da39-440f-b727-6383c26dcebd",
+  "status": "ready",
+  "startedAt": "2026-09-29T08:47:07.681Z",
+  "consoleOrigin": "https://console.saas.forge.test",
+  "apiOrigin": "https://api.saas.forge.test",
+  "backend": {
+    "commit": "2dbf81612ec75d26ff140f8cca443081c27ad579",
+    "dirty": true,
+    "versionSource": "source-checkout",
+    "images": [
+      {
+        "service": "gateway",
+        "imageId": "sha256:3ef2ccea6b1bbe3befaabecaafe5c4f2f66e00cad54cc961aa56cc4652346527",
+        "containerId": "d3e5ca780e326f31e2f7b534ff178bc7a5b26b9a346e3996c2285f184235da10"
+      },
+      {
+        "service": "iam-service",
+        "imageId": "sha256:8bcc9587bbc6730bd49f4b8f5512a5559128e2cae95ea365d872b3a0e9c106d9",
+        "containerId": "46d2558aa8e86d67c98a04f41847297febe9947f2835b2d5164c6d0b92204949"
+      },
+      {
+        "service": "tenant-access-service",
+        "imageId": "sha256:640c74b4e03177e28860a2be1f8119de312343acd716e6826f643b78d6bfac8b",
+        "containerId": "ef83c171c4ad3a8da95a2d1fb0a6a9befa4367a681b2e270e7da5eb67431cded"
+      },
+      {
+        "service": "entitlement-service",
+        "imageId": "sha256:bbba4586ba20cc0d672c1a0d69c95c73e0bba318a2c877ab41774a67cfe83fde",
+        "containerId": "ef8c8169ff1bd2046b9815e9e9770398fc5dc18723613e7b5a64269eca528f38"
+      },
+      {
+        "service": "audit-service",
+        "imageId": "sha256:108923f7a29860b0b61d8eda0a7ddae33f576a592b0661ab66d0144c28313a02",
+        "containerId": "34c559eceb4bc6721f338839d91607739a2a9aebc169f6d1dcc8818d8bd2942d"
+      }
+    ],
+    "jdkMajor": 17
+  },
+  "isolation": {
+    "kind": "fresh-compose",
+    "project": "sf-acceptance-8ab1501b-da39-440f-b727-6383c26dcebd",
+    "volumes": [
+      "sf-acceptance-8ab1501b-da39-440f-b727-6383c26dcebd_postgres-data",
+      "sf-acceptance-8ab1501b-da39-440f-b727-6383c26dcebd_redis-data",
+      "sf-acceptance-8ab1501b-da39-440f-b727-6383c26dcebd_kafka-data"
+    ],
+    "network": "sf-acceptance-8ab1501b-da39-440f-b727-6383c26dcebd_default"
+  },
+  "cleanup": {
+    "owner": "environment-preparer",
+    "automatic": false
+  },
+  "readyAt": "2026-09-29T09:09:24.794Z",
+  "expiresAt": "2026-09-30T09:09:24.809Z",
+  "jwksSha256": "1976f03f1d6aefaa1c0d0967e9a233d9e07d9bc1ed065b38620c73a40e4e684c"
+}

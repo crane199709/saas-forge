@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "files": {
+    "handoff.json": "da1701770658fb13df3e3b94eaaab292e1fd5845cd0b965eed0af28690421abb",
+    "diagnostic-1/security.json": "4aad1fca6fb012968763058b9d67aeb9e32cc78198aad6ad6647fe6707e91beb",
+    "checks.json": "593c1c97bd4daf9d94dee5365443f56ec299455df0df1deeb260eb372576f051"
+  }
+}

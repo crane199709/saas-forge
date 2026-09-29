@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "kind": "local-validation",
+  "backendBaseline": "2dbf81612ec75d26ff140f8cca443081c27ad579",
+  "frontendBaseline": "357cc25d9aca2e1bff3a0dd375eaa9d0d094f751",
+  "checks": [
+    {
+      "name": "backend-tooling",
+      "status": "passed",
+      "tests": 62,
+      "skipped": 0
+    },
+    {
+      "name": "backend-full-maven-verify",
+      "status": "failed",
+      "reason": "RepositoryStandardsTest traversed pre-existing ignored history-source Mapper XML; service and contract modules passed"
+    },
+    {
+      "name": "repository-standards-source-snapshot",
+      "status": "passed",
+      "tests": 19,
+      "note": "Re-ran against tracked baseline plus new controller, excluding local ignored history checkout"
+    },
+    {
+      "name": "frontend-node-tests",
+      "status": "passed",
+      "tests": 223,
+      "skipped": 0
+    },
+    {
+      "name": "frontend-typecheck",
+      "status": "passed"
+    },
+    {
+      "name": "frontend-locales",
+      "status": "passed"
+    },
+    {
+      "name": "frontend-lint",
+      "status": "passed"
+    },
+    {
+      "name": "frontend-production-build",
+      "status": "passed"
+    },
+    {
+      "name": "frontend-chromium-ui",
+      "status": "passed",
+      "tests": 13,
+      "boundary": "mock HTTP; languages, visual, keyboard, focus, accessibility, error guard"
+    },
+    {
+      "name": "real-chrome-security",
+      "status": "failed",
+      "reason": "HTTPS Console navigation timed out before business API requests; no attacks or Redis fault executed"
+    },
+    {
+      "name": "complete-ci",
+      "status": "not-run"
+    },
+    {
+      "name": "parent-183-189-aggregation",
+      "status": "not-run"
+    }
+  ]
+}

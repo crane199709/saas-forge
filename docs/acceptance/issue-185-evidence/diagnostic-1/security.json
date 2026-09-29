@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "token-security",
+  "runId": "8ab1501b-da39-440f-b727-6383c26dcebd",
+  "handoffSha256": "da1701770658fb13df3e3b94eaaab292e1fd5845cd0b965eed0af28690421abb",
+  "frontend": {
+    "commit": "357cc25d9aca2e1bff3a0dd375eaa9d0d094f751",
+    "dirty": true,
+    "sourceSha256": "87cd549af1e8c715820871e7d5b55f63d9bfbae4fd10942a52cea98506466ae2",
+    "lockSha256": "180ae2697376beb325956b9cb30132a660eac0673da9c9b63186bc9570c7725a"
+  },
+  "client": {
+    "name": "@crane199709/saas-forge-api-client",
+    "version": "0.4.0",
+    "sourceCommit": "ebff4b338d0c4b39e51488ac1e9b98885318d438"
+  },
+  "startedAt": "2026-09-29T09:10:11.477Z",
+  "status": "failed",
+  "checks": [],
+  "requests": [],
+  "errors": [],
+  "chrome": "154.0.8037.58",
+  "failure": {
+    "phase": "fresh-console-prerequisites",
+    "kind": "TimeoutError"
+  },
+  "finishedAt": "2026-09-29T09:11:00.801Z"
+}
