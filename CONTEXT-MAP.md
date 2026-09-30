@@ -11,6 +11,10 @@ saas-forge 将身份与访问、Tenant 访问、权益、审计、浏览器交�
 - [Gateway](gateway/CONTEXT.md)：拥有受控浏览器 Origin、Cookie、CSRF 与浏览器交付边界，不拥有下游领域事实。
 - [Contracts](saas-forge-contracts/CONTEXT.md)：拥有 Committed Fact Event 与 v1 Contract Baseline 等 Published Language 治理，不拥有各服务领域事实。
 
+## Example 业务上下文
+
+- [Project / Task Example](examples/CONTEXT.md)：代表开发者接入底座的业务应用，拥有租户隔离的 Project 业务记录，不属于上述六个底座上下文。当前已实现 Project 创建、列表、详情与修改；Project 删除和 Task API 尚未实现。
+
 ## Relationships
 
 ```text
