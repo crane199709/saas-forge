@@ -320,6 +320,147 @@ paths:
         required: true
         schema:
           $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/UuidV7'
+    put:
+      operationId: updateTask
+      x-service-id: project-service
+      x-credential-requirement: USER_REQUIRED
+      description: |
+        Replace title, description and status; omitted/null description clears it.
+        TODO, IN_PROGRESS and DONE can change in every direction, including reopening.
+        Atomic version comparison increments version once. ID, Tenant, Project and createdAt are immutable.
+        Same-key replay precedes resource/version checks; 404 and version conflict are stable replayable results.
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/UuidV7'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/UuidV7'
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^"[1-9][0-9]{0,18}"$'
+          description: Single quoted positive int64 version; at most 9223372036854775807. No wildcard, list or weak tag.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTask'
+      responses:
+        '200':
+          description: Updated Task or original replay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NoTenantContext'
+        '404':
+          description: PROJECT_NOT_FOUND or TASK_NOT_FOUND; absent and foreign resources are indistinguishable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+        '409':
+          description: RESOURCE_VERSION_CONFLICT, IDEMPOTENCY_KEY_REUSED or IDEMPOTENCY_REQUEST_IN_PROGRESS.
+          headers:
+            Retry-After:
+              description: Present only for in-progress requests; retry after one second.
+              schema: {type: integer, minimum: 1}
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+        '428':
+          description: VERSION_REQUIRED; no key is reserved.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    delete:
+      operationId: deleteTask
+      x-service-id: project-service
+      x-credential-requirement: USER_REQUIRED
+      description: |
+        Permanently delete only when the current version matches. No cascade or response body.
+        Same-key retries replay the original 204 even after deletion; new keys receive 404.
+        Same-key replay precedes resource/version checks; 404 and version conflict are stable replayable results.
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/UuidV7'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/UuidV7'
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^"[1-9][0-9]{0,18}"$'
+          description: Single quoted positive int64 version; at most 9223372036854775807. No wildcard, list or weak tag.
+      responses:
+        '204':
+          description: Permanently deleted, or replay of the original deletion; no response body.
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NoTenantContext'
+        '404':
+          description: PROJECT_NOT_FOUND or TASK_NOT_FOUND; absent and foreign resources are indistinguishable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+        '409':
+          description: RESOURCE_VERSION_CONFLICT, IDEMPOTENCY_KEY_REUSED or IDEMPOTENCY_REQUEST_IN_PROGRESS.
+          headers:
+            Retry-After:
+              description: Present only for in-progress requests; retry after one second.
+              schema: {type: integer, minimum: 1}
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+        '428':
+          description: VERSION_REQUIRED; no key is reserved.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/Unavailable'
     get:
       operationId: getTask
       x-service-id: project-service
@@ -429,6 +570,26 @@ components:
           maxLength: 2000
           pattern: '^[^\u0000]*$'
           description: Optional; omitted and null both mean no description.
+    UpdateTask:
+      type: object
+      additionalProperties: false
+      required: [title, status]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '^(?![\s\S]*\u0000)[\s\S]*\S[\s\S]*$'
+          description: Required, nonblank; duplicates allowed. Length is Unicode code points. NUL is rejected.
+        description:
+          type: [string, 'null']
+          maxLength: 2000
+          pattern: '^[^\u0000]*$'
+          description: Optional; omitted and null both mean no description.
+        status:
+          type: string
+          enum: [TODO, IN_PROGRESS, DONE]
+          description: Required; all transitions including reopening are allowed.
     Task:
       type: object
       additionalProperties: false
