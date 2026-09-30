@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saas.forge.example.TaskMapper">
+    <select id="insert" resultType="io.saas.forge.example.TaskMapper$TaskRow" affectData="true" flushCache="true">
+        INSERT INTO tasks (tenant_id, project_id, title, description)
+        VALUES (#{tenant}, #{project,typeHandler=org.apache.ibatis.type.ObjectTypeHandler}, #{title}, #{description})
+        RETURNING id::text, project_id::text, title, description, status, version, created_at, updated_at
+    </select>
+    <select id="find" resultType="io.saas.forge.example.TaskMapper$TaskRow">
+        SELECT id::text, project_id::text, title, description, status, version, created_at, updated_at
+        FROM tasks WHERE project_id = #{project,typeHandler=org.apache.ibatis.type.ObjectTypeHandler} AND id = #{id}
+    </select>
+    <select id="list" resultType="io.saas.forge.example.TaskMapper$TaskRow">
+        SELECT id::text, project_id::text, title, description, status, version, created_at, updated_at
+        FROM tasks WHERE project_id = #{project,typeHandler=org.apache.ibatis.type.ObjectTypeHandler}
+        <if test="after != null">AND id &gt; #{after,typeHandler=org.apache.ibatis.type.ObjectTypeHandler}</if>
+        ORDER BY id ASC LIMIT #{limit}
+    </select>
+</mapper>

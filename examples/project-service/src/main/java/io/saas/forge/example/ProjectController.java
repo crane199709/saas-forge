@@ -69,17 +69,17 @@ class ProjectController {
         return writeResponse(projects.update(uuid(projectId, "VALIDATION_FAILED"), uuid(key, "IDEMPOTENCY_KEY_INVALID"), expected, request, ProjectExceptionHandler.traceId(http)));
     }
 
-    private static UUID uuid(String value, String code) {
+    static UUID uuid(String value, String code) {
         if (!value.matches("[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"))
             throw new ProjectException(400, code, "A canonical UUIDv7 is required.");
         return UUID.fromString(value);
     }
 
-    private static void rejectTenantInput(HttpServletRequest http) {
+    static void rejectTenantInput(HttpServletRequest http) {
         rejectTenantInput(http, Set.of());
     }
 
-    private static void rejectTenantInput(HttpServletRequest http, Set<String> allowed) {
+    static void rejectTenantInput(HttpServletRequest http, Set<String> allowed) {
         for (var parameter : http.getParameterMap().entrySet())
             if (!allowed.contains(parameter.getKey()) || parameter.getValue().length != 1) throw ProjectException.invalidPage();
         for (String name : Collections.list(http.getHeaderNames())) {

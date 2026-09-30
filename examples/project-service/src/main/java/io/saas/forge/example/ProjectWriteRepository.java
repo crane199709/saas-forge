@@ -46,6 +46,25 @@ class ProjectWriteRepository {
         return HexFormat.of().formatHex(digest(method + "\n" + path + "\n" + normalizedBody));
     }
 
+    static String fingerprint(String path, String normalizedBody) {
+        return fingerprint("POST", path, normalizedBody);
+    }
+
+    Optional<ProjectWriteResult> begin(WriteKey key) {
+        lock(key);
+        expire(key);
+        if (claim(key)) return Optional.empty();
+        var existing = find(key).orElseThrow(ProjectWriteRepository::reusedKey);
+        if (!existing.fingerprint().equals(key.fingerprint())) throw reusedKey();
+        if (existing.result() == null)
+            throw new ProjectException(409, "IDEMPOTENCY_REQUEST_IN_PROGRESS", "The request is still in progress.");
+        return Optional.of(existing.result());
+    }
+
+    private static ProjectException reusedKey() {
+        return new ProjectException(409, "IDEMPOTENCY_KEY_REUSED", "The key is already bound to another request.");
+    }
+
     private static byte[] digest(String value) {
         try { return MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)); }
         catch (NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }

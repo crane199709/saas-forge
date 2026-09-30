@@ -27,6 +27,12 @@ class ProjectConfiguration {
                 new HttpRouteCatalog.Route("updateProject", HttpRouteCatalog.HttpMethod.PUT, "/api/v1/projects/{projectId}",
                         "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of()),
                 new HttpRouteCatalog.Route("getProject", HttpRouteCatalog.HttpMethod.GET, "/api/v1/projects/{projectId}",
+                        "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of()),
+                new HttpRouteCatalog.Route("createTask", HttpRouteCatalog.HttpMethod.POST, "/api/v1/projects/{projectId}/tasks",
+                        "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of()),
+                new HttpRouteCatalog.Route("listTasks", HttpRouteCatalog.HttpMethod.GET, "/api/v1/projects/{projectId}/tasks",
+                        "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of()),
+                new HttpRouteCatalog.Route("getTask", HttpRouteCatalog.HttpMethod.GET, "/api/v1/projects/{projectId}/tasks/{taskId}",
                         "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of())));
     }
 }
