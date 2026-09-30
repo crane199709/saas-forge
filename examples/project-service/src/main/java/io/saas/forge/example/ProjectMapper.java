@@ -11,6 +11,11 @@ interface ProjectMapper {
     ProjectRow insert(NewProject project);
     ProjectRow find(@Param("id") UUID id);
 
+    java.util.List<ProjectRow> list(PageQuery query);
+    ProjectRow update(ProjectUpdate update);
+
+    record PageQuery(UUID after, int limit) {}
+    record ProjectUpdate(UUID id, long version, String name, String description) {}
     record NewProject(UUID tenant, String name, String description) {}
     record ProjectRow(String id, String name, String description, long version, Instant createdAt, Instant updatedAt) {}
 }

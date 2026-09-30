@@ -13,4 +13,15 @@
     <select id="find" resultType="io.saas.forge.example.ProjectMapper$ProjectRow">
         SELECT id::text, name, description, version, created_at, updated_at FROM projects WHERE id = #{id}
     </select>
+    <select id="list" resultType="io.saas.forge.example.ProjectMapper$ProjectRow">
+        SELECT id::text, name, description, version, created_at, updated_at FROM projects
+        <if test="after != null">WHERE id &gt; #{after,javaType=java.lang.Object,jdbcType=OTHER}</if>
+        ORDER BY id ASC LIMIT #{limit}
+    </select>
+    <select id="update" resultType="io.saas.forge.example.ProjectMapper$ProjectRow" affectData="true" flushCache="true">
+        UPDATE projects SET name = #{name}, description = #{description}, version = version + 1,
+            updated_at = date_trunc('milliseconds', clock_timestamp())
+        WHERE id = #{id} AND version = #{version}
+        RETURNING id::text, name, description, version, created_at, updated_at
+    </select>
 </mapper>

@@ -26,20 +26,76 @@ class ProjectService {
         projects.tenant(context.tenantId());
         var key = new ProjectWriteRepository.WriteKey(context.identityId(), idempotencyKey, context.tenantId(),
                 ProjectWriteRepository.fingerprint(json.writeValueAsString(request)));
-        writes.lock(key);
-        writes.expire(key);
-        if (!writes.claim(key)) {
-            // RLS 隐藏另一 Tenant 的历史正文；唯一键仍阻止同一 Identity 跨 Tenant 复用。
-            var existing = writes.find(key).orElseThrow(ProjectService::reusedKey);
-            if (!existing.fingerprint().equals(key.fingerprint())) throw reusedKey();
-            if (existing.result() == null)
-                throw new ProjectException(409, "IDEMPOTENCY_REQUEST_IN_PROGRESS", "The request is still in progress.");
-            return existing.result();
-        }
+        var replay = replayOrClaim(key);
+        if (replay != null) return replay;
         var project = projects.create(context.tenantId(), request);
         var result = new ProjectWriteResult(201, json.writeValueAsString(project), "/api/v1/projects/" + project.id());
         writes.complete(key, result);
         return result;
+    }
+
+    @Transactional(readOnly = true)
+    public ProjectPage list(String cursor, int limit) {
+        var context = tenants.requireCurrent();
+        projects.tenant(context.tenantId());
+        UUID after = null;
+        if (cursor != null) {
+            try {
+                if (cursor.isEmpty() || cursor.length() > 256) throw ProjectException.invalidPage();
+                byte[] decoded = java.util.Base64.getUrlDecoder().decode(cursor);
+                if (!java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(decoded).equals(cursor))
+                    throw ProjectException.invalidPage();
+                String[] fields = new String(decoded, java.nio.charset.StandardCharsets.UTF_8).split(":", -1);
+                if (fields.length != 4 || !fields[0].equals("projects-v1")
+                        || !fields[1].equals(context.tenantId().toString()) || !fields[2].equals(Integer.toString(limit)))
+                    throw ProjectException.invalidPage();
+                after = UUID.fromString(fields[3]);
+                if (after.version() != 7 || !after.toString().equals(fields[3]) || projects.find(after).isEmpty())
+                    throw ProjectException.invalidPage();
+            } catch (IllegalArgumentException invalid) { throw ProjectException.invalidPage(); }
+        }
+        var rows = projects.list(after, limit + 1);
+        boolean hasMore = rows.size() > limit;
+        var items = hasMore ? rows.subList(0, limit) : rows;
+        String next = hasMore ? java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(
+                ("projects-v1:" + context.tenantId() + ":" + limit + ":" + items.get(items.size() - 1).id())
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8)) : null;
+        return new ProjectPage(items, next, hasMore);
+    }
+
+    @Transactional
+    public ProjectWriteResult update(UUID id, UUID idempotencyKey, long version, CreateProjectRequest request,
+            String traceId) {
+        var context = tenants.requireCurrent();
+        projects.tenant(context.tenantId());
+        var key = new ProjectWriteRepository.WriteKey(context.identityId(), idempotencyKey, context.tenantId(),
+                ProjectWriteRepository.fingerprint("PUT", "/api/v1/projects/" + id, version + "\n" + json.writeValueAsString(request)));
+        var replay = replayOrClaim(key);
+        if (replay != null) return replay;
+        var updated = projects.update(id, version, request);
+        ProjectWriteResult result;
+        if (updated.isPresent()) result = new ProjectWriteResult(200, json.writeValueAsString(updated.get()), null);
+        else {
+            boolean exists = projects.find(id).isPresent();
+            int status = exists ? 409 : 404;
+            String code = exists ? "RESOURCE_VERSION_CONFLICT" : "PROJECT_NOT_FOUND";
+            String detail = exists ? "The project version has changed." : "Project not found.";
+            result = new ProjectWriteResult(status, json.writeValueAsString(ProjectProblem.of(status, code, detail, traceId, null)), null);
+        }
+        writes.complete(key, result);
+        return result;
+    }
+
+    private ProjectWriteResult replayOrClaim(ProjectWriteRepository.WriteKey key) {
+        writes.lock(key);
+        writes.expire(key);
+        if (writes.claim(key)) return null;
+        // RLS 隐藏另一 Tenant 的历史正文；唯一键仍阻止同一 Identity 跨 Tenant 复用。
+        var existing = writes.find(key).orElseThrow(ProjectService::reusedKey);
+        if (!existing.fingerprint().equals(key.fingerprint())) throw reusedKey();
+        if (existing.result() == null)
+            throw new ProjectException(409, "IDEMPOTENCY_REQUEST_IN_PROGRESS", "The request is still in progress.");
+        return existing.result();
     }
 
     private static ProjectException reusedKey() {

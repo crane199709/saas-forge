@@ -21,6 +21,15 @@ class ProjectRepository {
 
     Optional<ProjectResult> find(UUID id) { return Optional.ofNullable(mapper.find(id)).map(ProjectRepository::resource); }
 
+    java.util.List<ProjectResult> list(UUID after, int limit) {
+        return mapper.list(new ProjectMapper.PageQuery(after, limit)).stream().map(ProjectRepository::resource).toList();
+    }
+
+    Optional<ProjectResult> update(UUID id, long version, CreateProjectRequest request) {
+        return Optional.ofNullable(mapper.update(new ProjectMapper.ProjectUpdate(id, version, request.name(), request.description())))
+                .map(ProjectRepository::resource);
+    }
+
     private static ProjectResult resource(ProjectMapper.ProjectRow row) {
         return new ProjectResult(UUID.fromString(row.id()), row.name(), row.description(), row.version(),
                 TIMESTAMP.format(row.createdAt()), TIMESTAMP.format(row.updatedAt()));

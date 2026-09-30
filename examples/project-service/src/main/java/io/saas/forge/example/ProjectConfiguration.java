@@ -16,11 +16,15 @@ class ProjectConfiguration {
         });
     }
 
-    /** Example 自有契约不加入底座 Gateway Catalog；契约测试核对这两个入口。 */
+    /** Example 自有契约不加入底座 Gateway Catalog；契约测试核对正式入口。 */
     @Bean
     HttpRouteCatalog projectRoutes() {
         return new HttpRouteCatalog(1, List.of(
                 new HttpRouteCatalog.Route("createProject", HttpRouteCatalog.HttpMethod.POST, "/api/v1/projects",
+                        "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of()),
+                new HttpRouteCatalog.Route("listProjects", HttpRouteCatalog.HttpMethod.GET, "/api/v1/projects",
+                        "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of()),
+                new HttpRouteCatalog.Route("updateProject", HttpRouteCatalog.HttpMethod.PUT, "/api/v1/projects/{projectId}",
                         "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of()),
                 new HttpRouteCatalog.Route("getProject", HttpRouteCatalog.HttpMethod.GET, "/api/v1/projects/{projectId}",
                         "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of())));

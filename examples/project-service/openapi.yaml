@@ -3,14 +3,14 @@ info:
   title: Project Example API
   version: 1.0.0
   description: |
-    Only Project creation and detail are implemented. Requires a verified tenant User Access Token.
+    Project creation, list, detail and update require a verified tenant User Access Token.
     No client supplied tenant identity is accepted in headers, query or body, including aliases.
-    Resource versions are positive integers in the response body. Later update/delete slices must
+    Resource versions are positive integers in the response body. Updates and future deletes must
     carry the version as a quoted decimal If-Match header (no wildcard, list or weak tag), returning
     428 VERSION_REQUIRED when absent and 409 RESOURCE_VERSION_CONFLICT when stale.
-    Those operations are not exposed here. Browser Gateway/CORS changes require a separate decision.
+    Delete is not exposed here. Browser Gateway/CORS changes require a separate decision.
     Write keys are canonical UUIDv7, unique per identity across Example write operations and tenants.
-    Same method, canonical path and normalized body replay the original status/body/Location for
+    Same method, canonical path, If-Match version (for updates) and normalized body replay the original status/body/Location for
     24 hours from completion. Omitted and null description are equivalent; whitespace is preserved.
     Different request or tenant returns 409 IDEMPOTENCY_KEY_REUSED; an unfinished request returns
     409 IDEMPOTENCY_REQUEST_IN_PROGRESS with Retry-After. Format/field 400 and uncommitted infrastructure
@@ -22,6 +22,40 @@ security:
   - bearerAuth: []
 paths:
   /api/v1/projects:
+    get:
+      operationId: listProjects
+      x-service-id: project-service
+      x-credential-requirement: USER_REQUIRED
+      description: |
+        Current Tenant only, ordered by id ASC (UUIDv7, stable final key).
+        Cursor is opaque and bound to the projects-v1 collection, Tenant, limit and a visible anchor ID.
+        Keep limit unchanged across pages; invalid, foreign or mismatched cursors are rejected.
+        Static data has no duplicates or omissions; concurrent inserts/updates do not provide snapshot semantics.
+        Unknown or repeated query parameters and empty cursor/limit are rejected.
+      parameters:
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+        - name: cursor
+          in: query
+          schema: {type: string, minLength: 1, maxLength: 256}
+      responses:
+        '200':
+          description: Page; the final page has nextCursor null and hasMore false.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectPage'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NoTenantContext'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '503':
+          $ref: '#/components/responses/Unavailable'
     post:
       operationId: createProject
       x-service-id: project-service
@@ -73,6 +107,82 @@ paths:
         '503':
           $ref: '#/components/responses/Unavailable'
   /api/v1/projects/{projectId}:
+    put:
+      operationId: updateProject
+      x-service-id: project-service
+      x-credential-requirement: USER_REQUIRED
+      description: |
+        Replace name and description; omitted/null description clears it, duplicates remain legal.
+        Atomic version comparison increments version exactly once and maintains updatedAt.
+        ID, Tenant and createdAt remain unchanged. Same-key replay precedes version comparison.
+        PROJECT_NOT_FOUND and RESOURCE_VERSION_CONFLICT are stable replayable business results.
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/UuidV7'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/UuidV7'
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^"[1-9][0-9]{0,18}"$'
+          description: Single quoted positive int64 version; at most 9223372036854775807. No wildcard, list or weak tag.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProject'
+      responses:
+        '200':
+          description: Updated Project or original replay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NoTenantContext'
+        '404':
+          description: PROJECT_NOT_FOUND; absent and foreign resources are indistinguishable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+        '409':
+          description: RESOURCE_VERSION_CONFLICT, IDEMPOTENCY_KEY_REUSED or IDEMPOTENCY_REQUEST_IN_PROGRESS.
+          headers:
+            Retry-After:
+              description: Present only for in-progress requests; retry after one second.
+              schema: {type: integer, minimum: 1}
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+        '428':
+          description: VERSION_REQUIRED; no key is reserved.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/Unavailable'
     get:
       operationId: getProject
       x-service-id: project-service
@@ -130,6 +240,18 @@ components:
           maxLength: 2000
           pattern: '^[^\u0000]*$'
           description: Optional; omitted and null both mean no description.
+    ProjectPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor, hasMore]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/Project'
+        nextCursor: {type: [string, 'null'], maxLength: 256}
+        hasMore: {type: boolean}
     Project:
       type: object
       additionalProperties: false
@@ -168,7 +290,7 @@ components:
           schema:
             $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
     UnsupportedMediaType:
-      description: UNSUPPORTED_MEDIA_TYPE; creation requires application/json.
+      description: UNSUPPORTED_MEDIA_TYPE; creation and update require application/json.
       content:
         application/problem+json:
           schema:

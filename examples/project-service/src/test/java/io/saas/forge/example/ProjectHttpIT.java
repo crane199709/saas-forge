@@ -339,6 +339,237 @@ class ProjectHttpIT {
         } finally { worker.shutdownNow(); pool.setMaximumPoolSize(1); }
     }
 
+    @Test void projectPagesAreStableTenantScopedAndValidateCursors() throws Exception {
+        String tenant = key();
+        var ids = new ArrayList<String>();
+        for (int i = 0; i < 5; i++) {
+            var created = create(tenant, key(), "{\"name\":\"Duplicate\"}");
+            assertThat(created.statusCode()).isEqualTo(201);
+            ids.add(JSON.readTree(created.body()).path("id").asText());
+        }
+        var seen = new ArrayList<String>();
+        String cursor = null;
+        do {
+            var response = request("GET", "/api/v1/projects?limit=2" + (cursor == null ? "" : "&cursor=" + cursor),
+                    token(tenant, false), null, null);
+            assertThat(response.statusCode()).as(response.body()).isEqualTo(200);
+            var page = JSON.readTree(response.body());
+            page.path("items").forEach(item -> seen.add(item.path("id").asText()));
+            if (cursor == null) {
+                String next = page.path("nextCursor").asText();
+                assertProblem(request("GET", "/api/v1/projects?limit=2&cursor=" + next, token(B, false), null, null), 400, "VALIDATION_FAILED");
+                assertProblem(request("GET", "/api/v1/projects?limit=3&cursor=" + next, token(tenant, false), null, null), 400, "VALIDATION_FAILED");
+            }
+            cursor = page.path("nextCursor").isNull() ? null : page.path("nextCursor").asText();
+            assertThat(page.path("hasMore").asBoolean()).isEqualTo(cursor != null);
+        } while (cursor != null);
+        ids.sort(String::compareTo);
+        assertThat(seen).containsExactlyElementsOf(ids);
+        for (String query : List.of("limit=0", "limit=101", "limit=x", "limit=", "limit=1&limit=2", "cursor=bad", "cursor=", "tenantId=" + B))
+            assertProblem(request("GET", "/api/v1/projects?" + query, token(tenant, false), null, null), 400, "VALIDATION_FAILED");
+    }
+
+    @Test void updateReplaysItsOriginalResultAndRecoversAfterVersionConflict() throws Exception {
+        var created = create(A, key(), "{\"name\":\"Before\",\"description\":\"old\"}");
+        String path = created.headers().firstValue("Location").orElseThrow();
+        assertThat(create(A, key(), "{\"name\":\"After\"}").statusCode()).isEqualTo(201);
+        String writeKey = key();
+        var first = update(A, path, writeKey, "\"1\"", "{\"name\":\"After\"}");
+        assertThat(first.statusCode()).as(first.body()).isEqualTo(200);
+        var project = JSON.readTree(first.body());
+        assertThat(project.path("name").asText()).isEqualTo("After");
+        assertThat(project.path("description").isNull()).isTrue();
+        assertThat(project.path("version").asLong()).isEqualTo(2);
+        assertThat(project.path("id")).isEqualTo(JSON.readTree(created.body()).path("id"));
+        assertThat(project.path("createdAt")).isEqualTo(JSON.readTree(created.body()).path("createdAt"));
+        assertThat(project.path("updatedAt").asText()).isGreaterThanOrEqualTo(project.path("createdAt").asText());
+        assertThat(update(A, path, writeKey, "\"1\"", "{\"description\":null,\"name\":\"After\"}").body()).isEqualTo(first.body());
+        assertProblem(update(A, path, writeKey, "\"2\"", "{\"name\":\"After\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
+        String staleKey = key();
+        var stale = update(A, path, staleKey, "\"1\"", "{\"name\":\"Lost\"}");
+        assertProblem(stale, 409, "RESOURCE_VERSION_CONFLICT");
+        assertThat(update(A, path, staleKey, "\"1\"", "{\"name\":\"Lost\"}").body()).isEqualTo(stale.body());
+        assertThat(request("GET", path, token(A, false), null, null).body()).isEqualTo(first.body());
+        var recovered = update(A, path, key(), "\"2\"", "{\"name\":\"Recovered\",\"description\":\"new\"}");
+        assertThat(recovered.statusCode()).isEqualTo(200);
+        assertThat(JSON.readTree(recovered.body()).path("version").asLong()).isEqualTo(3);
+        // 后续版本变化后，旧成功与旧冲突仍重放当时的稳定结果。
+        assertThat(update(A, path, writeKey, "\"1\"", "{\"name\":\"After\"}").body()).isEqualTo(first.body());
+        assertThat(update(A, path, staleKey, "\"1\"", "{\"name\":\"Lost\"}").body()).isEqualTo(stale.body());
+    }
+
+    @Test void defaultAndMaximumPagesHaveCorrectTerminalAndEmptyResults() throws Exception {
+        String tenant = key();
+        var empty = JSON.readTree(request("GET", "/api/v1/projects", token(tenant, false), null, null).body());
+        assertThat(empty.path("items").size()).isZero();
+        assertThat(empty.path("nextCursor").isNull()).isTrue();
+        assertThat(empty.path("hasMore").asBoolean()).isFalse();
+        for (int i = 0; i < 101; i++) assertThat(create(tenant, key(), "{\"name\":\"Pages\"}").statusCode()).isEqualTo(201);
+        var first = JSON.readTree(request("GET", "/api/v1/projects", token(tenant, false), null, null).body());
+        assertThat(first.path("items").size()).isEqualTo(50);
+        assertThat(first.path("hasMore").asBoolean()).isTrue();
+        var maximum = JSON.readTree(request("GET", "/api/v1/projects?limit=100", token(tenant, false), null, null).body());
+        assertThat(maximum.path("items").size()).isEqualTo(100);
+        String cursor = maximum.path("nextCursor").asText();
+        var last = JSON.readTree(request("GET", "/api/v1/projects?limit=100&cursor=" + cursor, token(tenant, false), null, null).body());
+        assertThat(last.path("items").size()).isEqualTo(1);
+        assertThat(last.path("hasMore").asBoolean()).isFalse();
+        assertThat(last.path("nextCursor").isNull()).isTrue();
+        var exact = JSON.readTree(request("GET", "/api/v1/projects?limit=1&cursor=" +
+                java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(("projects-v1:" + tenant + ":1:" +
+                        maximum.path("items").get(99).path("id").asText()).getBytes(StandardCharsets.UTF_8)), token(tenant, false), null, null).body());
+        assertThat(exact.path("items").size()).isEqualTo(1);
+        assertThat(exact.path("hasMore").asBoolean()).isFalse();
+        for (String value : List.of("tasks-v1:" + tenant + ":100:" + key(), "projects-v1:" + tenant + ":100:" + key(),
+                "projects-v1:" + tenant + ":100:invalid")) {
+            String bad = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(value.getBytes(StandardCharsets.UTF_8));
+            assertProblem(request("GET", "/api/v1/projects?limit=100&cursor=" + bad, token(tenant, false), null, null), 400, "VALIDATION_FAILED");
+        }
+    }
+
+    @Test void updateValidationDoesNotReserveKeysAndCannotWriteSystemFields() throws Exception {
+        var created = create(A, key(), "{\"name\":\"Untouched\"}");
+        String path = created.headers().firstValue("Location").orElseThrow();
+        String retryKey = key();
+        assertProblem(update(A, path, retryKey, null, "{\"name\":\"Changed\"}"), 428, "VERSION_REQUIRED");
+        for (String version : List.of("", "1", "\"0\"", "\"01\"", "*", "W/\"1\"", "\"1\",\"2\"", "\"9223372036854775808\""))
+            assertProblem(update(A, path, retryKey, version, "{\"name\":\"Changed\"}"), 400, "VALIDATION_FAILED");
+        for (String body : List.of("{}", "{\"name\":null}", "{\"name\":\" \"}", "{\"name\":42}",
+                "{\"name\":\"" + "x".repeat(201) + "\"}", "{\"name\":\"N\",\"description\":\"" + "x".repeat(2001) + "\"}",
+                "{\"name\":\"N\u0000\"}"))
+            assertProblem(update(A, path, retryKey, "\"1\"", body), 400, "VALIDATION_FAILED");
+        for (String field : List.of("id", "version", "createdAt", "updatedAt", "tenantId", "tenant_id", "TenantId"))
+            assertProblem(update(A, path, retryKey, "\"1\"", "{\"name\":\"Changed\",\"" + field + "\":null}"), 400, "VALIDATION_FAILED");
+        assertThat(request("GET", path, token(A, false), null, null).body()).isEqualTo(created.body());
+        assertThat(update(A, path, retryKey, "\"1\"", "{\"name\":\"" + "😀".repeat(200) + "\"}").statusCode()).isEqualTo(200);
+    }
+
+    @Test void tenantSwitchCannotListReferenceUpdateOrReplayForeignProjects() throws Exception {
+        String tenant = key();
+        String createKey = key();
+        var created = create(tenant, createKey, "{\"name\":\"Private\"}");
+        String path = created.headers().firstValue("Location").orElseThrow();
+        assertProblem(update(tenant, path, createKey, "\"1\"", "{\"name\":\"Private\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
+        String updateKey = key();
+        var own = update(tenant, path, updateKey, "\"1\"", "{\"name\":\"Private\"}");
+        assertThat(own.statusCode()).isEqualTo(200);
+        assertProblem(create(tenant, updateKey, "{\"name\":\"Private\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
+        assertProblem(update(B, path, updateKey, "\"1\"", "{\"name\":\"Private\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
+        String foreignKey = key();
+        var denied = update(B, path, foreignKey, "\"2\"", "{\"name\":\"Intrusion\"}");
+        assertProblem(denied, 404, "PROJECT_NOT_FOUND");
+        assertThat(update(B, path, foreignKey, "\"2\"", "{\"name\":\"Intrusion\"}").body()).isEqualTo(denied.body());
+        assertProblem(update(B, "/api/v1/projects/" + key(), key(), "\"1\"", "{\"name\":\"Intrusion\"}"), 404, "PROJECT_NOT_FOUND");
+        assertProblem(request("GET", path, token(B, false), null, null), 404, "PROJECT_NOT_FOUND");
+        var foreignPage = request("GET", "/api/v1/projects?limit=100", token(B, false), null, null);
+        assertThat(foreignPage.statusCode()).isEqualTo(200);
+        assertThat(JSON.readTree(foreignPage.body()).path("items")).noneSatisfy(item -> assertThat(item.path("id")).isEqualTo(JSON.readTree(created.body()).path("id")));
+        assertThat(request("GET", path, token(tenant, false), null, null).body()).isEqualTo(own.body());
+        for (String credential : Arrays.asList(null, "Bearer invalid", token(null, true))) {
+            assertProblem(request("GET", "/api/v1/projects", credential, null, null), 401, "ACCESS_TOKEN_INVALID");
+            assertProblem(request("PUT", path, credential, key(), "{\"name\":\"Denied\"}"), 401, "ACCESS_TOKEN_INVALID");
+        }
+        for (String method : List.of("GET", "PUT"))
+            assertProblem(request(method, method.equals("GET") ? "/api/v1/projects" : path, token(null, false), key(),
+                    method.equals("GET") ? null : "{\"name\":\"Denied\"}"), 403, "ACCESS_CONTEXT_UNAVAILABLE");
+    }
+
+    @Test void versionedUpdateInfrastructureFailureRollsBackAndReleasesTheKey() throws Exception {
+        var created = create(A, key(), "{\"name\":\"Rollback update\"}");
+        String path = created.headers().firstValue("Location").orElseThrow();
+        String writeKey = key();
+        try (var migration = migratorConnection()) {
+            execute(migration, "CREATE FUNCTION reject_update_test() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test update outage'; END $$");
+            execute(migration, "CREATE TRIGGER reject_update_test BEFORE UPDATE ON projects FOR EACH ROW EXECUTE FUNCTION reject_update_test()");
+            try { assertProblem(update(A, path, writeKey, "\"1\"", "{\"name\":\"Retry\"}"), 503, "INFRASTRUCTURE_UNAVAILABLE"); }
+            finally {
+                execute(migration, "DROP TRIGGER reject_update_test ON projects");
+                execute(migration, "DROP FUNCTION reject_update_test()");
+            }
+        }
+        assertThat(request("GET", path, token(A, false), null, null).body()).isEqualTo(created.body());
+        try (var connection = app.getBean(javax.sql.DataSource.class).getConnection()) {
+            assertThat(scalar(connection, "SELECT count(*) FROM projects")).isZero();
+            assertThat(scalar(connection, "SELECT count(*) FROM project_write_results")).isZero();
+        }
+        assertThat(update(A, path, writeKey, "\"1\"", "{\"name\":\"Retry\"}").statusCode()).isEqualTo(200);
+    }
+
+    @Test void databaseUpdatePrivilegesPreserveRlsAndImmutableOwnership() throws Exception {
+        var a = create(A, key(), "{\"name\":\"DB A\"}");
+        var b = create(B, key(), "{\"name\":\"DB B\"}");
+        try (var connection = runtimeConnection()) {
+            assertThat(scalar(connection, "SELECT count(*) FROM information_schema.column_privileges WHERE grantee='project_app' AND table_name='projects' AND privilege_type='UPDATE' AND column_name IN ('tenant_id','id','created_at')")).isZero();
+            assertThat(scalar(connection, "SELECT count(*) FROM information_schema.column_privileges WHERE grantee='project_app' AND table_name='projects' AND privilege_type='UPDATE'")).isEqualTo(4);
+            for (String context : List.of("", "invalid", A)) {
+                connection.setAutoCommit(false);
+                try {
+                    setTenant(connection, context);
+                    try (var statement = connection.createStatement()) {
+                        if (context.equals("invalid")) org.junit.jupiter.api.Assertions.assertThrows(SQLException.class,
+                                () -> statement.executeUpdate("UPDATE projects SET name='Forbidden'"));
+                        else if (context.isEmpty()) assertThat(statement.executeUpdate("UPDATE projects SET name='Forbidden'")).isZero();
+                        else {
+                            assertThat(statement.executeUpdate("UPDATE projects SET name='Forbidden' WHERE tenant_id='" + B + "'")).isZero();
+                            assertThat(statement.executeUpdate("UPDATE projects SET name='Owned'")).isGreaterThan(0);
+                        }
+                    }
+                } finally { connection.rollback(); connection.setAutoCommit(true); }
+            }
+        }
+        assertThat(request("GET", a.headers().firstValue("Location").orElseThrow(), token(A, false), null, null).body()).isEqualTo(a.body());
+        assertThat(request("GET", b.headers().firstValue("Location").orElseThrow(), token(B, false), null, null).body()).isEqualTo(b.body());
+    }
+
+    @Test @Order(Integer.MAX_VALUE - 1) void twoIdentitiesCompetingForOneVersionHaveExactlyOneWinner() throws Exception {
+        var created = create(A, key(), "{\"name\":\"Concurrent update\"}");
+        String path = created.headers().firstValue("Location").orElseThrow();
+        String id = JSON.readTree(created.body()).path("id").asText();
+        var pool = app.getBean(com.zaxxer.hikari.HikariDataSource.class);
+        pool.setMaximumPoolSize(2);
+        var workers = java.util.concurrent.Executors.newFixedThreadPool(2);
+        String firstKey = key();
+        String secondKey = key();
+        try (var migration = migratorConnection()) {
+            migration.setAutoCommit(false);
+            execute(migration, "SELECT id FROM projects WHERE id='" + id + "' FOR UPDATE");
+            var first = workers.submit(() -> update(A, path, firstKey, "\"1\"", "{\"name\":\"Winner A\"}"));
+            String otherIdentity = key();
+            var second = workers.submit(() -> HTTP.send(HttpRequest.newBuilder(URI.create(base + path))
+                    .header("Authorization", token(A, false, otherIdentity)).header("Idempotency-Key", secondKey)
+                    .header("If-Match", "\"1\"").header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString("{\"name\":\"Winner B\"}")).build(), HttpResponse.BodyHandlers.ofString()));
+            try {
+                long deadline = System.nanoTime() + java.time.Duration.ofSeconds(10).toNanos();
+                boolean bothWaiting = false;
+                while (System.nanoTime() < deadline && !bothWaiting) {
+                    try (var observer = DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())) {
+                        bothWaiting = scalar(observer, "SELECT count(*) FROM pg_stat_activity WHERE usename='project_app' AND wait_event_type='Lock'") == 2;
+                    }
+                    if (!bothWaiting) Thread.sleep(20);
+                }
+                assertThat(bothWaiting).as("both HTTP writes reached the locked resource with independent connections").isTrue();
+            } finally { migration.rollback(); }
+            var responses = List.of(first.get(10, java.util.concurrent.TimeUnit.SECONDS), second.get(10, java.util.concurrent.TimeUnit.SECONDS));
+            assertThat(responses).extracting(HttpResponse::statusCode).containsExactlyInAnyOrder(200, 409);
+            var winner = responses.stream().filter(response -> response.statusCode() == 200).findFirst().orElseThrow();
+            var loser = responses.stream().filter(response -> response.statusCode() == 409).findFirst().orElseThrow();
+            assertProblem(loser, 409, "RESOURCE_VERSION_CONFLICT");
+            var read = request("GET", path, token(A, false), null, null);
+            assertThat(read.body()).isEqualTo(winner.body());
+            assertThat(JSON.readTree(read.body()).path("version").asLong()).isEqualTo(2);
+            assertThat(update(A, path, key(), "\"2\"", "{\"name\":\"Recovered\"}").statusCode()).isEqualTo(200);
+        } finally { workers.shutdownNow(); pool.setMaximumPoolSize(1); }
+    }
+
+    static HttpResponse<String> update(String tenant, String path, String key, String version, String body) throws Exception {
+        var builder = HttpRequest.newBuilder(URI.create(base + path)).header("Authorization", token(tenant, false))
+                .header("Content-Type", "application/json");
+        if (key != null) builder.header("Idempotency-Key", key);
+        if (version != null) builder.header("If-Match", version);
+        return HTTP.send(builder.PUT(HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
+    }
+
     static Connection runtimeConnection() throws SQLException { return DriverManager.getConnection(databaseUrl(), "project_app", "test-app"); }
     static Connection migratorConnection() throws SQLException { return DriverManager.getConnection(databaseUrl(), "project_migrator", "test-migrator"); }
     static void execute(Connection connection, String sql) throws SQLException {
@@ -368,18 +599,20 @@ class ProjectHttpIT {
         if (token != null) builder.header("Authorization", token);
         if (key != null) builder.header("Idempotency-Key", key);
         if (body != null) builder.header("Content-Type", "application/json");
+        if (method.equals("PUT")) builder.header("If-Match", "\"1\"");
         return HTTP.send(builder.method(method, body == null ? HttpRequest.BodyPublishers.noBody()
                 : HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
     }
     static String databaseUrl() { return "jdbc:postgresql://" + POSTGRES.getHost() + ":" + POSTGRES.getMappedPort(5432) + "/project_db"; }
     static String key() { return "019535d9-3df7-7" + UUID.randomUUID().toString().substring(15); }
-    static String token(String tenant, boolean service) throws Exception {
+    static String token(String tenant, boolean service) throws Exception { return token(tenant, service, ID); }
+    static String token(String tenant, boolean service, String identity) throws Exception {
         Instant now = Instant.now();
         var claims = new JWTClaimsSet.Builder().issuer("example-test").audience("saas.forge-api")
                 .issueTime(java.util.Date.from(now)).expirationTime(java.util.Date.from(now.plusSeconds(service ? 300 : 900))).jwtID(key());
         if (service) claims.subject(ID).claim("client_id", ID).claim("scope", "runtime:read");
         else {
-            claims.claim("identityId", ID);
+            claims.claim("identityId", identity);
             if (tenant != null) claims.claim("membershipId", tenant).claim("tenantId", tenant);
         }
         var jwt = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(signingKey.getKeyID())
