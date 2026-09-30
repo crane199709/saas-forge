@@ -43,6 +43,50 @@ class TaskService {
         return result;
     }
 
+    @Transactional
+    public ProjectWriteResult update(UUID project, UUID id, UUID idempotencyKey, long version,
+            UpdateTaskRequest request, String traceId) {
+        var context = tenants.requireCurrent();
+        projects.tenant(context.tenantId());
+        var key = new ProjectWriteRepository.WriteKey(context.identityId(), idempotencyKey, context.tenantId(),
+                ProjectWriteRepository.fingerprint("PUT", taskPath(project, id), version + "\n" + json.writeValueAsString(request)));
+        var replay = writes.begin(key);
+        if (replay.isPresent()) return replay.get();
+        var updated = tasks.update(project, id, version, request);
+        var result = updated.isPresent() ? new ProjectWriteResult(200, json.writeValueAsString(updated.get()), null)
+                : writeFailure(project, id, traceId);
+        writes.complete(key, result);
+        return result;
+    }
+
+    @Transactional
+    public ProjectWriteResult delete(UUID project, UUID id, UUID idempotencyKey, long version, String traceId) {
+        var context = tenants.requireCurrent();
+        projects.tenant(context.tenantId());
+        var key = new ProjectWriteRepository.WriteKey(context.identityId(), idempotencyKey, context.tenantId(),
+                ProjectWriteRepository.fingerprint("DELETE", taskPath(project, id), Long.toString(version)));
+        // 先重放，再检查资源存在性，确保删除后的同键重试仍返回原成功。
+        var replay = writes.begin(key);
+        if (replay.isPresent()) return replay.get();
+        var result = tasks.delete(project, id, version) ? new ProjectWriteResult(204, "", null)
+                : writeFailure(project, id, traceId);
+        writes.complete(key, result);
+        return result;
+    }
+
+    private ProjectWriteResult writeFailure(UUID project, UUID id, String traceId) {
+        boolean parentExists = projects.find(project).isPresent();
+        boolean taskExists = parentExists && tasks.find(project, id).isPresent();
+        int status = taskExists ? 409 : 404;
+        String code = taskExists ? "RESOURCE_VERSION_CONFLICT" : parentExists ? "TASK_NOT_FOUND" : "PROJECT_NOT_FOUND";
+        String detail = taskExists ? "The task version has changed." : parentExists ? "Task not found." : "Project not found.";
+        return new ProjectWriteResult(status, json.writeValueAsString(ProjectProblem.of(status, code, detail, traceId, null)), null);
+    }
+
+    private static String taskPath(UUID project, UUID id) {
+        return "/api/v1/projects/" + project + "/tasks/" + id;
+    }
+
     @Transactional(readOnly = true)
     public TaskResult get(UUID project, UUID id) {
         var context = tenants.requireCurrent();

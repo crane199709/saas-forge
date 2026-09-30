@@ -891,4 +891,303 @@ class ProjectHttpIT {
         jwt.sign(new RSASSASigner(signingKey));
         return "Bearer " + jwt.serialize();
     }
+    @Test void taskCanBeUpdatedReopenedAndPermanentlyDeletedWithReplay() throws Exception {
+        String parent = create(A, key(), "{\"name\":\"Task writes\"}").headers().firstValue("Location").orElseThrow();
+        var created = taskCreate(A, parent, key(), "{\"title\":\"Original\",\"description\":\"Old\"}");
+        String path = created.headers().firstValue("Location").orElseThrow();
+        var original = JSON.readTree(created.body());
+        long version = 1;
+        // 覆盖三种状态的全部有向转换，包括已完成后重新打开。
+        for (String status : List.of("IN_PROGRESS", "DONE", "TODO", "DONE", "IN_PROGRESS", "TODO")) {
+            String writeKey = key();
+            String body = "{\"title\":\"Updated\",\"status\":\"" + status + "\"}";
+            var changed = update(A, path, writeKey, "\"" + version + "\"", body);
+            assertThat(changed.statusCode()).isEqualTo(200);
+            var task = JSON.readTree(changed.body());
+            assertThat(task.path("status").asText()).isEqualTo(status);
+            assertThat(task.path("version").asLong()).isEqualTo(++version);
+            assertThat(task.path("title").asText()).isEqualTo("Updated");
+            assertThat(task.path("description").isNull()).isTrue();
+            for (String field : List.of("id", "projectId", "createdAt"))
+                assertThat(task.path(field)).isEqualTo(original.path(field));
+            assertThat(update(A, path, writeKey, "\"" + (version - 1) + "\"", body).body()).isEqualTo(changed.body());
+            assertThat(request("GET", path, token(A, false), null, null).body()).isEqualTo(changed.body());
+        }
+        String staleKey = key();
+        var stale = taskDelete(A, path, staleKey, "\"1\"");
+        assertProblem(stale, 409, "RESOURCE_VERSION_CONFLICT");
+        assertThat(taskDelete(A, path, staleKey, "\"1\"").body()).isEqualTo(stale.body());
+        assertThat(JSON.readTree(request("GET", path, token(A, false), null, null).body()).path("version").asLong()).isEqualTo(version);
+        String deleteKey = key();
+        var deleted = taskDelete(A, path, deleteKey, "\"" + version + "\"");
+        assertThat(deleted.statusCode()).isEqualTo(204);
+        assertThat(deleted.body()).isEmpty();
+        assertThat(taskDelete(A, path, deleteKey, "\"" + version + "\"").statusCode()).isEqualTo(204);
+        assertProblem(request("GET", path, token(A, false), null, null), 404, "TASK_NOT_FOUND");
+        assertProblem(taskDelete(A, path, key(), "\"" + version + "\""), 404, "TASK_NOT_FOUND");
+        assertThat(JSON.readTree(request("GET", parent + "/tasks", token(A, false), null, null).body()).path("items")).isEmpty();
+    }
+
+    static HttpResponse<String> taskDelete(String tenant, String path, String key, String version) throws Exception {
+        var builder = HttpRequest.newBuilder(URI.create(base + path)).header("Authorization", token(tenant, false));
+        if (key != null) builder.header("Idempotency-Key", key);
+        if (version != null) builder.header("If-Match", version);
+        return HTTP.send(builder.DELETE().build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    @Test void taskWriteValidationDoesNotReserveKeysOrAllowImmutableInputs() throws Exception {
+        String parent = projectPath(A);
+        var created = taskCreate(A, parent, key(), "{\"title\":\"Original\"}");
+        String path = created.headers().firstValue("Location").orElseThrow();
+        String writeKey = key();
+        String valid = "{\"title\":\"Valid\",\"status\":\"DONE\"}";
+        for (String body : List.of("{}", "{\"title\":\"ok\"}", "{\"title\":\"ok\",\"status\":null}",
+                "{\"title\":\"ok\",\"status\":\"done\"}", "{\"title\":\"ok\",\"status\":\"INVALID\"}",
+                "{\"title\":\"ok\",\"status\":1}", "{\"title\":\"ok\",\"status\":\"1\"}",
+                "{\"title\":\"ok\",\"status\":\" DONE \"}", "{\"title\":42,\"status\":\"TODO\"}",
+                "{\"title\":\"   \",\"status\":\"TODO\"}", "{\"title\":\"a\\u0000b\",\"status\":\"TODO\"}",
+                "{\"title\":\"" + "x".repeat(201) + "\",\"status\":\"TODO\"}",
+                "{\"title\":\"ok\",\"description\":\"" + "x".repeat(2001) + "\",\"status\":\"TODO\"}",
+                "{\"title\":\"ok\",\"description\":\"\\u0000\",\"status\":\"TODO\"}"))
+            assertProblem(update(A, path, writeKey, "\"1\"", body), 400, "VALIDATION_FAILED");
+        for (String field : List.of("id", "tenantId", "tenant_id", "projectId", "project_id", "version", "createdAt", "updatedAt"))
+            assertProblem(update(A, path, writeKey, "\"1\"", valid.substring(0, valid.length()-1) + ",\"" + field + "\":null}"), 400, "VALIDATION_FAILED");
+        for (String method : List.of("PUT", "DELETE")) {
+            assertProblem(method.equals("PUT") ? update(A, path, writeKey, null, valid) : taskDelete(A, path, writeKey, null), 428, "VERSION_REQUIRED");
+            assertProblem(method.equals("PUT") ? update(A, path, null, "\"1\"", valid) : taskDelete(A, path, null, "\"1\""), 400, "IDEMPOTENCY_KEY_REQUIRED");
+            for (String version : List.of("1", "\"0\"", "\"-1\"", "*", "W/\"1\"", "\"1\",\"2\"", "\"9223372036854775808\""))
+                assertProblem(method.equals("PUT") ? update(A, path, writeKey, version, valid) : taskDelete(A, path, writeKey, version), 400, "VALIDATION_FAILED");
+            for (String invalidKey : List.of("bad", UUID.randomUUID().toString(), key().toUpperCase(Locale.ROOT)))
+                assertProblem(method.equals("PUT") ? update(A, path, invalidKey, "\"1\"", valid) : taskDelete(A, path, invalidKey, "\"1\""), 400, "IDEMPOTENCY_KEY_INVALID");
+        }
+        assertThat(request("GET", path, token(A, false), null, null).body()).isEqualTo(created.body());
+        var changed = update(A, path, writeKey, "\"1\"", "{\"title\":\"" + "😀".repeat(200) + "\",\"description\":\"" + "😀".repeat(2000) + "\",\"status\":\"DONE\"}");
+        assertThat(changed.statusCode()).isEqualTo(200);
+        assertThat(JSON.readTree(changed.body()).path("updatedAt").asText()).matches("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z");
+        assertThat(taskDelete(A, path, key(), "\"2\"").statusCode()).isEqualTo(204);
+    }
+
+    @Test void taskWritesRejectForeignTenantsParentsAndUntrustedContexts() throws Exception {
+        String parentA = projectPath(A), parentB = projectPath(B), otherA = projectPath(A);
+        var a = taskCreate(A, parentA, key(), "{\"title\":\"A\"}");
+        var b = taskCreate(B, parentB, key(), "{\"title\":\"B\"}");
+        String pathA = a.headers().firstValue("Location").orElseThrow(), pathB = b.headers().firstValue("Location").orElseThrow();
+        String body = "{\"title\":\"Changed\",\"status\":\"IN_PROGRESS\"}";
+        for (String method : List.of("PUT", "DELETE")) {
+            for (String[] attempt : List.of(new String[]{B, pathA, "PROJECT_NOT_FOUND"}, new String[]{A, pathB, "PROJECT_NOT_FOUND"},
+                    new String[]{A, otherA + pathA.substring(parentA.length()), "TASK_NOT_FOUND"},
+                    new String[]{A, parentA + "/tasks/" + key(), "TASK_NOT_FOUND"})) {
+                String writeKey = key();
+                var denied = method.equals("PUT") ? update(attempt[0], attempt[1], writeKey, "\"1\"", body) : taskDelete(attempt[0], attempt[1], writeKey, "\"1\"");
+                assertProblem(denied, 404, attempt[2]);
+                var replay = method.equals("PUT") ? update(attempt[0], attempt[1], writeKey, "\"1\"", body) : taskDelete(attempt[0], attempt[1], writeKey, "\"1\"");
+                assertThat(replay.body()).isEqualTo(denied.body());
+            }
+            String platformToken = token(null, false);
+            for (String credential : Arrays.asList(null, "Bearer invalid", token(null, true), platformToken)) {
+                var builder = HttpRequest.newBuilder(URI.create(base + pathA)).header("Idempotency-Key", key())
+                        .header("If-Match", "\"1\"").header("Content-Type", "application/json");
+                if (credential != null) builder.header("Authorization", credential);
+                var denied = HTTP.send(builder.method(method, method.equals("PUT") ? HttpRequest.BodyPublishers.ofString(body) : HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString());
+                assertProblem(denied, credential != null && credential.equals(platformToken) ? 403 : 401,
+                        credential != null && credential.equals(platformToken) ? "ACCESS_CONTEXT_UNAVAILABLE" : "ACCESS_TOKEN_INVALID");
+            }
+            for (String input : List.of("header", "query")) {
+                var builder = HttpRequest.newBuilder(URI.create(base + pathA + (input.equals("query") ? "?tenantId=" + B : "")))
+                        .header("Authorization", token(A, false)).header("Idempotency-Key", key()).header("If-Match", "\"1\"")
+                        .header("Content-Type", "application/json");
+                if (input.equals("header")) builder.header("X-Tenant-Id", B);
+                var denied = HTTP.send(builder.method(method, method.equals("PUT") ? HttpRequest.BodyPublishers.ofString(body) : HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString());
+                assertProblem(denied, 400, input.equals("header") ? "UNTRUSTED_CONTEXT_HEADER" : "VALIDATION_FAILED");
+            }
+        }
+        assertThat(request("GET", pathA, token(A, false), null, null).body()).isEqualTo(a.body());
+        assertThat(request("GET", pathB, token(B, false), null, null).body()).isEqualTo(b.body());
+        for (String[] own : List.of(new String[]{A, pathA}, new String[]{B, pathB})) {
+            String writeKey = key();
+            var changed = update(own[0], own[1], writeKey, "\"1\"", body);
+            assertThat(changed.statusCode()).isEqualTo(200);
+            assertProblem(update(own[0].equals(A) ? B : A, own[1], writeKey, "\"1\"", body), 409, "IDEMPOTENCY_KEY_REUSED");
+            assertProblem(taskDelete(own[0], own[1], writeKey, "\"2\""), 409, "IDEMPOTENCY_KEY_REUSED");
+            assertProblem(taskCreate(own[0], own[0].equals(A) ? parentA : parentB, writeKey, "{\"title\":\"Changed\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
+            assertProblem(create(own[0], writeKey, "{\"name\":\"Changed\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
+            String deleteKey = key();
+            assertThat(taskDelete(own[0], own[1], deleteKey, "\"2\"").statusCode()).isEqualTo(204);
+            assertProblem(taskDelete(own[0].equals(A) ? B : A, own[1], deleteKey, "\"2\""), 409, "IDEMPOTENCY_KEY_REUSED");
+            assertProblem(update(own[0], own[1], deleteKey, "\"2\"", body), 409, "IDEMPOTENCY_KEY_REUSED");
+        }
+    }
+
+    @Test void taskInfrastructureFailuresRollBackMutationAndReleaseKey() throws Exception {
+        String parent = projectPath(A);
+        var created = taskCreate(A, parent, key(), "{\"title\":\"Rollback\"}");
+        String path = created.headers().firstValue("Location").orElseThrow();
+        String id = JSON.readTree(created.body()).path("id").asText();
+        long version = 1;
+        for (String method : List.of("UPDATE", "DELETE")) {
+            String writeKey = key(), tag = "\"" + version + "\"";
+            String before = request("GET", path, token(A, false), null, null).body();
+            try (var migration = migratorConnection()) {
+                // 在实际变更之后制造失败，验证数据与幂等完成记录整体回滚。
+                execute(migration, "CREATE FUNCTION fail_task_write_test() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test outage'; END $$");
+                execute(migration, "CREATE TRIGGER fail_task_write_test AFTER " + method + " ON tasks FOR EACH ROW EXECUTE FUNCTION fail_task_write_test()");
+                try {
+                    assertProblem(method.equals("UPDATE") ? update(A, path, writeKey, tag, "{\"title\":\"Retry\",\"status\":\"DONE\"}") : taskDelete(A, path, writeKey, tag), 503, "INFRASTRUCTURE_UNAVAILABLE");
+                } finally {
+                    execute(migration, "DROP TRIGGER fail_task_write_test ON tasks");
+                    execute(migration, "DROP FUNCTION fail_task_write_test()");
+                }
+                assertThat(scalar(migration, "SELECT count(*) FROM project_write_results WHERE idempotency_key='" + writeKey + "'")).isZero();
+                assertThat(scalar(migration, "SELECT count(*) FROM tasks WHERE id='" + id + "' AND version=" + version)).isEqualTo(1);
+            }
+            assertThat(request("GET", path, token(A, false), null, null).body()).isEqualTo(before);
+            var retry = method.equals("UPDATE") ? update(A, path, writeKey, tag, "{\"title\":\"Retry\",\"status\":\"DONE\"}") : taskDelete(A, path, writeKey, tag);
+            assertThat(retry.statusCode()).isEqualTo(method.equals("UPDATE") ? 200 : 204);
+            version++;
+        }
+        try (var migration = migratorConnection(); var runtime = runtimeConnection()) {
+            assertThat(scalar(migration, "SELECT count(*) FROM tasks WHERE id='" + id + "'")).isZero();
+            assertThat(scalar(runtime, "SELECT count(*) FROM tasks")).isZero();
+        }
+    }
+
+    @Test void taskRuntimeWritesCannotBypassRlsOrChangeOwnership() throws Exception {
+        String parentA = projectPath(A), parentB = projectPath(B);
+        String pathA = taskCreate(A, parentA, key(), "{\"title\":\"RLS A\"}").headers().firstValue("Location").orElseThrow();
+        String pathB = taskCreate(B, parentB, key(), "{\"title\":\"RLS B\"}").headers().firstValue("Location").orElseThrow();
+        try (var runtime = runtimeConnection()) {
+            for (String tenant : Arrays.asList(null, "", "invalid", A, B)) {
+                runtime.setAutoCommit(false);
+                try {
+                    if (tenant != null) setTenant(runtime, tenant);
+                    if ("invalid".equals(tenant)) {
+                        org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () -> execute(runtime, "UPDATE tasks SET status='DONE'"));
+                        runtime.rollback(); setTenant(runtime, tenant);
+                        org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () -> execute(runtime, "DELETE FROM tasks"));
+                    } else {
+                        long visible = scalar(runtime, "SELECT count(*) FROM tasks");
+                        if (tenant == null || tenant.isEmpty()) assertThat(visible).isZero();
+                        try (var statement = runtime.createStatement()) {
+                            assertThat(statement.executeUpdate("UPDATE tasks SET status='DONE'")).isEqualTo((int) visible);
+                            assertThat(statement.executeUpdate("DELETE FROM tasks")).isEqualTo((int) visible);
+                        }
+                        if (tenant != null && !tenant.isEmpty()) {
+                            runtime.rollback(); setTenant(runtime, tenant);
+                            String foreign = tenant.equals(A) ? B : A;
+                            try (var statement = runtime.createStatement()) {
+                                assertThat(statement.executeUpdate("UPDATE tasks SET title='Intrusion' WHERE tenant_id='" + foreign + "'")).isZero();
+                                assertThat(statement.executeUpdate("DELETE FROM tasks WHERE tenant_id='" + foreign + "'")).isZero();
+                            }
+                        }
+                    }
+                } finally { runtime.rollback(); runtime.setAutoCommit(true); }
+                assertThat(scalar(runtime, "SELECT count(*) FROM tasks")).isZero();
+            }
+            for (String field : List.of("id", "tenant_id", "project_id", "created_at")) {
+                runtime.setAutoCommit(false);
+                try {
+                    setTenant(runtime, A);
+                    var denied = org.junit.jupiter.api.Assertions.assertThrows(SQLException.class,
+                            () -> execute(runtime, "UPDATE tasks SET " + field + "=" + field));
+                    assertThat(denied.getSQLState()).isEqualTo("42501");
+                } finally { runtime.rollback(); runtime.setAutoCommit(true); }
+            }
+        }
+        assertThat(JSON.readTree(request("GET", pathA, token(A, false), null, null).body()).path("status").asText()).isEqualTo("TODO");
+        assertThat(JSON.readTree(request("GET", pathB, token(B, false), null, null).body()).path("status").asText()).isEqualTo("TODO");
+    }
+
+    @Test @Order(Integer.MAX_VALUE - 1) void taskConcurrentUpdatesHaveOneWinnerAndAllowConflictRecovery() throws Exception {
+        var created = taskCreate(A, projectPath(A), key(), "{\"title\":\"Concurrent update\"}");
+        String path = created.headers().firstValue("Location").orElseThrow();
+        String id = JSON.readTree(created.body()).path("id").asText();
+        var pool = app.getBean(com.zaxxer.hikari.HikariDataSource.class);
+        pool.setMaximumPoolSize(2);
+        var workers = java.util.concurrent.Executors.newFixedThreadPool(2);
+        String firstKey = key();
+        String secondKey = key();
+        try (var migration = migratorConnection()) {
+            migration.setAutoCommit(false);
+            execute(migration, "SELECT id FROM tasks WHERE id='" + id + "' FOR UPDATE");
+            var first = workers.submit(() -> update(A, path, firstKey, "\"1\"", "{\"title\":\"Winner A\",\"status\":\"IN_PROGRESS\"}"));
+            String otherIdentity = key();
+            var second = workers.submit(() -> HTTP.send(HttpRequest.newBuilder(URI.create(base + path))
+                    .header("Authorization", token(A, false, otherIdentity)).header("Idempotency-Key", secondKey)
+                    .header("If-Match", "\"1\"").header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString("{\"title\":\"Winner B\",\"status\":\"DONE\"}")).build(), HttpResponse.BodyHandlers.ofString()));
+            try {
+                long deadline = System.nanoTime() + java.time.Duration.ofSeconds(10).toNanos();
+                boolean bothWaiting = false;
+                while (System.nanoTime() < deadline && !bothWaiting) {
+                    try (var observer = DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())) {
+                        bothWaiting = scalar(observer, "SELECT count(*) FROM pg_stat_activity WHERE usename='project_app' AND wait_event_type='Lock'") == 2;
+                    }
+                    if (!bothWaiting) Thread.sleep(20);
+                }
+                assertThat(bothWaiting).as("both HTTP writes reached the locked resource with independent connections").isTrue();
+            } finally { migration.rollback(); }
+            var responses = List.of(first.get(10, java.util.concurrent.TimeUnit.SECONDS), second.get(10, java.util.concurrent.TimeUnit.SECONDS));
+            assertThat(responses).extracting(HttpResponse::statusCode).containsExactlyInAnyOrder(200, 409);
+            var winner = responses.stream().filter(response -> response.statusCode() == 200).findFirst().orElseThrow();
+            var loser = responses.stream().filter(response -> response.statusCode() == 409).findFirst().orElseThrow();
+            assertProblem(loser, 409, "RESOURCE_VERSION_CONFLICT");
+            var firstReplay = update(A, path, firstKey, "\"1\"", "{\"title\":\"Winner A\",\"status\":\"IN_PROGRESS\"}");
+            assertThat(firstReplay.body()).isEqualTo(responses.get(0).body());
+            var secondReplay = HTTP.send(HttpRequest.newBuilder(URI.create(base + path))
+                    .header("Authorization", token(A, false, otherIdentity)).header("Idempotency-Key", secondKey)
+                    .header("If-Match", "\"1\"").header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString("{\"title\":\"Winner B\",\"status\":\"DONE\"}")).build(), HttpResponse.BodyHandlers.ofString());
+            assertThat(secondReplay.body()).isEqualTo(responses.get(1).body());
+            var read = request("GET", path, token(A, false), null, null);
+            assertThat(read.body()).isEqualTo(winner.body());
+            assertThat(JSON.readTree(read.body()).path("version").asLong()).isEqualTo(2);
+            assertThat(update(A, path, key(), "\"2\"", "{\"title\":\"Recovered\",\"status\":\"TODO\"}").statusCode()).isEqualTo(200);
+        } finally { workers.shutdownNow(); pool.setMaximumPoolSize(1); }
+    }
+
+
+    @Test @Order(Integer.MAX_VALUE - 2) void taskWritesReturnInProgressThenReplayAndNormalizeOptionalDescription() throws Exception {
+        var pool = app.getBean(com.zaxxer.hikari.HikariDataSource.class);
+        pool.setMaximumPoolSize(2);
+        var worker = java.util.concurrent.Executors.newSingleThreadExecutor();
+        try {
+            for (String method : List.of("PUT", "DELETE")) {
+                String parent = projectPath(A);
+                var created = taskCreate(A, parent, key(), "{\"title\":\"Pending write\"}");
+                String path = created.headers().firstValue("Location").orElseThrow();
+                String id = JSON.readTree(created.body()).path("id").asText();
+                String writeKey = key(), body = "{\"title\":\"Updated\",\"status\":\"DONE\"}";
+                try (var migration = migratorConnection()) {
+                    migration.setAutoCommit(false);
+                    execute(migration, "SELECT id FROM tasks WHERE id='" + id + "' FOR UPDATE");
+                    var first = worker.submit(() -> method.equals("PUT") ? update(A, path, writeKey, "\"1\"", body) : taskDelete(A, path, writeKey, "\"1\""));
+                    try {
+                        long deadline = System.nanoTime() + java.time.Duration.ofSeconds(10).toNanos();
+                        boolean waiting = false;
+                        while (System.nanoTime() < deadline && !waiting) {
+                            try (var observer = DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())) {
+                                waiting = scalar(observer, "SELECT count(*) FROM pg_stat_activity WHERE usename='project_app' AND wait_event_type='Lock'") > 0;
+                            }
+                            if (!waiting) Thread.sleep(20);
+                        }
+                        assertThat(waiting).as("HTTP Task write reached the held resource lock").isTrue();
+                        var duplicate = method.equals("PUT") ? update(A, path, writeKey, "\"1\"", body) : taskDelete(A, path, writeKey, "\"1\"");
+                        assertProblem(duplicate, 409, "IDEMPOTENCY_REQUEST_IN_PROGRESS");
+                        assertThat(duplicate.headers().firstValue("Retry-After")).contains("1");
+                    } finally { migration.rollback(); }
+                    var completed = first.get(10, java.util.concurrent.TimeUnit.SECONDS);
+                    assertThat(completed.statusCode()).isEqualTo(method.equals("PUT") ? 200 : 204);
+                    var replay = method.equals("PUT") ? update(A, path, writeKey, "\"1\"", "{\"description\":null,\"status\":\"DONE\",\"title\":\"Updated\"}") : taskDelete(A, path, writeKey, "\"1\"");
+                    assertThat(replay.statusCode()).isEqualTo(completed.statusCode());
+                    assertThat(replay.body()).isEqualTo(completed.body());
+                    assertProblem(method.equals("PUT") ? update(A, path, writeKey, "\"2\"", body) : taskDelete(A, path, writeKey, "\"2\""), 409, "IDEMPOTENCY_KEY_REUSED");
+                    if (method.equals("PUT")) {
+                        assertProblem(update(A, path, writeKey, "\"1\"", "{\"title\":\"Different\",\"status\":\"DONE\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
+                        assertThat(JSON.readTree(request("GET", path, token(A, false), null, null).body()).path("version").asLong()).isEqualTo(2);
+                    }
+                }
+            }
+        } finally { worker.shutdownNow(); pool.setMaximumPoolSize(1); }
+    }
+
 }

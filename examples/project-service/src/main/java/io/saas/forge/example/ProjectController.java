@@ -27,7 +27,8 @@ class ProjectController {
         return writeResponse(result);
     }
 
-    private static ResponseEntity<String> writeResponse(ProjectWriteResult result) {
+    static ResponseEntity<String> writeResponse(ProjectWriteResult result) {
+        if (result.status() == 204) return ResponseEntity.noContent().build();
         var response = ResponseEntity.status(result.status()).contentType(org.springframework.http.MediaType.parseMediaType(
                 result.status() < 400 ? "application/json;charset=UTF-8" : "application/problem+json;charset=UTF-8"));
         if (result.location() != null) response.location(URI.create(result.location()));
@@ -60,13 +61,17 @@ class ProjectController {
             @Valid @RequestBody CreateProjectRequest request, HttpServletRequest http) {
         rejectTenantInput(http);
         if (key == null || key.isBlank()) throw new ProjectException(400, "IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key is required.");
+        long expected = version(version);
+        return writeResponse(projects.update(uuid(projectId, "VALIDATION_FAILED"), uuid(key, "IDEMPOTENCY_KEY_INVALID"), expected, request, ProjectExceptionHandler.traceId(http)));
+    }
+
+    static long version(String version) {
         if (version == null) throw new ProjectException(428, "VERSION_REQUIRED", "If-Match is required.");
         if (!version.matches("\"[1-9][0-9]{0,18}\""))
             throw new ProjectException(400, "VALIDATION_FAILED", "A quoted positive version is required.");
-        long expected;
-        try { expected = Long.parseLong(version.substring(1, version.length() - 1)); }
+
+        try { return Long.parseLong(version.substring(1, version.length() - 1)); }
         catch (NumberFormatException invalid) { throw new ProjectException(400, "VALIDATION_FAILED", "The version is invalid."); }
-        return writeResponse(projects.update(uuid(projectId, "VALIDATION_FAILED"), uuid(key, "IDEMPOTENCY_KEY_INVALID"), expected, request, ProjectExceptionHandler.traceId(http)));
     }
 
     static UUID uuid(String value, String code) {

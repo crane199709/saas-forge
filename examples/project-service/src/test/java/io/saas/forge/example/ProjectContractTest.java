@@ -16,7 +16,7 @@ class ProjectContractTest {
         assertThat(api.getPaths()).containsOnlyKeys("/api/v1/projects", "/api/v1/projects/{projectId}",
                 "/api/v1/projects/{projectId}/tasks", "/api/v1/projects/{projectId}/tasks/{taskId}");
         var routes = new ProjectConfiguration().projectRoutes().routes();
-        assertThat(routes).hasSize(7);
+        assertThat(routes).hasSize(9);
         for (var route : routes) {
             var operation = api.getPaths().get(route.path()).readOperationsMap().entrySet().stream()
                     .filter(entry -> entry.getKey().name().equals(route.method().name())).findFirst().orElseThrow().getValue();
@@ -57,6 +57,24 @@ class ProjectContractTest {
         assertThat(task.getRequired()).containsExactlyInAnyOrder("id", "projectId", "title", "description", "status", "version", "createdAt", "updatedAt");
         assertThat(task.getProperties().get("status").getEnum()).containsExactly("TODO", "IN_PROGRESS", "DONE");
         assertThat(task.getProperties().get("version").getReadOnly()).isTrue();
+        var taskPath = api.getPaths().get("/api/v1/projects/{projectId}/tasks/{taskId}");
+        assertThat(taskPath.getPut().getResponses()).containsKeys("200", "400", "404", "409", "428", "503");
+        assertThat(taskPath.getDelete().getResponses()).containsKeys("204", "400", "404", "409", "428", "503");
+        assertThat(taskPath.getDelete().getResponses().get("204").getContent()).isNull();
+        for (var operation : java.util.List.of(taskPath.getPut(), taskPath.getDelete())) {
+            assertThat(operation.getParameters()).anySatisfy(parameter -> {
+                assertThat(parameter.getName()).isEqualTo("If-Match");
+                assertThat(parameter.getRequired()).isTrue();
+                assertThat(parameter.getSchema().getPattern()).isEqualTo("^\"[1-9][0-9]{0,18}\"$");
+            });
+        }
+        io.swagger.v3.oas.models.media.Schema<?> taskUpdate = api.getComponents().getSchemas().get("UpdateTask");
+        assertThat(taskUpdate.getRequired()).containsExactlyInAnyOrder("title", "status");
+        assertThat(taskUpdate.getAdditionalProperties()).isEqualTo(false);
+        assertThat(taskUpdate.getProperties().keySet()).containsExactlyInAnyOrder("title", "description", "status");
+        assertThat(taskUpdate.getProperties().get("status").getEnum()).containsExactly("TODO", "IN_PROGRESS", "DONE");
+        assertThat(taskUpdate.getProperties().get("title").getMaxLength()).isEqualTo(200);
+        assertThat(taskUpdate.getProperties().get("description").getMaxLength()).isEqualTo(2000);
         var taskList = api.getPaths().get("/api/v1/projects/{projectId}/tasks").getGet();
         var taskLimit = taskList.getParameters().stream().filter(parameter -> parameter.getName().equals("limit")).findFirst().orElseThrow().getSchema();
         assertThat(taskLimit.getDefault()).hasToString("50");

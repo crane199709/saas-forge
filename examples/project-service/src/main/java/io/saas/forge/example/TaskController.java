@@ -27,6 +27,29 @@ class TaskController {
         return response.body(result.body());
     }
 
+    @PutMapping(path = "/{taskId}", consumes = "application/json", produces = "application/json;charset=UTF-8")
+    ResponseEntity<String> update(@PathVariable String projectId, @PathVariable String taskId,
+            @RequestHeader(value = "Idempotency-Key", required = false) String key,
+            @RequestHeader(value = "If-Match", required = false) String version,
+            @Valid @RequestBody UpdateTaskRequest request, HttpServletRequest http) {
+        ProjectController.rejectTenantInput(http);
+        if (key == null || key.isBlank()) throw new ProjectException(400, "IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key is required.");
+        return ProjectController.writeResponse(tasks.update(ProjectController.uuid(projectId, "VALIDATION_FAILED"),
+                ProjectController.uuid(taskId, "VALIDATION_FAILED"), ProjectController.uuid(key, "IDEMPOTENCY_KEY_INVALID"),
+                ProjectController.version(version), request, ProjectExceptionHandler.traceId(http)));
+    }
+
+    @DeleteMapping(path = "/{taskId}")
+    ResponseEntity<String> delete(@PathVariable String projectId, @PathVariable String taskId,
+            @RequestHeader(value = "Idempotency-Key", required = false) String key,
+            @RequestHeader(value = "If-Match", required = false) String version, HttpServletRequest http) {
+        ProjectController.rejectTenantInput(http);
+        if (key == null || key.isBlank()) throw new ProjectException(400, "IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key is required.");
+        return ProjectController.writeResponse(tasks.delete(ProjectController.uuid(projectId, "VALIDATION_FAILED"),
+                ProjectController.uuid(taskId, "VALIDATION_FAILED"), ProjectController.uuid(key, "IDEMPOTENCY_KEY_INVALID"),
+                ProjectController.version(version), ProjectExceptionHandler.traceId(http)));
+    }
+
     @GetMapping(path = "/{taskId}", produces = "application/json;charset=UTF-8")
     TaskResult get(@PathVariable String projectId, @PathVariable String taskId, HttpServletRequest http) {
         ProjectController.rejectTenantInput(http);

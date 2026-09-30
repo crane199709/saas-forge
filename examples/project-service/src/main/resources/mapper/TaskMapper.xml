@@ -16,4 +16,14 @@
         <if test="after != null">AND id &gt; #{after,typeHandler=org.apache.ibatis.type.ObjectTypeHandler}</if>
         ORDER BY id ASC LIMIT #{limit}
     </select>
+    <select id="update" resultType="io.saas.forge.example.TaskMapper$TaskRow" affectData="true" flushCache="true">
+        UPDATE tasks SET title = #{title}, description = #{description}, status = #{status},
+            version = version + 1, updated_at = date_trunc('milliseconds', clock_timestamp())
+        WHERE project_id = #{project,typeHandler=org.apache.ibatis.type.ObjectTypeHandler} AND id = #{id} AND version = #{version}
+        RETURNING id::text, project_id::text, title, description, status, version, created_at, updated_at
+    </select>
+    <delete id="delete">
+        DELETE FROM tasks
+        WHERE project_id = #{project,typeHandler=org.apache.ibatis.type.ObjectTypeHandler} AND id = #{id} AND version = #{version}
+    </delete>
 </mapper>

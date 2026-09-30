@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-已实现 Project 创建、列表、详情和基于资源版本的修改，以及 Task 创建、分页和详情，详见 [Project Example](project-service/README.md)。相关验收见 [#212](../docs/acceptance/issue-212-acceptance.md) 、[#213](../docs/acceptance/issue-213-acceptance.md) 和 [#214](../docs/acceptance/issue-214-acceptance.md)。Project 删除与 Task 修改/删除尚未实现；以下清单是完整目标范围。
+已实现 Project 创建、列表、详情和基于资源版本的修改，以及 Task 创建、分页、详情、版本修改、状态流转和永久删除，详见 [Project Example](project-service/README.md)。相关验收见 [#212](../docs/acceptance/issue-212-acceptance.md) 、[#213](../docs/acceptance/issue-213-acceptance.md) 、[#214](../docs/acceptance/issue-214-acceptance.md) 和 [#215](../docs/acceptance/issue-215-acceptance.md)。Project 删除尚未实现；以下清单是完整目标范围。
 
 ## 已确认范围
 

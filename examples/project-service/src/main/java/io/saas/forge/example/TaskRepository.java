@@ -19,6 +19,13 @@ class TaskRepository {
     Optional<TaskResult> find(UUID project, UUID id) {
         return Optional.ofNullable(mapper.find(new TaskMapper.TaskId(project, id))).map(TaskRepository::resource);
     }
+    Optional<TaskResult> update(UUID project, UUID id, long version, UpdateTaskRequest request) {
+        return Optional.ofNullable(mapper.update(new TaskMapper.TaskUpdate(project, id, version,
+                request.title(), request.description(), request.status().name()))).map(TaskRepository::resource);
+    }
+    boolean delete(UUID project, UUID id, long version) {
+        return mapper.delete(new TaskMapper.TaskVersion(project, id, version)) == 1;
+    }
     List<TaskResult> list(UUID project, UUID after, int limit) {
         return mapper.list(new TaskMapper.TaskQuery(project, after, limit)).stream().map(TaskRepository::resource).toList();
     }
