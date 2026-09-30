@@ -65,8 +65,12 @@ public final class ConsoleAuthenticationExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     ResponseEntity<ConsoleProblem> unavailable(RuntimeException error, HttpServletRequest request) {
-        org.slf4j.LoggerFactory.getLogger(getClass()).error("Console authentication unavailable: {}", error.getClass().getName());
-        return response(503, "SESSION_SECURITY_UNAVAILABLE", request);
+        var response = response(503, "SESSION_SECURITY_UNAVAILABLE", request);
+        // 与返回的 Problem 共用 Trace；仅记录异常类型，不暴露底层凭据或连接信息。
+        org.slf4j.LoggerFactory.getLogger(getClass()).error(
+                "Console authentication unavailable: code={} traceId={} exception={}",
+                response.getBody().code(), response.getBody().traceId(), error.getClass().getName());
+        return response;
     }
 
     private static ResponseEntity<ConsoleProblem> response(int status, String code, HttpServletRequest request) {

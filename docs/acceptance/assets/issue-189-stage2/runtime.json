@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "kind": "stage2-runtime-errors",
+  "runId": "c292ba74-804c-4b05-a351-1367edf19adb",
+  "handoffSha256": "bd875709c207fb7367321a716d1c97b5876f466ed35d6e440bed2b579f6ed533",
+  "driverSha256": {
+    "stage2-runtime.mjs": "37ad8d6ab03491af827452b3afec7daaf5b0335f9134dd8b30bb003d1225f0c2",
+    "stage2-runtime-classification.mjs": "714e658d9d619c5b837731e2767aa45ed882b85baebba2dbb6d9232cdf084e4e"
+  },
+  "startedAt": "2026-09-30T01:20:15.886Z",
+  "status": "passed",
+  "checks": [
+    {
+      "name": "scenario-correlated-runtime-errors",
+      "status": "passed",
+      "securitySha256": "c00bbcf50e06b4006a9709959ffcb446e9fe677b6fb71284bba45e8c488956ac",
+      "oauthSha256": "8a6852e5f07536cac9d8d87d5e2b0a0d63cbe67ba493a5fdcfe761ff84bfd391"
+    }
+  ],
+  "errors": [
+    {
+      "service": "iam-service",
+      "at": "2026-09-30T01:19:33.086923716Z",
+      "sha256": "bddf4b89251a30da6c3af8d9df6ef44ed2f14588cd305bbc4e8c2bda112b9d5f",
+      "scenario": "redis-failure",
+      "expected": true,
+      "requestTrace": "743dc92deb6bb33d5ef53e8314a364db09f516a8ca63af7b0b003e9f39ff84e6"
+    }
+  ],
+  "classification": {
+    "unknownErrors": 0,
+    "unexpectedRequests": 0
+  },
+  "finishedAt": "2026-09-30T01:20:16.172Z"
+}

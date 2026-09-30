@@ -14,7 +14,7 @@
 → Tenant Context、Permission、Feature、Quota 校验 → 执行业务 → 审计可查询
 ```
 
-当前仓库已完成第 1、2 阶段的大部分后端契约、服务、数据、安全与诊断型端到端切片；两个 Console 已切换为 Vue 3 + Element Plus（[ADR 0050](adr/0050-consoles-adopt-soybean-element-plus.md)），共享认证已实现登录、首次改密、刷新、恢复、登出与 Tenant 选择/切换，并有真实受信 HTTPS 浏览器证据，见 [Browser Session 安全验收记录](acceptance/issue-158-browser-session-security.md)。Platform 侧已交付 Tenant 创建与生命周期、管理员初始化与密码投递、Plan、Quota Definition、Subscription 与 OAuth Client 管理页面；Tenant 侧仍只有工作台，Organization、通用 RBAC 目录、Invitation 激活、Feature 运行时闭环、Audit 查询与导出、业务 Remote 均未实现。局部认证证据不代表本计划完整产品与浏览器闭环通过：第 2 阶段主链的绿色证据基线早于 Vue 切换，需按 [Issue #184](acceptance/issue-184-stage2-main-chain.md) 的时效边界重跑。Gateway 的 Password Setup 静态页不能替代最终 Console 产品路径。原有后端勾选保留，未完成专项验收的 Console 与浏览器事项保持未完成。
+当前仓库已完成第 1、2 阶段的大部分后端契约、服务、数据、安全与诊断型端到端切片；两个 Console 已切换为 Vue 3 + Element Plus（[ADR 0050](adr/0050-consoles-adopt-soybean-element-plus.md)），共享认证已实现登录、首次改密、刷新、恢复、登出与 Tenant 选择/切换，并有真实受信 HTTPS 浏览器证据，见 [Browser Session 安全验收记录](acceptance/issue-158-browser-session-security.md)。Platform 侧已交付 Tenant 创建与生命周期、管理员初始化与密码投递、Plan、Quota Definition、Subscription 与 OAuth Client 管理页面；Tenant 侧仍只有工作台，Organization、通用 RBAC 目录、Invitation 激活、Feature 运行时闭环、Audit 查询与导出、业务 Remote 均未实现。局部认证证据不代表本计划完整产品与浏览器闭环通过：第 2 阶段已按 [Issue #189](acceptance/issue-189-stage2-aggregation.md) 完成当前统一 Console 的本机同轮聚合，当前提交完整远端 CI 仍待核对；[Issue #184](acceptance/issue-184-stage2-main-chain.md) 的历史时效边界保留。Gateway 的 Password Setup 静态页不能替代最终 Console 产品路径。原有后端勾选保留，未完成专项验收的 Console 与浏览器事项保持未完成。
 
 MVP 不包含完整支付/账单/发票、公共注册和外部身份源、多语言 SDK、Schema Per Tenant 或 Database Per Tenant 隔离、CLI，以及 Helm/systemd 的完整生产交付。后两项在架构与配置上保持兼容，但不在 MVP 发布阻塞项范围内；MVP 之后的去向见本文「MVP 后续项」与 [路线图](15-roadmap.md) 的 H1/H2。
 
@@ -179,14 +179,14 @@ flowchart TD
 
 **浏览器验收**
 
-验收边界已逐项确认，见 [第 2 阶段浏览器聚合验收](32-stage2-browser-acceptance.md)：同一次全新环境完成主链，产品外注入攻击与故障，OAuth 管理与服务消费关联验证，并明确时间状态注入、双语、错误判定和 Audit 证据要求。规格确认不代表验收通过。
+验收边界已逐项确认，见 [第 2 阶段浏览器聚合验收](32-stage2-browser-acceptance.md)：同一次全新环境完成主链，产品外注入攻击与故障，OAuth 管理与服务消费关联验证，并明确时间状态注入、双语、错误判定和 Audit 证据要求。2026-09-30 四项本机同轮验收已通过，见 [Issue #189 聚合记录](acceptance/issue-189-stage2-aggregation.md)；当前提交完整远端 CI 尚未执行。
 
-- [ ] 从全新 Compose 数据卷用 Playwright 完成 Platform Admin 登录与初始化、最小 Entitlement Bootstrap、Tenant 创建和 Tenant Administrator 初始化，再由 Tenant Administrator 完成 Password Setup、登录、Membership 选择与 Tenant Context Switch。
-- [ ] 通过真实 Console 验证错误 Token、Refresh 重放、撤销 Token、Redis 不可用、越权 Tenant 切换、Tenant Suspension 后旧 Token 拒绝，以及显式恢复后的重新登录；相关运行时与浏览器 Console 不得出现使结果失效的错误。
-- [ ] 通过真实 Console 验证 OAuth Client Secret 一次展示、丢失结果恢复、轮换重叠窗口和吊销后的旧凭据拒绝；保留 curl E2E 作为后端诊断，不把它作为本项完成证据。
-- [ ] 完整路径至少以默认 Locale 执行一次，并验证 Locale 切换及另一语言的代表性身份/Tenant 操作。
+- [x] 从全新 Compose 数据卷用 Playwright 完成 Platform Admin 登录与初始化、最小 Entitlement Bootstrap、Tenant 创建和 Tenant Administrator 初始化，再由 Tenant Administrator 完成 Password Setup、登录、Membership 选择与 Tenant Context Switch。
+- [x] 通过真实 Console 验证错误 Token、Refresh 重放、撤销 Token、Redis 不可用、越权 Tenant 切换、Tenant Suspension 后旧 Token 拒绝，以及显式恢复后的重新登录；相关运行时与浏览器 Console 不得出现使结果失效的错误。
+- [x] 通过真实 Console 验证 OAuth Client Secret 一次展示、丢失结果恢复、轮换重叠窗口和吊销后的旧凭据拒绝；保留 curl E2E 作为后端诊断，不把它作为本项完成证据。
+- [x] 完整路径至少以默认 Locale 执行一次，并验证 Locale 切换及另一语言的代表性身份/Tenant 操作。
 
-**完成标准：** 从全新 Compose 数据卷经真实 Platform Console、Tenant Console、Gateway、IAM、Tenant Access、Entitlement、Audit、PostgreSQL、Redis 和 Kafka 完成“Platform Admin 登录 → 创建 Tenant → 初始化 Tenant Admin → Tenant Admin 登录与切换 Tenant”，并覆盖上述安全拒绝、恢复、OAuth Client 与双语代表路径。当前领域与服务、Console 交互项已勾选，但上述浏览器聚合验收尚未完成，因此本阶段仍为部分完成。
+**完成标准：** 从全新 Compose 数据卷经真实 Platform Console、Tenant Console、Gateway、IAM、Tenant Access、Entitlement、Audit、PostgreSQL、Redis 和 Kafka 完成“Platform Admin 登录 → 创建 Tenant → 初始化 Tenant Admin → Tenant Admin 登录与切换 Tenant”，并覆盖上述安全拒绝、恢复、OAuth Client 与双语代表路径。当前领域与服务、Console 交互项及上述四项本机浏览器聚合均有证据；当前提交完整远端 CI 尚待核对，不能据此认定父 #183 或整个 MVP 完成。
 
 ### 3. SDK 与 Example 租户隔离闭环
 

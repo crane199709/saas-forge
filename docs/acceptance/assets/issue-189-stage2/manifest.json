@@ -1,0 +1,10 @@
+{
+  "handoff": "handoff.json",
+  "reports": {
+    "security": "security.json",
+    "oauth": "oauth.json",
+    "recovery": "oauth.json",
+    "audit": "audit.json",
+    "runtime": "runtime.json"
+  }
+}

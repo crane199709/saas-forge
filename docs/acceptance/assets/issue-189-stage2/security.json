@@ -1,0 +1,2926 @@
+{
+  "schemaVersion": 1,
+  "kind": "token-security",
+  "runId": "c292ba74-804c-4b05-a351-1367edf19adb",
+  "handoffSha256": "bd875709c207fb7367321a716d1c97b5876f466ed35d6e440bed2b579f6ed533",
+  "frontend": {
+    "commit": "883c59e6d3698bc169366d012101ffa78e7bd21c",
+    "dirty": true,
+    "sourceSha256": "34216ca383e3becda7cf4427cf6778e78720db1150db0b8a34bcc7dc096b8199",
+    "lockSha256": "180ae2697376beb325956b9cb30132a660eac0673da9c9b63186bc9570c7725a"
+  },
+  "client": {
+    "name": "@crane199709/saas-forge-api-client",
+    "version": "0.4.0",
+    "sourceCommit": "ebff4b338d0c4b39e51488ac1e9b98885318d438"
+  },
+  "driverSha256": {
+    "verify-token-security.mjs": "a9a4463fdaa786c8fe20784c4374367854aaa1184f0549b7222fbe7e046b172a",
+    "stage2-main-chain.mjs": "7ad695d8ed510f2b8dc4b4e1ebf635eb4f19ea7fdbf376fb26377ef2135b61c8",
+    "tenant-context-security.mjs": "86d70515ad36487b5c573d29f4d42ad64bdf4171b02e88878a96766f99b91762"
+  },
+  "startedAt": "2026-09-30T01:17:55.348Z",
+  "status": "passed",
+  "checks": [
+    {
+      "name": "fresh-console-bootstrap-two-tenants-and-real-mail-password-setup",
+      "status": "passed"
+    },
+    {
+      "name": "unauthorized-tenant-context",
+      "status": "passed"
+    },
+    {
+      "name": "wrong-user-token",
+      "status": "passed"
+    },
+    {
+      "name": "rotated-refresh-replay-rejected",
+      "status": "passed",
+      "traceId": "30e75a407078449e73dd2781a5fcbc29",
+      "statusCode": 401,
+      "code": "SESSION_INVALID"
+    },
+    {
+      "name": "replay-revokes-unexpired-token-and-console-hides-workspace",
+      "status": "passed",
+      "consoleReturnedToLogin": true
+    },
+    {
+      "name": "redis-fails-closed-and-console-does-not-blame-password",
+      "status": "passed"
+    },
+    {
+      "name": "redis-restored-authoritative-probe-and-console-login",
+      "status": "passed"
+    },
+    {
+      "name": "same-identity-tenant-switch-and-refresh",
+      "status": "passed"
+    },
+    {
+      "name": "locale-english-input-persistence-and-identity-path",
+      "status": "passed",
+      "originCount": 1,
+      "locale": "en",
+      "inputPreserved": true,
+      "businessWritesOnLocaleChange": 0
+    },
+    {
+      "name": "suspension-rejects-old-token-resumption-requires-login",
+      "status": "passed",
+      "oldTokenExpiresAt": "2026-09-30T01:33:39.000Z",
+      "oldTokenRejectedAfterResume": true
+    }
+  ],
+  "stage2": true,
+  "requests": [
+    {
+      "phase": "fresh-console-prerequisites",
+      "source": "independent-probe",
+      "path": "/__test/platform-mechanism/identity",
+      "method": "GET",
+      "traceId": "9035f979401c33d1555d606232a3a810",
+      "startedAt": "2026-09-30T01:17:57.225Z",
+      "finishedAt": "2026-09-30T01:17:57.262Z",
+      "status": 401,
+      "code": "ACCESS_TOKEN_INVALID"
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731078389
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731078959
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/login",
+      "pathSha256": "9800b72ca327021d58438dbfe554c1681a42ba7520f7eaff44798079138b0e68",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731079300
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/password-changes",
+      "pathSha256": "bcdd5385299f7d67027922b6eaa3d08d36839a8e66ed6123153c593b15c13fda",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731080065
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731080677
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/login",
+      "pathSha256": "9800b72ca327021d58438dbfe554c1681a42ba7520f7eaff44798079138b0e68",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731082322
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731082748
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/context-selections",
+      "pathSha256": "e6c75d05f4a49c44f7d34acc7d3e646299940e5a57e26a8277984596d4ca3fa5",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731082815
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731082919
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731083105
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "pathSha256": "337cc71edfe977e6007a578eb18aca8d17464a930be42c34ea467c6cd10f8ec0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731083138
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731083184
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731085165
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definition-operations",
+      "pathSha256": "af7aefb2ca24c9e479874cfdcda6e02db2057c065687f8277b96e6a38a7a164c",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731085166
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731085918
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definition-operations",
+      "pathSha256": "af7aefb2ca24c9e479874cfdcda6e02db2057c065687f8277b96e6a38a7a164c",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731086023
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definition-operations",
+      "pathSha256": "af7aefb2ca24c9e479874cfdcda6e02db2057c065687f8277b96e6a38a7a164c",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731086224
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731086302
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "POST",
+      "status": 201,
+      "at": 1790731086497
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions/:id",
+      "pathSha256": "e713433804cba8e1f9cce6a67696ea20bb751eba9db6c6abb71809c3ff0b5045",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731086913
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definition-operations",
+      "pathSha256": "af7aefb2ca24c9e479874cfdcda6e02db2057c065687f8277b96e6a38a7a164c",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731087015
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definition-operations",
+      "pathSha256": "af7aefb2ca24c9e479874cfdcda6e02db2057c065687f8277b96e6a38a7a164c",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731087256
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions/:id",
+      "pathSha256": "e713433804cba8e1f9cce6a67696ea20bb751eba9db6c6abb71809c3ff0b5045",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731087331
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions/:id/activations",
+      "pathSha256": "319eaf96f9b3d5e6ffe8391feaede736806c831f64fbde93fe200c50ac10cd74",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731087462
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions/:id",
+      "pathSha256": "e713433804cba8e1f9cce6a67696ea20bb751eba9db6c6abb71809c3ff0b5045",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731087498
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definition-operations",
+      "pathSha256": "af7aefb2ca24c9e479874cfdcda6e02db2057c065687f8277b96e6a38a7a164c",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731087546
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731088108
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "pathSha256": "337cc71edfe977e6007a578eb18aca8d17464a930be42c34ea467c6cd10f8ec0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731088142
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731088181
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "pathSha256": "df910880b581d9fef10bf11124896638b461d918fff7700628762b1356baae8a",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731088327
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plan-operations",
+      "pathSha256": "b7ac95c62dcd7f42ae910e091311e9197adeacc0e9256943161a8d5c2dbb8f93",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731088327
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731088391
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plan-operations",
+      "pathSha256": "b7ac95c62dcd7f42ae910e091311e9197adeacc0e9256943161a8d5c2dbb8f93",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731088426
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plan-operations",
+      "pathSha256": "b7ac95c62dcd7f42ae910e091311e9197adeacc0e9256943161a8d5c2dbb8f93",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731088816
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731088864
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "pathSha256": "df910880b581d9fef10bf11124896638b461d918fff7700628762b1356baae8a",
+      "method": "POST",
+      "status": 201,
+      "at": 1790731088998
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans/:id",
+      "pathSha256": "5f6ae1a9cec3a2ec50d5f26d0799d32e9ffc080b61849c4039b00bcf45fbfb48",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731089414
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731089453
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plan-operations",
+      "pathSha256": "b7ac95c62dcd7f42ae910e091311e9197adeacc0e9256943161a8d5c2dbb8f93",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731089508
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plan-operations",
+      "pathSha256": "b7ac95c62dcd7f42ae910e091311e9197adeacc0e9256943161a8d5c2dbb8f93",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731089850
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans/:id",
+      "pathSha256": "5f6ae1a9cec3a2ec50d5f26d0799d32e9ffc080b61849c4039b00bcf45fbfb48",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731089895
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731089938
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans/:id/activations",
+      "pathSha256": "e51f4aff25ae6e893c7a8e9d0fea51d11f3de5e05c0fdc89bb3122725a13f6c3",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731089985
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans/:id",
+      "pathSha256": "5f6ae1a9cec3a2ec50d5f26d0799d32e9ffc080b61849c4039b00bcf45fbfb48",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731090035
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731090071
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731090173
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "pathSha256": "337cc71edfe977e6007a578eb18aca8d17464a930be42c34ea467c6cd10f8ec0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731090219
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731090260
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenant-creations",
+      "pathSha256": "d141daf579fdcffb972367ba022f7aad608ca855bf45d54f76609e426df4223e",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731091331
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants",
+      "pathSha256": "065de9d566f0d596b1ebad987cbe4edb2d5af190c06959b38c8f93d2ccb974c8",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731091331
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants",
+      "pathSha256": "065de9d566f0d596b1ebad987cbe4edb2d5af190c06959b38c8f93d2ccb974c8",
+      "method": "POST",
+      "status": 201,
+      "at": 1790731091835
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "4b4c983a241b5b91c86b19d9cdf07b813d5251d5a93c989a9c5a86fd78d0e01f",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731092386
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "pathSha256": "fc366826c1fb23cd33283099a1b85a2b49a089c6d805e5bf865e47bd8c8bd617",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731092387
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "pathSha256": "6cbfe263a98115b9d82c5e4f156d299a841e7ce2ba5ef690d5c3c00815db1fa1",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731092390
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "6a20ca5498da79afe91a58f6addcd0dacd26feda5010dfe93e781783d946911c",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731092415
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731092420
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "pathSha256": "9686814ed576e122348334854c965ee557e3fd61f5a77fecb0e18080c885c00a",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731092428
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "462ba994385ee422cd1df1265fb2c28e04d3521041d6d01874cb0689a397ae24",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731092500
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "4b4c983a241b5b91c86b19d9cdf07b813d5251d5a93c989a9c5a86fd78d0e01f",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731092503
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "pathSha256": "df910880b581d9fef10bf11124896638b461d918fff7700628762b1356baae8a",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731092522
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "462ba994385ee422cd1df1265fb2c28e04d3521041d6d01874cb0689a397ae24",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731092554
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "6a20ca5498da79afe91a58f6addcd0dacd26feda5010dfe93e781783d946911c",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731092572
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "6a20ca5498da79afe91a58f6addcd0dacd26feda5010dfe93e781783d946911c",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731092648
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "4b4c983a241b5b91c86b19d9cdf07b813d5251d5a93c989a9c5a86fd78d0e01f",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731093587
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "462ba994385ee422cd1df1265fb2c28e04d3521041d6d01874cb0689a397ae24",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731093696
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731093764
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "pathSha256": "df910880b581d9fef10bf11124896638b461d918fff7700628762b1356baae8a",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731093817
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "pathSha256": "9686814ed576e122348334854c965ee557e3fd61f5a77fecb0e18080c885c00a",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731093886
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscriptions",
+      "pathSha256": "ee59adceb081b9cef0b3e05882e12b269e5e933eafac39d78960cbb8def2a4a8",
+      "method": "POST",
+      "status": 201,
+      "at": 1790731094143
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "4b4c983a241b5b91c86b19d9cdf07b813d5251d5a93c989a9c5a86fd78d0e01f",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731094183
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "462ba994385ee422cd1df1265fb2c28e04d3521041d6d01874cb0689a397ae24",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731094218
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "pathSha256": "9686814ed576e122348334854c965ee557e3fd61f5a77fecb0e18080c885c00a",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731094269
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "462ba994385ee422cd1df1265fb2c28e04d3521041d6d01874cb0689a397ae24",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731094909
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "pathSha256": "6cbfe263a98115b9d82c5e4f156d299a841e7ce2ba5ef690d5c3c00815db1fa1",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731094911
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "6a20ca5498da79afe91a58f6addcd0dacd26feda5010dfe93e781783d946911c",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731095030
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "462ba994385ee422cd1df1265fb2c28e04d3521041d6d01874cb0689a397ae24",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731095732
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "pathSha256": "6cbfe263a98115b9d82c5e4f156d299a841e7ce2ba5ef690d5c3c00815db1fa1",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731095751
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initializations",
+      "pathSha256": "b7c8730b29d65010814de8ef8d671415f2f60a0bc9648c6b7394c06d1ad51c02",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731097364
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "462ba994385ee422cd1df1265fb2c28e04d3521041d6d01874cb0689a397ae24",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731097524
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "pathSha256": "6cbfe263a98115b9d82c5e4f156d299a841e7ce2ba5ef690d5c3c00815db1fa1",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731097545
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "6a20ca5498da79afe91a58f6addcd0dacd26feda5010dfe93e781783d946911c",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731097724
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "4b4c983a241b5b91c86b19d9cdf07b813d5251d5a93c989a9c5a86fd78d0e01f",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731097942
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731097950
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "pathSha256": "9686814ed576e122348334854c965ee557e3fd61f5a77fecb0e18080c885c00a",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731097963
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "6a20ca5498da79afe91a58f6addcd0dacd26feda5010dfe93e781783d946911c",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731098169
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "4b4c983a241b5b91c86b19d9cdf07b813d5251d5a93c989a9c5a86fd78d0e01f",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731098172
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "pathSha256": "df910880b581d9fef10bf11124896638b461d918fff7700628762b1356baae8a",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731098175
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "462ba994385ee422cd1df1265fb2c28e04d3521041d6d01874cb0689a397ae24",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731098175
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 2,
+      "path": "/api/v1/auth/password-setups",
+      "pathSha256": "e970951b39a5fb6cf0f98599305a67b4d3fcfdb39a1e3d4762d34a7d7f56a3f5",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731099352
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 2,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731099696
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731100498
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "pathSha256": "337cc71edfe977e6007a578eb18aca8d17464a930be42c34ea467c6cd10f8ec0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731100610
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731100697
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants",
+      "pathSha256": "065de9d566f0d596b1ebad987cbe4edb2d5af190c06959b38c8f93d2ccb974c8",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731100953
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenant-creations",
+      "pathSha256": "d141daf579fdcffb972367ba022f7aad608ca855bf45d54f76609e426df4223e",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731100968
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants",
+      "pathSha256": "065de9d566f0d596b1ebad987cbe4edb2d5af190c06959b38c8f93d2ccb974c8",
+      "method": "POST",
+      "status": 201,
+      "at": 1790731101361
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "pathSha256": "8131eec288fce14b9e3777ebf2b4bb10ff9e4be6789d598bd4d5ea45d86e0f54",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731102014
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "ba6abfcef7e3c1899ac16476132e00d9746cf825840d64df347db04e97a20137",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731102015
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "bfb2efc91dcb910f2c1313e567b7a216c06a57126d2073b5454eb88e7fb7d1e8",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731102023
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "pathSha256": "1646fb8dde8904da97ae1cf6525a779ea701d69b8e8bd4f991fe7d8c8fc21aaf",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731102076
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "922a825e36bd161ea416b34e57fdba3a5b0171819195549a99c47fb914f30210",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731102078
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731102078
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "pathSha256": "e7570c4c61cf84016634146f85f715e70bd1f7b1c9b52f3174797c11d305b855",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731102136
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "ba6abfcef7e3c1899ac16476132e00d9746cf825840d64df347db04e97a20137",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731102137
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "bfb2efc91dcb910f2c1313e567b7a216c06a57126d2073b5454eb88e7fb7d1e8",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731102197
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "pathSha256": "df910880b581d9fef10bf11124896638b461d918fff7700628762b1356baae8a",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731102199
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "922a825e36bd161ea416b34e57fdba3a5b0171819195549a99c47fb914f30210",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731102201
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "bfb2efc91dcb910f2c1313e567b7a216c06a57126d2073b5454eb88e7fb7d1e8",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731102260
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "ba6abfcef7e3c1899ac16476132e00d9746cf825840d64df347db04e97a20137",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731103192
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "922a825e36bd161ea416b34e57fdba3a5b0171819195549a99c47fb914f30210",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731103241
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731103282
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "pathSha256": "df910880b581d9fef10bf11124896638b461d918fff7700628762b1356baae8a",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731103321
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "pathSha256": "1646fb8dde8904da97ae1cf6525a779ea701d69b8e8bd4f991fe7d8c8fc21aaf",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731103365
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscriptions",
+      "pathSha256": "0c908fd68902cf8270f8d887d2bbf4462acf22ef760577cdbe1294a9d5eb5355",
+      "method": "POST",
+      "status": 201,
+      "at": 1790731103477
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "ba6abfcef7e3c1899ac16476132e00d9746cf825840d64df347db04e97a20137",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731103520
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "922a825e36bd161ea416b34e57fdba3a5b0171819195549a99c47fb914f30210",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731103560
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "pathSha256": "1646fb8dde8904da97ae1cf6525a779ea701d69b8e8bd4f991fe7d8c8fc21aaf",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731103611
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "pathSha256": "8131eec288fce14b9e3777ebf2b4bb10ff9e4be6789d598bd4d5ea45d86e0f54",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731104501
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "922a825e36bd161ea416b34e57fdba3a5b0171819195549a99c47fb914f30210",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731104502
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "bfb2efc91dcb910f2c1313e567b7a216c06a57126d2073b5454eb88e7fb7d1e8",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731104551
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "pathSha256": "8131eec288fce14b9e3777ebf2b4bb10ff9e4be6789d598bd4d5ea45d86e0f54",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731105400
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "922a825e36bd161ea416b34e57fdba3a5b0171819195549a99c47fb914f30210",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731105409
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initializations",
+      "pathSha256": "bb6f9af75f742b9879cd5a4d15f6dd36e76cd8f7885ed894adee18b6aecae514",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731105844
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "922a825e36bd161ea416b34e57fdba3a5b0171819195549a99c47fb914f30210",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731105947
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "pathSha256": "8131eec288fce14b9e3777ebf2b4bb10ff9e4be6789d598bd4d5ea45d86e0f54",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731105949
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "bfb2efc91dcb910f2c1313e567b7a216c06a57126d2073b5454eb88e7fb7d1e8",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731106035
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "bfb2efc91dcb910f2c1313e567b7a216c06a57126d2073b5454eb88e7fb7d1e8",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731106160
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731106170
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "pathSha256": "1646fb8dde8904da97ae1cf6525a779ea701d69b8e8bd4f991fe7d8c8fc21aaf",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731106178
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "pathSha256": "df910880b581d9fef10bf11124896638b461d918fff7700628762b1356baae8a",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731106326
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "ba6abfcef7e3c1899ac16476132e00d9746cf825840d64df347db04e97a20137",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731106339
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "ba6abfcef7e3c1899ac16476132e00d9746cf825840d64df347db04e97a20137",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731106432
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "922a825e36bd161ea416b34e57fdba3a5b0171819195549a99c47fb914f30210",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731106579
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 3,
+      "path": "/api/v1/auth/password-setups",
+      "pathSha256": "e970951b39a5fb6cf0f98599305a67b4d3fcfdb39a1e3d4762d34a7d7f56a3f5",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731107943
+    },
+    {
+      "phase": "fresh-console-prerequisites",
+      "contextId": 3,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731108091
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731108339
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "pathSha256": "337cc71edfe977e6007a578eb18aca8d17464a930be42c34ea467c6cd10f8ec0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731108419
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731108526
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants",
+      "pathSha256": "065de9d566f0d596b1ebad987cbe4edb2d5af190c06959b38c8f93d2ccb974c8",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731108741
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenant-creations",
+      "pathSha256": "d141daf579fdcffb972367ba022f7aad608ca855bf45d54f76609e426df4223e",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731108747
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants",
+      "pathSha256": "065de9d566f0d596b1ebad987cbe4edb2d5af190c06959b38c8f93d2ccb974c8",
+      "method": "POST",
+      "status": 201,
+      "at": 1790731109126
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "fd14eec895cbee762a18be3063e6a6ebc5c001977999b97ae50388943981f2dd",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731109627
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "pathSha256": "fc7f54e3be3e1e7e2547d8d759e851a1c0f057284887757e104965c214c7622d",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731109639
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "pathSha256": "c8b2e6d09119e9b273c0e19292ee22b9e2535248cdd2e35966cbbca7f6aa86e0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731109639
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "4849bba81e4d0f8c6276e6ff099111f909b71c5a69866b996269ceddb9798326",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731109642
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731109698
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "ee1c3c71e4e02747cb96e433751c0dcc46dc2247582dd1157db59429465351bb",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731109699
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "pathSha256": "e84cc198d7d5094ea35d00d444f18c55ced49578516d8f9287c889788488fef8",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731109726
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "fd14eec895cbee762a18be3063e6a6ebc5c001977999b97ae50388943981f2dd",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731109737
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "ee1c3c71e4e02747cb96e433751c0dcc46dc2247582dd1157db59429465351bb",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731109768
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "4849bba81e4d0f8c6276e6ff099111f909b71c5a69866b996269ceddb9798326",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731109769
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "pathSha256": "df910880b581d9fef10bf11124896638b461d918fff7700628762b1356baae8a",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731109770
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "4849bba81e4d0f8c6276e6ff099111f909b71c5a69866b996269ceddb9798326",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731109815
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "fd14eec895cbee762a18be3063e6a6ebc5c001977999b97ae50388943981f2dd",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731110384
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "ee1c3c71e4e02747cb96e433751c0dcc46dc2247582dd1157db59429465351bb",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731110421
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731110458
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "pathSha256": "df910880b581d9fef10bf11124896638b461d918fff7700628762b1356baae8a",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731110493
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "pathSha256": "e84cc198d7d5094ea35d00d444f18c55ced49578516d8f9287c889788488fef8",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731110532
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscriptions",
+      "pathSha256": "576b15c35565211d20af6ecbdc9f6a854c9835ce1ae087bd82aff92e919552cb",
+      "method": "POST",
+      "status": 201,
+      "at": 1790731110594
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "fd14eec895cbee762a18be3063e6a6ebc5c001977999b97ae50388943981f2dd",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731110625
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "ee1c3c71e4e02747cb96e433751c0dcc46dc2247582dd1157db59429465351bb",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731110659
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "pathSha256": "e84cc198d7d5094ea35d00d444f18c55ced49578516d8f9287c889788488fef8",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731110704
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "pathSha256": "fc7f54e3be3e1e7e2547d8d759e851a1c0f057284887757e104965c214c7622d",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731111223
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "ee1c3c71e4e02747cb96e433751c0dcc46dc2247582dd1157db59429465351bb",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731111225
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "4849bba81e4d0f8c6276e6ff099111f909b71c5a69866b996269ceddb9798326",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731111257
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "ee1c3c71e4e02747cb96e433751c0dcc46dc2247582dd1157db59429465351bb",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731111871
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "pathSha256": "fc7f54e3be3e1e7e2547d8d759e851a1c0f057284887757e104965c214c7622d",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731111872
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initializations",
+      "pathSha256": "240f2d39ea7d8a1b57d3a451440f550b12a23871607ed3616e3b254c2afad60c",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731112064
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "ee1c3c71e4e02747cb96e433751c0dcc46dc2247582dd1157db59429465351bb",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731112108
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "pathSha256": "fc7f54e3be3e1e7e2547d8d759e851a1c0f057284887757e104965c214c7622d",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731112108
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "4849bba81e4d0f8c6276e6ff099111f909b71c5a69866b996269ceddb9798326",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731112165
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731112219
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "fd14eec895cbee762a18be3063e6a6ebc5c001977999b97ae50388943981f2dd",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731112219
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "pathSha256": "e84cc198d7d5094ea35d00d444f18c55ced49578516d8f9287c889788488fef8",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731112227
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "4849bba81e4d0f8c6276e6ff099111f909b71c5a69866b996269ceddb9798326",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731112261
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "fd14eec895cbee762a18be3063e6a6ebc5c001977999b97ae50388943981f2dd",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731112276
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "ee1c3c71e4e02747cb96e433751c0dcc46dc2247582dd1157db59429465351bb",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731112279
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "pathSha256": "df910880b581d9fef10bf11124896638b461d918fff7700628762b1356baae8a",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731112281
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731112938
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731113528
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 4,
+      "path": "/api/v2/auth/login",
+      "pathSha256": "9800b72ca327021d58438dbfe554c1681a42ba7520f7eaff44798079138b0e68",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731113753
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731114136
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 4,
+      "path": "/api/v2/auth/context-selections",
+      "pathSha256": "e6c75d05f4a49c44f7d34acc7d3e646299940e5a57e26a8277984596d4ca3fa5",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731114219
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 4,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731114262
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731114649
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 4,
+      "path": "/api/v2/auth/context-selections",
+      "pathSha256": "e6c75d05f4a49c44f7d34acc7d3e646299940e5a57e26a8277984596d4ca3fa5",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731114747
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 4,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731114841
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731115013
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 4,
+      "path": "/api/v2/auth/session",
+      "pathSha256": "337cc71edfe977e6007a578eb18aca8d17464a930be42c34ea467c6cd10f8ec0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731115097
+    },
+    {
+      "phase": "stage2-context-switch",
+      "contextId": 4,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731115195
+    },
+    {
+      "phase": "stage2-locale",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731116053
+    },
+    {
+      "phase": "stage2-locale",
+      "contextId": 4,
+      "path": "/api/v2/auth/logout",
+      "pathSha256": "7943ae65b9d047aea185252143ad674f9a0cccb54ac6dddcd410b3f4cb074ae2",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731116101
+    },
+    {
+      "phase": "stage2-locale",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731116839
+    },
+    {
+      "phase": "stage2-english-login-error",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731117318
+    },
+    {
+      "phase": "stage2-english-login-error",
+      "contextId": 4,
+      "path": "/api/v2/auth/login",
+      "pathSha256": "9800b72ca327021d58438dbfe554c1681a42ba7520f7eaff44798079138b0e68",
+      "method": "POST",
+      "status": 401,
+      "at": 1790731117634,
+      "code": "AUTHENTICATION_FAILED",
+      "traceId": "e77693d11c5c40a393ade06f8352d6e8"
+    },
+    {
+      "phase": "stage2-english-login",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731117726
+    },
+    {
+      "phase": "stage2-english-login",
+      "contextId": 4,
+      "path": "/api/v2/auth/login",
+      "pathSha256": "9800b72ca327021d58438dbfe554c1681a42ba7520f7eaff44798079138b0e68",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731117981
+    },
+    {
+      "phase": "stage2-english-login",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731118858
+    },
+    {
+      "phase": "stage2-english-login",
+      "contextId": 4,
+      "path": "/api/v2/auth/context-selections",
+      "pathSha256": "e6c75d05f4a49c44f7d34acc7d3e646299940e5a57e26a8277984596d4ca3fa5",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731118940
+    },
+    {
+      "phase": "stage2-english-login",
+      "contextId": 4,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731119015
+    },
+    {
+      "phase": "stage2-english-login",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731119412
+    },
+    {
+      "phase": "stage2-english-login",
+      "contextId": 4,
+      "path": "/api/v2/auth/context-selections",
+      "pathSha256": "e6c75d05f4a49c44f7d34acc7d3e646299940e5a57e26a8277984596d4ca3fa5",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731119528
+    },
+    {
+      "phase": "stage2-english-login",
+      "contextId": 4,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731119586
+    },
+    {
+      "phase": "stage2-english-login",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731119718
+    },
+    {
+      "phase": "stage2-english-login",
+      "contextId": 4,
+      "path": "/api/v2/auth/session",
+      "pathSha256": "337cc71edfe977e6007a578eb18aca8d17464a930be42c34ea467c6cd10f8ec0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731119751
+    },
+    {
+      "phase": "stage2-english-login",
+      "contextId": 4,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731119789
+    },
+    {
+      "phase": "stage2-suspension",
+      "source": "independent-probe",
+      "path": "/__test/platform-mechanism/identity",
+      "method": "GET",
+      "traceId": "a4a854d3cfadd0f2fb41e4c2970aa327",
+      "startedAt": "2026-09-30T01:18:39.898Z",
+      "finishedAt": "2026-09-30T01:18:41.331Z",
+      "status": 200
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731121517
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "pathSha256": "337cc71edfe977e6007a578eb18aca8d17464a930be42c34ea467c6cd10f8ec0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731121584
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731121646
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-initialization",
+      "pathSha256": "fc7f54e3be3e1e7e2547d8d759e851a1c0f057284887757e104965c214c7622d",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731121994
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "fd14eec895cbee762a18be3063e6a6ebc5c001977999b97ae50388943981f2dd",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731121995
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "4849bba81e4d0f8c6276e6ff099111f909b71c5a69866b996269ceddb9798326",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731122046
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "ee1c3c71e4e02747cb96e433751c0dcc46dc2247582dd1157db59429465351bb",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731122060
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "pathSha256": "e84cc198d7d5094ea35d00d444f18c55ced49578516d8f9287c889788488fef8",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731122064
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731122074
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "pathSha256": "c8b2e6d09119e9b273c0e19292ee22b9e2535248cdd2e35966cbbca7f6aa86e0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731122151
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "fd14eec895cbee762a18be3063e6a6ebc5c001977999b97ae50388943981f2dd",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731122153
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "pathSha256": "df910880b581d9fef10bf11124896638b461d918fff7700628762b1356baae8a",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731122197
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "ee1c3c71e4e02747cb96e433751c0dcc46dc2247582dd1157db59429465351bb",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731122198
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "4849bba81e4d0f8c6276e6ff099111f909b71c5a69866b996269ceddb9798326",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731122244
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "fd14eec895cbee762a18be3063e6a6ebc5c001977999b97ae50388943981f2dd",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731122337
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/quota-definitions",
+      "pathSha256": "8933e455dac8c6ace69fbdddd30ef92f81cb77c3b38284d355e71e48b9bbb9a4",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731122339
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription-operations",
+      "pathSha256": "e84cc198d7d5094ea35d00d444f18c55ced49578516d8f9287c889788488fef8",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731122371
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/administrator-password-setup",
+      "pathSha256": "4849bba81e4d0f8c6276e6ff099111f909b71c5a69866b996269ceddb9798326",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731122407
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "fd14eec895cbee762a18be3063e6a6ebc5c001977999b97ae50388943981f2dd",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731122421
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/subscription",
+      "pathSha256": "ee1c3c71e4e02747cb96e433751c0dcc46dc2247582dd1157db59429465351bb",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731122459
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/plans",
+      "pathSha256": "df910880b581d9fef10bf11124896638b461d918fff7700628762b1356baae8a",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731122466
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "pathSha256": "c8b2e6d09119e9b273c0e19292ee22b9e2535248cdd2e35966cbbca7f6aa86e0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731123006
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/suspensions",
+      "pathSha256": "e4c53046b64028556fd15996e7c56ff0a3ed0b06bf2ef26b60325930cd573a8c",
+      "method": "POST",
+      "status": 503,
+      "at": 1790731124542,
+      "code": "TENANT_SUSPENSION_PENDING",
+      "traceId": "d8b8178ececf48018a6b091ebbc37472"
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "fd14eec895cbee762a18be3063e6a6ebc5c001977999b97ae50388943981f2dd",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731124677
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 4,
+      "path": "/api/v2/auth/session",
+      "pathSha256": "337cc71edfe977e6007a578eb18aca8d17464a930be42c34ea467c6cd10f8ec0",
+      "method": "GET",
+      "status": 401,
+      "at": 1790731149952,
+      "code": "SESSION_INVALID",
+      "traceId": "1ee0028c6fe34d298d376bf6e963059d"
+    },
+    {
+      "phase": "stage2-suspension",
+      "source": "independent-probe",
+      "path": "/__test/platform-mechanism/identity",
+      "method": "GET",
+      "traceId": "6152af543fcbd24d5c9684851e5efad1",
+      "startedAt": "2026-09-30T01:19:10.262Z",
+      "finishedAt": "2026-09-30T01:19:10.314Z",
+      "status": 401,
+      "code": "ACCESS_TOKEN_INVALID"
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v2/auth/session",
+      "pathSha256": "337cc71edfe977e6007a578eb18aca8d17464a930be42c34ea467c6cd10f8ec0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731151773
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "pathSha256": "c8b2e6d09119e9b273c0e19292ee22b9e2535248cdd2e35966cbbca7f6aa86e0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731151897
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "pathSha256": "c8b2e6d09119e9b273c0e19292ee22b9e2535248cdd2e35966cbbca7f6aa86e0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731152562
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/suspensions",
+      "pathSha256": "e4c53046b64028556fd15996e7c56ff0a3ed0b06bf2ef26b60325930cd573a8c",
+      "method": "DELETE",
+      "status": 200,
+      "at": 1790731152676
+    },
+    {
+      "phase": "stage2-suspension",
+      "source": "independent-probe",
+      "path": "/__test/platform-mechanism/identity",
+      "method": "GET",
+      "traceId": "34df50acc3a15caecc10ae42ecfce177",
+      "startedAt": "2026-09-30T01:19:12.686Z",
+      "finishedAt": "2026-09-30T01:19:12.724Z",
+      "status": 401,
+      "code": "ACCESS_TOKEN_INVALID"
+    },
+    {
+      "source": "independent-probe",
+      "phase": "stage2-suspension",
+      "method": "GET",
+      "path": "/api/v2/auth/session",
+      "traceId": "a630246c7a8cd26d661143f52c080179",
+      "startedAt": "2026-09-30T01:19:12.724Z",
+      "finishedAt": "2026-09-30T01:19:12.748Z",
+      "status": 401,
+      "code": "SESSION_INVALID"
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id/lifecycle",
+      "pathSha256": "c8b2e6d09119e9b273c0e19292ee22b9e2535248cdd2e35966cbbca7f6aa86e0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731152755
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/:id",
+      "pathSha256": "fd14eec895cbee762a18be3063e6a6ebc5c001977999b97ae50388943981f2dd",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731152797
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731152802
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 4,
+      "path": "/api/v2/auth/logout",
+      "pathSha256": "7943ae65b9d047aea185252143ad674f9a0cccb54ac6dddcd410b3f4cb074ae2",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731152827
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731152923
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 4,
+      "path": "/api/v2/auth/login",
+      "pathSha256": "9800b72ca327021d58438dbfe554c1681a42ba7520f7eaff44798079138b0e68",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731153110
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 4,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731153483
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 4,
+      "path": "/api/v2/auth/context-selections",
+      "pathSha256": "e6c75d05f4a49c44f7d34acc7d3e646299940e5a57e26a8277984596d4ca3fa5",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731153514
+    },
+    {
+      "phase": "stage2-suspension",
+      "contextId": 4,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731153538
+    },
+    {
+      "phase": "stage2-suspension",
+      "source": "independent-probe",
+      "path": "/__test/platform-mechanism/identity",
+      "method": "GET",
+      "traceId": "5cf5140a5fe7b6df9f3118444c8b733b",
+      "startedAt": "2026-09-30T01:19:13.563Z",
+      "finishedAt": "2026-09-30T01:19:13.642Z",
+      "status": 200
+    },
+    {
+      "phase": "stage2-complete",
+      "contextId": 5,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731154098
+    },
+    {
+      "phase": "stage2-complete",
+      "contextId": 5,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731154676
+    },
+    {
+      "phase": "stage2-complete",
+      "contextId": 5,
+      "path": "/api/v2/auth/login",
+      "pathSha256": "9800b72ca327021d58438dbfe554c1681a42ba7520f7eaff44798079138b0e68",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731155117
+    },
+    {
+      "phase": "stage2-complete",
+      "contextId": 5,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731155783
+    },
+    {
+      "phase": "stage2-complete",
+      "contextId": 5,
+      "path": "/api/v2/auth/context-selections",
+      "pathSha256": "e6c75d05f4a49c44f7d34acc7d3e646299940e5a57e26a8277984596d4ca3fa5",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731155850
+    },
+    {
+      "phase": "stage2-complete",
+      "contextId": 5,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731155906
+    },
+    {
+      "phase": "stage2-complete",
+      "contextId": 6,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731156203
+    },
+    {
+      "phase": "stage2-complete",
+      "contextId": 6,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731156937
+    },
+    {
+      "phase": "stage2-complete",
+      "contextId": 6,
+      "path": "/api/v2/auth/login",
+      "pathSha256": "9800b72ca327021d58438dbfe554c1681a42ba7520f7eaff44798079138b0e68",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731157219
+    },
+    {
+      "phase": "stage2-complete",
+      "contextId": 6,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731157761
+    },
+    {
+      "phase": "stage2-complete",
+      "contextId": 6,
+      "path": "/api/v2/auth/context-selections",
+      "pathSha256": "e6c75d05f4a49c44f7d34acc7d3e646299940e5a57e26a8277984596d4ca3fa5",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731157793
+    },
+    {
+      "phase": "stage2-complete",
+      "contextId": 6,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731157831
+    },
+    {
+      "phase": "unauthorized-tenant-context",
+      "contextId": 5,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731158057
+    },
+    {
+      "phase": "unauthorized-tenant-context",
+      "contextId": 5,
+      "path": "/api/v2/auth/session",
+      "pathSha256": "337cc71edfe977e6007a578eb18aca8d17464a930be42c34ea467c6cd10f8ec0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731158089
+    },
+    {
+      "phase": "unauthorized-tenant-context",
+      "contextId": 5,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731158119
+    },
+    {
+      "phase": "wrong-user-token",
+      "source": "independent-probe",
+      "path": "/__test/platform-mechanism/identity",
+      "method": "GET",
+      "traceId": "22de11cee8c43cb3591b4f2c7d6f8d46",
+      "startedAt": "2026-09-30T01:19:18.196Z",
+      "finishedAt": "2026-09-30T01:19:18.200Z",
+      "status": 401,
+      "code": "ACCESS_TOKEN_INVALID"
+    },
+    {
+      "phase": "refresh-replay",
+      "contextId": 5,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731158248
+    },
+    {
+      "phase": "refresh-replay",
+      "contextId": 5,
+      "path": "/api/v2/auth/session",
+      "pathSha256": "337cc71edfe977e6007a578eb18aca8d17464a930be42c34ea467c6cd10f8ec0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731158263
+    },
+    {
+      "phase": "refresh-replay",
+      "contextId": 5,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731158288
+    },
+    {
+      "phase": "refresh-replay",
+      "source": "independent-probe",
+      "path": "/__test/platform-mechanism/identity",
+      "method": "GET",
+      "traceId": "7071429ec452253ee35cdf26b34749ae",
+      "startedAt": "2026-09-30T01:19:18.337Z",
+      "finishedAt": "2026-09-30T01:19:18.408Z",
+      "status": 200
+    },
+    {
+      "phase": "refresh-replay",
+      "source": "independent-probe",
+      "path": "/api/v2/auth/refresh",
+      "method": "POST",
+      "traceId": "30e75a407078449e73dd2781a5fcbc29",
+      "startedAt": "2026-09-30T01:19:24.540Z",
+      "finishedAt": "2026-09-30T01:19:24.770Z",
+      "status": 401,
+      "code": "SESSION_INVALID"
+    },
+    {
+      "phase": "refresh-replay",
+      "source": "independent-probe",
+      "path": "/__test/platform-mechanism/identity",
+      "method": "GET",
+      "traceId": "865d3c032b0c379fdfe51429f18b8808",
+      "startedAt": "2026-09-30T01:19:24.772Z",
+      "finishedAt": "2026-09-30T01:19:24.934Z",
+      "status": 401,
+      "code": "ACCESS_TOKEN_INVALID"
+    },
+    {
+      "phase": "refresh-replay",
+      "contextId": 5,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731165170
+    },
+    {
+      "phase": "refresh-replay",
+      "contextId": 5,
+      "path": "/api/v2/auth/logout",
+      "pathSha256": "7943ae65b9d047aea185252143ad674f9a0cccb54ac6dddcd410b3f4cb074ae2",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731165257
+    },
+    {
+      "phase": "redis-failure",
+      "contextId": 7,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731165873
+    },
+    {
+      "phase": "redis-failure",
+      "contextId": 7,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731166470
+    },
+    {
+      "phase": "redis-failure",
+      "contextId": 7,
+      "path": "/api/v2/auth/login",
+      "pathSha256": "9800b72ca327021d58438dbfe554c1681a42ba7520f7eaff44798079138b0e68",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731166953
+    },
+    {
+      "phase": "redis-failure",
+      "contextId": 7,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731167493
+    },
+    {
+      "phase": "redis-failure",
+      "contextId": 7,
+      "path": "/api/v2/auth/context-selections",
+      "pathSha256": "e6c75d05f4a49c44f7d34acc7d3e646299940e5a57e26a8277984596d4ca3fa5",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731167533
+    },
+    {
+      "phase": "redis-failure",
+      "contextId": 7,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731167561
+    },
+    {
+      "phase": "redis-failure",
+      "source": "independent-probe",
+      "path": "/__test/platform-mechanism/identity",
+      "method": "GET",
+      "traceId": "bac9a71e6609e71ce7eb6d80b0292802",
+      "startedAt": "2026-09-30T01:19:27.608Z",
+      "finishedAt": "2026-09-30T01:19:27.664Z",
+      "status": 200
+    },
+    {
+      "phase": "redis-failure",
+      "source": "independent-probe",
+      "path": "/__test/platform-mechanism/identity",
+      "method": "GET",
+      "traceId": "a1488fb0755bcb312b561b19f4c178aa",
+      "startedAt": "2026-09-30T01:19:28.667Z",
+      "finishedAt": "2026-09-30T01:19:30.867Z",
+      "status": 503,
+      "code": "TOKEN_REVOCATION_STATUS_UNAVAILABLE"
+    },
+    {
+      "phase": "redis-failure",
+      "contextId": 7,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731170996
+    },
+    {
+      "phase": "redis-failure",
+      "contextId": 7,
+      "path": "/api/v2/auth/session",
+      "pathSha256": "337cc71edfe977e6007a578eb18aca8d17464a930be42c34ea467c6cd10f8ec0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731171045
+    },
+    {
+      "phase": "redis-failure",
+      "contextId": 7,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 503,
+      "at": 1790731173106,
+      "code": "SESSION_SECURITY_UNAVAILABLE",
+      "traceId": "65e834fe9f0c4d339db4aa0055ff4ca5"
+    },
+    {
+      "phase": "redis-recovery",
+      "source": "independent-probe",
+      "path": "/__test/platform-mechanism/identity",
+      "method": "GET",
+      "traceId": "280b93978a5c2f1afdbf239e6c91b33b",
+      "startedAt": "2026-09-30T01:19:39.192Z",
+      "finishedAt": "2026-09-30T01:19:39.382Z",
+      "status": 200
+    },
+    {
+      "phase": "redis-recovery",
+      "contextId": 7,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731179504
+    },
+    {
+      "phase": "redis-recovery",
+      "contextId": 7,
+      "path": "/api/v2/auth/logout",
+      "pathSha256": "7943ae65b9d047aea185252143ad674f9a0cccb54ac6dddcd410b3f4cb074ae2",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731179586
+    },
+    {
+      "phase": "redis-recovery",
+      "contextId": 7,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731179667
+    },
+    {
+      "phase": "redis-recovery",
+      "contextId": 7,
+      "path": "/api/v2/auth/login",
+      "pathSha256": "9800b72ca327021d58438dbfe554c1681a42ba7520f7eaff44798079138b0e68",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731179995
+    },
+    {
+      "phase": "redis-recovery",
+      "contextId": 7,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731180762
+    },
+    {
+      "phase": "redis-recovery",
+      "contextId": 7,
+      "path": "/api/v2/auth/context-selections",
+      "pathSha256": "e6c75d05f4a49c44f7d34acc7d3e646299940e5a57e26a8277984596d4ca3fa5",
+      "method": "POST",
+      "status": 204,
+      "at": 1790731180812
+    },
+    {
+      "phase": "redis-recovery",
+      "contextId": 7,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731180855
+    },
+    {
+      "phase": "redis-recovery",
+      "contextId": 7,
+      "path": "/api/v2/auth/bootstrap",
+      "pathSha256": "9787189ddbe79883de035d5ccef2b220024f7b338759f83d17c5b29debf65e3b",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731181030
+    },
+    {
+      "phase": "redis-recovery",
+      "contextId": 7,
+      "path": "/api/v2/auth/session",
+      "pathSha256": "337cc71edfe977e6007a578eb18aca8d17464a930be42c34ea467c6cd10f8ec0",
+      "method": "GET",
+      "status": 200,
+      "at": 1790731181055
+    },
+    {
+      "phase": "redis-recovery",
+      "contextId": 7,
+      "path": "/api/v2/auth/refresh",
+      "pathSha256": "b11dc719f1f205aa458548a40f3ceb940370e52af5f83d0986e5b3bb2610d808",
+      "method": "POST",
+      "status": 200,
+      "at": 1790731181082
+    }
+  ],
+  "errors": [
+    {
+      "phase": "stage2-english-login-error",
+      "kind": "console",
+      "contextId": 4,
+      "path": "/api/v2/auth/login",
+      "at": 1790731117637,
+      "resourceFailure": true
+    },
+    {
+      "phase": "stage2-suspension",
+      "kind": "console",
+      "contextId": 1,
+      "path": "/api/v1/platform/tenants/01a0efe4-42d7-7b97-be0e-96ff856d934a/suspensions",
+      "at": 1790731124546,
+      "resourceFailure": true
+    },
+    {
+      "phase": "stage2-suspension",
+      "kind": "console",
+      "contextId": 4,
+      "path": "/api/v2/auth/session",
+      "at": 1790731149953,
+      "resourceFailure": true
+    },
+    {
+      "phase": "redis-failure",
+      "kind": "console",
+      "contextId": 7,
+      "path": "/api/v2/auth/refresh",
+      "at": 1790731173107,
+      "resourceFailure": true
+    }
+  ],
+  "chrome": "154.0.8037.59",
+  "stage2Windows": {
+    "stage2-context-switch": {
+      "startedAt": "2026-09-30T01:18:28.189Z",
+      "finishedAt": "2026-09-30T01:18:35.269Z"
+    },
+    "stage2-locale": {
+      "startedAt": "2026-09-30T01:18:35.269Z",
+      "finishedAt": "2026-09-30T01:18:36.890Z"
+    },
+    "stage2-english-login-error": {
+      "startedAt": "2026-09-30T01:18:36.890Z",
+      "finishedAt": "2026-09-30T01:18:37.645Z"
+    },
+    "stage2-english-login": {
+      "startedAt": "2026-09-30T01:18:37.645Z",
+      "finishedAt": "2026-09-30T01:18:39.896Z"
+    },
+    "stage2-suspension": {
+      "startedAt": "2026-09-30T01:18:39.896Z",
+      "finishedAt": "2026-09-30T01:19:13.653Z"
+    },
+    "stage2-complete": {
+      "startedAt": "2026-09-30T01:19:13.653Z"
+    }
+  },
+  "stage2ContextId": 4,
+  "suspensionResponse": {
+    "contextId": 1,
+    "pathSha256": "e4c53046b64028556fd15996e7c56ff0a3ed0b06bf2ef26b60325930cd573a8c",
+    "startedAt": 1790731122659,
+    "finishedAt": 1790731124545,
+    "status": 503,
+    "completed": true,
+    "code": "TENANT_SUSPENSION_PENDING",
+    "retryAfter": "1"
+  },
+  "tenantContext": {
+    "scenario": "unauthorized-tenant-context",
+    "status": "passed",
+    "runId": "c292ba74-804c-4b05-a351-1367edf19adb",
+    "injection": "independent-context-selection-request-with-other-identity-membership",
+    "attackerTenant": "3cac3804ccc28614600fc186bd6fc19292036c5c65f718daf94d47dec377d13a",
+    "targetTenant": "1bda334c903f164b3e95ea5c30ade1d6601ee5a93d5368722fe9845c8f358569",
+    "targetMembership": "98ef6fda878c120959a9fb9bdf91365d703e4b717d2d06db1fc3f2009c258841",
+    "targetExistsAndOwnedByDifferentIdentity": true,
+    "targetAbsentFromAttackerAuthority": true,
+    "unchangedSessionAndRevisionAfterRejection": true,
+    "unchangedContextAfterBrowserRefresh": true,
+    "requests": [
+      {
+        "path": "/api/v2/auth/session",
+        "method": "GET",
+        "traceId": "8310487406cae0fa726038c9f36cc61f",
+        "startedAt": "2026-09-30T01:19:17.859Z",
+        "finishedAt": "2026-09-30T01:19:17.890Z",
+        "status": 200
+      },
+      {
+        "path": "/api/v2/auth/session",
+        "method": "GET",
+        "traceId": "4d9e5b9070540fe42bfe8d6ab4c1ed18",
+        "startedAt": "2026-09-30T01:19:17.891Z",
+        "finishedAt": "2026-09-30T01:19:17.918Z",
+        "status": 200
+      },
+      {
+        "path": "/api/v2/auth/context-selections",
+        "method": "POST",
+        "traceId": "016dcc13baf00e126494cf44c3549841",
+        "startedAt": "2026-09-30T01:19:17.919Z",
+        "finishedAt": "2026-09-30T01:19:17.951Z",
+        "status": 403,
+        "code": "TARGET_CONTEXT_UNAVAILABLE"
+      },
+      {
+        "path": "/api/v2/auth/session",
+        "method": "GET",
+        "traceId": "b250459a3a4bbf90ec2d56846e78c787",
+        "startedAt": "2026-09-30T01:19:17.952Z",
+        "finishedAt": "2026-09-30T01:19:17.972Z",
+        "status": 200
+      },
+      {
+        "path": "/api/v2/auth/session",
+        "method": "GET",
+        "traceId": "2fb2ef97f5ec42af5a4970f3a8094bb4",
+        "startedAt": "2026-09-30T01:19:18.174Z",
+        "finishedAt": "2026-09-30T01:19:18.195Z",
+        "status": 200
+      }
+    ]
+  },
+  "replayInjection": {
+    "startedAt": "2026-09-30T01:19:24.540Z",
+    "finishedAt": "2026-09-30T01:19:25.412Z"
+  },
+  "redisContextId": 7,
+  "redisStopped": {
+    "runId": "c292ba74-804c-4b05-a351-1367edf19adb",
+    "requestId": "cc9bbdde8c6c4c1244d08f02ebb64993",
+    "state": "stopped",
+    "status": "passed",
+    "startedAt": "2026-09-30T01:19:27.801Z",
+    "finishedAt": "2026-09-30T01:19:28.308Z"
+  },
+  "redisRestored": {
+    "runId": "c292ba74-804c-4b05-a351-1367edf19adb",
+    "requestId": "cdbc5d9bb7350cb0d328905c755fc398",
+    "state": "healthy",
+    "status": "passed",
+    "startedAt": "2026-09-30T01:19:33.342Z",
+    "finishedAt": "2026-09-30T01:19:38.872Z"
+  },
+  "classification": {
+    "unexpectedRequests": 0,
+    "unknownErrors": 0
+  },
+  "finishedAt": "2026-09-30T01:19:41.275Z",
+  "auditObservationsSha256": "e4fa77a55b02f9c493c813b6a3ce55f7e7448c624ef3c6ef67694e48abc0a2da"
+}

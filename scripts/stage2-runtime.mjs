@@ -1,3 +1,4 @@
+import { classifyRuntimeError, errorBlocks } from './stage2-runtime-classification.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -8,6 +9,7 @@ const [handoffPath, securityPath, oauthPath, output] = process.argv.slice(2);
 const bytes = readFileSync(handoffPath), handoff = JSON.parse(bytes);
 const hash = value => createHash('sha256').update(value).digest('hex');
 const report = { schemaVersion: 1, kind: 'stage2-runtime-errors', runId: handoff.runId, handoffSha256: hash(bytes),
+  driverSha256: Object.fromEntries(['stage2-runtime.mjs', 'stage2-runtime-classification.mjs'].map(name => [name, hash(readFileSync(new URL(name, import.meta.url)))])),
   startedAt: new Date().toISOString(), status: 'failed', checks: [], errors: [] };
 try {
   assert.equal(handoff.status, 'ready');
@@ -29,14 +31,11 @@ try {
       encoding: 'utf8', timeout: 30000, maxBuffer: 32 * 1024 * 1024
     });
     assert.equal(logs.status, 0);
-    for (const line of `${logs.stdout}\n${logs.stderr}`.split('\n').filter(value => /\bERROR\b/.test(value))) {
-      const at = line.split(' ')[0];
-      const inFault = Date.parse(at) >= Date.parse(security.redisStopped?.startedAt) && Date.parse(at) <= Date.parse(security.redisRestored?.finishedAt);
-      const request = security.requests.find(request => request.phase === 'redis-failure' && request.status === 503
-        && request.code === 'TOKEN_REVOCATION_STATUS_UNAVAILABLE' && /^[0-9a-f]{32}$/.test(request.traceId)
-        && line.includes(request.traceId));
-      const redisFault = inFault && Boolean(request) && /TOKEN_REVOCATION_STATUS_UNAVAILABLE/.test(line);
-      report.errors.push({ service, at, sha256: hash(line), scenario: redisFault ? 'redis-failure' : 'unclassified', expected: redisFault, ...(redisFault ? { requestTrace: hash(request.traceId) } : {}) });
+    for (const block of errorBlocks(`${logs.stdout}\n${logs.stderr}`)) {
+      const at = block.split(' ')[0];
+      const matched = classifyRuntimeError(service, block.trimEnd(), security);
+      report.errors.push({ service, at, sha256: hash(block), scenario: matched?.scenario ?? 'unclassified',
+        expected: Boolean(matched), ...(matched?.requestTrace ? { requestTrace: hash(matched.requestTrace) } : {}) });
     }
   }
   const unknownErrors = report.errors.filter(error => !error.expected).length;

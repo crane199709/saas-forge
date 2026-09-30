@@ -1,0 +1,25 @@
+{
+  "runId": "c292ba74-804c-4b05-a351-1367edf19adb",
+  "conditions": {
+    "gateway": {
+      "redisTimeout": "PT2S"
+    },
+    "platform-mechanism-receiver": {
+      "redisTimeout": "PT2S"
+    },
+    "tenant-access-service": {
+      "redisTimeout": "PT2S"
+    },
+    "iam-service": {
+      "redisTimeout": "PT2S",
+      "tenantAccessGrpcDeadline": "PT5S"
+    },
+    "entitlement-service": {
+      "redisTimeout": "PT2S"
+    },
+    "audit-service": {
+      "redisTimeout": "PT2S"
+    }
+  },
+  "bindingVerifiedAgainstImageDependencies": true
+}

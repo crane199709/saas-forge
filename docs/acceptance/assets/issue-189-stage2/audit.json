@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "kind": "stage2-audit",
+  "runId": "c292ba74-804c-4b05-a351-1367edf19adb",
+  "handoffSha256": "bd875709c207fb7367321a716d1c97b5876f466ed35d6e440bed2b579f6ed533",
+  "startedAt": "2026-09-30T01:19:41.745Z",
+  "status": "passed",
+  "checks": [
+    {
+      "name": "SESSION_STARTED",
+      "status": "passed",
+      "event": "617b229b23841ff7b8b576d1815a327b4126fc7fb315257ceb7a9f25bd5fa460",
+      "actor": "0859481ca1ad686f5850f94d7efa2fae214a7eaa4157fdb856b4ac1aae94c2b9",
+      "resource": "04fed5b172a376bef34377588aea60a950664ed52ed7b9ecfc09bd0f7d6474de",
+      "trace": "756c766463e18c526982f3daae5e0cc749e4064919103c80146a249b4a1b851d",
+      "published": true,
+      "matchedBrowserResource": true,
+      "browserWindow": {
+        "from": "2026-09-30T01:19:39.670Z",
+        "to": "2026-09-30T01:19:39.995Z"
+      },
+      "eventActorResourceTraceMatch": true
+    },
+    {
+      "name": "TENANT_CREATED",
+      "status": "passed",
+      "event": "86db15ca27615540fe926f987681c7216fd6f990cd2a57c7d901328d5a51bceb",
+      "actor": "959d90d7fbbe1d6ec527dd73a64fed3504e0ff14fdef163835570b346e6564fe",
+      "resource": "1c2a59d747dc9bb046e40de28d7f18bcc065cd09226fb7b40d7f611543d38592",
+      "trace": "fe81d01645f0512cc945f292a3383fc1969667d304108ce9775f7b51025f340d",
+      "published": true,
+      "matchedBrowserResource": true,
+      "browserWindow": {
+        "from": "2026-09-30T01:18:29.046Z",
+        "to": "2026-09-30T01:18:29.126Z"
+      },
+      "eventActorResourceTraceMatch": true
+    },
+    {
+      "name": "TENANT_CONTEXT_SWITCHED",
+      "status": "passed",
+      "event": "ca28282c2d65991de0d91de8d0870da12ba09f6fb9612cb2cfd1f9fc57b2e211",
+      "actor": "0859481ca1ad686f5850f94d7efa2fae214a7eaa4157fdb856b4ac1aae94c2b9",
+      "resource": "612c13ae82e97a62820f4673ed011e167893a5ca880144d411dbc51557b6953d",
+      "trace": "90481fba8261f430dbbae01b567feb434396fef1302b2f6b22d5de494d99caee",
+      "published": true,
+      "matchedBrowserResource": true,
+      "browserWindow": {
+        "from": "2026-09-30T01:18:34.652Z",
+        "to": "2026-09-30T01:18:34.747Z"
+      },
+      "targetMembership": "fc9bc46d2df4a4d0e47abcd51038f4476995932aac9f80b523df84dd54c5731c",
+      "eventActorResourceTraceMatch": true
+    }
+  ],
+  "observationsSha256": "e4fa77a55b02f9c493c813b6a3ce55f7e7448c624ef3c6ef67694e48abc0a2da",
+  "classification": {
+    "unknownErrors": 0,
+    "unexpectedRequests": 0
+  },
+  "finishedAt": "2026-09-30T01:19:42.655Z"
+}

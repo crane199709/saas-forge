@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "kind": "stage2-fresh-aggregate",
+  "status": "passed",
+  "checks": [
+    {
+      "name": "security",
+      "status": "passed",
+      "sha256": "c00bbcf50e06b4006a9709959ffcb446e9fe677b6fb71284bba45e8c488956ac",
+      "scenarios": [
+        "fresh-console-bootstrap-two-tenants-and-real-mail-password-setup",
+        "same-identity-tenant-switch-and-refresh",
+        "locale-english-input-persistence-and-identity-path",
+        "suspension-rejects-old-token-resumption-requires-login",
+        "unauthorized-tenant-context",
+        "wrong-user-token",
+        "rotated-refresh-replay-rejected",
+        "replay-revokes-unexpired-token-and-console-hides-workspace",
+        "redis-fails-closed-and-console-does-not-blame-password",
+        "redis-restored-authoritative-probe-and-console-login"
+      ]
+    },
+    {
+      "name": "oauth",
+      "status": "passed",
+      "sha256": "8a6852e5f07536cac9d8d87d5e2b0a0d63cbe67ba493a5fdcfe761ff84bfd391",
+      "scenarios": [
+        "same-issuance-replay-cannot-reread-secret",
+        "runtime-create-close-refresh-navigation-no-secret-reread",
+        "real-overlap-denial-chinese-and-english",
+        "second-console-regular-rotation-rejected-with-stable-24h-window",
+        "real-service-scope-insufficient",
+        "old-secret-expired-new-secret-valid",
+        "revocation-rejects-new-token-and-existing-unexpired-token",
+        "visible-secret-cleared-on-refresh-leave-and-cross-tab-session-loss",
+        "same-run-service-logs-contain-no-known-sensitive-material",
+        "request-correlated-errors-and-no-sensitive-browser-storage-or-logs"
+      ]
+    },
+    {
+      "name": "recovery",
+      "status": "passed",
+      "sha256": "8a6852e5f07536cac9d8d87d5e2b0a0d63cbe67ba493a5fdcfe761ff84bfd391",
+      "scenarios": [
+        "committed-create-response-loss-and-original-actor-recovery",
+        "committed-rotation-response-loss-recovery-preserves-overlap",
+        "recovery-rejects-second-use-and-other-actor",
+        "ten-minute-expiry-injection-rejects-recovery-and-restores"
+      ]
+    },
+    {
+      "name": "audit",
+      "status": "passed",
+      "sha256": "be12f1b1b8e7fb2461406ea9ce90bd30170d6eff9859b47d9219bc7ec785d0e5",
+      "scenarios": [
+        "SESSION_STARTED",
+        "TENANT_CREATED",
+        "TENANT_CONTEXT_SWITCHED"
+      ]
+    },
+    {
+      "name": "runtime",
+      "status": "passed",
+      "sha256": "86ac3e63b6d4f57732e1de22de0063a8a86030ef2e9742abf9d0322cd370ca1e",
+      "scenarios": [
+        "scenario-correlated-runtime-errors"
+      ]
+    }
+  ],
+  "runId": "c292ba74-804c-4b05-a351-1367edf19adb",
+  "handoffSha256": "bd875709c207fb7367321a716d1c97b5876f466ed35d6e440bed2b579f6ed533",
+  "backend": {
+    "commit": "40c9875d98ad0629e5e652c9ffc32b6b12c23391",
+    "dirty": true,
+    "versionSource": "source-checkout",
+    "images": [
+      {
+        "service": "gateway",
+        "imageId": "sha256:bb78a6c5394c063f3c4c52c5f4ce4e4d117179e2d73023ae9eb547f1d9a5cff4",
+        "containerId": "21137bc6af86a6c58532021007ee756e9614f8af9b737918118e5b15435231b5"
+      },
+      {
+        "service": "iam-service",
+        "imageId": "sha256:88eed3e7ee411d8f4caa87d6af08d0717c462c46a59b1cf11b04338eec947424",
+        "containerId": "c2ef64700032033dc60bcc7d661f1b57f7d07d445e3474e62070bfe71f40b609"
+      },
+      {
+        "service": "tenant-access-service",
+        "imageId": "sha256:6f93a05b9b2162ee91e459151551f524994e95ac0822ea5fae09a9aa1df8858f",
+        "containerId": "97eb9c87250873138cf766d5d61105c6d2c5b77e98f0ede39b46c6d9e3b56a46"
+      },
+      {
+        "service": "entitlement-service",
+        "imageId": "sha256:527dd83a29baedddd76121bcc1e5f8cf09b2cd3aab05354f3e92b492c72d8151",
+        "containerId": "57c1d79dd3a1bcdeac295509b9dc17db69b07dbe9a81e36a2595d15ae843d27e"
+      },
+      {
+        "service": "audit-service",
+        "imageId": "sha256:51c331788add17c2b4a6cdf94d9239dbb501e72c5d6ca6278a7cad3ab90a416a",
+        "containerId": "b0531ee3b9d47a4956de117e7f5d7a556774fdcae4c5bcf77ef97d4827656b1a"
+      }
+    ],
+    "jdkMajor": 17
+  },
+  "finishedAt": "2026-09-30T01:20:19.737Z"
+}
