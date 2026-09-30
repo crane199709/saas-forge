@@ -54,6 +54,7 @@
         <module>saas-forge-contracts</module>
         <module>saas-forge-sdk</module>
         <module>saas-forge-quality-gates</module>
+        <module>examples/project-service</module>
     </modules>
 
     <properties>

@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.List;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
@@ -29,7 +31,8 @@ final class ReceiverProblemDetailsWriter {
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         objectMapper.writeValue(response.getWriter(), new Problem(
                 URI.create("urn:saas.forge:problem:" + code.toLowerCase().replace('_', '-')),
-                title(code), status.value(), code, detail, traceId(request)));
+                title(code), status.value(), code, detail, traceId(request),
+                List.of("VALIDATION_FAILED", "UNTRUSTED_CONTEXT_HEADER").contains(code) ? List.of(new FieldError("", "INVALID_REQUEST", detail)) : null));
     }
 
     private static String title(String code) {
@@ -53,6 +56,10 @@ final class ReceiverProblemDetailsWriter {
                 : UUID.randomUUID().toString().replace("-", "");
     }
 
-    private record Problem(URI type, String title, int status, String code, String detail, String traceId) {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private record Problem(URI type, String title, int status, String code, String detail, String traceId,
+                           List<FieldError> errors) {
     }
+
+    private record FieldError(String pointer, String code, String detail) {}
 }

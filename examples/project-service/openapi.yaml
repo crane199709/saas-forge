@@ -1,0 +1,199 @@
+openapi: 3.1.1
+info:
+  title: Project Example API
+  version: 1.0.0
+  description: |
+    Only Project creation and detail are implemented. Requires a verified tenant User Access Token.
+    No client supplied tenant identity is accepted in headers, query or body, including aliases.
+    Resource versions are positive integers in the response body. Later update/delete slices must
+    carry the version as a quoted decimal If-Match header (no wildcard, list or weak tag), returning
+    428 VERSION_REQUIRED when absent and 409 RESOURCE_VERSION_CONFLICT when stale.
+    Those operations are not exposed here. Browser Gateway/CORS changes require a separate decision.
+    Write keys are canonical UUIDv7, unique per identity across Example write operations and tenants.
+    Same method, canonical path and normalized body replay the original status/body/Location for
+    24 hours from completion. Omitted and null description are equivalent; whitespace is preserved.
+    Different request or tenant returns 409 IDEMPOTENCY_KEY_REUSED; an unfinished request returns
+    409 IDEMPOTENCY_REQUEST_IN_PROGRESS with Retry-After. Format/field 400 and uncommitted infrastructure
+    5xx do not reserve the key. Business 4xx are stable results; creation currently has no such rejection
+    after validation (duplicate names are allowed). Expired records are removed by controlled migrator
+    maintenance; same-tenant expired keys are also reclaimed on demand. A cross-tenant expired key may
+    remain unavailable until maintenance, and can never replay another tenant's body.
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/projects:
+    post:
+      operationId: createProject
+      x-service-id: project-service
+      x-credential-requirement: USER_REQUIRED
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/UuidV7'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProject'
+      responses:
+        '201':
+          description: Created, or replay of the original creation.
+          headers:
+            Location:
+              $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/headers/Location'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NoTenantContext'
+        '409':
+          description: IDEMPOTENCY_KEY_REUSED or IDEMPOTENCY_REQUEST_IN_PROGRESS.
+          headers:
+            Retry-After:
+              description: Present for an in-progress request; retry after one second.
+              schema: {type: integer, minimum: 1}
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/projects/{projectId}:
+    get:
+      operationId: getProject
+      x-service-id: project-service
+      x-credential-requirement: USER_REQUIRED
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/UuidV7'
+      responses:
+        '200':
+          description: Current visible Project including its resource version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NoTenantContext'
+        '404':
+          description: PROJECT_NOT_FOUND for nonexistent and foreign-tenant resources alike.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  schemas:
+    CreateProject:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '^(?![\s\S]*\u0000)[\s\S]*\S[\s\S]*$'
+          description: Required, nonblank; duplicates allowed. Length is Unicode code points. NUL is rejected.
+        description:
+          type: [string, 'null']
+          maxLength: 2000
+          pattern: '^[^\u0000]*$'
+          description: Optional; omitted and null both mean no description.
+    Project:
+      type: object
+      additionalProperties: false
+      required: [id, name, description, version, createdAt, updatedAt]
+      properties:
+        id:
+          $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/UuidV7'
+        name: {type: string, minLength: 1, maxLength: 200}
+        description: {type: [string, 'null'], maxLength: 2000}
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$'
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$'
+          readOnly: true
+  responses:
+    InvalidRequest:
+      description: VALIDATION_FAILED, IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_INVALID or UNTRUSTED_CONTEXT_HEADER. All format, field and tenant-input errors include nonempty errors.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ValidationProblemDetails'
+    NotAcceptable:
+      description: NOT_ACCEPTABLE; only JSON representations are available.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+    UnsupportedMediaType:
+      description: UNSUPPORTED_MEDIA_TYPE; creation requires application/json.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+    PayloadTooLarge:
+      description: PAYLOAD_TOO_LARGE; JSON exceeds the Starter configured byte limit (default 1 MiB).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+    Unauthorized:
+      description: ACCESS_TOKEN_INVALID (anonymous, invalid or Service Access Token).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+    NoTenantContext:
+      description: ACCESS_CONTEXT_UNAVAILABLE (platform context has no Tenant).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+    Unavailable:
+      description: INFRASTRUCTURE_UNAVAILABLE or TOKEN_REVOCATION_STATUS_UNAVAILABLE; no uncommitted result is cached.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'

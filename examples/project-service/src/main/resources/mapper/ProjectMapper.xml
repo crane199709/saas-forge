@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saas.forge.example.ProjectMapper">
+    <select id="setTenant" resultType="string" flushCache="true" useCache="false">
+        SELECT set_config('app.tenant_id', #{tenant}, true)
+    </select>
+    <select id="insert" resultType="io.saas.forge.example.ProjectMapper$ProjectRow" affectData="true" flushCache="true">
+        INSERT INTO projects (tenant_id, name, description)
+        VALUES (#{tenant}, #{name}, #{description})
+        RETURNING id::text, name, description, version, created_at, updated_at
+    </select>
+    <!-- 不依赖 Tenant WHERE，RLS 仍必须独立保护业务查询。 -->
+    <select id="find" resultType="io.saas.forge.example.ProjectMapper$ProjectRow">
+        SELECT id::text, name, description, version, created_at, updated_at FROM projects WHERE id = #{id}
+    </select>
+</mapper>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saas.forge.example.ProjectWriteMapper">
+    <select id="lock" resultType="boolean" useCache="false" flushCache="true">
+        SELECT pg_try_advisory_xact_lock(#{id})
+    </select>
+    <delete id="expire">
+        DELETE FROM project_write_results WHERE identity_id = #{identity} AND idempotency_key = #{key}
+          AND completed_at &lt;= clock_timestamp() - interval '24 hours'
+    </delete>
+    <insert id="claim">
+        INSERT INTO project_write_results (identity_id, idempotency_key, tenant_id, fingerprint)
+        VALUES (#{identity}, #{key}, #{tenant}, #{fingerprint}) ON CONFLICT DO NOTHING
+    </insert>
+    <select id="find" resultType="io.saas.forge.example.ProjectWriteMapper$StoredResult">
+        SELECT fingerprint, status, body, location FROM project_write_results
+        WHERE identity_id = #{identity} AND idempotency_key = #{key}
+    </select>
+    <update id="complete">
+        UPDATE project_write_results SET status = #{result.status}, body = #{result.body},
+            location = #{result.location}, completed_at = clock_timestamp()
+        WHERE identity_id = #{key.identity} AND idempotency_key = #{key.key} AND status IS NULL
+    </update>
+</mapper>

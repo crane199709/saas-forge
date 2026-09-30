@@ -1,0 +1,8 @@
+-- 前向修正已经在本机验证执行的迁移，保留历史 checksum。
+ALTER TABLE projects RENAME CONSTRAINT projects_pkey TO pk_projects;
+ALTER TABLE projects RENAME CONSTRAINT projects_tenant_id_id_key TO uq_projects_tenant_id;
+ALTER TABLE projects RENAME CONSTRAINT projects_name_check TO ck_projects_name;
+ALTER TABLE projects RENAME CONSTRAINT projects_version_check TO ck_projects_version;
+ALTER TABLE project_write_results RENAME CONSTRAINT project_write_results_pkey TO pk_project_write_results;
+ALTER TABLE project_write_results RENAME CONSTRAINT project_write_results_complete_result TO ck_project_write_results_complete_result;
+ALTER INDEX project_write_results_tenant_expiry RENAME TO idx_project_write_results_tenant_expiry;
