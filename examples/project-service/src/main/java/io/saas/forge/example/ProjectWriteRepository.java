@@ -39,11 +39,15 @@ class ProjectWriteRepository {
     }
 
     static String fingerprint(String normalizedBody) {
-        return fingerprint("/api/v1/projects", normalizedBody);
+        return fingerprint("POST", "/api/v1/projects", normalizedBody);
+    }
+
+    static String fingerprint(String method, String path, String normalizedBody) {
+        return HexFormat.of().formatHex(digest(method + "\n" + path + "\n" + normalizedBody));
     }
 
     static String fingerprint(String path, String normalizedBody) {
-        return HexFormat.of().formatHex(digest("POST\n" + path + "\n" + normalizedBody));
+        return fingerprint("POST", path, normalizedBody);
     }
 
     Optional<ProjectWriteResult> begin(WriteKey key) {

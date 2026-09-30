@@ -36,7 +36,7 @@ class TaskController {
     @GetMapping(produces = "application/json;charset=UTF-8")
     TaskPage list(@PathVariable String projectId, @RequestParam(required = false) String cursor,
             @RequestParam(required = false) String limit, HttpServletRequest http) {
-        ProjectController.rejectTenantInput(http, "cursor", "limit");
+        ProjectController.rejectTenantInput(http, java.util.Set.of("cursor", "limit"));
         if (limit == null) limit = "50";
         if (!limit.matches("[1-9][0-9]{0,2}") || Integer.parseInt(limit) > 100)
             throw new ProjectException(400, "VALIDATION_FAILED", "Limit must be an integer from 1 to 100.");

@@ -57,11 +57,13 @@ class ProjectExceptionHandler {
 
     private static ResponseEntity<ProjectProblem> response(int status, String code, String detail,
             HttpServletRequest request, List<ProjectProblem.FieldError> errors) {
-        String trace = ProjectProblem.traceId(request.getHeader("traceparent"));
-        var problem = new ProjectProblem("urn:saas.forge:problem:" + code.toLowerCase(java.util.Locale.ROOT).replace('_', '-'),
-                HttpStatus.valueOf(status).getReasonPhrase(), status, code, detail, trace, errors);
+        var problem = ProjectProblem.of(status, code, detail, traceId(request), errors);
         var response = ResponseEntity.status(status).contentType(MediaType.parseMediaType("application/problem+json;charset=UTF-8"));
         if (code.equals("IDEMPOTENCY_REQUEST_IN_PROGRESS")) response.header("Retry-After", "1");
         return response.body(problem);
+    }
+
+    static String traceId(HttpServletRequest request) {
+        return ProjectProblem.traceId(request.getHeader("traceparent"));
     }
 }
