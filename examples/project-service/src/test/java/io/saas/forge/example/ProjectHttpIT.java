@@ -339,6 +339,277 @@ class ProjectHttpIT {
         } finally { worker.shutdownNow(); pool.setMaximumPoolSize(1); }
     }
 
+    @Test void tenantCanCreateAndReadTaskWithFixedInitialStateAndReplay() throws Exception {
+        String parent = create(A, key(), "{\"name\":\"Tasks\"}").headers().firstValue("Location").orElseThrow();
+        String collection = parent + "/tasks";
+        String writeKey = key();
+        var created = request("POST", collection, token(A, false), writeKey, "{\"title\":\"First task\"}");
+        assertThat(created.statusCode()).as(created.body()).isEqualTo(201);
+        var task = JSON.readTree(created.body());
+        assertThat(task.path("title").asText()).isEqualTo("First task");
+        assertThat(task.path("status").asText()).isEqualTo("TODO");
+        assertThat(task.path("version").asLong()).isEqualTo(1);
+        assertThat(task.path("projectId").asText()).isEqualTo(parent.substring(parent.lastIndexOf('/') + 1));
+        assertThat(task.path("description").isNull()).isTrue();
+        assertThat(UUID.fromString(task.path("id").asText()).version()).isEqualTo(7);
+        String location = created.headers().firstValue("Location").orElseThrow();
+        assertThat(location).isEqualTo(collection + "/" + task.path("id").asText());
+        assertThat(JSON.readTree(request("GET", location, token(A, false), null, null).body())).isEqualTo(task);
+        var replay = request("POST", collection, token(A, false), writeKey, "{\"description\":null,\"title\":\"First task\"}");
+        assertThat(replay.statusCode()).isEqualTo(201);
+        assertThat(replay.body()).isEqualTo(created.body());
+        assertThat(replay.headers().firstValue("Location")).isEqualTo(created.headers().firstValue("Location"));
+        var list = request("GET", collection, token(A, false), null, null);
+        assertThat(list.statusCode()).isEqualTo(200);
+        assertThat(JSON.readTree(list.body()).path("items")).hasSize(1);
+    }
+
+    @Test void taskParentsAndTenantIdentityCannotBeForgedAndFailuresReplay() throws Exception {
+        String a = projectPath(A), otherA = projectPath(A), b = projectPath(B);
+        var taskA = taskCreate(A, a, key(), "{\"title\":\"Same\"}");
+        var taskB = taskCreate(B, b, key(), "{\"title\":\"Same\"}");
+        assertThat(taskA.statusCode()).isEqualTo(201);
+        assertThat(taskB.statusCode()).isEqualTo(201);
+        String locationA = taskA.headers().firstValue("Location").orElseThrow();
+        String locationB = taskB.headers().firstValue("Location").orElseThrow();
+        assertThat(request("GET", locationB, token(B, false), null, null).statusCode()).isEqualTo(200);
+        assertProblem(request("GET", locationA, token(B, false), null, null), 404, "PROJECT_NOT_FOUND");
+        assertProblem(request("GET", locationB, token(A, false), null, null), 404, "PROJECT_NOT_FOUND");
+        assertProblem(request("GET", locationA.replace(a, otherA), token(A, false), null, null), 404, "TASK_NOT_FOUND");
+        assertProblem(request("GET", a + "/tasks/" + key(), token(A, false), null, null), 404, "TASK_NOT_FOUND");
+        assertProblem(request("GET", b + "/tasks", token(A, false), null, null), 404, "PROJECT_NOT_FOUND");
+        for (String parent : List.of(b, "/api/v1/projects/" + key())) {
+            String writeKey = key();
+            var failed = taskCreate(A, parent, writeKey, "{\"title\":\"Forbidden\"}");
+            assertProblem(failed, 404, "PROJECT_NOT_FOUND");
+            var replay = taskCreate(A, parent, writeKey, "{\"title\":\"Forbidden\"}");
+            assertProblem(replay, 404, "PROJECT_NOT_FOUND");
+            assertThat(replay.body()).isEqualTo(failed.body());
+            assertThat(replay.headers().firstValue("Location")).isEmpty();
+            assertProblem(taskCreate(A, a, writeKey, "{\"title\":\"Forbidden\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
+        }
+        assertThat(JSON.readTree(request("GET", b + "/tasks", token(B, false), null, null).body()).path("items")).hasSize(1);
+        for (String path : List.of(a + "/tasks", locationA)) {
+            for (String credential : Arrays.asList(null, "Bearer invalid", token(null, true)))
+                assertProblem(request("GET", path, credential, null, null), 401, "ACCESS_TOKEN_INVALID");
+            assertProblem(request("GET", path, token(null, false), null, null), 403, "ACCESS_CONTEXT_UNAVAILABLE");
+        }
+        for (String credential : Arrays.asList(null, "Bearer invalid", token(null, true)))
+            assertProblem(request("POST", a + "/tasks", credential, key(), "{\"title\":\"Denied\"}"), 401, "ACCESS_TOKEN_INVALID");
+        assertProblem(request("POST", a + "/tasks", token(null, false), key(), "{\"title\":\"Denied\"}"), 403, "ACCESS_CONTEXT_UNAVAILABLE");
+        for (String field : List.of("tenantId", "tenant_id", "TenantId")) {
+            assertProblem(taskCreate(A, a, key(), "{\"title\":\"Denied\",\"" + field + "\":\"" + B + "\"}"), 400, "VALIDATION_FAILED");
+            assertProblem(request("GET", a + "/tasks?" + field + "=" + B, token(A, false), null, null), 400, "VALIDATION_FAILED");
+        }
+        for (String method : List.of("GET", "POST")) {
+            var builder = HttpRequest.newBuilder(URI.create(base + a + "/tasks"))
+                    .header("Authorization", token(A, false)).header("X-Tenant-Id", B);
+            if (method.equals("POST")) builder.header("Content-Type", "application/json").header("Idempotency-Key", key());
+            var forged = HTTP.send(builder.method(method, method.equals("POST") ? HttpRequest.BodyPublishers.ofString("{\"title\":\"Denied\"}")
+                    : HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString());
+            assertThat(forged.statusCode()).isEqualTo(400);
+        }
+        String projectKey = key();
+        assertThat(create(A, projectKey, "{\"name\":\"Shared key\"}").statusCode()).isEqualTo(201);
+        assertProblem(taskCreate(A, a, projectKey, "{\"title\":\"Shared key\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
+        String taskKey = key();
+        assertThat(taskCreate(A, a, taskKey, "{\"title\":\"Shared key\"}").statusCode()).isEqualTo(201);
+        assertProblem(create(A, taskKey, "{\"name\":\"Shared key\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
+        assertProblem(taskCreate(A, otherA, taskKey, "{\"title\":\"Shared key\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
+        assertProblem(taskCreate(B, b, taskKey, "{\"title\":\"Shared key\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
+    }
+
+    @Test void taskFieldsAndSystemInputsFollowContractWithoutReservingInvalidKeys() throws Exception {
+        String parent = projectPath(A), writeKey = key();
+        for (String body : List.of("{}", "{\"title\":null}", "{\"title\":\"  \"}", "{\"title\":1}",
+                "{\"title\":true}", "{\"title\":\"" + "x".repeat(201) + "\"}",
+                "{\"title\":\"ok\",\"description\":\"" + "x".repeat(2001) + "\"}",
+                "{\"title\":\"A\\u0000B\"}", "{\"title\":\"ok\",\"description\":\"\\u0000\"}",
+                "{invalid", "{\"title\":\"ok\",\"status\":\"IN_PROGRESS\"}",
+                "{\"title\":\"ok\",\"status\":\"TODO\"}", "{\"title\":\"ok\",\"projectId\":\"" + key() + "\"}",
+                "{\"title\":\"ok\",\"id\":\"" + key() + "\"}", "{\"title\":\"ok\",\"version\":2}",
+                "{\"title\":\"ok\",\"createdAt\":null}", "{\"title\":\"ok\",\"updatedAt\":null}")) {
+            var invalid = taskCreate(A, parent, writeKey, body);
+            assertProblem(invalid, 400, "VALIDATION_FAILED");
+            assertThat(JSON.readTree(invalid.body()).path("errors").isArray()).isTrue();
+        }
+        String title = "😀".repeat(200), description = "😀".repeat(2000);
+        var created = taskCreate(A, parent, writeKey, "{\"title\":\"" + title + "\",\"description\":\"" + description + "\"}");
+        assertThat(created.statusCode()).isEqualTo(201);
+        var resource = JSON.readTree(created.body());
+        assertThat(resource.propertyNames()).containsExactlyInAnyOrder("id", "projectId", "title", "description", "status", "version", "createdAt", "updatedAt");
+        assertThat(resource.path("title").asText()).isEqualTo(title);
+        assertThat(resource.path("description").asText()).isEqualTo(description);
+        for (String timestamp : List.of("createdAt", "updatedAt"))
+            assertThat(resource.path(timestamp).asText()).matches("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z");
+        assertThat(taskCreate(A, parent, key(), "{\"title\":\"" + title + "\"}").statusCode()).isEqualTo(201);
+        assertProblem(taskCreate(A, parent, writeKey, "{\"title\":\"Changed\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
+        assertProblem(taskCreate(A, parent, null, "{\"title\":\"ok\"}"), 400, "IDEMPOTENCY_KEY_REQUIRED");
+        for (String invalid : List.of("bad", UUID.randomUUID().toString(), key().toUpperCase(Locale.ROOT))) {
+            assertProblem(taskCreate(A, parent, invalid, "{\"title\":\"ok\"}"), 400, "IDEMPOTENCY_KEY_INVALID");
+            assertProblem(request("GET", parent + "/tasks/" + invalid, token(A, false), null, null), 400, "VALIDATION_FAILED");
+            assertProblem(request("GET", "/api/v1/projects/" + invalid + "/tasks", token(A, false), null, null), 400, "VALIDATION_FAILED");
+        }
+    }
+
+    @Test void taskPagesHaveStableOrderAndRejectForeignOrInvalidCursors() throws Exception {
+        String parent = projectPath(A), otherA = projectPath(A), otherB = projectPath(B);
+        String path = parent + "/tasks";
+        var empty = JSON.readTree(request("GET", path, token(A, false), null, null).body());
+        assertThat(empty.path("items")).isEmpty();
+        assertThat(empty.path("nextCursor").isNull()).isTrue();
+        assertThat(empty.path("hasMore").asBoolean()).isFalse();
+        List<String> expected = new ArrayList<>();
+        for (int i = 0; i < 101; i++) {
+            var created = taskCreate(A, parent, key(), "{\"title\":\"Duplicate\"}");
+            assertThat(created.statusCode()).isEqualTo(201);
+            expected.add(JSON.readTree(created.body()).path("id").asText());
+        }
+        expected.sort(String::compareTo);
+        var first = JSON.readTree(request("GET", path, token(A, false), null, null).body());
+        assertThat(first.path("items")).hasSize(50);
+        assertThat(first.path("hasMore").asBoolean()).isTrue();
+        String cursor = first.path("nextCursor").asText();
+        List<String> actual = new ArrayList<>();
+        first.path("items").forEach(item -> actual.add(item.path("id").asText()));
+        var last = JSON.readTree(request("GET", path + "?cursor=" + cursor + "&limit=100", token(A, false), null, null).body());
+        assertThat(last.path("items")).hasSize(51);
+        last.path("items").forEach(item -> actual.add(item.path("id").asText()));
+        assertThat(actual).containsExactlyElementsOf(expected);
+        assertThat(last.path("hasMore").asBoolean()).isFalse();
+        assertThat(last.path("nextCursor").isNull()).isTrue();
+        var maximum = JSON.readTree(request("GET", path + "?limit=100", token(A, false), null, null).body());
+        assertThat(maximum.path("items")).hasSize(100);
+        var one = JSON.readTree(request("GET", path + "?limit=1", token(A, false), null, null).body());
+        assertThat(one.path("items")).hasSize(1);
+        for (String other : List.of(otherA, otherB))
+            assertProblem(request("GET", other + "/tasks?cursor=" + cursor, token(other.equals(otherB) ? B : A, false), null, null), 400, "VALIDATION_FAILED");
+        assertProblem(request("GET", path + "?cursor=" + cursor, token(B, false), null, null), 400, "VALIDATION_FAILED");
+        for (String query : List.of("limit=0", "limit=101", "limit=-1", "limit=1.5", "limit=word", "limit=9999999999",
+                "limit=", "limit=1&limit=2", "cursor=", "cursor=bad", "sort=-id", "cursor=" + "x".repeat(2049)))
+            assertProblem(request("GET", path + "?" + query, token(A, false), null, null), 400, "VALIDATION_FAILED");
+        String decoded = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
+        String expired = decoded.replaceFirst("\\n[^\\n]+\\n", "\n2000-01-01T00:00:00Z\n");
+        String expiredCursor = Base64.getUrlEncoder().withoutPadding().encodeToString(expired.getBytes(StandardCharsets.UTF_8));
+        assertProblem(request("GET", path + "?cursor=" + expiredCursor, token(A, false), null, null), 400, "VALIDATION_FAILED");
+        assertThat(JSON.readTree(request("GET", otherB + "/tasks", token(B, false), null, null).body()).path("items")).isEmpty();
+    }
+
+    @Test void taskRlsAndCompositeForeignKeyProtectDirectRuntimeAccess() throws Exception {
+        String parentA = projectPath(A), parentB = projectPath(B);
+        String idA = parentA.substring(parentA.lastIndexOf('/') + 1), idB = parentB.substring(parentB.lastIndexOf('/') + 1);
+        assertThat(taskCreate(A, parentA, key(), "{\"title\":\"A\"}").statusCode()).isEqualTo(201);
+        assertThat(taskCreate(B, parentB, key(), "{\"title\":\"B\"}").statusCode()).isEqualTo(201);
+        try (var connection = runtimeConnection()) {
+            assertThat(scalar(connection, "SELECT count(*) FROM tasks")).isZero();
+            assertThat(scalar(connection, "SELECT count(*) FROM pg_class WHERE relname='tasks' AND relrowsecurity AND relforcerowsecurity AND pg_get_userbyid(relowner)='project_migrator'")).isEqualTo(1);
+            for (String context : List.of("", "invalid", A)) {
+                connection.setAutoCommit(false);
+                try {
+                    setTenant(connection, context);
+                    if (context.equals("invalid")) {
+                        org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () -> scalar(connection, "SELECT count(*) FROM tasks"));
+                        connection.rollback(); setTenant(connection, context);
+                    } else if (context.isEmpty()) assertThat(scalar(connection, "SELECT count(*) FROM tasks")).isZero();
+                    else {
+                        assertThat(scalar(connection, "SELECT count(DISTINCT tenant_id) FROM tasks")).isEqualTo(1);
+                        assertThat(scalar(connection, "SELECT count(*) FROM tasks WHERE tenant_id='" + B + "'")).isZero();
+                    }
+                    org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () -> execute(connection,
+                            "INSERT INTO tasks(tenant_id,project_id,title) VALUES ('" + B + "','" + idB + "','Denied')"));
+                } finally { connection.rollback(); connection.setAutoCommit(true); }
+            }
+            connection.setAutoCommit(false);
+            try {
+                setTenant(connection, A);
+                var foreign = org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () -> execute(connection,
+                        "INSERT INTO tasks(tenant_id,project_id,title) VALUES ('" + A + "','" + idB + "','Foreign')"));
+                assertThat(foreign.getSQLState()).isEqualTo("23503");
+                connection.rollback(); setTenant(connection, A);
+                var missing = org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () -> execute(connection,
+                        "INSERT INTO tasks(tenant_id,project_id,title) VALUES ('" + A + "','" + key() + "','Missing')"));
+                assertThat(missing.getSQLState()).isEqualTo("23503");
+                connection.rollback(); setTenant(connection, A);
+                var update = org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () -> execute(connection,
+                        "UPDATE tasks SET tenant_id='" + B + "',project_id='" + idB + "' WHERE project_id='" + idA + "'"));
+                assertThat(update.getSQLState()).isEqualTo("42501");
+            } finally { connection.rollback(); connection.setAutoCommit(true); }
+            org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () -> execute(connection, "ALTER TABLE tasks DISABLE ROW LEVEL SECURITY"));
+            org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () -> execute(connection, "SET ROLE project_migrator"));
+        }
+        try (var migration = migratorConnection()) {
+            var deletion = org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () -> execute(migration,
+                    "DELETE FROM projects WHERE id='" + idA + "'"));
+            assertThat(deletion.getSQLState()).isEqualTo("23001");
+        }
+        assertThat(JSON.readTree(request("GET", parentA + "/tasks", token(A, false), null, null).body()).path("items")).hasSize(1);
+    }
+
+    @Test void taskTransactionsClearContextOnCommitAndRollbackAndExpireResults() throws Exception {
+        String parentA = projectPath(A), parentB = projectPath(B);
+        var pool = app.getBean(javax.sql.DataSource.class);
+        long pid;
+        try (var connection = pool.getConnection()) { pid = scalar(connection, "SELECT pg_backend_pid()"); }
+        String expiryKey = key();
+        var committed = taskCreate(A, parentA, expiryKey, "{\"title\":\"Committed\"}");
+        assertThat(committed.statusCode()).isEqualTo(201);
+        try (var connection = pool.getConnection()) {
+            assertThat(scalar(connection, "SELECT pg_backend_pid()")).isEqualTo(pid);
+            assertThat(scalar(connection, "SELECT count(*) FROM tasks")).isZero();
+        }
+        String retryKey = key();
+        try (var migration = migratorConnection()) {
+            execute(migration, "CREATE FUNCTION reject_task_test() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test infrastructure outage'; END $$");
+            execute(migration, "CREATE TRIGGER reject_task_test BEFORE INSERT ON tasks FOR EACH ROW EXECUTE FUNCTION reject_task_test()");
+            try {
+                assertProblem(taskCreate(A, parentA, retryKey, "{\"title\":\"Rollback\"}"), 503, "INFRASTRUCTURE_UNAVAILABLE");
+            } finally {
+                execute(migration, "DROP TRIGGER reject_task_test ON tasks");
+                execute(migration, "DROP FUNCTION reject_task_test()");
+            }
+        }
+        try (var connection = pool.getConnection()) {
+            assertThat(scalar(connection, "SELECT pg_backend_pid()")).isEqualTo(pid);
+            assertThat(scalar(connection, "SELECT count(*) FROM tasks")).isZero();
+            assertThat(scalar(connection, "SELECT count(*) FROM project_write_results")).isZero();
+        }
+        var recovered = taskCreate(B, parentB, retryKey, "{\"title\":\"Rollback\"}");
+        assertThat(recovered.statusCode()).isEqualTo(201);
+        assertThat(JSON.readTree(request("GET", parentA + "/tasks", token(A, false), null, null).body()).path("items")).hasSize(1);
+        assertThat(JSON.readTree(request("GET", parentB + "/tasks", token(B, false), null, null).body()).path("items")).hasSize(1);
+        try (var migration = migratorConnection()) {
+            execute(migration, "UPDATE project_write_results SET completed_at=clock_timestamp()-interval '23 hours' WHERE idempotency_key='" + expiryKey + "'");
+            assertThat(taskCreate(A, parentA, expiryKey, "{\"title\":\"Committed\"}").body()).isEqualTo(committed.body());
+            execute(migration, "UPDATE project_write_results SET completed_at=clock_timestamp()-interval '25 hours' WHERE idempotency_key='" + expiryKey + "'");
+        }
+        var expired = taskCreate(A, parentA, expiryKey, "{\"title\":\"Committed\"}");
+        assertThat(expired.statusCode()).isEqualTo(201);
+        assertThat(expired.body()).isNotEqualTo(committed.body());
+        assertThat(JSON.readTree(request("GET", parentA + "/tasks", token(A, false), null, null).body()).path("items")).hasSize(2);
+    }
+
+    @Test void stableTaskFailurePreservesOriginalTraceContextWhenReplayed() throws Exception {
+        String parent = "/api/v1/projects/" + key(), writeKey = key();
+        String trace = "4bf92f3577b34da6a3ce929d0e0e4736";
+        var failed = HTTP.send(HttpRequest.newBuilder(URI.create(base + parent + "/tasks"))
+                .header("Authorization", token(A, false)).header("Idempotency-Key", writeKey)
+                .header("Content-Type", "application/json").header("traceparent", "00-" + trace + "-1234567890123456-01")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"title\":\"Missing parent\"}")).build(), HttpResponse.BodyHandlers.ofString());
+        assertProblem(failed, 404, "PROJECT_NOT_FOUND");
+        assertThat(JSON.readTree(failed.body()).path("traceId").asText()).isEqualTo(trace);
+        var replay = taskCreate(A, parent, writeKey, "{\"title\":\"Missing parent\"}");
+        assertThat(replay.body()).isEqualTo(failed.body());
+    }
+
+    static String projectPath(String tenant) throws Exception {
+        var result = create(tenant, key(), "{\"name\":\"Task parent\"}");
+        assertThat(result.statusCode()).isEqualTo(201);
+        return result.headers().firstValue("Location").orElseThrow();
+    }
+    static HttpResponse<String> taskCreate(String tenant, String parent, String key, String body) throws Exception {
+        return request("POST", parent + "/tasks", token(tenant, false), key, body);
+    }
+
     static Connection runtimeConnection() throws SQLException { return DriverManager.getConnection(databaseUrl(), "project_app", "test-app"); }
     static Connection migratorConnection() throws SQLException { return DriverManager.getConnection(databaseUrl(), "project_migrator", "test-migrator"); }
     static void execute(Connection connection, String sql) throws SQLException {

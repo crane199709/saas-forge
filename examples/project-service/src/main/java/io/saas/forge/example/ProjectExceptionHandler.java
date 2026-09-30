@@ -3,7 +3,6 @@ package io.saas.forge.example;
 import io.saas.forge.sdk.tenant.TenantContextUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -58,9 +57,7 @@ class ProjectExceptionHandler {
 
     private static ResponseEntity<ProjectProblem> response(int status, String code, String detail,
             HttpServletRequest request, List<ProjectProblem.FieldError> errors) {
-        String parent = request.getHeader("traceparent");
-        String trace = parent != null && parent.matches("[0-9a-f]{2}-(?!0{32})[0-9a-f]{32}-(?!0{16})[0-9a-f]{16}-[0-9a-f]{2}")
-                ? parent.substring(3, 35) : UUID.randomUUID().toString().replace("-", "");
+        String trace = ProjectProblem.traceId(request.getHeader("traceparent"));
         var problem = new ProjectProblem("urn:saas.forge:problem:" + code.toLowerCase(java.util.Locale.ROOT).replace('_', '-'),
                 HttpStatus.valueOf(status).getReasonPhrase(), status, code, detail, trace, errors);
         var response = ResponseEntity.status(status).contentType(MediaType.parseMediaType("application/problem+json;charset=UTF-8"));

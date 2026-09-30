@@ -26,24 +26,12 @@ class ProjectService {
         projects.tenant(context.tenantId());
         var key = new ProjectWriteRepository.WriteKey(context.identityId(), idempotencyKey, context.tenantId(),
                 ProjectWriteRepository.fingerprint(json.writeValueAsString(request)));
-        writes.lock(key);
-        writes.expire(key);
-        if (!writes.claim(key)) {
-            // RLS 隐藏另一 Tenant 的历史正文；唯一键仍阻止同一 Identity 跨 Tenant 复用。
-            var existing = writes.find(key).orElseThrow(ProjectService::reusedKey);
-            if (!existing.fingerprint().equals(key.fingerprint())) throw reusedKey();
-            if (existing.result() == null)
-                throw new ProjectException(409, "IDEMPOTENCY_REQUEST_IN_PROGRESS", "The request is still in progress.");
-            return existing.result();
-        }
+        var replay = writes.begin(key);
+        if (replay.isPresent()) return replay.get();
         var project = projects.create(context.tenantId(), request);
         var result = new ProjectWriteResult(201, json.writeValueAsString(project), "/api/v1/projects/" + project.id());
         writes.complete(key, result);
         return result;
-    }
-
-    private static ProjectException reusedKey() {
-        return new ProjectException(409, "IDEMPOTENCY_KEY_REUSED", "The key is already bound to another request.");
     }
 
     @Transactional(readOnly = true)

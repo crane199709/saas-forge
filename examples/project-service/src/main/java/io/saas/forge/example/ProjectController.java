@@ -36,14 +36,15 @@ class ProjectController {
         return projects.get(uuid(projectId, "VALIDATION_FAILED"));
     }
 
-    private static UUID uuid(String value, String code) {
+    static UUID uuid(String value, String code) {
         if (!value.matches("[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"))
             throw new ProjectException(400, code, "A canonical UUIDv7 is required.");
         return UUID.fromString(value);
     }
 
-    private static void rejectTenantInput(HttpServletRequest http) {
-        if (!http.getParameterMap().isEmpty())
+    static void rejectTenantInput(HttpServletRequest http, String... allowedParameters) {
+        if (!Set.of(allowedParameters).containsAll(http.getParameterMap().keySet())
+                || http.getParameterMap().values().stream().anyMatch(values -> values.length != 1))
             throw new ProjectException(400, "VALIDATION_FAILED", "Query parameters are not supported.");
         for (String name : Collections.list(http.getHeaderNames())) {
             String normalized = name.toLowerCase(Locale.ROOT).replace("-", "").replace("_", "");
