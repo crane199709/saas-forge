@@ -89,6 +89,8 @@
                             <apiPackage>io.saas.forge.sdk.core.rest.api</apiPackage>
                             <modelPackage>io.saas.forge.sdk.core.rest.model</modelPackage>
                             <invokerPackage>io.saas.forge.sdk.core.rest</invokerPackage>
+                            <generateApiTests>false</generateApiTests>
+                            <generateModelTests>false</generateModelTests>
                             <configOptions>
                                 <dateLibrary>java8</dateLibrary>
                                 <serializationLibrary>jackson</serializationLibrary>
