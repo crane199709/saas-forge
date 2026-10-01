@@ -30,6 +30,14 @@ class ProjectRepository {
                 .map(ProjectRepository::resource);
     }
 
+    Optional<ProjectResult> lockForDeletion(UUID id) {
+        return Optional.ofNullable(mapper.lockForDeletion(id)).map(ProjectRepository::resource);
+    }
+
+    boolean lockForTaskCreation(UUID id) { return mapper.lockForTaskCreation(id) != null; }
+    boolean hasTasks(UUID id) { return mapper.hasTasks(id); }
+    boolean delete(UUID id, long version) { return mapper.delete(new ProjectMapper.ProjectVersion(id, version)) == 1; }
+
     private static ProjectResult resource(ProjectMapper.ProjectRow row) {
         return new ProjectResult(UUID.fromString(row.id()), row.name(), row.description(), row.version(),
                 TIMESTAMP.format(row.createdAt()), TIMESTAMP.format(row.updatedAt()));

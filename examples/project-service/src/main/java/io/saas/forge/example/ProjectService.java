@@ -86,6 +86,33 @@ class ProjectService {
         return result;
     }
 
+    @Transactional
+    public ProjectWriteResult delete(UUID id, UUID idempotencyKey, long version, String traceId) {
+        var context = tenants.requireCurrent();
+        projects.tenant(context.tenantId());
+        var key = new ProjectWriteRepository.WriteKey(context.identityId(), idempotencyKey, context.tenantId(),
+                ProjectWriteRepository.fingerprint("DELETE", "/api/v1/projects/" + id, Long.toString(version)));
+        var replay = writes.begin(key);
+        if (replay.isPresent()) return replay.get();
+        var project = projects.lockForDeletion(id);
+        ProjectWriteResult result;
+        if (project.isEmpty()) result = deletionFailure(404, "PROJECT_NOT_FOUND", "Project not found.", traceId);
+        else if (project.get().version() != version)
+            result = deletionFailure(409, "RESOURCE_VERSION_CONFLICT", "The project version has changed.", traceId);
+        else if (projects.hasTasks(id))
+            result = deletionFailure(409, "PROJECT_NOT_EMPTY", "Delete all tasks before deleting the project.", traceId);
+        else {
+            if (!projects.delete(id, version)) throw new IllegalStateException("已锁定 Project 删除失败");
+            result = new ProjectWriteResult(204, "", null);
+        }
+        writes.complete(key, result);
+        return result;
+    }
+
+    private ProjectWriteResult deletionFailure(int status, String code, String detail, String traceId) {
+        return new ProjectWriteResult(status, json.writeValueAsString(ProjectProblem.of(status, code, detail, traceId, null)), null);
+    }
+
     @Transactional(readOnly = true)
     public ProjectResult get(UUID id) {
         var context = tenants.requireCurrent();

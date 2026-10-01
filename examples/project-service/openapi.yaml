@@ -3,14 +3,14 @@ info:
   title: Project Example API
   version: 1.0.0
   description: |
-    Project creation/list/detail/update and Task creation/list/detail require a verified tenant User Access Token.
+    Project and Task CRUD require a verified tenant User Access Token.
     No client supplied tenant identity is accepted in headers, query or body, including aliases.
-    Resource versions are positive integers in the response body. Updates and future deletes must
+    Resource versions are positive integers in the response body. Updates and deletes must
     carry the version as a quoted decimal If-Match header (no wildcard, list or weak tag), returning
     428 VERSION_REQUIRED when absent and 409 RESOURCE_VERSION_CONFLICT when stale.
-    Delete is not exposed here. Browser Gateway/CORS changes require a separate decision.
+    Project deletion requires an empty Project. Browser Gateway/CORS changes require a separate decision.
     Write keys are canonical UUIDv7, unique per identity across Example write operations and tenants.
-    Same method, canonical path, If-Match version (for updates) and normalized body replay the original status/body/Location for
+    Same method, canonical path, If-Match version (for updates/deletes) and normalized body replay the original status/body/Location for
     24 hours from completion. Omitted and null description are equivalent; whitespace is preserved.
     Different request or tenant returns 409 IDEMPOTENCY_KEY_REUSED; an unfinished request returns
     409 IDEMPOTENCY_REQUEST_IN_PROGRESS with Retry-After. Format/field 400 and uncommitted infrastructure
@@ -110,6 +110,73 @@ paths:
         '503':
           $ref: '#/components/responses/Unavailable'
   /api/v1/projects/{projectId}:
+    delete:
+      operationId: deleteProject
+      x-service-id: project-service
+      x-credential-requirement: USER_REQUIRED
+      description: |
+        Permanently delete only an empty Project when the current version matches. No cascade or response body.
+        Any Task (including DONE) prevents deletion with 409 PROJECT_NOT_EMPTY.
+        Concurrent Task creation and Project deletion serialize on the parent resource.
+        Same-key retries replay the original 204 even after deletion; new keys receive 404.
+        Same-key replay precedes resource/version checks; 404 and version conflict are stable replayable results.
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/UuidV7'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/UuidV7'
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^"[1-9][0-9]{0,18}"$'
+          description: Single quoted positive int64 version; at most 9223372036854775807. No wildcard, list or weak tag.
+      responses:
+        '204':
+          description: Permanently deleted, or replay of the original deletion; no response body.
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NoTenantContext'
+        '404':
+          description: PROJECT_NOT_FOUND; absent and foreign resources are indistinguishable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+        '409':
+          description: PROJECT_NOT_EMPTY, RESOURCE_VERSION_CONFLICT, IDEMPOTENCY_KEY_REUSED or IDEMPOTENCY_REQUEST_IN_PROGRESS.
+          headers:
+            Retry-After:
+              description: Present only for in-progress requests; retry after one second.
+              schema: {type: integer, minimum: 1}
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+        '428':
+          description: VERSION_REQUIRED; no key is reserved.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/ProblemDetails'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '503':
+          $ref: '#/components/responses/Unavailable'
     put:
       operationId: updateProject
       x-service-id: project-service

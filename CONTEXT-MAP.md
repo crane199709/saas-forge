@@ -13,7 +13,7 @@ saas-forge 将身份与访问、Tenant 访问、权益、审计、浏览器交�
 
 ## Example 业务上下文
 
-- [Project / Task Example](examples/CONTEXT.md)：代表开发者接入底座的业务应用，拥有租户隔离的 Project 业务记录，不属于上述六个底座上下文。当前已实现 Project 创建、列表、详情与修改；Project 删除和 Task API 尚未实现。
+- [Project / Task Example](examples/CONTEXT.md)：代表开发者接入底座的业务应用，拥有租户隔离的 Project 业务记录，不属于上述六个底座上下文。当前已实现 Project/Task CRUD、版本与幂等保护，以及通过 Starter/PostgreSQL RLS 的租户隔离；后端验收范围与结果见 [#216 记录](docs/acceptance/issue-216-acceptance.md)，不代表阶段 3 浏览器闭环。
 
 ## Relationships
 

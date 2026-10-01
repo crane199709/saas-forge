@@ -65,6 +65,16 @@ class ProjectController {
         return writeResponse(projects.update(uuid(projectId, "VALIDATION_FAILED"), uuid(key, "IDEMPOTENCY_KEY_INVALID"), expected, request, ProjectExceptionHandler.traceId(http)));
     }
 
+    @DeleteMapping(path = "/{projectId}")
+    ResponseEntity<String> delete(@PathVariable String projectId,
+            @RequestHeader(value = "Idempotency-Key", required = false) String key,
+            @RequestHeader(value = "If-Match", required = false) String version, HttpServletRequest http) {
+        rejectTenantInput(http);
+        if (key == null || key.isBlank()) throw new ProjectException(400, "IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key is required.");
+        return writeResponse(projects.delete(uuid(projectId, "VALIDATION_FAILED"), uuid(key, "IDEMPOTENCY_KEY_INVALID"),
+                version(version), ProjectExceptionHandler.traceId(http)));
+    }
+
     static long version(String version) {
         if (version == null) throw new ProjectException(428, "VERSION_REQUIRED", "If-Match is required.");
         if (!version.matches("\"[1-9][0-9]{0,18}\""))

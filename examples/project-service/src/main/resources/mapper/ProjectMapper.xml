@@ -24,4 +24,17 @@
         WHERE id = #{id} AND version = #{version}
         RETURNING id::text, name, description, version, created_at, updated_at
     </select>
+    <!-- 与 Task 创建的 KEY SHARE 互斥；锁后另语句检查子资源以读取已提交的最新快照。 -->
+    <select id="lockForDeletion" resultType="io.saas.forge.example.ProjectMapper$ProjectRow" flushCache="true" useCache="false">
+        SELECT id::text, name, description, version, created_at, updated_at FROM projects WHERE id = #{id} FOR UPDATE
+    </select>
+    <select id="lockForTaskCreation" resultType="io.saas.forge.example.ProjectMapper$ProjectRow" flushCache="true" useCache="false">
+        SELECT id::text, name, description, version, created_at, updated_at FROM projects WHERE id = #{id} FOR KEY SHARE
+    </select>
+    <select id="hasTasks" resultType="boolean" useCache="false">
+        SELECT EXISTS (SELECT 1 FROM tasks WHERE project_id = #{id})
+    </select>
+    <delete id="delete">
+        DELETE FROM projects WHERE id = #{id} AND version = #{version}
+    </delete>
 </mapper>

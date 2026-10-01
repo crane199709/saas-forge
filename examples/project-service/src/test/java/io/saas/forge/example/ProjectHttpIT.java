@@ -914,21 +914,21 @@ class ProjectHttpIT {
             assertThat(request("GET", path, token(A, false), null, null).body()).isEqualTo(changed.body());
         }
         String staleKey = key();
-        var stale = taskDelete(A, path, staleKey, "\"1\"");
+        var stale = deleteResource(A, path, staleKey, "\"1\"");
         assertProblem(stale, 409, "RESOURCE_VERSION_CONFLICT");
-        assertThat(taskDelete(A, path, staleKey, "\"1\"").body()).isEqualTo(stale.body());
+        assertThat(deleteResource(A, path, staleKey, "\"1\"").body()).isEqualTo(stale.body());
         assertThat(JSON.readTree(request("GET", path, token(A, false), null, null).body()).path("version").asLong()).isEqualTo(version);
         String deleteKey = key();
-        var deleted = taskDelete(A, path, deleteKey, "\"" + version + "\"");
+        var deleted = deleteResource(A, path, deleteKey, "\"" + version + "\"");
         assertThat(deleted.statusCode()).isEqualTo(204);
         assertThat(deleted.body()).isEmpty();
-        assertThat(taskDelete(A, path, deleteKey, "\"" + version + "\"").statusCode()).isEqualTo(204);
+        assertThat(deleteResource(A, path, deleteKey, "\"" + version + "\"").statusCode()).isEqualTo(204);
         assertProblem(request("GET", path, token(A, false), null, null), 404, "TASK_NOT_FOUND");
-        assertProblem(taskDelete(A, path, key(), "\"" + version + "\""), 404, "TASK_NOT_FOUND");
+        assertProblem(deleteResource(A, path, key(), "\"" + version + "\""), 404, "TASK_NOT_FOUND");
         assertThat(JSON.readTree(request("GET", parent + "/tasks", token(A, false), null, null).body()).path("items")).isEmpty();
     }
 
-    static HttpResponse<String> taskDelete(String tenant, String path, String key, String version) throws Exception {
+    static HttpResponse<String> deleteResource(String tenant, String path, String key, String version) throws Exception {
         var builder = HttpRequest.newBuilder(URI.create(base + path)).header("Authorization", token(tenant, false));
         if (key != null) builder.header("Idempotency-Key", key);
         if (version != null) builder.header("If-Match", version);
@@ -953,18 +953,18 @@ class ProjectHttpIT {
         for (String field : List.of("id", "tenantId", "tenant_id", "projectId", "project_id", "version", "createdAt", "updatedAt"))
             assertProblem(update(A, path, writeKey, "\"1\"", valid.substring(0, valid.length()-1) + ",\"" + field + "\":null}"), 400, "VALIDATION_FAILED");
         for (String method : List.of("PUT", "DELETE")) {
-            assertProblem(method.equals("PUT") ? update(A, path, writeKey, null, valid) : taskDelete(A, path, writeKey, null), 428, "VERSION_REQUIRED");
-            assertProblem(method.equals("PUT") ? update(A, path, null, "\"1\"", valid) : taskDelete(A, path, null, "\"1\""), 400, "IDEMPOTENCY_KEY_REQUIRED");
+            assertProblem(method.equals("PUT") ? update(A, path, writeKey, null, valid) : deleteResource(A, path, writeKey, null), 428, "VERSION_REQUIRED");
+            assertProblem(method.equals("PUT") ? update(A, path, null, "\"1\"", valid) : deleteResource(A, path, null, "\"1\""), 400, "IDEMPOTENCY_KEY_REQUIRED");
             for (String version : List.of("1", "\"0\"", "\"-1\"", "*", "W/\"1\"", "\"1\",\"2\"", "\"9223372036854775808\""))
-                assertProblem(method.equals("PUT") ? update(A, path, writeKey, version, valid) : taskDelete(A, path, writeKey, version), 400, "VALIDATION_FAILED");
+                assertProblem(method.equals("PUT") ? update(A, path, writeKey, version, valid) : deleteResource(A, path, writeKey, version), 400, "VALIDATION_FAILED");
             for (String invalidKey : List.of("bad", UUID.randomUUID().toString(), key().toUpperCase(Locale.ROOT)))
-                assertProblem(method.equals("PUT") ? update(A, path, invalidKey, "\"1\"", valid) : taskDelete(A, path, invalidKey, "\"1\""), 400, "IDEMPOTENCY_KEY_INVALID");
+                assertProblem(method.equals("PUT") ? update(A, path, invalidKey, "\"1\"", valid) : deleteResource(A, path, invalidKey, "\"1\""), 400, "IDEMPOTENCY_KEY_INVALID");
         }
         assertThat(request("GET", path, token(A, false), null, null).body()).isEqualTo(created.body());
         var changed = update(A, path, writeKey, "\"1\"", "{\"title\":\"" + "😀".repeat(200) + "\",\"description\":\"" + "😀".repeat(2000) + "\",\"status\":\"DONE\"}");
         assertThat(changed.statusCode()).isEqualTo(200);
         assertThat(JSON.readTree(changed.body()).path("updatedAt").asText()).matches("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z");
-        assertThat(taskDelete(A, path, key(), "\"2\"").statusCode()).isEqualTo(204);
+        assertThat(deleteResource(A, path, key(), "\"2\"").statusCode()).isEqualTo(204);
     }
 
     @Test void taskWritesRejectForeignTenantsParentsAndUntrustedContexts() throws Exception {
@@ -978,9 +978,9 @@ class ProjectHttpIT {
                     new String[]{A, otherA + pathA.substring(parentA.length()), "TASK_NOT_FOUND"},
                     new String[]{A, parentA + "/tasks/" + key(), "TASK_NOT_FOUND"})) {
                 String writeKey = key();
-                var denied = method.equals("PUT") ? update(attempt[0], attempt[1], writeKey, "\"1\"", body) : taskDelete(attempt[0], attempt[1], writeKey, "\"1\"");
+                var denied = method.equals("PUT") ? update(attempt[0], attempt[1], writeKey, "\"1\"", body) : deleteResource(attempt[0], attempt[1], writeKey, "\"1\"");
                 assertProblem(denied, 404, attempt[2]);
-                var replay = method.equals("PUT") ? update(attempt[0], attempt[1], writeKey, "\"1\"", body) : taskDelete(attempt[0], attempt[1], writeKey, "\"1\"");
+                var replay = method.equals("PUT") ? update(attempt[0], attempt[1], writeKey, "\"1\"", body) : deleteResource(attempt[0], attempt[1], writeKey, "\"1\"");
                 assertThat(replay.body()).isEqualTo(denied.body());
             }
             String platformToken = token(null, false);
@@ -1008,12 +1008,12 @@ class ProjectHttpIT {
             var changed = update(own[0], own[1], writeKey, "\"1\"", body);
             assertThat(changed.statusCode()).isEqualTo(200);
             assertProblem(update(own[0].equals(A) ? B : A, own[1], writeKey, "\"1\"", body), 409, "IDEMPOTENCY_KEY_REUSED");
-            assertProblem(taskDelete(own[0], own[1], writeKey, "\"2\""), 409, "IDEMPOTENCY_KEY_REUSED");
+            assertProblem(deleteResource(own[0], own[1], writeKey, "\"2\""), 409, "IDEMPOTENCY_KEY_REUSED");
             assertProblem(taskCreate(own[0], own[0].equals(A) ? parentA : parentB, writeKey, "{\"title\":\"Changed\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
             assertProblem(create(own[0], writeKey, "{\"name\":\"Changed\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
             String deleteKey = key();
-            assertThat(taskDelete(own[0], own[1], deleteKey, "\"2\"").statusCode()).isEqualTo(204);
-            assertProblem(taskDelete(own[0].equals(A) ? B : A, own[1], deleteKey, "\"2\""), 409, "IDEMPOTENCY_KEY_REUSED");
+            assertThat(deleteResource(own[0], own[1], deleteKey, "\"2\"").statusCode()).isEqualTo(204);
+            assertProblem(deleteResource(own[0].equals(A) ? B : A, own[1], deleteKey, "\"2\""), 409, "IDEMPOTENCY_KEY_REUSED");
             assertProblem(update(own[0], own[1], deleteKey, "\"2\"", body), 409, "IDEMPOTENCY_KEY_REUSED");
         }
     }
@@ -1032,7 +1032,7 @@ class ProjectHttpIT {
                 execute(migration, "CREATE FUNCTION fail_task_write_test() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test outage'; END $$");
                 execute(migration, "CREATE TRIGGER fail_task_write_test AFTER " + method + " ON tasks FOR EACH ROW EXECUTE FUNCTION fail_task_write_test()");
                 try {
-                    assertProblem(method.equals("UPDATE") ? update(A, path, writeKey, tag, "{\"title\":\"Retry\",\"status\":\"DONE\"}") : taskDelete(A, path, writeKey, tag), 503, "INFRASTRUCTURE_UNAVAILABLE");
+                    assertProblem(method.equals("UPDATE") ? update(A, path, writeKey, tag, "{\"title\":\"Retry\",\"status\":\"DONE\"}") : deleteResource(A, path, writeKey, tag), 503, "INFRASTRUCTURE_UNAVAILABLE");
                 } finally {
                     execute(migration, "DROP TRIGGER fail_task_write_test ON tasks");
                     execute(migration, "DROP FUNCTION fail_task_write_test()");
@@ -1041,7 +1041,7 @@ class ProjectHttpIT {
                 assertThat(scalar(migration, "SELECT count(*) FROM tasks WHERE id='" + id + "' AND version=" + version)).isEqualTo(1);
             }
             assertThat(request("GET", path, token(A, false), null, null).body()).isEqualTo(before);
-            var retry = method.equals("UPDATE") ? update(A, path, writeKey, tag, "{\"title\":\"Retry\",\"status\":\"DONE\"}") : taskDelete(A, path, writeKey, tag);
+            var retry = method.equals("UPDATE") ? update(A, path, writeKey, tag, "{\"title\":\"Retry\",\"status\":\"DONE\"}") : deleteResource(A, path, writeKey, tag);
             assertThat(retry.statusCode()).isEqualTo(method.equals("UPDATE") ? 200 : 204);
             version++;
         }
@@ -1160,7 +1160,7 @@ class ProjectHttpIT {
                 try (var migration = migratorConnection()) {
                     migration.setAutoCommit(false);
                     execute(migration, "SELECT id FROM tasks WHERE id='" + id + "' FOR UPDATE");
-                    var first = worker.submit(() -> method.equals("PUT") ? update(A, path, writeKey, "\"1\"", body) : taskDelete(A, path, writeKey, "\"1\""));
+                    var first = worker.submit(() -> method.equals("PUT") ? update(A, path, writeKey, "\"1\"", body) : deleteResource(A, path, writeKey, "\"1\""));
                     try {
                         long deadline = System.nanoTime() + java.time.Duration.ofSeconds(10).toNanos();
                         boolean waiting = false;
@@ -1171,16 +1171,16 @@ class ProjectHttpIT {
                             if (!waiting) Thread.sleep(20);
                         }
                         assertThat(waiting).as("HTTP Task write reached the held resource lock").isTrue();
-                        var duplicate = method.equals("PUT") ? update(A, path, writeKey, "\"1\"", body) : taskDelete(A, path, writeKey, "\"1\"");
+                        var duplicate = method.equals("PUT") ? update(A, path, writeKey, "\"1\"", body) : deleteResource(A, path, writeKey, "\"1\"");
                         assertProblem(duplicate, 409, "IDEMPOTENCY_REQUEST_IN_PROGRESS");
                         assertThat(duplicate.headers().firstValue("Retry-After")).contains("1");
                     } finally { migration.rollback(); }
                     var completed = first.get(10, java.util.concurrent.TimeUnit.SECONDS);
                     assertThat(completed.statusCode()).isEqualTo(method.equals("PUT") ? 200 : 204);
-                    var replay = method.equals("PUT") ? update(A, path, writeKey, "\"1\"", "{\"description\":null,\"status\":\"DONE\",\"title\":\"Updated\"}") : taskDelete(A, path, writeKey, "\"1\"");
+                    var replay = method.equals("PUT") ? update(A, path, writeKey, "\"1\"", "{\"description\":null,\"status\":\"DONE\",\"title\":\"Updated\"}") : deleteResource(A, path, writeKey, "\"1\"");
                     assertThat(replay.statusCode()).isEqualTo(completed.statusCode());
                     assertThat(replay.body()).isEqualTo(completed.body());
-                    assertProblem(method.equals("PUT") ? update(A, path, writeKey, "\"2\"", body) : taskDelete(A, path, writeKey, "\"2\""), 409, "IDEMPOTENCY_KEY_REUSED");
+                    assertProblem(method.equals("PUT") ? update(A, path, writeKey, "\"2\"", body) : deleteResource(A, path, writeKey, "\"2\""), 409, "IDEMPOTENCY_KEY_REUSED");
                     if (method.equals("PUT")) {
                         assertProblem(update(A, path, writeKey, "\"1\"", "{\"title\":\"Different\",\"status\":\"DONE\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
                         assertThat(JSON.readTree(request("GET", path, token(A, false), null, null).body()).path("version").asLong()).isEqualTo(2);
@@ -1188,6 +1188,222 @@ class ProjectHttpIT {
                 }
             }
         } finally { worker.shutdownNow(); pool.setMaximumPoolSize(1); }
+    }
+
+    @Test void projectDeletionRequiresEmptyProjectAndCurrentVersionAndReplaysResults() throws Exception {
+        String parent = projectPath(A);
+        var task = taskCreate(A, parent, key(), "{\"title\":\"Must remove first\"}");
+        String taskPath = task.headers().firstValue("Location").orElseThrow();
+        String before = request("GET", parent, token(A, false), null, null).body();
+        String deniedKey = key();
+        var denied = deleteResource(A, parent, deniedKey, "\"1\"");
+        assertProblem(denied, 409, "PROJECT_NOT_EMPTY");
+        assertThat(request("GET", parent, token(A, false), null, null).body()).isEqualTo(before);
+        assertThat(request("GET", taskPath, token(A, false), null, null).body()).isEqualTo(task.body());
+        assertThat(update(A, taskPath, key(), "\"1\"", "{\"title\":\"Finished\",\"status\":\"DONE\"}").statusCode()).isEqualTo(200);
+        assertProblem(deleteResource(A, parent, key(), "\"1\""), 409, "PROJECT_NOT_EMPTY");
+        assertThat(deleteResource(A, taskPath, key(), "\"2\"").statusCode()).isEqualTo(204);
+        assertThat(deleteResource(A, parent, deniedKey, "\"1\"").body()).isEqualTo(denied.body());
+        var changed = HTTP.send(HttpRequest.newBuilder(URI.create(base + parent))
+                .header("Authorization", token(A, false, key())).header("Idempotency-Key", key())
+                .header("If-Match", "\"1\"").header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString("{\"name\":\"Changed by another member\"}")).build(), HttpResponse.BodyHandlers.ofString());
+        assertThat(changed.statusCode()).isEqualTo(200);
+        String staleKey = key();
+        var stale = deleteResource(A, parent, staleKey, "\"1\"");
+        assertProblem(stale, 409, "RESOURCE_VERSION_CONFLICT");
+        assertThat(request("GET", parent, token(A, false), null, null).body()).isEqualTo(changed.body());
+        String deleteKey = key();
+        var deleted = deleteResource(A, parent, deleteKey, "\"2\"");
+        assertThat(deleted.statusCode()).isEqualTo(204);
+        assertThat(deleted.body()).isEmpty();
+        assertThat(deleteResource(A, parent, deleteKey, "\"2\"").statusCode()).isEqualTo(204);
+        assertProblem(request("GET", parent, token(A, false), null, null), 404, "PROJECT_NOT_FOUND");
+        assertProblem(deleteResource(A, parent, key(), "\"2\""), 404, "PROJECT_NOT_FOUND");
+        assertThat(deleteResource(A, parent, staleKey, "\"1\"").body()).isEqualTo(stale.body());
+        try (var migration = migratorConnection()) {
+            assertThat(scalar(migration, "SELECT count(*) FROM projects WHERE id='" + parent.substring(parent.lastIndexOf('/') + 1) + "'")).isZero();
+        }
+    }
+
+    @Test void projectDeleteValidationAndTenantSwitchCannotExposeOrRemoveForeignData() throws Exception {
+        for (String tenant : List.of(A, B)) {
+            String parent = projectPath(tenant), other = tenant.equals(A) ? B : A;
+            String before = request("GET", parent, token(tenant, false), null, null).body();
+            String writeKey = key();
+            assertProblem(deleteResource(tenant, parent, null, "\"1\""), 400, "IDEMPOTENCY_KEY_REQUIRED");
+            assertProblem(deleteResource(tenant, parent, "bad", "\"1\""), 400, "IDEMPOTENCY_KEY_INVALID");
+            assertProblem(deleteResource(tenant, parent, writeKey, null), 428, "VERSION_REQUIRED");
+            for (String version : List.of("1", "*", "W/\"1\"", "\"0\"", "\"9223372036854775808\"", "\"1\",\"2\""))
+                assertProblem(deleteResource(tenant, parent, writeKey, version), 400, "VALIDATION_FAILED");
+            for (String credential : Arrays.asList(null, "Bearer invalid", token(null, true), token(null, false))) {
+                var builder = HttpRequest.newBuilder(URI.create(base + parent)).header("Idempotency-Key", writeKey).header("If-Match", "\"1\"");
+                if (credential != null) builder.header("Authorization", credential);
+                boolean platform = credential != null && !credential.equals("Bearer invalid")
+                        && SignedJWT.parse(credential.substring(7)).getJWTClaimsSet().getClaim("identityId") != null;
+                assertProblem(HTTP.send(builder.DELETE().build(), HttpResponse.BodyHandlers.ofString()),
+                        platform ? 403 : 401, platform ? "ACCESS_CONTEXT_UNAVAILABLE" : "ACCESS_TOKEN_INVALID");
+            }
+            assertProblem(deleteResource(tenant, parent + "?tenantId=" + other, writeKey, "\"1\""), 400, "VALIDATION_FAILED");
+            var forged = HTTP.send(HttpRequest.newBuilder(URI.create(base + parent)).header("Authorization", token(tenant, false))
+                    .header("Idempotency-Key", writeKey).header("If-Match", "\"1\"").header("X-Tenant-Id", other).DELETE().build(), HttpResponse.BodyHandlers.ofString());
+            assertProblem(forged, 400, "UNTRUSTED_CONTEXT_HEADER");
+            String foreignKey = key();
+            var foreign = deleteResource(other, parent, foreignKey, "\"1\"");
+            assertProblem(foreign, 404, "PROJECT_NOT_FOUND");
+            assertProblem(deleteResource(tenant, parent, foreignKey, "\"1\""), 409, "IDEMPOTENCY_KEY_REUSED");
+            assertThat(request("GET", parent, token(tenant, false), null, null).body()).isEqualTo(before);
+            assertThat(deleteResource(tenant, parent, writeKey, "\"1\"").statusCode()).isEqualTo(204);
+            assertProblem(deleteResource(other, parent, writeKey, "\"1\""), 409, "IDEMPOTENCY_KEY_REUSED");
+            assertThat(deleteResource(tenant, parent, writeKey, "\"1\"").statusCode()).isEqualTo(204);
+            assertProblem(deleteResource(tenant, parent, writeKey, "\"2\""), 409, "IDEMPOTENCY_KEY_REUSED");
+            assertProblem(create(tenant, writeKey, "{\"name\":\"Different operation\"}"), 409, "IDEMPOTENCY_KEY_REUSED");
+            assertThat(deleteResource(other, parent, foreignKey, "\"1\"").body()).isEqualTo(foreign.body());
+        }
+    }
+
+    @Test void projectDeleteInfrastructureFailureRollsBackDataAndReleasesKey() throws Exception {
+        String parent = projectPath(A), writeKey = key();
+        String before = request("GET", parent, token(A, false), null, null).body();
+        try (var migration = migratorConnection()) {
+            execute(migration, "CREATE FUNCTION fail_project_delete_test() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test outage'; END $$");
+            execute(migration, "CREATE TRIGGER fail_project_delete_test AFTER DELETE ON projects FOR EACH ROW EXECUTE FUNCTION fail_project_delete_test()");
+            try { assertProblem(deleteResource(A, parent, writeKey, "\"1\""), 503, "INFRASTRUCTURE_UNAVAILABLE"); }
+            finally {
+                execute(migration, "DROP TRIGGER fail_project_delete_test ON projects");
+                execute(migration, "DROP FUNCTION fail_project_delete_test()");
+            }
+            assertThat(scalar(migration, "SELECT count(*) FROM project_write_results WHERE idempotency_key='" + writeKey + "'")).isZero();
+        }
+        assertThat(request("GET", parent, token(A, false), null, null).body()).isEqualTo(before);
+        assertThat(deleteResource(A, parent, writeKey, "\"1\"").statusCode()).isEqualTo(204);
+        try (var connection = app.getBean(com.zaxxer.hikari.HikariDataSource.class).getConnection()) {
+            assertThat(scalar(connection, "SELECT count(*) FROM projects")).isZero();
+        }
+    }
+
+    @Test void projectRuntimeDeletionRespectsRlsAndRestrictiveForeignKey() throws Exception {
+        String a = projectPath(A), b = projectPath(B);
+        String populated = projectPath(A);
+        var task = taskCreate(A, populated, key(), "{\"title\":\"No cascade\"}");
+        String populatedId = populated.substring(populated.lastIndexOf('/') + 1);
+        try (var runtime = runtimeConnection()) {
+            assertThat(scalar(runtime, "SELECT count(*) FROM pg_roles WHERE rolname=current_user AND (rolsuper OR rolbypassrls OR rolinherit)")).isZero();
+            org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () -> execute(runtime, "SET ROLE project_migrator"));
+            org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () -> execute(runtime, "TRUNCATE projects CASCADE"));
+            org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () -> execute(runtime, "ALTER TABLE tasks DROP CONSTRAINT fk_tasks_tenant_project"));
+            for (String tenant : Arrays.asList(null, "", "invalid", A, B)) {
+                runtime.setAutoCommit(false);
+                try {
+                    if (tenant != null) setTenant(runtime, tenant);
+                    if ("invalid".equals(tenant)) {
+                        var failure = org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () -> execute(runtime, "DELETE FROM projects"));
+                        assertThat(failure.getSQLState()).isEqualTo("22P02");
+                    } else {
+                        String target = A.equals(tenant) ? b : a;
+                        try (var statement = runtime.createStatement()) {
+                            assertThat(statement.executeUpdate("DELETE FROM projects WHERE id='" + target.substring(target.lastIndexOf('/') + 1) + "'")).isZero();
+                        }
+                        if (A.equals(tenant)) {
+                            var failure = org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () -> execute(runtime, "DELETE FROM projects"));
+                            assertThat(failure.getSQLState()).isEqualTo("23001");
+                        } else if (B.equals(tenant)) {
+                            long visible = scalar(runtime, "SELECT count(*) FROM projects");
+                            try (var statement = runtime.createStatement()) { assertThat(statement.executeUpdate("DELETE FROM projects")).isEqualTo((int) visible); }
+                        } else {
+                            try (var statement = runtime.createStatement()) { assertThat(statement.executeUpdate("DELETE FROM projects")).isZero(); }
+                        }
+                    }
+                } finally { runtime.rollback(); }
+                assertThat(scalar(runtime, "SELECT count(*) FROM projects")).isZero();
+            }
+        }
+        try (var migration = migratorConnection()) {
+            var failure = org.junit.jupiter.api.Assertions.assertThrows(SQLException.class, () -> execute(migration, "DELETE FROM projects WHERE id='" + populatedId + "'"));
+            assertThat(failure.getSQLState()).isEqualTo("23001");
+        }
+        assertThat(request("GET", task.headers().firstValue("Location").orElseThrow(), token(A, false), null, null).body()).isEqualTo(task.body());
+        assertThat(request("GET", a, token(A, false), null, null).statusCode()).isEqualTo(200);
+        assertThat(request("GET", b, token(B, false), null, null).statusCode()).isEqualTo(200);
+    }
+
+    @Test @Order(Integer.MAX_VALUE - 3) void concurrentTaskCreationAndProjectDeletionSerializeInBothOrders() throws Exception {
+        var pool = app.getBean(com.zaxxer.hikari.HikariDataSource.class);
+        pool.setMaximumPoolSize(2);
+        var workers = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            for (boolean createFirst : List.of(true, false)) {
+                String parent = projectPath(A), createKey = key(), deleteKey = key();
+                String table = createFirst ? "tasks" : "projects", event = createFirst ? "INSERT" : "DELETE";
+                try (var migration = migratorConnection()) {
+                    // 仅暂停隔离测试数据库内的已变更事务，让另一 HTTP 请求真实进入父资源锁竞争。
+                    execute(migration, "CREATE FUNCTION pause_parent_race_test() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(216042); RETURN NULL; END $$");
+                    execute(migration, "CREATE TRIGGER pause_parent_race_test AFTER " + event + " ON " + table + " FOR EACH ROW EXECUTE FUNCTION pause_parent_race_test()");
+                    migration.setAutoCommit(false);
+                    execute(migration, "SELECT pg_advisory_xact_lock(216042)");
+                    try {
+                        var first = workers.submit(() -> createFirst ? taskCreate(A, parent, createKey, "{\"title\":\"Race\"}") : deleteResource(A, parent, deleteKey, "\"1\""));
+                        awaitRuntimeLockWaiters(1);
+                        var second = workers.submit(() -> createFirst ? deleteResource(A, parent, deleteKey, "\"1\"") : taskCreate(A, parent, createKey, "{\"title\":\"Race\"}"));
+                        try { awaitRuntimeLockWaiters(2); } finally { migration.rollback(); }
+                        var firstResult = first.get(10, java.util.concurrent.TimeUnit.SECONDS);
+                        var secondResult = second.get(10, java.util.concurrent.TimeUnit.SECONDS);
+                        if (createFirst) {
+                            assertThat(firstResult.statusCode()).isEqualTo(201);
+                            assertProblem(secondResult, 409, "PROJECT_NOT_EMPTY");
+                            assertThat(request("GET", parent, token(A, false), null, null).statusCode()).isEqualTo(200);
+                            assertThat(request("GET", firstResult.headers().firstValue("Location").orElseThrow(), token(A, false), null, null).body()).isEqualTo(firstResult.body());
+                            assertThat(JSON.readTree(request("GET", parent + "/tasks", token(A, false), null, null).body()).path("items")).hasSize(1);
+                        } else {
+                            assertThat(firstResult.statusCode()).isEqualTo(204);
+                            assertProblem(secondResult, 404, "PROJECT_NOT_FOUND");
+                            assertProblem(request("GET", parent, token(A, false), null, null), 404, "PROJECT_NOT_FOUND");
+                            assertThat(taskCreate(A, parent, createKey, "{\"title\":\"Race\"}").body()).isEqualTo(secondResult.body());
+                        }
+                        assertThat(scalar(migration, "SELECT count(*) FROM tasks t LEFT JOIN projects p ON (t.tenant_id,t.project_id)=(p.tenant_id,p.id) WHERE p.id IS NULL")).isZero();
+                        if (!createFirst) assertThat(scalar(migration, "SELECT count(*) FROM tasks WHERE project_id='" + parent.substring(parent.lastIndexOf('/') + 1) + "'")).isZero();
+                    } finally {
+                        migration.rollback(); migration.setAutoCommit(true);
+                        execute(migration, "DROP TRIGGER pause_parent_race_test ON " + table);
+                        execute(migration, "DROP FUNCTION pause_parent_race_test()");
+                    }
+                }
+            }
+        } finally { workers.shutdownNow(); pool.setMaximumPoolSize(1); }
+    }
+
+    @Test @Order(Integer.MAX_VALUE - 3) void projectDeletionReturnsInProgressAndThenReplaysCommittedResult() throws Exception {
+        String parent = projectPath(A), writeKey = key();
+        String id = parent.substring(parent.lastIndexOf('/') + 1);
+        var pool = app.getBean(com.zaxxer.hikari.HikariDataSource.class);
+        pool.setMaximumPoolSize(2);
+        var worker = java.util.concurrent.Executors.newSingleThreadExecutor();
+        try (var migration = migratorConnection()) {
+            migration.setAutoCommit(false);
+            execute(migration, "SELECT id FROM projects WHERE id='" + id + "' FOR UPDATE");
+            var pending = worker.submit(() -> deleteResource(A, parent, writeKey, "\"1\""));
+            try {
+                awaitRuntimeLockWaiters(1);
+                var duplicate = deleteResource(A, parent, writeKey, "\"1\"");
+                assertProblem(duplicate, 409, "IDEMPOTENCY_REQUEST_IN_PROGRESS");
+                assertThat(duplicate.headers().firstValue("Retry-After")).contains("1");
+            } finally { migration.rollback(); }
+            assertThat(pending.get(10, java.util.concurrent.TimeUnit.SECONDS).statusCode()).isEqualTo(204);
+            var replay = deleteResource(A, parent, writeKey, "\"1\"");
+            assertThat(replay.statusCode()).isEqualTo(204);
+            assertThat(replay.body()).isEmpty();
+        } finally { worker.shutdownNow(); pool.setMaximumPoolSize(1); }
+    }
+
+    static void awaitRuntimeLockWaiters(int count) throws Exception {
+        long deadline = System.nanoTime() + java.time.Duration.ofSeconds(10).toNanos();
+        while (System.nanoTime() < deadline) {
+            try (var observer = DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())) {
+                if (scalar(observer, "SELECT count(*) FROM pg_stat_activity WHERE usename='project_app' AND wait_event_type='Lock'") == count) return;
+            }
+            Thread.sleep(20);
+        }
+        org.junit.jupiter.api.Assertions.fail("HTTP writes did not reach " + count + " independent database lock waits");
     }
 
 }

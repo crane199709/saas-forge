@@ -30,7 +30,7 @@ class TaskService {
         var replay = writes.begin(key);
         if (replay.isPresent()) return replay.get();
         ProjectWriteResult result;
-        if (projects.find(project).isEmpty()) {
+        if (!projects.lockForTaskCreation(project)) {
             // 不可见父资源是稳定业务失败，完成记录与成功路径一样同事务提交。
             var problem = new ProjectProblem("urn:saas.forge:problem:project-not-found", "Not Found", 404,
                     "PROJECT_NOT_FOUND", "Project not found.", traceId, null);

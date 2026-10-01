@@ -16,7 +16,7 @@ class ProjectContractTest {
         assertThat(api.getPaths()).containsOnlyKeys("/api/v1/projects", "/api/v1/projects/{projectId}",
                 "/api/v1/projects/{projectId}/tasks", "/api/v1/projects/{projectId}/tasks/{taskId}");
         var routes = new ProjectConfiguration().projectRoutes().routes();
-        assertThat(routes).hasSize(9);
+        assertThat(routes).hasSize(10);
         for (var route : routes) {
             var operation = api.getPaths().get(route.path()).readOperationsMap().entrySet().stream()
                     .filter(entry -> entry.getKey().name().equals(route.method().name())).findFirst().orElseThrow().getValue();
@@ -31,6 +31,16 @@ class ProjectContractTest {
         assertThat(list.getDescription()).contains("id ASC", "Tenant", "limit");
         assertThat(api.getComponents().getSchemas().get("ProjectPage").getRequired())
                 .containsExactlyInAnyOrder("items", "nextCursor", "hasMore");
+        var deletion = api.getPaths().get("/api/v1/projects/{projectId}").getDelete();
+        assertThat(deletion.getResponses()).containsKeys("204", "400", "401", "403", "404", "409", "428", "503");
+        assertThat(deletion.getResponses().get("204").getContent()).isNull();
+        assertThat(deletion.getRequestBody()).isNull();
+        assertThat(deletion.getDescription()).contains("PROJECT_NOT_EMPTY", "DONE", "Concurrent");
+        assertThat(deletion.getParameters()).anySatisfy(parameter -> {
+            assertThat(parameter.getName()).isEqualTo("If-Match");
+            assertThat(parameter.getRequired()).isTrue();
+            assertThat(parameter.getSchema().getPattern()).isEqualTo("^\"[1-9][0-9]{0,18}\"$");
+        });
         var update = api.getPaths().get("/api/v1/projects/{projectId}").getPut();
         assertThat(update.getResponses()).containsKeys("200", "400", "404", "409", "428");
         assertThat(update.getParameters()).anySatisfy(parameter -> {

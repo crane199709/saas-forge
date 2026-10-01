@@ -13,6 +13,12 @@ interface ProjectMapper {
 
     java.util.List<ProjectRow> list(PageQuery query);
     ProjectRow update(ProjectUpdate update);
+    ProjectRow lockForDeletion(@Param("id") UUID id);
+    ProjectRow lockForTaskCreation(@Param("id") UUID id);
+    boolean hasTasks(@Param("id") UUID id);
+    int delete(ProjectVersion project);
+
+    record ProjectVersion(UUID id, long version) {}
 
     record PageQuery(UUID after, int limit) {}
     record ProjectUpdate(UUID id, long version, String name, String description) {}
