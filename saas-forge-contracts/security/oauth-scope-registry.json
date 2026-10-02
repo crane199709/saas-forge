@@ -9,6 +9,7 @@
     { "scope": "iam:password-setup:write", "ownerServiceId": "iam-service", "clientTypes": ["RESERVED_SERVICE"], "usage": "INTERNAL", "gatewayRouteAllowed": false, "description": "Issue password setup delivery." },
     { "scope": "iam:platform-role:read", "ownerServiceId": "iam-service", "clientTypes": ["RESERVED_SERVICE"], "usage": "INTERNAL", "gatewayRouteAllowed": false, "description": "Read authoritative platform role state." },
     { "scope": "iam:sessions:write", "ownerServiceId": "iam-service", "clientTypes": ["RESERVED_SERVICE"], "usage": "INTERNAL", "gatewayRouteAllowed": false, "description": "Revoke user sessions." },
-    { "scope": "entitlement:quota:write", "ownerServiceId": "entitlement-service", "clientTypes": ["RESERVED_SERVICE"], "usage": "INTERNAL", "gatewayRouteAllowed": false, "description": "Apply internal quota provisioning operations." }
+    { "scope": "entitlement:quota:write", "ownerServiceId": "entitlement-service", "clientTypes": ["RESERVED_SERVICE"], "usage": "INTERNAL", "gatewayRouteAllowed": false, "description": "Apply internal quota provisioning operations." },
+    {"scope": "remote-delivery:manifest:register", "ownerServiceId": "remote-delivery-service", "clientTypes": ["CI_CLIENT"], "usage": "REGISTRATION", "gatewayRouteAllowed": true, "description": "Register an immutable Remote Manifest for an assigned module."}
   ]
 }

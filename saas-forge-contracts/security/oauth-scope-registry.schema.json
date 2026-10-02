@@ -24,9 +24,9 @@
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "enum": ["RESERVED_SERVICE", "RUNTIME_SERVICE"] }
+          "items": { "enum": ["RESERVED_SERVICE", "RUNTIME_SERVICE", "CI_CLIENT"] }
         },
-        "usage": { "enum": ["INTERNAL", "RUNTIME"] },
+        "usage": { "enum": ["INTERNAL", "RUNTIME", "REGISTRATION"] },
         "gatewayRouteAllowed": { "type": "boolean" },
         "description": { "type": "string", "minLength": 1 }
       }

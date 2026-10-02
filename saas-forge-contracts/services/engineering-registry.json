@@ -45,6 +45,15 @@
       "nacosServiceName": "audit-service",
       "deployable": true,
       "gatewayRouteTargetAllowed": false
+    },
+    {
+      "serviceId": "remote-delivery-service",
+      "owner": "remote-delivery",
+      "modulePath": "saas-forge-services/remote-delivery-service",
+      "artifactId": "remote-delivery-service",
+      "nacosServiceName": "remote-delivery-service",
+      "deployable": true,
+      "gatewayRouteTargetAllowed": true
     }
   ]
 }

@@ -15,6 +15,18 @@ import org.junit.jupiter.api.Test;
 class OAuthClientDomainTest {
 
     @Test
+    void ciScopeCannotBeMixedWithRuntimeOrInternalAuthority() {
+        var ci = OAuthClient.registerManaged("project CI",Set.of(OAuthScope.REMOTE_MANIFEST_REGISTER),Instant.now());
+        assertEquals(OAuthClientType.CI_CLIENT,ci.clientType());
+        assertEquals(null,ci.reservedServiceKey());
+        assertThrows(OAuthClientScopeGrantForbiddenException.class, () -> OAuthClient.registerManaged("mixed",Set.of(OAuthScope.REMOTE_MANIFEST_REGISTER,OAuthScope.RUNTIME_READ),Instant.now()));
+        assertThrows(OAuthClientScopeGrantForbiddenException.class, () -> OAuthClient.registerRuntime("runtime",Set.of(OAuthScope.REMOTE_MANIFEST_REGISTER),Instant.now()));
+        assertThrows(OAuthClientScopeGrantForbiddenException.class, () -> OAuthClient.registerManaged("internal",Set.of(OAuthScope.IAM_PLATFORM_ROLE_READ),Instant.now()));
+        var remote = OAuthClient.register("remote-delivery-service",Set.of(OAuthScope.IAM_PLATFORM_ROLE_READ,OAuthScope.TENANT_ACCESS_MEMBERSHIP_READ,OAuthScope.TENANT_ACCESS_TENANT_READ),Instant.now());
+        assertEquals(ReservedServiceKey.REMOTE_DELIVERY,remote.reservedServiceKey());
+    }
+
+    @Test
     void onlyMvpScopesCanBeUsed() {
         OAuthClient client = OAuthClient.register("runtime worker", Set.of(OAuthScope.RUNTIME_READ), Instant.now());
 

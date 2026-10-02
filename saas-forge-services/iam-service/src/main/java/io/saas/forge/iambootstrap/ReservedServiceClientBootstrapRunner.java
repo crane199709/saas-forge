@@ -23,6 +23,8 @@ final class ReservedServiceClientBootstrapRunner implements ApplicationRunner {
     private final Path tenantAccessSecretFile;
     private final Path entitlementIdFile;
     private final Path entitlementSecretFile;
+    private final Path remoteDeliveryIdFile;
+    private final Path remoteDeliverySecretFile;
 
     ReservedServiceClientBootstrapRunner(
             ReservedServiceClientBootstrapService service,
@@ -33,6 +35,16 @@ final class ReservedServiceClientBootstrapRunner implements ApplicationRunner {
             Path tenantAccessSecretFile,
             Path entitlementIdFile,
             Path entitlementSecretFile) {
+        this(service,reader,iamIdFile,iamSecretFile,tenantAccessIdFile,tenantAccessSecretFile,entitlementIdFile,entitlementSecretFile,null,null);
+    }
+
+    ReservedServiceClientBootstrapRunner(ReservedServiceClientBootstrapService service,SecretTextFileReader reader,
+            Path iamIdFile,Path iamSecretFile,Path tenantAccessIdFile,Path tenantAccessSecretFile,
+            Path entitlementIdFile,Path entitlementSecretFile,Path remoteDeliveryIdFile,Path remoteDeliverySecretFile) {
+        if ((remoteDeliveryIdFile == null) != (remoteDeliverySecretFile == null))
+            throw new IllegalArgumentException("Remote Delivery 引导 ID 和 Secret 文件必须共同提供");
+        this.remoteDeliveryIdFile = remoteDeliveryIdFile;
+        this.remoteDeliverySecretFile = remoteDeliverySecretFile;
         this.service = service;
         this.reader = reader;
         this.iamIdFile = iamIdFile;
@@ -45,10 +57,12 @@ final class ReservedServiceClientBootstrapRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        ReservedServiceClientBootstrapResult result = service.bootstrap(List.of(
+        var inputs = new java.util.ArrayList<>(List.of(
                 input(ReservedServiceClient.IAM, iamIdFile, iamSecretFile),
                 input(ReservedServiceClient.TENANT_ACCESS, tenantAccessIdFile, tenantAccessSecretFile),
                 input(ReservedServiceClient.ENTITLEMENT, entitlementIdFile, entitlementSecretFile)));
+        if (remoteDeliveryIdFile != null) inputs.add(input(ReservedServiceClient.REMOTE_DELIVERY,remoteDeliveryIdFile,remoteDeliverySecretFile));
+        ReservedServiceClientBootstrapResult result = service.bootstrap(inputs);
         result.clients().forEach((client, value) -> LOGGER.info(
                 "Reserved service OAuth Client bootstrap service={} clientId={} outcome={}",
                 client.displayName(), value.clientId(), value.outcome()));

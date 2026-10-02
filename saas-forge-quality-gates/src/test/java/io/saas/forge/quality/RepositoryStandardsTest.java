@@ -40,19 +40,22 @@ class RepositoryStandardsTest {
             "iam-service", "io.saas.forge.iam",
             "tenant-access-service", "io.saas.forge.tenantaccess",
             "entitlement-service", "io.saas.forge.entitlement",
-            "audit-service", "io.saas.forge.audit");
+            "audit-service", "io.saas.forge.audit",
+            "remote-delivery-service", "io.saas.forge.remotedelivery");
     private static final Map<String, String> OPENAPI_TAG_OWNERS = Map.of(
             "Authentication", "iam-service",
             "Discovery", "iam-service",
             "OAuth clients", "iam-service",
             "Platform tenants", "tenant-access-service",
-            "Platform entitlement bootstrap", "entitlement-service");
+            "Platform entitlement bootstrap", "entitlement-service",
+            "RemoteManifests", "remote-delivery-service");
     private static final Map<String, String> OPENAPI_TAG_GENERATOR_NAMES = Map.of(
             "Authentication", "Authentication",
             "Discovery", "Discovery",
             "OAuth clients", "OAuthClients",
             "Platform tenants", "PlatformTenants",
-            "Platform entitlement bootstrap", "PlatformEntitlementBootstrap");
+            "Platform entitlement bootstrap", "PlatformEntitlementBootstrap",
+            "RemoteManifests", "RemoteManifests");
     private static final Pattern ANNOTATED_SQL = Pattern.compile(
             "@(Select|Insert|Update|Delete)(Provider)?\\b");
     private static final Pattern VERSIONED_MIGRATION = Pattern.compile(
@@ -309,8 +312,8 @@ class RepositoryStandardsTest {
                 publicScopes.add(scope);
             }
         }
-        assertEquals(Set.of("runtime:read", "runtime:quota:write"), publicScopes,
-                "只有 MVP Runtime Scope 可以用于公网 Service route");
+        assertEquals(Set.of("runtime:read", "runtime:quota:write", "remote-delivery:manifest:register"), publicScopes,
+                "只有 MVP Runtime 与 CI Manifest 注册 Scope 可以用于公网 Service route");
 
         String oauthScopeSource = Files.readString(
                 REPOSITORY.resolve("saas-forge-services/iam-service/src/main/java/io/saas/forge/iam/domain/client/OAuthScope.java"),
@@ -774,167 +777,52 @@ class RepositoryStandardsTest {
     }
 
     private static List<OpenApiOperation> parseOpenApiOperations(Path spec) throws IOException {
-        String path = null;
-        String method = null;
-        Set<String> tags = Set.of();
-        String owner = null;
-        String operationId = null;
-        int ownerDeclarations = 0;
-        boolean explicitSecurity = false;
-        boolean userBearer = false;
-        boolean platformRefreshCookie = false;
-        boolean tenantRefreshCookie = false;
-        boolean consoleSlotCookie = false;
-        boolean consoleRefreshCookie = false;
-        boolean oauthClientBasic = false;
-        boolean anonymousAlternative = false;
-        boolean readingSecurity = false;
-        List<OpenApiOperation> operations = new ArrayList<>();
-
+        var options = new io.swagger.v3.parser.core.models.ParseOptions(); options.setResolve(true);
+        var parsed = new io.swagger.v3.parser.OpenAPIV3Parser().readLocation(spec.toUri().toString(), null, options);
+        assertTrue(parsed.getMessages() == null || parsed.getMessages().isEmpty(), "公开契约语义解析失败");
+        var api = parsed.getOpenAPI(); assertNotNull(api);
+        // 文本只用于发现重复归属声明，认证声明必须按 OpenAPI 的继承与对象语义解析。
+        Map<String,Integer> ownerDeclarations = new HashMap<>();
+        String path = null; String method = null;
         for (String line : Files.readAllLines(spec, StandardCharsets.UTF_8)) {
-            Matcher pathMatcher = OPENAPI_PATH.matcher(line);
-            if (pathMatcher.matches()) {
-                if (method != null) {
-                    operations.add(new OpenApiOperation(
-                            path, method, tags, owner, operationId, ownerDeclarations,
-                            credentialRequirement(explicitSecurity, userBearer,
-                                    platformRefreshCookie, tenantRefreshCookie,
-                                    oauthClientBasic, anonymousAlternative, consoleSlotCookie, consoleRefreshCookie)));
-                    method = null;
-                    tags = Set.of();
-                    owner = null;
-                    operationId = null;
-                    ownerDeclarations = 0;
-                    explicitSecurity = false;
-                    userBearer = false;
-                    platformRefreshCookie = false;
-                    tenantRefreshCookie = false;
-                    consoleSlotCookie = false;
-                    consoleRefreshCookie = false;
-                    oauthClientBasic = false;
-                    anonymousAlternative = false;
-                    readingSecurity = false;
-                }
-                path = pathMatcher.group(1);
-                continue;
-            }
-
-            Matcher methodMatcher = OPENAPI_METHOD.matcher(line);
-            if (methodMatcher.matches()) {
-                if (method != null) {
-                    operations.add(new OpenApiOperation(
-                            path, method, tags, owner, operationId, ownerDeclarations,
-                            credentialRequirement(explicitSecurity, userBearer,
-                                    platformRefreshCookie, tenantRefreshCookie,
-                                    oauthClientBasic, anonymousAlternative, consoleSlotCookie, consoleRefreshCookie)));
-                }
-                method = methodMatcher.group(1);
-                tags = Set.of();
-                owner = null;
-                operationId = null;
-                ownerDeclarations = 0;
-                explicitSecurity = false;
-                userBearer = false;
-                platformRefreshCookie = false;
-                tenantRefreshCookie = false;
-                consoleSlotCookie = false;
-                consoleRefreshCookie = false;
-                oauthClientBasic = false;
-                anonymousAlternative = false;
-                readingSecurity = false;
-                continue;
-            }
-
-            if (method == null) {
-                continue;
-            }
-            if (readingSecurity) {
-                if (line.startsWith("        - ") || line.startsWith("          Console")) {
-                    userBearer |= line.contains("UserBearerAuth");
-                    platformRefreshCookie |= line.contains("PlatformRefreshCookieAuth");
-                    tenantRefreshCookie |= line.contains("TenantRefreshCookieAuth");
-                    consoleSlotCookie |= line.contains("ConsoleSlotCookieAuth");
-                    consoleRefreshCookie |= line.contains("ConsoleRefreshCookieAuth");
-                    oauthClientBasic |= line.contains("OAuthClientBasic");
-                    anonymousAlternative |= line.trim().equals("- {}");
-                    continue;
-                }
-                readingSecurity = false;
-            }
-            Matcher operationIdMatcher = OPENAPI_OPERATION_ID.matcher(line);
-            if (operationIdMatcher.matches()) {
-                operationId = operationIdMatcher.group(1);
-                continue;
-            }
-            Matcher tagsMatcher = OPENAPI_TAGS.matcher(line);
-            if (tagsMatcher.matches()) {
-                Set<String> parsedTags = new LinkedHashSet<>();
-                for (String tag : tagsMatcher.group(1).split(",")) {
-                    parsedTags.add(tag.trim());
-                }
-                tags = parsedTags;
-                continue;
-            }
-            Matcher ownerMatcher = OPENAPI_SERVICE_OWNER.matcher(line);
-            if (ownerMatcher.matches()) {
-                owner = ownerMatcher.group(1);
-                ownerDeclarations++;
-                continue;
-            }
-            Matcher securityMatcher = OPENAPI_SECURITY.matcher(line);
-            if (securityMatcher.matches()) {
-                explicitSecurity = true;
-                String inlineSecurity = securityMatcher.group(1);
-                userBearer |= inlineSecurity.contains("UserBearerAuth");
-                platformRefreshCookie |= inlineSecurity.contains("PlatformRefreshCookieAuth");
-                tenantRefreshCookie |= inlineSecurity.contains("TenantRefreshCookieAuth");
-                consoleSlotCookie |= inlineSecurity.contains("ConsoleSlotCookieAuth");
-                consoleRefreshCookie |= inlineSecurity.contains("ConsoleRefreshCookieAuth");
-                oauthClientBasic |= inlineSecurity.contains("OAuthClientBasic");
-                anonymousAlternative |= inlineSecurity.contains("{}");
-                readingSecurity = inlineSecurity.isBlank();
-            }
+            var pathMatcher = OPENAPI_PATH.matcher(line);
+            if (pathMatcher.matches()) { path = pathMatcher.group(1);method = null;continue; }
+            var methodMatcher = OPENAPI_METHOD.matcher(line);
+            if (methodMatcher.matches()) { method = methodMatcher.group(1);continue; }
+            if (method != null && OPENAPI_SERVICE_OWNER.matcher(line).matches())
+                ownerDeclarations.merge(method + " " + path,1,Integer::sum);
         }
-        if (method != null) {
-            operations.add(new OpenApiOperation(
-                    path, method, tags, owner, operationId, ownerDeclarations,
-                    credentialRequirement(explicitSecurity, userBearer,
-                            platformRefreshCookie, tenantRefreshCookie,
-                            oauthClientBasic, anonymousAlternative, consoleSlotCookie, consoleRefreshCookie)));
-        }
+        List<OpenApiOperation> operations = new ArrayList<>();
+        api.getPaths().forEach((operationPath,item) -> item.readOperationsMap().forEach((httpMethod,operation) -> {
+            var security = operation.getSecurity() == null ? api.getSecurity() : operation.getSecurity();
+            var owner = operation.getExtensions() == null ? null : (String) operation.getExtensions().get("x-saas.forge-service");
+            String verb = httpMethod.name().toLowerCase(java.util.Locale.ROOT);
+            operations.add(new OpenApiOperation(operationPath,verb,
+                    operation.getTags() == null ? Set.of() : new LinkedHashSet<>(operation.getTags()),owner,
+                    operation.getOperationId(),ownerDeclarations.getOrDefault(verb + " " + operationPath,0),
+                    credentialRequirement(security)));
+        }));
         return operations;
     }
 
-    private static String credentialRequirement(
-            boolean explicitSecurity,
-            boolean userBearer,
-            boolean platformRefreshCookie,
-            boolean tenantRefreshCookie,
-            boolean oauthClientBasic,
-            boolean anonymousAlternative,
-            boolean consoleSlotCookie,
-            boolean consoleRefreshCookie) {
-        if (!explicitSecurity) {
-            return "ANONYMOUS";
+    private static String credentialRequirement(List<io.swagger.v3.oas.models.security.SecurityRequirement> security) {
+        if (security == null || security.isEmpty()) return "ANONYMOUS";
+        Set<String> schemes = security.stream().flatMap(requirement -> requirement.keySet().stream())
+                .collect(java.util.stream.Collectors.toSet());
+        assertTrue(Set.of("UserBearerAuth","ServiceOAuth2","PlatformRefreshCookieAuth","TenantRefreshCookieAuth",
+                "ConsoleSlotCookieAuth","ConsoleRefreshCookieAuth","OAuthClientBasic").containsAll(schemes),"未知认证方案");
+        if (schemes.contains("ServiceOAuth2")) {
+            assertEquals(1,security.size());assertEquals(Set.of("ServiceOAuth2"),schemes);
+            assertFalse(security.get(0).get("ServiceOAuth2").isEmpty(),"Service operation 必须声明 Scope");
+            return "SERVICE_REQUIRED";
         }
-        if (consoleSlotCookie) {
-            return consoleRefreshCookie ? "CONSOLE_SESSION_REQUIRED" : "CONSOLE_SLOT_REQUIRED";
-        }
-        if (platformRefreshCookie && tenantRefreshCookie) {
-            return "BROWSER_SESSION_SLOT_REQUIRED";
-        }
-        if (platformRefreshCookie) {
-            return "PLATFORM_REFRESH_COOKIE_REQUIRED";
-        }
-        if (tenantRefreshCookie) {
-            return "TENANT_REFRESH_COOKIE_REQUIRED";
-        }
-        if (oauthClientBasic) {
-            return "OAUTH_CLIENT_BASIC_REQUIRED";
-        }
-        if (userBearer) {
-            return anonymousAlternative ? "USER_OPTIONAL" : "USER_REQUIRED";
-        }
+        if (schemes.contains("ConsoleSlotCookieAuth"))
+            return schemes.contains("ConsoleRefreshCookieAuth") ? "CONSOLE_SESSION_REQUIRED" : "CONSOLE_SLOT_REQUIRED";
+        if (schemes.contains("PlatformRefreshCookieAuth") && schemes.contains("TenantRefreshCookieAuth")) return "BROWSER_SESSION_SLOT_REQUIRED";
+        if (schemes.contains("PlatformRefreshCookieAuth")) return "PLATFORM_REFRESH_COOKIE_REQUIRED";
+        if (schemes.contains("TenantRefreshCookieAuth")) return "TENANT_REFRESH_COOKIE_REQUIRED";
+        if (schemes.contains("OAuthClientBasic")) return "OAUTH_CLIENT_BASIC_REQUIRED";
+        if (schemes.contains("UserBearerAuth")) return security.stream().anyMatch(Map::isEmpty) ? "USER_OPTIONAL" : "USER_REQUIRED";
         return "ANONYMOUS";
     }
 

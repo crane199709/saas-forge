@@ -4,7 +4,7 @@ import io.saas.forge.iam.domain.client.OAuthScope;
 import io.saas.forge.iam.domain.client.ReservedServiceKey;
 import java.util.Set;
 
-/** 部署引导允许创建的三个固定内部服务身份。 */
+/** 部署引导允许创建的固定内部服务身份。 */
 public enum ReservedServiceClient {
     IAM(ReservedServiceKey.IAM, "iam-service", Set.of(OAuthScope.TENANT_ACCESS_MEMBERSHIP_READ)),
     TENANT_ACCESS(ReservedServiceKey.TENANT_ACCESS, "tenant-access-service", Set.of(
@@ -15,7 +15,10 @@ public enum ReservedServiceClient {
             OAuthScope.ENTITLEMENT_QUOTA_WRITE)),
     ENTITLEMENT(ReservedServiceKey.ENTITLEMENT, "entitlement-service", Set.of(
             OAuthScope.TENANT_ACCESS_TENANT_READ,
-            OAuthScope.IAM_PLATFORM_ROLE_READ));
+            OAuthScope.IAM_PLATFORM_ROLE_READ)),
+    REMOTE_DELIVERY(ReservedServiceKey.REMOTE_DELIVERY, "remote-delivery-service", Set.of(
+            OAuthScope.IAM_PLATFORM_ROLE_READ, OAuthScope.TENANT_ACCESS_MEMBERSHIP_READ,
+            OAuthScope.TENANT_ACCESS_TENANT_READ));
 
     private final ReservedServiceKey serviceKey;
     private final String displayName;

@@ -16,3 +16,5 @@ nacos:
       existingSecretName: saas-forge-nacos-entitlement-service
     audit-service:
       existingSecretName: saas-forge-nacos-audit-service
+    remote-delivery-service:
+      existingSecretName: saas-forge-nacos-remote-delivery-service

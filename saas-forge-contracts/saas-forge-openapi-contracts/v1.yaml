@@ -1815,6 +1815,286 @@ paths:
         '502': { $ref: './common.yaml#/components/responses/Problem' }
         '504': { $ref: './common.yaml#/components/responses/Problem' }
 
+  /api/v1/remote-manifests:
+    post:
+      tags: [RemoteManifests]
+      operationId: registerRemoteManifest
+      x-saas.forge-service: remote-delivery-service
+      security:
+        - ServiceOAuth2: ['remote-delivery:manifest:register']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRemoteManifestRequest' }
+      responses:
+        '200':
+          description: Registered version, or the current state of an identical registration
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemoteManifest' }
+        '400':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '401':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '403':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '409':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '503':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+  /api/v1/platform/remote-manifests:
+    get:
+      tags: [RemoteManifests]
+      operationId: listRemoteManifests
+      x-saas.forge-service: remote-delivery-service
+      security:
+        - UserBearerAuth: []
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string, maxLength: 256 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Authorized manifests page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemoteManifestPage' }
+        '400':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '401':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '403':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '503':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+  /api/v1/remote-manifests/enabled:
+    get:
+      tags: [RemoteManifests]
+      operationId: listEnabledRemoteManifests
+      x-saas.forge-service: remote-delivery-service
+      security:
+        - UserBearerAuth: []
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string, maxLength: 256 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Authorized manifests page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnabledRemoteManifestPage' }
+        '400':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '401':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '403':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '503':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+  /api/v1/platform/remote-manifests/{id}/approve:
+    post:
+      tags: [RemoteManifests]
+      operationId: approveRemoteManifest
+      x-saas.forge-service: remote-delivery-service
+      security:
+        - UserBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      responses:
+        '200':
+          description: Committed state change or the original operation result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemoteManifest' }
+        '400':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '401':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '403':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '404':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '409':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '503':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+  /api/v1/platform/remote-manifests/{id}/reject:
+    post:
+      tags: [RemoteManifests]
+      operationId: rejectRemoteManifest
+      x-saas.forge-service: remote-delivery-service
+      security:
+        - UserBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      responses:
+        '200':
+          description: Committed state change or the original operation result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemoteManifest' }
+        '400':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '401':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '403':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '404':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '409':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '503':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+  /api/v1/platform/remote-manifests/{id}/enable:
+    post:
+      tags: [RemoteManifests]
+      operationId: enableRemoteManifest
+      x-saas.forge-service: remote-delivery-service
+      security:
+        - UserBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      responses:
+        '200':
+          description: Committed state change or the original operation result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemoteManifest' }
+        '400':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '401':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '403':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '404':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '409':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+        '503':
+          description: Remote Delivery request refused or unavailable
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+
 components:
   securitySchemes:
     UserBearerAuth:
@@ -1843,6 +2123,7 @@ components:
         clientCredentials:
           tokenUrl: /oauth2/token
           scopes:
+            remote-delivery:manifest:register: Register an assigned module manifest
             runtime:read: Read runtime entitlement state.
             runtime:quota:write: Apply runtime quota operations.
   headers:
@@ -2488,9 +2769,71 @@ components:
               format: date-time
             - type: 'null'
       additionalProperties: false
+    RegisterRemoteManifestRequest:
+      type: object
+      additionalProperties: false
+      required: [module, version, source, uiVersion, entrySha256]
+      properties:
+        module: { type: string, pattern: '^[a-z][a-z0-9-]{1,62}$' }
+        version: { type: string, pattern: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' }
+        source: { type: string, maxLength: 512 }
+        uiVersion: { type: string, minLength: 1, maxLength: 100 }
+        entrySha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+    EnabledRemoteManifest:
+      type: object
+      additionalProperties: false
+      required: [id, module, version, source, uiVersion, entrySha256]
+      properties:
+        id: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        module: { type: string, pattern: '^[a-z][a-z0-9-]{1,62}$' }
+        version: { type: string, pattern: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' }
+        source: { type: string, maxLength: 512 }
+        uiVersion: { type: string, minLength: 1, maxLength: 100 }
+        entrySha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+    RemoteManifest:
+      type: object
+      additionalProperties: false
+      required: [id, module, version, source, uiVersion, entrySha256, state, registeredBy, registeredAt, reviewedBy, reviewedAt, enabledBy, enabledAt]
+      properties:
+        id: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        module: { type: string, pattern: '^[a-z][a-z0-9-]{1,62}$' }
+        version: { type: string, pattern: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' }
+        source: { type: string, maxLength: 512 }
+        uiVersion: { type: string, minLength: 1, maxLength: 100 }
+        entrySha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        state: { type: string, enum: [PENDING_REVIEW, APPROVED, REJECTED, ENABLED] }
+        registeredBy: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        registeredAt: { type: string, format: date-time }
+        reviewedBy: { type: [string, 'null'], format: uuid }
+        reviewedAt: { type: [string, 'null'], format: date-time }
+        enabledBy: { type: [string, 'null'], format: uuid }
+        enabledAt: { type: [string, 'null'], format: date-time }
+    RemoteManifestPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor, hasMore]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/RemoteManifest' }
+        nextCursor: { type: [string, 'null'], maxLength: 256 }
+        hasMore: { type: boolean }
+    EnabledRemoteManifestPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor, hasMore]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/EnabledRemoteManifest' }
+        nextCursor: { type: [string, 'null'], maxLength: 256 }
+        hasMore: { type: boolean }
     RuntimeScope:
       type: string
       enum:
+        - 'remote-delivery:manifest:register'
         - 'runtime:read'
         - 'runtime:quota:write'
         - 'tenant-access:membership:read'
@@ -2502,10 +2845,10 @@ components:
         - 'entitlement:quota:write'
     OAuthClientType:
       type: string
-      enum: [RUNTIME_SERVICE, RESERVED_SERVICE]
+      enum: [RUNTIME_SERVICE, RESERVED_SERVICE, CI_CLIENT]
     ReservedServiceKey:
       type: string
-      enum: [IAM, TENANT_ACCESS, ENTITLEMENT]
+      enum: [IAM, TENANT_ACCESS, ENTITLEMENT, REMOTE_DELIVERY]
     OAuthClientStatus:
       type: string
       enum: [ACTIVE, REVOKED]

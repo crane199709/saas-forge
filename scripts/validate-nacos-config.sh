@@ -3,7 +3,7 @@ set -euo pipefail
 
 readonly repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly nacos_root="$repository_root/deploy/nacos"
-readonly applications=(gateway iam-service tenant-access-service entitlement-service audit-service)
+readonly applications=(gateway iam-service tenant-access-service entitlement-service audit-service remote-delivery-service)
 readonly environments=(dev test staging prod)
 
 validate_refresh_boundaries() {
@@ -14,7 +14,8 @@ imports = {
   "saas-forge-services/iam-service/src/main/resources/application.yaml" => "iam-service.yaml",
   "saas-forge-services/tenant-access-service/src/main/resources/application.yaml" => "tenant-access-service.yaml",
   "saas-forge-services/entitlement-service/src/main/resources/application.yaml" => "entitlement-service.yaml",
-  "saas-forge-services/audit-service/src/main/resources/application.yaml" => "audit-service.yaml"
+  "saas-forge-services/audit-service/src/main/resources/application.yaml" => "audit-service.yaml",
+  "saas-forge-services/remote-delivery-service/src/main/resources/application.yaml" => "remote-delivery-service.yaml"
 }.freeze
 
 imports.each do |relative_path, resource|
@@ -57,7 +58,8 @@ components = {
   "iam-service" => "iam",
   "tenant-access-service" => "tenant-access",
   "entitlement-service" => "entitlement",
-  "audit-service" => "audit"
+  "audit-service" => "audit",
+  "remote-delivery-service" => "remote-delivery"
 }.freeze
 
 document = YAML.safe_load(File.read(configuration_file), aliases: true)

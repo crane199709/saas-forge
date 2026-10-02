@@ -3,6 +3,7 @@ package io.saas.forge.iam.domain.client;
 import java.util.Arrays;
 
 public enum OAuthScope {
+    REMOTE_MANIFEST_REGISTER("remote-delivery:manifest:register"),
     RUNTIME_READ("runtime:read"),
     RUNTIME_QUOTA_WRITE("runtime:quota:write"),
     TENANT_ACCESS_MEMBERSHIP_READ("tenant-access:membership:read"),

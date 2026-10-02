@@ -32,8 +32,8 @@ public final class HttpRouteCatalogGenerator {
     private static final Pattern OWNER = Pattern.compile("^[a-z][a-z0-9-]*$");
     private static final Pattern SCOPE = Pattern.compile("^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)+$");
     private static final Pattern PATH_VARIABLE = Pattern.compile("\\{[^/{}]+}");
-    private static final Set<String> CLIENT_TYPES = Set.of("RESERVED_SERVICE", "RUNTIME_SERVICE");
-    private static final Set<String> USAGES = Set.of("INTERNAL", "RUNTIME");
+    private static final Set<String> CLIENT_TYPES = Set.of("RESERVED_SERVICE", "RUNTIME_SERVICE", "CI_CLIENT");
+    private static final Set<String> USAGES = Set.of("INTERNAL", "RUNTIME", "REGISTRATION");
     private static final ObjectMapper JSON = new ObjectMapper()
             .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .enable(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES)
@@ -282,10 +282,12 @@ public final class HttpRouteCatalogGenerator {
                     "Scope Registry entry 字段非法");
             require(scopes.put(entry.scope(), entry) == null, "Scope 重复: " + entry.scope());
             require(!entry.gatewayRouteAllowed() || "RUNTIME".equals(entry.usage())
-                            && entry.clientTypes().equals(List.of("RUNTIME_SERVICE")),
+                            && entry.clientTypes().equals(List.of("RUNTIME_SERVICE"))
+                            || "remote-delivery:manifest:register".equals(entry.scope())
+                            && "REGISTRATION".equals(entry.usage()) && entry.clientTypes().equals(List.of("CI_CLIENT")),
                     entry.scope() + " 的公网资格与 usage/clientTypes 不一致");
             require(entry.gatewayRouteAllowed()
-                            == Set.of("runtime:read", "runtime:quota:write").contains(entry.scope()),
+                            == Set.of("runtime:read", "runtime:quota:write", "remote-delivery:manifest:register").contains(entry.scope()),
                     entry.scope() + " 的公网资格不符合 MVP 固定边界");
         }
         return Map.copyOf(scopes);

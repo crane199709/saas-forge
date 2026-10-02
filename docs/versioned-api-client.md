@@ -6,7 +6,7 @@ Issue #203 的 Client 发布渠道为 npm 官方公开仓库 `https://registry.n
 
 维护目录：`saas-forge-contracts/saas-forge-openapi-contracts/typescript-client/`。
 
-在该目录执行 `npm ci`、`npm run build`。生成使用根 POM 管理的 OpenAPI Generator，由正式 `v1.yaml` 和 `common.yaml` 生成 ESM JavaScript 与声明文件；输出位于模块自己的 `target/` 和 `dist/`，不读取或安装旧 Console。生成使用 JDK 17 和根 Maven Wrapper；消费者不需要它们。
+在该目录执行 `npm ci`、`npm run build`。生成使用根 POM 管理的 OpenAPI Generator，由正式 `v1.yaml`、`v2.yaml`、`common.yaml` 和独立登记的 `examples/project-service/openapi.yaml` 生成 ESM JavaScript 与声明文件；输出位于模块自己的 `target/` 和 `dist/`，不读取或安装旧 Console。生成使用 JDK 17 和根 Maven Wrapper；消费者不需要它们。统一 Console operations 位于 `Console` 命名空间，Project/Task operations 位于 `Project` 命名空间；Manifest operations 从根入口导出。
 
 包无运行时依赖、无安装生命周期脚本；`exports` 指向编译后的 JavaScript 和 `.d.ts`。`contract-source.json` 记录包名、版本、后端提交、工作区是否有未提交输入、契约、POM、编译配置、锁文件、打包脚本与许可证的 SHA-256，以及生成器版本。包只包含编译制品、来源清单和 Apache-2.0 许可证。
 
@@ -30,3 +30,4 @@ Issue #203 的 Client 发布渠道为 npm 官方公开仓库 `https://registry.n
 
 - `0.1.0`：首次独立 ESM 和类型发布。
 - `0.1.1`：来源清单新增编译配置、锁文件、打包脚本及许可证摘要；正式 v1 契约和 operation 不变，用于验证显式补丁升级。
+- `0.5.0`（待发布）：增加正式 Project/Task Client、六个 Manifest operation 和 CI_CLIENT 类型。保留已有 Console 与平台业务入口；发布后才能作为阶段 3 前端的精确版本依赖。

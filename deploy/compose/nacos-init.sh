@@ -84,6 +84,27 @@ ensure_user "$NACOS_AUDIT_USERNAME" "$NACOS_AUDIT_PASSWORD"
 ensure_user "$NACOS_GATEWAY_USERNAME" "$NACOS_GATEWAY_PASSWORD"
 ensure_user "$NACOS_PUBLISH_USERNAME" "$NACOS_PUBLISH_PASSWORD"
 
+# 新服务身份仅在显式提供成对部署凭据时创建，原有环境仍可单独初始化。
+if [ -n "${NACOS_REMOTE_DELIVERY_USERNAME:-}" ] || [ -n "${NACOS_REMOTE_DELIVERY_PASSWORD:-}" ]; then
+  test -n "${NACOS_REMOTE_DELIVERY_USERNAME:-}" && test -n "${NACOS_REMOTE_DELIVERY_PASSWORD:-}"
+  test "$NACOS_REMOTE_DELIVERY_USERNAME" != nacos
+  for existing in "$NACOS_IAM_USERNAME" "$NACOS_TENANT_ACCESS_USERNAME" "$NACOS_ENTITLEMENT_USERNAME" "$NACOS_AUDIT_USERNAME" "$NACOS_GATEWAY_USERNAME" "$NACOS_PUBLISH_USERNAME"; do
+    test "$NACOS_REMOTE_DELIVERY_USERNAME" != "$existing"
+  done
+  ensure_user "$NACOS_REMOTE_DELIVERY_USERNAME" "$NACOS_REMOTE_DELIVERY_PASSWORD"
+  curl --silent --show-error --request POST \
+    --header "Authorization: Bearer $bootstrap_token" \
+    --data-urlencode "username=$NACOS_REMOTE_DELIVERY_USERNAME" \
+    --data-urlencode 'role=remote-delivery-service-dev' "$api/v3/auth/role" >/dev/null || true
+  for permission in "dev:SAAS_FORGE:config/remote-delivery-service.yaml:r" "dev:DEFAULT_GROUP:naming/remote-delivery-service:w" "dev:DEFAULT_GROUP:naming/remote-delivery-service:r" "dev:DEFAULT_GROUP:naming/iam-service:r" "dev:DEFAULT_GROUP:naming/tenant-access-service:r"; do
+    curl --silent --show-error --request POST \
+      --header "Authorization: Bearer $bootstrap_token" \
+      --data-urlencode 'role=remote-delivery-service-dev' \
+      --data-urlencode "resource=${permission%:*}" --data-urlencode "action=${permission##*:}" "$api/v3/auth/permission" >/dev/null || true
+  done
+fi
+
+
 curl --silent --show-error --request POST \
   --header "Authorization: Bearer $bootstrap_token" \
   --data-urlencode "username=$NACOS_IAM_USERNAME" \
@@ -193,7 +214,8 @@ for permission in \
   "dev:DEFAULT_GROUP:naming/gateway:r" \
   "dev:DEFAULT_GROUP:naming/iam-service:r" \
   "dev:DEFAULT_GROUP:naming/tenant-access-service:r" \
-  "dev:DEFAULT_GROUP:naming/entitlement-service:r"; do
+  "dev:DEFAULT_GROUP:naming/entitlement-service:r" \
+  "dev:DEFAULT_GROUP:naming/remote-delivery-service:r"; do
   resource="${permission%:*}"
   action="${permission##*:}"
   curl --silent --show-error --request POST \
@@ -205,8 +227,8 @@ for permission in \
 done
 # gateway-discovery-permissions: end
 
-# 配置发布身份仅能写入当前环境的五份受控资源；它没有服务注册或发现权限。
-for application in gateway iam-service tenant-access-service entitlement-service audit-service; do
+# 配置发布身份仅能写入当前环境的六份受控资源；它没有服务注册或发现权限。
+for application in gateway iam-service tenant-access-service entitlement-service audit-service remote-delivery-service; do
   curl --silent --show-error --request POST \
     --header "Authorization: Bearer $bootstrap_token" \
     --data-urlencode 'role=config-publisher-dev' \
@@ -217,6 +239,14 @@ done
 
 publisher_token="$(login "$NACOS_PUBLISH_USERNAME" "$NACOS_PUBLISH_PASSWORD")"
 test -n "$publisher_token"
+
+curl --fail --silent --show-error --request POST \
+  --header "Authorization: Bearer $publisher_token" \
+  --data-urlencode 'dataId=remote-delivery-service.yaml' \
+  --data-urlencode 'groupName=SAAS_FORGE' --data-urlencode "namespaceId=$NACOS_NAMESPACE" \
+  --data-urlencode 'type=yaml' --data-urlencode 'content@/config/remote-delivery-service.yaml' \
+  "$api/v3/admin/cs/config" | grep -q '"code":0'
+
 
 curl --fail --silent --show-error --request POST \
   --header "Authorization: Bearer $publisher_token" \
@@ -304,3 +334,7 @@ wait_for_workload_config tenant-access-service "$NACOS_TENANT_ACCESS_USERNAME" "
 wait_for_workload_config entitlement-service "$NACOS_ENTITLEMENT_USERNAME" "$NACOS_ENTITLEMENT_PASSWORD"
 wait_for_workload_config audit-service "$NACOS_AUDIT_USERNAME" "$NACOS_AUDIT_PASSWORD"
 wait_for_workload_config gateway "$NACOS_GATEWAY_USERNAME" "$NACOS_GATEWAY_PASSWORD"
+
+if [ -n "${NACOS_REMOTE_DELIVERY_USERNAME:-}" ]; then
+  wait_for_workload_config remote-delivery-service "$NACOS_REMOTE_DELIVERY_USERNAME" "$NACOS_REMOTE_DELIVERY_PASSWORD"
+fi

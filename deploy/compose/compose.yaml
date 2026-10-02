@@ -15,6 +15,8 @@ services:
       ENTITLEMENT_APP_PASSWORD: ${ENTITLEMENT_APP_PASSWORD:?ENTITLEMENT_APP_PASSWORD is required}
       AUDIT_MIGRATOR_PASSWORD: ${AUDIT_MIGRATOR_PASSWORD:?AUDIT_MIGRATOR_PASSWORD is required}
       AUDIT_APP_PASSWORD: ${AUDIT_APP_PASSWORD:?AUDIT_APP_PASSWORD is required}
+      REMOTE_DELIVERY_MIGRATOR_PASSWORD: ${REMOTE_DELIVERY_MIGRATOR_PASSWORD:-}
+      REMOTE_DELIVERY_APP_PASSWORD: ${REMOTE_DELIVERY_APP_PASSWORD:-}
     ports:
       - "127.0.0.1:5432:5432"
     healthcheck:
@@ -122,6 +124,8 @@ services:
       NACOS_ENTITLEMENT_PASSWORD: ${NACOS_ENTITLEMENT_PASSWORD:?NACOS_ENTITLEMENT_PASSWORD is required}
       NACOS_AUDIT_USERNAME: ${NACOS_AUDIT_USERNAME:?NACOS_AUDIT_USERNAME is required}
       NACOS_AUDIT_PASSWORD: ${NACOS_AUDIT_PASSWORD:?NACOS_AUDIT_PASSWORD is required}
+      NACOS_REMOTE_DELIVERY_USERNAME: ${NACOS_REMOTE_DELIVERY_USERNAME:-}
+      NACOS_REMOTE_DELIVERY_PASSWORD: ${NACOS_REMOTE_DELIVERY_PASSWORD:-}
       NACOS_GATEWAY_USERNAME: ${NACOS_GATEWAY_USERNAME:?NACOS_GATEWAY_USERNAME is required}
       NACOS_GATEWAY_PASSWORD: ${NACOS_GATEWAY_PASSWORD:?NACOS_GATEWAY_PASSWORD is required}
     volumes:
@@ -131,6 +135,7 @@ services:
       - ../nacos/dev/entitlement-service.yaml:/config/entitlement-service.yaml:ro
       - ../nacos/dev/audit-service.yaml:/config/audit-service.yaml:ro
       - ../nacos/dev/gateway.yaml:/config/gateway.yaml:ro
+      - ../nacos/dev/remote-delivery-service.yaml:/config/remote-delivery-service.yaml:ro
 
 
 volumes:

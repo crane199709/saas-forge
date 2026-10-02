@@ -1,0 +1,42 @@
+saas.forge:
+  remote-delivery:
+    configuration-revision: "1"
+
+security:
+  browser:
+    console-enabled: true
+  jwt:
+    issuer: ${IAM_JWT_ISSUER:?IAM_JWT_ISSUER is required}
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,nacosRegistrationReadiness
+
+spring:
+  grpc:
+    client:
+      channels:
+        iam:
+          default-deadline: PT3S
+        tenant-access:
+          default-deadline: PT3S
+  nacos:
+    config:
+      health-indicator:
+        enabled: true
+  cloud:
+    nacos:
+      discovery:
+        health-indicator:
+          enabled: true
+    discovery:
+      client:
+        health-indicator:
+          use-services-query: false

@@ -1,0 +1,70 @@
+spring:
+  application:
+    name: remote-delivery-service
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+  cloud:
+    nacos:
+      username: ${NACOS_REMOTE_DELIVERY_USERNAME:?NACOS_REMOTE_DELIVERY_USERNAME is required}
+      password: ${NACOS_REMOTE_DELIVERY_PASSWORD:?NACOS_REMOTE_DELIVERY_PASSWORD is required}
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:dev}
+        ssl:
+          enabled: ${NACOS_TLS_ENABLED:false}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:dev}
+        service: remote-delivery-service
+        fail-fast: true
+        enabled: true
+        ip: ${REMOTE_DELIVERY_REGISTER_IP:127.0.0.1}
+        port: ${server.port}
+  flyway:
+    enabled: false
+  grpc:
+    client:
+      channels:
+        iam: {}
+        tenant-access: {}
+    server:
+      enabled: false
+  config:
+    import: ${SAASFORGE_SECRETS_IMPORT:configtree:./deploy/compose/.secrets/native-local/remote-delivery/}
+  datasource:
+    url: ${REMOTE_DELIVERY_DATASOURCE_URL:jdbc:postgresql://127.0.0.1:5432/remote_delivery_db}
+    username: ${REMOTE_DELIVERY_DATASOURCE_USERNAME:remote_delivery_app}
+    password: ${REMOTE_DELIVERY_APP_PASSWORD}
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+browser:
+  rootDomain: ${BROWSER_ROOT_DOMAIN:?BROWSER_ROOT_DOMAIN is required}
+saas.forge:
+  environment: ${SAASFORGE_ENVIRONMENT:dev}
+  remote-delivery:
+    service-client-id-file: ${SAASFORGE_SERVICE_CLIENT_ID_FILE:?SAASFORGE_SERVICE_CLIENT_ID_FILE is required}
+    service-client-secret-file: ${SAASFORGE_SERVICE_CLIENT_SECRET_FILE:?SAASFORGE_SERVICE_CLIENT_SECRET_FILE is required}
+server:
+  address: ${REMOTE_DELIVERY_BIND_ADDRESS:127.0.0.1}
+  port: ${REMOTE_DELIVERY_HTTP_PORT:8085}
+
+logging:
+  structured:
+    format:
+      console: io.saas.forge.observability.ForgeLogFormatter
+management:
+  observations:
+    enable:
+      http.server.requests: false
+      http.client.requests: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: "!local-file"
+    import: nacos:remote-delivery-service.yaml?group=SAAS_FORGE&refreshEnabled=false

@@ -76,6 +76,20 @@
                                     </configOptions>
                                 </configuration>
                             </execution>
+                            <execution>
+                                <id>generate-project-typescript-api-client</id>
+                                <phase>generate-sources</phase>
+                                <goals><goal>generate</goal></goals>
+                                <configuration>
+                                    <inputSpec>${maven.multiModuleProjectDirectory}/examples/project-service/openapi.yaml</inputSpec>
+                                    <generatorName>typescript-fetch</generatorName>
+                                    <output>${typescript.client.output}/project</output>
+                                    <configOptions>
+                                        <useSingleRequestParameter>true</useSingleRequestParameter>
+                                        <importFileExtension>.js</importFileExtension>
+                                    </configOptions>
+                                </configuration>
+                            </execution>
                         </executions>
                     </plugin>
                 </plugins>

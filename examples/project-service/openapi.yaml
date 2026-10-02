@@ -678,14 +678,15 @@ components:
           pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$'
           readOnly: true
     TaskPage:
-      allOf:
-        - $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/Page'
-        - type: object
-          properties:
-            items:
-              type: array
-              items:
-                $ref: '#/components/schemas/Task'
+      type: object
+      required: [items, nextCursor, hasMore]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        nextCursor: {type: [string, 'null']}
+        hasMore: {type: boolean}
 
   responses:
     ProjectNotFound:

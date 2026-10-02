@@ -35,11 +35,15 @@ class ReservedServiceClientBootstrapConfiguration {
             @Value("${saas.forge.iam.bootstrap.service-clients.tenant-access.id-file}") Path tenantAccessIdFile,
             @Value("${saas.forge.iam.bootstrap.service-clients.tenant-access.secret-file}") Path tenantAccessSecretFile,
             @Value("${saas.forge.iam.bootstrap.service-clients.entitlement.id-file}") Path entitlementIdFile,
-            @Value("${saas.forge.iam.bootstrap.service-clients.entitlement.secret-file}") Path entitlementSecretFile) {
+            @Value("${saas.forge.iam.bootstrap.service-clients.entitlement.secret-file}") Path entitlementSecretFile,
+            @Value("${saas.forge.iam.bootstrap.service-clients.remote-delivery.id-file:}") String remoteDeliveryIdFile,
+            @Value("${saas.forge.iam.bootstrap.service-clients.remote-delivery.secret-file:}") String remoteDeliverySecretFile) {
         return new ReservedServiceClientBootstrapRunner(
                 service, reader,
                 iamIdFile, iamSecretFile,
                 tenantAccessIdFile, tenantAccessSecretFile,
-                entitlementIdFile, entitlementSecretFile);
+                entitlementIdFile, entitlementSecretFile,
+                remoteDeliveryIdFile.isBlank() ? null : Path.of(remoteDeliveryIdFile),
+                remoteDeliverySecretFile.isBlank() ? null : Path.of(remoteDeliverySecretFile));
     }
 }

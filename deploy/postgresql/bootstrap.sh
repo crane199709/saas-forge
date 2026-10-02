@@ -77,3 +77,13 @@ configure_database_permissions iam_db iam_migrator iam_app
 configure_database_permissions tenant_access_db tenant_access_migrator tenant_access_app
 configure_database_permissions entitlement_db entitlement_migrator entitlement_app
 configure_database_permissions audit_db audit_migrator audit_app
+
+# 仅为新数据边界准备新增服务；本脚本仍由 PostgreSQL 首次初始化运行。
+if [[ -n "${REMOTE_DELIVERY_MIGRATOR_PASSWORD:-}" || -n "${REMOTE_DELIVERY_APP_PASSWORD:-}" ]]; then
+    require_environment_variable REMOTE_DELIVERY_MIGRATOR_PASSWORD
+    require_environment_variable REMOTE_DELIVERY_APP_PASSWORD
+    create_role remote_delivery_migrator "$REMOTE_DELIVERY_MIGRATOR_PASSWORD"
+    create_role remote_delivery_app "$REMOTE_DELIVERY_APP_PASSWORD"
+    create_database remote_delivery_db
+    configure_database_permissions remote_delivery_db remote_delivery_migrator remote_delivery_app
+fi

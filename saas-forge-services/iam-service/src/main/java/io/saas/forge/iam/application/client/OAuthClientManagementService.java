@@ -84,7 +84,7 @@ public class OAuthClientManagementService {
         });
 
         Instant createdAt = clock.instant().truncatedTo(ChronoUnit.MILLIS);
-        OAuthClient prepared = OAuthClient.registerRuntime(displayName, allowedScopes, createdAt);
+        OAuthClient prepared = OAuthClient.registerManaged(displayName, allowedScopes, createdAt);
         ClientSecretIssuer.IssuedClientSecret issued = secrets.issue();
         var creation = clients.create(prepared, issued.digest(), createdAt);
         OAuthClient client = creation.client();

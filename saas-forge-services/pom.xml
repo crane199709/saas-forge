@@ -25,5 +25,6 @@
         <module>tenant-access-service</module>
         <module>entitlement-service</module>
         <module>audit-service</module>
+        <module>remote-delivery-service</module>
     </modules>
 </project>

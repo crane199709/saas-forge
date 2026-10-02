@@ -411,6 +411,19 @@ class IamPersistenceRepositoryIT {
     }
 
     @Test
+    void persistsCiAndRemoteDeliveryTypesWithExactDatabaseScopeBoundaries() {
+        Instant at = Instant.parse("2026-10-02T12:00:00Z");
+        var ci = clients.create(OAuthClient.registerManaged("project CI migration", Set.of(OAuthScope.REMOTE_MANIFEST_REGISTER), at),digest(119),at).client();
+        assertEquals(io.saas.forge.iam.domain.client.OAuthClientType.CI_CLIENT,clients.findById(ci.id()).orElseThrow().clientType());
+        var jdbc = new org.springframework.jdbc.core.JdbcTemplate(dataSource);
+        assertThrows(org.springframework.dao.DataAccessException.class, () -> jdbc.update("UPDATE iam_oauth_clients SET allowed_scopes=ARRAY['runtime:read','remote-delivery:manifest:register'] WHERE id=?",ci.id()));
+        assertThrows(org.springframework.dao.DataAccessException.class, () -> jdbc.update("UPDATE iam_oauth_clients SET client_type='RUNTIME_SERVICE' WHERE id=?",ci.id()));
+        var remote = clients.create(OAuthClient.register("remote-delivery migration",Set.of(OAuthScope.IAM_PLATFORM_ROLE_READ,OAuthScope.TENANT_ACCESS_MEMBERSHIP_READ,OAuthScope.TENANT_ACCESS_TENANT_READ),at),digest(120),at).client();
+        assertEquals(io.saas.forge.iam.domain.client.ReservedServiceKey.REMOTE_DELIVERY,clients.findById(remote.id()).orElseThrow().reservedServiceKey());
+        assertThrows(org.springframework.dao.DataAccessException.class, () -> jdbc.update("UPDATE iam_oauth_clients SET allowed_scopes=ARRAY['iam:platform-role:read'] WHERE id=?",remote.id()));
+    }
+
+    @Test
     void enforcesClientScopeSecretOverlapAndTerminalRevocation() {
         Instant now = Instant.parse("2026-08-20T02:00:00Z");
         Instant rotatedAt = now.plusSeconds(1);

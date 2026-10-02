@@ -62,6 +62,13 @@ public final class OAuthClient {
                 OAuthClientStatus.ACTIVE, createdAt, createdAt, null);
     }
 
+    /** 管理入口只创建 Runtime 或精确的 CI Scope，内部身份仍由受控 Bootstrap 管理。 */
+    public static OAuthClient registerManaged(String displayName, Set<OAuthScope> scopes, Instant at) {
+        OAuthClientType type = Set.of(OAuthScope.REMOTE_MANIFEST_REGISTER).equals(scopes)
+                ? OAuthClientType.CI_CLIENT : OAuthClientType.RUNTIME_SERVICE;
+        return new OAuthClient(null, displayName, type, null, scopes, OAuthClientStatus.ACTIVE, at, at, null);
+    }
+
     public static OAuthClient registerRuntime(String displayName, Set<OAuthScope> allowedScopes, Instant createdAt) {
         return new OAuthClient(null, displayName, OAuthClientType.RUNTIME_SERVICE, null, allowedScopes,
                 OAuthClientStatus.ACTIVE, createdAt, createdAt, null);
@@ -140,11 +147,17 @@ public final class OAuthClient {
                     OAuthScope.IAM_IDENTITY_WRITE, OAuthScope.IAM_PASSWORD_SETUP_WRITE,
                     OAuthScope.IAM_PLATFORM_ROLE_READ, OAuthScope.IAM_SESSIONS_WRITE,
                     OAuthScope.ENTITLEMENT_QUOTA_WRITE);
+            case REMOTE_DELIVERY -> Set.of(OAuthScope.IAM_PLATFORM_ROLE_READ,
+                    OAuthScope.TENANT_ACCESS_MEMBERSHIP_READ, OAuthScope.TENANT_ACCESS_TENANT_READ);
             case ENTITLEMENT -> Set.of(
                     OAuthScope.TENANT_ACCESS_TENANT_READ, OAuthScope.IAM_PLATFORM_ROLE_READ);
         };
         if (type == OAuthClientType.RUNTIME_SERVICE) {
             if (key != null || !Set.of(OAuthScope.RUNTIME_READ, OAuthScope.RUNTIME_QUOTA_WRITE).containsAll(scopes)) {
+                throw new OAuthClientScopeGrantForbiddenException();
+            }
+        } else if (type == OAuthClientType.CI_CLIENT) {
+            if (key != null || !Set.of(OAuthScope.REMOTE_MANIFEST_REGISTER).equals(scopes)) {
                 throw new OAuthClientScopeGrantForbiddenException();
             }
         } else if (key == null || !expected.equals(scopes)) {
@@ -160,6 +173,8 @@ public final class OAuthClient {
         if (Set.of(OAuthScope.TENANT_ACCESS_TENANT_READ, OAuthScope.IAM_PLATFORM_ROLE_READ).equals(scopes)) {
             return ReservedServiceKey.ENTITLEMENT;
         }
+        if (Set.of(OAuthScope.IAM_PLATFORM_ROLE_READ, OAuthScope.TENANT_ACCESS_MEMBERSHIP_READ,
+                OAuthScope.TENANT_ACCESS_TENANT_READ).equals(scopes)) return ReservedServiceKey.REMOTE_DELIVERY;
         return null;
     }
 }

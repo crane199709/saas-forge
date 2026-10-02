@@ -92,7 +92,10 @@ class ProjectContractTest {
         assertThat(taskLimit.getDefault()).hasToString("50");
         assertThat(taskLimit.getMaximum()).isEqualByComparingTo("100");
         io.swagger.v3.oas.models.media.Schema<?> page = api.getComponents().getSchemas().get("TaskPage");
-        assertThat(page.getAllOf().get(0).getRequired()).containsExactlyInAnyOrder("items", "nextCursor", "hasMore");
+        assertThat(page.getRequired()).containsExactlyInAnyOrder("items", "nextCursor", "hasMore");
+        assertThat(page.getProperties().keySet()).containsExactlyInAnyOrder("items", "nextCursor", "hasMore");
+        assertThat(page.getProperties().get("nextCursor").getTypes()).containsExactlyInAnyOrder("string", "null");
+        assertThat(page.getProperties().get("items").getItems().get$ref()).endsWith("/Task");
         assertThat(api.getInfo().getDescription()).contains("If-Match", "24 hours", "409 RESOURCE_VERSION_CONFLICT");
     }
 }

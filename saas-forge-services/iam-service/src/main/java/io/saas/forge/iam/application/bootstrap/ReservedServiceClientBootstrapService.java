@@ -23,7 +23,7 @@ public class ReservedServiceClientBootstrapService {
         this.clock = clock;
     }
 
-    /** 三个 Client 必须在同一事务中完成创建或严格重放校验。 */
+    /** 提交的 Client 必须在同一事务中完成创建或严格重放校验。 */
     @Transactional
     public ReservedServiceClientBootstrapResult bootstrap(List<ReservedServiceClientBootstrapInput> inputs) {
         validateCompleteSet(inputs);
@@ -58,8 +58,8 @@ public class ReservedServiceClientBootstrapService {
     }
 
     private static void validateCompleteSet(List<ReservedServiceClientBootstrapInput> inputs) {
-        if (inputs == null || inputs.size() != ReservedServiceClient.values().length) {
-            throw new IllegalArgumentException("保留 OAuth Client 引导必须一次提供三个服务身份");
+        if (inputs == null || (inputs.size() != 3 && inputs.size() != 4)) {
+            throw new IllegalArgumentException("保留 OAuth Client 引导必须提供原有三个服务身份，可追加 Remote Delivery 身份");
         }
         EnumSet<ReservedServiceClient> services = EnumSet.noneOf(ReservedServiceClient.class);
         HashSet<java.util.UUID> ids = new HashSet<>();
@@ -72,7 +72,9 @@ public class ReservedServiceClientBootstrapService {
                 throw new IllegalArgumentException("保留 OAuth Client 的服务、ID 和 Secret 必须各不相同");
             }
         }
-        if (!services.equals(EnumSet.allOf(ReservedServiceClient.class))) {
+        EnumSet<ReservedServiceClient> required = EnumSet.of(ReservedServiceClient.IAM,
+                ReservedServiceClient.TENANT_ACCESS, ReservedServiceClient.ENTITLEMENT);
+        if (!services.equals(required) && !services.equals(EnumSet.allOf(ReservedServiceClient.class))) {
             throw new IllegalArgumentException("保留 OAuth Client 引导服务集合不完整");
         }
     }

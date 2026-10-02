@@ -63,6 +63,29 @@ class ReservedServiceClientBootstrapRunnerTest {
     }
 
     @Test
+    void passesRemoteDeliveryCredentialsOnlyWhenBothFilesAreConfigured() {
+        var service = mock(ReservedServiceClientBootstrapService.class);
+        var reader = mock(SecretTextFileReader.class);
+        var id = Path.of("id");
+        var secret = Path.of("secret");
+        when(reader.read(id, 36)).thenReturn(IAM_ID);
+        when(reader.read(secret, 43)).thenReturn("restricted-secret-file-value");
+        when(service.bootstrap(anyList())).thenReturn(new ReservedServiceClientBootstrapResult(Map.of()));
+        new ReservedServiceClientBootstrapRunner(service, reader, id, secret, id, secret, id, secret, id, secret)
+                .run(mock(ApplicationArguments.class));
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<ReservedServiceClientBootstrapInput>> inputs = ArgumentCaptor.forClass(List.class);
+        verify(service).bootstrap(inputs.capture());
+        assertEquals(List.of(ReservedServiceClient.IAM, ReservedServiceClient.TENANT_ACCESS,
+                ReservedServiceClient.ENTITLEMENT, ReservedServiceClient.REMOTE_DELIVERY),
+                inputs.getValue().stream().map(ReservedServiceClientBootstrapInput::service).toList());
+        assertThrows(IllegalArgumentException.class, () -> new ReservedServiceClientBootstrapRunner(
+                service, reader, id, secret, id, secret, id, secret, id, null));
+        assertThrows(IllegalArgumentException.class, () -> new ReservedServiceClientBootstrapRunner(
+                service, reader, id, secret, id, secret, id, secret, null, secret));
+    }
+
+    @Test
     void rejectsNonUuidV7ClientIdBeforeBootstrap() {
         ReservedServiceClientBootstrapService service = mock(ReservedServiceClientBootstrapService.class);
         SecretTextFileReader reader = mock(SecretTextFileReader.class);

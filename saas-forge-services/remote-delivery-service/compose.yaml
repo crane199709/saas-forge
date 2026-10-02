@@ -1,0 +1,63 @@
+name: saas-forge-remote-delivery-service
+services:
+  remote-delivery-migrate:
+    image: flyway/flyway:12
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/remote_delivery_db
+      FLYWAY_USER: remote_delivery_migrator
+      FLYWAY_PASSWORD: ${REMOTE_DELIVERY_MIGRATOR_PASSWORD:?REMOTE_DELIVERY_MIGRATOR_PASSWORD is required}
+      FLYWAY_CONNECT_RETRIES: 30
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+    command: migrate
+    volumes:
+      - ./src/main/resources/db/migration:/flyway/sql:ro
+
+  remote-delivery-service:
+    image: saas.forge/remote-delivery-service:local
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        MODULE: saas-forge-services/remote-delivery-service
+    depends_on:
+      remote-delivery-migrate:
+        condition: service_completed_successfully
+    environment:
+      SAASFORGE_SECRETS_IMPORT: ""
+      SERVER_ADDRESS: 0.0.0.0
+      SERVER_PORT: 8080
+      SPRING_CLOUD_NACOS_DISCOVERY_IP: ""
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/remote_delivery_db
+      SPRING_DATASOURCE_USERNAME: remote_delivery_app
+      SPRING_DATASOURCE_PASSWORD: ${REMOTE_DELIVERY_APP_PASSWORD:?REMOTE_DELIVERY_APP_PASSWORD is required}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      BROWSER_ROOT_DOMAIN: ${BROWSER_ROOT_DOMAIN:?BROWSER_ROOT_DOMAIN is required}
+      IAM_JWT_ISSUER: ${IAM_JWT_ISSUER:?IAM_JWT_ISSUER is required}
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_NAMESPACE: dev
+      NACOS_TLS_ENABLED: "false"
+      NACOS_REMOTE_DELIVERY_USERNAME: ${NACOS_REMOTE_DELIVERY_USERNAME:?NACOS_REMOTE_DELIVERY_USERNAME is required}
+      NACOS_REMOTE_DELIVERY_PASSWORD: ${NACOS_REMOTE_DELIVERY_PASSWORD:?NACOS_REMOTE_DELIVERY_PASSWORD is required}
+      SAASFORGE_SERVICE_CLIENT_ID_FILE: /run/secrets/service-client-id
+      SAASFORGE_SERVICE_CLIENT_SECRET_FILE: /run/secrets/service-client-secret
+    ports:
+      - "127.0.0.1:8085:8080"
+    volumes:
+      - type: bind
+        source: ${REMOTE_DELIVERY_SERVICE_CLIENT_ID_FILE:-../../deploy/compose/.secrets/remote-delivery-client-id}
+        target: /run/secrets/service-client-id
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ${REMOTE_DELIVERY_SERVICE_CLIENT_SECRET_FILE:-../../deploy/compose/.secrets/remote-delivery-client-secret}
+        target: /run/secrets/service-client-secret
+        read_only: true
+        bind: { create_host_path: false }
+
+
+networks:
+  default:
+    external: true
+    name: ${SF_DOCKER_NETWORK:-compose_default}
