@@ -1,0 +1,96 @@
+# 在隔离验收项目中合并 compose.yaml 和 tenant-lifecycle-e2e.override.yaml。
+# 只准备 Stage 3 后端；前端通过正式发布 Client 和同轮 handoff 独立验收。
+services:
+  remote-delivery-migrate:
+    extends:
+      file: ../../saas-forge-services/remote-delivery-service/compose.yaml
+      service: remote-delivery-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+  remote-delivery-service:
+    extends:
+      file: ../../saas-forge-services/remote-delivery-service/compose.yaml
+      service: remote-delivery-service
+    ports: !reset []
+    group_add:
+      - "${E2E_HOST_GID:?E2E_HOST_GID is required}"
+    environment:
+      JAVA_TOOL_OPTIONS: -Xms32m -Xmx192m
+      SAAS_FORGE_REMOTE_DELIVERY_MODULE_CLIENTS_PROJECT: ${PROJECT_MANIFEST_CLIENT_ID:?PROJECT_MANIFEST_CLIENT_ID is required}
+    depends_on:
+      remote-delivery-migrate:
+        condition: service_completed_successfully
+      nacos-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+  project-migrate:
+    extends:
+      file: ../../examples/project-service/compose.yaml
+      service: project-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+  project-service:
+    extends:
+      file: ../../examples/project-service/compose.yaml
+      service: project-service
+    ports: !reset []
+    environment:
+      JAVA_TOOL_OPTIONS: -Xms32m -Xmx192m
+      SPRING_KAFKA_PROPERTIES_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      SPRING_KAFKA_PROPERTIES_SASL_MECHANISM: PLAIN
+      SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG: >-
+        org.apache.kafka.common.security.plain.PlainLoginModule required
+        username="project-service" password="${KAFKA_PROJECT_PASSWORD:?KAFKA_PROJECT_PASSWORD is required}";
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+    depends_on:
+      project-migrate:
+        condition: service_completed_successfully
+      nacos-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      kafka-audit-acl-init:
+        condition: service_completed_successfully
+  gateway:
+    environment:
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+  audit-service:
+    environment:
+      SAAS_FORGE_AUDIT_EXAMPLE_CONSUMER_ENABLED: "true"
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+  kafka:
+    environment:
+      KAFKA_LISTENER_NAME_INTERNAL_PLAIN_SASL_JAAS_CONFIG: >-
+        org.apache.kafka.common.security.plain.PlainLoginModule required
+        username="admin" password="${KAFKA_ADMIN_PASSWORD:?KAFKA_ADMIN_PASSWORD is required}"
+        user_admin="${KAFKA_ADMIN_PASSWORD:?KAFKA_ADMIN_PASSWORD is required}"
+        user_iam-service="${KAFKA_IAM_PASSWORD:?KAFKA_IAM_PASSWORD is required}"
+        user_tenant-access-service="${KAFKA_TENANT_ACCESS_PASSWORD:?KAFKA_TENANT_ACCESS_PASSWORD is required}"
+        user_entitlement-service="${KAFKA_ENTITLEMENT_PASSWORD:?KAFKA_ENTITLEMENT_PASSWORD is required}"
+        user_audit-service="${KAFKA_AUDIT_PASSWORD:?KAFKA_AUDIT_PASSWORD is required}"
+        user_audit-replay="${KAFKA_AUDIT_REPLAY_PASSWORD:?KAFKA_AUDIT_REPLAY_PASSWORD is required}"
+        user_project-service="${KAFKA_PROJECT_PASSWORD:?KAFKA_PROJECT_PASSWORD is required}";
+  kafka-audit-acl-init:
+    environment:
+      KAFKA_PROJECT_PASSWORD: ${KAFKA_PROJECT_PASSWORD:?KAFKA_PROJECT_PASSWORD is required}
+  iam-reserved-service-client-bootstrap:
+    environment:
+      SAAS_FORGE_IAM_BOOTSTRAP_SERVICE_CLIENTS_REMOTE_DELIVERY_ID_FILE: /run/secrets/remote-delivery-client-id
+      SAAS_FORGE_IAM_BOOTSTRAP_SERVICE_CLIENTS_REMOTE_DELIVERY_SECRET_FILE: /run/secrets/remote-delivery-client-secret
+    volumes:
+      - type: bind
+        source: ${REMOTE_DELIVERY_SERVICE_CLIENT_ID_FILE:?REMOTE_DELIVERY_SERVICE_CLIENT_ID_FILE is required}
+        target: /run/secrets/remote-delivery-client-id
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ${REMOTE_DELIVERY_SERVICE_CLIENT_SECRET_FILE:?REMOTE_DELIVERY_SERVICE_CLIENT_SECRET_FILE is required}
+        target: /run/secrets/remote-delivery-client-secret
+        read_only: true
+        bind: { create_host_path: false }

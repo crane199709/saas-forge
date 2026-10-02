@@ -1,7 +1,6 @@
 package io.saas.forge.remotedelivery;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.UUID;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +16,9 @@ final class ManifestProblemHandler {
     @ExceptionHandler({org.springframework.web.bind.MethodArgumentNotValidException.class,
         org.springframework.http.converter.HttpMessageNotReadableException.class,
         org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
-        org.springframework.web.bind.MissingRequestHeaderException.class})
+        org.springframework.web.bind.MissingRequestHeaderException.class,
+        org.springframework.web.method.annotation.HandlerMethodValidationException.class,
+        jakarta.validation.ConstraintViolationException.class})
     ResponseEntity<Problem> invalid(Exception error,HttpServletRequest request) { return problem(400,"VALIDATION_FAILED",request); }
     @ExceptionHandler(io.saas.forge.sdk.tenant.TenantContextUnavailableException.class)
     ResponseEntity<Problem> tenantMissing(Exception error,HttpServletRequest request) { return problem(403,"TENANT_CONTEXT_REQUIRED",request); }

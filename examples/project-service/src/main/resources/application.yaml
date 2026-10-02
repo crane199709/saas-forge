@@ -3,7 +3,16 @@ spring:
     name: project-service
   cloud:
     nacos:
+      username: ${NACOS_PROJECT_USERNAME:}
+      password: ${NACOS_PROJECT_PASSWORD:}
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:dev}
+        ssl:
+          enabled: ${NACOS_TLS_ENABLED:false}
       discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:dev}
         service: project-service
   kafka:
     producer:
@@ -34,3 +43,10 @@ management:
     enable:
       http.server.requests: false
       http.client.requests: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: "!local-file"
+    import: nacos:project-service.yaml?group=SAAS_FORGE&refreshEnabled=false

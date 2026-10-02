@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-readonly applications=(gateway iam-service tenant-access-service entitlement-service audit-service)
+readonly applications=(gateway iam-service tenant-access-service entitlement-service audit-service remote-delivery-service project-service)
 
 usage() {
   echo "用法: $0 <dev|test|staging|prod>" >&2

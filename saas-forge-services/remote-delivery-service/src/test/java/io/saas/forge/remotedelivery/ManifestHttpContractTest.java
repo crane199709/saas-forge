@@ -21,7 +21,13 @@ class ManifestHttpContractTest {
         when(service.list(null,20,actor.toString(),false)).thenReturn(new ManifestService.ManifestPage(List.of(value),null,false));
         when(service.list(null,20,"tenant",true)).thenReturn(new ManifestService.ManifestPage(List.of(value),null,false));
         var request = new MockHttpServletRequest();request.addHeader("Authorization","Bearer fixture");
-        var mvc = MockMvcBuilders.standaloneSetup(new ManifestController(authority,service,request,JsonMapper.builder().build()))
+        var validation = new org.springframework.validation.beanvalidation.MethodValidationPostProcessor();
+        validation.setProxyTargetClass(true);
+        validation.afterPropertiesSet();
+        var controller = validation.postProcessAfterInitialization(
+                new ManifestController(authority,service,request,JsonMapper.builder().build()), "manifestController");
+        org.junit.jupiter.api.Assertions.assertTrue(org.springframework.aop.support.AopUtils.isAopProxy(controller));
+        var mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ManifestProblemHandler()).build();
         mvc.perform(get("/api/v1/platform/remote-manifests")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].registeredAt").value("2026-10-02T12:00:00Z"))
@@ -32,6 +38,8 @@ class ManifestHttpContractTest {
                 .andExpect(jsonPath("$.items[0].registeredBy").doesNotExist())
                 .andExpect(jsonPath("$.items[0].reviewedBy").doesNotExist());
         mvc.perform(post("/api/v1/platform/remote-manifests/"+id+"/approve")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/platform/remote-manifests").param("limit", "0"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
         verify(service,never()).decide(any(),any(),any(),any());
     }
 }

@@ -1,0 +1,45 @@
+name: saas-forge-project-service
+services:
+  project-migrate:
+    image: flyway/flyway:12
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/project_db
+      FLYWAY_USER: project_migrator
+      FLYWAY_PASSWORD: ${PROJECT_MIGRATOR_PASSWORD:?PROJECT_MIGRATOR_PASSWORD is required}
+      FLYWAY_CONNECT_RETRIES: 30
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+    command: migrate
+    volumes:
+      - ./src/main/resources/db/migration:/flyway/sql:ro
+  project-service:
+    image: saas.forge/project-service:local
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        MODULE: examples/project-service
+    depends_on:
+      project-migrate:
+        condition: service_completed_successfully
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/project_db
+      SPRING_DATASOURCE_USERNAME: project_app
+      SPRING_DATASOURCE_PASSWORD: ${PROJECT_APP_PASSWORD:?PROJECT_APP_PASSWORD is required}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      IAM_JWT_ISSUER: ${IAM_JWT_ISSUER:?IAM_JWT_ISSUER is required}
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_NAMESPACE: dev
+      NACOS_TLS_ENABLED: "false"
+      NACOS_PROJECT_USERNAME: ${NACOS_PROJECT_USERNAME:?NACOS_PROJECT_USERNAME is required}
+      NACOS_PROJECT_PASSWORD: ${NACOS_PROJECT_PASSWORD:?NACOS_PROJECT_PASSWORD is required}
+    ports:
+      - "127.0.0.1:8086:8080"
+networks:
+  default:
+    external: true
+    name: ${SF_DOCKER_NETWORK:-compose_default}

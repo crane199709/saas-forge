@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly applications=(gateway iam-service tenant-access-service entitlement-service audit-service)
+readonly applications=(gateway iam-service tenant-access-service entitlement-service audit-service remote-delivery-service project-service)
 
 : "${NACOS_SERVER_ADDR:?NACOS_SERVER_ADDR is required}"
 : "${NACOS_NAMESPACE:=dev}"
@@ -121,6 +121,13 @@ verify_workload() {
   assert_own_config_readable "$application" "$token"
   assert_config_access_denied "$application" "$token" "$other_application"
   case "$application" in
+    project-service) assert_collaborator_discovery_readable "$application" "$token" iam-service ;;
+    remote-delivery-service)
+      assert_collaborator_discovery_readable "$application" "$token" iam-service
+      assert_collaborator_discovery_readable "$application" "$token" tenant-access-service ;;
+    gateway)
+      if [[ -n "${NACOS_PROJECT_USERNAME:-}" ]]; then assert_collaborator_discovery_readable "$application" "$token" project-service; fi
+      if [[ -n "${NACOS_REMOTE_DELIVERY_USERNAME:-}" ]]; then assert_collaborator_discovery_readable "$application" "$token" remote-delivery-service; fi ;;
     iam-service) assert_collaborator_discovery_readable "$application" "$token" tenant-access-service ;;
     tenant-access-service)
       assert_collaborator_discovery_readable "$application" "$token" iam-service
@@ -137,3 +144,10 @@ verify_workload tenant-access-service "$NACOS_TENANT_ACCESS_USERNAME" "$NACOS_TE
 verify_workload entitlement-service "$NACOS_ENTITLEMENT_USERNAME" "$NACOS_ENTITLEMENT_PASSWORD" iam-service
 verify_workload audit-service "$NACOS_AUDIT_USERNAME" "$NACOS_AUDIT_PASSWORD" iam-service
 verify_workload gateway "$NACOS_GATEWAY_USERNAME" "$NACOS_GATEWAY_PASSWORD" iam-service
+
+if [[ -n "${NACOS_PROJECT_USERNAME:-}" ]]; then
+  verify_workload project-service "$NACOS_PROJECT_USERNAME" "$NACOS_PROJECT_PASSWORD" iam-service
+fi
+if [[ -n "${NACOS_REMOTE_DELIVERY_USERNAME:-}" ]]; then
+  verify_workload remote-delivery-service "$NACOS_REMOTE_DELIVERY_USERNAME" "$NACOS_REMOTE_DELIVERY_PASSWORD" iam-service
+fi

@@ -30,4 +30,4 @@ Issue #203 的 Client 发布渠道为 npm 官方公开仓库 `https://registry.n
 
 - `0.1.0`：首次独立 ESM 和类型发布。
 - `0.1.1`：来源清单新增编译配置、锁文件、打包脚本及许可证摘要；正式 v1 契约和 operation 不变，用于验证显式补丁升级。
-- `0.5.0`（待发布）：增加正式 Project/Task Client、六个 Manifest operation 和 CI_CLIENT 类型。保留已有 Console 与平台业务入口；发布后才能作为阶段 3 前端的精确版本依赖。
+- `0.5.0`（2026-10-02 已发布）：增加正式 Project/Task Client、六个 Manifest operation 和 CI_CLIENT 类型。保留已有 Console 与平台业务入口。来源提交 `d436c3c4bcb80519b50751155e081d086dc1e34b`，制品来源 `dirty=false`；tarball SHA-256 `9ff35d4d7ac2ff0eb40fa212da46bcbe196800965af59e773ab92165d58630c4`，官方 registry shasum `8f6038e62103648d0e20bfb5cbf59bef3e52b8a3` 与打包制品相同。前端已从官方 registry 精确安装并保存完整性摘要；这只证明制品交付，尚不代表阶段 3 浏览器验收通过。

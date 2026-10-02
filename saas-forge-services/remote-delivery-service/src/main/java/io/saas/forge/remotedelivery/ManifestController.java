@@ -11,7 +11,7 @@ import io.saas.forge.remotedelivery.contract.model.RemoteManifestPage;
 import tools.jackson.databind.ObjectMapper;
 
 @RestController
-final class ManifestController implements RemoteManifestsApi {
+class ManifestController implements RemoteManifestsApi {
     private final ManifestAuthority authority;
     private final ManifestService manifests;
     private final jakarta.servlet.http.HttpServletRequest request;

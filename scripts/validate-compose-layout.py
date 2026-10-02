@@ -12,7 +12,8 @@ ENVIRONMENT = ROOT / 'deploy/compose/compose.yaml'
 ACCEPTANCE = ROOT / 'deploy/acceptance/compose.yaml'
 APPLICATIONS = [ROOT / 'gateway/compose.yaml',
                 *sorted((ROOT / 'saas-forge-services').glob('*/compose.yaml')),
-                *sorted((ROOT / 'test-support').glob('*/compose.yaml'))]
+                *sorted((ROOT / 'test-support').glob('*/compose.yaml')),
+                *sorted((ROOT / 'examples').glob('*/compose.yaml'))]
 OVERLAYS = sorted(ACCEPTANCE.parent.glob('*.override.yaml'))
 INFRASTRUCTURE = {'postgres', 'redis', 'kafka', 'mailpit', 'otel-collector', 'nacos', 'nacos-init'}
 FILES = [ENVIRONMENT, ACCEPTANCE, *APPLICATIONS, *OVERLAYS,
@@ -72,12 +73,18 @@ def main():
                 assert services[application]['depends_on'][name]['condition'] == 'service_completed_successfully'
             elif name != 'gateway' and not name.endswith('-service'):
                 assert service.get('profiles'), f'维护任务 {name} 会随普通启动执行'
-        declared = set(re.findall(r'^([A-Z][A-Z0-9_]*)=', (file.parent / '.env.example').read_text(), re.M))
-        required = set(re.findall(r'\$\{([A-Z][A-Z0-9_]*)', file.read_text()))
-        assert required <= declared, f'{file}: 模板缺少 {required - declared}'
+        # 保留历史模板的一致性检查；原生开发规范不允许为新增应用引入可提交模板。
+        template = file.parent / '.env.example'
+        if file.parent.name not in {'remote-delivery-service', 'project-service'} or template.is_file():
+            assert template.is_file(), f'{file}: 历史模板缺失'
+            declared = set(re.findall(r'^([A-Z][A-Z0-9_]*)=', template.read_text(), re.M))
+            required = set(re.findall(r'\$\{([A-Z][A-Z0-9_]*)', file.read_text()))
+            assert required <= declared, f'{file}: 模板缺少 {required - declared}'
     for project in ('acceptance-layout-a', 'acceptance-layout-b'):
         for overlay in [None, *OVERLAYS]:
             scenario = [ACCEPTANCE]
+            if overlay and overlay.name == 'stage3.override.yaml':
+                scenario.append(ACCEPTANCE.parent / 'tenant-lifecycle-e2e.override.yaml')
             model = configuration(scenario + ([overlay] if overlay else []), project)
             assert model['networks']['default'].get('external', False) is False
             assert model['networks']['default']['name'] == f'{project}_default'

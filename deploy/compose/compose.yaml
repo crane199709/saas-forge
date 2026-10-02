@@ -17,6 +17,8 @@ services:
       AUDIT_APP_PASSWORD: ${AUDIT_APP_PASSWORD:?AUDIT_APP_PASSWORD is required}
       REMOTE_DELIVERY_MIGRATOR_PASSWORD: ${REMOTE_DELIVERY_MIGRATOR_PASSWORD:-}
       REMOTE_DELIVERY_APP_PASSWORD: ${REMOTE_DELIVERY_APP_PASSWORD:-}
+      PROJECT_MIGRATOR_PASSWORD: ${PROJECT_MIGRATOR_PASSWORD:-}
+      PROJECT_APP_PASSWORD: ${PROJECT_APP_PASSWORD:-}
     ports:
       - "127.0.0.1:5432:5432"
     healthcheck:
@@ -126,6 +128,8 @@ services:
       NACOS_AUDIT_PASSWORD: ${NACOS_AUDIT_PASSWORD:?NACOS_AUDIT_PASSWORD is required}
       NACOS_REMOTE_DELIVERY_USERNAME: ${NACOS_REMOTE_DELIVERY_USERNAME:-}
       NACOS_REMOTE_DELIVERY_PASSWORD: ${NACOS_REMOTE_DELIVERY_PASSWORD:-}
+      NACOS_PROJECT_USERNAME: ${NACOS_PROJECT_USERNAME:-}
+      NACOS_PROJECT_PASSWORD: ${NACOS_PROJECT_PASSWORD:-}
       NACOS_GATEWAY_USERNAME: ${NACOS_GATEWAY_USERNAME:?NACOS_GATEWAY_USERNAME is required}
       NACOS_GATEWAY_PASSWORD: ${NACOS_GATEWAY_PASSWORD:?NACOS_GATEWAY_PASSWORD is required}
     volumes:
@@ -136,6 +140,7 @@ services:
       - ../nacos/dev/audit-service.yaml:/config/audit-service.yaml:ro
       - ../nacos/dev/gateway.yaml:/config/gateway.yaml:ro
       - ../nacos/dev/remote-delivery-service.yaml:/config/remote-delivery-service.yaml:ro
+      - ../nacos/dev/project-service.yaml:/config/project-service.yaml:ro
 
 
 volumes:

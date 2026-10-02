@@ -82,7 +82,7 @@ class ProjectHttpIT {
         jwks.start();
         // 受控认证设施只替代 IAM 的服务发现/JWKS；仍运行 Starter 的签名、声明和 Redis 撤销验证。
         app = new SpringApplicationBuilder(ProjectApplication.class).run(
-                "--server.port=0", "--saas.forge.example.outbox.enabled=false", "--spring.cloud.nacos.discovery.enabled=false",
+                "--server.port=0", "--spring.profiles.active=local-file", "--spring.cloud.nacos.config.enabled=false", "--saas.forge.example.outbox.enabled=false", "--spring.cloud.nacos.discovery.enabled=false",
                 "--spring.cloud.discovery.client.simple.instances.iam-service[0].uri=http://127.0.0.1:" + jwks.getAddress().getPort(),
                 "--security.jwt.issuer=example-test", "--saas.forge.environment=example-test",
                 "--spring.data.redis.host=" + REDIS.getHost(), "--spring.data.redis.port=" + REDIS.getMappedPort(6379),

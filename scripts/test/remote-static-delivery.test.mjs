@@ -23,12 +23,18 @@ for (const version of ["v1", "v2"]) {
   ])
     await writeFile(path.join(artifacts, version, name), content);
 }
+await mkdir(path.join(artifacts, 'project', '1.0.0'), { recursive: true });
+await writeFile(path.join(artifacts, 'project', '1.0.0', 'remote.js'), 'export const business = true;');
+const previousBusinessArtifacts = process.env.SF_BUSINESS_REMOTE_DIRECTORY;
+process.env.SF_BUSINESS_REMOTE_DIRECTORY = artifacts;
 const previousArtifacts = process.env.SF_REMOTE_STATIC_DIRECTORY;
 process.env.SF_REMOTE_STATIC_DIRECTORY = artifacts;
 after(async () => {
   if (previousArtifacts === undefined)
     delete process.env.SF_REMOTE_STATIC_DIRECTORY;
   else process.env.SF_REMOTE_STATIC_DIRECTORY = previousArtifacts;
+  if (previousBusinessArtifacts === undefined) delete process.env.SF_BUSINESS_REMOTE_DIRECTORY;
+  else process.env.SF_BUSINESS_REMOTE_DIRECTORY = previousBusinessArtifacts;
   await rm(artifacts, { recursive: true, force: true });
 });
 
@@ -161,4 +167,20 @@ test("Tenant can read a built Remote ES module through trusted fourth-domain HTT
   );
   assert.equal(response.headers["access-control-allow-credentials"], undefined);
   assert.match(response.body.toString(), /export/u);
+});
+
+test('business Remote serves only the exact versioned JavaScript entry with credential-free CORS', async t => {
+  const get = await fixture(t);
+  const entry = await get('/project/1.0.0/remote.js');
+  assert.equal(entry.status, 200);
+  assert.equal(entry.body.toString(), 'export const business = true;');
+  assert.equal(entry.headers['access-control-allow-origin'], 'https://console.saas.forge.test');
+  assert.equal(entry.headers['access-control-allow-credentials'], undefined);
+  assert.match(entry.headers['cache-control'], /immutable/);
+  for (const path of ['/project/1.0.1/remote.js', '/project/1.0.0/manifest-declaration.json',
+    '/project/1.0.0/remote.js?version=2', '/project/../remote.js', '/project/01.0.0/remote.js']) {
+    assert.equal((await get(path)).status, 404);
+  }
+  assert.equal((await get('/project/1.0.0/remote.js', 'https://remote.saas.forge.test')).headers['access-control-allow-origin'], undefined);
+  assert.equal((await get('/project/1.0.0/remote.js', undefined, 'POST')).status, 405);
 });

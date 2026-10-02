@@ -4,6 +4,9 @@ import { readFile } from "node:fs/promises";
 const artifactRoot = process.env.SF_REMOTE_STATIC_DIRECTORY
   ? new URL(`file://${process.env.SF_REMOTE_STATIC_DIRECTORY}/`)
   : new URL("./remote-artifacts/", import.meta.url);
+const businessArtifactRoot = process.env.SF_BUSINESS_REMOTE_DIRECTORY
+  ? new URL(`file://${process.env.SF_BUSINESS_REMOTE_DIRECTORY}/`)
+  : undefined;
 const rootDomain = process.env.SF_ACCEPTANCE_ROOT_DOMAIN ?? "saas.forge.test";
 const contentTypes = {
   "remote.js": "text/javascript; charset=utf-8",
@@ -30,7 +33,8 @@ export async function serveRemoteStatic(incoming, outgoing) {
     /^\/static-acceptance\/(v1|v2)\/(remote\.js|styles\.css|image\.svg)(?:\?[^#]*)?$/u.exec(
       incoming.url,
     );
-  if (!match) {
+  const businessMatch = /^\/project\/(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\/remote\.js$/u.exec(incoming.url);
+  if (!match && (!businessMatch || !businessArtifactRoot)) {
     outgoing
       .writeHead(404, {
         "Content-Type": "text/plain",
@@ -41,11 +45,13 @@ export async function serveRemoteStatic(incoming, outgoing) {
   }
   try {
     const body = await readFile(
-      new URL(`${match[1]}/${match[2]}`, artifactRoot),
+      match
+        ? new URL(`${match[1]}/${match[2]}`, artifactRoot)
+        : new URL(`project/${businessMatch.slice(1).join('.')}/remote.js`, businessArtifactRoot),
     );
     outgoing
       .writeHead(200, {
-        "Content-Type": contentTypes[match[2]],
+        "Content-Type": contentTypes[match ? match[2] : "remote.js"],
         "Cache-Control": "public, max-age=31536000, immutable",
       })
       .end(incoming.method === "HEAD" ? undefined : body);

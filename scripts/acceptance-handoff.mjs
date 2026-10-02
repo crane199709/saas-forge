@@ -14,10 +14,12 @@ function origin(value) {
 function save(path, value) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600, flag: 'wx' });
 }
-function prepare(directory, consoleOrigin, apiOrigin) {
+function prepare(directory, consoleOrigin, apiOrigin, stage3 = false) {
+  const requiredServices = stage3 ? [...services, 'project-service', 'remote-delivery-service'] : services;
   const runId = randomUUID();
   const receipt = {
     schemaVersion: 1,
+    requiredServices,
     runId,
     status: 'prepared',
     startedAt: new Date().toISOString(),
@@ -31,7 +33,7 @@ function prepare(directory, consoleOrigin, apiOrigin) {
   save(resolve(directory, 'preparation.json'), receipt);
   const infrastructure = ['postgres', 'redis', 'kafka', 'mailpit', 'otel-collector', 'nacos'];
   const overlay = ['services:', ...infrastructure.flatMap(name => [`  ${name}:`, '    ports: !reset []']),
-    ...services.flatMap(name => [`  ${name}:`, '    ports: !reset []', `    image: saas.forge/acceptance-${runId}/${name}:local`, '    build:', '      labels:',
+    ...requiredServices.flatMap(name => [`  ${name}:`, '    ports: !reset []', `    image: saas.forge/acceptance-${runId}/${name}:local`, '    build:', '      labels:',
       `        org.opencontainers.image.revision: "${receipt.backend.commit}"`,
       `        io.saasforge.source-dirty: "${receipt.backend.dirty}"`])];
   // Gateway 只在随机回环端口开放；受信 HTTPS Edge 由环境准备方另行配置。
@@ -78,9 +80,14 @@ function correlate(handoff, backend, browser, output) {
 
 const services = ['gateway', 'iam-service', 'tenant-access-service', 'entitlement-service', 'audit-service'];
 const docker = (...args) => execFileSync('docker', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 30000 }).trim();
-function publicJwks(target) {
+function edgeConnection(target, edge) {
+  if (!edge) return [];
+  if (edge.host !== '127.0.0.1' || !Number.isInteger(edge.port) || edge.port < 1 || edge.port > 65535) throw new Error('EDGE_INVALID');
+  return ['--connect-to', `${new URL(target).hostname}:443:127.0.0.1:${edge.port}`];
+}
+function publicJwks(target, edge) {
   const result = execFileSync('curl', ['--silent', '--show-error', '--fail', '--max-time', '15',
-    '--proto', '=https,http', target + '/.well-known/jwks.json'],
+    '--proto', '=https,http', ...edgeConnection(target, edge), target + '/.well-known/jwks.json'],
     { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 20000 });
   const { keys } = JSON.parse(result);
   if (!Array.isArray(keys) || !keys.length || keys.some(key => !key.kid || key.d || key.k)) throw new Error('JWKS_INVALID');
@@ -102,8 +109,14 @@ function ready(directory) {
       throw new Error('CROSS_ENVIRONMENT_RESOURCE');
     }
   }
+  const requiredServices = receipt.requiredServices ?? services;
+  const permitted = new Set([...services, 'project-service', 'remote-delivery-service']);
+  if (!Array.isArray(requiredServices) || services.some(service => !requiredServices.includes(service)) ||
+      requiredServices.some(service => !permitted.has(service)) || new Set(requiredServices).size !== requiredServices.length) {
+    throw new Error('SERVICE_SET_INVALID');
+  }
   const images = [];
-  for (const service of services) {
+  for (const service of requiredServices) {
     const instances = containers.filter(c => c.Config.Labels['com.docker.compose.service'] === service &&
       c.Config.Labels['com.docker.compose.oneoff'] !== 'True');
     if (instances.length !== 1 || !instances[0].State.Running) throw new Error('SERVICE_NOT_READY');
@@ -136,9 +149,16 @@ function ready(directory) {
   const ports = gateway.NetworkSettings.Ports['8080/tcp'];
   if (ports?.length !== 1 || ports[0].HostIp !== '127.0.0.1') throw new Error('GATEWAY_PORT_INVALID');
   const jwksSha256 = publicJwks(`http://127.0.0.1:${ports[0].HostPort}`);
-  if (publicJwks(receipt.apiOrigin) !== jwksSha256) throw new Error('HTTPS_WRONG_ENVIRONMENT');
+  const edgeContainer = containers.find(c => c.Config.Labels['com.docker.compose.service'] === 'acceptance-edge');
+  let edge;
+  if (edgeContainer) {
+    const edgePorts = edgeContainer.NetworkSettings.Ports['8443/tcp'];
+    if (!edgeContainer.State.Running || edgePorts?.length !== 1 || edgePorts[0].HostIp !== '127.0.0.1') throw new Error('EDGE_PORT_INVALID');
+    edge = { host: '127.0.0.1', port: Number(edgePorts[0].HostPort), containerId: edgeContainer.Id };
+  }
+  if (publicJwks(receipt.apiOrigin, edge) !== jwksSha256) throw new Error('HTTPS_WRONG_ENVIRONMENT');
   save(resolve(directory, 'handoff.json'), { ...receipt, status: 'ready', readyAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 86400000).toISOString(),
+    expiresAt: new Date(Date.now() + 86400000).toISOString(), edge,
     backend: { ...receipt.backend, images, jdkMajor: 17 },
     isolation: { ...receipt.isolation, volumes, network: network.Name }, jwksSha256 });
 }
@@ -164,14 +184,14 @@ function probe(handoff, output) {
   const report = { schemaVersion: 1, kind: 'backend-probe', runId: receipt.runId, handoffSha256: hash(handoff),
     startedAt: new Date().toISOString(), checks: [], status: 'failed' };
   try {
-    if (publicJwks(receipt.apiOrigin) !== receipt.jwksSha256) throw new Error('ENVIRONMENT_CHANGED');
+    if (publicJwks(receipt.apiOrigin, receipt.edge) !== receipt.jwksSha256) throw new Error('ENVIRONMENT_CHANGED');
     report.checks.push({ name: 'gateway-public-key-environment', status: 'passed' });
     for (const [name, source, expected] of [
       ['console-origin-allowed', receipt.consoleOrigin, 200],
       ['untrusted-origin-denied', `https://untrusted.${new URL(receipt.consoleOrigin).hostname}`, 403]
     ]) {
       const headers = execFileSync('curl', ['--silent', '--show-error', '--max-time', '15',
-        '--proto', '=https', '--dump-header', '-', '--output', '/dev/null', '--header', `Origin: ${source}`,
+        '--proto', '=https', ...edgeConnection(receipt.apiOrigin, receipt.edge), '--dump-header', '-', '--output', '/dev/null', '--header', `Origin: ${source}`,
         `${receipt.apiOrigin}/.well-known/jwks.json`],
         { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 20000 });
       const statuses = [...headers.matchAll(/^HTTP\/[^ ]+ (\d+)/gm)];
@@ -193,6 +213,7 @@ function probe(handoff, output) {
 try {
   const [command, ...args] = process.argv.slice(2);
   if (command === 'prepare' && args.length === 3) prepare(...args);
+  else if (command === 'prepare-stage3' && args.length === 3) prepare(...args, true);
   else if (command === 'ready' && args.length === 1) ready(...args);
   else if (command === 'attach' && args.length === 3) attach(...args);
   else if (command === 'probe' && args.length === 2) probe(...args);

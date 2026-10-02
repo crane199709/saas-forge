@@ -1,0 +1,9 @@
+saas.forge:
+  example:
+    configuration-revision: "1"
+
+security:
+  browser:
+    console-enabled: true
+  jwt:
+    issuer: ${IAM_JWT_ISSUER:?IAM_JWT_ISSUER is required}

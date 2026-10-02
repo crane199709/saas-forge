@@ -87,3 +87,12 @@ if [[ -n "${REMOTE_DELIVERY_MIGRATOR_PASSWORD:-}" || -n "${REMOTE_DELIVERY_APP_P
     create_database remote_delivery_db
     configure_database_permissions remote_delivery_db remote_delivery_migrator remote_delivery_app
 fi
+
+if [[ -n "${PROJECT_MIGRATOR_PASSWORD:-}" || -n "${PROJECT_APP_PASSWORD:-}" ]]; then
+    require_environment_variable PROJECT_MIGRATOR_PASSWORD
+    require_environment_variable PROJECT_APP_PASSWORD
+    create_role project_migrator "$PROJECT_MIGRATOR_PASSWORD"
+    create_role project_app "$PROJECT_APP_PASSWORD"
+    create_database project_db
+    configure_database_permissions project_db project_migrator project_app
+fi

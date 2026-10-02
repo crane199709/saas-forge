@@ -3,7 +3,7 @@ set -euo pipefail
 
 readonly repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly nacos_root="$repository_root/deploy/nacos"
-readonly applications=(gateway iam-service tenant-access-service entitlement-service audit-service remote-delivery-service)
+readonly applications=(gateway iam-service tenant-access-service entitlement-service audit-service remote-delivery-service project-service)
 readonly environments=(dev test staging prod)
 
 validate_refresh_boundaries() {
@@ -15,7 +15,8 @@ imports = {
   "saas-forge-services/tenant-access-service/src/main/resources/application.yaml" => "tenant-access-service.yaml",
   "saas-forge-services/entitlement-service/src/main/resources/application.yaml" => "entitlement-service.yaml",
   "saas-forge-services/audit-service/src/main/resources/application.yaml" => "audit-service.yaml",
-  "saas-forge-services/remote-delivery-service/src/main/resources/application.yaml" => "remote-delivery-service.yaml"
+  "saas-forge-services/remote-delivery-service/src/main/resources/application.yaml" => "remote-delivery-service.yaml",
+  "examples/project-service/src/main/resources/application.yaml" => "project-service.yaml"
 }.freeze
 
 imports.each do |relative_path, resource|
@@ -59,7 +60,8 @@ components = {
   "tenant-access-service" => "tenant-access",
   "entitlement-service" => "entitlement",
   "audit-service" => "audit",
-  "remote-delivery-service" => "remote-delivery"
+  "remote-delivery-service" => "remote-delivery",
+  "project-service" => "example"
 }.freeze
 
 document = YAML.safe_load(File.read(configuration_file), aliases: true)
@@ -119,7 +121,7 @@ validate_environment() {
   expected="$(printf '%s.yaml\n' "${applications[@]}" | sort)"
   actual="$(find "$environment_directory" -maxdepth 1 -type f -name '*.yaml' -exec basename {} \; | sort)"
   if [[ "$actual" != "$expected" ]]; then
-    echo "$environment_directory 必须且只能包含五个已声明的应用配置资源" >&2
+    echo "$environment_directory 必须且只能包含已声明的应用专属配置资源" >&2
     diff -u <(printf '%s\n' "$expected") <(printf '%s\n' "$actual") || true
     exit 1
   fi
