@@ -1,7 +1,11 @@
 package io.saas.forge.example;
 
+import io.opentelemetry.api.OpenTelemetry;
 import io.saas.forge.contracts.route.HttpRouteCatalog;
-import java.util.List;
+import io.saas.forge.observability.HttpTraceFilter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.core.Ordered;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -16,29 +20,17 @@ class ProjectConfiguration {
         });
     }
 
-    /** Example 自有契约不加入底座 Gateway Catalog；契约测试核对正式入口。 */
     @Bean
-    HttpRouteCatalog projectRoutes() {
-        return new HttpRouteCatalog(1, List.of(
-                new HttpRouteCatalog.Route("createProject", HttpRouteCatalog.HttpMethod.POST, "/api/v1/projects",
-                        "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of()),
-                new HttpRouteCatalog.Route("listProjects", HttpRouteCatalog.HttpMethod.GET, "/api/v1/projects",
-                        "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of()),
-                new HttpRouteCatalog.Route("updateProject", HttpRouteCatalog.HttpMethod.PUT, "/api/v1/projects/{projectId}",
-                        "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of()),
-                new HttpRouteCatalog.Route("deleteProject", HttpRouteCatalog.HttpMethod.DELETE, "/api/v1/projects/{projectId}",
-                        "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of()),
-                new HttpRouteCatalog.Route("getProject", HttpRouteCatalog.HttpMethod.GET, "/api/v1/projects/{projectId}",
-                        "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of()),
-                new HttpRouteCatalog.Route("createTask", HttpRouteCatalog.HttpMethod.POST, "/api/v1/projects/{projectId}/tasks",
-                        "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of()),
-                new HttpRouteCatalog.Route("listTasks", HttpRouteCatalog.HttpMethod.GET, "/api/v1/projects/{projectId}/tasks",
-                        "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of()),
-                new HttpRouteCatalog.Route("updateTask", HttpRouteCatalog.HttpMethod.PUT, "/api/v1/projects/{projectId}/tasks/{taskId}",
-                        "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of()),
-                new HttpRouteCatalog.Route("deleteTask", HttpRouteCatalog.HttpMethod.DELETE, "/api/v1/projects/{projectId}/tasks/{taskId}",
-                        "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of()),
-                new HttpRouteCatalog.Route("getTask", HttpRouteCatalog.HttpMethod.GET, "/api/v1/projects/{projectId}/tasks/{taskId}",
-                        "project-service", HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, List.of())));
+    FilterRegistrationBean<HttpTraceFilter> projectTrace(
+            OpenTelemetry telemetry, HttpRouteCatalog catalog) {
+        var matcher = new AntPathMatcher();
+        var routes = catalog.routes().stream().filter(route -> route.serviceId().equals("project-service")).toList();
+        var filter = new HttpTraceFilter(telemetry, request -> routes.stream()
+                .filter(route -> route.method().name().equals(request.getMethod())
+                        && matcher.match(route.path(), request.getRequestURI()))
+                .map(HttpRouteCatalog.Route::path).findFirst().orElse("/unmatched"));
+        var registration = new FilterRegistrationBean<>(filter);
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return registration;
     }
 }

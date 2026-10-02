@@ -43,6 +43,8 @@ Tenant ── Subscription Version
 
 当前仓库处于分阶段实现期。已建立 Maven 多模块构建（Gateway、四个领域服务、服务发现支持库、SDK/Starter、契约模块与质量门）、最小 Compose 基础设施拓扑；统一 Console 在独立 saas-forge-web 仓库维护。已交付并有验收记录的切片包括：IAM 的浏览器认证、会话槽位与 OAuth Client 管理；Tenant Access 的 Tenant 创建与生命周期、管理员密码投递、品牌档案；Entitlement 的 Plan、Quota Definition 与 Subscription。通用 Tenant RBAC（Organization、Role、Permission 目录与 Invitation 激活）、Feature 运行时闭环、Audit 查询与导出、业务 Remote 仍未实现；领域定义不代表对应功能已经全部交付。当前开放工作见 GitHub Issues。
 
+Project / Task Example 已实现 CRUD、幂等与租户 RLS 隔离，本轮增加契约生成的 Gateway 路由、结构化日志、实际 Trace / OTLP 和六类成功事实投递。后端诊断结果及运行准备见 [接入记录](docs/acceptance/example-gateway-observability-acceptance.md)；Tenant Shell / Remote 浏览器验收尚未执行，阶段 3 仍未完成。
+
 ## 本地开发
 
 从[原生本地开发总入口](docs/native-local-development.md)完成一次性依赖、证书、域名和个人配置准备。前端在独立 `saas-forge-web` 应用目录执行 `pnpm run dev`，五个后端由 IDE 直接 Run/Debug；日志、停止和重启由各自终端或 IDE 管理，跨服务联调使用 Nacos 服务发现。

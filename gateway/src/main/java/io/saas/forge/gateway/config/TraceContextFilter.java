@@ -14,7 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * 在路由守卫前建立 Trace Context，使 Gateway 生成的错误也能关联到下游请求。
  */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE)
+@Order(Ordered.HIGHEST_PRECEDENCE + 1)
 class TraceContextFilter extends OncePerRequestFilter {
 
     @Override

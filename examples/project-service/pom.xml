@@ -8,6 +8,9 @@
     <artifactId>project-service</artifactId>
     <properties><maven.deploy.skip>true</maven.deploy.skip></properties>
     <dependencies>
+        <dependency><groupId>org.testcontainers</groupId><artifactId>testcontainers-kafka</artifactId><scope>test</scope></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-kafka</artifactId></dependency>
+        <dependency><groupId>io.github.crane199709</groupId><artifactId>saas-forge-observability</artifactId></dependency>
         <dependency><groupId>io.github.crane199709</groupId><artifactId>saas-forge-spring-boot-starter</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-jdbc</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-validation</artifactId></dependency>

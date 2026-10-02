@@ -1,13 +1,36 @@
 spring:
   application:
     name: project-service
+  cloud:
+    nacos:
+      discovery:
+        service: project-service
+  kafka:
+    producer:
+      acks: all
+      properties:
+        max.block.ms: 3000
+        delivery.timeout.ms: 10000
+        request.timeout.ms: 3000
   jackson:
     mapper:
       allow-coercion-of-scalars: false
     deserialization:
       fail-on-unknown-properties: true
+saas.forge:
+  environment: ${SAASFORGE_ENVIRONMENT:dev}
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   configuration:
     map-underscore-to-camel-case: true
     local-cache-scope: STATEMENT
+
+logging:
+  structured:
+    format:
+      console: io.saas.forge.observability.ForgeLogFormatter
+management:
+  observations:
+    enable:
+      http.server.requests: false
+      http.client.requests: false

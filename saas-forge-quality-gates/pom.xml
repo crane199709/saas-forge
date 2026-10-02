@@ -19,6 +19,7 @@
     </properties>
 
     <dependencies>
+        <dependency><groupId>io.swagger.parser.v3</groupId><artifactId>swagger-parser-v3</artifactId><scope>test</scope></dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>saas-forge-http-route-catalog</artifactId>

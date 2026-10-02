@@ -168,6 +168,13 @@ class RepositoryStandardsTest {
         }
     }
 
+    private static Set<String> registeredBusinessServices() throws Exception {
+        Set<String> services = new HashSet<>();
+        for (JsonNode entry : readJson(REPOSITORY.resolve("saas-forge-contracts/services/business-http-contracts.json")).path("entries"))
+            services.add(entry.path("serviceId").asText());
+        return services;
+    }
+
     @Test
     void eventEngineeringRegistryIsCompleteAndConsistent() throws Exception {
         Path schemaPath = REPOSITORY.resolve("saas-forge-contracts/saas-forge-event-contracts/engineering-registry.schema.json");
@@ -191,7 +198,8 @@ class RepositoryStandardsTest {
             String source = requiredText(entry, "source", Path.of("saas-forge-contracts/saas-forge-event-contracts/engineering-registry.json"));
             String eventSchema = requiredText(entry, "schema", Path.of("saas-forge-contracts/saas-forge-event-contracts/engineering-registry.json"));
             String topic = requiredText(entry, "topic", Path.of("saas-forge-contracts/saas-forge-event-contracts/engineering-registry.json"));
-            assertTrue(SERVICE_ARTIFACTS.contains(producerService), type + " 使用了未知生产服务 " + producerService);
+            assertTrue(SERVICE_ARTIFACTS.contains(producerService) || registeredBusinessServices().contains(producerService),
+                    type + " 使用了未知生产服务 " + producerService);
             assertTrue(EVENT_TYPE.matcher(type).matches(), "事件 type 不合法: " + type);
             assertTrue(EVENT_SOURCE.matcher(source).matches(), "事件 source 不合法: " + source);
             assertEquals("urn:saas.forge:" + producerService, source, type + " 的 source 必须归属生产服务");
@@ -273,6 +281,9 @@ class RepositoryStandardsTest {
                 routeTargets.add(serviceId);
             }
         }
+        for (JsonNode entry : readJson(REPOSITORY.resolve("saas-forge-contracts/services/business-http-contracts.json")).path("entries")) {
+            assertTrue(routeTargets.add(entry.path("serviceId").asText()), "业务服务登记冲突");
+        }
         assertEquals(routeTargets, HttpRouteCatalogLoader.load().routes().stream()
                 .filter(route -> !isAcceptanceRoute(route))
                 .map(HttpRouteCatalog.Route::serviceId).collect(java.util.stream.Collectors.toSet()),
@@ -352,6 +363,10 @@ class RepositoryStandardsTest {
                 REPOSITORY.resolve("saas-forge-contracts/saas-forge-openapi-contracts/v1.yaml"));
         operations.addAll(parseOpenApiOperations(
                 REPOSITORY.resolve("saas-forge-contracts/saas-forge-openapi-contracts/v2.yaml")));
+        for (JsonNode entry : readJson(REPOSITORY.resolve("saas-forge-contracts/services/business-http-contracts.json")).path("entries")) {
+            operations.addAll(parseBusinessOperations(REPOSITORY.resolve(entry.path("modulePath").asText())
+                    .resolve(entry.path("openapi").asText())));
+        }
         Map<String, HttpRouteCatalog.Route> routes = new HashMap<>();
         for (HttpRouteCatalog.Route route : HttpRouteCatalogLoader.load().routes()) {
             if (isAcceptanceRoute(route)) {
@@ -738,6 +753,24 @@ class RepositoryStandardsTest {
             assertTrue(values.add(value.asText()), "数组值重复: " + value.asText());
         });
         return values;
+    }
+
+    private static List<OpenApiOperation> parseBusinessOperations(Path spec) {
+        var options = new io.swagger.v3.parser.core.models.ParseOptions(); options.setResolve(true);
+        var parsed = new io.swagger.v3.parser.OpenAPIV3Parser().readLocation(spec.toUri().toString(), null, options);
+        assertTrue(parsed.getMessages() == null || parsed.getMessages().isEmpty(), "业务契约语义解析失败");
+        var api = parsed.getOpenAPI(); assertNotNull(api);
+        List<OpenApiOperation> operations = new ArrayList<>();
+        api.getPaths().forEach((path, item) -> item.readOperationsMap().forEach((method, operation) -> {
+            var security = operation.getSecurity() == null ? api.getSecurity() : operation.getSecurity();
+            assertNotNull(security, "业务接口必须要求 User Token");
+            assertEquals(1, security.size());
+            assertEquals(Set.of("UserBearerAuth"), security.get(0).keySet());
+            assertTrue(security.get(0).get("UserBearerAuth").isEmpty());
+            operations.add(new OpenApiOperation(path, method.name().toLowerCase(java.util.Locale.ROOT), Set.of(),
+                    (String) operation.getExtensions().get("x-saas.forge-service"), operation.getOperationId(), 1, "USER_REQUIRED"));
+        }));
+        return operations;
     }
 
     private static List<OpenApiOperation> parseOpenApiOperations(Path spec) throws IOException {

@@ -15,14 +15,16 @@ class ProjectContractTest {
         var api = parsed.getOpenAPI();
         assertThat(api.getPaths()).containsOnlyKeys("/api/v1/projects", "/api/v1/projects/{projectId}",
                 "/api/v1/projects/{projectId}/tasks", "/api/v1/projects/{projectId}/tasks/{taskId}");
-        var routes = new ProjectConfiguration().projectRoutes().routes();
+        var routes = io.saas.forge.contracts.route.HttpRouteCatalogLoader.load().routes().stream()
+                .filter(route -> route.serviceId().equals("project-service")).toList();
         assertThat(routes).hasSize(10);
         for (var route : routes) {
             var operation = api.getPaths().get(route.path()).readOperationsMap().entrySet().stream()
                     .filter(entry -> entry.getKey().name().equals(route.method().name())).findFirst().orElseThrow().getValue();
             assertThat(operation.getOperationId()).isEqualTo(route.operationId());
-            assertThat(operation.getExtensions().get("x-service-id")).isEqualTo(route.serviceId());
-            assertThat(operation.getExtensions().get("x-credential-requirement")).isEqualTo(route.credentialRequirement().name());
+            assertThat(operation.getExtensions().get("x-saas.forge-service")).isEqualTo(route.serviceId());
+            assertThat(route.credentialRequirement().name()).isEqualTo("USER_REQUIRED");
+            assertThat(api.getSecurity().get(0)).containsKey("UserBearerAuth");
         }
         var list = api.getPaths().get("/api/v1/projects").getGet();
         var limit = list.getParameters().stream().filter(parameter -> parameter.getName().equals("limit")).findFirst().orElseThrow().getSchema();

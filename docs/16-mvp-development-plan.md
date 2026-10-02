@@ -27,10 +27,10 @@ MVP 不包含完整支付/账单/发票、公共注册和外部身份源、多�
 | 0. 关键决策 | 前置领域、安全与数据决策已记录 | 后续 Manifest 治理、导出授权等局部决策在相关阶段开始前冻结 |
 | 1. 工程与运行基线 | 两仓独立交付、正式 Client、统一 Console 与检查入口已建立；迁移总票 [#201](https://github.com/crane199709/saas-forge/issues/201) 已关闭 | 完整布局、视觉、无障碍及旧独有断言按覆盖范围继续核对；迁移关闭不等于未来页面覆盖完成 |
 | 2. 身份与租户最小闭环 | 已实现并按 [#183](https://github.com/crane199709/saas-forge/issues/183) / [#189](https://github.com/crane199709/saas-forge/issues/189) 验收；两票已关闭，交付提交 CI 通过 | 保持现有回归；后续改动重新验证受影响边界，不重复建设已交付页面 |
-| 3. SDK 与 Example | BOM、基础 SDK 与 Starter 已实现；`examples/` 当前只有 README | Project/Task、最小 Manifest 与正式业务 Remote 闭环未实现 |
+| 3. SDK 与 Example | BOM、基础 SDK、Starter 与 Project/Task CRUD 已实现；Gateway / 日志 / Trace / 成功事实接入见专项记录 | 最小 Manifest、正式业务 Remote 与 Tenant Shell 浏览器闭环待交付 |
 | 4. 组织、成员与 Permission | 已有 Membership、静态角色绑定、冻结/恢复与品牌档案基础 | Organization、通用 RBAC 目录、Invitation 激活、恢复流程、品牌素材管理及其产品闭环未实现 |
 | 5. Subscription、Feature 与 Quota | 已有 Plan、Quota Definition、首个 Subscription 和管理员初始化的最小额度链路 | 完整订阅生命周期、Feature 与通用 Quota Runtime、租户权益视图及 Example 联调未完成 |
-| 6. Audit 与事件可靠性 | 三类成功事实消费、只追加记录已有实现与证据 | 完整业务事件覆盖、公开查询、导出、SDK 与 Console 闭环未完成 |
+| 6. Audit 与事件可靠性 | 三类平台事实已有验收；六类 Example 成功事实已实现并完成后端诊断 | 完整业务事件覆盖、公开查询、导出、SDK 与 Console 闭环未完成 |
 | 7. Manifest 与 Remote 治理 | 静态 Remote 资源安全已有验证基础 | 产品 Manifest 生命周期、多 Remote 集成与治理未实现 |
 | 8. 本地交付与发布强化 | 原生开发入口、独立服务 Compose 与两仓 CI 已有基础 | 包含 Example/Remote/对象存储的完整发布组合及 Quick Start 尚待后续阶段收敛 |
 | 9. 全链路验收与发布 | 阶段验收可复用其明确范围内的证据 | 完整 MVP 发布验收未执行，不能由阶段 2 或仓库迁移结论替代 |
@@ -204,6 +204,7 @@ flowchart TD
 - [x] Starter 集成 Spring Security Resource Server 和 IAM JWKS，固定只接受 `RS256`，支持按 `kid` 缓存公钥、未知 `kid` 受控刷新、常规密钥轮换、撤销 `kid` 与 `jti` 的 Redis fail-closed 检查，以及不可写的 Identity/Membership/Tenant Context。
 - [ ] 实现 Project/Task Example 的最小业务 API；仅经 Starter 获取 Tenant Context，并在租户范围表使用事务级 `app.tenant_id` 和 RLS。
 - [ ] 为 Example 接入 Gateway 路由、结构化日志、Trace 和最小审计投递；API 集成测试和种子数据只作为诊断与准备手段，不能替代本阶段最终 Tenant Shell/Remote 浏览器验收。
+  - 后端接入与隔离诊断见 [专项记录](acceptance/example-gateway-observability-acceptance.md)；本项仍须随最小 Manifest / Remote 完成 Tenant Shell 浏览器验收后勾选。
 - [ ] 冻结首版 Manifest 最小契约：`module`、`version`、受控 `source`、生命周期状态与审核/启用事实；只允许 CI Client Credentials 注册，只有 Platform Administrator 审核并启用的受控来源可被 Shell 加载。
 
 **前端：Console 交互**

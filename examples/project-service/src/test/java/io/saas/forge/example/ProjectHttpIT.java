@@ -36,6 +36,24 @@ class ProjectHttpIT {
     @Container static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:18")
             .withCopyFileToContainer(MountableFile.forHostPath("deploy/bootstrap.sql"), "/docker-entrypoint-initdb.d/01-example.sql");
     @Container static final GenericContainer<?> REDIS = new GenericContainer<>("redis:8.8.1").withExposedPorts(6379);
+    @Container static final org.testcontainers.kafka.KafkaContainer KAFKA =
+            new org.testcontainers.kafka.KafkaContainer("apache/kafka:4.0.0");
+    @Container static final GenericContainer<?> COLLECTOR = new GenericContainer<>("otel/opentelemetry-collector:0.119.0")
+            .withExposedPorts(4318).withCopyToContainer(org.testcontainers.images.builder.Transferable.of("""
+                receivers:
+                  otlp:
+                    protocols:
+                      http:
+                        endpoint: 0.0.0.0:4318
+                exporters:
+                  debug:
+                    verbosity: detailed
+                service:
+                  pipelines:
+                    traces:
+                      receivers: [otlp]
+                      exporters: [debug]
+                """), "/etc/otelcol/test.yaml").withCommand("--config=/etc/otelcol/test.yaml");
     static final ObjectMapper JSON = new ObjectMapper();
     static final HttpClient HTTP = HttpClient.newHttpClient();
     static ConfigurableApplicationContext app;
@@ -64,10 +82,14 @@ class ProjectHttpIT {
         jwks.start();
         // 受控认证设施只替代 IAM 的服务发现/JWKS；仍运行 Starter 的签名、声明和 Redis 撤销验证。
         app = new SpringApplicationBuilder(ProjectApplication.class).run(
-                "--server.port=0", "--spring.cloud.nacos.discovery.enabled=false",
+                "--server.port=0", "--saas.forge.example.outbox.enabled=false", "--spring.cloud.nacos.discovery.enabled=false",
                 "--spring.cloud.discovery.client.simple.instances.iam-service[0].uri=http://127.0.0.1:" + jwks.getAddress().getPort(),
                 "--security.jwt.issuer=example-test", "--saas.forge.environment=example-test",
                 "--spring.data.redis.host=" + REDIS.getHost(), "--spring.data.redis.port=" + REDIS.getMappedPort(6379),
+                "--spring.kafka.bootstrap-servers=" + KAFKA.getBootstrapServers(),
+                "--spring.kafka.producer.acks=all", "--management.tracing.sampling.probability=1.0",
+                "--management.opentelemetry.tracing.export.otlp.endpoint=http://" + COLLECTOR.getHost()
+                        + ":" + COLLECTOR.getMappedPort(4318) + "/v1/traces",
                 "--spring.datasource.url=" + databaseUrl(),
                 "--spring.datasource.username=project_app",
                 "--spring.datasource.password=test-app",
@@ -79,6 +101,241 @@ class ProjectHttpIT {
     @AfterAll static void stop() {
         if (app != null) app.close();
         if (jwks != null) jwks.stop(0);
+    }
+
+    /** 由诊断脚本提供本轮新构建的应用 JAR；不进入阶段 3 产品完成判定。 */
+    @Test @org.junit.jupiter.api.condition.EnabledIfSystemProperty(named = "example.gateway.jar", matches = ".+")
+    void gatewayExampleKafkaAuditAndCollectorDiagnostic() throws Exception {
+        String originalBase = base;
+        java.nio.file.Path output = java.nio.file.Path.of("../../.scratch/example-pipeline").toAbsolutePath().normalize();
+        java.nio.file.Files.createDirectories(output);
+        Process gateway = null, audit = null;
+        try (var connection = DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())) {
+            execute(connection, "CREATE ROLE audit_app LOGIN NOSUPERUSER NOBYPASSRLS NOINHERIT PASSWORD 'audit-fixture'");
+            execute(connection, "CREATE DATABASE audit_fixture");
+        }
+        String auditUrl = POSTGRES.getJdbcUrl().replace("/" + POSTGRES.getDatabaseName(), "/audit_fixture");
+        try (var connection = DriverManager.getConnection(auditUrl, POSTGRES.getUsername(), POSTGRES.getPassword())) {
+            execute(connection, "REVOKE ALL ON SCHEMA public FROM PUBLIC");
+            execute(connection, "GRANT USAGE ON SCHEMA public TO audit_app");
+        }
+        Flyway.configure().dataSource(auditUrl, POSTGRES.getUsername(), POSTGRES.getPassword())
+                .locations("filesystem:../../saas-forge-services/audit-service/src/main/resources/db/migration").load().migrate();
+        int gatewayPort = freePort(), auditPort = freePort();
+        String otlp = "http://" + COLLECTOR.getHost() + ":" + COLLECTOR.getMappedPort(4318) + "/v1/traces";
+        try {
+            gateway = launchFixture(System.getProperty("example.gateway.jar"), output.resolve("gateway.log"),
+                    "--server.port=" + gatewayPort, "--spring.profiles.active=local-file",
+                    "--saas.forge.gateway.configuration-revision=fixture", "--security.jwt.issuer=example-test",
+                    "--spring.data.redis.host=" + REDIS.getHost(), "--spring.data.redis.port=" + REDIS.getMappedPort(6379),
+                    "--spring.data.redis.password=", "--browser.rootDomain=saas.forge.test",
+                    "--spring.cloud.discovery.client.simple.instances.project-service[0].uri=" + originalBase,
+                    "--spring.cloud.discovery.client.simple.instances.iam-service[0].uri=http://127.0.0.1:" + jwks.getAddress().getPort(),
+                    "--management.opentelemetry.tracing.export.otlp.endpoint=" + otlp);
+            audit = launchFixture(System.getProperty("example.audit.jar"), output.resolve("audit.log"),
+                    "--server.port=" + auditPort, "--spring.profiles.active=local-file",
+                    "--saas.forge.audit.configuration-revision=fixture", "--saas.forge.audit.example-consumer.enabled=true", "--spring.datasource.url=" + auditUrl,
+                    "--spring.datasource.username=audit_app", "--spring.datasource.password=audit-fixture",
+                    "--spring.kafka.bootstrap-servers=" + KAFKA.getBootstrapServers(),
+                    "--management.endpoint.health.group.fixture.include=auditRuntimeReadiness",
+                    "--management.opentelemetry.tracing.export.otlp.endpoint=" + otlp);
+            base = "http://127.0.0.1:" + gatewayPort;
+            awaitHttp(gateway, base + "/.well-known/jwks.json");
+            awaitHttp(audit, "http://127.0.0.1:" + auditPort + "/actuator/health/fixture");
+            try (var admin = org.apache.kafka.clients.admin.Admin.create(Map.of("bootstrap.servers", KAFKA.getBootstrapServers()))) {
+                long deadline = System.nanoTime() + java.time.Duration.ofSeconds(30).toNanos();
+                boolean assigned = false;
+                while (!assigned && System.nanoTime() < deadline) {
+                    try {
+                        var group = admin.describeConsumerGroups(List.of("audit-service.example-events")).all().get(2, java.util.concurrent.TimeUnit.SECONDS);
+                        assigned = group.values().stream().anyMatch(value -> value.members().stream().anyMatch(member -> !member.assignment().topicPartitions().isEmpty()));
+                    } catch (Exception notReady) { Thread.sleep(100); }
+                }
+                assertThat(assigned).as("Audit consumer assigned before producing facts").isTrue();
+            }
+            var created = create(A, key(), "{\"name\":\"Gateway diagnostic\"}");
+            assertThat(created.statusCode()).isEqualTo(201);
+            String parent = created.headers().firstValue("Location").orElseThrow();
+            String project = JSON.readTree(created.body()).path("id").asText();
+            assertThat(update(A, parent, key(), "\"1\"", "{\"name\":\"Updated\"}").statusCode()).isEqualTo(200);
+            var task = taskCreate(A, parent, key(), "{\"title\":\"Task\"}"); assertThat(task.statusCode()).isEqualTo(201);
+            String child = task.headers().firstValue("Location").orElseThrow();
+            assertThat(update(A, child, key(), "\"1\"", "{\"title\":\"Done\",\"status\":\"DONE\"}").statusCode()).isEqualTo(200);
+            assertThat(deleteResource(A, child, key(), "\"2\"").statusCode()).isEqualTo(204);
+            assertThat(deleteResource(A, parent, key(), "\"2\"").statusCode()).isEqualTo(204);
+            var publisher = new ProjectOutboxPublisher(app.getBean(ProjectOutboxMapper.class), app.getBean(org.springframework.kafka.core.KafkaTemplate.class),
+                    app.getBean(org.springframework.transaction.PlatformTransactionManager.class), app.getBean(io.opentelemetry.api.OpenTelemetry.class),
+                    java.time.Duration.ofSeconds(30));
+            for (int i = 0; i < 6; i++) publisher.publishNext();
+            long deadline = System.nanoTime() + java.time.Duration.ofSeconds(20).toNanos();
+            long records = 0;
+            while (records < 6 && System.nanoTime() < deadline) {
+                try (var connection = DriverManager.getConnection(auditUrl, "audit_app", "audit-fixture")) {
+                    records = scalar(connection, "SELECT count(*) FROM audit_records WHERE metadata->>'projectId'='" + project + "'");
+                }
+                if (records < 6) Thread.sleep(100);
+            }
+            assertThat(records).isEqualTo(6);
+            try (var connection = DriverManager.getConnection(auditUrl, "audit_app", "audit-fixture")) {
+                assertThat(scalar(connection, "SELECT count(*) FROM audit_records WHERE trace_id IS NOT NULL")).isEqualTo(6);
+            }
+            app.getBean(io.opentelemetry.sdk.trace.SdkTracerProvider.class).forceFlush().join(10, java.util.concurrent.TimeUnit.SECONDS);
+            deadline = System.nanoTime() + java.time.Duration.ofSeconds(15).toNanos();
+            while (!(COLLECTOR.getLogs().contains("example.fact.consume") && COLLECTOR.getLogs().contains("Str(gateway)"))
+                    && System.nanoTime() < deadline) Thread.sleep(100);
+            java.nio.file.Files.writeString(output.resolve("collector.log"), COLLECTOR.getLogs());
+            assertThat(COLLECTOR.getLogs()).contains("example.fact.consume", "example.fact.publish", "gateway", "project-service", "audit-service")
+                    .doesNotContain("http.url", "never-export-secret@example.test");
+            assertThat(java.nio.file.Files.readString(output.resolve("gateway.log"))).contains("http.request.completed");
+            assertThat(java.nio.file.Files.readString(output.resolve("audit.log"))).contains("audit.record.appended");
+        } finally {
+            base = originalBase;
+            for (Process process : new Process[]{gateway, audit}) if (process != null) {
+                process.destroy();
+                if (!process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) process.destroyForcibly();
+            }
+        }
+    }
+
+    private static int freePort() throws Exception {
+        try (var socket = new java.net.ServerSocket(0)) { return socket.getLocalPort(); }
+    }
+
+    private static Process launchFixture(String jar, java.nio.file.Path log, String... arguments) throws Exception {
+        assertThat(jar).isNotBlank(); assertThat(java.nio.file.Files.isRegularFile(java.nio.file.Path.of(jar))).isTrue();
+        var command = new ArrayList<String>(List.of(System.getProperty("java.home") + "/bin/java", "-Xmx256m", "-jar", jar,
+                "--server.address=127.0.0.1", "--SAASFORGE_SECRETS_IMPORT=optional:configtree:/nonexistent-example-fixture/", "--spring.cloud.nacos.discovery.enabled=false",
+                "--spring.cloud.nacos.config.enabled=false", "--saas.forge.environment=example-test",
+                "--management.tracing.sampling.probability=1.0", "--spring.main.banner-mode=off"));
+        command.addAll(List.of(arguments));
+        return new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(log.toFile()).start();
+    }
+
+    private static void awaitHttp(Process process, String url) throws Exception {
+        long deadline = System.nanoTime() + java.time.Duration.ofSeconds(40).toNanos();
+        while (System.nanoTime() < deadline && process.isAlive()) {
+            try { if (HTTP.send(HttpRequest.newBuilder(URI.create(url)).timeout(java.time.Duration.ofSeconds(1)).GET().build(),
+                    HttpResponse.BodyHandlers.discarding()).statusCode() == 200) return; }
+            catch (java.io.IOException notReady) { }
+            Thread.sleep(100);
+        }
+        throw new AssertionError("Diagnostic process did not become ready; inspect its local log");
+    }
+
+    @Test @Order(-100) void sixCommittedFactsPublishWithTraceAndReplayProducesNoExtraFact() throws Exception {
+        String writeKey = key();
+        String sensitive = "never-export-secret@example.test";
+        var created = create(A, writeKey, "{\"name\":\"" + sensitive + "\"}");
+        assertThat(created.statusCode()).isEqualTo(201);
+        String parent = created.headers().firstValue("Location").orElseThrow();
+        String project = JSON.readTree(created.body()).path("id").asText();
+        assertThat(create(A, writeKey, "{\"name\":\"" + sensitive + "\"}").body()).isEqualTo(created.body());
+        assertThat(update(A, parent, key(), "\"1\"", "{\"name\":\"Updated\"}").statusCode()).isEqualTo(200);
+        assertProblem(update(A, parent, key(), "\"1\"", "{\"name\":\"Stale\"}"), 409, "RESOURCE_VERSION_CONFLICT");
+        var task = taskCreate(A, parent, key(), "{\"title\":\"Task\"}");
+        assertThat(task.statusCode()).isEqualTo(201);
+        String taskPath = task.headers().firstValue("Location").orElseThrow();
+        assertThat(update(A, taskPath, key(), "\"1\"", "{\"title\":\"Done\",\"status\":\"DONE\"}").statusCode()).isEqualTo(200);
+        assertThat(deleteResource(A, taskPath, key(), "\"2\"").statusCode()).isEqualTo(204);
+        assertThat(deleteResource(A, parent, key(), "\"2\"").statusCode()).isEqualTo(204);
+        assertProblem(request("GET", parent, token(B, false), null, null), 404, "PROJECT_NOT_FOUND");
+        try (var connection = runtimeConnection()) {
+            assertThat(scalar(connection, "SELECT count(*) FROM project_outbox_events")).isEqualTo(6);
+            try (var statement = connection.createStatement(); var rows = statement.executeQuery(
+                    "SELECT event_snapshot::text, traceparent FROM project_outbox_events ORDER BY event_id")) {
+                Set<String> types = new HashSet<>();
+                while (rows.next()) {
+                    String payload = rows.getString(1); assertThat(payload).doesNotContain(sensitive, "name", "title", "description");
+                    var event = JSON.readTree(payload); types.add(event.path("type").asText());
+                    assertThat(event.path("traceId").asText()).matches("[0-9a-f]{32}");
+                    assertThat(rows.getString(2)).contains(event.path("traceId").asText());
+                    assertThat(event.path("data").path("projectId").asText()).isEqualTo(project);
+                }
+                assertThat(types).hasSize(6);
+            }
+        }
+        var publisher = new ProjectOutboxPublisher(app.getBean(ProjectOutboxMapper.class), app.getBean(org.springframework.kafka.core.KafkaTemplate.class),
+                app.getBean(org.springframework.transaction.PlatformTransactionManager.class), app.getBean(io.opentelemetry.api.OpenTelemetry.class),
+                java.time.Duration.ofSeconds(30));
+        for (int i = 0; i < 6; i++) publisher.publishNext();
+        try (var connection = runtimeConnection()) {
+            assertThat(scalar(connection, "SELECT count(*) FROM project_outbox_events WHERE published_at IS NOT NULL")).isEqualTo(6);
+        }
+        var config = new HashMap<String,Object>();
+        config.put("bootstrap.servers", KAFKA.getBootstrapServers()); config.put("group.id", "example-proof-" + key());
+        config.put("key.deserializer", org.apache.kafka.common.serialization.StringDeserializer.class);
+        config.put("value.deserializer", org.apache.kafka.common.serialization.StringDeserializer.class);
+        config.put("auto.offset.reset", "earliest");
+        try (var consumer = new org.apache.kafka.clients.consumer.KafkaConsumer<String,String>(config)) {
+            consumer.subscribe(List.of("saas.forge.example-test.project-service.events"));
+            var messages = new ArrayList<org.apache.kafka.clients.consumer.ConsumerRecord<String,String>>();
+            long deadline = System.nanoTime() + java.time.Duration.ofSeconds(15).toNanos();
+            while (messages.size() < 6 && System.nanoTime() < deadline)
+                consumer.poll(java.time.Duration.ofMillis(250)).forEach(messages::add);
+            assertThat(messages).hasSize(6);
+            for (var message : messages) {
+                assertThat(message.key()).isEqualTo(project);
+                String propagated = new String(message.headers().lastHeader("traceparent").value(), StandardCharsets.US_ASCII);
+                assertThat(propagated).contains(JSON.readTree(message.value()).path("traceId").asText());
+            }
+        }
+        app.getBean(io.opentelemetry.sdk.trace.SdkTracerProvider.class).forceFlush().join(10, java.util.concurrent.TimeUnit.SECONDS);
+        long deadline = System.nanoTime() + java.time.Duration.ofSeconds(10).toNanos();
+        while (!COLLECTOR.getLogs().contains("example.fact.publish") && System.nanoTime() < deadline) Thread.sleep(100);
+        assertThat(COLLECTOR.getLogs()).contains("example.fact.publish", "HTTP /api/v1/projects").doesNotContain(sensitive);
+    }
+
+    @Test @Order(-95) void failedPublishKeepsEventAndExpiredClaimCannotCompleteReplacement() throws Exception {
+        var created = create(A, key(), "{\"name\":\"Retry proof\"}");
+        assertThat(created.statusCode()).isEqualTo(201);
+        var mapper = app.getBean(ProjectOutboxMapper.class);
+        var manager = app.getBean(org.springframework.transaction.PlatformTransactionManager.class);
+        var transaction = new org.springframework.transaction.support.TransactionTemplate(manager);
+        @SuppressWarnings("unchecked")
+        org.springframework.kafka.core.KafkaTemplate<String,String> unavailable = org.mockito.Mockito.mock(org.springframework.kafka.core.KafkaTemplate.class);
+        org.mockito.Mockito.when(unavailable.send(org.mockito.ArgumentMatchers.<org.apache.kafka.clients.producer.ProducerRecord<String,String>>any()))
+                .thenReturn(java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException("never-export-kafka-secret")));
+        new ProjectOutboxPublisher(mapper, unavailable, manager, app.getBean(io.opentelemetry.api.OpenTelemetry.class),
+                java.time.Duration.ofSeconds(30)).publishNext();
+        try (var connection = runtimeConnection()) {
+            assertThat(scalar(connection, "SELECT count(*) FROM project_outbox_events WHERE published_at IS NULL AND attempt_count=1 AND last_failure='ExecutionException'")).isEqualTo(1);
+        }
+        var future = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC).plusSeconds(120);
+        var first = transaction.execute(status -> mapper.claim(new ProjectOutboxMapper.Claim(key(), future, future.plusSeconds(30))));
+        assertThat(first).isNotNull();
+        assertThat((ProjectOutboxMapper.ClaimedEvent) transaction.execute(status -> mapper.claim(new ProjectOutboxMapper.Claim(key(), future.plusSeconds(1), future.plusSeconds(31))))).isNull();
+        var second = transaction.execute(status -> mapper.claim(new ProjectOutboxMapper.Claim(key(), future.plusSeconds(31), future.plusSeconds(61))));
+        assertThat(second.eventId()).isEqualTo(first.eventId());
+        assertThat(second.payload()).isEqualTo(first.payload());
+        assertThat(second.claimToken()).isNotEqualTo(first.claimToken());
+        assertThat((Integer) transaction.execute(status -> mapper.published(new ProjectOutboxMapper.Completion(first.eventId(), first.claimToken(), future.plusSeconds(32), null)))).isZero();
+        assertThat((Integer) transaction.execute(status -> mapper.retry(new ProjectOutboxMapper.Completion(first.eventId(), first.claimToken(), future.plusSeconds(33), "stale")))).isZero();
+        assertThat((Integer) transaction.execute(status -> mapper.published(new ProjectOutboxMapper.Completion(second.eventId(), second.claimToken(), future.plusSeconds(34), null)))).isEqualTo(1);
+    }
+
+    @Test @Order(-90) void outboxFailureRollsBackBusinessAndIdempotencyResult() throws Exception {
+        long before;
+        try (var connection = runtimeConnection()) { before = scalar(connection, "SELECT count(*) FROM project_outbox_events"); }
+        try (var connection = migratorConnection()) {
+            execute(connection, "CREATE FUNCTION fail_example_outbox() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'outbox unavailable'; END $$");
+            execute(connection, "CREATE TRIGGER fail_example_outbox BEFORE INSERT ON project_outbox_events FOR EACH ROW EXECUTE FUNCTION fail_example_outbox()");
+        }
+        String writeKey = key();
+        try { assertThat(create(A, writeKey, "{\"name\":\"Must rollback\"}").statusCode()).isEqualTo(503); }
+        finally {
+            try (var connection = migratorConnection()) {
+                execute(connection, "DROP TRIGGER fail_example_outbox ON project_outbox_events");
+                execute(connection, "DROP FUNCTION fail_example_outbox()");
+            }
+        }
+        try (var connection = runtimeConnection()) {
+            assertThat(scalar(connection, "SELECT count(*) FROM project_outbox_events")).isEqualTo(before);
+            connection.setAutoCommit(false); execute(connection, "SELECT set_config('app.tenant_id', '" + A + "', true)");
+            assertThat(scalar(connection, "SELECT count(*) FROM projects WHERE name='Must rollback'")).isZero();
+            assertThat(scalar(connection, "SELECT count(*) FROM project_write_results WHERE idempotency_key='" + writeKey + "'")).isZero();
+            connection.rollback();
+        }
+        assertThat(create(A, writeKey, "{\"name\":\"Must rollback\"}").statusCode()).isEqualTo(201);
     }
 
     @Test void tenantCanCreateAndReadProject() throws Exception {

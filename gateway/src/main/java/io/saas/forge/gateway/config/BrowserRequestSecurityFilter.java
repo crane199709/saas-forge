@@ -20,7 +20,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /** 在路由到下游前独立校验受控浏览器写请求的来源与请求形态。 */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 2)
+@Order(Ordered.HIGHEST_PRECEDENCE + 3)
 class BrowserRequestSecurityFilter extends OncePerRequestFilter {
     private static final Logger LOGGER = LoggerFactory.getLogger(BrowserRequestSecurityFilter.class);
     private static final String CSRF_HEADER = "X-SF-CSRF";

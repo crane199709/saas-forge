@@ -34,6 +34,9 @@ final class TraceContext {
     }
 
     static TraceContext establish(HttpServletRequest request) {
+        Object established = request.getAttribute(io.saas.forge.observability.HttpTraceFilter.TRACEPARENT_ATTRIBUTE);
+        if (established instanceof String parent) return new TraceContext(parent, parent.substring(3, 35),
+                Boolean.TRUE.equals(request.getAttribute(io.saas.forge.observability.HttpTraceFilter.CONTINUED_ATTRIBUTE)));
         List<String> traceparents = Collections.list(request.getHeaders(TRACEPARENT_HEADER));
         if (traceparents.size() == 1) {
             Matcher matcher = TRACEPARENT.matcher(traceparents.get(0));

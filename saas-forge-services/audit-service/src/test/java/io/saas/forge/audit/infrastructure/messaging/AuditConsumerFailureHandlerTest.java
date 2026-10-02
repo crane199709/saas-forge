@@ -64,6 +64,30 @@ class AuditConsumerFailureHandlerTest {
                 repository.isolation.isolationTopic());
     }
 
+    @Test void invalidExampleCannotPersistRawKeyOrPayload() {
+        var repository = new CapturingRepository();
+        var handler = handler(repository);
+        var message = new ConsumerRecord<String,String>(ExampleFactEventValidatorTest.TOPIC, 0, 1,
+                "sensitive@example.test", "{\"token\":\"must-not-persist\"}");
+        handler.recordFailure(message, new InvalidAuditEventException("must-not-persist"), 1);
+        handler.isolate(message, new InvalidAuditEventException("must-not-persist"));
+        assertNull(repository.failure.orderingKey());
+        assertNull(repository.isolation.safeSnapshot());
+        assertNull(repository.isolation.orderingKey());
+    }
+
+    @Test void validExampleUsesItsOwnIsolationTopicWithOriginalEvent() {
+        var repository = new CapturingRepository();
+        var handler = handler(repository);
+        String payload = ExampleFactEventValidatorTest.event("task", "updated", ExampleFactEventValidatorTest.PROJECT);
+        var message = new ConsumerRecord<String,String>(ExampleFactEventValidatorTest.TOPIC, 0, 2,
+                ExampleFactEventValidatorTest.PROJECT, payload);
+        handler.isolate(message, new IllegalStateException("database-secret"));
+        assertEquals(payload, repository.isolation.safeSnapshot());
+        assertEquals("saas.forge.test.audit-service.example-isolations", repository.isolation.isolationTopic());
+        assertEquals(UUID.fromString(ExampleFactEventValidatorTest.PROJECT), repository.isolation.eventId());
+    }
+
     private static AuditConsumerFailureHandler handler(CapturingRepository repository) {
         ObjectMapper objectMapper = new ObjectMapper();
         var iam = new IamSessionEventValidator(
@@ -75,11 +99,12 @@ class AuditConsumerFailureHandlerTest {
         var topology = new AuditConsumerTopology(
                 IAM_TOPIC, TENANT_TOPIC,
                 "saas.forge.test.audit-service.iam-session-isolations",
-                "saas.forge.test.audit-service.tenant-isolations");
+                "saas.forge.test.audit-service.tenant-isolations",
+                "saas.forge.test.project-service.events", "saas.forge.test.audit-service.example-isolations");
         var service = new AuditConsumerIsolationService(
                 repository, Clock.fixed(Instant.parse("2026-08-29T04:00:00Z"), ZoneOffset.UTC));
         return new AuditConsumerFailureHandler(
-                objectMapper, iam, tenant, topology, service,
+                objectMapper, iam, tenant, new ExampleFactEventValidator(objectMapper, "saas.forge.test.project-service.events"), topology, service,
                 new AuditConsumerFailurePolicy(10, java.time.Duration.ofSeconds(1),
                         java.time.Duration.ofMinutes(1)));
     }

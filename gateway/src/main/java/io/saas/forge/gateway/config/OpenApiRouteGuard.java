@@ -17,7 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * 路由函数只匹配合法方法；该守卫将其余请求转换为公开契约承诺的错误响应。
  */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 3)
+@Order(Ordered.HIGHEST_PRECEDENCE + 4)
 class OpenApiRouteGuard extends OncePerRequestFilter {
 
     private static final Set<String> PASSWORD_SETUP_PAGE_RESOURCES = Set.of(

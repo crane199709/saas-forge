@@ -16,7 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /** 对 Catalog 中的 SERVICE_REQUIRED operation 执行 Service Token 与 AND Scope 门禁。 */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 5)
+@Order(Ordered.HIGHEST_PRECEDENCE + 6)
 class GatewayServiceTokenAuthenticationFilter extends OncePerRequestFilter {
 
     private final GatewayRouteCatalog catalog;

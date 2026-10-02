@@ -1,6 +1,7 @@
 package io.saas.forge.audit.config;
 
 import io.saas.forge.audit.infrastructure.messaging.IamSessionKafkaConsumer;
+import io.saas.forge.audit.infrastructure.messaging.ExampleFactKafkaConsumer;
 import io.saas.forge.audit.infrastructure.messaging.TenantAccessKafkaConsumer;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,7 +14,7 @@ import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.stereotype.Component;
 
 /**
- * Audit 只有在正式迁移可见、Kafka 可连接且两个独立 Consumer 都获得目标分区后才 Ready。
+ * Audit 只有在正式迁移可见、Kafka 可连接且所有已启用 Consumer 都获得目标分区后才 Ready。
  * 每次探测都重新读取外部状态，依赖恢复后无需重启即可重新就绪。
  */
 @Component("auditRuntimeReadiness")
@@ -36,14 +37,18 @@ public class AuditRuntimeReadinessHealthIndicator implements HealthIndicator {
             KafkaListenerEndpointRegistry listeners,
             @Value("${saas.forge.audit.required-migration-version}") String requiredMigrationVersion,
             @Value("${saas.forge.audit.iam-session-topic}") String iamSessionTopic,
-            @Value("${saas.forge.audit.tenant-access-topic}") String tenantAccessTopic) {
+            @Value("${saas.forge.audit.tenant-access-topic}") String tenantAccessTopic,
+            @Value("${saas.forge.audit.example-topic}") String exampleTopic,
+            @Value("${saas.forge.audit.example-consumer.enabled:false}") boolean exampleEnabled) {
         this.jdbc = jdbc;
         this.kafkaAdmin = kafkaAdmin;
         this.listeners = listeners;
         this.requiredMigrationVersion = requiredMigrationVersion;
-        this.requiredAssignments = List.of(
+        var assignments = new java.util.ArrayList<>(List.of(
                 new RequiredAssignment(IamSessionKafkaConsumer.LISTENER_ID, iamSessionTopic),
-                new RequiredAssignment(TenantAccessKafkaConsumer.LISTENER_ID, tenantAccessTopic));
+                new RequiredAssignment(TenantAccessKafkaConsumer.LISTENER_ID, tenantAccessTopic)));
+        if (exampleEnabled) assignments.add(new RequiredAssignment(ExampleFactKafkaConsumer.LISTENER_ID, exampleTopic));
+        this.requiredAssignments = List.copyOf(assignments);
     }
 
     @Override

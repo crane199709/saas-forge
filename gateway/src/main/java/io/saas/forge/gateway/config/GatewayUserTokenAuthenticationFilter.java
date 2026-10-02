@@ -16,7 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /** OpenAPI 声明的 UserBearerAuth 是 Gateway 是否校验 User Access Token 的唯一依据。 */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 4)
+@Order(Ordered.HIGHEST_PRECEDENCE + 5)
 class GatewayUserTokenAuthenticationFilter extends OncePerRequestFilter {
 
     private final GatewayRouteCatalog catalog;

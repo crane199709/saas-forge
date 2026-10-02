@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-已实现 Project 创建、列表、详情和基于资源版本的修改，以及 Task 创建、分页、详情、版本修改、状态流转和永久删除，详见 [Project Example](project-service/README.md)。相关验收见 [#212](../docs/acceptance/issue-212-acceptance.md) 、[#213](../docs/acceptance/issue-213-acceptance.md) 、[#214](../docs/acceptance/issue-214-acceptance.md) 和 [#215](../docs/acceptance/issue-215-acceptance.md)。Project 删除尚未实现；以下清单是完整目标范围。
+已实现 Project 创建、列表、详情和基于资源版本的修改，以及 Task 创建、分页、详情、版本修改、状态流转和永久删除，详见 [Project Example](project-service/README.md)。相关验收见 [#212](../docs/acceptance/issue-212-acceptance.md) 、[#213](../docs/acceptance/issue-213-acceptance.md) 、[#214](../docs/acceptance/issue-214-acceptance.md) 和 [#215](../docs/acceptance/issue-215-acceptance.md)。Project 删除与父子竞争保护见 [#216](../docs/acceptance/issue-216-acceptance.md)。本轮增加 Gateway / 日志 / Trace / 最小成功事实投递，结果见 [接入验证记录](../docs/acceptance/example-gateway-observability-acceptance.md)；Manifest / Remote 和阶段 3 浏览器闭环仍待交付。
 
 ## 已确认范围
 
@@ -16,4 +16,4 @@
 - Task 新建时固定为待办；创建后，待办、进行中、已完成之间允许自由切换，包括重新打开已完成任务，无需审批或按顺序推进。
 - Project 与 Task 的修改、删除均校验调用方读取的资源版本；资源已被其他请求修改时拒绝过期操作，调用方须重新读取后再提交，不允许后提交者静默覆盖先提交者的变更。
 - 业务仅通过 Starter 获取可信 Tenant Context；租户范围表使用事务级 `app.tenant_id` 和 RLS。
-- Gateway、日志、Trace、审计、Manifest、Remote 以及 Permission、Feature、Quota 的后续闭环按 [MVP 开发计划](../docs/16-mvp-development-plan.md) 分项推进，不作为本条最小业务 API 已实现的声明。
+- Gateway、日志、Trace 与成功事实的后端接入已完成专项诊断；Manifest、Remote 以及 Permission、Feature、Quota 的后续闭环按 [MVP 开发计划](../docs/16-mvp-development-plan.md) 分项推进，不作为本条最小业务 API 已实现的声明。

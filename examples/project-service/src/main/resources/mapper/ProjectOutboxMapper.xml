@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saas.forge.example.ProjectOutboxMapper">
+  <select id="nextId" resultType="string">SELECT uuidv7()::text</select>
+  <insert id="insert">
+    INSERT INTO project_outbox_events (event_id, occurred_at, topic, ordering_key, event_snapshot, traceparent, next_attempt_at)
+    VALUES (CAST(#{eventId} AS uuid), #{occurredAt}, #{topic}, CAST(#{orderingKey} AS uuid),
+            CAST(#{payload} AS jsonb), #{traceparent}, #{occurredAt})
+  </insert>
+  <select id="claim" resultType="io.saas.forge.example.ProjectOutboxMapper$ClaimedEvent" affectData="true" flushCache="true">
+    WITH candidate AS (
+      SELECT current.event_id FROM project_outbox_events current
+      WHERE current.published_at IS NULL AND current.next_attempt_at &lt;= #{at}
+        AND (current.claimed_until IS NULL OR current.claimed_until &lt;= #{at})
+        AND NOT EXISTS (SELECT 1 FROM project_outbox_events earlier
+          WHERE earlier.ordering_key = current.ordering_key AND earlier.published_at IS NULL
+            AND (earlier.occurred_at, earlier.event_id) &lt; (current.occurred_at, current.event_id))
+      ORDER BY current.occurred_at, current.event_id FOR UPDATE SKIP LOCKED LIMIT 1
+    )
+    UPDATE project_outbox_events event SET claim_token = CAST(#{token} AS uuid), claimed_until = #{until},
+      attempt_count = attempt_count + 1 FROM candidate WHERE event.event_id = candidate.event_id
+    RETURNING event.event_id::text AS event_id, event.topic, event.ordering_key::text AS ordering_key,
+      event.event_snapshot::text AS payload, event.traceparent, event.claim_token::text AS claim_token, event.attempt_count
+  </select>
+  <update id="published">
+    UPDATE project_outbox_events SET published_at = #{at}, claim_token = NULL, claimed_until = NULL, last_failure = NULL
+    WHERE event_id = CAST(#{eventId} AS uuid) AND claim_token = CAST(#{token} AS uuid) AND published_at IS NULL
+  </update>
+  <update id="retry">
+    UPDATE project_outbox_events SET next_attempt_at = #{at}, claim_token = NULL, claimed_until = NULL, last_failure = #{failure}
+    WHERE event_id = CAST(#{eventId} AS uuid) AND claim_token = CAST(#{token} AS uuid) AND published_at IS NULL
+  </update>
+</mapper>

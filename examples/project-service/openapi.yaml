@@ -8,7 +8,7 @@ info:
     Resource versions are positive integers in the response body. Updates and deletes must
     carry the version as a quoted decimal If-Match header (no wildcard, list or weak tag), returning
     428 VERSION_REQUIRED when absent and 409 RESOURCE_VERSION_CONFLICT when stale.
-    Project deletion requires an empty Project. Browser Gateway/CORS changes require a separate decision.
+    Project deletion requires an empty Project. Gateway and Starter use the same generated route contract.
     Write keys are canonical UUIDv7, unique per identity across Example write operations and tenants.
     Same method, canonical path, If-Match version (for updates/deletes) and normalized body replay the original status/body/Location for
     24 hours from completion. Omitted and null description are equivalent; whitespace is preserved.
@@ -22,13 +22,12 @@ info:
     maintenance; same-tenant expired keys are also reclaimed on demand. A cross-tenant expired key may
     remain unavailable until maintenance, and can never replay another tenant's body.
 security:
-  - bearerAuth: []
+  - UserBearerAuth: []
 paths:
   /api/v1/projects:
     get:
       operationId: listProjects
-      x-service-id: project-service
-      x-credential-requirement: USER_REQUIRED
+      x-saas.forge-service: project-service
       description: |
         Current Tenant only, ordered by id ASC (UUIDv7, stable final key).
         Cursor is opaque and bound to the projects-v1 collection, Tenant, limit and a visible anchor ID.
@@ -61,8 +60,7 @@ paths:
           $ref: '#/components/responses/Unavailable'
     post:
       operationId: createProject
-      x-service-id: project-service
-      x-credential-requirement: USER_REQUIRED
+      x-saas.forge-service: project-service
       parameters:
         - name: Idempotency-Key
           in: header
@@ -112,8 +110,7 @@ paths:
   /api/v1/projects/{projectId}:
     delete:
       operationId: deleteProject
-      x-service-id: project-service
-      x-credential-requirement: USER_REQUIRED
+      x-saas.forge-service: project-service
       description: |
         Permanently delete only an empty Project when the current version matches. No cascade or response body.
         Any Task (including DONE) prevents deletion with 409 PROJECT_NOT_EMPTY.
@@ -179,8 +176,7 @@ paths:
           $ref: '#/components/responses/Unavailable'
     put:
       operationId: updateProject
-      x-service-id: project-service
-      x-credential-requirement: USER_REQUIRED
+      x-saas.forge-service: project-service
       description: |
         Replace name and description; omitted/null description clears it, duplicates remain legal.
         Atomic version comparison increments version exactly once and maintains updatedAt.
@@ -255,8 +251,7 @@ paths:
           $ref: '#/components/responses/Unavailable'
     get:
       operationId: getProject
-      x-service-id: project-service
-      x-credential-requirement: USER_REQUIRED
+      x-saas.forge-service: project-service
       parameters:
         - name: projectId
           in: path
@@ -299,8 +294,7 @@ paths:
           $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/UuidV7'
     post:
       operationId: createTask
-      x-service-id: project-service
-      x-credential-requirement: USER_REQUIRED
+      x-saas.forge-service: project-service
       parameters:
         - name: Idempotency-Key
           in: header
@@ -351,8 +345,7 @@ paths:
           $ref: '#/components/responses/Unavailable'
     get:
       operationId: listTasks
-      x-service-id: project-service
-      x-credential-requirement: USER_REQUIRED
+      x-saas.forge-service: project-service
       description: ID ascending; cursors bind Tenant, parent Project and ordering, expire in 24 hours. No filters or custom sort.
       parameters:
         - name: limit
@@ -389,8 +382,7 @@ paths:
           $ref: '../../saas-forge-contracts/saas-forge-openapi-contracts/common.yaml#/components/schemas/UuidV7'
     put:
       operationId: updateTask
-      x-service-id: project-service
-      x-credential-requirement: USER_REQUIRED
+      x-saas.forge-service: project-service
       description: |
         Replace title, description and status; omitted/null description clears it.
         TODO, IN_PROGRESS and DONE can change in every direction, including reopening.
@@ -465,8 +457,7 @@ paths:
           $ref: '#/components/responses/Unavailable'
     delete:
       operationId: deleteTask
-      x-service-id: project-service
-      x-credential-requirement: USER_REQUIRED
+      x-saas.forge-service: project-service
       description: |
         Permanently delete only when the current version matches. No cascade or response body.
         Same-key retries replay the original 204 even after deletion; new keys receive 404.
@@ -530,8 +521,7 @@ paths:
           $ref: '#/components/responses/Unavailable'
     get:
       operationId: getTask
-      x-service-id: project-service
-      x-credential-requirement: USER_REQUIRED
+      x-saas.forge-service: project-service
       parameters:
         - name: taskId
           in: path
@@ -567,7 +557,7 @@ paths:
           $ref: '#/components/responses/Unavailable'
 components:
   securitySchemes:
-    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+    UserBearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   schemas:
     CreateProject:
       type: object

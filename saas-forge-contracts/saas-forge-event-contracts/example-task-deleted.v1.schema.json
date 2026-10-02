@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://saas.forge.io/contracts/events/example-task-deleted.v1.schema.json",
+  "title": "Example task deleted v1",
+  "allOf": [
+    {
+      "$ref": "cloudevents-envelope.v1.schema.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "subject",
+        "dataschema"
+      ],
+      "properties": {
+        "type": {
+          "const": "com.saas.forge.example.task.deleted.v1"
+        },
+        "source": {
+          "const": "urn:saas.forge:project-service"
+        },
+        "dataschema": {
+          "const": "https://saas.forge.io/contracts/events/example-task-deleted.v1.schema.json"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tenantId",
+            "actorIdentityId",
+            "membershipId",
+            "resourceId",
+            "projectId",
+            "version"
+          ],
+          "properties": {
+            "tenantId": {
+              "$ref": "#/$defs/uuidV7"
+            },
+            "actorIdentityId": {
+              "$ref": "#/$defs/uuidV7"
+            },
+            "membershipId": {
+              "$ref": "#/$defs/uuidV7"
+            },
+            "resourceId": {
+              "$ref": "#/$defs/uuidV7"
+            },
+            "projectId": {
+              "$ref": "#/$defs/uuidV7"
+            },
+            "version": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9223372036854775807
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "uuidV7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    }
+  }
+}

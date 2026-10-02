@@ -25,7 +25,7 @@ import tools.jackson.databind.ObjectMapper;
  * 只透传可验证的领域 Problem Details，避免将上游实现细节变成公共 API 契约。
  */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 1)
+@Order(Ordered.HIGHEST_PRECEDENCE + 2)
 class GatewayErrorNormalizationFilter extends OncePerRequestFilter {
 
     private static final Pattern PROBLEM_CODE = Pattern.compile("^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$");

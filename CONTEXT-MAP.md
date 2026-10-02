@@ -23,26 +23,28 @@ External Client
       ▼
    Gateway ─────► IAM
       ├─────────► Tenant Access
-      └─────────► Entitlement
+      ├─────────► Entitlement
+      └─────────► Project / Task Example
 
 IAM ◄──────────► Tenant Access
  ▲                  │  ▲
  │                  ▼  │
  └──────────── Entitlement
 
-IAM ───────────────┐
-Tenant Access ─────┼──► Audit
-Entitlement ───────┘
+IAM ─────────────────────┐
+Tenant Access ────────────┤
+Entitlement ──────────────┼──► Audit
+Project / Task Example ───┘
 
-Contracts - - Published Language - -► Gateway / IAM / Tenant Access / Entitlement / Audit
+Contracts - - Published Language - -► Gateway / IAM / Tenant Access / Entitlement / Audit / Example
 ```
 
 - **Contracts → 全部其他上下文**：提供版本化 OpenAPI、Protobuf、事件、Redis 与日志 Published Language；不拥有各服务领域事实。
-- **Gateway → IAM / Tenant Access / Entitlement**：只按正式 OpenAPI 暴露并转发公开 REST operation；当前没有正式 Audit 公网路由。
+- **Gateway → IAM / Tenant Access / Entitlement / Project / Task Example**：只按正式 OpenAPI 暴露并转发公开 REST operation；当前没有正式 Audit 公网路由。
 - **IAM ↔ Tenant Access**：IAM 向 Tenant Access 验证 Membership；Tenant Access 向 IAM 执行 Identity、Password Setup、Platform Role 与 Session Revocation 协作。
 - **Tenant Access ↔ Entitlement**：Tenant Access 编排 Tenant 初始化及其 Quota 副作用；Entitlement 向 Tenant Access 校验 Tenant 权威状态。
 - **Entitlement → IAM**：Entitlement 通过版本化同步契约复核 Platform Role。
-- **IAM / Tenant Access / Entitlement → Audit**：只通过 Committed Fact Event 单向提供来源事实；Audit 不反向裁决来源事务是否成功。
+- **IAM / Tenant Access / Entitlement / Project / Task Example → Audit**：只通过 Committed Fact Event 单向提供来源事实；Audit 不反向裁决来源事务是否成功。
 - **IAM → Gateway 与 Token 接收端**：IAM 是 Token、JWKS 与 Revocation 权威；验证方在权威状态不可判定时失败关闭。
 
 全部关系都通过版本化契约协作；上下文之间不存在 Shared Kernel、共享领域实体、共享数据库表或共享迁移。

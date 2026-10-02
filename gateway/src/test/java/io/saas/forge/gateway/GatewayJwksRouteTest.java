@@ -92,6 +92,29 @@ class GatewayJwksRouteTest {
     }
 
     @Test
+    void projectVersionPreflightIsLimitedToConsoleAndProjectPaths() throws Exception {
+        for (String path : List.of("/api/v1/projects", "/api/v1/projects/p/tasks/t")) {
+            for (String method : List.of("PUT", "DELETE")) {
+                for (String origin : List.of("https://console.saas.forge.test", "https://platform.saas.forge.test", "https://attacker.test")) {
+                    var response = send(HttpRequest.newBuilder(gatewayUri(path))
+                            .header("Origin", origin).header("Access-Control-Request-Method", method)
+                            .header("Access-Control-Request-Headers", "authorization,content-type,if-match,idempotency-key")
+                            .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+                    assertEquals(origin.equals("https://console.saas.forge.test") ? 200 : 403, response.statusCode());
+                    if (response.statusCode() == 200) {
+                        assertEquals(origin, response.headers().firstValue("Access-Control-Allow-Origin").orElseThrow());
+                        assertTrue(response.headers().firstValue("Access-Control-Allow-Headers").orElseThrow().toLowerCase().contains("if-match"));
+                    } else assertTrue(response.headers().firstValue("Access-Control-Allow-Origin").isEmpty());
+                }
+            }
+        }
+        var unrelated = send(HttpRequest.newBuilder(gatewayUri("/api/v1/platform/tenants"))
+                .header("Origin", "https://console.saas.forge.test").header("Access-Control-Request-Method", "PUT")
+                .header("Access-Control-Request-Headers", "if-match").method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(403, unrelated.statusCode());
+    }
+
+    @Test
     void proxiesJwksFromIam() throws IOException, InterruptedException {
         HttpResponse<String> response = send("GET", "/.well-known/jwks.json");
 
@@ -442,7 +465,8 @@ class GatewayJwksRouteTest {
 
         assertEquals(200, response.statusCode());
         ObservedRequest observed = observedRequest("iam");
-        assertEquals(traceparent, observed.firstHeader("traceparent"));
+        assertEquals(traceparent.substring(3, 35), observed.firstHeader("traceparent").substring(3, 35));
+        assertFalse(traceparent.equals(observed.firstHeader("traceparent")), "Gateway must create its own Span");
         assertEquals(tracestate, observed.firstHeader("tracestate"));
         assertFalse(observed.hasHeader("X-Identity"));
         assertFalse(observed.hasHeader("X-Membership"));

@@ -10,10 +10,12 @@ class ProjectService {
     private final TenantContextAccessor tenants;
     private final ProjectRepository projects;
     private final ProjectWriteRepository writes;
+    private final ProjectFactOutbox outbox;
     private final tools.jackson.databind.ObjectMapper json;
 
     ProjectService(TenantContextAccessor tenants, ProjectRepository projects, ProjectWriteRepository writes,
-            tools.jackson.databind.ObjectMapper json) {
+            tools.jackson.databind.ObjectMapper json, ProjectFactOutbox outbox) {
+        this.outbox = outbox;
         this.tenants = tenants;
         this.projects = projects;
         this.writes = writes;
@@ -30,6 +32,7 @@ class ProjectService {
         if (replay.isPresent()) return replay.get();
         var project = projects.create(context.tenantId(), request);
         var result = new ProjectWriteResult(201, json.writeValueAsString(project), "/api/v1/projects/" + project.id());
+        outbox.append(context, "project", "created", project.id(), project.id(), project.version());
         writes.complete(key, result);
         return result;
     }
@@ -82,6 +85,7 @@ class ProjectService {
             String detail = exists ? "The project version has changed." : "Project not found.";
             result = new ProjectWriteResult(status, json.writeValueAsString(ProjectProblem.of(status, code, detail, traceId, null)), null);
         }
+        if (updated.isPresent()) outbox.append(context, "project", "updated", id, id, updated.get().version());
         writes.complete(key, result);
         return result;
     }
@@ -105,6 +109,7 @@ class ProjectService {
             if (!projects.delete(id, version)) throw new IllegalStateException("已锁定 Project 删除失败");
             result = new ProjectWriteResult(204, "", null);
         }
+        if (result.status() == 204) outbox.append(context, "project", "deleted", id, id, version);
         writes.complete(key, result);
         return result;
     }

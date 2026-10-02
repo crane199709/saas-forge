@@ -68,6 +68,7 @@ public final class HttpRouteCatalogGenerator {
         OpenAPI consoleApi = parseOpenApi(repository.resolve("saas-forge-contracts/saas-forge-openapi-contracts/v2.yaml"));
         validateConsoleSecuritySchemes(consoleApi);
         routes.addAll(generateRoutes(consoleApi, servicesById, scopesByName));
+        routes.addAll(businessRoutes(repository, servicesById, scopesByName));
         if (openApiOverlay != null) {
             OpenAPI testOpenApi = parseOpenApi(openApiOverlay);
             validateSecuritySchemes(testOpenApi, scopesByName);
@@ -83,6 +84,46 @@ public final class HttpRouteCatalogGenerator {
         Files.createDirectories(output.getParent());
         JSON.writeValue(output.toFile(), new Catalog(SCHEMA_VERSION, routes));
     }
+
+    /** 业务契约独立保存；只有构建时登记的业务服务能进入组合 Catalog。 */
+    private static List<Route> businessRoutes(Path repository, Map<String, ServiceEntry> services,
+            Map<String, ScopeEntry> scopes) throws IOException {
+        BusinessRegistry registry = JSON.readValue(repository.resolve(
+                "saas-forge-contracts/services/business-http-contracts.json").toFile(), BusinessRegistry.class);
+        require(registry.registryVersion() == 1 && registry.entries() != null, "业务 HTTP 契约登记非法");
+        List<Route> routes = new ArrayList<>();
+        for (BusinessContract entry : registry.entries()) {
+            require(entry != null && matches(SERVICE_ID, entry.serviceId()) && entry.modulePath() != null
+                    && entry.openapi() != null, "业务 HTTP 契约字段非法");
+            Path module = repository.resolve(entry.modulePath()).normalize();
+            Path spec = module.resolve(entry.openapi()).normalize();
+            require(module.startsWith(repository.resolve("examples")) && spec.startsWith(module)
+                    && Files.isRegularFile(module.resolve("pom.xml")) && Files.isRegularFile(spec),
+                    "业务契约必须来自受版本控制的 Example 模块");
+            String pom = Files.readString(module.resolve("pom.xml"), StandardCharsets.UTF_8);
+            String application = Files.readString(module.resolve("src/main/resources/application.yaml"), StandardCharsets.UTF_8);
+            require(pom.contains("<artifactId>" + entry.serviceId() + "</artifactId>")
+                    && application.contains("    name: " + entry.serviceId())
+                    && application.contains("        service: " + entry.serviceId()),
+                    "业务服务登记必须与模块、Spring/Nacos service name 一致");
+            require(services.putIfAbsent(entry.serviceId(), new ServiceEntry(entry.serviceId(), entry.serviceId(),
+                    entry.modulePath(), entry.serviceId(), entry.serviceId(), true, true)) == null,
+                    "业务 serviceId 与已登记服务冲突");
+            OpenAPI api = parseOpenApi(spec);
+            var user = api.getComponents().getSecuritySchemes().get("UserBearerAuth");
+            require(user != null && user.getType() == SecurityScheme.Type.HTTP
+                    && "bearer".equalsIgnoreCase(user.getScheme()), "业务 UserBearerAuth 非法");
+            List<Route> generated = generateRoutes(api, services, scopes);
+            require(!generated.isEmpty() && generated.stream().allMatch(route -> route.serviceId().equals(entry.serviceId())
+                    && route.credentialRequirement().equals("USER_REQUIRED")),
+                    "首版业务路由必须归属登记服务并要求 User Token");
+            routes.addAll(generated);
+        }
+        return routes;
+    }
+
+    private record BusinessRegistry(int registryVersion, List<BusinessContract> entries) {}
+    private record BusinessContract(String serviceId, String modulePath, String openapi) {}
 
     private static Path optionalPath(String value) {
         return "-".equals(value) ? null : Path.of(value).toAbsolutePath().normalize();

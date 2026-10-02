@@ -23,7 +23,7 @@ import tools.jackson.databind.ObjectMapper;
 public class AuditConsumerFailureHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(AuditConsumerFailureHandler.class);
     private static final Set<String> KNOWN_SOURCES = Set.of(
-            SessionStartedEventValidator.SOURCE, TenantCreatedEventValidator.SOURCE);
+            SessionStartedEventValidator.SOURCE, TenantCreatedEventValidator.SOURCE, ExampleFactEventValidator.SOURCE);
     private static final Set<String> KNOWN_TYPES = Set.of(
             SessionStartedEventValidator.EVENT_TYPE,
             TenantContextSwitchedEventValidator.EVENT_TYPE,
@@ -32,6 +32,7 @@ public class AuditConsumerFailureHandler {
     private final ObjectMapper objectMapper;
     private final IamSessionEventValidator iamValidator;
     private final TenantAccessEventValidator tenantValidator;
+    private final ExampleFactEventValidator exampleValidator;
     private final AuditConsumerTopology topology;
     private final AuditConsumerIsolationService service;
     private final AuditConsumerFailurePolicy policy;
@@ -40,12 +41,14 @@ public class AuditConsumerFailureHandler {
             ObjectMapper objectMapper,
             IamSessionEventValidator iamValidator,
             TenantAccessEventValidator tenantValidator,
+            ExampleFactEventValidator exampleValidator,
             AuditConsumerTopology topology,
             AuditConsumerIsolationService service,
             AuditConsumerFailurePolicy policy) {
         this.objectMapper = objectMapper;
         this.iamValidator = iamValidator;
         this.tenantValidator = tenantValidator;
+        this.exampleValidator = exampleValidator;
         this.topology = topology;
         this.service = service;
         this.policy = policy;
@@ -55,7 +58,7 @@ public class AuditConsumerFailureHandler {
         Locator locator = locate(message.value());
         service.recordProcessingFailure(new AuditProcessingFailure(
                 topology.consumerName(message.topic()), message.topic(), message.partition(), message.offset(),
-                stringValue(message.key()), locator.eventId(), locator.source(), locator.sourceType(),
+                safeFailureKey(message), locator.eventId(), locator.source(), locator.sourceType(),
                 sha256(stringValue(message.value())),
                 permanent(exception) ? "PERMANENT_VALIDATION" : "TRANSIENT_PROCESSING",
                 diagnostic(exception), attemptCount));
@@ -102,6 +105,8 @@ public class AuditConsumerFailureHandler {
         if (SessionStartedEventValidator.CONSUMER_NAME.equals(consumerName)) {
             return Optional.of(iamValidator.validate(message.topic(), orderingKey, consumerName, payload));
         }
+        if (ExampleFactEventValidator.CONSUMER_NAME.equals(consumerName))
+            return Optional.of(exampleValidator.validate(message.topic(), orderingKey, consumerName, payload));
         return tenantValidator.validate(message.topic(), orderingKey, consumerName, payload);
     }
 
@@ -113,7 +118,7 @@ public class AuditConsumerFailureHandler {
             }
             return new Locator(
                     uuid(envelope.get("id")), knownText(envelope.get("source"), KNOWN_SOURCES),
-                    knownText(envelope.get("type"), KNOWN_TYPES));
+                    knownText(envelope.get("type"), java.util.stream.Stream.concat(KNOWN_TYPES.stream(), ExampleFactEventValidator.TYPES.stream()).collect(java.util.stream.Collectors.toSet())));
         } catch (RuntimeException exception) {
             return Locator.EMPTY;
         }
@@ -161,6 +166,13 @@ public class AuditConsumerFailureHandler {
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("运行环境缺少 SHA-256", exception);
         }
+    }
+
+    private String safeFailureKey(ConsumerRecord<?, ?> message) {
+        String key = stringValue(message.key());
+        if (ExampleFactEventValidator.CONSUMER_NAME.equals(topology.consumerName(message.topic()))
+                && !key.matches("[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}")) return null;
+        return key;
     }
 
     private static String stringValue(Object value) {

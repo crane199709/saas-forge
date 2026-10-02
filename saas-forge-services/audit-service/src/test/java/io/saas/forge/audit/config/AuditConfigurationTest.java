@@ -49,7 +49,7 @@ class AuditConfigurationTest {
         private boolean recovered;
 
         private CountingFailureHandler() {
-            super(null, null, null, null, null, null);
+            super(null, null, null, null, null, null, null);
         }
 
         @Override

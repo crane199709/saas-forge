@@ -1,6 +1,6 @@
 # Project Example
 
-本模块实现 #212 的 Project 创建与详情，以及 #213 的列表与修改、#214 的 Task 创建/分页/详情、#215 的 Task 修改/状态流转/删除、#216 的 Project 删除与父子竞争保护，通过 Starter 的 `TenantContextAccessor` 获取可信租户身份。Project 属于业务应用；不会访问底座数据库。当前不包含 Permission、Feature、Quota、Gateway 路由或浏览器闭环。
+本模块实现 #212 的 Project 创建与详情，以及 #213 的列表与修改、#214 的 Task 创建/分页/详情、#215 的 Task 修改/状态流转/删除、#216 的 Project 删除与父子竞争保护，通过 Starter 的 `TenantContextAccessor` 获取可信租户身份。Project 属于业务应用；不会访问底座数据库。本轮增加契约生成的 Gateway 路由、结构化日志、实际 Span / OTLP 导出与六类成功事实审计投递，决策见 [ADR 0054](../../docs/adr/0054-example-http-contracts-compose-into-route-catalog.md)。Permission、Feature、Quota 和浏览器闭环仍未交付。
 
 ## HTTP 契约
 
@@ -11,7 +11,7 @@
 - 不存在和其他 Tenant 的资源均返回 `404 / PROJECT_NOT_FOUND`。失败采用带 `traceId` 的 Problem Details，不回显 Token、输入或 SQL。
 - Task 标题与 Project 名称使用相同的 200 码点必填边界，描述最多 2000 码点且可选；标题允许重复。创建只接受 `title`/`description`，系统固定 `status=TODO`，返回 `projectId`、UUIDv7、版本 1、时间和嵌套路径 Location。不存在/其他 Tenant 父资源为 `404 / PROJECT_NOT_FOUND`；存在父资源下不存在或父子不匹配的 Task 为 `404 / TASK_NOT_FOUND`。
 - Task 集合以 ID 升序游标分页，`limit` 默认 50、最大 100。首页省略 `cursor`，末页 `nextCursor=null`、`hasMore=false`。游标绑定 Tenant、父 Project 和固定排序，24 小时过期；非法/过期/跨范围游标、未知或重复查询参数、非法 limit 返回 `400 / VALIDATION_FAILED`。不提供筛选或自定义排序。
-- 修改与删除使用单个强版本 `If-Match: "<version>"`；缺失为 `428 / VERSION_REQUIRED`，过期为 `409 / RESOURCE_VERSION_CONFLICT`。Project 修改用 PUT 替换名称和描述；省略/null 描述均清空。版本比较与更新原子完成，成功增加一次版本并维护更新时间。失败不改变数据；重新读取后用新键和最新版本恢复修改。不扩张 Gateway/CORS Header 白名单或暴露响应头。
+- 修改与删除使用单个强版本 `If-Match: "<version>"`；缺失为 `428 / VERSION_REQUIRED`，过期为 `409 / RESOURCE_VERSION_CONFLICT`。Project 修改用 PUT 替换名称和描述；省略/null 描述均清空。版本比较与更新原子完成，成功增加一次版本并维护更新时间。失败不改变数据；重新读取后用新键和最新版本恢复修改。Gateway 仅在 Project 路径及子路径允许 Console Origin 的 If-Match 预检，其他路径规则不变；真实浏览器行为仍随阶段 3 验收。
 - Task PUT 必填 `title` 和 `status`，替换标题、描述和状态；省略/null 描述均清空。三种状态可任意切换或保持，包括重新打开。Task DELETE 原子比较版本并永久删除，返回 `204` 无响应体。同键重试在资源检查前重放原结果；新键访问已删除 Task 为 `404 / TASK_NOT_FOUND`。父 Project 不可见仍为 `PROJECT_NOT_FOUND`，可见父资源下伪造子 ID 为 `TASK_NOT_FOUND`。
 
 - Project DELETE 永久删除空 Project，返回 `204` 无响应体；任意状态 Task（包括 DONE）均使删除返回 `409 / PROJECT_NOT_EMPTY`。版本过期优先返回 `RESOURCE_VERSION_CONFLICT`。必须通过 Task DELETE 清空子资源后，再以最新版本和新键删除 Project。稳定拒绝按键重放，不因后续清空或修改而改写原结果；成功删除后同键重试仍为 204，新键访问为 `PROJECT_NOT_FOUND`。
@@ -31,7 +31,7 @@
 4. 在 Git 忽略的本地配置文件或 IDE 的外部配置中设置数据库 URL/`project_app` 凭据、Redis 地址及凭据、`security.jwt.issuer`、`saas.forge.environment`、Nacos discovery 地址/namespace/身份，以及本机监听端口。非敏感运行配置可按本地开发例外从外部文件加载。凭据仍使用环境变量、Secret 或受限文件，不提交模板。需要联调时使用 Nacos 发现 IAM，不能静态配置 IAM 下游地址。
 5. 直接 Run/Debug 启动类。测试中用 Simple Discovery 定位受控 JWKS 设施，仅属于测试夹具，不能照搬为运行时服务发现配置。
 
-当前 HTTP API 用于服务接入和后端验收；内部监听端口不是浏览器入口。浏览器仍须遵守既有受信 HTTPS、受控域名和 Gateway 拓扑，相关接入不属于 #212–#216。
+当前 HTTP API 用于服务接入和后端验收；内部监听端口不是浏览器入口。浏览器仍须遵守既有受信 HTTPS、受控域名和 Gateway 拓扑，本轮后端接入不改写 #212–#216 的原验收范围。
 
 ## 数据与幂等边界
 
@@ -56,3 +56,17 @@ Task 通过 `(tenant_id, project_id)` 复合外键引用 Project，拒绝跨 Ten
 使用 Docker 中的隔离 PostgreSQL 18/Redis 容器、随机端口和真实 HTTP 服务。公开 HTTP 测试通过受控 JWKS 服务提供的公钥验证签名 Token，并执行 Starter 的正式认证、声明和 Redis 撤销检查；数据库使用正式 bootstrap、Flyway 迁移和受限运行账号。补充数据库权限测试证明 RLS 独立于业务 WHERE 条件成立。
 
 模块已加入根 Reactor，因此既有后端 CI 的根 `verify` 包含 Example。验收结果与限制见 [#212 验收记录](../../docs/acceptance/issue-212-acceptance.md) 、[#213 验收记录](../../docs/acceptance/issue-213-acceptance.md) 、[#214 验收记录](../../docs/acceptance/issue-214-acceptance.md) 、[#215 验收记录](../../docs/acceptance/issue-215-acceptance.md) 和 [#216 与父 PRD 覆盖记录](../../docs/acceptance/issue-216-acceptance.md)。
+
+## Gateway、日志、Trace 与成功事实
+
+业务契约通过 `saas-forge-contracts/services/business-http-contracts.json` 登记，与平台契约一起生成 Route Catalog。Gateway 和 Example Starter 都使用生成目录，且各自验证用户 Token。`ProjectConfiguration` 保留严格 JSON 输入配置，不再包含手写路由。运行时 Gateway 通过 Nacos 发现 `project-service`；开发者需将服务注册在联调所用 namespace，不能用静态下游地址替代发现。
+
+准备独立 Kafka Topic `saas.forge.<environment>.project-service.events`：Example 身份仅需生产该 Topic，Audit 身份需消费该 Topic、使用 `audit-service.example-events` group，并生产 `saas.forge.<environment>.audit-service.example-isolations` 隔离 Topic。准备完成后，通过 Audit 的受控运行配置启用 `saas.forge.audit.example-consumer.enabled=true`，启用后 readiness 必须等待 Example 分区。默认不启动这个新消费者，避免尚未准备 Topic / ACL 的既有环境持续消费失败；未启用不能声明审计接入完成。Kafka 凭据使用 Secret / 受限文件注入。当前仓库没有自动发布这些环境 ACL，也没有臆造 staging/prod 配置；接入已有环境前必须通过该环境的受控流程准备 Topic、身份和 ACL。Audit 需执行新前向迁移 V6，Example 需执行 V9、V10；V10 将 Outbox 的 UPDATE 权限收窄为投递状态列，事实正文和来源不可改写。
+
+成功写操作在业务事务内追加不可变事实；业务或 Outbox 失败一起回滚，幂等重放不追加。事实仅含 Tenant、Identity、Membership、资源、父 Project 的 ID 与资源版本，删除事实的版本为被删除的版本。后台发布器在短数据库事务中领取独立租约令牌，再在事务外发送 Kafka；收到确认后标记完成，失败记录安全异常类别并按指数间隔重试（最多间隔 60 秒）。确认丢失可能重复投递，Event ID 和正文保持不变，Audit 提交去重记录后才确认消息。永久失败需要运维处置，发布器不会凭空宣称事件已完成。Outbox 是服务内部投递控制表，不是租户公开查询表；运行身份可发布所有租户的已提交事实，业务资源表的 FORCE RLS 边界不变。
+
+三个服务使用根 POM 管理的官方 OpenTelemetry 集成。HTTP SERVER、事实 PRODUCER 和 Audit CONSUMER 均产生实际 Span，W3C 上下文跨 HTTP、Outbox 和 Kafka 传播。使用外部运行配置设置 `management.opentelemetry.tracing.export.otlp.endpoint` 和 `management.tracing.sampling.probability`；Endpoint 属于部署拓扑，敏感认证材料不能提交或写入 Nacos。默认 Collector 的 debug exporter 用于接收诊断，不提供 Trace 查询 UI。
+
+结构化标准输出使用日志 Schema 的白名单：HTTP 只记录路由模板、方法、状态和耗时，事实只记录固定事件码与 Trace / Span ID。框架原始消息、MDC、异常消息和堆栈不直接输出，避免凭据或业务正文泄露；因此诊断保留异常类型与固定失败码，不保留原始错误文本。安全拒绝和失败不采样丢弃。后续如需增加诊断字段，应先扩展安全白名单和负向验证。
+
+`uv run --no-project --with "jsonschema[format-nongpl]==4.25.1" bash scripts/verify-example-pipeline.sh` 是隔离后端诊断入口：使用本轮制品、受控 JWKS / Simple Discovery 夹具、真实 PostgreSQL / Redis / Kafka / Collector。打包和启动测试子进程仅服务于诊断，日常开发仍在 IDE 原生 Run / Debug。jsonschema 仅为诊断测试工具，不进入应用运行时；也可在个人虚拟环境准备相同版本后直接执行脚本。脚本校验三个服务实际 JSON 输出、Schema 条件字段、敏感值反向场景与六条完整 Span 父子链。该入口没有真实 IAM 登录、Nacos、HTTPS 浏览器拓扑或 Remote，不能用来勾选阶段 3 产品验收。当前结果和未执行项见 [接入验证记录](../../docs/acceptance/example-gateway-observability-acceptance.md)。

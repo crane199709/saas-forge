@@ -1,0 +1,10 @@
+{
+  "registryVersion": 1,
+  "entries": [
+    {
+      "serviceId": "project-service",
+      "modulePath": "examples/project-service",
+      "openapi": "openapi.yaml"
+    }
+  ]
+}

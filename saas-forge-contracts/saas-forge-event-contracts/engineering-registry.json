@@ -284,6 +284,90 @@
           "consumerName": "audit-service.entitlement-configuration-events"
         }
       ]
+    },
+    {
+      "type": "com.saas.forge.example.project.created.v1",
+      "producerService": "project-service",
+      "source": "urn:saas.forge:project-service",
+      "schema": "saas-forge-contracts/saas-forge-event-contracts/example-project-created.v1.schema.json",
+      "topic": "saas.forge.<environment>.project-service.events",
+      "orderingKey": "projectId",
+      "allowedConsumers": [
+        {
+          "service": "audit-service",
+          "consumerName": "audit-service.example-events"
+        }
+      ]
+    },
+    {
+      "type": "com.saas.forge.example.project.updated.v1",
+      "producerService": "project-service",
+      "source": "urn:saas.forge:project-service",
+      "schema": "saas-forge-contracts/saas-forge-event-contracts/example-project-updated.v1.schema.json",
+      "topic": "saas.forge.<environment>.project-service.events",
+      "orderingKey": "projectId",
+      "allowedConsumers": [
+        {
+          "service": "audit-service",
+          "consumerName": "audit-service.example-events"
+        }
+      ]
+    },
+    {
+      "type": "com.saas.forge.example.project.deleted.v1",
+      "producerService": "project-service",
+      "source": "urn:saas.forge:project-service",
+      "schema": "saas-forge-contracts/saas-forge-event-contracts/example-project-deleted.v1.schema.json",
+      "topic": "saas.forge.<environment>.project-service.events",
+      "orderingKey": "projectId",
+      "allowedConsumers": [
+        {
+          "service": "audit-service",
+          "consumerName": "audit-service.example-events"
+        }
+      ]
+    },
+    {
+      "type": "com.saas.forge.example.task.created.v1",
+      "producerService": "project-service",
+      "source": "urn:saas.forge:project-service",
+      "schema": "saas-forge-contracts/saas-forge-event-contracts/example-task-created.v1.schema.json",
+      "topic": "saas.forge.<environment>.project-service.events",
+      "orderingKey": "projectId",
+      "allowedConsumers": [
+        {
+          "service": "audit-service",
+          "consumerName": "audit-service.example-events"
+        }
+      ]
+    },
+    {
+      "type": "com.saas.forge.example.task.updated.v1",
+      "producerService": "project-service",
+      "source": "urn:saas.forge:project-service",
+      "schema": "saas-forge-contracts/saas-forge-event-contracts/example-task-updated.v1.schema.json",
+      "topic": "saas.forge.<environment>.project-service.events",
+      "orderingKey": "projectId",
+      "allowedConsumers": [
+        {
+          "service": "audit-service",
+          "consumerName": "audit-service.example-events"
+        }
+      ]
+    },
+    {
+      "type": "com.saas.forge.example.task.deleted.v1",
+      "producerService": "project-service",
+      "source": "urn:saas.forge:project-service",
+      "schema": "saas-forge-contracts/saas-forge-event-contracts/example-task-deleted.v1.schema.json",
+      "topic": "saas.forge.<environment>.project-service.events",
+      "orderingKey": "projectId",
+      "allowedConsumers": [
+        {
+          "service": "audit-service",
+          "consumerName": "audit-service.example-events"
+        }
+      ]
     }
   ]
 }

@@ -49,6 +49,7 @@
     </issueManagement>
 
     <modules>
+        <module>saas-forge-observability</module>
         <module>gateway</module>
         <module>saas-forge-services</module>
         <module>saas-forge-contracts</module>
@@ -96,6 +97,7 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency><groupId>${project.groupId}</groupId><artifactId>saas-forge-observability</artifactId><version>${revision}</version></dependency>
             <dependency>
                 <groupId>org.bouncycastle</groupId>
                 <artifactId>bcprov-jdk18on</artifactId>

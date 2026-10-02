@@ -38,10 +38,19 @@
     "traceConsistentSampling": true
   },
   "sampling": {
-    "neverSampleLevels": ["ERROR", "WARN"],
-    "neverSampleEventPrefixes": ["security."]
+    "neverSampleLevels": [
+      "ERROR",
+      "WARN"
+    ],
+    "neverSampleEventPrefixes": [
+      "security."
+    ]
   },
-  "retentionClasses": ["operational", "security", "temporary-debug"],
+  "retentionClasses": [
+    "operational",
+    "security",
+    "temporary-debug"
+  ],
   "eventPolicies": [
     {
       "event": "application.lifecycle",
@@ -64,6 +73,30 @@
     {
       "event": "application.failure",
       "minimumLevel": "ERROR",
+      "sampleRate": 1.0,
+      "retentionClass": "operational"
+    },
+    {
+      "event": "example.fact.published",
+      "minimumLevel": "INFO",
+      "sampleRate": 1.0,
+      "retentionClass": "operational"
+    },
+    {
+      "event": "example.fact.retry",
+      "minimumLevel": "WARN",
+      "sampleRate": 1.0,
+      "retentionClass": "operational"
+    },
+    {
+      "event": "audit.record.appended",
+      "minimumLevel": "INFO",
+      "sampleRate": 1.0,
+      "retentionClass": "operational"
+    },
+    {
+      "event": "audit.record.duplicate",
+      "minimumLevel": "INFO",
       "sampleRate": 1.0,
       "retentionClass": "operational"
     }

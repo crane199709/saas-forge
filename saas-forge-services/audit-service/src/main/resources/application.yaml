@@ -43,7 +43,9 @@ spring:
 saas.forge:
   environment: ${SAASFORGE_ENVIRONMENT:dev}
   audit:
-    required-migration-version: '5'
+    required-migration-version: '6'
+    example-topic: saas.forge.${saas.forge.environment}.project-service.events
+    example-isolation-topic: saas.forge.${saas.forge.environment}.audit-service.example-isolations
     iam-session-topic: saas.forge.${saas.forge.environment}.iam-service.events
     tenant-access-topic: saas.forge.${saas.forge.environment}.tenant-access-service.events
     iam-session-isolation-topic: saas.forge.${saas.forge.environment}.audit-service.iam-session-isolations
@@ -51,6 +53,16 @@ saas.forge:
 server:
   address: ${AUDIT_BIND_ADDRESS:127.0.0.1}
   port: ${AUDIT_HTTP_PORT:8084}
+
+logging:
+  structured:
+    format:
+      console: io.saas.forge.observability.ForgeLogFormatter
+management:
+  observations:
+    enable:
+      http.server.requests: false
+      http.client.requests: false
 
 ---
 spring:

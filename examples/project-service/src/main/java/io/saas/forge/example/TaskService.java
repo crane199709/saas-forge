@@ -12,11 +12,13 @@ class TaskService {
     private final ProjectRepository projects;
     private final TaskRepository tasks;
     private final ProjectWriteRepository writes;
+    private final ProjectFactOutbox outbox;
     private final tools.jackson.databind.ObjectMapper json;
     private final TaskCursor cursors = new TaskCursor(Clock.systemUTC());
 
     TaskService(TenantContextAccessor tenants, ProjectRepository projects, TaskRepository tasks,
-            ProjectWriteRepository writes, tools.jackson.databind.ObjectMapper json) {
+            ProjectWriteRepository writes, tools.jackson.databind.ObjectMapper json, ProjectFactOutbox outbox) {
+        this.outbox = outbox;
         this.tenants = tenants; this.projects = projects; this.tasks = tasks; this.writes = writes; this.json = json;
     }
 
@@ -38,6 +40,7 @@ class TaskService {
         } else {
             var task = tasks.create(context.tenantId(), project, request);
             result = new ProjectWriteResult(201, json.writeValueAsString(task), path + "/" + task.id());
+            outbox.append(context, "task", "created", task.id(), project, task.version());
         }
         writes.complete(key, result);
         return result;
@@ -55,6 +58,7 @@ class TaskService {
         var updated = tasks.update(project, id, version, request);
         var result = updated.isPresent() ? new ProjectWriteResult(200, json.writeValueAsString(updated.get()), null)
                 : writeFailure(project, id, traceId);
+        if (updated.isPresent()) outbox.append(context, "task", "updated", id, project, updated.get().version());
         writes.complete(key, result);
         return result;
     }
@@ -70,6 +74,7 @@ class TaskService {
         if (replay.isPresent()) return replay.get();
         var result = tasks.delete(project, id, version) ? new ProjectWriteResult(204, "", null)
                 : writeFailure(project, id, traceId);
+        if (result.status() == 204) outbox.append(context, "task", "deleted", id, project, version);
         writes.complete(key, result);
         return result;
     }

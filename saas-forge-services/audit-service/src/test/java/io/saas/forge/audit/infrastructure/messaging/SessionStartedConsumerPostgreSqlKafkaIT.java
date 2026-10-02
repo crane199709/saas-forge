@@ -68,6 +68,7 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     private static JdbcTemplate app;
     private static IamSessionKafkaConsumer listener;
     private static TenantAccessKafkaConsumer tenantListener;
+    private static ExampleFactKafkaConsumer exampleListener;
     private static SimpleMeterRegistry meters;
     private static AuditConsumerIsolationService isolations;
     private static AuditIsolationPublisher isolationPublisher;
@@ -94,6 +95,8 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
         serviceProxy.addAdvice(new TransactionInterceptor(
                 new DataSourceTransactionManager(appDataSource), new AnnotationTransactionAttributeSource()));
         var service = (AuditRecordService) serviceProxy.getProxy();
+        exampleListener = new ExampleFactKafkaConsumer(new ExampleFactEventValidator(new ObjectMapper(),
+                ExampleFactEventValidatorTest.TOPIC), service, io.opentelemetry.api.OpenTelemetry.noop());
         var isolationTarget = new AuditConsumerIsolationService(
                 new JdbcAuditConsumerIsolationRepository(app),
                 Clock.fixed(Instant.parse("2026-08-28T10:16:00Z"), ZoneOffset.UTC));
@@ -133,6 +136,31 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     @AfterAll
     static void closeIsolationProducer() {
         isolationProducerFactory.destroy();
+    }
+
+    @Test
+    void exampleFactsRemainAppendOnlyAndRedeliveryAfterCommitIsDeduplicated() {
+        String eventId = uuidV7(100);
+        String group = "example-redelivery-" + UUID.randomUUID();
+        try (var first = consumer(ExampleFactEventValidatorTest.TOPIC, group)) {
+            seekToEnd(first);
+            send(ExampleFactEventValidatorTest.TOPIC, ExampleFactEventValidatorTest.PROJECT,
+                    ExampleFactEventValidatorTest.event("task", "created", eventId));
+            var message = pollOne(first);
+            assertThrows(RuntimeException.class, () -> exampleListener.consume(message,
+                    () -> { throw new RuntimeException("simulated crash after commit"); }));
+        }
+        try (var replay = consumer(ExampleFactEventValidatorTest.TOPIC, group)) {
+            exampleListener.consume(pollOne(replay), replay::commitSync);
+        }
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        assertEquals(ExampleFactEventValidatorTest.TRACE, app.queryForObject(
+                "SELECT trace_id FROM audit_records WHERE source_event_id=?::uuid", String.class, eventId));
+        assertThrows(org.springframework.dao.DataAccessException.class, () -> app.update(
+                "UPDATE audit_records SET action='TASK_DELETED' WHERE source_event_id=?::uuid", eventId));
+        assertThrows(org.springframework.dao.DataAccessException.class, () -> app.update(
+                "DELETE FROM audit_records WHERE source_event_id=?::uuid", eventId));
     }
 
     @Test

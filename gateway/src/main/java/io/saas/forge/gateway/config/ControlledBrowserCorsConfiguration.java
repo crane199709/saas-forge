@@ -36,6 +36,12 @@ class ControlledBrowserCorsConfiguration {
         consoleCors.setAllowedHeaders(List.of("Content-Type", "Idempotency-Key", "If-Match", "X-SF-CSRF", "traceparent", "tracestate"));
         consoleCors.setExposedHeaders(List.of("ETag", "Retry-After"));
         source.registerCorsConfiguration("/api/v2/auth/**", consoleCors);
+        CorsConfiguration exampleCors = new CorsConfiguration(cors);
+        exampleCors.setAllowedOrigins(List.of("https://console." + rootDomain));
+        exampleCors.setAllowedHeaders(List.of(
+                "Authorization", "Content-Type", "Idempotency-Key", "X-SF-CSRF", "traceparent", "tracestate", "If-Match"));
+        source.registerCorsConfiguration("/api/v1/projects", exampleCors);
+        source.registerCorsConfiguration("/api/v1/projects/**", exampleCors);
         source.registerCorsConfiguration("/api/**", cors);
         CorsConfiguration discoveryCors = new CorsConfiguration(cors);
         discoveryCors.setAllowedMethods(List.of("GET", "HEAD", "OPTIONS"));
@@ -54,7 +60,7 @@ class ControlledBrowserCorsConfiguration {
             return accepted;
         });
         FilterRegistrationBean<CorsFilter> registration = new FilterRegistrationBean<>(filter);
-        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 3);
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 4);
         return registration;
     }
 }
