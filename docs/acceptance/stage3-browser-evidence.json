@@ -1,0 +1,443 @@
+{
+  "schemaVersion": 1,
+  "runId": "4558f7d2-2296-4377-be69-b3de59c4d641",
+  "handoffSha256": "59e738c45f6615afdc2c4445480df24210018ef07376a9e9cf26c23ffb8feac3",
+  "handoff": {
+    "schemaVersion": 1,
+    "requiredServices": [
+      "gateway",
+      "iam-service",
+      "tenant-access-service",
+      "entitlement-service",
+      "audit-service",
+      "project-service",
+      "remote-delivery-service"
+    ],
+    "runId": "4558f7d2-2296-4377-be69-b3de59c4d641",
+    "status": "ready",
+    "startedAt": "2026-10-06T14:18:50.525Z",
+    "consoleOrigin": "https://console.saas.forge.test",
+    "apiOrigin": "https://api.saas.forge.test",
+    "backend": {
+      "commit": "6866345356dbe328451a97005a8c4e3be90f9954",
+      "dirty": true,
+      "versionSource": "source-checkout",
+      "images": [
+        {
+          "service": "gateway",
+          "imageId": "sha256:5e133e5e5569cde3b86a1e366a4773c0a80f6472f612f2d611d6ad2dee6dc2c2",
+          "containerId": "20c6b109d754931fd9442bf7162f8450d2984f47b847d285ff0098c14002dd35"
+        },
+        {
+          "service": "iam-service",
+          "imageId": "sha256:d19d9c11f7c2c06d76ab0776e5a45f1e5e2086ce1f9e054fcc32d155532ae7ea",
+          "containerId": "22b3edd2e84d788b512931e2b07dafcc84ac97e91befbc2bfde10f1e5669297a"
+        },
+        {
+          "service": "tenant-access-service",
+          "imageId": "sha256:fba71175b6740f38f45cfc75f3287f111034649d07a87803771e5e892e4c5e0a",
+          "containerId": "dec35f7759aca00ce4ed9ba7691071c54468c245eae10600c4ddfd2a1f7eebc8"
+        },
+        {
+          "service": "entitlement-service",
+          "imageId": "sha256:96f3a97f571632ad1e0c9476e26ba1976a099888fe1084b728cfad9dbda80447",
+          "containerId": "4b96bab51f988c89351018dece9e4325d59ef93050ce60612ab845cfe0a1ee5a"
+        },
+        {
+          "service": "audit-service",
+          "imageId": "sha256:73e75e56eb03a4a46b49c96e45ea156f0e2b98e2cfa7bfab644b9d7a0792416c",
+          "containerId": "d82a26ee0dd1fd4df6a9843b52175573cc0ce551131227cb2c5a2497f7c8baba"
+        },
+        {
+          "service": "project-service",
+          "imageId": "sha256:8942338076bf4a3504784ea7a6ca761421d1f333e76de8ca4b4af06c9f74d0bf",
+          "containerId": "dcbdf14bfb423ff63394a61585f3077bfaf115b23876c7519a8ec5e00f076e2b"
+        },
+        {
+          "service": "remote-delivery-service",
+          "imageId": "sha256:58422ab473d20f4540d18c926c236b3325ef1567ae45b50e45374e71bd8cc33f",
+          "containerId": "c30990dd48deb30ede2bc3f361e5827b15a305d0f68ee2a0b374b604234a414a"
+        }
+      ],
+      "jdkMajor": 17
+    },
+    "isolation": {
+      "kind": "fresh-compose",
+      "project": "sf-acceptance-4558f7d2-2296-4377-be69-b3de59c4d641",
+      "volumes": [
+        "sf-acceptance-4558f7d2-2296-4377-be69-b3de59c4d641_postgres-data",
+        "sf-acceptance-4558f7d2-2296-4377-be69-b3de59c4d641_redis-data",
+        "sf-acceptance-4558f7d2-2296-4377-be69-b3de59c4d641_kafka-data"
+      ],
+      "network": "sf-acceptance-4558f7d2-2296-4377-be69-b3de59c4d641_default"
+    },
+    "cleanup": {
+      "owner": "environment-preparer",
+      "automatic": false
+    },
+    "readyAt": "2026-10-06T15:26:56.740Z",
+    "expiresAt": "2026-10-07T15:26:56.742Z",
+    "edge": {
+      "host": "127.0.0.1",
+      "port": 63795,
+      "containerId": "472d00b632a22fc82f6cdaab8e6ac766171523c0f063fcbe5158ce69064d05c7"
+    },
+    "jwksSha256": "6374f8af64a169730ca5fc45e88a0665b042fd7db0257d79ce17012545c99069"
+  },
+  "browser": {
+    "schemaVersion": 1,
+    "kind": "browser",
+    "runId": "4558f7d2-2296-4377-be69-b3de59c4d641",
+    "handoffSha256": "59e738c45f6615afdc2c4445480df24210018ef07376a9e9cf26c23ffb8feac3",
+    "startedAt": "2026-10-06T15:30:29.273Z",
+    "frontend": {
+      "commit": "aa67f6b771c73558d56a9af68c352341b21d7648",
+      "dirty": true,
+      "sourceSha256": "c8eff5e80ce5a7cdf6d04f7f362f1f800a4f4380fbc1680ecfff02f7a212b13d",
+      "lockSha256": "e05ec1b8f4754a6e62de8cb95e31ca85109a6dbd825829d19b8b5f54a8ccc98d"
+    },
+    "client": {
+      "name": "@crane199709/saas-forge-api-client",
+      "version": "0.5.0",
+      "sourceCommit": "d436c3c4bcb80519b50751155e081d086dc1e34b"
+    },
+    "checks": [
+      {
+        "name": "cross-tenant",
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42",
+        "status": "passed",
+        "expectedHttp": 404,
+        "requestAddressTampering": true
+      },
+      {
+        "name": "cross-tenant",
+        "method": "PUT",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42",
+        "status": "passed",
+        "expectedHttp": 404,
+        "requestAddressTampering": true
+      },
+      {
+        "name": "cross-tenant",
+        "method": "DELETE",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42",
+        "status": "passed",
+        "expectedHttp": 404,
+        "requestAddressTampering": true
+      },
+      {
+        "name": "cross-tenant",
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42/tasks/01a111d6-8aa3-7f4e-ad05-ffff33a68a8d",
+        "status": "passed",
+        "expectedHttp": 404,
+        "requestAddressTampering": true
+      },
+      {
+        "name": "cross-tenant",
+        "method": "PUT",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42/tasks/01a111d6-8aa3-7f4e-ad05-ffff33a68a8d",
+        "status": "passed",
+        "expectedHttp": 404,
+        "requestAddressTampering": true
+      },
+      {
+        "name": "cross-tenant",
+        "method": "DELETE",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42/tasks/01a111d6-8aa3-7f4e-ad05-ffff33a68a8d",
+        "status": "passed",
+        "expectedHttp": 404,
+        "requestAddressTampering": true
+      },
+      {
+        "name": "cross-tenant",
+        "method": "POST",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42/tasks",
+        "status": "passed",
+        "expectedHttp": 404,
+        "requestAddressTampering": true
+      },
+      {
+        "name": "session-check-retains-draft",
+        "status": "passed",
+        "durationMs": 35000
+      },
+      {
+        "name": "foreign-data-unchanged",
+        "status": "passed"
+      },
+      {
+        "name": "project-task-crud",
+        "status": "passed",
+        "projectId": "01a111d6-86c5-750c-bae2-7fd928cb357d",
+        "taskId": "01a111d6-8814-73a8-a101-5415a8e55d9d"
+      },
+      {
+        "name": "remote-download-failure-recovery",
+        "status": "passed",
+        "fault": "browser-network-abort"
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/v1/projects",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/projects",
+        "status": 201
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-86c5-750c-bae2-7fd928cb357d",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-86c5-750c-bae2-7fd928cb357d/tasks",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/projects/01a111d6-86c5-750c-bae2-7fd928cb357d/tasks",
+        "status": 201
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-86c5-750c-bae2-7fd928cb357d/tasks",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-86c5-750c-bae2-7fd928cb357d/tasks/01a111d6-8814-73a8-a101-5415a8e55d9d",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/projects",
+        "status": 201
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42/tasks",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42/tasks",
+        "status": 201
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42/tasks",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42/tasks/01a111d6-8aa3-7f4e-ad05-ffff33a68a8d",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42",
+        "status": 404
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-86c5-750c-bae2-7fd928cb357d",
+        "status": 200
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42",
+        "status": 404
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/projects/01a111d6-86c5-750c-bae2-7fd928cb357d",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects",
+        "status": 200
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42",
+        "status": 404
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42/tasks/01a111d6-8aa3-7f4e-ad05-ffff33a68a8d",
+        "status": 404
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-86c5-750c-bae2-7fd928cb357d/tasks/01a111d6-8814-73a8-a101-5415a8e55d9d",
+        "status": 200
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42/tasks/01a111d6-8aa3-7f4e-ad05-ffff33a68a8d",
+        "status": 404
+      },
+      {
+        "method": "PUT",
+        "path": "/api/v1/projects/01a111d6-86c5-750c-bae2-7fd928cb357d/tasks/01a111d6-8814-73a8-a101-5415a8e55d9d",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-86c5-750c-bae2-7fd928cb357d/tasks",
+        "status": 200
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42/tasks/01a111d6-8aa3-7f4e-ad05-ffff33a68a8d",
+        "status": 404
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42/tasks",
+        "status": 404
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-8925-74ae-91e0-7e3383d4ef42/tasks",
+        "status": 200
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/projects/01a111d6-86c5-750c-bae2-7fd928cb357d/tasks/01a111d6-8814-73a8-a101-5415a8e55d9d",
+        "status": 204
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects/01a111d6-86c5-750c-bae2-7fd928cb357d/tasks",
+        "status": 200
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/v1/projects/01a111d6-86c5-750c-bae2-7fd928cb357d",
+        "status": 204
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/projects",
+        "status": 200
+      }
+    ],
+    "status": "passed",
+    "chromeVersion": "154.0.8037.98",
+    "resources": {
+      "tenantA": {
+        "id": "01a111d6-86c5-750c-bae2-7fd928cb357d",
+        "taskId": "01a111d6-8814-73a8-a101-5415a8e55d9d",
+        "name": "Stage3 A 4010b141 updated"
+      },
+      "tenantB": {
+        "id": "01a111d6-8925-74ae-91e0-7e3383d4ef42",
+        "taskId": "01a111d6-8aa3-7f4e-ad05-ffff33a68a8d",
+        "name": "Stage3 B 4010b141"
+      }
+    },
+    "finishedAt": "2026-10-06T15:31:13.264Z"
+  },
+  "audit": {
+    "resources": [
+      "01a111d6-86c5-750c-bae2-7fd928cb357d",
+      "01a111d6-8814-73a8-a101-5415a8e55d9d"
+    ],
+    "facts": {
+      "PROJECT_CREATED": 1,
+      "PROJECT_DELETED": 1,
+      "PROJECT_UPDATED": 1,
+      "TASK_CREATED": 1,
+      "TASK_DELETED": 1,
+      "TASK_UPDATED": 1
+    }
+  },
+  "observability": [
+    {
+      "validatedLogs": {
+        "gateway": 1086,
+        "project-service": 301,
+        "audit-service": 191
+      },
+      "events": {
+        "application.lifecycle": 462,
+        "http.request.completed": 1064,
+        "security.access-denied": 4,
+        "example.fact.published": 24,
+        "audit.record.appended": 24
+      }
+    },
+    {
+      "completeTraceChains": 24
+    }
+  ],
+  "interactiveBrowserChecks": [
+    "ci-registration-approved-enabled",
+    "pending-and-approved-not-discoverable",
+    "rejected-no-enable-action",
+    "platform-token-missing-tenant-context-403",
+    "locale-en-and-tenant-name",
+    "keyboard-input",
+    "remote-axe-zero-violations",
+    "platform-wcag-zero-violations"
+  ],
+  "ciSourceRejection": {
+    "status": 400,
+    "code": "REMOTE_SOURCE_NOT_ALLOWED"
+  },
+  "faults": {
+    "crossTenant": "resource-address-tampering-real-responses",
+    "remoteLoad": "browser-network-abort-real-artifact"
+  },
+  "remote": {
+    "module": "project",
+    "version": "1.0.0",
+    "source": "https://remote.saas.forge.test/project/1.0.0/remote.js",
+    "uiVersion": "vue@3.5.31;element-plus@2.13.6",
+    "entrySha256": "acc9d5d5e709ee109dbbbeeb33ae1717d9ae3db4930055e6d9448eab64366209"
+  }
+}

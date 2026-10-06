@@ -26,7 +26,8 @@ final class ManifestProblemHandler {
     ResponseEntity<Problem> tokenInvalid(Exception error,HttpServletRequest request) { return problem(401,"ACCESS_TOKEN_INVALID",request); }
     private ResponseEntity<Problem> problem(int status,String code,HttpServletRequest request) {
         return ResponseEntity.status(status).cacheControl(CacheControl.noStore()).contentType(MediaType.APPLICATION_PROBLEM_JSON)
-                .body(new Problem("about:blank",code,status,code,code,io.opentelemetry.api.trace.Span.current().getSpanContext().getTraceId()));
+                .body(new Problem("urn:saas.forge:problem:"+code.toLowerCase(java.util.Locale.ROOT).replace('_','-'),
+                        code,status,code,code,io.opentelemetry.api.trace.Span.current().getSpanContext().getTraceId()));
     }
     public record Problem(String type,String title,int status,String detail,String code,String traceId) {}
 }

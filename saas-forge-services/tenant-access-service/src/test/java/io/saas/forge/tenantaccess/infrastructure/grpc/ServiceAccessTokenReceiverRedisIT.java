@@ -127,7 +127,7 @@ class ServiceAccessTokenReceiverRedisIT {
         });
 
         MembershipValidationServerInterceptor membershipInterceptor =
-                new MembershipValidationServerInterceptor(tokens, new IamServiceClientId(IAM_CLIENT_ID));
+                new MembershipValidationServerInterceptor(tokens, new io.saas.forge.tenantaccess.infrastructure.security.MembershipValidationClients(java.util.Set.of(IAM_CLIENT_ID)));
         TenantProvisioningQueryServerInterceptor provisioningInterceptor =
                 new TenantProvisioningQueryServerInterceptor(tokens);
         String serverName = InProcessServerBuilder.generateName();

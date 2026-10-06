@@ -39,7 +39,12 @@ class ManifestHttpContractTest {
                 .andExpect(jsonPath("$.items[0].reviewedBy").doesNotExist());
         mvc.perform(post("/api/v1/platform/remote-manifests/"+id+"/approve")).andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/platform/remote-manifests").param("limit", "0"))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.type").value("urn:saas.forge:problem:validation-failed"));
+        when(authority.administrator(any())).thenThrow(new ManifestException(403,"PLATFORM_ADMIN_REQUIRED"));
+        mvc.perform(get("/api/v1/platform/remote-manifests"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.type").value("urn:saas.forge:problem:platform-admin-required"));
         verify(service,never()).decide(any(),any(),any(),any());
     }
 }

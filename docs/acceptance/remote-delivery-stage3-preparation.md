@@ -1,6 +1,8 @@
 # 阶段 3 Remote Delivery 后端准备记录
 
-状态：后端实现与专项诊断通过；Client 0.5.0 已发布并由前端精确安装；业务 Remote、同轮 Fresh Chrome 与日志/Trace/Audit 产品链路尚未验收，阶段 3 保持未完成。
+> 2026-10-06 补充：最终真实浏览器结果见 [阶段 3 验收](stage3-browser-acceptance.md)。下文保留 10 月 2 日准备阶段的原始未执行范围。
+
+当时状态：后端实现与专项诊断通过；Client 0.5.0 已发布并由前端精确安装；业务 Remote、同轮 Fresh Chrome 与日志/Trace/Audit 产品链路尚未验收，阶段 3 保持未完成。
 
 2026-10-02 在 JDK 17 下执行以下验证。测试使用隔离 PostgreSQL 18；不修改已有数据库或共享环境。
 

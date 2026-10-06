@@ -9,11 +9,11 @@ import io.saas.forge.contracts.tenantaccess.membership.v1.MembershipValidationSe
 import io.saas.forge.sdk.auth.ServiceAccessTokenInvalidException;
 import io.saas.forge.sdk.auth.ServiceAccessTokenScopeException;
 import io.saas.forge.sdk.auth.ServiceAccessTokenAuthorizer;
-import io.saas.forge.tenantaccess.infrastructure.security.IamServiceClientId;
+import io.saas.forge.tenantaccess.infrastructure.security.MembershipValidationClients;
 import org.springframework.grpc.server.GlobalServerInterceptor;
 import org.springframework.stereotype.Component;
 
-/** Membership Validation 只接受保留 IAM Client 的精确 Membership 读取 Scope。 */
+/** Membership Validation 只接受指定 Reserved Client 的 Membership 读取 Scope。 */
 @GlobalServerInterceptor
 @Component
 public final class MembershipValidationServerInterceptor implements ServerInterceptor {
@@ -22,13 +22,13 @@ public final class MembershipValidationServerInterceptor implements ServerInterc
     private static final String REQUIRED_SCOPE = "tenant-access:membership:read";
 
     private final ServiceAccessTokenAuthorizer tokens;
-    private final IamServiceClientId iamClientId;
+    private final MembershipValidationClients allowedClients;
 
     public MembershipValidationServerInterceptor(
             ServiceAccessTokenAuthorizer tokens,
-            IamServiceClientId iamClientId) {
+            MembershipValidationClients allowedClients) {
         this.tokens = tokens;
-        this.iamClientId = iamClientId;
+        this.allowedClients = allowedClients;
     }
 
     @Override
@@ -45,10 +45,10 @@ public final class MembershipValidationServerInterceptor implements ServerInterc
             return close(call, Status.UNAUTHENTICATED);
         }
         try {
-            tokens.authorize(
-                    authorization.substring("Bearer ".length()),
-                    iamClientId.value(),
-                    REQUIRED_SCOPE);
+            var authorized = tokens.authorize(authorization.substring("Bearer ".length()), REQUIRED_SCOPE);
+            if (!allowedClients.values().contains(authorized.clientId())) {
+                return close(call, Status.UNAUTHENTICATED);
+            }
             return next.startCall(call, headers);
         } catch (ServiceAccessTokenScopeException exception) {
             return close(call, Status.PERMISSION_DENIED);

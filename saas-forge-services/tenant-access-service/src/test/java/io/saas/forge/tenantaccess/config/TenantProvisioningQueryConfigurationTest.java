@@ -42,6 +42,21 @@ class TenantProvisioningQueryConfigurationTest {
     }
 
     @Test
+    void remoteMembershipReaderIsOptionalExactAndFailClosed() throws Exception {
+        var iam = new io.saas.forge.tenantaccess.infrastructure.security.IamServiceClientId(IAM_SERVICE_CLIENT_ID);
+        assertEquals(java.util.Set.of(IAM_SERVICE_CLIENT_ID), configuration.membershipValidationClients(iam, "").values());
+        UUID remote = UUID.fromString("019535d9-0001-7000-8000-000000000002");
+        Path file = Files.writeString(directory.resolve("remote-client-id"), remote+"\n");
+        assertEquals(java.util.Set.of(IAM_SERVICE_CLIENT_ID,remote),
+                configuration.membershipValidationClients(iam,file.toString()).values());
+        assertThrows(IllegalStateException.class, () -> configuration.membershipValidationClients(iam,directory.resolve("missing").toString()));
+        Files.writeString(file,IAM_SERVICE_CLIENT_ID.toString());
+        assertThrows(IllegalStateException.class, () -> configuration.membershipValidationClients(iam,file.toString()));
+        Files.writeString(file,UUID.randomUUID().toString());
+        assertThrows(IllegalArgumentException.class, () -> configuration.membershipValidationClients(iam,file.toString()));
+    }
+
+    @Test
     void readsCanonicalIamServiceClientIdFromSecretFile() throws Exception {
         Path clientIdFile = Files.writeString(directory.resolve("iam-client-id"), IAM_SERVICE_CLIENT_ID + "\n");
 

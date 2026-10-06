@@ -27,7 +27,7 @@ MVP 不包含完整支付/账单/发票、公共注册和外部身份源、多�
 | 0. 关键决策 | 前置领域、安全与数据决策已记录 | 后续 Manifest 治理、导出授权等局部决策在相关阶段开始前冻结 |
 | 1. 工程与运行基线 | 两仓独立交付、正式 Client、统一 Console 与检查入口已建立；迁移总票 [#201](https://github.com/crane199709/saas-forge/issues/201) 已关闭 | 完整布局、视觉、无障碍及旧独有断言按覆盖范围继续核对；迁移关闭不等于未来页面覆盖完成 |
 | 2. 身份与租户最小闭环 | 已实现并按 [#183](https://github.com/crane199709/saas-forge/issues/183) / [#189](https://github.com/crane199709/saas-forge/issues/189) 验收；两票已关闭，交付提交 CI 通过 | 保持现有回归；后续改动重新验证受影响边界，不重复建设已交付页面 |
-| 3. SDK 与 Example | BOM、基础 SDK、Starter 与 Project/Task CRUD 已实现；Gateway / 日志 / Trace / 成功事实接入见专项记录 | 最小 Manifest、正式业务 Remote 与 Tenant Shell 浏览器闭环待交付 |
+| 3. SDK 与 Example 租户隔离闭环 | 最小 Manifest / Project Remote 与真实 Fresh Chrome 联合验收通过，见 [验收记录](acceptance/stage3-browser-acceptance.md) | 后续权限、权益和审计查询能力按阶段 4–6 交付；远端 CI 尚未执行 |
 | 4. 组织、成员与 Permission | 已有 Membership、静态角色绑定、冻结/恢复与品牌档案基础 | Organization、通用 RBAC 目录、Invitation 激活、恢复流程、品牌素材管理及其产品闭环未实现 |
 | 5. Subscription、Feature 与 Quota | 已有 Plan、Quota Definition、首个 Subscription 和管理员初始化的最小额度链路 | 完整订阅生命周期、Feature 与通用 Quota Runtime、租户权益视图及 Example 联调未完成 |
 | 6. Audit 与事件可靠性 | 三类平台事实已有验收；六类 Example 成功事实已实现并完成后端诊断 | 完整业务事件覆盖、公开查询、导出、SDK 与 Console 闭环未完成 |
@@ -47,7 +47,7 @@ MVP 不包含完整支付/账单/发票、公共注册和外部身份源、多�
 | 检查 | Maven/JDK 17、契约、迁移、RLS、服务、后端工具与专项环境检查 | 类型、Lint、Runtime/业务测试、国际化、构建、视觉/无障碍与 Chrome | 两仓 CI 分别通过；跨仓专项按同轮标识关联，任一失败均阻断该专项 |
 | 发布 | 后端镜像、SDK/Client、迁移与配置版本 | Console/Remote 静态制品与依赖版本 | 独立发布，记录可工作的版本组合和升级/回退限制 |
 
-每个业务切片按“契约评审 → 服务实现及兼容验证 → 正式 Client 发布 → 前端固定版本接入 → 同轮联调验收”交付。前端可提前准备布局与 Mock，但必须标为模拟结果；未发布契约或 Mock 不构成产品交付。当前两仓声明的正式包为 `@crane199709/saas-forge-api-client@0.4.0`；未来升级以各自清单、锁文件与包来源为准，不将该版本永久冻结。
+每个业务切片按“契约评审 → 服务实现及兼容验证 → 正式 Client 发布 → 前端固定版本接入 → 同轮联调验收”交付。前端可提前准备布局与 Mock，但必须标为模拟结果；未发布契约或 Mock 不构成产品交付。当前两仓声明的正式包为 `@crane199709/saas-forge-api-client@0.5.0`；未来升级以各自清单、锁文件与包来源为准，不将该版本永久冻结。
 
 浏览器业务调用只使用正式类型化 HTTP Client，不把 Cookie、Origin、Fetch Metadata 或 Bearer Token 暴露为业务参数。共享 Runtime 拥有会话及内存 Token，Remote 不自行读取、持久化或刷新凭据。破坏性协议变化、权限边界变化与部署切换仍需独立决策，不由普通 Client 升级隐式完成。
 
@@ -203,21 +203,21 @@ flowchart TD
 - [x] 完成 BOM、`sdk-core`、`sdk-auth`、`sdk-tenant` 与 Starter 的首个可用版本；从公开契约生成 REST Client，不暴露内部 gRPC 或数据库模型。
 - [x] Starter 集成 Spring Security Resource Server 和 IAM JWKS，固定只接受 `RS256`，支持按 `kid` 缓存公钥、未知 `kid` 受控刷新、常规密钥轮换、撤销 `kid` 与 `jti` 的 Redis fail-closed 检查，以及不可写的 Identity/Membership/Tenant Context。
 - [ ] 实现 Project/Task Example 的最小业务 API；仅经 Starter 获取 Tenant Context，并在租户范围表使用事务级 `app.tenant_id` 和 RLS。
-- [ ] 为 Example 接入 Gateway 路由、结构化日志、Trace 和最小审计投递；API 集成测试和种子数据只作为诊断与准备手段，不能替代本阶段最终 Tenant Shell/Remote 浏览器验收。
-  - 后端接入与隔离诊断见 [专项记录](acceptance/example-gateway-observability-acceptance.md)；本项仍须随最小 Manifest / Remote 完成 Tenant Shell 浏览器验收后勾选。
-- [ ] 冻结首版 Manifest 最小契约：`module`、`version`、受控 `source`、生命周期状态与审核/启用事实；只允许 CI Client Credentials 注册，只有 Platform Administrator 审核并启用的受控来源可被 Shell 加载。
+- [x] 为 Example 接入 Gateway 路由、结构化日志、Trace 和最小审计投递；API 集成测试和种子数据只作为诊断与准备手段，不能替代本阶段最终 Tenant Shell/Remote 浏览器验收。
+  - 后端诊断见 [专项记录](acceptance/example-gateway-observability-acceptance.md)；2026-10-06 最终 Tenant Shell / Remote 浏览器、隔离、日志、真实 Trace 与 Audit 结果见 [阶段 3 验收](acceptance/stage3-browser-acceptance.md)。
+- [x] 冻结首版 Manifest 最小契约：`module`、`version`、受控 `source`、生命周期状态与审核/启用事实；只允许 CI Client Credentials 注册，只有 Platform Administrator 审核并启用的受控来源可被 Shell 加载。
 
 **前端：Console 交互**
 
-- [ ] Console 平台工作上下文提供 Manifest 注册结果、审核、启用和拒绝界面，不允许仅因服务注册或来源可访问而自动公开 Remote。
-- [ ] Console 租户工作上下文与 Shell 从首版开始采用最终 Remote 架构，只加载已启用 Manifest 的受控来源；Shell 独占认证状态与共享 HTTP Client，Project/Task Remote 不读取、存储或自行刷新 Token。
-- [ ] 将 Project/Task 页面实现为最终业务 Remote，使用共享组件与交互规范、Locale、导航和错误语义，通过 Gateway 调用真实 Example API。
+- [x] Console 平台工作上下文提供 Manifest 注册结果、审核、启用和拒绝界面，不允许仅因服务注册或来源可访问而自动公开 Remote。
+- [x] Console 租户工作上下文与 Shell 从首版开始采用最终 Remote 架构，只加载已启用 Manifest 的受控来源；Shell 独占认证状态与共享 HTTP Client，Project/Task Remote 不读取、存储或自行刷新 Token。
+- [x] 将 Project/Task 页面实现为最终业务 Remote，使用共享组件与交互规范、Locale、导航和错误语义，通过 Gateway 调用真实 Example API。
 
 **联合浏览器验收**
 
-- [ ] 从全新 Compose 数据卷用 Playwright 完成“CI 注册 Manifest → Platform Administrator 审核并启用 → Tenant Shell 加载 Remote → 创建/读取 Project 与 Task”的完整路径。
-- [ ] 通过真实 Shell、Remote、Gateway、Starter、Example 与 PostgreSQL RLS 验证 Tenant A 可操作自己的 Project/Task、不能读写 Tenant B 数据，缺失 Tenant Context 默认拒绝。
-- [ ] 验证未审核、未启用、来源不受控和加载失败的 Remote 不会进入业务页面，Shell 显示统一且可恢复的错误边界；验证 Locale 传递和另一语言代表页面。
+- [x] 从全新 Compose 数据卷用 Playwright 完成“CI 注册 Manifest → Platform Administrator 审核并启用 → Tenant Shell 加载 Remote → 创建/读取 Project 与 Task”的完整路径。
+- [x] 通过真实 Shell、Remote、Gateway、Starter、Example 与 PostgreSQL RLS 验证 Tenant A 可操作自己的 Project/Task、不能读写 Tenant B 数据，缺失 Tenant Context 默认拒绝。
+- [x] 验证未审核、未启用、来源不受控和加载失败的 Remote 不会进入业务页面，Shell 显示统一且可恢复的错误边界；验证 Locale 传递和另一语言代表页面。
 
 **完成标准：** Tenant A 经最终 Tenant Shell 与 Project/Task Remote 可创建和读取自己的数据，但无法读、写、改、删 Tenant B 数据；缺失 Tenant Context 默认拒绝；Manifest 审核/启用与 Remote 拒绝路径有真实浏览器证据；独立 Spring Boot 业务服务只引入 Starter 和受控配置即可获得可信上下文。
 

@@ -145,7 +145,7 @@ class AccessibleMembershipGrpcServiceIT {
                         Duration.ofSeconds(30)),
                 (clientId, kid) -> false);
         MembershipValidationServerInterceptor interceptor = new MembershipValidationServerInterceptor(
-                authorizer, new IamServiceClientId(IAM_CLIENT_ID));
+                authorizer, new io.saas.forge.tenantaccess.infrastructure.security.MembershipValidationClients(java.util.Set.of(IAM_CLIENT_ID)));
         String serverName = InProcessServerBuilder.generateName();
         server = InProcessServerBuilder.forName(serverName)
                 .directExecutor()

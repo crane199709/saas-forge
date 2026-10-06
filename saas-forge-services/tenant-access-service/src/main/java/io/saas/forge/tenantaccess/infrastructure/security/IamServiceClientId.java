@@ -2,7 +2,7 @@ package io.saas.forge.tenantaccess.infrastructure.security;
 
 import java.util.UUID;
 
-/** Tenant Access 允许调用 Membership Validation 的保留 IAM Client ID。 */
+/** Tenant Access 用于识别保留 IAM 调用方的部署身份。 */
 public record IamServiceClientId(UUID value) {
     public IamServiceClientId {
         if (value == null || value.version() != 7) {

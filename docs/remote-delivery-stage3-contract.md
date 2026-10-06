@@ -1,6 +1,6 @@
 # 阶段 3 Remote Delivery 最小契约
 
-状态：独立服务归属已确认（[ADR 0055](adr/0055-remote-delivery-owns-manifest-lifecycle.md)）；下述最小授权边界已于 2026-10-02 经用户确认，正在实现，尚未完成验收。
+状态：独立服务归属已确认（[ADR 0055](adr/0055-remote-delivery-owns-manifest-lifecycle.md)）；下述最小授权边界已于 2026-10-02 经用户确认，最小实现与同轮浏览器验收已完成，见 [阶段 3 验收](acceptance/stage3-browser-acceptance.md)。
 
 Remote Delivery 独立拥有逻辑数据库与迁移。Manifest 的注册声明不可变，注册、审核、启用与拒绝均在来源事务中保存操作者和时间事实。Gateway 从正式 OpenAPI 生成路由并经 Nacos 发现该服务；不保存或裁决 Manifest 状态。
 

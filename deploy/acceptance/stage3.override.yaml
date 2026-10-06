@@ -1,6 +1,15 @@
 # 在隔离验收项目中合并 compose.yaml 和 tenant-lifecycle-e2e.override.yaml。
 # 只准备 Stage 3 后端；前端通过正式发布 Client 和同轮 handoff 独立验收。
 services:
+  tenant-access-service:
+    environment:
+      SAAS_FORGE_TENANTACCESS_REMOTEDELIVERYSERVICECLIENTIDFILE: /run/secrets/remote-delivery-client-id
+    volumes:
+      - type: bind
+        source: ${REMOTE_DELIVERY_SERVICE_CLIENT_ID_FILE:?REMOTE_DELIVERY_SERVICE_CLIENT_ID_FILE is required}
+        target: /run/secrets/remote-delivery-client-id
+        read_only: true
+        bind: { create_host_path: false }
   remote-delivery-migrate:
     extends:
       file: ../../saas-forge-services/remote-delivery-service/compose.yaml
@@ -17,7 +26,7 @@ services:
       - "${E2E_HOST_GID:?E2E_HOST_GID is required}"
     environment:
       JAVA_TOOL_OPTIONS: -Xms32m -Xmx192m
-      SAAS_FORGE_REMOTE_DELIVERY_MODULE_CLIENTS_PROJECT: ${PROJECT_MANIFEST_CLIENT_ID:?PROJECT_MANIFEST_CLIENT_ID is required}
+      SAAS_FORGE_REMOTEDELIVERY_MODULECLIENTS_PROJECT: ${PROJECT_MANIFEST_CLIENT_ID:?PROJECT_MANIFEST_CLIENT_ID is required}
     depends_on:
       remote-delivery-migrate:
         condition: service_completed_successfully
@@ -77,6 +86,11 @@ services:
         user_audit-replay="${KAFKA_AUDIT_REPLAY_PASSWORD:?KAFKA_AUDIT_REPLAY_PASSWORD is required}"
         user_project-service="${KAFKA_PROJECT_PASSWORD:?KAFKA_PROJECT_PASSWORD is required}";
   kafka-audit-acl-init:
+    # 初始化不保存 Kafka 数据，覆盖镜像 VOLUME，避免创建无项目归属的匿名卷。
+    tmpfs:
+      - /etc/kafka/secrets
+      - /mnt/shared/config
+      - /var/lib/kafka/data
     environment:
       KAFKA_PROJECT_PASSWORD: ${KAFKA_PROJECT_PASSWORD:?KAFKA_PROJECT_PASSWORD is required}
   iam-reserved-service-client-bootstrap:
