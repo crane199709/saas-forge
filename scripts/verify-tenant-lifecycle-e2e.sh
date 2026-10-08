@@ -265,8 +265,17 @@ republish_outbox_event() {
 
 wait_for_service_started() {
   local service="$1"
+  local port status
   for _ in $(seq 1 180); do
-    if compose logs --no-color "$service" 2>/dev/null | grep 'Started .*Application' >/dev/null; then
+    # 结构化日志不会保留 Spring 启动原文，使用已映射的就绪端点判定。
+    if [[ "$service" == "audit-service" || "$service" == "gateway" ]]; then
+      port="$(compose port "$service" 8080 2>/dev/null | sed 's/.*://')"
+      status="$(curl --connect-timeout 1 --max-time 2 --silent --output /dev/null \
+        --write-out '%{http_code}' "http://127.0.0.1:$port/actuator/health/readiness" || true)"
+      if [[ "$status" == "200" ]]; then
+        return 0
+      fi
+    elif compose logs --no-color "$service" 2>/dev/null | grep 'Started .*Application' >/dev/null; then
       return 0
     fi
     if [[ "$(compose ps --all --format json "$service" | jq -r 'select(.Service == $service) | .State' --arg service "$service")" == "exited" ]]; then
