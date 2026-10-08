@@ -72,10 +72,16 @@
 - `.scratch/` 中的内容不属于交付物，**不得作为验收证据引用**，也不得假设其他环境或后续会话仍能读到；需要长期保留的结论必须落到 `docs/`（审计报告放 `docs/audits/`）。
 - 构建产物（`target/`、`dist/`、`node_modules/`）同样不提交。新增忽略规则时，先确认被覆盖的路径没有已跟踪文件：`git check-ignore` 只判断规则，`git ls-files` 才能证明未被跟踪。
 
+## Agent skills
+
 ### Issue tracker
 
-问题与 PRD 通过本仓库的 GitHub Issues 跟踪。详见 `docs/agents/issue-tracker.md`。
+问题与 PRD 通过本仓库的 GitHub Issues 跟踪；创建、读取或更新 ticket 前，先读 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+分诊采用五个默认角色标签；执行分诊或按角色设置标签前，先读 `docs/agents/triage-labels.md`。
 
 ### Domain docs
 
-本仓库采用多上下文领域文档布局，并以 `CONTEXT-MAP.md` 为入口。详见 `docs/agents/domain.md`。
+本仓库采用 multi-context（多上下文）布局，以 `CONTEXT-MAP.md` 为入口；探索代码、使用领域术语或评估 ADR 冲突前，先读 `docs/agents/domain.md`。

@@ -4,28 +4,17 @@
 
 ## 探索前读取
 
-- 根目录的 `CONTEXT-MAP.md`，从中找到与当前主题相关的各个 `CONTEXT.md` 并读取；
-- `docs/adr/` 中与当前工作区域相关的系统级 ADR；
+- 根目录的 `CONTEXT-MAP.md`，从中找到与当前主题相关的各个 `CONTEXT.md` 并读取。
+- `docs/adr/` 中与当前工作区域相关的系统级 ADR。
 - 从 `CONTEXT-MAP.md` 取得 context root，再读取该 root 下 `docs/adr/` 中与当前上下文相关的 ADR。
 
-若这些文件不存在，静默继续，不要主动提示或预先创建。`/domain-modeling`（可由 `/grill-with-docs` 和 `/improve-codebase-architecture` 调用）会在术语或决策实际明确后再创建它们。
+若这些文件不存在，静默继续，不要主动提示或预先创建。`/domain-modeling` 会在术语或决策实际明确后再创建它们。
 
 ## 文件布局
 
-多上下文仓库：
+本仓库采用 multi-context（多上下文）布局，保留既有命名：`CONTEXT-MAP.md` 承担技能模板中 `GLOSSARY-MAP.md` 的上下文索引职责，各 `CONTEXT.md` 承担 `GLOSSARY.md` 的领域术语职责。
 
-```
-/
-├── CONTEXT-MAP.md
-├── docs/adr/                          ← 系统级决策
-├── gateway/CONTEXT.md
-├── saas-forge-contracts/CONTEXT.md
-└── saas-forge-services/
-    ├── iam-service/CONTEXT.md
-    ├── tenant-access-service/CONTEXT.md
-    ├── entitlement-service/CONTEXT.md
-    └── audit-service/CONTEXT.md
-```
+上下文清单和路径以根目录 `CONTEXT-MAP.md` 为准。系统级 ADR 位于 `docs/adr/`，上下文级 ADR 位于各 context root 下的 `docs/adr/`（若存在）。
 
 ## 使用统一术语
 
