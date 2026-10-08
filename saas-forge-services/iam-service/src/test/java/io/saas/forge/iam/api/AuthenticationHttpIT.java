@@ -86,7 +86,7 @@ import io.saas.forge.tenantaccess.infrastructure.grpc.MembershipValidationServer
 import io.saas.forge.tenantaccess.infrastructure.persistence.MyBatisAccessibleMembershipQuery;
 import io.saas.forge.tenantaccess.infrastructure.persistence.MyBatisMembershipValidationQuery;
 import io.saas.forge.tenantaccess.infrastructure.persistence.mapper.AccessibleMembershipMapper;
-import io.saas.forge.tenantaccess.infrastructure.security.IamServiceClientId;
+import io.saas.forge.tenantaccess.infrastructure.security.MembershipValidationClients;
 import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -270,7 +270,7 @@ class AuthenticationHttpIT {
                             Duration.ofSeconds(30)),
                     (clientId, kid) -> false);
             MembershipValidationServerInterceptor authentication = new MembershipValidationServerInterceptor(
-                    tokens, new IamServiceClientId(IAM_SERVICE_CLIENT_ID));
+                    tokens, new MembershipValidationClients(Set.of(IAM_SERVICE_CLIENT_ID)));
             String serverName = InProcessServerBuilder.generateName();
             Server ignored = InProcessServerBuilder.forName(serverName)
                     .directExecutor()

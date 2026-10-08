@@ -21,7 +21,7 @@ unless tls.fetch("namingJavaToolOptions").split.include?(expected_option)
   abort "#{contract_file}: 必须启用 Nacos Naming TLS"
 end
 
-applications = %w[gateway iam-service tenant-access-service entitlement-service audit-service]
+applications = %w[gateway iam-service tenant-access-service entitlement-service audit-service remote-delivery-service project-service]
 credentials = nacos.fetch("workloadCredentials")
 abort "#{contract_file}: 工作负载凭据必须一一对应应用" unless credentials.keys.sort == applications.sort
 secret_names = applications.map { |application| credentials.fetch(application).fetch("existingSecretName") }
@@ -33,7 +33,9 @@ for application_file in \
   "$repository_root/saas-forge-services/iam-service/src/main/resources/application.yaml" \
   "$repository_root/saas-forge-services/tenant-access-service/src/main/resources/application.yaml" \
   "$repository_root/saas-forge-services/entitlement-service/src/main/resources/application.yaml" \
-  "$repository_root/saas-forge-services/audit-service/src/main/resources/application.yaml"; do
+  "$repository_root/saas-forge-services/audit-service/src/main/resources/application.yaml" \
+  "$repository_root/saas-forge-services/remote-delivery-service/src/main/resources/application.yaml" \
+  "$repository_root/examples/project-service/src/main/resources/application.yaml"; do
   if ! grep -Fq 'enabled: ${NACOS_TLS_ENABLED:false}' "$application_file"; then
     echo "$application_file: 缺少可由生产部署接口启用的 Nacos Config TLS" >&2
     exit 1
