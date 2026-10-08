@@ -265,13 +265,16 @@ republish_outbox_event() {
 
 wait_for_service_started() {
   local service="$1"
-  local port status
+  local port status path
   for _ in $(seq 1 180); do
     # 结构化日志不会保留 Spring 启动原文，使用已映射的就绪端点判定。
     if [[ "$service" == "audit-service" || "$service" == "gateway" ]]; then
       port="$(compose port "$service" 8080 2>/dev/null | sed 's/.*://')"
+      path=/actuator/health/readiness
+      # Gateway 仅开放正式路由，沿用下方 wait_for_gateway 的公开 JWKS 探针。
+      if [[ "$service" == "gateway" ]]; then path=/.well-known/jwks.json; fi
       status="$(curl --connect-timeout 1 --max-time 2 --silent --output /dev/null \
-        --write-out '%{http_code}' "http://127.0.0.1:$port/actuator/health/readiness" || true)"
+        --write-out '%{http_code}' "http://127.0.0.1:$port$path" || true)"
       if [[ "$status" == "200" ]]; then
         return 0
       fi

@@ -20,7 +20,9 @@ compose() {
 }
 curl() {
   for argument in "$@"; do :; done
-  [[ "$argument" == 'http://127.0.0.1:18080/actuator/health/readiness' ]] || exit 99
+  path=/actuator/health/readiness
+  if [[ "$SERVICE" == gateway ]]; then path=/.well-known/jwks.json; fi
+  [[ "$argument" == "http://127.0.0.1:18080$path" ]] || exit 99
   printf '%s' "$STATUS"
 }
 seq() { printf '1\\n'; }
