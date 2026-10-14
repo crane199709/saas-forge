@@ -7,6 +7,9 @@ import io.saas.forge.tenantaccess.application.brand.BrandProfileChange;
 import io.saas.forge.tenantaccess.application.brand.BrandProfileService;
 import io.saas.forge.tenantaccess.application.brand.BrandAssetDisabledEventFactory;
 import io.saas.forge.tenantaccess.application.brand.BrandAssetPolicyService;
+import io.saas.forge.tenantaccess.application.brand.BrandAssetCleanupService;
+import io.saas.forge.tenantaccess.application.brand.BrandAssetRemovedEventFactory;
+import io.saas.forge.tenantaccess.application.brand.BrandObjectStore;
 import io.saas.forge.tenantaccess.application.tenant.UuidV7Generator;
 import io.saas.forge.tenantaccess.infrastructure.persistence.JdbcBrandAssetRepository;
 import io.saas.forge.tenantaccess.infrastructure.persistence.JdbcBrandProfileRepository;
@@ -48,6 +51,197 @@ class BrandAssetMigrationIT {
             .withEnv("AUDIT_APP_PASSWORD", "audit-app-password")
             .withCopyFileToContainer(MountableFile.forHostPath(repositoryRoot().resolve("deploy/postgresql/bootstrap.sh")),
                     "/docker-entrypoint-initdb.d/01-bootstrap.sh");
+
+    @Test
+    void cleanupSelectionCannotRemoveAnAssetBoundByConcurrentProfileSave() throws Exception {
+        Flyway.configure().dataSource(url(), "tenant_access_migrator", "tenant-access-migrator-password")
+                .locations("classpath:db/migration").load().migrate();
+        var migrator = new JdbcTemplate(new DriverManagerDataSource(
+                url(), "tenant_access_migrator", "tenant-access-migrator-password"));
+        var source = new DriverManagerDataSource(url(), "tenant_access_app", "tenant-access-app-password");
+        var jdbc = new JdbcTemplate(source);
+        var tx = new TransactionTemplate(new DataSourceTransactionManager(source));
+        UUID tenant = migrator.queryForObject(
+                "INSERT INTO tenants (display_name, tenant_status) VALUES ('Binding race', 'ACTIVE') RETURNING id", UUID.class);
+        UUID logo = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        UUID favicon = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        migrator.update("""
+                INSERT INTO tenant_brand_assets (id, tenant_id, kind, object_key, byte_size, width, height)
+                VALUES (?, ?, 'LOGO', ?, 80, 32, 32), (?, ?, 'FAVICON', ?, 80, 32, 32)
+                """, logo, tenant, tenant + "/" + logo + ".png",
+                favicon, tenant, tenant + "/" + favicon + ".png");
+        // 本类共享 Testcontainer；未来时钟只能看到本场景的候选素材。
+        migrator.update("UPDATE tenant_brand_assets SET status = 'REMOVED' WHERE tenant_id <> ? AND status <> 'REMOVED'",
+                tenant);
+        var profile = new BrandProfileChange("Bound", "/brands/" + logo,
+                "/brands/" + favicon, "#123456", "#234567");
+        var saved = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        var workers = Executors.newFixedThreadPool(2);
+        try {
+            var save = workers.submit(() -> tx.execute(status -> {
+                new JdbcBrandProfileRepository(jdbc).save(tenant, 0, profile);
+                saved.countDown();
+                try { assertThat(release.await(5, TimeUnit.SECONDS)).isTrue(); }
+                catch (InterruptedException failure) { Thread.currentThread().interrupt(); throw new IllegalStateException(failure); }
+                return true;
+            }));
+            assertThat(saved.await(5, TimeUnit.SECONDS)).isTrue();
+            var claim = workers.submit(() -> tx.execute(status -> new JdbcBrandAssetRepository(jdbc)
+                    .claim(java.time.Instant.now().plus(java.time.Duration.ofHours(25)))));
+            release.countDown();
+            assertThat(save.get(10, TimeUnit.SECONDS)).isTrue();
+            assertThat(claim.get(10, TimeUnit.SECONDS)).isEmpty();
+            assertThat(migrator.queryForObject("SELECT status FROM tenant_brand_assets WHERE id = ?", String.class, logo))
+                    .isEqualTo("ACTIVE");
+            assertThat(migrator.queryForObject("SELECT status FROM tenant_brand_assets WHERE id = ?", String.class, favicon))
+                    .isEqualTo("ACTIVE");
+        } finally {
+            release.countDown();
+            workers.shutdownNow();
+        }
+    }
+
+    @Test
+    void expiredUnboundAndRetiredReferencesCannotBeSavedEvenBeforeWorkerClaimsThem() {
+        Flyway.configure().dataSource(url(), "tenant_access_migrator", "tenant-access-migrator-password")
+                .locations("classpath:db/migration").load().migrate();
+        var migrator = new JdbcTemplate(new DriverManagerDataSource(
+                url(), "tenant_access_migrator", "tenant-access-migrator-password"));
+        var source = new DriverManagerDataSource(url(), "tenant_access_app", "tenant-access-app-password");
+        var app = new JdbcTemplate(source);
+        var tx = new TransactionTemplate(new DataSourceTransactionManager(source));
+        UUID tenant = migrator.queryForObject(
+                "INSERT INTO tenants (display_name, tenant_status) VALUES ('Expired brand', 'ACTIVE') RETURNING id", UUID.class);
+        UUID expired = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        UUID favicon = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        migrator.update("""
+                INSERT INTO tenant_brand_assets (id, tenant_id, kind, object_key, byte_size, width, height,
+                    uploaded_at)
+                VALUES (?, ?, 'LOGO', ?, 80, 32, 32, now() - interval '25 hours'),
+                    (?, ?, 'FAVICON', ?, 80, 32, 32, now())
+                """, expired, tenant, tenant + "/" + expired + ".png",
+                favicon, tenant, tenant + "/" + favicon + ".png");
+        var profiles = new JdbcBrandProfileRepository(app);
+        var change = new BrandProfileChange("Expired", "/brands/" + expired,
+                "/brands/" + favicon, "#123456", "#234567");
+        assertThatThrownBy(() -> tx.execute(status -> profiles.save(tenant, 0, change)))
+                .isInstanceOf(BrandProfileService.AssetUnavailable.class);
+        migrator.update("UPDATE tenant_brand_assets SET ever_bound_at = now() - interval '8 days', "
+                + "retired_at = now() - interval '8 days' WHERE id = ?", expired);
+        assertThatThrownBy(() -> tx.execute(status -> profiles.save(tenant, 0, change)))
+                .isInstanceOf(BrandProfileService.AssetUnavailable.class);
+        assertThat(migrator.queryForObject("SELECT count(*) FROM tenant_brand_profiles WHERE tenant_id = ?",
+                Integer.class, tenant)).isZero();
+        migrator.update("UPDATE tenant_brand_assets SET status = 'REMOVED' WHERE id = ?", expired);
+    }
+
+    @Test
+    void failedObjectDeletionIsRetriedWithoutPublishingSuccessUntilRemoved() {
+        Flyway.configure().dataSource(url(), "tenant_access_migrator", "tenant-access-migrator-password")
+                .locations("classpath:db/migration").load().migrate();
+        var migrator = new JdbcTemplate(new DriverManagerDataSource(
+                url(), "tenant_access_migrator", "tenant-access-migrator-password"));
+        var source = new DriverManagerDataSource(url(), "tenant_access_app", "tenant-access-app-password");
+        var jdbc = new JdbcTemplate(source);
+        var manager = new DataSourceTransactionManager(source);
+        UUID tenant = migrator.queryForObject(
+                "INSERT INTO tenants (display_name, tenant_status) VALUES ('Retry tenant', 'ACTIVE') RETURNING id", UUID.class);
+        UUID asset = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        migrator.update("""
+                INSERT INTO tenant_brand_assets (id, tenant_id, kind, object_key, byte_size, width, height,
+                    uploaded_at)
+                VALUES (?, ?, 'LOGO', ?, 80, 32, 32, now() - interval '25 hours')
+                """, asset, tenant, tenant + "/" + asset + ".png");
+        var deleted = new java.util.concurrent.atomic.AtomicBoolean();
+        BrandObjectStore objects = new BrandObjectStore() {
+            public void put(String key, byte[] png) { throw new UnsupportedOperationException(); }
+            public byte[] get(String key) { throw new UnsupportedOperationException(); }
+            public void delete(String key) {
+                if (!deleted.getAndSet(true)) throw new IllegalStateException("S3 unavailable");
+            }
+        };
+        var now = java.time.Instant.now();
+        var clock = Clock.fixed(now, java.time.ZoneOffset.UTC);
+        var factory = new BrandAssetRemovedEventFactory(new ObjectMapper(),
+                new UuidV7Generator(clock, new SecureRandom()), clock,
+                "saas.forge.test.tenant-access-service.events");
+        var cleanup = new BrandAssetCleanupService(new JdbcBrandAssetRepository(jdbc), objects,
+                event -> jdbc.update("""
+                        INSERT INTO tenant_access_outbox_events
+                            (event_id, tenant_id, occurred_at, topic, ordering_key, trace_id, event_snapshot, next_attempt_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)
+                        """, event.eventId(), event.tenantId(), java.sql.Timestamp.from(event.occurredAt()),
+                        event.topic(), event.orderingKey(), event.traceId(), event.eventSnapshot(),
+                        java.sql.Timestamp.from(event.occurredAt())),
+                factory, new TransactionTemplate(manager), clock);
+        assertThatThrownBy(cleanup::cleanNext).isInstanceOf(IllegalStateException.class);
+        assertThat(migrator.queryForObject("SELECT status FROM tenant_brand_assets WHERE id = ?", String.class, asset))
+                .isEqualTo("REMOVING");
+        assertThat(jdbc.query("SELECT object_key FROM read_public_brand_asset(?)",
+                (row, index) -> row.getString(1), asset)).isEmpty();
+        assertThat(migrator.queryForObject("SELECT count(*) FROM tenant_access_outbox_events", Integer.class))
+                .isZero();
+        cleanup = new BrandAssetCleanupService(new JdbcBrandAssetRepository(jdbc), objects,
+                event -> jdbc.update("""
+                        INSERT INTO tenant_access_outbox_events
+                            (event_id, tenant_id, occurred_at, topic, ordering_key, trace_id, event_snapshot, next_attempt_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)
+                        """, event.eventId(), event.tenantId(), java.sql.Timestamp.from(event.occurredAt()),
+                        event.topic(), event.orderingKey(), event.traceId(), event.eventSnapshot(),
+                        java.sql.Timestamp.from(event.occurredAt())),
+                factory, new TransactionTemplate(manager), Clock.offset(clock, java.time.Duration.ofMinutes(6)));
+        assertThat(cleanup.cleanNext()).isTrue();
+        assertThat(migrator.queryForObject("SELECT status FROM tenant_brand_assets WHERE id = ?", String.class, asset))
+                .isEqualTo("REMOVED");
+        assertThat(migrator.queryForObject("""
+                SELECT count(*) FROM tenant_access_outbox_events
+                WHERE event_snapshot->>'type' = 'com.saas.forge.brand.asset-removed.v1'
+                """, Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void expiredAssetsAreClaimedOnlyAfterTheirOwnDeadlineAndCurrentBindingSurvives() {
+        Flyway.configure().dataSource(url(), "tenant_access_migrator", "tenant-access-migrator-password")
+                .locations("classpath:db/migration").load().migrate();
+        var migrator = new JdbcTemplate(new DriverManagerDataSource(
+                url(), "tenant_access_migrator", "tenant-access-migrator-password"));
+        var source = new DriverManagerDataSource(url(), "tenant_access_app", "tenant-access-app-password");
+        var app = new JdbcTemplate(source);
+        var tx = new TransactionTemplate(new DataSourceTransactionManager(source));
+        UUID tenant = migrator.queryForObject(
+                "INSERT INTO tenants (display_name, tenant_status) VALUES ('Cleanup tenant', 'ACTIVE') RETURNING id", UUID.class);
+        UUID activeLogo = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        UUID oldLogo = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        UUID favicon = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        UUID disabled = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        for (UUID id : java.util.List.of(activeLogo, oldLogo, favicon, disabled)) {
+            migrator.update("""
+                    INSERT INTO tenant_brand_assets (id, tenant_id, kind, object_key, byte_size, width, height)
+                    VALUES (?, ?, ?, ?, 80, 32, 32)
+                    """, id, tenant, id.equals(favicon) ? "FAVICON" : "LOGO", tenant + "/" + id + ".png");
+        }
+        var profiles = new JdbcBrandProfileRepository(app);
+        var initial = new BrandProfileChange("Brand", "/brands/" + oldLogo,
+                "/brands/" + favicon, "#123456", "#234567");
+        tx.execute(status -> profiles.save(tenant, 0, initial));
+        var replacement = new BrandProfileChange("Brand", "/brands/" + activeLogo,
+                "/brands/" + favicon, "#123456", "#234567");
+        tx.execute(status -> profiles.save(tenant, 1, replacement));
+        migrator.update("UPDATE tenant_brand_assets SET uploaded_at = now() - interval '25 hours' WHERE id = ?", activeLogo);
+        migrator.update("UPDATE tenant_brand_assets SET retired_at = now() - interval '8 days' WHERE id = ?", oldLogo);
+        migrator.update("UPDATE tenant_brand_assets SET status = 'DISABLED', disabled_at = now() - interval '8 days' WHERE id = ?", disabled);
+        UUID first = tx.execute(status -> app.queryForObject("SELECT asset_id FROM claim_expired_brand_asset(?)",
+                UUID.class, java.sql.Timestamp.from(java.time.Instant.now())));
+        UUID second = tx.execute(status -> app.queryForObject("SELECT asset_id FROM claim_expired_brand_asset(?)",
+                UUID.class, java.sql.Timestamp.from(java.time.Instant.now())));
+        assertThat(java.util.Set.of(first, second)).containsExactlyInAnyOrder(oldLogo, disabled);
+        assertThat(migrator.queryForObject("SELECT status FROM tenant_brand_assets WHERE id = ?", String.class, activeLogo))
+                .isEqualTo("ACTIVE");
+        assertThat(app.query("SELECT object_key FROM read_public_brand_asset(?)",
+                (row, index) -> row.getString(1), first)).isEmpty();
+        migrator.update("UPDATE tenant_brand_assets SET status = 'REMOVED' WHERE id IN (?, ?)", first, second);
+    }
 
     @Test
     void platformPolicyFactIsStoredWithDisableAndFailedOutboxRollsItBack() {
