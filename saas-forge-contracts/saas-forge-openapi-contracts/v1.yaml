@@ -1229,6 +1229,72 @@ paths:
         '409': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
 
+  /api/v1/platform/tenants/{tenantId}/closures:
+    post:
+      tags: [Platform tenants]
+      operationId: closeTenant
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Permanently close a Tenant
+      description: Requires a Platform Admin. Tenant target revocation completes before CLOSED is committed. Closure cannot be reversed.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Tenant target revocation completed and the Tenant is CLOSED.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tenant' }
+        '400': { $ref: './common.yaml#/components/responses/ValidationProblem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503':
+          description: Durable closure workflow is pending (`TENANT_CLOSURE_PENDING`).
+          headers:
+            Retry-After:
+              required: true
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+
+  /api/v1/platform/tenants/{tenantId}/closure-recoveries:
+    post:
+      tags: [Platform tenants]
+      operationId: recoverTenantClosure
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Continue an exhausted Tenant Closure
+      description: Requires a Platform Admin. Reuses the existing target revocation request and blocking generation.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: The original closure completed and the Tenant is CLOSED.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tenant' }
+        '400': { $ref: './common.yaml#/components/responses/ValidationProblem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503':
+          description: The recovered closure is still pending (`TENANT_CLOSURE_RECOVERY_PENDING`).
+          headers:
+            Retry-After:
+              required: true
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+
   /api/v1/platform/tenants/{tenantId}/suspensions:
     post:
       tags: [Platform tenants]
@@ -2762,16 +2828,18 @@ components:
       additionalProperties: false
     TenantLifecycle:
       type: object
-      required: [tenantId, state, canSuspend, canResume, canRecoverSuspension, canContinue]
+      required: [tenantId, state, canSuspend, canResume, canRecoverSuspension, canContinue, canClose, canRecoverClosure]
       properties:
         tenantId: { $ref: './common.yaml#/components/schemas/UuidV7' }
         operationId: { $ref: './common.yaml#/components/schemas/UuidV7' }
-        action: { type: string, enum: [SUSPEND, RESUME] }
+        action: { type: string, enum: [SUSPEND, RESUME, CLOSE] }
         state: { type: string, enum: [NONE, PENDING, COMPLETED, RETRY_REQUIRED, RECOVERY_REQUIRED] }
         canSuspend: { type: boolean }
         canResume: { type: boolean }
         canRecoverSuspension: { type: boolean }
         canContinue: { type: boolean }
+        canClose: { type: boolean }
+        canRecoverClosure: { type: boolean }
       additionalProperties: false
     PasswordSetupRequest:
       type: object

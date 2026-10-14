@@ -27,6 +27,10 @@ public class JdbcPermissionAuthority implements PermissionAuthority {
                     WHERE permission.code = ? AND permission.enabled
                       AND member.identity_id = ? AND member.membership_status = 'ENABLED'
                       AND tenant.tenant_status = 'ACTIVE'
+                      AND NOT EXISTS (
+                          SELECT 1 FROM tenant_lifecycle_workflows closure
+                          WHERE closure.tenant_id = tenant.id AND closure.lifecycle_action = 'CLOSE'
+                            AND closure.workflow_status IN ('PENDING', 'RECOVERY_REQUIRED'))
                       AND (tenant.expires_at IS NULL OR tenant.expires_at > statement_timestamp())
                       AND (
                           EXISTS (
@@ -65,6 +69,10 @@ public class JdbcPermissionAuthority implements PermissionAuthority {
                     WHERE member.id = ? AND member.tenant_id = ? AND member.identity_id = ?
                       AND member.membership_status = 'ENABLED'
                       AND tenant.tenant_status = 'ACTIVE'
+                      AND NOT EXISTS (
+                          SELECT 1 FROM tenant_lifecycle_workflows closure
+                          WHERE closure.tenant_id = tenant.id AND closure.lifecycle_action = 'CLOSE'
+                            AND closure.workflow_status IN ('PENDING', 'RECOVERY_REQUIRED'))
                       AND (tenant.expires_at IS NULL OR tenant.expires_at > statement_timestamp())
                       AND role.role_key = 'TENANT_ADMINISTRATOR' AND role.system_managed
                 )

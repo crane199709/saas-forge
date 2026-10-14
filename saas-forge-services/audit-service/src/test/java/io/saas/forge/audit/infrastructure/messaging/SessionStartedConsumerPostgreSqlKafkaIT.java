@@ -487,6 +487,34 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     }
 
     @Test
+    void tenantClosureIsPersistedOnceDespiteKafkaReplay() {
+        String eventId = uuidV7(8);
+        String group = "audit-tenant-closure-" + UUID.randomUUID();
+
+        try (KafkaConsumer<String, String> tenant = consumer(TENANT_TOPIC, group)) {
+            seekToEnd(tenant);
+            send(TENANT_TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                    TenantAccessEventValidatorTest.registeredTenantClosedEvent());
+            var message = pollOne(tenant);
+            tenantListener.consume(message, tenant::commitSync);
+            tenantListener.consume(message, tenant::commitSync);
+        }
+
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        Map<String, Object> record = app.queryForMap("""
+                SELECT action, resource_type, resource_id, result,
+                       metadata ->> 'revokedSessionCount' AS revoked_session_count
+                FROM audit_records WHERE source_event_id = ?::uuid
+                """, eventId);
+        assertEquals("TENANT_CLOSED", record.get("action"));
+        assertEquals("TENANT", record.get("resource_type"));
+        assertEquals(TenantCreatedEventValidatorTest.tenantId(), record.get("resource_id").toString());
+        assertEquals("SUCCESS", record.get("result"));
+        assertEquals("2", record.get("revoked_session_count"));
+    }
+
+    @Test
     void runtimeRoleCanOnlySelectAndInsertAppendOnlyTables() {
         assertThrows(DataAccessException.class, () -> app.update("UPDATE audit_records SET result = result"));
         assertThrows(DataAccessException.class, () -> app.update("DELETE FROM audit_records"));

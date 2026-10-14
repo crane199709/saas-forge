@@ -132,12 +132,12 @@
         SET fence_established = fence_established OR #{fenceMayExist},
             revocation_call_started = CASE WHEN #{fenceMayExist} THEN TRUE ELSE FALSE END,
             workflow_status = CASE
-                WHEN lifecycle_action = 'SUSPEND' AND attempt_count &gt;= #{maximumAttempts}
+                WHEN lifecycle_action IN ('SUSPEND', 'CLOSE') AND attempt_count &gt;= #{maximumAttempts}
                     THEN CASE WHEN fence_established OR #{fenceMayExist}
                               THEN 'RECOVERY_REQUIRED' ELSE 'RETRY_REQUIRED' END
                 ELSE 'PENDING' END,
             recovery_exhausted_at = CASE
-                WHEN lifecycle_action = 'SUSPEND' AND attempt_count &gt;= #{maximumAttempts} THEN #{at}
+                WHEN lifecycle_action IN ('SUSPEND', 'CLOSE') AND attempt_count &gt;= #{maximumAttempts} THEN #{at}
                 ELSE recovery_exhausted_at END,
             next_attempt_at = #{retryAt}, lease_owner = NULL, lease_until = NULL, last_failure = #{failure}
         WHERE workflow_id = #{workflowId} AND workflow_status = 'PENDING'
@@ -177,7 +177,7 @@
         SET workflow_status = 'PENDING', attempt_count = 0, next_attempt_at = #{at},
             lease_owner = NULL, lease_until = NULL, recovery_started_at = #{at},
             iam_recovery_confirmed_at = NULL, recovery_exhausted_at = NULL, last_failure = NULL
-        WHERE workflow_id = #{workflowId} AND lifecycle_action = 'SUSPEND'
+        WHERE workflow_id = #{workflowId} AND lifecycle_action IN ('SUSPEND', 'CLOSE')
           AND workflow_status = 'RECOVERY_REQUIRED'
     </update>
 

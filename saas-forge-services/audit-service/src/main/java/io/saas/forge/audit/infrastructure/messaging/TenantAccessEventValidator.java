@@ -18,6 +18,7 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 public class TenantAccessEventValidator {
     private static final String TENANT_SUSPENDED_TYPE = "com.saas.forge.tenant.suspended.v1";
+    private static final String TENANT_CLOSED_TYPE = "com.saas.forge.tenant.closed.v1";
     private static final String PERMISSION_CATALOG_CHANGED_TYPE = "com.saas.forge.permission.catalog-changed.v1";
     private static final String TENANT_ROLE_CHANGED_TYPE = "com.saas.forge.tenant-role.changed.v1";
     private static final String TENANT_ROLE_CHANGED_SCHEMA =
@@ -96,6 +97,8 @@ public class TenantAccessEventValidator {
                     validateTenantRoleChanged(topic, orderingKey, consumerName, envelope));
             case ORGANIZATION_UNIT_CHANGED_TYPE -> Optional.of(
                     validateOrganizationUnitChanged(topic, orderingKey, consumerName, envelope));
+            case TENANT_CLOSED_TYPE -> Optional.of(
+                    validateTenantClosed(topic, orderingKey, consumerName, envelope));
             case TENANT_SUSPENDED_TYPE -> {
                 validateRegisteredTenantSuspended(topic, orderingKey, consumerName, envelope);
                 requireOtherRegisteredConsumer(TENANT_SUSPENDED_CONSUMER_NAME, consumerName);
@@ -250,6 +253,37 @@ public class TenantAccessEventValidator {
         }
         requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
         requireEquals(tenantId.toString(), orderingKey, "ordering key");
+    }
+
+    private AuditRecord validateTenantClosed(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(TENANT_CLOSED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals("https://saas.forge.io/contracts/events/tenant-closed.v1.schema.json",
+                text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, TENANT_SUSPENDED_DATA_FIELDS, TENANT_SUSPENDED_DATA_FIELDS, "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        UUID actorId = uuidV7(text(data, "actorIdentityId"), "data.actorIdentityId");
+        JsonNode revoked = data.get("revokedSessionCount");
+        if (revoked == null || !revoked.isIntegralNumber() || revoked.asLong() < 0) {
+            throw invalid("data.revokedSessionCount");
+        }
+        requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                TENANT_CLOSED_TYPE, occurredAt, traceId, actorId, tenantId,
+                "TENANT_CLOSED", "TENANT", tenantId,
+                objectMapper.writeValueAsString(Map.of("revokedSessionCount", revoked.asLong())));
     }
 
     private void requireOtherRegisteredConsumer(String registeredConsumer, String consumerName) {

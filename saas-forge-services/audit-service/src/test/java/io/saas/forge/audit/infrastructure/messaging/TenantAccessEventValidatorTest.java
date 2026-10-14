@@ -39,6 +39,21 @@ class TenantAccessEventValidatorTest {
     }
 
     @Test
+    void tenantClosureProducesStrictPersistentAuditFact() {
+        String event = registeredTenantClosedEvent();
+        var record = validator.validate(TenantCreatedEventValidatorTest.TOPIC,
+                TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME, event).orElseThrow();
+        assertEquals("TENANT_CLOSED", record.action());
+        assertEquals("TENANT", record.resourceType());
+        assertEquals(TenantCreatedEventValidatorTest.tenantId(), record.resourceId().toString());
+        assertThrows(InvalidAuditEventException.class, () -> validator.validate(
+                TenantCreatedEventValidatorTest.TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME,
+                event.replace("\"revokedSessionCount\":2", "\"revokedSessionCount\":-1")));
+    }
+
+    @Test
     void invitationChangeProducesAuditRecordWithoutEmailOrToken() {
         String event = invitationCreatedEvent();
 
@@ -211,5 +226,11 @@ class TenantAccessEventValidatorTest {
                         TenantCreatedEventValidatorTest.tenantId(),
                         TenantCreatedEventValidatorTest.tenantId(),
                         TenantCreatedEventValidatorTest.actorIdentityId()).replace("\n", "");
+    }
+
+    static String registeredTenantClosedEvent() {
+        return registeredTenantSuspendedEvent()
+                .replace("tenant.suspended.v1", "tenant.closed.v1")
+                .replace("tenant-suspended.v1", "tenant-closed.v1");
     }
 }
