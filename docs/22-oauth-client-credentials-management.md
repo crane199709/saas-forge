@@ -4,7 +4,7 @@
 
 > 原始交付来源为 [GitHub Issue #64](https://github.com/crane199709/saas-forge/issues/64)；本文的写读边界已按当前实现更新（Client 列表、操作记录与凭据状态查询已作为增量交付，见 [OAuth Client 读取验收记录](acceptance/issue-178-oauth-client-reads.md)）。
 
-本规格对应 [MVP 开发计划第 2 阶段](16-mvp-development-plan.md)中的 OAuth 2.0 Client Credentials 管理条目，建立在已完成的最小 Client Credentials Token 签发、Service Access Token 校验和保留服务 Client bootstrap 之上。领域语言以 [IAM Context](../saas-forge-services/iam-service/CONTEXT.md) 为准，架构取舍见 [ADR 0033](adr/0033-oauth-client-management-uses-immediate-revocation-and-replacement-recovery.md)。
+本规格对应 [MVP 开发计划第 2 阶段](16-mvp-development-plan.md)中的 OAuth 2.0 Client Credentials 管理条目，建立在已完成的最小 Client Credentials Token 签发、Service Access Token 校验和保留服务 Client bootstrap 之上。领域语言以 [IAM Context](../saas-forge-services/iam-service/GLOSSARY.md) 为准，架构取舍见 [ADR 0033](adr/0033-oauth-client-management-uses-immediate-revocation-and-replacement-recovery.md)。
 
 ## 1. 交付边界
 

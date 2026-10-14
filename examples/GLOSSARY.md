@@ -1,6 +1,6 @@
 # Project / Task Example Context
 
-官方示例代表开发者基于 saas-forge 构建的业务应用。各 Tenant 使用同一套业务服务，在权限相同的情况下享有相同功能，各自的业务数据按 Tenant 隔离；Tenant 与 Tenant Context 的定义归属 [Tenant Access](../saas-forge-services/tenant-access-service/CONTEXT.md)。
+官方示例代表开发者基于 saas-forge 构建的业务应用。各 Tenant 使用同一套业务服务，在权限相同的情况下享有相同功能，各自的业务数据按 Tenant 隔离；Tenant 与 Tenant Context 的定义归属 [Tenant Access](../saas-forge-services/tenant-access-service/GLOSSARY.md)。
 
 ## Language
 

@@ -1,6 +1,6 @@
 # 官方示例
 
-官方 Project / Task SaaS 示例用于演示开发者如何接入 saas-forge：各 Tenant 使用同一套业务服务，在权限相同的情况下享有相同功能，各自的业务数据按 Tenant 隔离。领域术语见 [CONTEXT.md](CONTEXT.md)。
+官方 Project / Task SaaS 示例用于演示开发者如何接入 saas-forge：各 Tenant 使用同一套业务服务，在权限相同的情况下享有相同功能，各自的业务数据按 Tenant 隔离。领域术语见 [GLOSSARY.md](GLOSSARY.md)。
 
 ## 当前状态
 

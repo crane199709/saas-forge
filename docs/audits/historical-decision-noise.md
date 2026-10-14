@@ -101,10 +101,10 @@
 
 | # | 来源 | 噪音内容 | 真实情况 | 处置 |
 | --- | --- | --- | --- | --- |
-| B1 | `docs/08-api-design.md:42,43,44,52` | `/api/v1/tenant`（Organization/Role/Permission/邀请）、`/api/v1/runtime`（Permission/Feature/Quota check）、`/api/v1/audit`（查询/导出）、`POST /api/v1/tenant/invitation-activations` | `v1.yaml` 51 条 path 中**零命中**；`v1.yaml:5-7` 自述 runtime 操作 "intentionally absent"；`CONTEXT-MAP.md` 声明无 Audit 公网路由 | 重写资源分组表，三行标"未实现的后续能力" |
+| B1 | `docs/08-api-design.md:42,43,44,52` | `/api/v1/tenant`（Organization/Role/Permission/邀请）、`/api/v1/runtime`（Permission/Feature/Quota check）、`/api/v1/audit`（查询/导出）、`POST /api/v1/tenant/invitation-activations` | `v1.yaml` 51 条 path 中**零命中**；`v1.yaml:5-7` 自述 runtime 操作 "intentionally absent"；`GLOSSARY-MAP.md` 声明无 Audit 公网路由 | 重写资源分组表，三行标"未实现的后续能力" |
 | B2 | `docs/11-database-design.md:54`、`docs/10:51`、`docs/06:17` | `tenant_access_db` 含 `organizations`、`organization_units`、`permissions`、`role_permissions`、`membership_roles`、`invitations`、`capability_registrations` | 全部迁移**零命中**；实际是 `tenants`、`memberships`、`tenant_roles`、`membership_role_assignments`、`tenant_brand_profiles` | 重写表清单 |
 | B3 | `docs/11:55`、`docs/07:5,29` | `plan_features`、`subscription_entitlement_snapshots` | 零命中；实际只有 `plans`、`plan_quotas`、`subscriptions`、`quota_definitions`、`quota_usages`、`quota_operations` | 重写 |
-| B4 | `docs/11:55,91`、`docs/07:5`、`docs/adr/0004`、`entitlement-service/CONTEXT.md:15-16` | Subscription 版本化：`TRIALING`/`ACTIVE`/`SUPERSEDED` + 不可变权益快照 | `V3__create_initial_subscription.sql`：`CHECK (subscription_status = 'ACTIVE')`、`UNIQUE(tenant_id)`；无版本列、无快照表 | 标"目标设计（ADR 0004），当前仅 ACTIVE 单订阅" |
+| B4 | `docs/11:55,91`、`docs/07:5`、`docs/adr/0004`、`entitlement-service/GLOSSARY.md:15-16` | Subscription 版本化：`TRIALING`/`ACTIVE`/`SUPERSEDED` + 不可变权益快照 | `V3__create_initial_subscription.sql`：`CHECK (subscription_status = 'ACTIVE')`、`UNIQUE(tenant_id)`；无版本列、无快照表 | 标"目标设计（ADR 0004），当前仅 ACTIVE 单订阅" |
 | B5 | `docs/11:53` | `iam_db` 用无前缀表名 + `signing_key_metadata` | 实际 `iam_*` 前缀；`iam_signing_keys`；邮箱列是 `normalized_email` | 重写 |
 | B6 | `docs/11:18`、`docs/adr/0018:3` | 所有表 `DEFAULT uuidv7()`，应用插入不传 `id` | 仅部分表有默认值；`subscriptions`、`tenant_roles` 无默认值且 Mapper 显式传 id（`EntitlementBootstrapMapper.xml:100-103`） | 补出例外：ID 须在事务开始前确定时由应用生成（幂等目标、Outbox 聚合引用） |
 | B7 | `docs/02:85`、`docs/11:93` | Audit Record 含 Membership/Request ID/IP/UA；按 tenant/时间/Action/Identity/Resource 建索引 | `V2__create_session_started_audit_records.sql` 无这些列；`action`/`resource_type`/`result` 被 CHECK 限死；除唯一约束外无二级索引。**`docs/11:56` 又禁止伪造这些字段，与 `docs/02:85` 直接冲突** | 重写并消解两文冲突 |
@@ -276,7 +276,7 @@
 - 本地开发文档（6 份 `native-*`、3 份 `local-*`、`development-configuration.md`）
 - 运维文档（`deploy/**`、`scripts/README.md`、`gateway/README.md`、`examples/`）
 - `consoles/` 全部手写文档、包结构、脚本、`tsconfig`
-- 入口文件：`AGENTS.md`、`CONTEXT-MAP.md`、6 个 `CONTEXT.md`、`README.md`、`ROADMAP.md`、`CHANGELOG.md`、`CONTRIBUTING.md`、`SECURITY.md`、`.scratch/`
+- 入口文件：`AGENTS.md`、`GLOSSARY-MAP.md`、6 个 `GLOSSARY.md`、`README.md`、`ROADMAP.md`、`CHANGELOG.md`、`CONTRIBUTING.md`、`SECURITY.md`、`.scratch/`
 
 **机械扫描结论**
 - 手写文档相对链接：146 个文件、8 处损坏，全部集中在 `consoles/shared/README-en.md`。
@@ -284,7 +284,7 @@
 - ADR 取代声明：0012/0016 双向正确；0037/0042/0047 缺前向标注。
 
 **已核验一致、不建议改动**
-`docs/adr/0001`、`0002`、`0005`、`0007`、`0009`、`0010`、`0011`、`0012`、`0013`、`0014`、`0017`、`0021`、`0024`、`0026`–`0030`、`0032`、`0035`、`0038`、`0041`、`0043`、`0044`、`0045`、`0046`、`0048`、`0049`；`CONTEXT-MAP.md` 与 6 个 `CONTEXT.md`；`docs/agents/*.md`；`docs/25`、`docs/console-testing-baseline.md`、`docs/32`；`deploy/README.md`、`deploy/compose/README(.md/-en)`、`deploy/nacos/README.md`、`deploy/helm/README.md`、`deploy/systemd/README.md`、`examples/README.md`、`saas-forge-sdk/README(.md/-en)`、各契约 README；`docs/local-verification.md` 的流程主体（仅 A10 的点状措辞）。
+`docs/adr/0001`、`0002`、`0005`、`0007`、`0009`、`0010`、`0011`、`0012`、`0013`、`0014`、`0017`、`0021`、`0024`、`0026`–`0030`、`0032`、`0035`、`0038`、`0041`、`0043`、`0044`、`0045`、`0046`、`0048`、`0049`；`GLOSSARY-MAP.md` 与 6 个 `GLOSSARY.md`；`docs/agents/*.md`；`docs/25`、`docs/console-testing-baseline.md`、`docs/32`；`deploy/README.md`、`deploy/compose/README(.md/-en)`、`deploy/nacos/README.md`、`deploy/helm/README.md`、`deploy/systemd/README.md`、`examples/README.md`、`saas-forge-sdk/README(.md/-en)`、各契约 README；`docs/local-verification.md` 的流程主体（仅 A10 的点状措辞）。
 
 **实测通过、可作为权威基准**
 `bash scripts/validate-nacos-config.sh`（四环境全绿）、`bash scripts/validate-nacos-production-contract.sh`（exit 0）、`python3 scripts/validate-compose-layout.py`（"8 个独立应用、6 个验收场景、项目/网络/卷隔离"）、`pnpm --dir consoles run validate:i18n`。两次大改名（`refactor(namespace)!`、`build(maven)`）的旧命名残留（`com.saasforge`、`services/`、`sdk/`、`contracts/` 路径）在 `docs/` 之外已清零。

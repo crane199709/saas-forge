@@ -6,7 +6,7 @@ saas-forge 是一个面向单 SaaS 产品、多租户场景的业务无关开源
 
 ## 核心领域概念
 
-领域上下文与权威术语入口见 [CONTEXT-MAP.md](CONTEXT-MAP.md)，以下仅为核心概念摘要：
+领域上下文与权威术语入口见 [GLOSSARY-MAP.md](GLOSSARY-MAP.md)，以下仅为核心概念摘要：
 
 | 概念 | 定义 | 归属与边界 |
 |---|---|---|

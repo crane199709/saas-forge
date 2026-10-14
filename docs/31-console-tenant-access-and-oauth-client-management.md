@@ -13,7 +13,7 @@
 | 租户用户 | 公司被冻结后停止使用受保护功能，闲置页面也及时提示；解除冻结后重新登录 |
 | 平台管理员 | 创建客户应用的接入凭据、保存一次展示的 Secret、处理结果不确定、轮换和停用接入 |
 
-本轮“资源上下文”仅指当前 Tenant、Membership、Accessible Membership 候选与已有品牌解析；不新增套餐、额度、组织或 Project 业务页面，也不因“当前 Session”扩大为设备或历史会话管理。客户界面可以使用“公司”等易懂文案，领域归属仍沿用 [Context Map](../CONTEXT-MAP.md)。
+本轮“资源上下文”仅指当前 Tenant、Membership、Accessible Membership 候选与已有品牌解析；不新增套餐、额度、组织或 Project 业务页面，也不因“当前 Session”扩大为设备或历史会话管理。客户界面可以使用“公司”等易懂文案，领域归属仍沿用 [Glossary Map](../GLOSSARY-MAP.md)。
 
 Platform Console 对 `RESERVED_SERVICE` 仅展示基本信息；创建、轮换、Secret 替代签发与吊销入口只向 `RUNTIME_SERVICE` 开放。平台自身凭据继续通过运维流程维护。本轮收缩的是 Console 入口，不删除或改变既有后端管理契约。
 

@@ -1,20 +1,20 @@
-# SaaS Forge Context Map
+# SaaS Forge Glossary Map
 
 saas-forge 将身份与访问、Tenant 访问、权益、审计、Remote 交付、浏览器入口和共享契约划分为七个上下文。每个领域术语只由一个上下文定义；其他上下文通过本 Map 引用，不复制定义。
 
 ## Contexts
 
-- [IAM](saas-forge-services/iam-service/CONTEXT.md)：拥有 Identity、Credential、用户与服务 Token、会话、Signing Key、OAuth Client 和 Platform Role。
-- [Tenant Access](saas-forge-services/tenant-access-service/CONTEXT.md)：拥有 Tenant、Membership、Tenant Context、Tenant Operation Target、Tenant 生命周期、Tenant Context Switch 和 Invitation。
-- [Entitlement](saas-forge-services/entitlement-service/CONTEXT.md)：拥有 Plan、Subscription、Feature 和 Quota。
-- [Audit](saas-forge-services/audit-service/CONTEXT.md)：拥有只追加 Audit Record。
-- [Remote Delivery](saas-forge-services/remote-delivery-service/CONTEXT.md)：拥有 Remote Manifest、Manifest Review 与 Manifest Enablement；独立服务决策见 [ADR 0055](docs/adr/0055-remote-delivery-owns-manifest-lifecycle.md)，实现尚待交付。
-- [Gateway](gateway/CONTEXT.md)：拥有受控浏览器 Origin、Cookie、CSRF 与浏览器交付边界，不拥有下游领域事实。
-- [Contracts](saas-forge-contracts/CONTEXT.md)：拥有 Committed Fact Event 与 v1 Contract Baseline 等 Published Language 治理，不拥有各服务领域事实。
+- [IAM](saas-forge-services/iam-service/GLOSSARY.md)：拥有 Identity、Credential、用户与服务 Token、会话、Signing Key、OAuth Client 和 Platform Role。
+- [Tenant Access](saas-forge-services/tenant-access-service/GLOSSARY.md)：拥有 Tenant、Membership、Tenant Context、Tenant Operation Target、Tenant 生命周期、Tenant Context Switch 和 Invitation。
+- [Entitlement](saas-forge-services/entitlement-service/GLOSSARY.md)：拥有 Plan、Subscription、Feature 和 Quota。
+- [Audit](saas-forge-services/audit-service/GLOSSARY.md)：拥有只追加 Audit Record。
+- [Remote Delivery](saas-forge-services/remote-delivery-service/GLOSSARY.md)：拥有 Remote Manifest、Manifest Review 与 Manifest Enablement；独立服务决策见 [ADR 0055](docs/adr/0055-remote-delivery-owns-manifest-lifecycle.md)，实现尚待交付。
+- [Gateway](gateway/GLOSSARY.md)：拥有受控浏览器 Origin、Cookie、CSRF 与浏览器交付边界，不拥有下游领域事实。
+- [Contracts](saas-forge-contracts/GLOSSARY.md)：拥有 Committed Fact Event 与 v1 Contract Baseline 等 Published Language 治理，不拥有各服务领域事实。
 
 ## Example 业务上下文
 
-- [Project / Task Example](examples/CONTEXT.md)：代表开发者接入底座的业务应用，拥有租户隔离的 Project 业务记录，不属于上述六个底座上下文。当前已实现 Project/Task CRUD、版本与幂等保护，以及通过 Starter/PostgreSQL RLS 的租户隔离；后端验收范围与结果见 [#216 记录](docs/acceptance/issue-216-acceptance.md)，不代表阶段 3 浏览器闭环。
+- [Project / Task Example](examples/GLOSSARY.md)：代表开发者接入底座的业务应用，拥有租户隔离的 Project 业务记录，不属于上述六个底座上下文。当前已实现 Project/Task CRUD、版本与幂等保护，以及通过 Starter/PostgreSQL RLS 的租户隔离；后端验收范围与结果见 [#216 记录](docs/acceptance/issue-216-acceptance.md)，不代表阶段 3 浏览器闭环。
 
 ## Relationships
 

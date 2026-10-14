@@ -59,7 +59,7 @@
 本仓库的文档跨越了多次实现变更，**文档描述的是目标，不一定是现状**。判断"当前实现了什么"时按以下顺序取证，冲突时以序号小的为准：
 
 1. **代码与配置**：根 `pom.xml` 与各模块 `pom.xml`、Flyway 迁移 SQL、`saas-forge-contracts/saas-forge-openapi-contracts/v1.yaml`、各 `package.json`、`compose.yaml`、`.github/workflows/`。
-2. **`CONTEXT-MAP.md`、各 `CONTEXT.md` 与 `docs/adr/`**：领域语言与已生效的决策。
+2. **`GLOSSARY-MAP.md`、各 `GLOSSARY.md` 与 `docs/adr/`**：领域语言与已生效的决策。
 3. **`README.md` 的「当前状态」段与最新验收记录**：实现进度与实测结果。
 4. **`docs/NN-*.md` 设计文档**：设计基线与约束，不代表已实现；文首状态横幅会指出已知失效范围。
 5. **`docs/archive/` 与 `docs/audits/`**：前者是载体已删除的历史文档，后者是对仓库的时点体检报告。两者**都只能用于追溯，不得作为实现或勾选依据**。
@@ -84,4 +84,4 @@
 
 ### Domain docs
 
-本仓库采用 multi-context（多上下文）布局，以 `CONTEXT-MAP.md` 为入口；探索代码、使用领域术语或评估 ADR 冲突前，先读 `docs/agents/domain.md`。
+本仓库采用 multi-context（多上下文）布局，以 `GLOSSARY-MAP.md` 为入口；探索代码、使用领域术语或评估 ADR 冲突前，先读 `docs/agents/domain.md`。

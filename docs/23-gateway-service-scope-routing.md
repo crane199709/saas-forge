@@ -4,7 +4,7 @@
 
 **实施 Issue：[#75](https://github.com/crane199709/saas-forge/issues/75)**
 
-本规格交付 Gateway 平台级通用路由机制、User/Service Token 路由策略和最小 HTTP 认证 Starter。它不交付任何 Permission、Feature 或 Quota Runtime 业务 operation。架构取舍见 [ADR 0034](adr/0034-controlled-service-registry-and-route-catalog.md)，领域所有权见 [Context Map](../CONTEXT-MAP.md)。
+本规格交付 Gateway 平台级通用路由机制、User/Service Token 路由策略和最小 HTTP 认证 Starter。它不交付任何 Permission、Feature 或 Quota Runtime 业务 operation。架构取舍见 [ADR 0034](adr/0034-controlled-service-registry-and-route-catalog.md)，领域所有权见 [Glossary Map](../GLOSSARY-MAP.md)。
 
 ## 1. 当前事实与差距
 

@@ -40,7 +40,7 @@ Current Session 只证明当前请求的权威身份与平台授权，不保证 
 
 ## 领域所有权与展示
 
-沿用 [Context Map](../CONTEXT-MAP.md) 和既有词汇：IAM 拥有 Identity、Platform Role 和认证事实；Tenant Access 拥有 Tenant、初始管理员关系及初始化工作流；Entitlement 拥有 Subscription、Plan 和 Quota Usage。必要跨服务读取通过正式契约协作，不跨库拼接或复制领域所有权。
+沿用 [Glossary Map](../GLOSSARY-MAP.md) 和既有词汇：IAM 拥有 Identity、Platform Role 和认证事实；Tenant Access 拥有 Tenant、初始管理员关系及初始化工作流；Entitlement 拥有 Subscription、Plan 和 Quota Usage。必要跨服务读取通过正式契约协作，不跨库拼接或复制领域所有权。
 
 Tenant 详情分别展示 Tenant 生命周期状态、初始管理员、当前 Subscription、`max_users` 上限与权威已用量。
 
