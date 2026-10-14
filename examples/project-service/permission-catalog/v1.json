@@ -1,0 +1,16 @@
+{
+  "source": "example-service",
+  "revision": 1,
+  "permissions": [
+    { "code": "example:project:create", "semanticId": "createProject", "enabled": true },
+    { "code": "example:project:list", "semanticId": "listProjects", "enabled": true },
+    { "code": "example:project:read", "semanticId": "getProject", "enabled": true },
+    { "code": "example:project:update", "semanticId": "updateProject", "enabled": true },
+    { "code": "example:project:delete", "semanticId": "deleteProject", "enabled": true },
+    { "code": "example:task:create", "semanticId": "createTask", "enabled": true },
+    { "code": "example:task:list", "semanticId": "listTasks", "enabled": true },
+    { "code": "example:task:read", "semanticId": "getTask", "enabled": true },
+    { "code": "example:task:update", "semanticId": "updateTask", "enabled": true },
+    { "code": "example:task:delete", "semanticId": "deleteTask", "enabled": true }
+  ]
+}
