@@ -786,6 +786,29 @@ class EntitlementBootstrapPostgreSqlIT {
     }
 
     @Test
+    void membershipDisableCanOnlyReleaseOneSeatWithStableOperationId() throws SQLException {
+        UUID actor = uuidV7(170);
+        UUID tenant = uuidV7(171);
+        UUID caller = uuidV7(172);
+        PlanResult plan = activePlan(actor, 173, 1);
+        initialSubscriptions.create(actor, uuidV7(177), tenant, plan.id(), null, null);
+        quotaCommands.consume(caller, tenant, "max_users", 1, uuidV7(178),
+                QuotaOperationPurpose.TENANT_ADMIN_INITIALIZATION);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> quotaCommands.consume(caller, tenant, "max_users", 1, uuidV7(179),
+                        QuotaOperationPurpose.MEMBERSHIP_DISABLE));
+        UUID releaseId = uuidV7(180);
+        assertEquals(0, quotaCommands.release(caller, tenant, "max_users", 1, releaseId,
+                QuotaOperationPurpose.MEMBERSHIP_DISABLE).usage());
+        assertTrue(quotaCommands.release(caller, tenant, "max_users", 1, releaseId,
+                QuotaOperationPurpose.MEMBERSHIP_DISABLE).replayed());
+        assertEquals(0, subscriptionQueries.get(tenant).maxUsersUsed());
+        assertTrue(scalar("SELECT string_agg(event_snapshot::text, ' ') FROM entitlement_outbox_events")
+                .contains("MEMBERSHIP_DISABLE"));
+    }
+
+    @Test
     void concurrentConsumeNeverExceedsCurrentSubscriptionLimit() throws Exception {
         UUID actor = uuidV7(90);
         UUID tenant = uuidV7(91);
