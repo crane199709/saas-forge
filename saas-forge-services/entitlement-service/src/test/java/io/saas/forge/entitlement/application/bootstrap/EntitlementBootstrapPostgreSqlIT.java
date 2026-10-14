@@ -809,6 +809,35 @@ class EntitlementBootstrapPostgreSqlIT {
     }
 
     @Test
+    void membershipEnableConsumesOneSeatAndCompensatesWithIndependentStableOperations() throws SQLException {
+        UUID actor = uuidV7(181);
+        UUID tenant = uuidV7(182);
+        UUID caller = uuidV7(183);
+        PlanResult plan = activePlan(actor, 184, 1);
+        initialSubscriptions.create(actor, uuidV7(188), tenant, plan.id(), null, null);
+        quotaCommands.consume(caller, tenant, "max_users", 1, uuidV7(189),
+                QuotaOperationPurpose.TENANT_ADMIN_INITIALIZATION);
+        QuotaCommandException full = assertThrows(QuotaCommandException.class,
+                () -> quotaCommands.consume(caller, tenant, "max_users", 1, uuidV7(190),
+                        QuotaOperationPurpose.MEMBERSHIP_ENABLE));
+        assertEquals(QuotaOperationOutcome.QUOTA_EXCEEDED, full.outcome());
+        quotaCommands.release(caller, tenant, "max_users", 1, uuidV7(191),
+                QuotaOperationPurpose.MEMBERSHIP_DISABLE);
+
+        UUID consumeId = uuidV7(192);
+        assertEquals(1, quotaCommands.consume(caller, tenant, "max_users", 1, consumeId,
+                QuotaOperationPurpose.MEMBERSHIP_ENABLE).usage());
+        assertTrue(quotaCommands.consume(caller, tenant, "max_users", 1, consumeId,
+                QuotaOperationPurpose.MEMBERSHIP_ENABLE).replayed());
+        UUID compensationId = uuidV7(193);
+        assertEquals(0, quotaCommands.release(caller, tenant, "max_users", 1, compensationId,
+                QuotaOperationPurpose.MEMBERSHIP_ENABLE).usage());
+        assertTrue(quotaCommands.release(caller, tenant, "max_users", 1, compensationId,
+                QuotaOperationPurpose.MEMBERSHIP_ENABLE).replayed());
+        assertEquals(0, subscriptionQueries.get(tenant).maxUsersUsed());
+    }
+
+    @Test
     void concurrentConsumeNeverExceedsCurrentSubscriptionLimit() throws Exception {
         UUID actor = uuidV7(90);
         UUID tenant = uuidV7(91);

@@ -826,6 +826,71 @@ paths:
         '403': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
 
+  /api/v1/members/{membershipId}/organization-units:
+    parameters:
+      - name: membershipId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+    get:
+      tags: [Members]
+      operationId: listMembershipOrganizationUnits
+      x-saas.forge-service: tenant-access-service
+      summary: Read all OrganizationUnit associations of one Membership in the current Tenant
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Zero or more unit identifiers, including for a disabled Membership.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipOrganizationUnitList' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+    post:
+      tags: [Members]
+      operationId: addMembershipOrganizationUnit
+      x-saas.forge-service: tenant-access-service
+      summary: Associate a Membership with one OrganizationUnit in the current Tenant
+      security: [{ UserBearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddMembershipOrganizationUnitRequest' }
+      responses:
+        '201': { description: Association created and committed. }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/members/{membershipId}/organization-units/{unitId}:
+    parameters:
+      - name: membershipId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      - name: unitId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+    delete:
+      tags: [Members]
+      operationId: removeMembershipOrganizationUnit
+      x-saas.forge-service: tenant-access-service
+      summary: Remove one OrganizationUnit association from a Membership
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '204': { description: Association removed and committed. }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
   /api/v1/members/{membershipId}/roles:
     parameters:
       - name: membershipId
@@ -973,6 +1038,60 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MembershipDisableProgress' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/members/{membershipId}/enables:
+    parameters:
+      - name: membershipId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+    get:
+      tags: [Members]
+      operationId: readMembershipEnable
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Read latest Membership enable progress
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current member status and latest enable operation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipEnableProgress' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+    post:
+      tags: [Members]
+      operationId: enableMembership
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Re-enable a fully disabled Membership with one new max_users seat
+      description: Requires a completed disable/release; a stable operation key prevents duplicate consumption. Old sessions remain revoked. The member becomes accessible only after its matching Fence generation is released.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      responses:
+        '200':
+          description: Member enabled, quota consumed and matching Fence released.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipEnableProgress' }
+        '202':
+          description: Quota, compensation or Fence release remains pending; the member cannot establish a new context yet.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipEnableProgress' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
         '401': { $ref: './common.yaml#/components/responses/Problem' }
         '403': { $ref: './common.yaml#/components/responses/Problem' }
         '404': { $ref: './common.yaml#/components/responses/Problem' }
@@ -3164,9 +3283,18 @@ components:
         membershipStatus: { type: string, enum: [ENABLED, DISABLED] }
         pending: { type: boolean }
         recoveryRequired: { type: boolean }
+    MembershipEnableProgress:
+      type: object
+      additionalProperties: false
+      required: [operationStatus, membershipStatus, pending]
+      properties:
+        operationId: { $ref: './common.yaml#/components/schemas/UuidV7', nullable: true }
+        operationStatus: { type: string, enum: [NONE, CONSUMING, COMPENSATION_PENDING, FENCE_PENDING, COMPLETED, QUOTA_REJECTED, COMPENSATED] }
+        membershipStatus: { type: string, enum: [ENABLED, DISABLED] }
+        pending: { type: boolean }
     Member:
       type: object
-      required: [membershipId, identityId, status, administrator, disableStatus]
+      required: [membershipId, identityId, status, administrator, disableStatus, enableStatus]
       properties:
         membershipId: { $ref: './common.yaml#/components/schemas/UuidV7' }
         identityId: { $ref: './common.yaml#/components/schemas/UuidV7' }
@@ -3174,6 +3302,7 @@ components:
         invitedEmail: { type: string, format: email, nullable: true }
         administrator: { type: boolean }
         disableStatus: { type: string, enum: [NONE, REVOKING, RECOVERY_REQUIRED, RELEASE_PENDING, COMPLETED] }
+        enableStatus: { type: string, enum: [NONE, CONSUMING, COMPENSATION_PENDING, FENCE_PENDING, COMPLETED, QUOTA_REJECTED, COMPENSATED] }
     MemberRoleAssignment:
       type: object
       additionalProperties: false
@@ -3190,6 +3319,21 @@ components:
         items:
           type: array
           items: { $ref: '#/components/schemas/MemberRoleAssignment' }
+    MembershipOrganizationUnitList:
+      type: object
+      additionalProperties: false
+      required: [unitIds]
+      properties:
+        unitIds:
+          type: array
+          uniqueItems: true
+          items: { $ref: './common.yaml#/components/schemas/UuidV7' }
+    AddMembershipOrganizationUnitRequest:
+      type: object
+      additionalProperties: false
+      required: [unitId]
+      properties:
+        unitId: { $ref: './common.yaml#/components/schemas/UuidV7' }
     Invitation:
       type: object
       additionalProperties: false
