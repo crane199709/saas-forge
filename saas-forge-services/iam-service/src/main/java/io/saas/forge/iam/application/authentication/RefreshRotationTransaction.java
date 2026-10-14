@@ -88,6 +88,9 @@ public class RefreshRotationTransaction {
                 presentedToken.digest(), nextToken.digest(), idempotencyKeyDigest,
                 expectedContextVersion,
                 membershipId, tenantId, accessToken == null ? null : accessToken.jti(), recoveryWindow, at);
+        if (rotation.family() != null) {
+            issuanceFence.assertIdentityIssuable(rotation.family().identityId());
+        }
         if (rotation.status() == RefreshRotation.Status.RECOVERED && rotation.replacedAccessJti() != null) {
             AccessTokenIssuance previous = issuances.findByJti(rotation.replacedAccessJti())
                     .orElseThrow(() -> new IllegalStateException("恢复目标 Access Token Issuance 不存在"));

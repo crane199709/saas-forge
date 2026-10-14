@@ -63,6 +63,7 @@ public class TenantContextSwitchTransaction {
         if (locked.contextVersion() != expectedContextVersion) {
             throw new IllegalStateException("Tenant Context Switch 的 Family Context 已变化");
         }
+        issuanceFence.assertIdentityIssuable(locked.identityId());
         issuanceFence.assertIssuable(targetMembershipId, targetTenantId);
         List<AccessTokenIssuance> active = issuances.findUnexpiredByFamilyId(locked.id(), switchedAt);
         indexAccessTokens(active, switchedAt);

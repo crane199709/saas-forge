@@ -14,6 +14,8 @@ public interface RevocationFenceMapper {
 
     RevocationFenceRow findActiveMembership(@Param("membershipId") UUID membershipId);
 
+    RevocationFenceRow findActiveIdentity(@Param("identityId") UUID identityId);
+
     RevocationFenceRow insert(@Param("row") RevocationFenceRow row);
 
     int release(

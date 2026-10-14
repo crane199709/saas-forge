@@ -212,11 +212,28 @@ public final class RedisRevocationIndex implements RevocationIndex {
 
     @Override
     public boolean isUserTokenFenced(RevocationFenceTarget target) {
+        if (target.tenantId() == null) {
+            return isIdentityFenced(target.identityId());
+        }
         try {
             Long result = redis.execute(CHECK_FENCE, List.of(
                     readyKey,
                     fenceKey(RevocationFenceTarget.tenant(target.tenantId())),
                     fenceKey(target)));
+            if (result == null || result < 0) {
+                throw new RevocationIndexUnavailableException();
+            }
+            return result == 1;
+        } catch (DataAccessException exception) {
+            throw unavailable(exception);
+        }
+    }
+
+    @Override
+    public boolean isIdentityFenced(UUID identityId) {
+        try {
+            Long result = redis.execute(CHECK, List.of(readyKey,
+                    fenceKey(RevocationFenceTarget.identity(identityId))));
             if (result == null || result < 0) {
                 throw new RevocationIndexUnavailableException();
             }

@@ -35,7 +35,7 @@ final class ReceiverTokenAuthenticators {
             boolean revoked;
             try {
                 revoked = userRevocations.isRevoked(
-                        claims.jti(), claims.kid(), claims.membershipId(), claims.tenantId());
+                        claims.jti(), claims.kid(), claims.membershipId(), claims.tenantId(), claims.identityId());
             } catch (RuntimeException exception) {
                 throw new TokenRevocationStatusUnavailableException(TokenKind.USER, exception);
             }

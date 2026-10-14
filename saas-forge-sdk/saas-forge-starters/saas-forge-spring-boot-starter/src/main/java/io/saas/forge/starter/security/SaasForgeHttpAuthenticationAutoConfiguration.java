@@ -129,7 +129,19 @@ public class SaasForgeHttpAuthenticationAutoConfiguration {
 
         @Bean
         UserAccessTokenContextRevocationChecker saasForgeUserRevocations(RedisReceiverTokenRevocationChecker revocations) {
-            return revocations::isUserTokenRevoked;
+            return new UserAccessTokenContextRevocationChecker() {
+                @Override
+                public boolean isRevoked(java.util.UUID jti, String kid, java.util.UUID membershipId,
+                        java.util.UUID tenantId) {
+                    return revocations.isUserTokenRevoked(jti, kid, membershipId, tenantId);
+                }
+
+                @Override
+                public boolean isRevoked(java.util.UUID jti, String kid, java.util.UUID membershipId,
+                        java.util.UUID tenantId, java.util.UUID identityId) {
+                    return revocations.isUserTokenRevoked(jti, kid, membershipId, tenantId, identityId);
+                }
+            };
         }
 
         @Bean

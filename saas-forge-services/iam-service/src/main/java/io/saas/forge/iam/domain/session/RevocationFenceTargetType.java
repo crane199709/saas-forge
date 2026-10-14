@@ -2,7 +2,8 @@ package io.saas.forge.iam.domain.session;
 
 public enum RevocationFenceTargetType {
     MEMBERSHIP("membership"),
-    TENANT("tenant");
+    TENANT("tenant"),
+    IDENTITY("identity");
 
     private final String keySegment;
 

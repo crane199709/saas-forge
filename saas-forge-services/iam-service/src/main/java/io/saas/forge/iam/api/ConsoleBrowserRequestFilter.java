@@ -44,7 +44,8 @@ public final class ConsoleBrowserRequestFilter extends OncePerRequestFilter {
                 || mutation && (!Collections.list(request.getHeaders("X-SF-CSRF")).equals(java.util.List.of("1")) || !json(request))) {
             reject(request, response, 403, "BROWSER_REQUEST_REJECTED"); return;
         }
-        if (mutation && !Set.of("/api/v2/auth/bootstrap", "/api/v2/auth/password-setups").contains(path)) {
+        if (mutation && !Set.of("/api/v2/auth/bootstrap", "/api/v2/auth/password-setups",
+                "/api/v2/auth/password-recovery-requests", "/api/v2/auth/password-recoveries").contains(path)) {
             var revisions = Collections.list(request.getHeaders("If-Match"));
             if (revisions.isEmpty()) { reject(request, response, 428, "SESSION_REVISION_REQUIRED"); return; }
             if (revisions.size() != 1 || !revisions.get(0).matches("\"(0|[1-9][0-9]*)\"")) {

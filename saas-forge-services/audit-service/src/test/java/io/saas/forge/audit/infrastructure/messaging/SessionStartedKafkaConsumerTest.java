@@ -25,7 +25,8 @@ class SessionStartedKafkaConsumerTest {
         var objectMapper = new tools.jackson.databind.ObjectMapper();
         var validator = new IamSessionEventValidator(objectMapper,
                 new SessionStartedEventValidator(objectMapper, "saas.forge.test.iam-service.events"),
-                new TenantContextSwitchedEventValidator(objectMapper, "saas.forge.test.iam-service.events"));
+                new TenantContextSwitchedEventValidator(objectMapper, "saas.forge.test.iam-service.events"),
+                new PasswordRecoveredEventValidator(objectMapper, "saas.forge.test.iam-service.events"));
         var message = new ConsumerRecord<String, String>(
                 "saas.forge.test.iam-service.events", 0, 1,
                 "019535d9-0001-7000-8000-000000000002",
