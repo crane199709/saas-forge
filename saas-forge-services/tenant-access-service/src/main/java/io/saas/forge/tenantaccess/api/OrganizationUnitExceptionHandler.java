@@ -8,7 +8,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice(assignableTypes = OrganizationUnitController.class)
+@RestControllerAdvice(assignableTypes = {OrganizationUnitController.class, MembershipOrganizationController.class})
 public class OrganizationUnitExceptionHandler {
     @ExceptionHandler(OrganizationUnitService.Forbidden.class)
     ProblemDetail forbidden() { return problem(HttpStatus.FORBIDDEN, "ORGANIZATION_PERMISSION_DENIED"); }

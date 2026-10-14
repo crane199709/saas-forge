@@ -17,7 +17,13 @@ class HttpRouteCatalogLoaderTest {
                 .count();
 
         assertEquals(HttpRouteCatalogLoader.SUPPORTED_SCHEMA_VERSION, catalog.schemaVersion());
-        assertEquals(109 + acceptanceRoutes, catalog.routes().size());
+        // #225 增加匿名 Password Setup operation，#227 增加三个需认证的成员组织归属 operation。
+        assertEquals(113 + acceptanceRoutes, catalog.routes().size());
+        var setup = catalog.routes().stream()
+                .filter(route -> route.operationId().equals("requestInvitationPasswordSetup"))
+                .findFirst().orElseThrow();
+        assertEquals("tenant-access-service", setup.serviceId());
+        assertEquals(HttpRouteCatalog.CredentialRequirement.ANONYMOUS, setup.credentialRequirement());
         var clients = catalog.routes().stream().filter(route -> route.operationId().equals("listOAuthClients"))
                 .findFirst().orElseThrow();
         assertEquals("iam-service", clients.serviceId());
@@ -28,7 +34,9 @@ class HttpRouteCatalogLoaderTest {
             assertEquals(HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, route.credentialRequirement());
         }
         for (String operation : java.util.List.of("listOrganizationUnits", "createOrganizationUnit",
-                "renameOrganizationUnit", "moveOrganizationUnit", "deleteOrganizationUnit")) {
+                "renameOrganizationUnit", "moveOrganizationUnit", "deleteOrganizationUnit",
+                "listMembershipOrganizationUnits", "addMembershipOrganizationUnit",
+                "removeMembershipOrganizationUnit")) {
             var route = catalog.routes().stream().filter(value -> value.operationId().equals(operation))
                     .findFirst().orElseThrow();
             assertEquals("tenant-access-service", route.serviceId());
