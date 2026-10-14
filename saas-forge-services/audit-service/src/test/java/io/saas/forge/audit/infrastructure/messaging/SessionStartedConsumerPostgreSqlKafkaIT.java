@@ -119,7 +119,8 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
         var tenantContextSwitched = new TenantContextSwitchedEventValidator(objectMapper, TOPIC);
         listener = new IamSessionKafkaConsumer(
                 new IamSessionEventValidator(objectMapper, sessionStarted, tenantContextSwitched,
-                        new PasswordRecoveredEventValidator(objectMapper, TOPIC)), service);
+                        new PasswordRecoveredEventValidator(objectMapper, TOPIC),
+                        new PlatformAdminGrantedEventValidator(objectMapper, TOPIC)), service);
         var tenantCreated = new TenantCreatedEventValidator(objectMapper, TENANT_TOPIC);
         meters = new SimpleMeterRegistry();
         tenantListener = new TenantAccessKafkaConsumer(

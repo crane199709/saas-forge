@@ -16,6 +16,7 @@ tags:
   - name: Platform tenants
   - name: Platform entitlement bootstrap
   - name: OAuth clients
+  - name: Platform administrators
   - name: Permissions
 paths:
   /api/v1/auth/session:
@@ -1907,6 +1908,52 @@ paths:
         '403': { $ref: './common.yaml#/components/responses/Problem' }
         '409': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
+  /api/v1/platform/administrators:
+    get:
+      tags: [Platform administrators]
+      operationId: listPlatformAdministrators
+      x-saas.forge-service: iam-service
+      summary: List current fixed PLATFORM_ADMIN assignments
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current assignments and authoritative password readiness.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlatformAdministratorPage' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+    post:
+      tags: [Platform administrators]
+      operationId: grantPlatformAdministrator
+      x-saas.forge-service: iam-service
+      summary: Grant fixed PLATFORM_ADMIN to an email identity
+      description: |
+        Confirms or creates an IAM Identity without Tenant Membership. A first Setup
+        delivery is attempted only for an Identity with no Credential history. An
+        accepted delivery does not mean a password was established. Retry the same
+        Idempotency-Key after an uncertain response or delivery failure.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlatformAdminGrantRequest' }
+      responses:
+        '200':
+          description: Role grant fact and current Setup delivery result.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlatformAdminGrantResult' }
+        '400': { $ref: './common.yaml#/components/responses/ValidationProblem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
   /api/v1/platform/oauth-clients/{clientId}/credential-status:
     get:
       tags: [OAuth clients]
@@ -3213,6 +3260,41 @@ components:
           items: { $ref: '#/components/schemas/EnabledRemoteManifest' }
         nextCursor: { type: [string, 'null'], maxLength: 256 }
         hasMore: { type: boolean }
+    PlatformAdminGrantRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+    PlatformAdminGrantResult:
+      type: object
+      additionalProperties: false
+      required: [identityId, roleAssignmentId, newlyGranted, setupState]
+      properties:
+        identityId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        roleAssignmentId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        newlyGranted: { type: boolean }
+        setupState:
+          type: string
+          enum: [PENDING, DELIVERED, PASSWORD_READY, RECOVERY_REQUIRED, ALREADY_GRANTED]
+    PlatformAdministrator:
+      type: object
+      additionalProperties: false
+      required: [identityId, roleAssignmentId, email, passwordReady, assignedAt]
+      properties:
+        identityId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        roleAssignmentId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        email: { type: string, format: email }
+        passwordReady: { type: boolean }
+        assignedAt: { $ref: '#/components/schemas/Timestamp' }
+    PlatformAdministratorPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/PlatformAdministrator' }
     RuntimeScope:
       type: string
       enum:

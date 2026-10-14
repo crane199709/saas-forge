@@ -12,16 +12,19 @@ public class IamSessionEventValidator {
     private final SessionStartedEventValidator sessionStarted;
     private final TenantContextSwitchedEventValidator tenantContextSwitched;
     private final PasswordRecoveredEventValidator passwordRecovered;
+    private final PlatformAdminGrantedEventValidator platformAdminGranted;
 
     public IamSessionEventValidator(
             ObjectMapper objectMapper,
             SessionStartedEventValidator sessionStarted,
             TenantContextSwitchedEventValidator tenantContextSwitched,
-            PasswordRecoveredEventValidator passwordRecovered) {
+            PasswordRecoveredEventValidator passwordRecovered,
+            PlatformAdminGrantedEventValidator platformAdminGranted) {
         this.objectMapper = objectMapper;
         this.sessionStarted = sessionStarted;
         this.tenantContextSwitched = tenantContextSwitched;
         this.passwordRecovered = passwordRecovered;
+        this.platformAdminGranted = platformAdminGranted;
     }
 
     public AuditRecord validate(String topic, String orderingKey, String consumerName, String payload) {
@@ -42,6 +45,8 @@ public class IamSessionEventValidator {
                     tenantContextSwitched.validate(topic, orderingKey, consumerName, payload);
             case PasswordRecoveredEventValidator.EVENT_TYPE ->
                     passwordRecovered.validate(topic, orderingKey, consumerName, payload);
+            case PlatformAdminGrantedEventValidator.EVENT_TYPE ->
+                    platformAdminGranted.validate(topic, orderingKey, consumerName, payload);
             default -> throw new InvalidAuditEventException("IAM Session type 未获当前消费者处理授权");
         };
     }
