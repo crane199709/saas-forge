@@ -17,8 +17,8 @@ class HttpRouteCatalogLoaderTest {
                 .count();
 
         assertEquals(HttpRouteCatalogLoader.SUPPORTED_SCHEMA_VERSION, catalog.schemaVersion());
-        // #225 匿名 Password Setup、#226 角色管理、#228 成员禁用、#227 组织归属和 #229 成员启用操作均计入目录。
-        assertEquals(121 + acceptanceRoutes, catalog.routes().size());
+        // #225 匿名 Password Setup、#226 角色管理、#228 成员禁用、#227 组织归属、#229 成员启用和 #237 品牌 Profile 均计入目录。
+        assertEquals(123 + acceptanceRoutes, catalog.routes().size());
         var setup = catalog.routes().stream()
                 .filter(route -> route.operationId().equals("requestInvitationPasswordSetup"))
                 .findFirst().orElseThrow();
@@ -38,7 +38,8 @@ class HttpRouteCatalogLoaderTest {
                 "listMembershipOrganizationUnits", "addMembershipOrganizationUnit",
                 "removeMembershipOrganizationUnit", "listMembershipRoles", "assignMembershipRole",
                 "revokeMembershipRole", "readMembershipDisable", "disableMembership",
-                "recoverMembershipDisable", "readMembershipEnable", "enableMembership")) {
+                "recoverMembershipDisable", "readMembershipEnable", "enableMembership",
+                "getTenantBrandProfile", "saveTenantBrandProfile")) {
             var route = catalog.routes().stream().filter(value -> value.operationId().equals(operation))
                     .findFirst().orElseThrow();
             assertEquals("tenant-access-service", route.serviceId());
