@@ -6,6 +6,14 @@ import io.saas.forge.tenantaccess.application.invitation.InvitationDeliveryExcep
 import io.saas.forge.tenantaccess.application.invitation.InvitationMailer;
 import io.saas.forge.tenantaccess.application.invitation.InvitationRepository;
 import io.saas.forge.tenantaccess.application.invitation.InvitationService;
+import io.saas.forge.tenantaccess.application.invitation.InvitationAcceptanceRepository;
+import io.saas.forge.tenantaccess.application.invitation.InvitationAcceptanceService;
+import io.saas.forge.tenantaccess.application.invitation.InvitationQuotaGateway;
+import io.saas.forge.tenantaccess.infrastructure.grpc.GrpcInvitationQuotaGateway;
+import io.saas.forge.tenantaccess.infrastructure.security.IamServiceAccessTokenProvider;
+import io.saas.forge.contracts.entitlement.quota.v1.QuotaCommandServiceGrpc;
+import io.grpc.Channel;
+import org.springframework.beans.factory.annotation.Qualifier;
 import io.saas.forge.tenantaccess.application.tenant.UuidV7Generator;
 import io.saas.forge.tenantaccess.domain.outbox.OutboxEventRepository;
 import java.net.URI;
@@ -24,6 +32,20 @@ import tools.jackson.databind.ObjectMapper;
 
 @Configuration(proxyBeanMethods = false)
 public class InvitationConfiguration {
+    @Bean
+    InvitationQuotaGateway invitationQuotaGateway(
+            @Qualifier("entitlementServiceChannel") Channel channel, IamServiceAccessTokenProvider tokens) {
+        return new GrpcInvitationQuotaGateway(QuotaCommandServiceGrpc.newBlockingStub(channel),
+                tokens::quotaWriteToken);
+    }
+
+    @Bean
+    InvitationAcceptanceService invitationAcceptanceService(InvitationAcceptanceRepository repository,
+            InvitationQuotaGateway quota, OutboxEventRepository outbox, InvitationEventFactory events,
+            PlatformTransactionManager manager, UuidV7Generator ids, Clock clock) {
+        return new InvitationAcceptanceService(repository, quota, outbox, events,
+                new TransactionTemplate(manager), ids, clock);
+    }
     @Bean
     InvitationEventFactory invitationEventFactory(ObjectMapper json, UuidV7Generator ids,
             @Value("${saas.forge.tenant-access.outbox-topic}") String topic) {

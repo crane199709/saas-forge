@@ -526,6 +526,24 @@ paths:
         '403': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
 
+  /api/v1/permissions/effective:
+    get:
+      tags: [Permissions]
+      operationId: listEffectivePermissions
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Read current effective Permissions for the authenticated Membership
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current authoritative effective codes; an empty list is a valid Membership.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EffectivePermissions' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
   /api/v1/permissions/decision:
     get:
       tags: [Permissions]
@@ -649,6 +667,24 @@ paths:
         '403': { $ref: './common.yaml#/components/responses/Problem' }
         '404': { $ref: './common.yaml#/components/responses/Problem' }
         '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/members:
+    get:
+      tags: [Members]
+      operationId: listMembers
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Read up to 100 Memberships in the current Tenant Context
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Read-only member directory; only Tenant Administrators can list it.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberPage' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
 
   /api/v1/invitations:
@@ -2596,6 +2632,21 @@ components:
       required: [email]
       properties:
         email: { type: string, format: email, minLength: 3, maxLength: 320 }
+    MemberPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Member' }
+    Member:
+      type: object
+      required: [membershipId, identityId, status]
+      properties:
+        membershipId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        identityId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        status: { type: string, enum: [ENABLED, DISABLED] }
+        invitedEmail: { type: string, format: email, nullable: true }
     Invitation:
       type: object
       additionalProperties: false
@@ -2667,6 +2718,14 @@ components:
         items:
           type: array
           items: { $ref: '#/components/schemas/PermissionEntry' }
+    EffectivePermissions:
+      type: object
+      additionalProperties: false
+      required: [codes]
+      properties:
+        codes:
+          type: array
+          items: { type: string, maxLength: 160 }
     PermissionDecision:
       type: object
       additionalProperties: false
@@ -3333,6 +3392,7 @@ components:
         - 'runtime:read'
         - 'runtime:quota:write'
         - 'tenant-access:membership:read'
+        - 'tenant-access:invitation:accept'
         - 'tenant-access:tenant:read'
         - 'iam:identity:write'
         - 'iam:password-setup:write'

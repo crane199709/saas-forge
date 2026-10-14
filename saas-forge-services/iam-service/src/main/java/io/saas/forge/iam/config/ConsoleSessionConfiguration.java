@@ -1,6 +1,11 @@
 package io.saas.forge.iam.config;
 
 import io.saas.forge.iam.application.authentication.*;
+import io.saas.forge.iam.infrastructure.grpc.GrpcInvitationAcceptanceGateway;
+import io.saas.forge.iam.infrastructure.security.ReservedIamServiceAccessTokenProvider;
+import io.saas.forge.contracts.tenantaccess.invitation.v1.InvitationAcceptanceServiceGrpc;
+import io.grpc.Channel;
+import org.springframework.beans.factory.annotation.Qualifier;
 import io.saas.forge.iam.domain.authorization.PlatformRoleAssignmentRepository;
 import io.saas.forge.iam.domain.identity.IdentityRepository;
 import io.saas.forge.iam.domain.outbox.OutboxEventRepository;
@@ -15,6 +20,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(name = "security.browser.console-enabled", havingValue = "true")
 public class ConsoleSessionConfiguration {
+    @Bean
+    InvitationAcceptanceGateway invitationAcceptanceGateway(
+            @Qualifier("tenantAccessMembershipChannel") Channel channel,
+            ReservedIamServiceAccessTokenProvider tokens) {
+        return new GrpcInvitationAcceptanceGateway(
+                InvitationAcceptanceServiceGrpc.newBlockingStub(channel), tokens::invitationAcceptToken);
+    }
     @Bean
     ConsoleSessionAccess consoleSessionAccess(ConsoleSessionRepository slots, RefreshTokenFamilyRepository families,
             RefreshTokenIssuer tokens, Clock clock) {
@@ -64,7 +76,7 @@ public class ConsoleSessionConfiguration {
             OutboxEventRepository outbox, SessionStartedEventFactory events, PlatformTransactionManager manager,
             UuidV7Generator keys, Clock clock, UserTokenIssuanceFence issuanceFence) {
         return new ConsoleSessionService(access, slots, families, issuances,
-                new PasswordAuthenticator(identities, protection, verifier, clock), authority, termination,
+                new PasswordAuthenticator(identities, protection, verifier, clock), identities, authority, termination,
                 refreshTokens, accessTokens, leases, rotations, outbox, events, new TransactionTemplate(manager), keys, clock, issuanceFence);
     }
 }

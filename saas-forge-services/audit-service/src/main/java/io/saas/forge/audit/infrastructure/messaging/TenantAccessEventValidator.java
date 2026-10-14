@@ -88,7 +88,8 @@ public class TenantAccessEventValidator {
                     tenantDetailsUpdated.validate(topic, orderingKey, consumerName, envelope));
             case "com.saas.forge.invitation.created.v1",
                  "com.saas.forge.invitation.resent.v1",
-                 "com.saas.forge.invitation.revoked.v1" -> Optional.of(
+                 "com.saas.forge.invitation.revoked.v1",
+                 "com.saas.forge.invitation.accepted.v1" -> Optional.of(
                     invitationEvents.validate(topic, orderingKey, consumerName, envelope));
             case PERMISSION_CATALOG_CHANGED_TYPE -> Optional.of(
                     validatePermissionCatalogChanged(topic, orderingKey, consumerName, envelope));
