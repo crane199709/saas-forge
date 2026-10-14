@@ -329,6 +329,42 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     }
 
     @Test
+    void membershipOrganizationChangeIsPersistedOnceAfterKafkaRedelivery() {
+        String eventId = uuidV7(121);
+        String tenantId = TenantCreatedEventValidatorTest.tenantId();
+        String actorId = TenantCreatedEventValidatorTest.actorIdentityId();
+        String membershipId = uuidV7(122);
+        String unitId = uuidV7(123);
+        String payload = """
+                {"specversion":"1.0","id":"%s","source":"urn:saas.forge:tenant-access-service",
+                "type":"com.saas.forge.membership.organization-unit-changed.v1","subject":"%s",
+                "time":"2026-08-28T10:15:30Z","datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/membership-organization-unit-changed.v1.schema.json",
+                "data":{"tenantId":"%s","membershipId":"%s","unitId":"%s",
+                "actorIdentityId":"%s","action":"ADDED"}}
+                """.formatted(eventId, tenantId, tenantId, membershipId, unitId, actorId).replace("\n", "");
+        String group = "membership-organization-redelivery-" + UUID.randomUUID();
+        try (var consumer = consumer(TENANT_TOPIC, group)) {
+            seekToEnd(consumer);
+            send(TENANT_TOPIC, tenantId, payload);
+            var message = pollOne(consumer);
+            tenantListener.consume(message, consumer::commitSync);
+            tenantListener.consume(message, () -> {});
+        }
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        var row = app.queryForMap("""
+                SELECT action, resource_type, resource_id, actor_identity_id, tenant_id
+                FROM audit_records WHERE source_event_id = ?::uuid
+                """, eventId);
+        assertEquals("MEMBERSHIP_ORGANIZATION_UNIT_ADDED", row.get("action"));
+        assertEquals("MEMBERSHIP", row.get("resource_type"));
+        assertEquals(membershipId, row.get("resource_id").toString());
+        assertEquals(actorId, row.get("actor_identity_id").toString());
+        assertEquals(tenantId, row.get("tenant_id").toString());
+    }
+
+    @Test
     void tenantDetailsUpdatedFactIsPersistedOnceAfterKafkaRedelivery() {
         String eventId = "019535d9-0001-7000-8000-000000000009";
         String group = "tenant-details-redelivery-" + UUID.randomUUID();
