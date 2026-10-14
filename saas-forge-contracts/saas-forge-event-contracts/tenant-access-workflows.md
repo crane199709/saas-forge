@@ -20,6 +20,9 @@
 | `com.saas.forge.plan.activated.v1` | Entitlement | `planId`、`code`、`status`、`actorIdentityId` |
 | `com.saas.forge.subscription.created.v1` | Entitlement | `subscriptionId`、`tenantId`、`planId`、`status`、`endsAt`、`actorIdentityId` |
 | `com.saas.forge.invitation.accepted.v1` | Tenant Access | `invitationId`、`tenantId`、`membershipId`、`identityId`、`actorIdentityId` |
+| `com.saas.forge.invitation.created.v1` | Tenant Access | `invitationId`、`tenantId`、`actorIdentityId`、`expiresAt`；不含邮箱或令牌 |
+| `com.saas.forge.invitation.resent.v1` | Tenant Access | `invitationId`、`tenantId`、`actorIdentityId`、`expiresAt`；仅代表链接已轮换，不代表 SMTP 成功 |
+| `com.saas.forge.invitation.revoked.v1` | Tenant Access | `invitationId`、`tenantId`、`actorIdentityId`、`expiresAt` |
 | `com.saas.forge.iam.tenant-context-switched.v1` | IAM | `identityId`、`previousMembershipId`、`membershipId`、`tenantId` |
 | `com.saas.forge.membership.disabled.v1` | Tenant Access | `membershipId`、`tenantId`、`identityId`、`actorIdentityId`、`quotaReleasePending` |
 | `com.saas.forge.tenant.suspended.v1` | Tenant Access | `tenantId`、`actorIdentityId`、`revokedSessionCount` |

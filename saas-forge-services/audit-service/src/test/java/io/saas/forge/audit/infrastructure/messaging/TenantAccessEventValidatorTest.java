@@ -38,6 +38,36 @@ class TenantAccessEventValidatorTest {
         assertTrue(result.orElseThrow().metadata().contains("New name"));
     }
 
+    @Test
+    void invitationChangeProducesAuditRecordWithoutEmailOrToken() {
+        String event = invitationCreatedEvent();
+
+        var record = validator.validate(TenantCreatedEventValidatorTest.TOPIC,
+                TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME, event).orElseThrow();
+        assertEquals("INVITATION_CREATED", record.action());
+        assertEquals("INVITATION", record.resourceType());
+        assertEquals("019535d9-0001-7000-8000-000000000011", record.resourceId().toString());
+        assertThrows(InvalidAuditEventException.class, () -> validator.validate(
+                TenantCreatedEventValidatorTest.TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME,
+                event.replace("\"expiresAt\":", "\"token\":\"secret\",\"expiresAt\":")));
+    }
+
+    static String invitationCreatedEvent() {
+        return """
+                {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000012",
+                "source":"urn:saas.forge:tenant-access-service","type":"com.saas.forge.invitation.created.v1",
+                "subject":"%s","time":"2026-08-28T10:15:30Z",
+                "datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/invitation-created.v1.schema.json",
+                "data":{"invitationId":"019535d9-0001-7000-8000-000000000011","tenantId":"%s",
+                "actorIdentityId":"%s","expiresAt":"2026-09-04T10:15:30Z"}}
+                """.formatted(TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidatorTest.actorIdentityId()).replace("\n", "");
+    }
+
     static String tenantDetailsUpdatedEvent() {
         return """
                 {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000009",

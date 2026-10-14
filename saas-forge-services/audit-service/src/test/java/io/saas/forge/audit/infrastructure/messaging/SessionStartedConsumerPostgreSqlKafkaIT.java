@@ -258,6 +258,28 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     }
 
     @Test
+    void invitationCreatedFactIsPersistedOnceAfterKafkaRedelivery() {
+        String eventId = "019535d9-0001-7000-8000-000000000012";
+        String group = "invitation-redelivery-" + UUID.randomUUID();
+        try (KafkaConsumer<String, String> consumer = consumer(TENANT_TOPIC, group)) {
+            seekToEnd(consumer);
+            send(TENANT_TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                    TenantAccessEventValidatorTest.invitationCreatedEvent());
+            ConsumerRecord<String, String> message = pollOne(consumer);
+            tenantListener.consume(message, consumer::commitSync);
+            tenantListener.consume(message, () -> {});
+        }
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        assertEquals("INVITATION_CREATED", app.queryForObject(
+                "SELECT action FROM audit_records WHERE source_event_id=?::uuid", String.class, eventId));
+        String metadata = app.queryForObject(
+                "SELECT metadata::text FROM audit_records WHERE source_event_id=?::uuid", String.class, eventId);
+        org.junit.jupiter.api.Assertions.assertFalse(metadata.contains("email"));
+        org.junit.jupiter.api.Assertions.assertFalse(metadata.contains("token"));
+    }
+
+    @Test
     void tenantRoleChangeIsPersistedOnceAfterKafkaRedelivery() {
         String eventId = "019535d9-0001-7000-8000-000000000010";
         String group = "tenant-role-redelivery-" + UUID.randomUUID();

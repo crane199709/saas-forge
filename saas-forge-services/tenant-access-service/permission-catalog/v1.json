@@ -1,0 +1,7 @@
+{
+  "source": "tenant-access-service",
+  "revision": 1,
+  "permissions": [
+    { "code": "tenant-access:invitation:manage", "semanticId": "manageInvitations", "enabled": true }
+  ]
+}
