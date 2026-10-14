@@ -9,8 +9,15 @@ import java.nio.file.Path;
 import java.util.UUID;
 import io.saas.forge.sdk.tenant.TenantContextSnapshot;
 import io.saas.forge.tenantaccess.infrastructure.persistence.JdbcPermissionAuthority;
+import io.saas.forge.tenantaccess.infrastructure.persistence.JdbcTenantRoleRepository;
+import io.saas.forge.tenantaccess.application.authorization.TenantRoleService;
+import io.saas.forge.tenantaccess.application.tenant.UuidV7Generator;
+import io.saas.forge.tenantaccess.domain.outbox.OutboxEventRepository;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.MethodOrderer;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
@@ -19,8 +26,10 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
+import tools.jackson.databind.ObjectMapper;
 
 @Testcontainers
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class PermissionCatalogMigrationIT {
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18")
@@ -39,6 +48,129 @@ class PermissionCatalogMigrationIT {
                     "/docker-entrypoint-initdb.d/01-bootstrap.sh");
 
     @Test
+    @Order(2)
+    void customRoleGrantsOnlyItsTenantAndRejectsAssignedDeletion() throws Exception {
+        Flyway.configure().dataSource(url(), "tenant_access_migrator", "tenant-access-migrator-password")
+                .locations("classpath:db/migration").load().migrate();
+        UUID tenantId;
+        UUID identityId;
+        UUID membershipId;
+        try (var connection = DriverManager.getConnection(url(), "tenant_access_migrator", "tenant-access-migrator-password");
+                var statement = connection.createStatement()) {
+            try (var row = statement.executeQuery("INSERT INTO tenants (display_name, tenant_status) VALUES ('Role test', 'ACTIVE') RETURNING id")) {
+                row.next(); tenantId = row.getObject(1, UUID.class);
+            }
+            try (var row = statement.executeQuery("SELECT uuidv7()")) {
+                row.next(); identityId = row.getObject(1, UUID.class);
+            }
+            try (var row = statement.executeQuery("INSERT INTO memberships (tenant_id, identity_id, membership_status) VALUES ('"
+                    + tenantId + "', '" + identityId + "', 'ENABLED') RETURNING id")) {
+                row.next(); membershipId = row.getObject(1, UUID.class);
+            }
+            statement.execute("INSERT INTO permission_catalog (code, semantic_id, source, enabled, first_revision, last_revision, updated_at) "
+                    + "VALUES ('example:project:list', 'listProjects', 'example-service', true, 1, 1, now()) "
+                    + "ON CONFLICT (code) DO NOTHING");
+        }
+        var dataSource = new DriverManagerDataSource(url(), "tenant_access_app", "tenant-access-app-password");
+        var jdbc = new JdbcTemplate(dataSource);
+        var transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+        var roles = new JdbcTenantRoleRepository(jdbc);
+        var authority = new JdbcPermissionAuthority(jdbc);
+        var context = new TenantContextSnapshot(identityId, membershipId, tenantId);
+        UUID roleId = transactions.execute(status -> roles.create(context.tenantId(), "REPORT_READER",
+                java.util.List.of("example:project:list")));
+        assertThat(Boolean.TRUE.equals(transactions.execute(status -> authority.allowed(context, "example:project:list")))).isFalse();
+        transactions.executeWithoutResult(status -> {
+            jdbc.queryForObject("SELECT set_config('app.tenant_id', ?, true)", String.class, tenantId.toString());
+            jdbc.update("INSERT INTO membership_role_assignments (tenant_id, membership_id, role_id, assigned_at) VALUES (?, ?, ?, now())",
+                    tenantId, membershipId, roleId);
+        });
+        assertThat(Boolean.TRUE.equals(transactions.execute(status -> authority.allowed(context, "example:project:list")))).isTrue();
+        assertThatThrownBy(() -> transactions.executeWithoutResult(status -> roles.delete(tenantId, roleId)))
+                .hasMessageContaining("ROLE_ASSIGNED");
+        transactions.executeWithoutResult(status -> roles.update(tenantId, roleId, "REPORT_READER", java.util.List.of()));
+        assertThat(Boolean.TRUE.equals(transactions.execute(status -> authority.allowed(context, "example:project:list")))).isFalse();
+        java.util.List<JdbcTenantRoleRepository.Role> listed = transactions.execute(status -> roles.list(tenantId));
+        assertThat(listed).hasSize(1);
+        UUID otherTenant;
+        UUID systemRole;
+        try (var connection = DriverManager.getConnection(url(), "tenant_access_migrator", "tenant-access-migrator-password");
+                var statement = connection.createStatement()) {
+            try (var row = statement.executeQuery("INSERT INTO tenants (display_name, tenant_status) VALUES ('Other role tenant', 'ACTIVE') RETURNING id")) {
+                row.next(); otherTenant = row.getObject(1, UUID.class);
+            }
+            try (var row = statement.executeQuery("INSERT INTO tenant_roles (id, tenant_id, role_key, system_managed, created_at) "
+                    + "VALUES (uuidv7(), '" + tenantId + "', 'TENANT_ADMINISTRATOR', true, now()) RETURNING id")) {
+                row.next(); systemRole = row.getObject(1, UUID.class);
+            }
+        }
+        assertThatThrownBy(() -> transactions.execute(status -> roles.find(otherTenant, roleId)))
+                .hasMessageContaining("ROLE_NOT_FOUND");
+        assertThatThrownBy(() -> transactions.executeWithoutResult(status -> roles.delete(tenantId, systemRole)))
+                .hasMessageContaining("SYSTEM_ROLE_IMMUTABLE");
+        assertThatThrownBy(() -> transactions.execute(status -> roles.update(tenantId, systemRole,
+                "RENAMED_ADMIN", java.util.List.of())))
+                .hasMessageContaining("SYSTEM_ROLE_IMMUTABLE");
+    }
+
+    @Test
+    @Order(3)
+    void committedRoleMutationWritesOutboxAndFailedOutboxRollsBackRole() throws Exception {
+        UUID tenantId;
+        UUID actorId;
+        UUID membershipId;
+        try (var connection = DriverManager.getConnection(url(), "tenant_access_migrator", "tenant-access-migrator-password");
+                var statement = connection.createStatement()) {
+            try (var row = statement.executeQuery("INSERT INTO tenants (display_name, tenant_status) VALUES ('Role outbox', 'ACTIVE') RETURNING id")) {
+                row.next(); tenantId = row.getObject(1, UUID.class);
+            }
+            try (var row = statement.executeQuery("SELECT uuidv7()")) {
+                row.next(); actorId = row.getObject(1, UUID.class);
+            }
+            try (var row = statement.executeQuery("INSERT INTO memberships (tenant_id, identity_id, membership_status) VALUES ('"
+                    + tenantId + "', '" + actorId + "', 'ENABLED') RETURNING id")) {
+                row.next(); membershipId = row.getObject(1, UUID.class);
+            }
+            try (var row = statement.executeQuery("INSERT INTO tenant_roles (id, tenant_id, role_key, system_managed, created_at) "
+                    + "VALUES (uuidv7(), '" + tenantId + "', 'TENANT_ADMINISTRATOR', true, now()) RETURNING id")) {
+                row.next();
+                statement.execute("INSERT INTO membership_role_assignments (tenant_id, membership_id, role_id, assigned_at) "
+                        + "VALUES ('" + tenantId + "', '" + membershipId + "', '" + row.getObject(1, UUID.class) + "', now())");
+            }
+        }
+        var dataSource = new DriverManagerDataSource(url(), "tenant_access_app", "tenant-access-app-password");
+        var jdbc = new JdbcTemplate(dataSource);
+        var transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+        OutboxEventRepository outbox = event -> jdbc.update("""
+                INSERT INTO tenant_access_outbox_events
+                (event_id, tenant_id, occurred_at, topic, ordering_key, trace_id, event_snapshot, next_attempt_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)
+                """, event.eventId(), event.tenantId(), event.occurredAt().atOffset(java.time.ZoneOffset.UTC), event.topic(),
+                event.orderingKey(), event.traceId(), event.eventSnapshot(), event.occurredAt().atOffset(java.time.ZoneOffset.UTC));
+        var ids = new UuidV7Generator(java.time.Clock.systemUTC(), new java.security.SecureRandom());
+        var roles = new JdbcTenantRoleRepository(jdbc);
+        var authority = new JdbcPermissionAuthority(jdbc);
+        var context = new TenantContextSnapshot(actorId, membershipId, tenantId);
+        var service = new TenantRoleService(authority, roles, outbox, ids, java.time.Clock.systemUTC(),
+                new ObjectMapper(), "saas.forge.dev.tenant-access-service.events");
+        transactions.execute(status -> service.create(context, "AUDITED_READER", java.util.List.of("example:project:list")));
+        String eventType = transactions.execute(status -> {
+            jdbc.queryForObject("SELECT set_config('app.tenant_id', ?, true)", String.class, tenantId.toString());
+            return jdbc.queryForObject("SELECT event_snapshot->>'type' FROM tenant_access_outbox_events WHERE tenant_id = ?",
+                    String.class, tenantId);
+        });
+        assertThat(eventType).isEqualTo("com.saas.forge.tenant-role.changed.v1");
+        var failed = new TenantRoleService(authority, roles, event -> { throw new IllegalStateException("outbox unavailable"); },
+                ids, java.time.Clock.systemUTC(), new ObjectMapper(), "saas.forge.dev.tenant-access-service.events");
+        assertThatThrownBy(() -> transactions.execute(status -> failed.create(context, "ROLLED_BACK",
+                java.util.List.of("example:project:list")))).hasMessageContaining("outbox unavailable");
+        java.util.List<JdbcTenantRoleRepository.Role> remaining = transactions.execute(status -> roles.list(tenantId));
+        assertThat(remaining).extracting(JdbcTenantRoleRepository.Role::roleKey)
+                .contains("AUDITED_READER").doesNotContain("ROLLED_BACK");
+    }
+
+    @Test
+    @Order(1)
     void releaseImportPreservesOmittedPermissionsAndRejectsSemanticReuse() throws Exception {
         Flyway.configure().dataSource(url(), "tenant_access_migrator", "tenant-access-migrator-password")
                 .locations("classpath:db/migration").load().migrate();
