@@ -2094,6 +2094,33 @@ paths:
         '409': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
 
+  /api/v1/platform/administrators/{identityId}:
+    delete:
+      tags: [Platform administrators]
+      operationId: revokePlatformAdministrator
+      x-saas.forge-service: iam-service
+      summary: Revoke one fixed PLATFORM_ADMIN assignment and its platform tokens
+      description: |
+        Ends current Platform Context families and revokes every unexpired historical
+        Platform jti, including one in a family now switched to Tenant. Current legal
+        Tenant sessions remain valid. Retry the same Idempotency-Key after an uncertain
+        response; a failed revocation-index delivery is recovered from durable facts.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { description: Role and platform token revocation effective }
+        '400': { $ref: './common.yaml#/components/responses/ValidationProblem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
   /api/v1/platform/oauth-clients/{clientId}/credential-status:
     get:
       tags: [OAuth clients]
