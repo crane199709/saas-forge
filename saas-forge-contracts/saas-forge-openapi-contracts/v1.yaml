@@ -894,6 +894,60 @@ paths:
         '409': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
 
+  /api/v1/members/{membershipId}/enables:
+    parameters:
+      - name: membershipId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+    get:
+      tags: [Members]
+      operationId: readMembershipEnable
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Read latest Membership enable progress
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current member status and latest enable operation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipEnableProgress' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+    post:
+      tags: [Members]
+      operationId: enableMembership
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Re-enable a fully disabled Membership with one new max_users seat
+      description: Requires a completed disable/release; a stable operation key prevents duplicate consumption. Old sessions remain revoked. The member becomes accessible only after its matching Fence generation is released.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      responses:
+        '200':
+          description: Member enabled, quota consumed and matching Fence released.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipEnableProgress' }
+        '202':
+          description: Quota, compensation or Fence release remains pending; the member cannot establish a new context yet.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipEnableProgress' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
   /api/v1/invitations:
     get:
       tags: [Invitations]
@@ -3050,9 +3104,18 @@ components:
         membershipStatus: { type: string, enum: [ENABLED, DISABLED] }
         pending: { type: boolean }
         recoveryRequired: { type: boolean }
+    MembershipEnableProgress:
+      type: object
+      additionalProperties: false
+      required: [operationStatus, membershipStatus, pending]
+      properties:
+        operationId: { $ref: './common.yaml#/components/schemas/UuidV7', nullable: true }
+        operationStatus: { type: string, enum: [NONE, CONSUMING, COMPENSATION_PENDING, FENCE_PENDING, COMPLETED, QUOTA_REJECTED, COMPENSATED] }
+        membershipStatus: { type: string, enum: [ENABLED, DISABLED] }
+        pending: { type: boolean }
     Member:
       type: object
-      required: [membershipId, identityId, status, administrator, disableStatus]
+      required: [membershipId, identityId, status, administrator, disableStatus, enableStatus]
       properties:
         membershipId: { $ref: './common.yaml#/components/schemas/UuidV7' }
         identityId: { $ref: './common.yaml#/components/schemas/UuidV7' }
@@ -3060,6 +3123,7 @@ components:
         invitedEmail: { type: string, format: email, nullable: true }
         administrator: { type: boolean }
         disableStatus: { type: string, enum: [NONE, REVOKING, RECOVERY_REQUIRED, RELEASE_PENDING, COMPLETED] }
+        enableStatus: { type: string, enum: [NONE, CONSUMING, COMPENSATION_PENDING, FENCE_PENDING, COMPLETED, QUOTA_REJECTED, COMPENSATED] }
     MemberRoleAssignment:
       type: object
       additionalProperties: false
