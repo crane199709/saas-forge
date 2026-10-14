@@ -141,6 +141,39 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     }
 
     @Test
+    void platformAdminGrantIsPersistedOnceAcrossKafkaRedelivery() {
+        String eventId = uuidV7(993);
+        String identityId = identityId();
+        String actorId = uuidV7(994);
+        String assignmentId = uuidV7(995);
+        String payload = """
+                {"specversion":"1.0","id":"%s","source":"urn:saas.forge:iam-service",
+                "type":"com.saas.forge.iam.platform-admin-granted.v1","subject":"%s",
+                "time":"2026-08-28T10:16:00Z","datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/iam-platform-admin-granted.v1.schema.json",
+                "data":{"identityId":"%s","actorIdentityId":"%s","roleAssignmentId":"%s",
+                "roleKey":"PLATFORM_ADMIN","occurredAt":"2026-08-28T10:16:00Z"}}
+                """.formatted(eventId, identityId, identityId, actorId, assignmentId);
+        try (KafkaConsumer<String, String> kafka = consumer("audit-platform-admin-" + UUID.randomUUID())) {
+            seekToEnd(kafka);
+            send(identityId, payload);
+            ConsumerRecord<String, String> message = pollOne(kafka);
+            listener.consume(message, kafka::commitSync);
+            listener.consume(message, () -> {});
+        }
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        Map<String, Object> record = app.queryForMap("""
+                SELECT action, resource_type, resource_id, actor_identity_id
+                FROM audit_records WHERE source_event_id = ?::uuid
+                """, eventId);
+        assertEquals("PLATFORM_ADMIN_GRANTED", record.get("action"));
+        assertEquals("PLATFORM_ROLE_ASSIGNMENT", record.get("resource_type"));
+        assertEquals(assignmentId, record.get("resource_id").toString());
+        assertEquals(actorId, record.get("actor_identity_id").toString());
+    }
+
+    @Test
     void passwordRecoveredIsPersistedOnceAcrossKafkaRedelivery() {
         String eventId = uuidV7(990);
         String identityId = identityId();
@@ -362,7 +395,7 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
 
     @Test
     void rollsBackDeduplicationWhenAuditRecordInsertFailsAndDoesNotAcknowledge() {
-        String eventId = uuidV7(12);
+        String eventId = uuidV7(1200);
         admin.execute("""
                 CREATE FUNCTION fail_audit_record_insert() RETURNS trigger LANGUAGE plpgsql AS $$
                 BEGIN RAISE EXCEPTION 'forced audit insert failure'; END

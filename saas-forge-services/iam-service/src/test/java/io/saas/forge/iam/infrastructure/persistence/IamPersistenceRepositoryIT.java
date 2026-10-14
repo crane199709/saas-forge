@@ -26,6 +26,10 @@ import io.saas.forge.iam.application.bootstrap.ReservedServiceClientReplacementI
 import io.saas.forge.iam.application.bootstrap.ReservedServiceClientReplacementResult;
 import io.saas.forge.iam.application.bootstrap.ReservedServiceClientReplacementService;
 import io.saas.forge.iam.application.authentication.UuidV7Generator;
+import io.saas.forge.iam.application.authorization.PlatformAdminGrantTransaction;
+import io.saas.forge.iam.application.authorization.PlatformAdminGrantedEventFactory;
+import io.saas.forge.iam.application.authorization.PlatformAdminSetupCaller;
+import io.saas.forge.iam.domain.authorization.PlatformRoleAssignmentRepository;
 import io.saas.forge.iam.application.client.OAuthClientCreatedEventFactory;
 import io.saas.forge.iam.domain.client.ReservedServiceClientReplacementRepository;
 import io.saas.forge.iam.domain.outbox.OutboxEventRepository;
@@ -135,6 +139,12 @@ class IamPersistenceRepositoryIT {
     private IdentityRepository identities;
 
     @Autowired
+    private PlatformRoleAssignmentRepository platformRoles;
+
+    @Autowired
+    private OutboxEventRepository outboxEvents;
+
+    @Autowired
     private RefreshTokenFamilyRepository refreshTokenFamilies;
 
     @Autowired
@@ -177,6 +187,34 @@ class IamPersistenceRepositoryIT {
                 .locations(iamMigrationLocation())
                 .load()
                 .migrate();
+    }
+
+    @Test
+    void platformAdminGrantPersistsRoleAndOutboxOnceOnRequestReplay() {
+        Instant at = Instant.parse("2026-08-21T08:00:00Z");
+        Identity actor = identities.create(Identity.register("platform-grant-actor@example.test", null, at));
+        Identity target = identities.create(Identity.register("platform-grant-target@example.test", null, at));
+        identities.create(PasswordCredential.regular(target.id(), Argon2idPasswordHash.of(ARGON2ID_HASH), at));
+        UUID requestId = UUID.fromString("0198c9d5-0f25-7b21-8d67-31c8652d4c90");
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        var grant = new PlatformAdminGrantTransaction(jdbc, identities, platformRoles, outboxEvents,
+                new PlatformAdminGrantedEventFactory(new tools.jackson.databind.ObjectMapper(),
+                        new UuidV7Generator(Clock.fixed(at, ZoneOffset.UTC), new SecureRandom()), "test"),
+                new PlatformAdminSetupCaller(jdbc), Clock.fixed(at, ZoneOffset.UTC));
+        var transactions = new TransactionTemplate(transactionManager);
+
+        var first = transactions.execute(status -> grant.grant(actor.id(), requestId,
+                "platform-grant-target@example.test", null));
+        var replay = transactions.execute(status -> grant.grant(actor.id(), requestId,
+                "PLATFORM-GRANT-TARGET@example.test", null));
+
+        assertNotNull(first);
+        assertEquals(first, replay);
+        assertTrue(first.newlyGranted());
+        assertTrue(platformRoles.hasActiveAssignment(target.id(), "PLATFORM_ADMIN", at));
+        assertEquals(1, jdbc.queryForObject("""
+                SELECT count(*) FROM iam_outbox_events WHERE ordering_key = ?
+                """, Integer.class, target.id().toString()));
     }
 
     @Test
