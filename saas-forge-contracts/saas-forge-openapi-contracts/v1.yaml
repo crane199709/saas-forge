@@ -400,6 +400,113 @@ paths:
         '502': { $ref: './common.yaml#/components/responses/Problem' }
         '504': { $ref: './common.yaml#/components/responses/Problem' }
 
+  /api/v1/organization/units:
+    get:
+      tags: [Organization]
+      operationId: listOrganizationUnits
+      x-saas.forge-service: tenant-access-service
+      summary: List every tree in the current Tenant Organization
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current Organization units
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrganizationUnitList' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+    post:
+      tags: [Organization]
+      operationId: createOrganizationUnit
+      x-saas.forge-service: tenant-access-service
+      summary: Create a root or child OrganizationUnit
+      security: [{ UserBearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOrganizationUnitRequest' }
+      responses:
+        '201':
+          description: Created unit
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrganizationUnit' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/organization/units/{unitId}:
+    parameters:
+      - name: unitId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+    patch:
+      tags: [Organization]
+      operationId: renameOrganizationUnit
+      x-saas.forge-service: tenant-access-service
+      summary: Rename an OrganizationUnit
+      security: [{ UserBearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RenameOrganizationUnitRequest' }
+      responses:
+        '200':
+          description: Updated unit
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrganizationUnit' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+    delete:
+      tags: [Organization]
+      operationId: deleteOrganizationUnit
+      x-saas.forge-service: tenant-access-service
+      summary: Delete an empty leaf OrganizationUnit
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/organization/units/{unitId}/move:
+    post:
+      tags: [Organization]
+      operationId: moveOrganizationUnit
+      x-saas.forge-service: tenant-access-service
+      summary: Move an entire subtree or promote it to a root
+      description: Omit parentId to promote the unit to a root.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MoveOrganizationUnitRequest' }
+      responses:
+        '200':
+          description: Moved unit
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrganizationUnit' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+
   /api/v1/permissions:
     get:
       tags: [Permissions]
@@ -2408,6 +2515,42 @@ components:
         items:
           type: array
           items: { $ref: '#/components/schemas/Invitation' }
+    OrganizationUnit:
+      type: object
+      additionalProperties: false
+      required: [id, name, memberCount]
+      properties:
+        id: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        parentId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        memberCount: { type: integer, minimum: 0 }
+    OrganizationUnitList:
+      type: object
+      additionalProperties: false
+      required: [organizationId, items]
+      properties:
+        organizationId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OrganizationUnit' }
+    CreateOrganizationUnitRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        parentId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+    RenameOrganizationUnitRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+    MoveOrganizationUnitRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        parentId: { $ref: './common.yaml#/components/schemas/UuidV7' }
     PermissionEntry:
       type: object
       additionalProperties: false
