@@ -142,7 +142,7 @@ class ProjectHttpIT {
         assertThat(permissionCalls.get() - before).isEqualTo(2);
     }
 
-    @Test @Order(-100) void allTenOperationsRespectDifferentRolesWithinOneTenant() throws Exception {
+    @Test @Order(-98) void allTenOperationsRespectDifferentRolesWithinOneTenant() throws Exception {
         String project = projectPath(A);
         String task = taskCreate(A, project, key(), "{\"title\":\"Existing\"}")
                 .headers().firstValue("Location").orElseThrow();
