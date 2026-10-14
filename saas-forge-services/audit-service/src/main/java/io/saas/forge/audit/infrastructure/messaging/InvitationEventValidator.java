@@ -20,6 +20,8 @@ final class InvitationEventValidator {
             "datacontenttype", "dataschema", "data");
     private static final Set<String> DATA_FIELDS =
             Set.of("invitationId", "tenantId", "actorIdentityId", "expiresAt");
+    private static final Set<String> ACCEPTED_FIELDS =
+            Set.of("invitationId", "tenantId", "actorIdentityId", "identityId", "membershipId");
     private static final Pattern UUID_V7 = Pattern.compile(
             "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$");
     private static final Pattern TRACE_ID = Pattern.compile("^(?!0{32}$)[0-9a-f]{32}$");
@@ -40,6 +42,7 @@ final class InvitationEventValidator {
             case "com.saas.forge.invitation.created.v1" -> "INVITATION_CREATED";
             case "com.saas.forge.invitation.resent.v1" -> "INVITATION_RESENT";
             case "com.saas.forge.invitation.revoked.v1" -> "INVITATION_REVOKED";
+            case "com.saas.forge.invitation.accepted.v1" -> "INVITATION_ACCEPTED";
             default -> throw invalid("type");
         };
         String verb = action.substring("INVITATION_".length()).toLowerCase(java.util.Locale.ROOT);
@@ -53,16 +56,27 @@ final class InvitationEventValidator {
         String traceId = envelope.get("traceId") == null ? null : text(envelope, "traceId");
         if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
         JsonNode data = envelope.path("data");
-        fields(data, DATA_FIELDS, DATA_FIELDS);
+        boolean accepted = "INVITATION_ACCEPTED".equals(action);
+        fields(data, accepted ? ACCEPTED_FIELDS : DATA_FIELDS,
+                accepted ? ACCEPTED_FIELDS : DATA_FIELDS);
         UUID tenantId = uuid(text(data, "tenantId"));
         UUID invitationId = uuid(text(data, "invitationId"));
         UUID actorId = uuid(text(data, "actorIdentityId"));
-        Instant expiresAt = instant(text(data, "expiresAt"));
+        Map<String, String> details;
+        if (accepted) {
+            UUID identityId = uuid(text(data, "identityId"));
+            UUID membershipId = uuid(text(data, "membershipId"));
+            equal(actorId.toString(), identityId.toString());
+            details = Map.of("membershipId", membershipId.toString(), "identityId", identityId.toString());
+        } else {
+            Instant expiresAt = instant(text(data, "expiresAt"));
+            details = Map.of("expiresAt", expiresAt.toString());
+        }
         equal(tenantId.toString(), text(envelope, "subject"));
         equal(tenantId.toString(), orderingKey);
         return new AuditRecord(eventId, "urn:saas.forge:tenant-access-service", type,
                 occurredAt, traceId, actorId, tenantId, action, "INVITATION", invitationId,
-                json.writeValueAsString(Map.of("expiresAt", expiresAt.toString())));
+                json.writeValueAsString(details));
     }
 
     private static void fields(JsonNode node, Set<String> allowed, Set<String> required) {

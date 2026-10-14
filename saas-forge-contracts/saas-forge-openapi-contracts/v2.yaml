@@ -7,6 +7,42 @@ info:
     operation parameters. A Slot identifies one current Family; reads do not renew it.
     All responses are no-store. Unknown, stale and replayed responses never change cookies.
 paths:
+  /api/v2/auth/invitation-acceptances:
+    post:
+      tags: [InvitationAcceptance]
+      operationId: acceptInvitation
+      x-saas.forge-service: iam-service
+      description: >-
+        Prove the current regular Password Credential session, including a session without
+        a selected work Context, then accept the Invitation with a durable Quota attempt.
+        Identity, Origin and browser cookies are never business request parameters.
+        Acceptance does not select a Context or assign a Role.
+      security:
+        - ConsoleSlotCookieAuth: []
+          ConsoleRefreshCookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ConsoleCsrf'
+        - $ref: '#/components/parameters/ConsoleRevision'
+        - $ref: '#/components/parameters/ConsoleIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InvitationAcceptanceRequest' }
+      responses:
+        '200':
+          description: Invitation accepted or the same accepted attempt replayed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvitationAcceptanceResult' }
+        '400': { $ref: '#/components/responses/ConsoleProblem' }
+        '401': { $ref: '#/components/responses/ConsoleProblem' }
+        '403': { $ref: '#/components/responses/ConsoleProblem' }
+        '404': { $ref: '#/components/responses/ConsoleProblem' }
+        '409': { $ref: '#/components/responses/ConsoleProblem' }
+        '412': { $ref: '#/components/responses/ConsoleProblem' }
+        '428': { $ref: '#/components/responses/ConsoleProblem' }
+        '503': { $ref: '#/components/responses/ConsoleProblem' }
   /api/v2/auth/password-recovery-requests:
     post:
       tags: [PasswordRecovery]
@@ -461,6 +497,20 @@ components:
           schema:
             $ref: './common.yaml#/components/schemas/ProblemDetails'
   schemas:
+    InvitationAcceptanceRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token: { type: string, pattern: '^[A-Za-z0-9_-]{43}$', writeOnly: true }
+    InvitationAcceptanceResult:
+      type: object
+      additionalProperties: false
+      required: [membershipId, tenantId, replayed]
+      properties:
+        membershipId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        tenantId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        replayed: { type: boolean }
     PasswordRecoveryRequestResult:
       type: object
       additionalProperties: false

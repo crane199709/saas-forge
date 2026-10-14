@@ -12,8 +12,18 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes = ConsoleAuthenticationController.class)
+@RestControllerAdvice(assignableTypes = {ConsoleAuthenticationController.class, InvitationAcceptanceController.class})
 public final class ConsoleAuthenticationExceptionHandler {
+    @ExceptionHandler(InvitationAcceptanceFailure.class)
+    ResponseEntity<ConsoleProblem> invitation(InvitationAcceptanceFailure error, HttpServletRequest request) {
+        int status = switch (error.code()) {
+            case "INVITATION_INVALID" -> 404;
+            case "INVITATION_IDENTITY_MISMATCH", "TENANT_NOT_ACCESSIBLE" -> 403;
+            case "INVITATION_DEPENDENCY_UNAVAILABLE", "INVITATION_ACTIVATION_COMPENSATING" -> 503;
+            default -> 409;
+        };
+        return response(status, error.code(), request);
+    }
     @ExceptionHandler(ConsoleSessionException.class)
     ResponseEntity<ConsoleProblem> console(ConsoleSessionException error, HttpServletRequest request) {
         int status = switch (error.code()) {
