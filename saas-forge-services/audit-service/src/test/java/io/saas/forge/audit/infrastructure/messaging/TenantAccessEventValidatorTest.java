@@ -281,6 +281,8 @@ class TenantAccessEventValidatorTest {
 
     static String registeredTenantClosedEvent() {
         return registeredTenantSuspendedEvent()
+                .replace("019535d9-0001-7000-8000-000000000008",
+                        "019535d9-0001-7000-8000-000000000084")
                 .replace("tenant.suspended.v1", "tenant.closed.v1")
                 .replace("tenant-suspended.v1", "tenant-closed.v1");
     }

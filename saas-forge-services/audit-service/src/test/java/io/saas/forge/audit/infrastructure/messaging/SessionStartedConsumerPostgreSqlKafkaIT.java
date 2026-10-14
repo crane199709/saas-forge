@@ -522,7 +522,7 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
 
     @Test
     void tenantClosureIsPersistedOnceDespiteKafkaReplay() {
-        String eventId = uuidV7(8);
+        String eventId = uuidV7(84);
         String group = "audit-tenant-closure-" + UUID.randomUUID();
 
         try (KafkaConsumer<String, String> tenant = consumer(TENANT_TOPIC, group)) {
