@@ -21,6 +21,9 @@ public class TenantAccessEventValidator {
     private static final String TENANT_CLOSED_TYPE = "com.saas.forge.tenant.closed.v1";
     private static final String PERMISSION_CATALOG_CHANGED_TYPE = "com.saas.forge.permission.catalog-changed.v1";
     private static final String TENANT_ROLE_CHANGED_TYPE = "com.saas.forge.tenant-role.changed.v1";
+    private static final String MEMBERSHIP_ROLE_CHANGED_TYPE = "com.saas.forge.membership-role.changed.v1";
+    private static final String MEMBERSHIP_ROLE_CHANGED_SCHEMA =
+            "https://saas.forge.io/contracts/events/membership-role-changed.v1.schema.json";
     private static final String TENANT_ROLE_CHANGED_SCHEMA =
             "https://saas.forge.io/contracts/events/tenant-role-changed.v1.schema.json";
     private static final String ORGANIZATION_UNIT_CHANGED_TYPE = "com.saas.forge.organization.unit-changed.v1";
@@ -46,6 +49,8 @@ public class TenantAccessEventValidator {
             Set.of("tenantId", "code", "enabled", "source", "revision");
     private static final Set<String> TENANT_ROLE_DATA_FIELDS =
             Set.of("tenantId", "actorIdentityId", "roleId", "roleKey", "action", "permissions");
+    private static final Set<String> MEMBERSHIP_ROLE_DATA_FIELDS =
+            Set.of("tenantId", "actorIdentityId", "membershipId", "roleId", "roleKey", "action");
     private static final Set<String> ORGANIZATION_UNIT_DATA_FIELDS =
             Set.of("tenantId", "unitId", "actorIdentityId", "action", "parentId");
     private static final Set<String> BRAND_ASSET_DATA_FIELDS =
@@ -101,6 +106,8 @@ public class TenantAccessEventValidator {
                     validatePermissionCatalogChanged(topic, orderingKey, consumerName, envelope));
             case TENANT_ROLE_CHANGED_TYPE -> Optional.of(
                     validateTenantRoleChanged(topic, orderingKey, consumerName, envelope));
+            case MEMBERSHIP_ROLE_CHANGED_TYPE -> Optional.of(
+                    validateMembershipRoleChanged(topic, orderingKey, consumerName, envelope));
             case ORGANIZATION_UNIT_CHANGED_TYPE -> Optional.of(
                     validateOrganizationUnitChanged(topic, orderingKey, consumerName, envelope));
             case TENANT_CLOSED_TYPE -> Optional.of(
@@ -186,6 +193,38 @@ public class TenantAccessEventValidator {
                 "TENANT_ROLE_CHANGED", "TENANT_ROLE", roleId,
                 objectMapper.writeValueAsString(Map.of("roleKey", roleKey, "action", action,
                         "permissions", seen.stream().sorted().toList())));
+    }
+
+    private AuditRecord validateMembershipRoleChanged(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(MEMBERSHIP_ROLE_CHANGED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals(MEMBERSHIP_ROLE_CHANGED_SCHEMA, text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, MEMBERSHIP_ROLE_DATA_FIELDS, MEMBERSHIP_ROLE_DATA_FIELDS, "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        UUID actorId = uuidV7(text(data, "actorIdentityId"), "data.actorIdentityId");
+        UUID membershipId = uuidV7(text(data, "membershipId"), "data.membershipId");
+        UUID roleId = uuidV7(text(data, "roleId"), "data.roleId");
+        String roleKey = text(data, "roleKey");
+        String action = text(data, "action");
+        if (!roleKey.matches("^[A-Z][A-Z0-9_]{2,63}$")
+                || !Set.of("ASSIGNED", "REVOKED").contains(action)) throw invalid("data");
+        requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                MEMBERSHIP_ROLE_CHANGED_TYPE, occurredAt, traceId, actorId, tenantId,
+                "MEMBERSHIP_ROLE_" + action, "MEMBERSHIP", membershipId,
+                objectMapper.writeValueAsString(Map.of("roleId", roleId.toString(), "roleKey", roleKey)));
     }
 
     private AuditRecord validateOrganizationUnitChanged(

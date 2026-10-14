@@ -95,8 +95,7 @@ public class JdbcTenantRoleRepository {
 
     private void validatePermissions(List<String> permissions) {
         for (String code : permissions) {
-            if (code.startsWith("system:role:") || code.startsWith("system:membership-role:")
-                    || code.startsWith("system:permission:")) {
+            if (code.startsWith("system:") && !"system:organization:manage".equals(code)) {
                 throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "ADMIN_PERMISSION_RESERVED");
             }
             Boolean exists = jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM permission_catalog WHERE code = ?)",
