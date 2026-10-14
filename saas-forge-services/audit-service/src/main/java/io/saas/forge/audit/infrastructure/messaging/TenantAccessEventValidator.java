@@ -34,6 +34,7 @@ public class TenantAccessEventValidator {
 
     private final ObjectMapper objectMapper;
     private final TenantCreatedEventValidator tenantCreated;
+    private final TenantDetailsUpdatedEventValidator tenantDetailsUpdated;
     private final String expectedTopic;
 
     public TenantAccessEventValidator(
@@ -42,6 +43,7 @@ public class TenantAccessEventValidator {
             @Value("${saas.forge.audit.tenant-access-topic}") String expectedTopic) {
         this.objectMapper = objectMapper;
         this.tenantCreated = tenantCreated;
+        this.tenantDetailsUpdated = new TenantDetailsUpdatedEventValidator(objectMapper, expectedTopic);
         if (expectedTopic == null
                 || !expectedTopic.matches("^saas\\.forge\\.[a-z][a-z0-9-]*\\.tenant-access-service\\.events$")) {
             throw new IllegalArgumentException("Tenant Access Topic 配置不合法");
@@ -64,6 +66,8 @@ public class TenantAccessEventValidator {
         return switch (type.asText()) {
             case TenantCreatedEventValidator.EVENT_TYPE -> Optional.of(
                     tenantCreated.validate(topic, orderingKey, consumerName, payload));
+            case TenantDetailsUpdatedEventValidator.EVENT_TYPE -> Optional.of(
+                    tenantDetailsUpdated.validate(topic, orderingKey, consumerName, envelope));
             case TENANT_SUSPENDED_TYPE -> {
                 validateRegisteredTenantSuspended(topic, orderingKey, consumerName, envelope);
                 requireOtherRegisteredConsumer(TENANT_SUSPENDED_CONSUMER_NAME, consumerName);

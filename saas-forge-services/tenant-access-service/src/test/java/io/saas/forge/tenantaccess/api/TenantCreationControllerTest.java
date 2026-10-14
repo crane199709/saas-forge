@@ -1,6 +1,7 @@
 package io.saas.forge.tenantaccess.api;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -27,6 +28,19 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 class TenantCreationControllerTest {
     private static final UUID KEY = UUID.fromString("019535d9-0000-7000-8000-000000000001");
+
+    @Test
+    void updateTenantRequiresCurrentPlatformAuthority() throws Exception {
+        MockMvc mvc = mvc(authorization -> { throw new PlatformAuthorizationDeniedException(); }, unusedCreation());
+
+        mvc.perform(put("/api/v1/platform/tenants/{tenantId}", KEY)
+                        .header("Authorization", "Bearer platform-token")
+                        .header("Idempotency-Key", KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"New name\",\"expiresAt\":null}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("PLATFORM_AUTHORIZATION_DENIED"));
+    }
 
     @Test
     void everyTenantReadAndRecoveryRechecksCurrentPlatformAuthorization() throws Exception {
