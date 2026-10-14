@@ -92,6 +92,7 @@ public final class ConsoleSessionService {
             var attached = slot.attach(family.id());
             slots.save(attached);
             var snapshot = authority.snapshot(attached.revision(), family);
+            issuanceFence.assertIdentityIssuable(family.identityId());
             issuanceFence.assertIssuable(family.membershipId(), family.tenantId());
             var token = issue(snapshot);
             if (token != null) issuances.create(new AccessTokenIssuance(token.jti(), family.id(), family.identityId(),

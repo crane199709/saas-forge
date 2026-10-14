@@ -8,4 +8,8 @@ import java.util.UUID;
 @FunctionalInterface
 public interface UserAccessTokenContextRevocationChecker {
     boolean isRevoked(UUID jti, String kid, UUID membershipId, UUID tenantId);
+
+    default boolean isRevoked(UUID jti, String kid, UUID membershipId, UUID tenantId, UUID identityId) {
+        return isRevoked(jti, kid, membershipId, tenantId);
+    }
 }

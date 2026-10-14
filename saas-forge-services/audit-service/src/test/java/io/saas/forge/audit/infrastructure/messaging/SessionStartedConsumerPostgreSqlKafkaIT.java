@@ -118,7 +118,8 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
         var sessionStarted = new SessionStartedEventValidator(objectMapper, TOPIC);
         var tenantContextSwitched = new TenantContextSwitchedEventValidator(objectMapper, TOPIC);
         listener = new IamSessionKafkaConsumer(
-                new IamSessionEventValidator(objectMapper, sessionStarted, tenantContextSwitched), service);
+                new IamSessionEventValidator(objectMapper, sessionStarted, tenantContextSwitched,
+                        new PasswordRecoveredEventValidator(objectMapper, TOPIC)), service);
         var tenantCreated = new TenantCreatedEventValidator(objectMapper, TENANT_TOPIC);
         meters = new SimpleMeterRegistry();
         tenantListener = new TenantAccessKafkaConsumer(
@@ -136,6 +137,41 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     @AfterAll
     static void closeIsolationProducer() {
         isolationProducerFactory.destroy();
+    }
+
+    @Test
+    void passwordRecoveredIsPersistedOnceAcrossKafkaRedelivery() {
+        String eventId = uuidV7(990);
+        String identityId = identityId();
+        String challengeId = uuidV7(991);
+        String credentialId = uuidV7(992);
+        String payload = """
+                {"specversion":"1.0","id":"%s","source":"urn:saas.forge:iam-service",
+                "type":"com.saas.forge.iam.password.recovered.v1","subject":"%s",
+                "time":"2026-08-28T10:16:00Z","datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/iam-password-recovered.v1.schema.json",
+                "data":{"identityId":"%s","challengeId":"%s","credentialId":"%s",
+                "occurredAt":"2026-08-28T10:16:00Z"}}
+                """.formatted(eventId, identityId, identityId, challengeId, credentialId);
+        try (KafkaConsumer<String, String> kafka = consumer("audit-password-recovery-" + UUID.randomUUID())) {
+            seekToEnd(kafka);
+            send(identityId, payload);
+            ConsumerRecord<String, String> message = pollOne(kafka);
+            listener.consume(message, kafka::commitSync);
+            listener.consume(message, () -> {});
+        }
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        Map<String, Object> record = app.queryForMap("""
+                SELECT action, resource_type, resource_id, actor_identity_id,
+                       metadata ->> 'challengeId' AS challenge_id
+                FROM audit_records WHERE source_event_id = ?::uuid
+                """, eventId);
+        assertEquals("PASSWORD_RECOVERED", record.get("action"));
+        assertEquals("IDENTITY", record.get("resource_type"));
+        assertEquals(identityId, record.get("resource_id").toString());
+        assertEquals(identityId, record.get("actor_identity_id").toString());
+        assertEquals(challengeId, record.get("challenge_id"));
     }
 
     @Test

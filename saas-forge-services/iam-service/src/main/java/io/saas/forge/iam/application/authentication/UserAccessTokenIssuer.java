@@ -64,6 +64,7 @@ public final class UserAccessTokenIssuer {
         if ((membershipId == null) != (tenantId == null)) {
             throw new IllegalArgumentException("Membership 与 Tenant 声明必须成对出现");
         }
+        issuanceFence.assertIdentityIssuable(identityId);
         issuanceFence.assertIssuable(membershipId, tenantId);
         Instant issuedAt = clock.instant().truncatedTo(ChronoUnit.SECONDS);
         Instant expiresAt = issuedAt.plus(ttl);

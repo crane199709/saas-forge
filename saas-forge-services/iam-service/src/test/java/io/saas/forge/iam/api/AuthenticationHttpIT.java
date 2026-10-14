@@ -304,6 +304,15 @@ class AuthenticationHttpIT {
     PasswordSetupService passwordSetupService;
 
     @Autowired
+    PasswordRecoveryService passwordRecoveryService;
+
+    @Autowired
+    PasswordSetupChallengeIssuer recoveryTokens;
+
+    @Autowired
+    io.saas.forge.iam.infrastructure.persistence.PasswordRecoveryRepository recoveryChallenges;
+
+    @Autowired
     StringRedisTemplate redis;
 
     @Autowired
@@ -817,7 +826,8 @@ class AuthenticationHttpIT {
         context.getEnvironment().getPropertySources().addFirst(new org.springframework.core.env.MapPropertySource(
                 "console-test", Map.of("security.browser.console-enabled", "true")));
         context.register(io.saas.forge.iam.config.ConsoleSessionConfiguration.class,
-                ConsoleAuthenticationController.class, ConsoleBrowserRequestFilter.class,
+                ConsoleAuthenticationController.class, PasswordRecoveryController.class,
+                ConsoleBrowserRequestFilter.class,
                 ConsoleAuthenticationExceptionHandler.class, ConsoleWebConfiguration.class);
         context.refresh();
         consoleContexts.add(context);
@@ -3389,6 +3399,84 @@ class AuthenticationHttpIT {
             MEMBERSHIP_VALIDATION_GATE.set(null);
             switchExecutor.shutdownNow();
         }
+    }
+
+    @Test
+    @Order(36)
+    void identityRevocationRejectsPlatformAndTenantSessionsAcrossContexts() throws Exception {
+        revocationIndexRecovery.recover();
+        TestUser user = createUser("identity-revoke@example.test", "correct-password", true, Credential.REGULAR);
+        UUID tenant = uuidV7(96_001);
+        UUID membershipId = uuidV7(96_002);
+        accessibleMemberships(user.identity().id(), membership(membershipId, tenant, "Company"));
+        MvcResult platform = login("identity-revoke@example.test", "correct-password", "PLATFORM").andReturn();
+        MvcResult company = login("identity-revoke@example.test", "correct-password", "TENANT").andReturn();
+        UUID platformJti = UUID.fromString(tokenClaims(platform).get("jti").asString());
+        UUID companyJti = UUID.fromString(tokenClaims(company).get("jti").asString());
+
+        UUID requestId = uuidV7(96_003);
+        RevocationFenceTarget target = RevocationFenceTarget.identity(user.identity().id());
+        UserSessionRevocationResult result = null;
+        for (int attempt = 0; attempt < 5; attempt++) {
+            result = userSessionRevocationService.revoke(requestId, target);
+            if (result.status() == UserSessionRevocationResult.Status.COMPLETED) break;
+        }
+        assertNotNull(result);
+        assertEquals(UserSessionRevocationResult.Status.COMPLETED, result.status());
+        assertEquals("1", redis.opsForValue().get(jtiRevocationKey(platformJti)));
+        assertEquals("1", redis.opsForValue().get(jtiRevocationKey(companyJti)));
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT count(*) FROM iam_refresh_token_families WHERE identity_id = ? AND revoked_at IS NULL",
+                Integer.class, user.identity().id()));
+    }
+
+    @Test
+    @Order(38)
+    void passwordRecoveryReplacesCredentialOnlyAfterGlobalRevocationAndNeverCreatesSession() throws Exception {
+        revocationIndexRecovery.recover();
+        String email = "password-recovery-http@example.test";
+        TestUser user = createUser(email, "Old-recovery-password-2026", true, Credential.REGULAR);
+        UUID tenant = uuidV7(96_101);
+        accessibleMemberships(user.identity().id(), membership(uuidV7(96_102), tenant, "Company"));
+        MvcResult platform = login(email, "Old-recovery-password-2026", "PLATFORM").andReturn();
+        MvcResult company = login(email, "Old-recovery-password-2026", "TENANT").andReturn();
+        UUID platformJti = UUID.fromString(tokenClaims(platform).get("jti").asString());
+        UUID companyJti = UUID.fromString(tokenClaims(company).get("jti").asString());
+        var http = unifiedConsole();
+        http.perform(consolePost("password-recovery-requests")
+                        .content("{\"email\":\"nobody-recovery@example.test\"}"))
+                .andExpect(status().isAccepted()).andExpect(jsonPath("$.status").value("ACCEPTED"))
+                .andExpect(header().doesNotExist("Set-Cookie"));
+        var material = recoveryTokens.issue();
+        var challenge = recoveryChallenges.replace(user.identity().id(), material.digest(), Instant.now());
+        assertEquals(1800, java.time.Duration.between(challenge.issuedAt(), challenge.expiresAt()).toSeconds());
+        MvcResult response = null;
+        for (int attempt = 0; attempt < 8; attempt++) {
+            response = http.perform(consolePost("password-recoveries")
+                            .content(new ObjectMapper().writeValueAsBytes(Map.of(
+                                    "token", material.token(), "newPassword", "New-recovery-password-2026"))))
+                    .andExpect(header().doesNotExist("Set-Cookie"))
+                    .andReturn();
+            if (response.getResponse().getStatus() == 200) break;
+            assertEquals(202, response.getResponse().getStatus());
+        }
+        assertNotNull(response);
+        assertEquals(200, response.getResponse().getStatus());
+        assertEquals("COMPLETED", json(response.getResponse().getContentAsByteArray()).get("status").asString());
+        assertEquals("1", redis.opsForValue().get(jtiRevocationKey(platformJti)));
+        assertEquals("1", redis.opsForValue().get(jtiRevocationKey(companyJti)));
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT count(*) FROM iam_refresh_token_families WHERE identity_id = ? AND revoked_at IS NULL",
+                Integer.class, user.identity().id()));
+        assertEquals(1, jdbc.queryForObject(
+                "SELECT count(*) FROM iam_outbox_events WHERE event_snapshot::text LIKE '%password.recovered.v1%' "
+                        + "AND ordering_key = ?", Integer.class, user.identity().id().toString()));
+        login(email, "Old-recovery-password-2026", "PLATFORM").andExpect(status().isUnauthorized());
+        login(email, "New-recovery-password-2026", "PLATFORM").andExpect(status().isOk());
+        http.perform(consolePost("password-recoveries")
+                        .content(new ObjectMapper().writeValueAsBytes(Map.of(
+                                "token", material.token(), "newPassword", "Another-password-2026"))))
+                .andExpect(status().isGone());
     }
 
     @Test

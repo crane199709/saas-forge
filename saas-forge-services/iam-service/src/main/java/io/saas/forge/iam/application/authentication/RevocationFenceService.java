@@ -37,7 +37,9 @@ public class RevocationFenceService implements RevocationFenceOperations {
             }
             return existing;
         }
-        boolean occupied = fences.findActiveTenant(target.tenantId()).isPresent()
+        boolean occupied = target.type() == io.saas.forge.iam.domain.session.RevocationFenceTargetType.IDENTITY
+                ? fences.findActiveIdentity(target.identityId()).isPresent()
+                : fences.findActiveTenant(target.tenantId()).isPresent()
                 || (target.membershipId() != null
                         && fences.findActiveMembership(target.membershipId()).isPresent());
         if (occupied) {
@@ -61,6 +63,16 @@ public class RevocationFenceService implements RevocationFenceOperations {
         RevocationFenceTarget target = RevocationFenceTarget.membership(membershipId, tenantId);
         fences.lock(target);
         if (index.isUserTokenFenced(target)) {
+            throw new AccessContextUnavailableException();
+        }
+    }
+
+    @Override
+    @Transactional
+    public void assertIdentityIssuable(UUID identityId) {
+        RevocationFenceTarget target = RevocationFenceTarget.identity(identityId);
+        fences.lock(target);
+        if (index.isIdentityFenced(identityId)) {
             throw new AccessContextUnavailableException();
         }
     }
