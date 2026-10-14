@@ -209,12 +209,20 @@ class BrandAssetMigrationIT {
                 """, UUID.class, tenant, membership, membership, identity, disableOperation);
         assertThat(app.query("SELECT membership_id FROM list_accessible_membership_contexts(?)",
                 (row, index) -> row.getObject(1, UUID.class), identity)).isEmpty();
+        assertThat(app.query("SELECT tenant_id FROM validate_membership(?, ?)",
+                (row, index) -> row.getObject(1, UUID.class), identity, membership)).isEmpty();
         migrator.update("UPDATE membership_enable_workflows SET workflow_status = 'COMPLETED' WHERE operation_id = ?",
                 enableOperation);
         assertThat(app.queryForObject("SELECT brand_display_name FROM list_accessible_membership_contexts(?)",
                 String.class, identity)).isEqualTo("Fence brand");
         assertThat(app.queryForObject("SELECT changed FROM disable_brand_asset(?, ?)", Boolean.class, logo,
                 identity)).isTrue();
+        migrator.update("UPDATE membership_enable_workflows SET workflow_status = 'FENCE_PENDING' WHERE operation_id = ?",
+                enableOperation);
+        assertThat(app.query("SELECT membership_id FROM list_accessible_membership_contexts(?)",
+                (row, index) -> row.getObject(1, UUID.class), identity)).isEmpty();
+        migrator.update("UPDATE membership_enable_workflows SET workflow_status = 'COMPLETED' WHERE operation_id = ?",
+                enableOperation);
         assertThat(app.queryForMap("SELECT * FROM list_accessible_membership_contexts(?)", identity))
                 .containsEntry("tenant_id", tenant)
                 .containsEntry("membership_id", membership)
