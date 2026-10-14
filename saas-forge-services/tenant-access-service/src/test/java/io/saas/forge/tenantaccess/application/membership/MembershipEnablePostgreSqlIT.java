@@ -80,7 +80,7 @@ class MembershipEnablePostgreSqlIT {
                 "tenant_access_migrator", "tenant-access-migrator-password"));
         migrator.execute("TRUNCATE tenant_access_outbox_events, membership_enable_workflows, membership_disable_workflows, memberships, tenants CASCADE");
         migrator.queryForObject("SELECT import_permission_catalog(CAST(? AS jsonb), ?, ?)", Integer.class,
-                Files.readString(ROOT.resolve("saas-forge-services/tenant-access-service/permission-catalog/v2.json")),
+                Files.readString(ROOT.resolve("saas-forge-services/tenant-access-service/permission-catalog/v3.json")),
                 "b".repeat(64), "saas.forge.test.tenant-access-service.events");
         var dataSource = new DriverManagerDataSource(jdbcUrl(),
                 "tenant_access_app", "tenant-access-app-password");
