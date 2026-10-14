@@ -91,6 +91,30 @@ class TenantAccessEventValidatorTest {
     }
 
     @Test
+    void recordsCommittedOrganizationChangeWithStableActorAndRejectsUnknownAction() {
+        String event = """
+                {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000019",
+                "source":"urn:saas.forge:tenant-access-service","type":"com.saas.forge.organization.unit-changed.v1",
+                "subject":"%s","time":"2026-08-28T10:15:30Z",
+                "datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/organization-unit-changed.v1.schema.json",
+                "data":{"tenantId":"%s","unitId":"019535d9-0001-7000-8000-000000000018",
+                "actorIdentityId":"%s","action":"MOVED","parentId":null}}
+                """.formatted(TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidatorTest.actorIdentityId()).replace("\n", "");
+        var record = validator.validate(TenantCreatedEventValidatorTest.TOPIC,
+                TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME, event).orElseThrow();
+        assertEquals("ORGANIZATION_UNIT_MOVED", record.action());
+        assertEquals("ORGANIZATION_UNIT", record.resourceType());
+        assertEquals(TenantCreatedEventValidatorTest.actorIdentityId(), record.actorIdentityId().toString());
+        assertThrows(InvalidAuditEventException.class, () -> validator.validate(
+                TenantCreatedEventValidatorTest.TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME, event.replace("\"MOVED\"", "\"COPIED\"")));
+    }
+
+    @Test
     void rejectsUnregisteredTypeWrongSourceTopicOrConsumerThroughPermanentErrorEntry() {
         String registered = registeredTenantSuspendedEvent();
         assertThrows(InvalidAuditEventException.class, () -> validator.validate(

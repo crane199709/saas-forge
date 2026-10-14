@@ -171,7 +171,7 @@
                             <apiPackage>io.saas.forge.tenantaccess.contract.api</apiPackage>
                             <modelPackage>io.saas.forge.tenantaccess.contract.model</modelPackage>
                             <generateApis>true</generateApis>
-                            <apisToGenerate>PlatformTenants</apisToGenerate>
+                            <apisToGenerate>PlatformTenants,Organization</apisToGenerate>
                             <generateModels>true</generateModels>
                             <generateSupportingFiles>true</generateSupportingFiles>
                             <generateApiTests>false</generateApiTests>
