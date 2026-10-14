@@ -49,7 +49,18 @@ public class PermissionController {
         }
     }
 
+    @GetMapping("/effective")
+    public ResponseEntity<Effective> effective() {
+        try {
+            return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                    .body(new Effective(authority.effective(contexts.requireCurrent())));
+        } catch (DataAccessException unavailable) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Permission authority unavailable", unavailable);
+        }
+    }
+
     public record Decision(String code, boolean allowed) {}
 
     public record Catalog(List<PermissionAuthority.PermissionEntry> items) {}
+    public record Effective(List<String> codes) {}
 }

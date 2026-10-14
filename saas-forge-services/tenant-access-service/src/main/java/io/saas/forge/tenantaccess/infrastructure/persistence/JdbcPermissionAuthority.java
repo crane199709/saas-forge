@@ -27,6 +27,10 @@ public class JdbcPermissionAuthority implements PermissionAuthority {
                     WHERE permission.code = ? AND permission.enabled
                       AND member.identity_id = ? AND member.membership_status = 'ENABLED'
                       AND tenant.tenant_status = 'ACTIVE'
+                      AND NOT EXISTS (
+                          SELECT 1 FROM tenant_lifecycle_workflows closure
+                          WHERE closure.tenant_id = tenant.id AND closure.lifecycle_action = 'CLOSE'
+                            AND closure.workflow_status IN ('PENDING', 'RECOVERY_REQUIRED'))
                       AND (tenant.expires_at IS NULL OR tenant.expires_at > statement_timestamp())
                       AND (
                           EXISTS (
@@ -65,6 +69,10 @@ public class JdbcPermissionAuthority implements PermissionAuthority {
                     WHERE member.id = ? AND member.tenant_id = ? AND member.identity_id = ?
                       AND member.membership_status = 'ENABLED'
                       AND tenant.tenant_status = 'ACTIVE'
+                      AND NOT EXISTS (
+                          SELECT 1 FROM tenant_lifecycle_workflows closure
+                          WHERE closure.tenant_id = tenant.id AND closure.lifecycle_action = 'CLOSE'
+                            AND closure.workflow_status IN ('PENDING', 'RECOVERY_REQUIRED'))
                       AND (tenant.expires_at IS NULL OR tenant.expires_at > statement_timestamp())
                       AND role.role_key = 'TENANT_ADMINISTRATOR' AND role.system_managed
                 )
@@ -77,6 +85,37 @@ public class JdbcPermissionAuthority implements PermissionAuthority {
     public List<PermissionEntry> catalog() {
         return jdbc.query("SELECT code, enabled FROM permission_catalog ORDER BY code",
                 (row, index) -> new PermissionEntry(row.getString(1), row.getBoolean(2)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> effective(TenantContextSnapshot context) {
+        operationTarget(context);
+        return jdbc.query("""
+                SELECT permission.code FROM permission_catalog permission
+                JOIN memberships member ON member.id = ? AND member.tenant_id = ?
+                JOIN tenants tenant ON tenant.id = member.tenant_id
+                WHERE permission.enabled AND member.identity_id = ?
+                  AND member.membership_status = 'ENABLED' AND tenant.tenant_status = 'ACTIVE'
+                  AND (tenant.expires_at IS NULL OR tenant.expires_at > statement_timestamp())
+                  AND (
+                    EXISTS (
+                      SELECT 1 FROM membership_role_assignments assignment
+                      JOIN tenant_roles role ON role.id = assignment.role_id
+                      WHERE assignment.membership_id = member.id AND assignment.tenant_id = member.tenant_id
+                        AND role.role_key = 'TENANT_ADMINISTRATOR' AND role.system_managed
+                    )
+                    OR EXISTS (
+                      SELECT 1 FROM membership_role_assignments assignment
+                      JOIN tenant_role_permissions grant_entry ON grant_entry.role_id = assignment.role_id
+                        AND grant_entry.tenant_id = assignment.tenant_id
+                      WHERE assignment.membership_id = member.id AND assignment.tenant_id = member.tenant_id
+                        AND grant_entry.permission_code = permission.code
+                    )
+                  )
+                ORDER BY permission.code
+                """, (row, index) -> row.getString(1),
+                context.membershipId(), context.tenantId(), context.identityId());
     }
 
     private void operationTarget(TenantContextSnapshot context) {

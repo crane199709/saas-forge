@@ -61,6 +61,30 @@ public final class TenantLifecycleService {
         return resumeOrReplay(claim.workflow(), null, true);
     }
 
+    public TenantLifecycleResult close(
+            UUID actorIdentityId, UUID idempotencyKey, UUID tenantId, String traceId) {
+        requireUuidV7(actorIdentityId, "调用方 Identity ID");
+        requireUuidV7(idempotencyKey, "Idempotency-Key");
+        requireUuidV7(tenantId, "Tenant ID");
+        TenantLifecycleClaim claim = workflows.prepare(
+                actorIdentityId, idempotencyKey, tenantId, TenantLifecycleAction.CLOSE,
+                fingerprint("POST", "/api/v1/platform/tenants/" + tenantId + "/closures"),
+                ids.next(), ids.next(), null, clock.instant());
+        return resumeOrReplay(claim.workflow(), traceId, true);
+    }
+
+    public TenantLifecycleResult recoverClosure(
+            UUID actorIdentityId, UUID idempotencyKey, UUID tenantId, String traceId) {
+        requireUuidV7(actorIdentityId, "调用方 Identity ID");
+        requireUuidV7(idempotencyKey, "Idempotency-Key");
+        requireUuidV7(tenantId, "Tenant ID");
+        TenantLifecycleClaim claim = workflows.prepareClosureRecovery(
+                actorIdentityId, idempotencyKey, tenantId,
+                fingerprint("POST", "/api/v1/platform/tenants/" + tenantId + "/closure-recoveries"),
+                clock.instant());
+        return resumeOrReplay(claim.workflow(), traceId, true);
+    }
+
     public TenantLifecycleResult recoverSuspension(
             UUID actorIdentityId, UUID idempotencyKey, UUID tenantId, String traceId) {
         requireUuidV7(actorIdentityId, "调用方 Identity ID");
@@ -90,7 +114,10 @@ public final class TenantLifecycleService {
                 workflow == null ? "NONE" : workflow.status().name(),
                 free && snapshot.tenant().status() == io.saas.forge.tenantaccess.domain.tenant.TenantStatus.ACTIVE,
                 free && snapshot.tenant().status() == io.saas.forge.tenantaccess.domain.tenant.TenantStatus.SUSPENDED,
-                recovery, pending);
+                recovery && workflow.action() == TenantLifecycleAction.SUSPEND, pending,
+                free && (snapshot.tenant().status() == io.saas.forge.tenantaccess.domain.tenant.TenantStatus.ACTIVE
+                        || snapshot.tenant().status() == io.saas.forge.tenantaccess.domain.tenant.TenantStatus.SUSPENDED),
+                recovery && workflow.action() == TenantLifecycleAction.CLOSE);
     }
 
     public TenantLifecycleResult continueOperation(UUID tenantId, UUID operationId, String traceId) {
@@ -121,12 +148,23 @@ public final class TenantLifecycleService {
             TenantLifecycleWorkflow workflow, String traceId, boolean interactive) {
         try {
             if (workflow.explicitRecoveryPending()) {
-                revocations.recover(workflow.revocationRequestId(), workflow.tenantId());
+                if (workflow.action() == TenantLifecycleAction.CLOSE) {
+                    try {
+                        // 关闭也可沿用已完成的冻结 Fence；先查原请求，只有 IAM 要求时才恢复撤销。
+                        revocations.revoke(workflow.revocationRequestId(), workflow.tenantId());
+                    } catch (SessionRevocationRejectedException exception) {
+                        revocations.recover(workflow.revocationRequestId(), workflow.tenantId());
+                    }
+                } else {
+                    revocations.recover(workflow.revocationRequestId(), workflow.tenantId());
+                }
                 workflows.confirmIamRecovery(workflow, clock.instant());
             }
-            return workflow.action() == TenantLifecycleAction.SUSPEND
-                    ? suspendClaimed(workflow, traceId)
-                    : resumeClaimed(workflow);
+            return switch (workflow.action()) {
+                case SUSPEND -> suspendClaimed(workflow, traceId);
+                case RESUME -> resumeClaimed(workflow);
+                case CLOSE -> closeClaimed(workflow, traceId);
+            };
         } catch (TenantLifecycleException exception) {
             if (interactive) throw exception;
             return null;
@@ -149,6 +187,25 @@ public final class TenantLifecycleService {
         Tenant tenant = workflows.loadTenant(workflow.tenantId()).suspend(clock.instant());
         OutboxEvent event = events.create(
                 tenant, workflow.actorIdentityId(), remote.revokedFamilyCount(), clock.instant(), traceId);
+        return workflows.complete(workflow, tenant, remote.revokedFamilyCount(), remote.revokedJtiCount(),
+                clock.instant(), event);
+    }
+
+    private TenantLifecycleResult closeClaimed(TenantLifecycleWorkflow workflow, String traceId) {
+        workflows.markRevocationAttempt(workflow);
+        SessionRevocationGateway.Result remote = revocations.revoke(
+                workflow.revocationRequestId(), workflow.tenantId());
+        workflows.confirmFence(workflow);
+        if (remote.status() == SessionRevocationGateway.Result.Status.PENDING) {
+            workflows.schedulePending(workflow, clock.instant().plusSeconds(remote.retryAfterSeconds()));
+            throw pending(remote.retryAfterSeconds(), "TENANT_CLOSURE_PENDING");
+        }
+        Tenant before = workflows.loadTenant(workflow.tenantId());
+        Tenant tenant = before.close(clock.instant());
+        OutboxEvent event = events.createClosure(
+                tenant, workflow.actorIdentityId(),
+                before.status() == io.saas.forge.tenantaccess.domain.tenant.TenantStatus.SUSPENDED
+                        ? 0 : remote.revokedFamilyCount(), clock.instant(), traceId);
         return workflows.complete(workflow, tenant, remote.revokedFamilyCount(), remote.revokedJtiCount(),
                 clock.instant(), event);
     }
@@ -176,18 +233,26 @@ public final class TenantLifecycleService {
         return switch (workflow.status()) {
             case COMPLETED -> workflow.result();
             case RETRY_REQUIRED -> throw new TenantLifecycleException(
-                    "TENANT_SUSPENSION_RETRY_REQUIRED", "Tenant Suspension 自动恢复已耗尽，请使用新 Idempotency-Key 重试");
+                    workflow.action() == TenantLifecycleAction.CLOSE
+                            ? "TENANT_CLOSURE_RETRY_REQUIRED" : "TENANT_SUSPENSION_RETRY_REQUIRED",
+                    "Tenant 生命周期自动恢复已耗尽，请使用新 Idempotency-Key 重试");
             case RECOVERY_REQUIRED -> throw new TenantLifecycleException(
-                    "TENANT_SUSPENSION_RECOVERY_REQUIRED", "Tenant Suspension Fence 保持生效，需要 Platform Admin 显式恢复");
+                    workflow.action() == TenantLifecycleAction.CLOSE
+                            ? "TENANT_CLOSURE_RECOVERY_REQUIRED" : "TENANT_SUSPENSION_RECOVERY_REQUIRED",
+                    "Tenant 撤销阻断保持生效，需要 Platform Admin 显式继续");
             case PENDING -> null;
         };
     }
 
     private static TenantLifecycleException pending(TenantLifecycleWorkflow workflow, Instant now) {
         String code = workflow.recoveryStartedAt() == null
-                ? workflow.action() == TenantLifecycleAction.SUSPEND
-                        ? "TENANT_SUSPENSION_PENDING" : "TENANT_RESUME_PENDING"
-                : "TENANT_SUSPENSION_RECOVERY_PENDING";
+                ? switch (workflow.action()) {
+                    case SUSPEND -> "TENANT_SUSPENSION_PENDING";
+                    case RESUME -> "TENANT_RESUME_PENDING";
+                    case CLOSE -> "TENANT_CLOSURE_PENDING";
+                }
+                : workflow.action() == TenantLifecycleAction.CLOSE
+                        ? "TENANT_CLOSURE_RECOVERY_PENDING" : "TENANT_SUSPENSION_RECOVERY_PENDING";
         long retryAfter = Math.max(1, Duration.between(now, workflow.nextAttemptAt()).toSeconds());
         return pending(retryAfter, code);
     }

@@ -2,6 +2,7 @@ package io.saas.forge.iam.application.authentication;
 
 import static io.saas.forge.iam.application.authentication.ConsoleSessionException.Code.*;
 import io.saas.forge.iam.domain.identity.CredentialType;
+import io.saas.forge.iam.domain.identity.IdentityRepository;
 import io.saas.forge.iam.domain.outbox.OutboxEventRepository;
 import io.saas.forge.iam.domain.session.*;
 import io.saas.forge.iam.domain.shared.Sha256Digest;
@@ -22,6 +23,7 @@ public final class ConsoleSessionService {
     private final RefreshTokenFamilyRepository families;
     private final AccessTokenIssuanceRepository issuances;
     private final PasswordAuthenticator passwords;
+    private final IdentityRepository identities;
     private final ConsoleSessionAuthority authority;
     private final ConsoleSessionTermination termination;
     private final RefreshTokenIssuer refreshTokens;
@@ -37,12 +39,14 @@ public final class ConsoleSessionService {
 
     public ConsoleSessionService(ConsoleSessionAccess access, ConsoleSessionRepository slots,
             RefreshTokenFamilyRepository families, AccessTokenIssuanceRepository issuances,
-            PasswordAuthenticator passwords, ConsoleSessionAuthority authority, ConsoleSessionTermination termination,
+            PasswordAuthenticator passwords, IdentityRepository identities,
+            ConsoleSessionAuthority authority, ConsoleSessionTermination termination,
             RefreshTokenIssuer refreshTokens, UserAccessTokenIssuer accessTokens, RefreshRotationLease leases,
             RefreshRotationTransaction rotations, OutboxEventRepository outbox, SessionStartedEventFactory startedEvents,
             TransactionTemplate transactions, UuidV7Generator keys, Clock clock, UserTokenIssuanceFence issuanceFence) {
         this.access = access; this.slots = slots; this.families = families; this.issuances = issuances;
-        this.passwords = passwords; this.authority = authority; this.termination = termination;
+        this.passwords = passwords; this.identities = identities;
+        this.authority = authority; this.termination = termination;
         this.refreshTokens = refreshTokens; this.accessTokens = accessTokens; this.leases = leases;
         this.rotations = rotations; this.outbox = outbox; this.startedEvents = startedEvents;
         this.issuanceFence = issuanceFence;
@@ -106,6 +110,23 @@ public final class ConsoleSessionService {
         return guarded(locator, slot -> {
             access.requireReadable(slot);
             return authority.snapshot(slot.revision(), access.family(slot, refresh, false));
+        });
+    }
+
+    /** 受限且无 Context 的常规 Password 会话也可证明 Identity；必须使用当前 Slot revision。 */
+    public UUID invitationIdentity(String locator, String refresh, String revision) {
+        return guarded(locator, slot -> {
+            access.requireRevision(slot, revision);
+            access.requireReadable(slot);
+            var snapshot = authority.snapshot(slot.revision(), access.family(slot, refresh, false));
+            if (snapshot.state() == ConsoleSessionSnapshot.State.PASSWORD_CHANGE_REQUIRED)
+                throw new ConsoleSessionException(INITIAL_CREDENTIAL_RESTRICTED);
+            UUID identityId = snapshot.family().identityId();
+            issuanceFence.assertIdentityIssuable(identityId);
+            if (identities.findCredentials(identityId).stream()
+                    .noneMatch(value -> value.type() == CredentialType.PASSWORD && value.isValidAt(clock.instant())))
+                throw new ConsoleSessionException(SESSION_INVALID);
+            return identityId;
         });
     }
 

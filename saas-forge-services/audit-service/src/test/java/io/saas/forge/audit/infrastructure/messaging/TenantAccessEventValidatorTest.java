@@ -39,6 +39,21 @@ class TenantAccessEventValidatorTest {
     }
 
     @Test
+    void tenantClosureProducesStrictPersistentAuditFact() {
+        String event = registeredTenantClosedEvent();
+        var record = validator.validate(TenantCreatedEventValidatorTest.TOPIC,
+                TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME, event).orElseThrow();
+        assertEquals("TENANT_CLOSED", record.action());
+        assertEquals("TENANT", record.resourceType());
+        assertEquals(TenantCreatedEventValidatorTest.tenantId(), record.resourceId().toString());
+        assertThrows(InvalidAuditEventException.class, () -> validator.validate(
+                TenantCreatedEventValidatorTest.TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME,
+                event.replace("\"revokedSessionCount\":2", "\"revokedSessionCount\":-1")));
+    }
+
+    @Test
     void invitationChangeProducesAuditRecordWithoutEmailOrToken() {
         String event = invitationCreatedEvent();
 
@@ -52,6 +67,31 @@ class TenantAccessEventValidatorTest {
                 TenantCreatedEventValidatorTest.TOPIC, TenantCreatedEventValidatorTest.tenantId(),
                 TenantCreatedEventValidator.CONSUMER_NAME,
                 event.replace("\"expiresAt\":", "\"token\":\"secret\",\"expiresAt\":")));
+    }
+
+    @Test
+    void acceptedInvitationProducesMembershipAuditRecordWithoutCredential() {
+        String event = """
+                {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000013",
+                "source":"urn:saas.forge:tenant-access-service","type":"com.saas.forge.invitation.accepted.v1",
+                "subject":"%s","time":"2026-08-28T10:15:30Z",
+                "datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/invitation-accepted.v1.schema.json",
+                "data":{"invitationId":"019535d9-0001-7000-8000-000000000011","tenantId":"%s",
+                "actorIdentityId":"%s","identityId":"%s",
+                "membershipId":"019535d9-0001-7000-8000-000000000014"}}
+                """.formatted(TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidatorTest.tenantId(), TenantCreatedEventValidatorTest.actorIdentityId(),
+                TenantCreatedEventValidatorTest.actorIdentityId()).replace("\n", "");
+        var record = validator.validate(TenantCreatedEventValidatorTest.TOPIC,
+                TenantCreatedEventValidatorTest.tenantId(), TenantCreatedEventValidator.CONSUMER_NAME,
+                event).orElseThrow();
+        assertEquals("INVITATION_ACCEPTED", record.action());
+        assertTrue(record.metadata().contains("membershipId"));
+        assertThrows(InvalidAuditEventException.class, () -> validator.validate(
+                TenantCreatedEventValidatorTest.TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME,
+                event.replace("\"membershipId\":", "\"token\":\"secret\",\"membershipId\":")));
     }
 
     static String invitationCreatedEvent() {
@@ -237,5 +277,13 @@ class TenantAccessEventValidatorTest {
                         TenantCreatedEventValidatorTest.tenantId(),
                         TenantCreatedEventValidatorTest.tenantId(),
                         TenantCreatedEventValidatorTest.actorIdentityId()).replace("\n", "");
+    }
+
+    static String registeredTenantClosedEvent() {
+        return registeredTenantSuspendedEvent()
+                .replace("019535d9-0001-7000-8000-000000000008",
+                        "019535d9-0001-7000-8000-000000000084")
+                .replace("tenant.suspended.v1", "tenant.closed.v1")
+                .replace("tenant-suspended.v1", "tenant-closed.v1");
     }
 }

@@ -7,6 +7,7 @@ public enum OAuthScope {
     RUNTIME_READ("runtime:read"),
     RUNTIME_QUOTA_WRITE("runtime:quota:write"),
     TENANT_ACCESS_MEMBERSHIP_READ("tenant-access:membership:read"),
+    TENANT_ACCESS_INVITATION_ACCEPT("tenant-access:invitation:accept"),
     TENANT_ACCESS_TENANT_READ("tenant-access:tenant:read"),
     IAM_IDENTITY_WRITE("iam:identity:write"),
     IAM_PASSWORD_SETUP_WRITE("iam:password-setup:write"),
