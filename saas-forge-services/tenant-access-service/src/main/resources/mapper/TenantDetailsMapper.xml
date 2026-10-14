@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saas.forge.tenantaccess.infrastructure.persistence.mapper.TenantDetailsMapper">
+    <select id="setOperationTarget" resultType="string">
+        SELECT set_config('app.tenant_id', CAST(#{tenantId} AS TEXT), true)
+    </select>
+
+    <insert id="claim">
+        INSERT INTO tenant_detail_updates (tenant_id, actor_identity_id, idempotency_key, request_fingerprint)
+        VALUES (#{claim.key.tenantId}, #{claim.key.actorIdentityId}, #{claim.key.idempotencyKey},
+                #{claim.fingerprint})
+        ON CONFLICT (tenant_id, actor_identity_id, idempotency_key) DO NOTHING
+    </insert>
+
+    <select id="find" resultType="io.saas.forge.tenantaccess.infrastructure.persistence.record.TenantDetailsResultRow">
+        SELECT request_fingerprint AS requestFingerprint, display_name AS displayName,
+               tenant_status AS status, expires_at AS expiresAt,
+               tenant_created_at AS createdAt, tenant_updated_at AS updatedAt
+        FROM tenant_detail_updates
+        WHERE tenant_id = #{key.tenantId} AND actor_identity_id = #{key.actorIdentityId}
+          AND idempotency_key = #{key.idempotencyKey}
+    </select>
+
+    <select id="lockTenant" resultType="io.saas.forge.tenantaccess.infrastructure.persistence.record.TenantRow">
+        SELECT id, display_name AS displayName, tenant_status AS status,
+               expires_at AS expiresAt, created_at AS createdAt, updated_at AS updatedAt
+        FROM tenants WHERE id = #{tenantId} FOR UPDATE
+    </select>
+
+    <select id="lifecycleChangeInProgress" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM tenant_lifecycle_workflows
+            WHERE tenant_id = #{tenantId} AND workflow_status IN ('PENDING', 'RECOVERY_REQUIRED'))
+    </select>
+
+    <update id="save">
+        UPDATE tenants SET display_name = #{tenant.displayName}, expires_at = #{tenant.expiresAt},
+            updated_at = #{tenant.updatedAt}
+        WHERE id = #{tenant.id} AND tenant_status = #{tenant.status} AND tenant_status &lt;&gt; 'CLOSED'
+    </update>
+
+    <update id="complete">
+        UPDATE tenant_detail_updates SET display_name = #{snapshot.tenant.displayName},
+            tenant_status = #{snapshot.tenant.status}, expires_at = #{snapshot.tenant.expiresAt},
+            tenant_created_at = #{snapshot.tenant.createdAt}, tenant_updated_at = #{snapshot.tenant.updatedAt},
+            completed_at = #{snapshot.completedAt}
+        WHERE tenant_id = #{snapshot.key.tenantId}
+          AND actor_identity_id = #{snapshot.key.actorIdentityId}
+          AND idempotency_key = #{snapshot.key.idempotencyKey}
+          AND completed_at IS NULL
+    </update>
+</mapper>

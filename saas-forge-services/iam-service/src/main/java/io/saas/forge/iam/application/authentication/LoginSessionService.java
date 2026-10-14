@@ -61,6 +61,7 @@ public class LoginSessionService {
                 && !platformRoles.hasActiveAssignment(identityId, PLATFORM_ADMIN_ROLE, accessToken.issuedAt())) {
             throw new AccessContextUnavailableException();
         }
+        issuanceFence.assertIdentityIssuable(identityId);
         issuanceFence.assertIssuable(membershipId, tenantId);
         RefreshTokenFamily family = refreshTokenFamilies.create(
                 RefreshTokenFamily.start(identityId, purpose, membershipId, tenantId, accessToken.issuedAt()),
@@ -78,6 +79,7 @@ public class LoginSessionService {
             RefreshTokenMaterial refreshToken,
             Instant startedAt,
             String traceId) {
+        issuanceFence.assertIdentityIssuable(identityId);
         RefreshTokenFamily family = refreshTokenFamilies.create(
                 RefreshTokenFamily.start(identityId, RefreshTokenFamilyPurpose.USER_TENANT_SELECTION,
                         null, null, startedAt),
@@ -94,6 +96,7 @@ public class LoginSessionService {
             RefreshTokenMaterial refreshToken,
             Instant startedAt,
             String traceId) {
+        issuanceFence.assertIdentityIssuable(identityId);
         RefreshTokenFamily family = refreshTokenFamilies.create(
                 RefreshTokenFamily.startInitialPasswordChange(
                         identityId, initialCredentialId, startedAt, credentialExpiresAt),
@@ -118,6 +121,7 @@ public class LoginSessionService {
             return OptionalLong.empty();
         }
         RefreshTokenFamily family = selection.family();
+        issuanceFence.assertIdentityIssuable(family.identityId());
         accessTokenIssuances.create(new AccessTokenIssuance(
                 accessToken.jti(), family.id(), family.identityId(), membershipId, tenantId, accessToken.kid(),
                 accessToken.issuedAt(), accessToken.expiresAt()));
@@ -140,6 +144,7 @@ public class LoginSessionService {
             return OptionalLong.empty();
         }
         RefreshTokenFamily family = rotation.family();
+        issuanceFence.assertIdentityIssuable(family.identityId());
         accessTokenIssuances.create(new AccessTokenIssuance(
                 accessToken.jti(), family.id(), family.identityId(), membershipId, tenantId, accessToken.kid(),
                 accessToken.issuedAt(), accessToken.expiresAt()));
@@ -156,6 +161,7 @@ public class LoginSessionService {
         if (rotation.status() != RefreshTokenConsumption.Status.CONSUMED) {
             return OptionalLong.empty();
         }
+        issuanceFence.assertIdentityIssuable(rotation.family().identityId());
         return OptionalLong.of(cookieMaxAge(refreshedAt, rotation.family()));
     }
 

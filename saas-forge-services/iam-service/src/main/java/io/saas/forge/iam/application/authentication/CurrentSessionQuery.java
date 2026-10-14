@@ -24,7 +24,8 @@ public final class CurrentSessionQuery {
     public Snapshot read(String authorization) {
         var claims = signatures.verify(authorization);
         try {
-            if (revocations.isTokenRevoked(claims.jti(), claims.kid())) {
+            if (revocations.isTokenRevoked(claims.jti(), claims.kid())
+                    || revocations.isIdentityFenced(claims.identityId())) {
                 throw new UserAccessTokenInvalidException();
             }
         } catch (RevocationIndexUnavailableException unavailable) {

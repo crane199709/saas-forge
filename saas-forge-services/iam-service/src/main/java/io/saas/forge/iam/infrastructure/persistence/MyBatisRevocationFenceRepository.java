@@ -22,6 +22,10 @@ public class MyBatisRevocationFenceRepository implements RevocationFenceReposito
 
     @Override
     public void lock(RevocationFenceTarget target) {
+        if (target.type() == RevocationFenceTargetType.IDENTITY) {
+            mapper.lockTarget("revocation-fence:identity:" + target.identityId());
+            return;
+        }
         mapper.lockTarget("revocation-fence:tenant:" + target.tenantId());
         if (target.type() == RevocationFenceTargetType.MEMBERSHIP) {
             mapper.lockTarget("revocation-fence:membership:" + target.membershipId());
@@ -47,6 +51,12 @@ public class MyBatisRevocationFenceRepository implements RevocationFenceReposito
     }
 
     @Override
+    public Optional<RevocationFence> findActiveIdentity(UUID identityId) {
+        return Optional.ofNullable(mapper.findActiveIdentity(identityId))
+                .map(MyBatisRevocationFenceRepository::toDomain);
+    }
+
+    @Override
     public RevocationFence create(RevocationFence fence) {
         RevocationFenceRow row = new RevocationFenceRow();
         row.setRevocationRequestId(fence.revocationRequestId());
@@ -54,6 +64,7 @@ public class MyBatisRevocationFenceRepository implements RevocationFenceReposito
         row.setTargetId(fence.target().targetId());
         row.setTenantId(fence.target().tenantId());
         row.setMembershipId(fence.target().membershipId());
+        row.setIdentityId(fence.target().identityId());
         row.setFenceStatus(fence.status().name());
         row.setEstablishedAt(IamTime.asOffsetDateTime(fence.establishedAt()));
         row.setReleasedAt(IamTime.asOffsetDateTime(fence.releasedAt()));
@@ -74,7 +85,7 @@ public class MyBatisRevocationFenceRepository implements RevocationFenceReposito
         RevocationFenceTargetType type = RevocationFenceTargetType.valueOf(row.getTargetType());
         return new RevocationFence(
                 row.getRevocationRequestId(),
-                new RevocationFenceTarget(type, row.getMembershipId(), row.getTenantId()),
+                new RevocationFenceTarget(type, row.getMembershipId(), row.getTenantId(), row.getIdentityId()),
                 RevocationFenceStatus.valueOf(row.getFenceStatus()),
                 IamTime.asInstant(row.getEstablishedAt()),
                 IamTime.asInstant(row.getReleasedAt()));

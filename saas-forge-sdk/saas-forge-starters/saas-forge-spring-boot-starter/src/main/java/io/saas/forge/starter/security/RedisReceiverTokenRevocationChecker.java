@@ -29,9 +29,16 @@ final class RedisReceiverTokenRevocationChecker {
     }
 
     boolean isUserTokenRevoked(UUID jti, String kid, UUID membershipId, UUID tenantId) {
+        return isUserTokenRevoked(jti, kid, membershipId, tenantId, null);
+    }
+
+    boolean isUserTokenRevoked(UUID jti, String kid, UUID membershipId, UUID tenantId, UUID identityId) {
         List<String> keys = new ArrayList<>();
         keys.add(prefix + "jwt-jti-revocation:v1:" + digest(jti.toString()));
         keys.add(prefix + "signing-kid-revocation:v1:" + digest(kid));
+        if (identityId != null) {
+            keys.add(prefix + "user-session-revocation-fence:v1:identity:" + identityId);
+        }
         if (membershipId != null) {
             keys.add(prefix + "user-session-revocation-fence:v1:tenant:" + tenantId);
             keys.add(prefix + "user-session-revocation-fence:v1:membership:" + membershipId);

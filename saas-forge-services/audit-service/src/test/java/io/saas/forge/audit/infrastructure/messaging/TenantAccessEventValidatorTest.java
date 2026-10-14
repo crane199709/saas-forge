@@ -26,6 +26,32 @@ class TenantAccessEventValidatorTest {
     }
 
     @Test
+    void tenantDetailsUpdateProducesACommitAuditRecord() {
+        var result = validator.validate(
+                TenantCreatedEventValidatorTest.TOPIC,
+                TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME,
+                tenantDetailsUpdatedEvent());
+
+        assertEquals("TENANT_DETAILS_UPDATED", result.orElseThrow().action());
+        assertEquals(TenantCreatedEventValidatorTest.tenantId(), result.orElseThrow().tenantId().toString());
+        assertTrue(result.orElseThrow().metadata().contains("New name"));
+    }
+
+    static String tenantDetailsUpdatedEvent() {
+        return """
+                {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000009",
+                "source":"urn:saas.forge:tenant-access-service","type":"com.saas.forge.tenant.details-updated.v1",
+                "subject":"%s","time":"2026-08-28T10:15:30Z",
+                "datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/tenant-details-updated.v1.schema.json",
+                "data":{"tenantId":"%s","actorIdentityId":"%s","displayName":"New name","expiresAt":null}}
+                """.formatted(TenantCreatedEventValidatorTest.tenantId(),
+                        TenantCreatedEventValidatorTest.tenantId(),
+                        TenantCreatedEventValidatorTest.actorIdentityId()).replace("\n", "");
+    }
+
+    @Test
     void ignoresRegisteredTenantTypeBelongingToOtherConsumer() {
         assertEquals("audit-service.tenant-lifecycle-events",
                 TenantAccessEventValidator.TENANT_SUSPENDED_CONSUMER_NAME);

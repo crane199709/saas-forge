@@ -44,6 +44,20 @@
       ]
     },
     {
+      "type": "com.saas.forge.iam.password.recovered.v1",
+      "producerService": "iam-service",
+      "source": "urn:saas.forge:iam-service",
+      "schema": "saas-forge-contracts/saas-forge-event-contracts/iam-password-recovered.v1.schema.json",
+      "topic": "saas.forge.<environment>.iam-service.events",
+      "orderingKey": "identityId",
+      "allowedConsumers": [
+        {
+          "service": "audit-service",
+          "consumerName": "audit-service.iam-session-events"
+        }
+      ]
+    },
+    {
       "type": "com.saas.forge.iam.password.established.v1",
       "producerService": "iam-service",
       "source": "urn:saas.forge:iam-service",
@@ -254,6 +268,20 @@
         {
           "service": "audit-service",
           "consumerName": "audit-service.tenant-lifecycle-events"
+        }
+      ]
+    },
+    {
+      "type": "com.saas.forge.tenant.details-updated.v1",
+      "producerService": "tenant-access-service",
+      "source": "urn:saas.forge:tenant-access-service",
+      "schema": "saas-forge-contracts/saas-forge-event-contracts/tenant-details-updated.v1.schema.json",
+      "topic": "saas.forge.<environment>.tenant-access-service.events",
+      "orderingKey": "tenantId",
+      "allowedConsumers": [
+        {
+          "service": "audit-service",
+          "consumerName": "audit-service.tenant-events"
         }
       ]
     },
