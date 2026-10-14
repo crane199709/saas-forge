@@ -23,12 +23,34 @@ class SessionStartedKafkaConsumerTest {
         var validator = new IamSessionEventValidator(objectMapper,
                 new SessionStartedEventValidator(objectMapper, IamPasswordEventValidatorTest.TOPIC),
                 new TenantContextSwitchedEventValidator(objectMapper, IamPasswordEventValidatorTest.TOPIC),
-                new PasswordRecoveredEventValidator(objectMapper, IamPasswordEventValidatorTest.TOPIC));
+                new PasswordRecoveredEventValidator(objectMapper, IamPasswordEventValidatorTest.TOPIC),
+                new PlatformAdminGrantedEventValidator(objectMapper, IamPasswordEventValidatorTest.TOPIC),
+                new PlatformAdminRevokedEventValidator(objectMapper, IamPasswordEventValidatorTest.TOPIC));
         new IamSessionKafkaConsumer(validator, service).consume(new ConsumerRecord<>(
                 IamPasswordEventValidatorTest.TOPIC, 0, 1,
                 IamPasswordEventValidatorTest.IDENTITY, IamPasswordEventValidatorTest.delivered()),
                 () -> calls.add("acknowledge"));
         org.junit.jupiter.api.Assertions.assertEquals(List.of("acknowledge"), calls);
+    }
+
+    @Test
+    void platformRoleFactsAreLeftToTheSessionConsumerGroup() {
+        List<String> calls = new ArrayList<>();
+        AuditRecordService service = new AuditRecordService((consumerName, actual, consumedAt) -> {
+            calls.add("record");
+            return true;
+        }, Clock.systemUTC());
+        var objectMapper = new tools.jackson.databind.ObjectMapper();
+        var consumer = new IamPasswordKafkaConsumer(
+                new IamPasswordEventValidator(objectMapper, IamPasswordEventValidatorTest.TOPIC),
+                service, objectMapper);
+        for (String type : List.of(PlatformAdminGrantedEventValidator.EVENT_TYPE,
+                PlatformAdminRevokedEventValidator.EVENT_TYPE)) {
+            consumer.consume(new ConsumerRecord<>(IamPasswordEventValidatorTest.TOPIC, 0, 1,
+                    IamPasswordEventValidatorTest.IDENTITY, "{\"type\":\"" + type + "\"}"),
+                    () -> calls.add("acknowledge"));
+        }
+        org.junit.jupiter.api.Assertions.assertEquals(List.of("acknowledge", "acknowledge"), calls);
     }
 
     @Test

@@ -30,7 +30,9 @@ public final class IamPasswordKafkaConsumer {
             String type = event.path("type").asText();
             if (SessionStartedEventValidator.EVENT_TYPE.equals(type)
                     || TenantContextSwitchedEventValidator.EVENT_TYPE.equals(type)
-                    || PasswordRecoveredEventValidator.EVENT_TYPE.equals(type)) {
+                    || PasswordRecoveredEventValidator.EVENT_TYPE.equals(type)
+                    || PlatformAdminGrantedEventValidator.EVENT_TYPE.equals(type)
+                    || PlatformAdminRevokedEventValidator.EVENT_TYPE.equals(type)) {
                 acknowledgment.acknowledge();
                 return;
             }
