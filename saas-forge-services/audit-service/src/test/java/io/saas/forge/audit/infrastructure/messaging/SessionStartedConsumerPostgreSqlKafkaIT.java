@@ -164,6 +164,41 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     }
 
     @Test
+    void organizationChangeIsPersistedOnceAfterKafkaRedelivery() {
+        String eventId = uuidV7(119);
+        String tenantId = TenantCreatedEventValidatorTest.tenantId();
+        String actorId = TenantCreatedEventValidatorTest.actorIdentityId();
+        String unitId = uuidV7(120);
+        String payload = """
+                {"specversion":"1.0","id":"%s","source":"urn:saas.forge:tenant-access-service",
+                "type":"com.saas.forge.organization.unit-changed.v1","subject":"%s",
+                "time":"2026-08-28T10:15:30Z","datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/organization-unit-changed.v1.schema.json",
+                "data":{"tenantId":"%s","unitId":"%s","actorIdentityId":"%s",
+                "action":"CREATED","parentId":null}}
+                """.formatted(eventId, tenantId, tenantId, unitId, actorId).replace("\n", "");
+        String group = "organization-redelivery-" + UUID.randomUUID();
+        try (var consumer = consumer(TENANT_TOPIC, group)) {
+            seekToEnd(consumer);
+            send(TENANT_TOPIC, tenantId, payload);
+            var message = pollOne(consumer);
+            tenantListener.consume(message, consumer::commitSync);
+            tenantListener.consume(message, () -> {});
+        }
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        var row = app.queryForMap("""
+                SELECT action, resource_type, resource_id, actor_identity_id, tenant_id
+                FROM audit_records WHERE source_event_id = ?::uuid
+                """, eventId);
+        assertEquals("ORGANIZATION_UNIT_CREATED", row.get("action"));
+        assertEquals("ORGANIZATION_UNIT", row.get("resource_type"));
+        assertEquals(unitId, row.get("resource_id").toString());
+        assertEquals(actorId, row.get("actor_identity_id").toString());
+        assertEquals(tenantId, row.get("tenant_id").toString());
+    }
+
+    @Test
     void writesOnceAndSafelyAbsorbsRedeliveryAfterCommitBeforeAcknowledgmentFailure() {
         String eventId = uuidV7(11);
         String payload = event(eventId);
