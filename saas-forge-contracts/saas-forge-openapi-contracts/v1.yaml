@@ -4023,6 +4023,10 @@ components:
         source: { type: string, maxLength: 512 }
         uiVersion: { type: string, minLength: 1, maxLength: 100 }
         entrySha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        permissions:
+          type: array
+          maxItems: 10
+          items: { type: string, pattern: '^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$' }
     EnabledRemoteManifest:
       type: object
       additionalProperties: false
@@ -4034,6 +4038,10 @@ components:
         source: { type: string, maxLength: 512 }
         uiVersion: { type: string, minLength: 1, maxLength: 100 }
         entrySha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        permissions:
+          type: array
+          maxItems: 10
+          items: { type: string, pattern: '^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$' }
     RemoteManifest:
       type: object
       additionalProperties: false
@@ -4045,6 +4053,10 @@ components:
         source: { type: string, maxLength: 512 }
         uiVersion: { type: string, minLength: 1, maxLength: 100 }
         entrySha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        permissions:
+          type: array
+          maxItems: 10
+          items: { type: string, pattern: '^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$' }
         state: { type: string, enum: [PENDING_REVIEW, APPROVED, REJECTED, ENABLED] }
         registeredBy: { $ref: './common.yaml#/components/schemas/UuidV7' }
         registeredAt: { type: string, format: date-time }
