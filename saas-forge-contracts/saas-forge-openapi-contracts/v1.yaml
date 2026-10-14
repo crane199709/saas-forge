@@ -17,9 +17,62 @@ tags:
   - name: Platform entitlement bootstrap
   - name: OAuth clients
   - name: Permissions
+  - name: Brand assets
   - name: Invitations
   - name: Tenant roles
 paths:
+  /api/v1/brand-assets/{kind}:
+    post:
+      tags: [Brand assets]
+      operationId: uploadBrandAsset
+      x-saas.forge-service: tenant-access-service
+      summary: Upload a validated PNG asset for the current Tenant
+      description: Upload does not save or change the Tenant Brand Profile.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: kind
+          in: path
+          required: true
+          schema: { type: string, enum: [logo, favicon] }
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema: { type: string, format: binary }
+      responses:
+        '201':
+          description: Created asset in the current Tenant; never cached.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BrandAsset' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '413': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /brands/{assetId}:
+    get:
+      tags: [Brand assets]
+      operationId: readPublicBrandAsset
+      x-saas.forge-service: tenant-access-service
+      summary: Read one active public PNG asset by platform generated ID
+      description: No directory listing or management information is exposed.
+      security: []
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      responses:
+        '200':
+          description: Active PNG; never cached so permanent disable takes effect on future reads.
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
   /api/v1/auth/session:
     get:
       tags: [Authentication]
@@ -2590,6 +2643,17 @@ components:
       required: true
       schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
   schemas:
+    BrandAsset:
+      type: object
+      additionalProperties: false
+      required: [id, tenantId, kind, url, width, height]
+      properties:
+        id: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        tenantId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        kind: { type: string, enum: [LOGO, FAVICON] }
+        url: { type: string, pattern: '^/brands/[0-9a-f-]{36}$' }
+        width: { type: integer, minimum: 1, maximum: 2048 }
+        height: { type: integer, minimum: 1, maximum: 2048 }
     CreateInvitationRequest:
       type: object
       additionalProperties: false

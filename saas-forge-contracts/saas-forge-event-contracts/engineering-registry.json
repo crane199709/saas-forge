@@ -258,6 +258,20 @@
       ]
     },
     {
+      "type": "com.saas.forge.brand.asset-uploaded.v1",
+      "producerService": "tenant-access-service",
+      "source": "urn:saas.forge:tenant-access-service",
+      "schema": "saas-forge-contracts/saas-forge-event-contracts/brand-asset-uploaded.v1.schema.json",
+      "topic": "saas.forge.<environment>.tenant-access-service.events",
+      "orderingKey": "tenantId",
+      "allowedConsumers": [
+        {
+          "service": "audit-service",
+          "consumerName": "audit-service.tenant-events"
+        }
+      ]
+    },
+    {
       "type": "com.saas.forge.tenant.created.v1",
       "producerService": "tenant-access-service",
       "source": "urn:saas.forge:tenant-access-service",
