@@ -2,6 +2,8 @@ package io.saas.forge.tenantaccess.config;
 
 import io.saas.forge.tenantaccess.application.authorization.PermissionAuthority;
 import io.saas.forge.tenantaccess.application.brand.BrandAssetEventFactory;
+import io.saas.forge.tenantaccess.application.brand.BrandAssetDisabledEventFactory;
+import io.saas.forge.tenantaccess.application.brand.BrandAssetPolicyService;
 import io.saas.forge.tenantaccess.application.brand.BrandAssetRepository;
 import io.saas.forge.tenantaccess.application.brand.BrandAssetService;
 import io.saas.forge.tenantaccess.application.brand.BrandObjectStore;
@@ -51,6 +53,18 @@ public class BrandAssetConfiguration {
     BrandAssetEventFactory brandAssetEventFactory(ObjectMapper json, UuidV7Generator ids, Clock clock,
             @Value("${saas.forge.tenant-access.outbox-topic}") String topic) {
         return new BrandAssetEventFactory(json, ids, clock, topic);
+    }
+
+    @Bean
+    BrandAssetDisabledEventFactory brandAssetDisabledEventFactory(ObjectMapper json, UuidV7Generator ids,
+            @Value("${saas.forge.tenant-access.outbox-topic}") String topic) {
+        return new BrandAssetDisabledEventFactory(json, ids, topic);
+    }
+
+    @Bean
+    BrandAssetPolicyService brandAssetPolicyService(BrandAssetRepository assets, OutboxEventRepository outbox,
+            BrandAssetDisabledEventFactory events) {
+        return new BrandAssetPolicyService(assets, outbox, events);
     }
 
     @Bean

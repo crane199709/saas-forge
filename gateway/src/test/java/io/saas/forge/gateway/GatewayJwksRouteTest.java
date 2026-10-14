@@ -399,6 +399,23 @@ class GatewayJwksRouteTest {
     }
 
     @Test
+    void brandPolicyWriteIsLimitedToControlledConsoleBrowserOrigin() throws Exception {
+        String path = "/api/v1/platform/brand-assets/019535d9-0001-7000-8000-000000000028/disable";
+        var accepted = send(HttpRequest.newBuilder(gatewayUri(path))
+                .header("Origin", "https://console.saas.forge.test")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "authorization,content-type,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(200, accepted.statusCode());
+        var rejected = send(HttpRequest.newBuilder(gatewayUri(path))
+                .header("Origin", "https://platform.saas.forge.test")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "authorization,content-type,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(403, rejected.statusCode());
+    }
+
+    @Test
     void passwordSetupRequiresControlledOriginAndCsrfAndAllowsExactPreflight()
             throws IOException, InterruptedException {
         HttpRequest.Builder base = HttpRequest.newBuilder(gatewayUri("/api/v1/auth/password-setups"))
