@@ -221,7 +221,8 @@ class PermissionCatalogMigrationIT {
             assertThat(Boolean.TRUE.equals(transactions.execute(status -> authority.allowed(admin, "example:task:list")))).isTrue();
             assertThat(Boolean.TRUE.equals(transactions.execute(status -> authority.allowed(ordinary, "example:project:list")))).isFalse();
             assertThat(Boolean.TRUE.equals(transactions.execute(status -> authority.allowed(admin, "example:project:unknown")))).isFalse();
-            try (var rows = connection.createStatement().executeQuery("SELECT count(*) FROM permission_catalog WHERE enabled")) {
+            try (var rows = connection.createStatement().executeQuery(
+                    "SELECT count(*) FROM permission_catalog WHERE enabled AND source = 'example-service'")) {
                 assertThat(rows.next()).isTrue();
                 assertThat(rows.getInt(1)).isEqualTo(2);
             }
