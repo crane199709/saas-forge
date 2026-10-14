@@ -28,6 +28,7 @@ public class TenantAccessEventValidator {
             "https://saas.forge.io/contracts/events/tenant-role-changed.v1.schema.json";
     private static final String ORGANIZATION_UNIT_CHANGED_TYPE = "com.saas.forge.organization.unit-changed.v1";
     private static final String BRAND_ASSET_UPLOADED_TYPE = "com.saas.forge.brand.asset-uploaded.v1";
+    private static final String BRAND_PROFILE_SAVED_TYPE = "com.saas.forge.brand.profile-saved.v1";
     private static final String BRAND_ASSET_UPLOADED_SCHEMA =
             "https://saas.forge.io/contracts/events/brand-asset-uploaded.v1.schema.json";
     private static final String ORGANIZATION_UNIT_CHANGED_SCHEMA =
@@ -55,6 +56,8 @@ public class TenantAccessEventValidator {
             Set.of("tenantId", "unitId", "actorIdentityId", "action", "parentId");
     private static final Set<String> BRAND_ASSET_DATA_FIELDS =
             Set.of("tenantId", "assetId", "actorIdentityId", "kind");
+    private static final Set<String> BRAND_PROFILE_DATA_FIELDS =
+            Set.of("tenantId", "actorIdentityId", "revision", "logoAssetId", "faviconAssetId");
     private static final Pattern UUID_V7 = Pattern.compile(
             "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$");
     private static final Pattern TRACE_ID = Pattern.compile("^(?!0{32}$)[0-9a-f]{32}$");
@@ -114,6 +117,8 @@ public class TenantAccessEventValidator {
                     validateTenantClosed(topic, orderingKey, consumerName, envelope));
             case BRAND_ASSET_UPLOADED_TYPE -> Optional.of(
                     validateBrandAssetUploaded(topic, orderingKey, consumerName, envelope));
+            case BRAND_PROFILE_SAVED_TYPE -> Optional.of(
+                    validateBrandProfileSaved(topic, orderingKey, consumerName, envelope));
             case TENANT_SUSPENDED_TYPE -> {
                 validateRegisteredTenantSuspended(topic, orderingKey, consumerName, envelope);
                 requireOtherRegisteredConsumer(TENANT_SUSPENDED_CONSUMER_NAME, consumerName);
@@ -151,6 +156,38 @@ public class TenantAccessEventValidator {
                 BRAND_ASSET_UPLOADED_TYPE, occurredAt, traceId, actorId, tenantId,
                 "BRAND_ASSET_UPLOADED", "BRAND_ASSET", assetId,
                 objectMapper.writeValueAsString(Map.of("kind", kind)));
+    }
+
+    private AuditRecord validateBrandProfileSaved(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(BRAND_PROFILE_SAVED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals("https://saas.forge.io/contracts/events/brand-profile-saved.v1.schema.json",
+                text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, BRAND_PROFILE_DATA_FIELDS, BRAND_PROFILE_DATA_FIELDS, "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        UUID actorId = uuidV7(text(data, "actorIdentityId"), "data.actorIdentityId");
+        UUID logoId = uuidV7(text(data, "logoAssetId"), "data.logoAssetId");
+        UUID faviconId = uuidV7(text(data, "faviconAssetId"), "data.faviconAssetId");
+        JsonNode revision = data.get("revision");
+        if (revision == null || !revision.isIntegralNumber() || revision.asLong() < 1) throw invalid("data");
+        requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                BRAND_PROFILE_SAVED_TYPE, occurredAt, traceId, actorId, tenantId,
+                "BRAND_PROFILE_SAVED", "TENANT", tenantId,
+                objectMapper.writeValueAsString(Map.of("revision", revision.asLong(), "logoAssetId", logoId,
+                        "faviconAssetId", faviconId)));
     }
 
     private AuditRecord validateTenantRoleChanged(
