@@ -245,6 +245,34 @@ class TenantAccessEventValidatorTest {
     }
 
     @Test
+    void membershipOrganizationChangeProducesStrictAuditRecord() {
+        String event = """
+                {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000020",
+                "source":"urn:saas.forge:tenant-access-service",
+                "type":"com.saas.forge.membership.organization-unit-changed.v1",
+                "subject":"%s","time":"2026-08-28T10:15:30Z",
+                "datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/membership-organization-unit-changed.v1.schema.json",
+                "data":{"tenantId":"%s","membershipId":"019535d9-0001-7000-8000-000000000021",
+                "unitId":"019535d9-0001-7000-8000-000000000022",
+                "actorIdentityId":"%s","action":"ADDED"}}
+                """.formatted(TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidatorTest.actorIdentityId()).replace("\n", "");
+        var record = validator.validate(TenantCreatedEventValidatorTest.TOPIC,
+                TenantCreatedEventValidatorTest.tenantId(), TenantCreatedEventValidator.CONSUMER_NAME,
+                event).orElseThrow();
+        assertEquals("MEMBERSHIP_ORGANIZATION_UNIT_ADDED", record.action());
+        assertEquals("MEMBERSHIP", record.resourceType());
+        assertEquals("019535d9-0001-7000-8000-000000000021", record.resourceId().toString());
+        assertTrue(record.metadata().contains("019535d9-0001-7000-8000-000000000022"));
+        assertThrows(InvalidAuditEventException.class, () -> validator.validate(
+                TenantCreatedEventValidatorTest.TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME,
+                event.replace("\"ADDED\"", "\"COPIED\"")));
+    }
+
+    @Test
     void uploadedBrandAssetProducesAuditRecordWithoutObjectKey() {
         String event = """
                 {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000029",

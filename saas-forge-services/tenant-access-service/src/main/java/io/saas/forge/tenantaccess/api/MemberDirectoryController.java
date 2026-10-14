@@ -50,17 +50,20 @@ public final class MemberDirectoryController {
                                      AND role.role_key = 'TENANT_ADMINISTRATOR' AND role.system_managed),
                            COALESCE((SELECT workflow_status FROM membership_disable_workflows workflow
                                      WHERE workflow.tenant_id = m.tenant_id AND workflow.membership_id = m.id
+                                     ORDER BY workflow.created_at DESC LIMIT 1), 'NONE'),
+                           COALESCE((SELECT workflow_status FROM membership_enable_workflows workflow
+                                     WHERE workflow.tenant_id = m.tenant_id AND workflow.membership_id = m.id
                                      ORDER BY workflow.created_at DESC LIMIT 1), 'NONE')
                     FROM memberships m WHERE m.tenant_id = ?
                     ORDER BY m.id LIMIT 100
                     """, (row, index) -> new Member(row.getObject(1, UUID.class),
                     row.getObject(2, UUID.class), row.getString(3), row.getString(4),
-                    row.getBoolean(5), row.getString(6)), context.tenantId());
+                    row.getBoolean(5), row.getString(6), row.getString(7)), context.tenantId());
         });
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new Page(items));
     }
 
     public record Page(List<Member> items) {}
     public record Member(UUID membershipId, UUID identityId, String status, String invitedEmail,
-                         boolean administrator, String disableStatus) {}
+                         boolean administrator, String disableStatus, String enableStatus) {}
 }
