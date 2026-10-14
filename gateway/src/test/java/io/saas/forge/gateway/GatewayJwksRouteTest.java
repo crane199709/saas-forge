@@ -420,6 +420,33 @@ class GatewayJwksRouteTest {
     }
 
     @Test
+    void invitationPasswordSetupOnlyUsesTheConsoleOriginAndNeverRequiresABearerToken()
+            throws IOException, InterruptedException {
+        String path = "/api/v1/invitation-password-setups";
+        HttpRequest.Builder request = HttpRequest.newBuilder(gatewayUri(path))
+                .header("Content-Type", "application/json")
+                .header("X-SF-CSRF", "1")
+                .header("Sec-Fetch-Site", "same-site");
+        assertEquals(403, send(request.copy().POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build()).statusCode());
+        assertEquals(403, send(request.copy().header("Origin", "https://platform.saas.forge.test")
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build()).statusCode());
+        HttpResponse<String> allowed = send(request.copy()
+                .header("Origin", "https://console.saas.forge.test")
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build());
+        assertEquals(200, allowed.statusCode());
+        assertEquals("tenant-access", allowed.body());
+        var preflight = send(HttpRequest.newBuilder(gatewayUri(path))
+                .header("Origin", "https://console.saas.forge.test")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "content-type,idempotency-key,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(200, preflight.statusCode());
+    }
+
+    @Test
     void browserAuthenticationOperationsRequireTheCompleteControlledRequestShape()
             throws IOException, InterruptedException {
         for (String path : List.of("/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout")) {

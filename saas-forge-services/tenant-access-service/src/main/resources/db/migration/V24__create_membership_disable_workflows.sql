@@ -69,3 +69,50 @@ END;
 $$;
 REVOKE ALL ON FUNCTION claim_next_membership_disable(TIMESTAMPTZ, TIMESTAMPTZ) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION claim_next_membership_disable(TIMESTAMPTZ, TIMESTAMPTZ) TO tenant_access_app;
+
+-- 已记录的禁用意图即时撤销目标的可用上下文；IAM 不可用时仍拒绝刷新与当前上下文读取。
+CREATE OR REPLACE FUNCTION validate_membership(p_identity_id UUID, p_membership_id UUID)
+RETURNS TABLE (tenant_id UUID)
+LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = pg_catalog, public
+AS $$
+    SELECT tenant.id
+    FROM public.memberships AS membership
+    JOIN public.tenants AS tenant ON tenant.id = membership.tenant_id
+    WHERE membership.id = p_membership_id AND membership.identity_id = p_identity_id
+      AND membership.membership_status = 'ENABLED' AND tenant.tenant_status = 'ACTIVE'
+      AND NOT EXISTS (
+          SELECT 1 FROM public.tenant_lifecycle_workflows AS closure
+          WHERE closure.tenant_id = tenant.id AND closure.lifecycle_action = 'CLOSE'
+            AND closure.workflow_status IN ('PENDING', 'RECOVERY_REQUIRED'))
+      AND NOT EXISTS (
+          SELECT 1 FROM public.membership_disable_workflows AS disabling
+          WHERE disabling.tenant_id = membership.tenant_id AND disabling.membership_id = membership.id
+            AND disabling.workflow_status IN ('REVOKING', 'RECOVERY_REQUIRED', 'RELEASE_PENDING'))
+      AND (tenant.expires_at IS NULL OR tenant.expires_at > statement_timestamp())
+$$;
+
+CREATE OR REPLACE FUNCTION list_accessible_membership_contexts(p_identity_id UUID)
+RETURNS TABLE (
+    membership_id UUID, tenant_id UUID, tenant_display_name VARCHAR(200),
+    brand_display_name VARCHAR(200), brand_logo_url VARCHAR(2048), brand_favicon_url VARCHAR(2048),
+    brand_primary_color CHAR(7), brand_accent_color CHAR(7))
+LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = pg_catalog, public
+AS $$
+    SELECT membership.id, tenant.id, tenant.display_name, brand.display_name, brand.logo_url,
+           brand.favicon_url, brand.primary_color, brand.accent_color
+    FROM public.memberships AS membership
+    JOIN public.tenants AS tenant ON tenant.id = membership.tenant_id
+    LEFT JOIN public.tenant_brand_profiles AS brand ON brand.tenant_id = tenant.id
+    WHERE membership.identity_id = p_identity_id AND membership.membership_status = 'ENABLED'
+      AND tenant.tenant_status = 'ACTIVE'
+      AND NOT EXISTS (
+          SELECT 1 FROM public.tenant_lifecycle_workflows AS closure
+          WHERE closure.tenant_id = tenant.id AND closure.lifecycle_action = 'CLOSE'
+            AND closure.workflow_status IN ('PENDING', 'RECOVERY_REQUIRED'))
+      AND NOT EXISTS (
+          SELECT 1 FROM public.membership_disable_workflows AS disabling
+          WHERE disabling.tenant_id = membership.tenant_id AND disabling.membership_id = membership.id
+            AND disabling.workflow_status IN ('REVOKING', 'RECOVERY_REQUIRED', 'RELEASE_PENDING'))
+      AND (tenant.expires_at IS NULL OR tenant.expires_at > statement_timestamp())
+    ORDER BY tenant.display_name COLLATE "C", membership.id LIMIT 101
+$$;

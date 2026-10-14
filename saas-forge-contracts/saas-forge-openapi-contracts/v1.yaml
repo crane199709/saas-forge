@@ -733,12 +733,81 @@ paths:
       security: [{ UserBearerAuth: [] }]
       responses:
         '200':
-          description: Member directory for Tenant Administrators or explicitly delegated readers.
+          description: Read-only member directory; only Tenant Administrators can list it.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MemberPage' }
         '401': { $ref: './common.yaml#/components/responses/Problem' }
         '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/members/{membershipId}/roles:
+    parameters:
+      - name: membershipId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+    get:
+      tags: [Members]
+      operationId: listMembershipRoles
+      x-saas.forge-service: tenant-access-service
+      summary: Read a Membership's current Tenant Role assignments
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current assignments for a Tenant Administrator; never cached.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberRoleAssignments' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/members/{membershipId}/roles/{roleId}:
+    parameters:
+      - name: membershipId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      - name: roleId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+    put:
+      tags: [Members]
+      operationId: assignMembershipRole
+      x-saas.forge-service: tenant-access-service
+      summary: Assign an existing Tenant Role to a Membership
+      description: Requires a current Tenant Administrator. Repeated assignment is idempotent and creates no new fact.
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current assignments after the change; never cached.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberRoleAssignments' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+    delete:
+      tags: [Members]
+      operationId: revokeMembershipRole
+      x-saas.forge-service: tenant-access-service
+      summary: Revoke one Tenant Role from a Membership
+      description: Cannot remove the last enabled Tenant Administrator, including concurrent changes.
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current assignments after the change; never cached.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberRoleAssignments' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
 
   /api/v1/members/{membershipId}/disables:
@@ -863,6 +932,38 @@ paths:
         '400': { $ref: './common.yaml#/components/responses/Problem' }
         '401': { $ref: './common.yaml#/components/responses/Problem' }
         '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+  /api/v1/invitation-password-setups:
+    post:
+      tags: [Invitations]
+      operationId: requestInvitationPasswordSetup
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Request first Password Setup through a currently valid Invitation
+      description: >-
+        The current Invitation token identifies its invited Identity; no caller-supplied
+        Identity or email is accepted. IAM decides from current Credential state whether
+        to deliver a first Setup email, report an existing password, or require Recovery.
+        No Membership, work Context, login session, or max_users usage is created here.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InvitationPasswordSetupRequest' }
+      responses:
+        '200':
+          description: Current IAM Credential disposition or SMTP accepted; no token or email is returned.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvitationPasswordSetupResult' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
         '409': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
   /api/v1/invitations/{invitationId}/resends:
@@ -2280,6 +2381,33 @@ paths:
         '409': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
 
+  /api/v1/platform/administrators/{identityId}:
+    delete:
+      tags: [Platform administrators]
+      operationId: revokePlatformAdministrator
+      x-saas.forge-service: iam-service
+      summary: Revoke one fixed PLATFORM_ADMIN assignment and its platform tokens
+      description: |
+        Ends current Platform Context families and revokes every unexpired historical
+        Platform jti, including one in a family now switched to Tenant. Current legal
+        Tenant sessions remain valid. Retry the same Idempotency-Key after an uncertain
+        response; a failed revocation-index delivery is recovered from durable facts.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { description: Role and platform token revocation effective }
+        '400': { $ref: './common.yaml#/components/responses/ValidationProblem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
   /api/v1/platform/oauth-clients/{clientId}/credential-status:
     get:
       tags: [OAuth clients]
@@ -2893,6 +3021,18 @@ components:
       required: [email]
       properties:
         email: { type: string, format: email, minLength: 3, maxLength: 320 }
+    InvitationPasswordSetupRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token: { type: string, minLength: 43, maxLength: 43, pattern: '^[A-Za-z0-9_-]{43}$', writeOnly: true }
+    InvitationPasswordSetupResult:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: { type: string, enum: [MAIL_SERVICE_ACCEPTED, PASSWORD_READY, RECOVERY_REQUIRED] }
     MemberPage:
       type: object
       required: [items]
@@ -2920,6 +3060,22 @@ components:
         invitedEmail: { type: string, format: email, nullable: true }
         administrator: { type: boolean }
         disableStatus: { type: string, enum: [NONE, REVOKING, RECOVERY_REQUIRED, RELEASE_PENDING, COMPLETED] }
+    MemberRoleAssignment:
+      type: object
+      additionalProperties: false
+      required: [roleId, roleKey, systemManaged]
+      properties:
+        roleId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        roleKey: { type: string }
+        systemManaged: { type: boolean }
+    MemberRoleAssignments:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/MemberRoleAssignment' }
     Invitation:
       type: object
       additionalProperties: false

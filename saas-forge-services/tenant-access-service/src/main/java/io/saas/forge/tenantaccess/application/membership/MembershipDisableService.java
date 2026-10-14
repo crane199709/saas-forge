@@ -4,6 +4,7 @@ import io.saas.forge.sdk.tenant.TenantContextSnapshot;
 import io.saas.forge.tenantaccess.application.authorization.PermissionAuthority;
 import io.saas.forge.tenantaccess.application.tenant.SessionRevocationGateway.Result;
 import io.saas.forge.tenantaccess.application.tenant.SessionRevocationRejectedException;
+import io.saas.forge.tenantaccess.application.tenant.SessionRevocationUnavailableException;
 import io.saas.forge.tenantaccess.application.tenant.UuidV7Generator;
 import io.saas.forge.tenantaccess.domain.outbox.OutboxEvent;
 import io.saas.forge.tenantaccess.domain.outbox.OutboxEventRepository;
@@ -59,7 +60,12 @@ public final class MembershipDisableService {
         return transactions.execute(status -> {
             target(actor.tenantId());
             authorize(actor, membershipId);
-            return progress(latest(actor.tenantId(), membershipId));
+            Work work = latest(actor.tenantId(), membershipId);
+            if (work != null) return progress(work);
+            List<String> states = jdbc.query("SELECT membership_status FROM memberships WHERE tenant_id = ? AND id = ?",
+                    (row, index) -> row.getString(1), actor.tenantId(), membershipId);
+            if (states.isEmpty()) throw new MembershipDisableFailure("MEMBERSHIP_NOT_FOUND");
+            return new Progress(null, "NONE", states.get(0), false, false);
         });
     }
 
@@ -75,7 +81,11 @@ public final class MembershipDisableService {
             return current;
         });
         // IAM 的原 Fence 代际必须保持，不能创建新的撤销请求或清除旧拒绝事实。
-        revocations.recover(work.revocationId(), work.tenantId(), work.membershipId());
+        try {
+            revocations.recover(work.revocationId(), work.tenantId(), work.membershipId());
+        } catch (SessionRevocationUnavailableException | SessionRevocationRejectedException unavailable) {
+            return readProgress(work);
+        }
         transactions.executeWithoutResult(status -> {
             target(work.tenantId());
             jdbc.update("""
@@ -104,13 +114,13 @@ public final class MembershipDisableService {
     private Work prepare(TenantContextSnapshot actor, UUID membershipId, UUID operationId) {
         target(actor.tenantId());
         lockTenant(actor.tenantId());
+        authorize(actor, membershipId);
         Work previous = find(actor.tenantId(), operationId);
         if (previous != null) {
             if (!previous.membershipId().equals(membershipId) || !previous.actorIdentityId().equals(actor.identityId()))
                 throw new MembershipDisableFailure("IDEMPOTENCY_KEY_REUSED");
             return previous;
         }
-        authorize(actor, membershipId);
         List<String> statuses = jdbc.query("""
                 SELECT membership_status FROM memberships WHERE tenant_id = ? AND id = ? FOR UPDATE
                 """, (row, index) -> row.getString(1), actor.tenantId(), membershipId);
@@ -204,7 +214,7 @@ public final class MembershipDisableService {
                   revoked_family_count = ?, revoked_jti_count = ?, next_attempt_at = ?, updated_at = ?
                 WHERE operation_id = ?
                 """, result.revokedFamilyCount(), result.revokedJtiCount(), sql(now), sql(now), work.operationId());
-        outbox.append(disabledEvent(work, result.revokedFamilyCount(), now, traceId));
+        outbox.append(disabledEvent(work, now, traceId));
         return find(work.tenantId(), work.operationId());
     }
 
@@ -311,7 +321,7 @@ public final class MembershipDisableService {
         jdbc.queryForObject("SELECT set_config('app.tenant_id', ?, true)", String.class, tenantId.toString());
     }
 
-    private OutboxEvent disabledEvent(Work work, long revokedFamilies, Instant at, String traceId) {
+    private OutboxEvent disabledEvent(Work work, Instant at, String traceId) {
         UUID eventId = ids.next();
         UUID identityId = jdbc.queryForObject("""
                 SELECT identity_id FROM memberships WHERE tenant_id = ? AND id = ?

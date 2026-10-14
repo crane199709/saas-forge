@@ -21,6 +21,7 @@
 | `com.saas.forge.plan.activated.v1` | Entitlement | `planId`、`code`、`status`、`actorIdentityId` |
 | `com.saas.forge.subscription.created.v1` | Entitlement | `subscriptionId`、`tenantId`、`planId`、`status`、`endsAt`、`actorIdentityId` |
 | `com.saas.forge.invitation.accepted.v1` | Tenant Access | `invitationId`、`tenantId`、`membershipId`、`identityId`、`actorIdentityId` |
+| `com.saas.forge.membership-role.changed.v1` | Tenant Access | `tenantId`、`membershipId`、`roleId`、`roleKey`、`actorIdentityId`、`action`；仅提交后的新增或撤销绑定 |
 | `com.saas.forge.invitation.created.v1` | Tenant Access | `invitationId`、`tenantId`、`actorIdentityId`、`expiresAt`；不含邮箱或令牌 |
 | `com.saas.forge.invitation.resent.v1` | Tenant Access | `invitationId`、`tenantId`、`actorIdentityId`、`expiresAt`；仅代表链接已轮换，不代表 SMTP 成功 |
 | `com.saas.forge.invitation.revoked.v1` | Tenant Access | `invitationId`、`tenantId`、`actorIdentityId`、`expiresAt` |

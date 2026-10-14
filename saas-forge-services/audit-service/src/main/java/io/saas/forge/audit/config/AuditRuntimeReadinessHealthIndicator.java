@@ -1,6 +1,7 @@
 package io.saas.forge.audit.config;
 
 import io.saas.forge.audit.infrastructure.messaging.IamSessionKafkaConsumer;
+import io.saas.forge.audit.infrastructure.messaging.IamPasswordKafkaConsumer;
 import io.saas.forge.audit.infrastructure.messaging.ExampleFactKafkaConsumer;
 import io.saas.forge.audit.infrastructure.messaging.TenantAccessKafkaConsumer;
 import java.util.List;
@@ -46,6 +47,7 @@ public class AuditRuntimeReadinessHealthIndicator implements HealthIndicator {
         this.requiredMigrationVersion = requiredMigrationVersion;
         var assignments = new java.util.ArrayList<>(List.of(
                 new RequiredAssignment(IamSessionKafkaConsumer.LISTENER_ID, iamSessionTopic),
+                new RequiredAssignment(IamPasswordKafkaConsumer.LISTENER_ID, iamSessionTopic),
                 new RequiredAssignment(TenantAccessKafkaConsumer.LISTENER_ID, tenantAccessTopic)));
         if (exampleEnabled) assignments.add(new RequiredAssignment(ExampleFactKafkaConsumer.LISTENER_ID, exampleTopic));
         this.requiredAssignments = List.copyOf(assignments);
@@ -60,6 +62,7 @@ public class AuditRuntimeReadinessHealthIndicator implements HealthIndicator {
         try {
             String[] topics = requiredAssignments.stream()
                     .map(RequiredAssignment::topic)
+                    .distinct()
                     .toArray(String[]::new);
             if (!kafkaAdmin.describeTopics(topics).keySet().containsAll(
                     requiredAssignments.stream().map(RequiredAssignment::topic).toList())) {

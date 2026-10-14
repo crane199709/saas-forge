@@ -67,6 +67,7 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     private static JdbcTemplate admin;
     private static JdbcTemplate app;
     private static IamSessionKafkaConsumer listener;
+    private static IamPasswordKafkaConsumer passwordListener;
     private static TenantAccessKafkaConsumer tenantListener;
     private static ExampleFactKafkaConsumer exampleListener;
     private static SimpleMeterRegistry meters;
@@ -120,7 +121,10 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
         listener = new IamSessionKafkaConsumer(
                 new IamSessionEventValidator(objectMapper, sessionStarted, tenantContextSwitched,
                         new PasswordRecoveredEventValidator(objectMapper, TOPIC),
-                        new PlatformAdminGrantedEventValidator(objectMapper, TOPIC)), service);
+                        new PlatformAdminGrantedEventValidator(objectMapper, TOPIC),
+                        new PlatformAdminRevokedEventValidator(objectMapper, TOPIC)), service);
+        passwordListener = new IamPasswordKafkaConsumer(
+                new IamPasswordEventValidator(objectMapper, TOPIC), service, objectMapper);
         var tenantCreated = new TenantCreatedEventValidator(objectMapper, TENANT_TOPIC);
         meters = new SimpleMeterRegistry();
         tenantListener = new TenantAccessKafkaConsumer(
@@ -138,6 +142,29 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     @AfterAll
     static void closeIsolationProducer() {
         isolationProducerFactory.destroy();
+    }
+
+    @Test
+    void setupSuccessFactsArePersistedOnceByRegisteredPasswordConsumer() {
+        String delivered = IamPasswordEventValidatorTest.delivered();
+        String established = IamPasswordEventValidatorTest.established().replace(
+                IamPasswordEventValidatorTest.EVENT, uuidV7(999));
+        try (KafkaConsumer<String, String> kafka = consumer("audit-password-setup-" + UUID.randomUUID())) {
+            seekToEnd(kafka);
+            send(IamPasswordEventValidatorTest.IDENTITY, delivered);
+            ConsumerRecord<String, String> first = pollOne(kafka);
+            passwordListener.consume(first, kafka::commitSync);
+            passwordListener.consume(first, () -> {});
+            send(IamPasswordEventValidatorTest.IDENTITY, established);
+            passwordListener.consume(pollOne(kafka), kafka::commitSync);
+        }
+        assertEquals(1, count("audit_records", IamPasswordEventValidatorTest.EVENT));
+        assertEquals(1, count("audit_consumed_events", IamPasswordEventValidatorTest.EVENT));
+        assertEquals("PASSWORD_SETUP_DELIVERED", app.queryForObject(
+                "SELECT action FROM audit_records WHERE source_event_id=?::uuid", String.class,
+                IamPasswordEventValidatorTest.EVENT));
+        assertEquals("PASSWORD_ESTABLISHED", app.queryForObject(
+                "SELECT action FROM audit_records WHERE source_event_id=?::uuid", String.class, uuidV7(999)));
     }
 
     @Test
@@ -168,6 +195,39 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
                 FROM audit_records WHERE source_event_id = ?::uuid
                 """, eventId);
         assertEquals("PLATFORM_ADMIN_GRANTED", record.get("action"));
+        assertEquals("PLATFORM_ROLE_ASSIGNMENT", record.get("resource_type"));
+        assertEquals(assignmentId, record.get("resource_id").toString());
+        assertEquals(actorId, record.get("actor_identity_id").toString());
+    }
+
+    @Test
+    void platformAdminRevokeIsPersistedOnceAcrossKafkaRedelivery() {
+        String eventId = uuidV7(996);
+        String identityId = identityId();
+        String actorId = uuidV7(997);
+        String assignmentId = uuidV7(998);
+        String payload = """
+                {"specversion":"1.0","id":"%s","source":"urn:saas.forge:iam-service",
+                "type":"com.saas.forge.iam.platform-admin-revoked.v1","subject":"%s",
+                "time":"2026-08-28T10:16:00Z","datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/iam-platform-admin-revoked.v1.schema.json",
+                "data":{"identityId":"%s","actorIdentityId":"%s","roleAssignmentId":"%s",
+                "roleKey":"PLATFORM_ADMIN","occurredAt":"2026-08-28T10:16:00Z"}}
+                """.formatted(eventId, identityId, identityId, actorId, assignmentId);
+        try (KafkaConsumer<String, String> kafka = consumer("audit-platform-admin-revoke-" + UUID.randomUUID())) {
+            seekToEnd(kafka);
+            send(identityId, payload);
+            ConsumerRecord<String, String> message = pollOne(kafka);
+            listener.consume(message, kafka::commitSync);
+            listener.consume(message, () -> {});
+        }
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        Map<String, Object> record = app.queryForMap("""
+                SELECT action, resource_type, resource_id, actor_identity_id
+                FROM audit_records WHERE source_event_id = ?::uuid
+                """, eventId);
+        assertEquals("PLATFORM_ADMIN_REVOKED", record.get("action"));
         assertEquals("PLATFORM_ROLE_ASSIGNMENT", record.get("resource_type"));
         assertEquals(assignmentId, record.get("resource_id").toString());
         assertEquals(actorId, record.get("actor_identity_id").toString());

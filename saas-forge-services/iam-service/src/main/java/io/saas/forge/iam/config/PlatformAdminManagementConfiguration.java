@@ -7,6 +7,11 @@ import io.saas.forge.iam.application.authorization.PlatformAdminDeliveryWorker;
 import io.saas.forge.iam.application.authorization.PlatformAdminGrantTransaction;
 import io.saas.forge.iam.application.authorization.PlatformAdminGrantedEventFactory;
 import io.saas.forge.iam.application.authorization.PlatformAdminQueries;
+import io.saas.forge.iam.application.authorization.PlatformAdminRevokeService;
+import io.saas.forge.iam.application.authorization.PlatformAdminRevokeTransaction;
+import io.saas.forge.iam.application.authorization.PlatformAdminRevokeWorker;
+import io.saas.forge.iam.application.authorization.PlatformAdminRevokedEventFactory;
+import io.saas.forge.iam.application.authentication.RevocationIndex;
 import io.saas.forge.iam.application.authorization.PlatformAdminSetupCaller;
 import io.saas.forge.iam.domain.authorization.PlatformRoleAssignmentRepository;
 import io.saas.forge.iam.domain.identity.IdentityRepository;
@@ -20,6 +25,28 @@ import tools.jackson.databind.ObjectMapper;
 
 @Configuration
 public class PlatformAdminManagementConfiguration {
+    @Bean
+    PlatformAdminRevokedEventFactory platformAdminRevokedEventFactory(ObjectMapper json,
+            UuidV7Generator ids, @Value("${saas.forge.environment:dev}") String environment) {
+        return new PlatformAdminRevokedEventFactory(json, ids, environment);
+    }
+
+    @Bean
+    PlatformAdminRevokeTransaction platformAdminRevokeTransaction(JdbcTemplate jdbc,
+            OutboxEventRepository outbox, PlatformAdminRevokedEventFactory events, Clock clock) {
+        return new PlatformAdminRevokeTransaction(jdbc, outbox, events, clock);
+    }
+
+    @Bean
+    PlatformAdminRevokeService platformAdminRevokeService(PlatformAdminRevokeTransaction transaction,
+            RevocationIndex index, Clock clock) {
+        return new PlatformAdminRevokeService(transaction, index, clock);
+    }
+
+    @Bean
+    PlatformAdminRevokeWorker platformAdminRevokeWorker(PlatformAdminRevokeService service) {
+        return new PlatformAdminRevokeWorker(service);
+    }
     @Bean
     PlatformAdminGrantedEventFactory platformAdminGrantedEventFactory(ObjectMapper json,
             UuidV7Generator ids, @Value("${saas.forge.environment:dev}") String environment) {

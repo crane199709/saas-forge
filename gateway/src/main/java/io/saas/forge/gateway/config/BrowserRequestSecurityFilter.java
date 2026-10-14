@@ -29,7 +29,8 @@ class BrowserRequestSecurityFilter extends OncePerRequestFilter {
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
             "/api/v1/auth/logout",
-            "/api/v1/auth/password-setups");
+            "/api/v1/auth/password-setups",
+            "/api/v1/invitation-password-setups");
 
     private final Set<String> controlledOrigins;
     private final String consoleOrigin;
@@ -81,6 +82,11 @@ class BrowserRequestSecurityFilter extends OncePerRequestFilter {
             if (!java.util.Collections.list(request.getHeaders(HttpHeaders.ORIGIN)).equals(java.util.List.of(consoleOrigin))) return "ORIGIN";
             if (!Set.of("same-site", "same-origin").contains(String.valueOf(request.getHeader(FETCH_SITE_HEADER)))) return "FETCH_SITE";
             if (HttpMethod.GET.matches(request.getMethod())) return null;
+        }
+        if ("/api/v1/invitation-password-setups".equals(request.getRequestURI())) {
+            if (!consoleOrigin.equals(origin)) return "ORIGIN";
+            if (!Set.of("same-site", "same-origin").contains(String.valueOf(request.getHeader(FETCH_SITE_HEADER))))
+                return "FETCH_SITE";
         }
         if (origin == null || !controlledOrigins.contains(origin)) {
             return "ORIGIN";

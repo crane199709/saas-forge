@@ -2,6 +2,7 @@ package io.saas.forge.iam.api;
 
 import io.saas.forge.iam.application.authorization.PlatformAdminGrantService;
 import io.saas.forge.iam.application.authorization.PlatformAdminQueries;
+import io.saas.forge.iam.application.authorization.PlatformAdminRevokeService;
 import io.saas.forge.iam.application.client.OAuthClientManagementAuthorizer;
 import io.saas.forge.iam.contract.api.PlatformAdministratorsApi;
 import io.saas.forge.iam.contract.model.PlatformAdminGrantRequest;
@@ -24,12 +25,15 @@ public class PlatformAdministratorsController implements PlatformAdministratorsA
     private final OAuthClientManagementAuthorizer authorizer;
     private final PlatformAdminGrantService grants;
     private final PlatformAdminQueries queries;
+    private final PlatformAdminRevokeService revokes;
 
     public PlatformAdministratorsController(OAuthClientManagementAuthorizer authorizer,
-            PlatformAdminGrantService grants, PlatformAdminQueries queries) {
+            PlatformAdminGrantService grants, PlatformAdminQueries queries,
+            PlatformAdminRevokeService revokes) {
         this.authorizer = authorizer;
         this.grants = grants;
         this.queries = queries;
+        this.revokes = revokes;
     }
 
     @Override
@@ -50,6 +54,14 @@ public class PlatformAdministratorsController implements PlatformAdministratorsA
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new PlatformAdminGrantResult(
                 result.identityId(), result.roleAssignmentId(), result.newlyGranted(),
                 PlatformAdminGrantResult.SetupStateEnum.valueOf(result.setupState().name())));
+    }
+
+    @Override
+    public ResponseEntity<Void> revokePlatformAdministrator(UUID identityId, UUID requestId) {
+        HttpServletRequest request = currentRequest();
+        UUID actor = authorizer.authorize(request.getHeader(HttpHeaders.AUTHORIZATION));
+        revokes.revoke(actor, identityId, requestId, OAuthClientsController.traceId(request));
+        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
     private static HttpServletRequest currentRequest() {

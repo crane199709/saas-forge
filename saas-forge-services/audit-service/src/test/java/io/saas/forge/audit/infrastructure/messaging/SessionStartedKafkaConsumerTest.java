@@ -13,6 +13,47 @@ import org.springframework.kafka.support.Acknowledgment;
 
 class SessionStartedKafkaConsumerTest {
     @Test
+    void passwordEventIsLeftToItsRegisteredConsumerGroup() {
+        List<String> calls = new ArrayList<>();
+        AuditRecordService service = new AuditRecordService((consumerName, actual, consumedAt) -> {
+            calls.add("record");
+            return true;
+        }, Clock.systemUTC());
+        var objectMapper = new tools.jackson.databind.ObjectMapper();
+        var validator = new IamSessionEventValidator(objectMapper,
+                new SessionStartedEventValidator(objectMapper, IamPasswordEventValidatorTest.TOPIC),
+                new TenantContextSwitchedEventValidator(objectMapper, IamPasswordEventValidatorTest.TOPIC),
+                new PasswordRecoveredEventValidator(objectMapper, IamPasswordEventValidatorTest.TOPIC),
+                new PlatformAdminGrantedEventValidator(objectMapper, IamPasswordEventValidatorTest.TOPIC),
+                new PlatformAdminRevokedEventValidator(objectMapper, IamPasswordEventValidatorTest.TOPIC));
+        new IamSessionKafkaConsumer(validator, service).consume(new ConsumerRecord<>(
+                IamPasswordEventValidatorTest.TOPIC, 0, 1,
+                IamPasswordEventValidatorTest.IDENTITY, IamPasswordEventValidatorTest.delivered()),
+                () -> calls.add("acknowledge"));
+        org.junit.jupiter.api.Assertions.assertEquals(List.of("acknowledge"), calls);
+    }
+
+    @Test
+    void platformRoleFactsAreLeftToTheSessionConsumerGroup() {
+        List<String> calls = new ArrayList<>();
+        AuditRecordService service = new AuditRecordService((consumerName, actual, consumedAt) -> {
+            calls.add("record");
+            return true;
+        }, Clock.systemUTC());
+        var objectMapper = new tools.jackson.databind.ObjectMapper();
+        var consumer = new IamPasswordKafkaConsumer(
+                new IamPasswordEventValidator(objectMapper, IamPasswordEventValidatorTest.TOPIC),
+                service, objectMapper);
+        for (String type : List.of(PlatformAdminGrantedEventValidator.EVENT_TYPE,
+                PlatformAdminRevokedEventValidator.EVENT_TYPE)) {
+            consumer.consume(new ConsumerRecord<>(IamPasswordEventValidatorTest.TOPIC, 0, 1,
+                    IamPasswordEventValidatorTest.IDENTITY, "{\"type\":\"" + type + "\"}"),
+                    () -> calls.add("acknowledge"));
+        }
+        org.junit.jupiter.api.Assertions.assertEquals(List.of("acknowledge", "acknowledge"), calls);
+    }
+
+    @Test
     void acknowledgesOnlyAfterTransactionalServiceReturns() {
         List<String> calls = new ArrayList<>();
         AuditRecordRepository repository = (consumerName, actual, consumedAt) -> {
@@ -27,7 +68,8 @@ class SessionStartedKafkaConsumerTest {
                 new SessionStartedEventValidator(objectMapper, "saas.forge.test.iam-service.events"),
                 new TenantContextSwitchedEventValidator(objectMapper, "saas.forge.test.iam-service.events"),
                 new PasswordRecoveredEventValidator(objectMapper, "saas.forge.test.iam-service.events"),
-                new PlatformAdminGrantedEventValidator(objectMapper, "saas.forge.test.iam-service.events"));
+                new PlatformAdminGrantedEventValidator(objectMapper, "saas.forge.test.iam-service.events"),
+                new PlatformAdminRevokedEventValidator(objectMapper, "saas.forge.test.iam-service.events"));
         var message = new ConsumerRecord<String, String>(
                 "saas.forge.test.iam-service.events", 0, 1,
                 "019535d9-0001-7000-8000-000000000002",
