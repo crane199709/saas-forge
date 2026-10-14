@@ -37,11 +37,14 @@ public class TenantAccessEventValidator {
             "com.saas.forge.membership.organization-unit-changed.v1";
     private static final String BRAND_ASSET_UPLOADED_TYPE = "com.saas.forge.brand.asset-uploaded.v1";
     private static final String BRAND_ASSET_DISABLED_TYPE = "com.saas.forge.brand.asset-disabled.v1";
+    private static final String BRAND_ASSET_REMOVED_TYPE = "com.saas.forge.brand.asset-removed.v1";
     private static final String BRAND_PROFILE_SAVED_TYPE = "com.saas.forge.brand.profile-saved.v1";
     private static final String BRAND_ASSET_UPLOADED_SCHEMA =
             "https://saas.forge.io/contracts/events/brand-asset-uploaded.v1.schema.json";
     private static final String BRAND_ASSET_DISABLED_SCHEMA =
             "https://saas.forge.io/contracts/events/brand-asset-disabled.v1.schema.json";
+    private static final String BRAND_ASSET_REMOVED_SCHEMA =
+            "https://saas.forge.io/contracts/events/brand-asset-removed.v1.schema.json";
     private static final String ORGANIZATION_UNIT_CHANGED_SCHEMA =
             "https://saas.forge.io/contracts/events/organization-unit-changed.v1.schema.json";
     private static final String MEMBERSHIP_ORGANIZATION_UNIT_CHANGED_SCHEMA =
@@ -71,6 +74,8 @@ public class TenantAccessEventValidator {
             Set.of("tenantId", "membershipId", "unitId", "actorIdentityId", "action");
     private static final Set<String> BRAND_ASSET_DATA_FIELDS =
             Set.of("tenantId", "assetId", "actorIdentityId", "kind");
+    private static final Set<String> BRAND_ASSET_REMOVED_DATA_FIELDS =
+            Set.of("tenantId", "assetId", "kind", "reason");
     private static final Set<String> BRAND_PROFILE_DATA_FIELDS =
             Set.of("tenantId", "actorIdentityId", "revision", "logoAssetId", "faviconAssetId");
     private static final Set<String> MEMBERSHIP_DISABLED_DATA_FIELDS =
@@ -144,6 +149,8 @@ public class TenantAccessEventValidator {
                     validateBrandAssetUploaded(topic, orderingKey, consumerName, envelope));
             case BRAND_ASSET_DISABLED_TYPE -> Optional.of(
                     validateBrandAssetDisabled(topic, orderingKey, consumerName, envelope));
+            case BRAND_ASSET_REMOVED_TYPE -> Optional.of(
+                    validateBrandAssetRemoved(topic, orderingKey, consumerName, envelope));
             case BRAND_PROFILE_SAVED_TYPE -> Optional.of(
                     validateBrandProfileSaved(topic, orderingKey, consumerName, envelope));
             case TENANT_SUSPENDED_TYPE -> {
@@ -274,6 +281,36 @@ public class TenantAccessEventValidator {
                 BRAND_ASSET_DISABLED_TYPE, occurredAt, traceId, actorId, tenantId,
                 "BRAND_ASSET_DISABLED", "BRAND_ASSET", assetId,
                 objectMapper.writeValueAsString(Map.of("kind", kind)));
+    }
+
+    private AuditRecord validateBrandAssetRemoved(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(BRAND_ASSET_REMOVED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals(BRAND_ASSET_REMOVED_SCHEMA, text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, BRAND_ASSET_REMOVED_DATA_FIELDS, BRAND_ASSET_REMOVED_DATA_FIELDS, "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        UUID assetId = uuidV7(text(data, "assetId"), "data.assetId");
+        String kind = text(data, "kind");
+        String reason = text(data, "reason");
+        if (!Set.of("LOGO", "FAVICON").contains(kind)) throw invalid("data.kind");
+        if (!Set.of("UNBOUND", "REPLACED", "DISABLED", "LEGACY").contains(reason)) throw invalid("data.reason");
+        requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                BRAND_ASSET_REMOVED_TYPE, occurredAt, traceId, null, tenantId,
+                "BRAND_ASSET_REMOVED", "BRAND_ASSET", assetId,
+                objectMapper.writeValueAsString(Map.of("kind", kind, "reason", reason)));
     }
 
     private AuditRecord validateBrandProfileSaved(

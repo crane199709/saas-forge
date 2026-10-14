@@ -14,6 +14,7 @@
 | `com.saas.forge.iam.password-established.v1` | IAM | `identityId`、`credentialId` |
 | `com.saas.forge.tenant.created.v1` | Tenant Access | `tenantId`、`status`、`actorIdentityId` |
 | `com.saas.forge.brand.asset-uploaded.v1` | Tenant Access | `tenantId`、`assetId`、`actorIdentityId`、`kind`；不包含图像内容或对象存储凭据 |
+| `com.saas.forge.brand.asset-removed.v1` | Tenant Access | `tenantId`、`assetId`、`kind`、`reason`；`LEGACY` 表示迁移前绑定历史未知的保守留存素材；后台清理不伪造用户操作者，不包含对象键或图片内容 |
 | `com.saas.forge.brand.profile-saved.v1` | Tenant Access | `tenantId`、`actorIdentityId`、`revision`、`logoAssetId`、`faviconAssetId`；不包含显示名称、颜色或素材内容 |
 | `com.saas.forge.tenant.administrator-initialized.v1` | Tenant Access | `tenantId`、`membershipId`、`identityId`、`roleId`、`status`、`actorIdentityId` |
 | `com.saas.forge.quota-definition.created.v1` | Entitlement | `quotaDefinitionId`、`code`、`status`、`actorIdentityId` |
