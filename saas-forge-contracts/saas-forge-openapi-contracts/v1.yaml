@@ -19,6 +19,7 @@ tags:
   - name: Platform administrators
   - name: Permissions
   - name: Brand assets
+  - name: Platform brand policy
   - name: Brand profiles
   - name: Invitations
   - name: Tenant roles
@@ -130,6 +131,33 @@ paths:
               schema: { type: string, format: binary }
         '404': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/platform/brand-assets/{assetId}/disable:
+    post:
+      tags: [Platform brand policy]
+      operationId: disableBrandAsset
+      x-saas.forge-service: tenant-access-service
+      summary: Permanently disable one policy violating Tenant Brand Asset
+      description: Requires a current PLATFORM_ADMIN token. The Tenant's saved Profile is retained for repair; replay does not emit another fact.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      responses:
+        '200':
+          description: The asset is permanently disabled; no Tenant Profile is edited.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BrandAssetDisableResult' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
 
   /api/v1/auth/session:
     get:
@@ -3092,6 +3120,15 @@ components:
         url: { type: string, pattern: '^/brands/[0-9a-f-]{36}$' }
         width: { type: integer, minimum: 1, maximum: 2048 }
         height: { type: integer, minimum: 1, maximum: 2048 }
+    BrandAssetDisableResult:
+      type: object
+      additionalProperties: false
+      required: [id, tenantId, kind, disabledAt]
+      properties:
+        id: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        tenantId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        kind: { type: string, enum: [LOGO, FAVICON] }
+        disabledAt: { type: string, format: date-time }
     CreateInvitationRequest:
       type: object
       additionalProperties: false
