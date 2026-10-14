@@ -53,6 +53,14 @@ class MembershipRoleAssignmentIT {
         String url = "jdbc:postgresql://" + postgres.getHost() + ":" + postgres.getMappedPort(5432) + "/tenant_access_db";
         Flyway.configure().dataSource(url, "tenant_access_migrator", "tenant-access-migrator-password")
                 .locations("classpath:db/migration").load().migrate();
+        try (var connection = java.sql.DriverManager.getConnection(url, "tenant_access_migrator", "tenant-access-migrator-password");
+                var statement = connection.prepareStatement("SELECT import_permission_catalog(?::jsonb, ?, ?)")) {
+            statement.setString(1, Files.readString(root().resolve(
+                    "saas-forge-services/tenant-access-service/permission-catalog/v1.json")));
+            statement.setString(2, "a".repeat(64));
+            statement.setString(3, "saas.forge.dev.tenant-access-service.events");
+            statement.execute();
+        }
         var app = new DriverManagerDataSource(url, "tenant_access_app", "tenant-access-app-password");
         var jdbc = new JdbcTemplate(app);
         var tx = new TransactionTemplate(new DataSourceTransactionManager(app));
