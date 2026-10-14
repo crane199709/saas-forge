@@ -537,6 +537,39 @@ paths:
         '502': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
         '504': { $ref: './common.yaml#/components/responses/Problem' }
+    put:
+      tags: [Platform tenants]
+      operationId: updatePlatformTenant
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Update the platform managed Tenant name and expiry
+      description: Requires current Platform Admin authorization. A null or omitted expiresAt clears the expiry. Expired ACTIVE Tenants may be extended; SUSPENDED stays suspended and CLOSED cannot be updated. Replaying an Idempotency-Key with the same request returns the original committed result.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTenantRequest' }
+      responses:
+        '200':
+          description: The committed Tenant detail, including the original response for an idempotent replay.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tenant' }
+        '400': { $ref: './common.yaml#/components/responses/ValidationProblem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '502': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+        '504': { $ref: './common.yaml#/components/responses/Problem' }
 
   /api/v1/platform/tenant-creations:
     get:
@@ -2674,6 +2707,17 @@ components:
         updatedAt: { $ref: '#/components/schemas/Timestamp' }
       additionalProperties: false
     CreateTenantRequest:
+      type: object
+      required: [displayName]
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 200 }
+        expiresAt:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+      additionalProperties: false
+    UpdateTenantRequest:
       type: object
       required: [displayName]
       properties:
