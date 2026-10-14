@@ -19,9 +19,66 @@ tags:
   - name: Platform administrators
   - name: Permissions
   - name: Brand assets
+  - name: Brand profiles
   - name: Invitations
   - name: Tenant roles
 paths:
+  /api/v1/brand-profile:
+    get:
+      tags: [Brand profiles]
+      operationId: getTenantBrandProfile
+      x-saas.forge-service: tenant-access-service
+      summary: Read the current Tenant Brand Profile and revision
+      description: Requires current Tenant membership and brand management Permission. Legacy optional asset references remain readable.
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Authoritative profile; revision 0 means no saved profile.
+          headers:
+            ETag:
+              schema: { type: string, pattern: '^"(0|[1-9][0-9]*)"$' }
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BrandProfileRevision' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+    put:
+      tags: [Brand profiles]
+      operationId: saveTenantBrandProfile
+      x-saas.forge-service: tenant-access-service
+      summary: Replace all five Tenant Brand Profile fields atomically
+      description: Revision and both active same-Tenant PNG assets are checked again at commit. Stale submissions never merge.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema: { type: string, pattern: '^"(0|[1-9][0-9]*)"$' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BrandProfileChange' }
+      responses:
+        '200':
+          description: Committed profile and new authoritative revision.
+          headers:
+            ETag:
+              schema: { type: string, pattern: '^"[1-9][0-9]*"$' }
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BrandProfileRevision' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '412': { $ref: './common.yaml#/components/responses/Problem' }
+        '428': { $ref: './common.yaml#/components/responses/Problem' }
+
   /api/v1/brand-assets/{kind}:
     post:
       tags: [Brand assets]
@@ -953,6 +1010,60 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MembershipDisableProgress' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/members/{membershipId}/enables:
+    parameters:
+      - name: membershipId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+    get:
+      tags: [Members]
+      operationId: readMembershipEnable
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Read latest Membership enable progress
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current member status and latest enable operation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipEnableProgress' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+    post:
+      tags: [Members]
+      operationId: enableMembership
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Re-enable a fully disabled Membership with one new max_users seat
+      description: Requires a completed disable/release; a stable operation key prevents duplicate consumption. Old sessions remain revoked. The member becomes accessible only after its matching Fence generation is released.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      responses:
+        '200':
+          description: Member enabled, quota consumed and matching Fence released.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipEnableProgress' }
+        '202':
+          description: Quota, compensation or Fence release remains pending; the member cannot establish a new context yet.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipEnableProgress' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
         '401': { $ref: './common.yaml#/components/responses/Problem' }
         '403': { $ref: './common.yaml#/components/responses/Problem' }
         '404': { $ref: './common.yaml#/components/responses/Problem' }
@@ -3069,6 +3180,26 @@ components:
       required: true
       schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
   schemas:
+    BrandProfileChange:
+      type: object
+      additionalProperties: false
+      required: [displayName, logoUrl, faviconUrl, primaryColor, accentColor]
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 200 }
+        logoUrl: { type: string, pattern: '^/brands/[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' }
+        faviconUrl: { type: string, pattern: '^/brands/[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' }
+        primaryColor: { type: string, pattern: '^#[0-9A-Fa-f]{6}$' }
+        accentColor: { type: string, pattern: '^#[0-9A-Fa-f]{6}$' }
+    BrandProfileRevision:
+      type: object
+      additionalProperties: false
+      required: [revision]
+      properties:
+        revision: { type: integer, format: int64, minimum: 0 }
+        profile:
+          oneOf:
+            - $ref: '#/components/schemas/TenantBrandProfile'
+            - type: 'null'
     BrandAsset:
       type: object
       additionalProperties: false
@@ -3115,9 +3246,18 @@ components:
         membershipStatus: { type: string, enum: [ENABLED, DISABLED] }
         pending: { type: boolean }
         recoveryRequired: { type: boolean }
+    MembershipEnableProgress:
+      type: object
+      additionalProperties: false
+      required: [operationStatus, membershipStatus, pending]
+      properties:
+        operationId: { $ref: './common.yaml#/components/schemas/UuidV7', nullable: true }
+        operationStatus: { type: string, enum: [NONE, CONSUMING, COMPENSATION_PENDING, FENCE_PENDING, COMPLETED, QUOTA_REJECTED, COMPENSATED] }
+        membershipStatus: { type: string, enum: [ENABLED, DISABLED] }
+        pending: { type: boolean }
     Member:
       type: object
-      required: [membershipId, identityId, status, administrator, disableStatus]
+      required: [membershipId, identityId, status, administrator, disableStatus, enableStatus]
       properties:
         membershipId: { $ref: './common.yaml#/components/schemas/UuidV7' }
         identityId: { $ref: './common.yaml#/components/schemas/UuidV7' }
@@ -3125,6 +3265,7 @@ components:
         invitedEmail: { type: string, format: email, nullable: true }
         administrator: { type: boolean }
         disableStatus: { type: string, enum: [NONE, REVOKING, RECOVERY_REQUIRED, RELEASE_PENDING, COMPLETED] }
+        enableStatus: { type: string, enum: [NONE, CONSUMING, COMPENSATION_PENDING, FENCE_PENDING, COMPLETED, QUOTA_REJECTED, COMPENSATED] }
     MemberRoleAssignment:
       type: object
       additionalProperties: false

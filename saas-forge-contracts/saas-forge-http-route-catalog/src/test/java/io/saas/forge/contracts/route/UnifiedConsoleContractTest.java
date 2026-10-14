@@ -17,7 +17,7 @@ class UnifiedConsoleContractTest {
         assertEquals(Set.of("bootstrapConsoleSession", "loginConsoleSession", "getConsoleSession",
                 "getAvailableWorkContexts", "refreshConsoleSession", "selectConsoleContext",
                 "logoutConsoleSession", "changeConsoleInitialPassword",
-                "requestPasswordRecovery", "redeemPasswordRecovery"), operations);
+                "requestPasswordRecovery", "redeemPasswordRecovery", "acceptInvitation"), operations);
         assertEquals(1, catalog.routes().stream()
                 .filter(route -> route.operationId().equals("listOAuthClients"))
                 .filter(route -> route.credentialRequirement() == HttpRouteCatalog.CredentialRequirement.USER_REQUIRED)

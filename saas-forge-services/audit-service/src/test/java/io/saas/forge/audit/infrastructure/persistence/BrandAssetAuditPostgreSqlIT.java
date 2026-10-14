@@ -58,5 +58,23 @@ class BrandAssetAuditPostgreSqlIT {
         assertEquals(ASSET, app.queryForObject("""
                 SELECT resource_id::text FROM audit_records WHERE action = 'BRAND_ASSET_UPLOADED'
                 """, String.class));
+        String profileEvent = """
+                {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000030",
+                "source":"urn:saas.forge:tenant-access-service","type":"com.saas.forge.brand.profile-saved.v1",
+                "subject":"%s","time":"2026-10-14T08:01:00Z",
+                "datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/brand-profile-saved.v1.schema.json",
+                "data":{"tenantId":"%s","actorIdentityId":"019535d9-0001-7000-8000-000000000001",
+                "revision":2,"logoAssetId":"%s","faviconAssetId":"%s"}}
+                """.formatted(TENANT, TENANT, ASSET, ASSET).replace("\n", "");
+        var profileRecord = validator.validate(TOPIC, TENANT,
+                TenantCreatedEventValidator.CONSUMER_NAME, profileEvent).orElseThrow();
+        assertTrue(repository.consume(TenantCreatedEventValidator.CONSUMER_NAME, profileRecord, Instant.now()));
+        assertFalse(repository.consume(TenantCreatedEventValidator.CONSUMER_NAME, profileRecord, Instant.now()));
+        assertEquals(1, app.queryForObject("SELECT count(*) FROM audit_records WHERE action = 'BRAND_PROFILE_SAVED'",
+                Integer.class));
+        assertEquals(TENANT, app.queryForObject("""
+                SELECT resource_id::text FROM audit_records WHERE action = 'BRAND_PROFILE_SAVED'
+                """, String.class));
     }
 }

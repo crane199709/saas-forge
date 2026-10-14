@@ -1,10 +1,18 @@
 package io.saas.forge.tenantaccess;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import io.saas.forge.tenantaccess.application.brand.BrandProfileChange;
+import io.saas.forge.tenantaccess.application.brand.BrandProfileService;
+import io.saas.forge.tenantaccess.infrastructure.persistence.JdbcBrandProfileRepository;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -35,7 +43,7 @@ class BrandAssetMigrationIT {
                     "/docker-entrypoint-initdb.d/01-bootstrap.sh");
 
     @Test
-    void exactPublicReadDoesNotGrantCrossTenantListingAndDisabledAssetsDisappear() {
+    void exactPublicReadAndBrandProfileWritesEnforceTenantAssetsAndRevision() throws Exception {
         Flyway.configure().dataSource(url(), "tenant_access_migrator", "tenant-access-migrator-password")
                 .locations("classpath:db/migration").load().migrate();
         var migrator = new JdbcTemplate(new DriverManagerDataSource(
@@ -67,6 +75,77 @@ class BrandAssetMigrationIT {
         migrator.update("UPDATE tenant_brand_assets SET status = 'DISABLED' WHERE id = ?", asset);
         assertThat(jdbc.query("SELECT object_key FROM read_public_brand_asset(?)",
                 (row, index) -> row.getString(1), asset)).isEmpty();
+
+        var profiles = new JdbcBrandProfileRepository(jdbc);
+        UUID logo = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        UUID favicon = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        UUID foreign = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        migrator.update("""
+                INSERT INTO tenant_brand_assets (id, tenant_id, kind, object_key, byte_size, width, height)
+                VALUES (?, ?, 'LOGO', ?, 80, 32, 32), (?, ?, 'FAVICON', ?, 80, 32, 32),
+                    (?, ?, 'LOGO', ?, 80, 32, 32)
+                """, logo, owner, owner + "/" + logo + ".png",
+                favicon, owner, owner + "/" + favicon + ".png",
+                foreign, other, other + "/" + foreign + ".png");
+        var change = new BrandProfileChange("Independent brand name", "/brands/" + logo,
+                "/brands/" + favicon, "#123456", "#234567");
+        long initialRevision = tx.execute(status -> profiles.read(owner).revision());
+        assertThat(initialRevision).isZero();
+        long savedRevision = tx.execute(status -> profiles.save(owner, 0, change).revision());
+        assertThat(savedRevision).isEqualTo(1);
+        String savedName = tx.execute(status -> profiles.read(owner).profile().displayName());
+        assertThat(savedName).isEqualTo("Independent brand name");
+        assertThatThrownBy(() -> tx.execute(status -> profiles.save(owner, 0, change)))
+                .isInstanceOf(BrandProfileService.Stale.class);
+        assertThatThrownBy(() -> tx.execute(status -> profiles.save(owner, 1,
+                new BrandProfileChange("Foreign", "/brands/" + foreign, "/brands/" + favicon,
+                        "#123456", "#234567"))))
+                .isInstanceOf(BrandProfileService.AssetUnavailable.class);
+        migrator.update("UPDATE tenant_brand_assets SET status = 'DISABLED' WHERE id = ?", favicon);
+        assertThatThrownBy(() -> tx.execute(status -> profiles.save(owner, 1, change)))
+                .isInstanceOf(BrandProfileService.AssetUnavailable.class);
+        long retainedRevision = tx.execute(status -> profiles.read(owner).revision());
+        assertThat(retainedRevision).isEqualTo(1);
+        migrator.update("""
+                INSERT INTO tenant_brand_profiles
+                    (tenant_id, display_name, logo_url, favicon_url, primary_color, accent_color)
+                VALUES (?, 'Legacy brand', NULL, NULL, '#123456', '#234567')
+                """, other);
+        var legacy = tx.execute(status -> profiles.read(other));
+        assertThat(legacy.revision()).isEqualTo(1);
+        assertThat(legacy.profile().logoUrl()).isNull();
+        assertThat(legacy.profile().faviconUrl()).isNull();
+
+        UUID concurrentTenant = migrator.queryForObject(
+                "INSERT INTO tenants (display_name, tenant_status) VALUES ('Concurrent', 'ACTIVE') RETURNING id", UUID.class);
+        UUID concurrentLogo = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        UUID concurrentFavicon = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        migrator.update("""
+                INSERT INTO tenant_brand_assets (id, tenant_id, kind, object_key, byte_size, width, height)
+                VALUES (?, ?, 'LOGO', ?, 80, 32, 32), (?, ?, 'FAVICON', ?, 80, 32, 32)
+                """, concurrentLogo, concurrentTenant, concurrentTenant + "/" + concurrentLogo + ".png",
+                concurrentFavicon, concurrentTenant, concurrentTenant + "/" + concurrentFavicon + ".png");
+        var concurrentChange = new BrandProfileChange("Concurrent brand", "/brands/" + concurrentLogo,
+                "/brands/" + concurrentFavicon, "#123456", "#234567");
+        var started = new CountDownLatch(1);
+        var workers = Executors.newFixedThreadPool(2);
+        try {
+            var writes = java.util.stream.IntStream.range(0, 2).mapToObj(index -> workers.submit(() -> {
+                started.await();
+                try {
+                    tx.execute(status -> profiles.save(concurrentTenant, 0, concurrentChange));
+                    return true;
+                } catch (BrandProfileService.Stale conflict) {
+                    return false;
+                }
+            })).toList();
+            started.countDown();
+            assertThat(writes.get(0).get(10, TimeUnit.SECONDS) ^ writes.get(1).get(10, TimeUnit.SECONDS)).isTrue();
+            long concurrentRevision = tx.execute(status -> profiles.read(concurrentTenant).revision());
+            assertThat(concurrentRevision).isEqualTo(1L);
+        } finally {
+            workers.shutdownNow();
+        }
     }
 
     private static String url() {

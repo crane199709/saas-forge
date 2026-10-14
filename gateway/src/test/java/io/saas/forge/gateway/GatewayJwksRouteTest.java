@@ -381,6 +381,24 @@ class GatewayJwksRouteTest {
     }
 
     @Test
+    void brandProfileRevisionPreflightAllowsOnlyControlledConsole() throws Exception {
+        var accepted = send(HttpRequest.newBuilder(gatewayUri("/api/v1/brand-profile"))
+                .header("Origin", "https://console.saas.forge.test")
+                .header("Access-Control-Request-Method", "PUT")
+                .header("Access-Control-Request-Headers", "authorization,content-type,if-match,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(200, accepted.statusCode());
+        assertTrue(accepted.headers().firstValue("Access-Control-Allow-Headers").orElse("")
+                .toLowerCase().contains("if-match"));
+        var rejected = send(HttpRequest.newBuilder(gatewayUri("/api/v1/brand-profile"))
+                .header("Origin", "https://platform.saas.forge.test")
+                .header("Access-Control-Request-Method", "PUT")
+                .header("Access-Control-Request-Headers", "authorization,content-type,if-match,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(403, rejected.statusCode());
+    }
+
+    @Test
     void passwordSetupRequiresControlledOriginAndCsrfAndAllowsExactPreflight()
             throws IOException, InterruptedException {
         HttpRequest.Builder base = HttpRequest.newBuilder(gatewayUri("/api/v1/auth/password-setups"))

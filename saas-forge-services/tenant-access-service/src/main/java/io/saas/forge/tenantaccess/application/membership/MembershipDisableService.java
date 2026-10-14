@@ -61,10 +61,14 @@ public final class MembershipDisableService {
             target(actor.tenantId());
             authorize(actor, membershipId);
             Work work = latest(actor.tenantId(), membershipId);
-            if (work != null) return progress(work);
             List<String> states = jdbc.query("SELECT membership_status FROM memberships WHERE tenant_id = ? AND id = ?",
                     (row, index) -> row.getString(1), actor.tenantId(), membershipId);
             if (states.isEmpty()) throw new MembershipDisableFailure("MEMBERSHIP_NOT_FOUND");
+            if (work != null) {
+                Progress recorded = progress(work);
+                return new Progress(recorded.operationId(), recorded.operationStatus(), states.get(0),
+                        recorded.pending(), recorded.recoveryRequired());
+            }
             return new Progress(null, "NONE", states.get(0), false, false);
         });
     }
@@ -128,6 +132,12 @@ public final class MembershipDisableService {
         if (!"ENABLED".equals(statuses.get(0))) throw new MembershipDisableFailure("MEMBERSHIP_ALREADY_DISABLED");
         if (latestActive(actor.tenantId(), membershipId) != null)
             throw new MembershipDisableFailure("MEMBERSHIP_DISABLE_IN_PROGRESS");
+        if (Boolean.TRUE.equals(jdbc.queryForObject("""
+                SELECT EXISTS (SELECT 1 FROM membership_enable_workflows enabling
+                WHERE enabling.tenant_id = ? AND enabling.membership_id = ?
+                  AND enabling.workflow_status IN ('CONSUMING', 'COMPENSATION_PENDING', 'FENCE_PENDING'))
+                """, Boolean.class, actor.tenantId(), membershipId)))
+            throw new MembershipDisableFailure("MEMBERSHIP_ENABLE_IN_PROGRESS");
         if (administrator(actor.tenantId(), membershipId)) {
             if (!permissions.isAdministrator(actor))
                 throw new MembershipDisableFailure("MEMBERSHIP_ADMINISTRATOR_PROTECTED");
@@ -275,6 +285,9 @@ public final class MembershipDisableService {
                   AND NOT EXISTS (SELECT 1 FROM membership_disable_workflows work
                                   WHERE work.tenant_id = member.tenant_id AND work.membership_id = member.id
                                     AND work.workflow_status IN ('REVOKING', 'RECOVERY_REQUIRED', 'RELEASE_PENDING'))
+                  AND NOT EXISTS (SELECT 1 FROM membership_enable_workflows work
+                                  WHERE work.tenant_id = member.tenant_id AND work.membership_id = member.id
+                                    AND work.workflow_status IN ('CONSUMING', 'COMPENSATION_PENDING', 'FENCE_PENDING'))
                 """, Integer.class, tenantId);
         return count == null ? 0 : count;
     }
