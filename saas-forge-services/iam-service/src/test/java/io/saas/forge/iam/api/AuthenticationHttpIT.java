@@ -3480,6 +3480,52 @@ class AuthenticationHttpIT {
     }
 
     @Test
+    @Order(39)
+    void passwordRecoveryReturnsPendingWhenRevocationFailsAndResumesSameChallenge() throws Exception {
+        revocationIndexRecovery.recover();
+        String email = "password-recovery-retry@example.test";
+        TestUser user = createUser(email, "Old-recovery-password-2026", true, Credential.REGULAR);
+        MvcResult prior = login(email, "Old-recovery-password-2026", "PLATFORM").andReturn();
+        UUID priorJti = UUID.fromString(tokenClaims(prior).get("jti").asString());
+        var material = recoveryTokens.issue();
+        var challenge = recoveryChallenges.replace(user.identity().id(), material.digest(), Instant.now());
+        var http = unifiedConsole();
+        byte[] body = new ObjectMapper().writeValueAsBytes(Map.of(
+                "token", material.token(), "newPassword", "New-recovery-password-2026"));
+
+        setIamAppIssuanceUpdatePrivilege(false);
+        try {
+            http.perform(consolePost("password-recoveries").content(body))
+                    .andExpect(status().isAccepted())
+                    .andExpect(jsonPath("$.status").value("PENDING"))
+                    .andExpect(header().doesNotExist("Set-Cookie"));
+        } finally {
+            setIamAppIssuanceUpdatePrivilege(true);
+        }
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT count(*) FROM iam_outbox_events WHERE event_snapshot::text LIKE '%password.recovered.v1%' "
+                        + "AND ordering_key = ?", Integer.class, user.identity().id().toString()));
+        assertNotNull(recoveryChallenges.find(material.digest()).orElseThrow().startedAt());
+        assertEquals(null, recoveryChallenges.find(material.digest()).orElseThrow().completedAt());
+
+        MvcResult completed = null;
+        for (int attempt = 0; attempt < 8; attempt++) {
+            jdbc.update("UPDATE iam_user_session_revocations SET next_attempt_at = now() - interval '1 second' "
+                    + "WHERE revocation_request_id = ?", challenge.id());
+            completed = http.perform(consolePost("password-recoveries").content(body)).andReturn();
+            if (completed.getResponse().getStatus() == 200) break;
+            assertEquals(202, completed.getResponse().getStatus());
+        }
+        assertNotNull(completed);
+        assertEquals(200, completed.getResponse().getStatus());
+        assertEquals("1", redis.opsForValue().get(jtiRevocationKey(priorJti)));
+        assertNotNull(recoveryChallenges.find(material.digest()).orElseThrow().completedAt());
+        assertEquals(1, jdbc.queryForObject(
+                "SELECT count(*) FROM iam_outbox_events WHERE event_snapshot::text LIKE '%password.recovered.v1%' "
+                        + "AND ordering_key = ?", Integer.class, user.identity().id().toString()));
+    }
+
+    @Test
     @Order(37)
     void batchRevocationRecoversAfterPostgresFailureAndReleaseNeverRevivesOldTokens() throws Exception {
         revocationIndexRecovery.recover();
