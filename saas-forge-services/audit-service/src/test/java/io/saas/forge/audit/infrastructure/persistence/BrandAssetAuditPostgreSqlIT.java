@@ -76,5 +76,37 @@ class BrandAssetAuditPostgreSqlIT {
         assertEquals(TENANT, app.queryForObject("""
                 SELECT resource_id::text FROM audit_records WHERE action = 'BRAND_PROFILE_SAVED'
                 """, String.class));
+        String disabledEvent = """
+                {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000031",
+                "source":"urn:saas.forge:tenant-access-service","type":"com.saas.forge.brand.asset-disabled.v1",
+                "subject":"%s","time":"2026-10-14T08:02:00Z",
+                "datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/brand-asset-disabled.v1.schema.json",
+                "data":{"tenantId":"%s","assetId":"%s",
+                "actorIdentityId":"019535d9-0001-7000-8000-000000000001","kind":"FAVICON"}}
+                """.formatted(TENANT, TENANT, ASSET).replace("\n", "");
+        var disabledRecord = validator.validate(TOPIC, TENANT,
+                TenantCreatedEventValidator.CONSUMER_NAME, disabledEvent).orElseThrow();
+        assertTrue(repository.consume(TenantCreatedEventValidator.CONSUMER_NAME, disabledRecord, Instant.now()));
+        assertFalse(repository.consume(TenantCreatedEventValidator.CONSUMER_NAME, disabledRecord, Instant.now()));
+        assertEquals(1, app.queryForObject("SELECT count(*) FROM audit_records WHERE action = 'BRAND_ASSET_DISABLED'",
+                Integer.class));
+        assertEquals(ASSET, app.queryForObject("""
+                SELECT resource_id::text FROM audit_records WHERE action = 'BRAND_ASSET_DISABLED'
+                """, String.class));
+        String removedEvent = """
+                {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000032",
+                "source":"urn:saas.forge:tenant-access-service","type":"com.saas.forge.brand.asset-removed.v1",
+                "subject":"%s","time":"2026-10-22T08:02:00Z",
+                "datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/brand-asset-removed.v1.schema.json",
+                "data":{"tenantId":"%s","assetId":"%s","kind":"FAVICON","reason":"DISABLED"}}
+                """.formatted(TENANT, TENANT, ASSET).replace("\n", "");
+        var removed = validator.validate(TOPIC, TENANT,
+                TenantCreatedEventValidator.CONSUMER_NAME, removedEvent).orElseThrow();
+        assertTrue(repository.consume(TenantCreatedEventValidator.CONSUMER_NAME, removed, Instant.now()));
+        assertFalse(repository.consume(TenantCreatedEventValidator.CONSUMER_NAME, removed, Instant.now()));
+        assertEquals(1, app.queryForObject("SELECT count(*) FROM audit_records WHERE action = 'BRAND_ASSET_REMOVED'",
+                Integer.class));
     }
 }

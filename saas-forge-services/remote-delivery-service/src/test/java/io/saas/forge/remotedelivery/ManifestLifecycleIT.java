@@ -2,6 +2,7 @@ package io.saas.forge.remotedelivery;
 
 import static org.assertj.core.api.Assertions.*;
 import java.time.Clock;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -98,6 +99,45 @@ class ManifestLifecycleIT {
             service.register(CI,declaration("3.0.1"));throw new IllegalStateException("rollback");
         })).hasMessage("rollback");
         assertThat(repository.version("project","3.0.1")).isEmpty();
+    }
+    @Test void permissionDeclarationPersistsAndCannotInventOrRewriteAnOperation() {
+        var request = new RegisterManifestRequest("project", "5.0.0",
+                "https://remote.saas.forge.test/project/5.0.0/remote.js", "1.4.0", "a".repeat(64),
+                List.of("example:project:list", "example:task:create"));
+        var saved = service.register(CI, request);
+        assertThat(saved.permissions()).containsExactly("example:project:list", "example:task:create");
+        assertThat(repository.version("project", "5.0.0").orElseThrow().permissions()).isEqualTo(saved.permissions());
+        assertThatThrownBy(() -> service.register(CI, new RegisterManifestRequest(
+                request.module(), request.version(), request.source(), request.uiVersion(), request.entrySha256(),
+                List.of("example:project:list")))).hasMessage("MANIFEST_VERSION_CONFLICT");
+        assertThatThrownBy(() -> service.register(CI, new RegisterManifestRequest("project", "5.0.1",
+                "https://remote.saas.forge.test/project/5.0.1/remote.js", "1.4.0", "a".repeat(64),
+                List.of("example:project:export")))).hasMessage("MANIFEST_PERMISSION_NOT_ALLOWED");
+        assertThatThrownBy(() -> service.register(CI, new RegisterManifestRequest("project", "5.0.2",
+                "https://remote.saas.forge.test/project/5.0.2/remote.js", "1.4.0", "a".repeat(64),
+                List.of("example:project:list", "example:project:list")))).hasMessage("MANIFEST_PERMISSION_NOT_ALLOWED");
+    }
+    @Test void v1RegistrationRetainsItsIdentityAndGetsEmptyPermissionsAfterV2Upgrade() {
+        String schema = "remote_manifest_v1_upgrade";
+        var admin = new DriverManagerDataSource(DATABASE.getJdbcUrl(), DATABASE.getUsername(), DATABASE.getPassword());
+        Flyway.configure().dataSource(admin).schemas(schema).defaultSchema(schema)
+                .locations("classpath:db/migration").target("1").load().migrate();
+        var legacy = JdbcClient.create(admin);
+        UUID id = legacy.sql("""
+                INSERT INTO remote_manifest_v1_upgrade.remote_manifests
+                    (module, version, source, ui_version, entry_sha256, registered_by, registered_at)
+                VALUES ('project', '9.9.9', 'https://remote.saas.forge.test/project/9.9.9/remote.js',
+                    '1.4.0', :sha, :client, now()) RETURNING id
+                """).param("sha", "a".repeat(64)).param("client", CI).query(UUID.class).single();
+        Flyway.configure().dataSource(admin).schemas(schema).defaultSchema(schema)
+                .locations("classpath:db/migration").load().migrate();
+        assertThat(legacy.sql("""
+                SELECT permissions::text FROM remote_manifest_v1_upgrade.remote_manifests WHERE id = :id
+                """).param("id", id).query(String.class).single()).isEqualTo("[]");
+        assertThat(legacy.sql("""
+                SELECT count(*) FROM remote_manifest_v1_upgrade.remote_manifests
+                WHERE id = :id AND version = '9.9.9'
+                """).param("id", id).query(Integer.class).single()).isEqualTo(1);
     }
     private static RemoteManifest decide(UUID id,UUID key,String action) { return transaction.execute(status -> service.decide(ADMIN,key,id,action)); }
     private static RegisterManifestRequest declaration(String version) { return new RegisterManifestRequest("project",version,"https://remote.saas.forge.test/project/"+version+"/remote.js","1.4.0","a".repeat(64)); }

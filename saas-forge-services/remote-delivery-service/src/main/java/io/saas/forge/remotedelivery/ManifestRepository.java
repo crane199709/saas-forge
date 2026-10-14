@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -22,20 +23,21 @@ class ManifestRepository {
             .param("key", key).query((rs, index) -> true).single(); }
     Optional<RemoteManifest> version(String module, String version) {
         return jdbc.sql("SELECT * FROM remote_manifests WHERE module=:module AND version=:version")
-                .param("module", module).param("version", version).query(ManifestRepository::manifest).optional();
+                .param("module", module).param("version", version).query(this::manifest).optional();
     }
     Optional<RemoteManifest> find(UUID id) {
         return jdbc.sql("SELECT * FROM remote_manifests WHERE id=:id").param("id", id)
-                .query(ManifestRepository::manifest).optional();
+                .query(this::manifest).optional();
     }
     RemoteManifest insert(UUID client, RegisterManifestRequest request, Instant at) {
         return jdbc.sql("""
-                INSERT INTO remote_manifests (module,version,source,ui_version,entry_sha256,registered_by,registered_at)
-                VALUES (:module,:version,:source,:ui,:sha,:client,:at) RETURNING *
+                INSERT INTO remote_manifests (module,version,source,ui_version,entry_sha256,permissions,registered_by,registered_at)
+                VALUES (:module,:version,:source,:ui,:sha,CAST(:permissions AS jsonb),:client,:at) RETURNING *
                 """).param("module", request.module()).param("version", request.version())
                 .param("source", request.source()).param("ui", request.uiVersion()).param("sha", request.entrySha256())
+                .param("permissions", json.writeValueAsString(request.permissions()))
                 .param("client", client).param("at", OffsetDateTime.ofInstant(at, java.time.ZoneOffset.UTC))
-                .query(ManifestRepository::manifest).single();
+                .query(this::manifest).single();
     }
     boolean hasEnabled(String module) {
         return jdbc.sql("SELECT EXISTS (SELECT 1 FROM remote_manifests WHERE module=:module AND state='ENABLED')")
@@ -47,7 +49,7 @@ class ManifestRepository {
                 : "UPDATE remote_manifests SET state=:state,reviewed_by=:actor,reviewed_at=:at WHERE id=:id AND state='PENDING_REVIEW' RETURNING *";
         var query = jdbc.sql(sql).param("actor", actor).param("at", OffsetDateTime.ofInstant(at, java.time.ZoneOffset.UTC)).param("id", id);
         if (!action.equals("ENABLE")) query = query.param("state", action.equals("APPROVE") ? "APPROVED" : "REJECTED");
-        return query.query(ManifestRepository::manifest).optional()
+        return query.query(this::manifest).optional()
                 .orElseThrow(() -> new ManifestException(409, "MANIFEST_STATE_CONFLICT"));
     }
     Optional<FactReplay> replay(UUID actor, UUID key) {
@@ -68,13 +70,15 @@ class ManifestRepository {
         return jdbc.sql("SELECT * FROM remote_manifests WHERE (:after IS NULL OR id > CAST(:after AS uuid)) "
                         + (enabledOnly ? "AND state='ENABLED' " : "") + "ORDER BY id LIMIT :count")
                 .param("after", after == null ? null : after.toString(), java.sql.Types.VARCHAR).param("count", count)
-                .query(ManifestRepository::manifest).list();
+                .query(this::manifest).list();
     }
     record FactReplay(String action, UUID manifestId, RemoteManifest result) {}
-    private static RemoteManifest manifest(ResultSet row, int index) throws SQLException {
+    private RemoteManifest manifest(ResultSet row, int index) throws SQLException {
+        var permissions = new ArrayList<String>();
+        for (var item : json.readTree(row.getString("permissions"))) permissions.add(item.asText());
         return new RemoteManifest(row.getObject("id", UUID.class), row.getString("module"), row.getString("version"),
                 row.getString("source"), row.getString("ui_version"), row.getString("entry_sha256"),
-                RemoteManifest.State.valueOf(row.getString("state")), row.getObject("registered_by", UUID.class),
+                List.copyOf(permissions), RemoteManifest.State.valueOf(row.getString("state")), row.getObject("registered_by", UUID.class),
                 time(row,"registered_at"), row.getObject("reviewed_by",UUID.class), time(row,"reviewed_at"),
                 row.getObject("enabled_by",UUID.class), time(row,"enabled_at"));
     }
