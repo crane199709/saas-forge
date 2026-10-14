@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import software.amazon.awssdk.core.exception.SdkException;
 
-@RestControllerAdvice(assignableTypes = BrandAssetController.class)
+@RestControllerAdvice(assignableTypes = {BrandAssetController.class, BrandAssetPolicyController.class})
 public class BrandAssetExceptionHandler {
     @ExceptionHandler(BrandPng.Invalid.class)
     ProblemDetail invalid() { return problem(HttpStatus.BAD_REQUEST, "BRAND_PNG_INVALID"); }

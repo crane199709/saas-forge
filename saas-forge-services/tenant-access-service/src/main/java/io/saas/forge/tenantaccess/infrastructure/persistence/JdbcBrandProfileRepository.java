@@ -45,6 +45,10 @@ public class JdbcBrandProfileRepository implements BrandProfileRepository {
                     """, change.displayName(), change.logoUrl(), change.faviconUrl(), change.primaryColor(),
                     change.accentColor(), next, tenantId);
         }
+        retireIfReplaced(tenantId, current.profile() == null ? null : current.profile().logoUrl(), change.logoUrl());
+        retireIfReplaced(tenantId, current.profile() == null ? null : current.profile().faviconUrl(), change.faviconUrl());
+        markBound(tenantId, BrandProfileService.assetId(change.logoUrl()));
+        markBound(tenantId, BrandProfileService.assetId(change.faviconUrl()));
         return new BrandProfileRevision(next, change);
     }
 
@@ -60,10 +64,33 @@ public class JdbcBrandProfileRepository implements BrandProfileRepository {
     private void requireAsset(UUID tenantId, UUID assetId, String kind) {
         if (jdbc.query("""
                 SELECT id FROM tenant_brand_assets
-                WHERE id = ? AND tenant_id = ? AND kind = ? AND status = 'ACTIVE' FOR SHARE
+                WHERE id = ? AND tenant_id = ? AND kind = ? AND status = 'ACTIVE'
+                  AND ((ever_bound_at IS NULL AND retired_at IS NULL
+                        AND uploaded_at > statement_timestamp() - INTERVAL '24 hours')
+                    OR (ever_bound_at IS NOT NULL AND retired_at IS NULL)
+                    OR retired_at > statement_timestamp() - INTERVAL '7 days')
+                FOR UPDATE
                 """, (row, index) -> row.getObject(1, UUID.class), assetId, tenantId, kind).isEmpty()) {
             throw new BrandProfileService.AssetUnavailable();
         }
+    }
+
+    private void retireIfReplaced(UUID tenantId, String previous, String next) {
+        UUID id = BrandProfileService.assetId(previous);
+        if (id != null && !previous.equals(next)) {
+            jdbc.update("""
+                    UPDATE tenant_brand_assets SET retired_at = statement_timestamp()
+                    WHERE tenant_id = ? AND id = ? AND status = 'ACTIVE'
+                    """, tenantId, id);
+        }
+    }
+
+    private void markBound(UUID tenantId, UUID id) {
+        jdbc.update("""
+                UPDATE tenant_brand_assets
+                SET ever_bound_at = COALESCE(ever_bound_at, statement_timestamp()), retired_at = NULL
+                WHERE tenant_id = ? AND id = ? AND status = 'ACTIVE'
+                """, tenantId, id);
     }
 
     private void target(UUID tenantId) {
