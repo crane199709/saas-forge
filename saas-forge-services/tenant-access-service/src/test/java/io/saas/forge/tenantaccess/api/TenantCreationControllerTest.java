@@ -52,6 +52,8 @@ class TenantCreationControllerTest {
                 org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/platform/tenant-creations/" + KEY),
                 org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/platform/tenants/" + KEY + "/lifecycle"),
                 post("/api/v1/platform/tenants/" + KEY + "/lifecycle-operations/" + KEY + "/continuations"),
+                post("/api/v1/platform/tenants/" + KEY + "/closures").header("Idempotency-Key", KEY),
+                post("/api/v1/platform/tenants/" + KEY + "/closure-recoveries").header("Idempotency-Key", KEY),
                 post("/api/v1/platform/tenant-creations/" + KEY + "/recovery").header("Idempotency-Key", KEY)
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))) {
             mvc.perform(request.header("Authorization", "Bearer platform-token"))
@@ -64,7 +66,7 @@ class TenantCreationControllerTest {
     void lifecycleReadAndContinuationAreNoStoreAndUseThePublishedOperationIdentity() throws Exception {
         var lifecycle = org.mockito.Mockito.mock(io.saas.forge.tenantaccess.application.tenant.TenantLifecycleService.class);
         var observed = new io.saas.forge.tenantaccess.application.tenant.TenantLifecycleProgress(
-                KEY, KEY, "SUSPEND", "PENDING", false, false, false, true);
+                KEY, KEY, "SUSPEND", "PENDING", false, false, false, true, false, false);
         org.mockito.Mockito.when(lifecycle.read(KEY)).thenReturn(observed);
         Instant at = Instant.parse("2026-09-14T00:00:00Z");
         org.mockito.Mockito.when(lifecycle.continueOperation(org.mockito.ArgumentMatchers.eq(KEY),

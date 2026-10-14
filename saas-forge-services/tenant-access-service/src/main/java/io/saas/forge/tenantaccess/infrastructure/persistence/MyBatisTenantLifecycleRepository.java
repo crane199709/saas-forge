@@ -63,13 +63,25 @@ public class MyBatisTenantLifecycleRepository implements TenantLifecycleReposito
         if (mapper.findActive(tenantId) != null) {
             throw failure("TENANT_LIFECYCLE_CHANGE_IN_PROGRESS", "Tenant 已有生命周期变更正在进行");
         }
-        String expected = action == TenantLifecycleAction.SUSPEND ? "ACTIVE" : "SUSPENDED";
-        if (!expected.equals(tenant.status())) throw new TenantStateTransitionNotAllowedException();
+        if (action == TenantLifecycleAction.CLOSE) {
+            if (!"ACTIVE".equals(tenant.status()) && !"SUSPENDED".equals(tenant.status())) {
+                throw new TenantStateTransitionNotAllowedException();
+            }
+        } else {
+            String expected = action == TenantLifecycleAction.SUSPEND ? "ACTIVE" : "SUSPENDED";
+            if (!expected.equals(tenant.status())) throw new TenantStateTransitionNotAllowedException();
+        }
         UUID boundRevocationRequestId = revocationRequestId;
         if (action == TenantLifecycleAction.RESUME) {
             boundRevocationRequestId = mapper.findLatestSuspensionRequest(tenantId);
             if (boundRevocationRequestId == null) {
                 throw failure("TENANT_STATE_TRANSITION_NOT_ALLOWED", "Tenant 没有可释放的 Suspension Fence generation");
+            }
+        } else if (action == TenantLifecycleAction.CLOSE && "SUSPENDED".equals(tenant.status())) {
+            // 已冻结的 Tenant 保持原 Fence generation；IAM 拒绝同一目标上的第二个活跃 Fence。
+            boundRevocationRequestId = mapper.findLatestSuspensionRequest(tenantId);
+            if (boundRevocationRequestId == null) {
+                throw failure("TENANT_STATE_TRANSITION_NOT_ALLOWED", "Tenant 没有可沿用的 Suspension Fence generation");
             }
         }
         TenantLifecycleRow row = new TenantLifecycleRow();
@@ -92,6 +104,21 @@ public class MyBatisTenantLifecycleRepository implements TenantLifecycleReposito
     @Transactional
     public TenantLifecycleClaim prepareRecovery(
             UUID actorIdentityId, UUID idempotencyKey, UUID tenantId, String fingerprint, Instant at) {
+        return prepareRecovery(actorIdentityId, idempotencyKey, tenantId, fingerprint, at,
+                TenantLifecycleAction.SUSPEND);
+    }
+
+    @Override
+    @Transactional
+    public TenantLifecycleClaim prepareClosureRecovery(
+            UUID actorIdentityId, UUID idempotencyKey, UUID tenantId, String fingerprint, Instant at) {
+        return prepareRecovery(actorIdentityId, idempotencyKey, tenantId, fingerprint, at,
+                TenantLifecycleAction.CLOSE);
+    }
+
+    private TenantLifecycleClaim prepareRecovery(
+            UUID actorIdentityId, UUID idempotencyKey, UUID tenantId, String fingerprint, Instant at,
+            TenantLifecycleAction expectedAction) {
         setTarget(tenantId);
         var existing = mapper.findRecovery(actorIdentityId, idempotencyKey);
         if (existing != null) {
@@ -101,9 +128,11 @@ public class MyBatisTenantLifecycleRepository implements TenantLifecycleReposito
         }
         if (mapper.lockTenant(tenantId) == null) throw failure("TENANT_NOT_FOUND", "Tenant 不存在");
         TenantLifecycleRow workflow = mapper.findActive(tenantId);
-        if (workflow == null || !"SUSPEND".equals(workflow.getLifecycleAction())
+        if (workflow == null || !expectedAction.name().equals(workflow.getLifecycleAction())
                 || !"RECOVERY_REQUIRED".equals(workflow.getWorkflowStatus())) {
-            throw failure("TENANT_SUSPENSION_RECOVERY_NOT_ALLOWED", "Tenant 没有需要显式恢复的 Suspension Workflow");
+            throw failure(expectedAction == TenantLifecycleAction.CLOSE
+                    ? "TENANT_CLOSURE_RECOVERY_NOT_ALLOWED" : "TENANT_SUSPENSION_RECOVERY_NOT_ALLOWED",
+                    "Tenant 没有需要显式恢复的生命周期 Workflow");
         }
         if (mapper.insertRecovery(actorIdentityId, idempotencyKey, tenantId, workflow.getWorkflowId(),
                 fingerprint, TenantAccessTime.asOffsetDateTime(at)) != 1
@@ -199,8 +228,11 @@ public class MyBatisTenantLifecycleRepository implements TenantLifecycleReposito
             Instant at, OutboxEvent suspensionEvent) {
         setTarget(tenant.id());
         TenantRow locked = mapper.lockTenant(tenant.id());
-        String expected = workflow.action() == TenantLifecycleAction.SUSPEND ? "ACTIVE" : "SUSPENDED";
-        if (locked == null || mapper.transitionTenant(tenant.id(), expected, tenant.status().name(),
+        if (locked == null || (workflow.action() == TenantLifecycleAction.CLOSE
+                ? !"ACTIVE".equals(locked.status()) && !"SUSPENDED".equals(locked.status())
+                : !(workflow.action() == TenantLifecycleAction.SUSPEND ? "ACTIVE" : "SUSPENDED")
+                        .equals(locked.status()))
+                || mapper.transitionTenant(tenant.id(), locked.status(), tenant.status().name(),
                 TenantAccessTime.asOffsetDateTime(tenant.updatedAt())) != 1) {
             throw new TenantStateTransitionNotAllowedException();
         }

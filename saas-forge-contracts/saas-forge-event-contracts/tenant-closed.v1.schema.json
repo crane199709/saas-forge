@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://saas.forge.io/contracts/events/tenant-closed.v1.schema.json",
+  "title": "Tenant Closed v1",
+  "allOf": [
+    { "$ref": "cloudevents-envelope.v1.schema.json" },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "com.saas.forge.tenant.closed.v1" },
+        "source": { "const": "urn:saas.forge:tenant-access-service" },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tenantId", "actorIdentityId", "revokedSessionCount"],
+          "properties": {
+            "tenantId": { "$ref": "#/$defs/uuidV7" },
+            "actorIdentityId": { "$ref": "#/$defs/uuidV7" },
+            "revokedSessionCount": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "uuidV7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    }
+  }
+}

@@ -698,6 +698,103 @@ class TenantCreationPostgreSqlIT {
     }
 
     @Test
+    void closureBlocksMembershipWhilePendingThenCommitsOnceAfterRevocation() throws SQLException {
+        UUID actor = uuidV7(940);
+        UUID identity = uuidV7(941);
+        UUID membership = uuidV7(942);
+        TenantCreationResult created = service.create(actor, uuidV7(943), "Closure Tenant", null, null);
+        executeAsMigrator("UPDATE tenants SET tenant_status = 'ACTIVE' WHERE id = '" + created.id() + "'");
+        executeAsMigrator("INSERT INTO memberships (id, tenant_id, identity_id, membership_status) VALUES ('"
+                + membership + "', '" + created.id() + "', '" + identity + "', 'ENABLED')");
+        assertEquals(1, usableMembershipCount(identity, membership));
+        sessionRevocations.results.add(SessionRevocationGateway.Result.pending(4));
+
+        TenantLifecycleException pending = assertThrows(TenantLifecycleException.class,
+                () -> tenantLifecycle.close(actor, uuidV7(944), created.id(), null));
+        assertEquals("TENANT_CLOSURE_PENDING", pending.code());
+        assertEquals("ACTIVE", scalar("SELECT tenant_status FROM tenants WHERE id = '" + created.id() + "'"));
+        assertEquals(0, usableMembershipCount(identity, membership));
+        assertFalse(tenantLifecycle.read(created.id()).canResume());
+        assertEquals("0", scalar("SELECT count(*)::text FROM tenant_access_outbox_events "
+                + "WHERE event_snapshot->>'type' = 'com.saas.forge.tenant.closed.v1'"));
+
+        executeAsMigrator("UPDATE tenant_lifecycle_workflows SET next_attempt_at = now() - interval '1 second' "
+                + "WHERE tenant_id = '" + created.id() + "'");
+        sessionRevocations.results.add(SessionRevocationGateway.Result.completed(2, 3));
+        tenantLifecycle.recoverNext();
+        assertEquals("CLOSED", scalar("SELECT tenant_status FROM tenants WHERE id = '" + created.id() + "'"));
+        assertEquals(0, usableMembershipCount(identity, membership));
+        assertEquals(TenantStatus.CLOSED,
+                tenantLifecycle.close(actor, uuidV7(944), created.id(), null).status());
+        assertThrows(io.saas.forge.tenantaccess.domain.tenant.TenantStateTransitionNotAllowedException.class,
+                () -> tenantLifecycle.resume(actor, uuidV7(945), created.id()));
+        assertEquals("1", scalar("SELECT count(*)::text FROM tenant_access_outbox_events "
+                + "WHERE event_snapshot->>'type' = 'com.saas.forge.tenant.closed.v1'"));
+        assertEquals("1", scalar("SELECT count(*)::text FROM memberships WHERE id = '" + membership + "'"));
+    }
+
+    @Test
+    void interruptedClosureKeepsItsFenceAndRecoversTheOriginalRevocation() throws SQLException {
+        UUID actor = uuidV7(950);
+        TenantCreationResult created = service.create(actor, uuidV7(951), "Recover Closure", null, null);
+        executeAsMigrator("UPDATE tenants SET tenant_status = 'ACTIVE' WHERE id = '" + created.id() + "'");
+        sessionRevocations.failures.add(new SessionRevocationUnavailableException(new RuntimeException()));
+
+        TenantLifecycleException failed = assertThrows(TenantLifecycleException.class,
+                () -> tenantLifecycle.close(actor, uuidV7(952), created.id(), null));
+        assertEquals("TENANT_CLOSURE_RECOVERY_REQUIRED", failed.code());
+        UUID originalRequestId = sessionRevocations.lastRevocationRequestId;
+        assertTrue(tenantLifecycle.read(created.id()).canRecoverClosure());
+        assertFalse(tenantLifecycle.read(created.id()).canResume());
+        assertThrows(TenantLifecycleException.class,
+                () -> tenantLifecycle.close(actor, uuidV7(953), created.id(), null));
+        assertEquals("0", scalar("SELECT count(*)::text FROM tenant_access_outbox_events "
+                + "WHERE event_snapshot->>'type' = 'com.saas.forge.tenant.closed.v1'"));
+
+        sessionRevocations.failures.add(new SessionRevocationRejectedException());
+        sessionRevocations.results.add(SessionRevocationGateway.Result.completed(1, 2));
+        TenantLifecycleResult recovered = tenantLifecycle.recoverClosure(
+                actor, uuidV7(954), created.id(), null);
+        assertEquals(TenantStatus.CLOSED, recovered.status());
+        assertEquals(originalRequestId, sessionRevocations.lastRecoveredRevocationRequestId);
+        assertEquals(originalRequestId, sessionRevocations.lastRevocationRequestId);
+        assertEquals("1", scalar("SELECT count(*)::text FROM tenant_access_outbox_events "
+                + "WHERE event_snapshot->>'type' = 'com.saas.forge.tenant.closed.v1'"));
+    }
+
+    @Test
+    void suspendedTenantClosureReusesItsFenceWithoutReleasingIt() throws SQLException {
+        UUID actor = uuidV7(960);
+        TenantCreationResult created = service.create(actor, uuidV7(961), "Suspended Closure", null, null);
+        executeAsMigrator("UPDATE tenants SET tenant_status = 'ACTIVE' WHERE id = '" + created.id() + "'");
+        sessionRevocations.results.add(SessionRevocationGateway.Result.completed(3, 4));
+        tenantLifecycle.suspend(actor, uuidV7(962), created.id(), null);
+        UUID suspensionRequest = sessionRevocations.lastRevocationRequestId;
+
+        sessionRevocations.results.add(SessionRevocationGateway.Result.completed(3, 4));
+        assertEquals(TenantStatus.CLOSED,
+                tenantLifecycle.close(actor, uuidV7(963), created.id(), null).status());
+        assertEquals(suspensionRequest, sessionRevocations.lastRevocationRequestId);
+        assertNull(sessionRevocations.lastReleasedRevocationRequestId);
+        String event = scalar("SELECT event_snapshot::text FROM tenant_access_outbox_events "
+                + "WHERE event_snapshot->>'type' = 'com.saas.forge.tenant.closed.v1'");
+        assertTrue(event.contains("\"revokedSessionCount\": 0"));
+    }
+
+    private static int usableMembershipCount(UUID identity, UUID membership) throws SQLException {
+        try (Connection connection = appConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT count(*) FROM validate_membership(?, ?)")) {
+            statement.setObject(1, identity);
+            statement.setObject(2, membership);
+            try (ResultSet result = statement.executeQuery()) {
+                result.next();
+                return result.getInt(1);
+            }
+        }
+    }
+
+    @Test
     void bindsExternalKeyRejectsOtherInFlightKeyAndReturnsPendingRetry() throws SQLException {
         UUID actor = uuidV7(910);
         TenantCreationResult created = service.create(actor, uuidV7(911), "Pending Tenant", null, null);
