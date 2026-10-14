@@ -354,6 +354,7 @@
                                         <include>io.github.crane199709:saas-forge-sdk-core</include>
                                         <include>io.github.crane199709:saas-forge-sdk-auth</include>
                                         <include>io.github.crane199709:saas-forge-sdk-tenant</include>
+                                        <include>io.github.crane199709:saas-forge-sdk-permission</include>
                                     </includes>
                                     <searchTransitive>true</searchTransitive>
                                 </bannedDependencies>

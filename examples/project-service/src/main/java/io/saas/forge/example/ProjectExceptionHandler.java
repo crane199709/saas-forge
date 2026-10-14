@@ -1,6 +1,8 @@
 package io.saas.forge.example;
 
 import io.saas.forge.sdk.tenant.TenantContextUnavailableException;
+import io.saas.forge.sdk.permission.PermissionDeniedException;
+import io.saas.forge.sdk.permission.PermissionAuthorityUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.springframework.dao.DataAccessException;
@@ -14,6 +16,15 @@ import org.springframework.web.HttpMediaTypeNotSupportedException;
 
 @RestControllerAdvice
 class ProjectExceptionHandler {
+    @ExceptionHandler(PermissionDeniedException.class)
+    ResponseEntity<ProjectProblem> permissionDenied(HttpServletRequest request) {
+        return response(403, "PERMISSION_DENIED", "The current Membership lacks this Permission.", request, null);
+    }
+
+    @ExceptionHandler(PermissionAuthorityUnavailableException.class)
+    ResponseEntity<ProjectProblem> permissionUnavailable(HttpServletRequest request) {
+        return response(503, "PERMISSION_AUTHORITY_UNAVAILABLE", "Permission authority is temporarily unavailable.", request, null);
+    }
     @ExceptionHandler(ProjectException.class)
     ResponseEntity<ProjectProblem> projectFailure(ProjectException exception, HttpServletRequest request) {
         return response(exception.status(), exception.code(), exception.getMessage(), request,
