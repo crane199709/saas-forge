@@ -1,11 +1,16 @@
 package io.saas.forge.remotedelivery;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /** 来源和模块授权由部署边界决定，注册声明不能扩展它们。 */
 final class ManifestPolicy {
     static final String REGISTER_SCOPE = "remote-delivery:manifest:register";
+    private static final Set<String> PROJECT_PERMISSIONS = Set.of(
+            "example:project:create", "example:project:list", "example:project:read",
+            "example:project:update", "example:project:delete", "example:task:create",
+            "example:task:list", "example:task:read", "example:task:update", "example:task:delete");
     private final String remoteOrigin;
     private final Map<String, UUID> moduleClients;
     ManifestPolicy(String rootDomain, Map<String, UUID> moduleClients) {
@@ -23,6 +28,10 @@ final class ManifestPolicy {
     void requireRegistration(UUID client, RegisterManifestRequest request) {
         if (!client.equals(moduleClients.get(request.module()))) throw new ManifestException(403, "CI_MODULE_NOT_ALLOWED");
         requireSource(request);
+        if (request.permissions().size() > 10 || request.permissions().size() != Set.copyOf(request.permissions()).size()
+                || (request.module().equals("project")
+                    ? !PROJECT_PERMISSIONS.containsAll(request.permissions()) : !request.permissions().isEmpty()))
+            throw new ManifestException(400, "MANIFEST_PERMISSION_NOT_ALLOWED");
     }
     void requireSource(RegisterManifestRequest request) {
         String expected = remoteOrigin + "/" + request.module() + "/" + request.version() + "/remote.js";

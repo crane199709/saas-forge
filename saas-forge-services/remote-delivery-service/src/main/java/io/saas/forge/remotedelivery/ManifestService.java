@@ -25,7 +25,8 @@ class ManifestService {
         if (existing.isPresent()) {
             var value = existing.get();
             if (!value.registeredBy().equals(client) || !value.source().equals(request.source())
-                    || !value.uiVersion().equals(request.uiVersion()) || !value.entrySha256().equals(request.entrySha256()))
+                    || !value.uiVersion().equals(request.uiVersion()) || !value.entrySha256().equals(request.entrySha256())
+                    || !value.permissions().equals(request.permissions()))
                 throw new ManifestException(409, "MANIFEST_VERSION_CONFLICT");
             return value;
         }
@@ -48,7 +49,7 @@ class ManifestService {
         var current = manifests.find(id).orElseThrow(() -> new ManifestException(404, "MANIFEST_NOT_FOUND"));
         manifests.lock("module:" + current.module());
         if (action.equals("ENABLE")) {
-            policy.requireSource(new RegisterManifestRequest(current.module(), current.version(), current.source(), current.uiVersion(), current.entrySha256()));
+            policy.requireSource(new RegisterManifestRequest(current.module(), current.version(), current.source(), current.uiVersion(), current.entrySha256(), current.permissions()));
             if (manifests.hasEnabled(current.module())) throw new ManifestException(409, "MODULE_ALREADY_ENABLED");
         }
         var at = clock.instant().truncatedTo(ChronoUnit.MILLIS);

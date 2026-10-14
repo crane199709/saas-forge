@@ -33,6 +33,7 @@ class ProjectHttpIT {
     static final String ID = "018f5f2a-7b3c-7def-8123-456789abcdef";
     static final String A = "018f5f2a-7b3c-7def-8123-456789abcdea";
     static final String B = "018f5f2a-7b3c-7def-8123-456789abcdeb";
+    static final String LIMITED_ACTOR = "018f5f2a-7b3c-7def-8123-456789abcdec";
     @Container static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:18")
             .withCopyFileToContainer(MountableFile.forHostPath("deploy/bootstrap.sql"), "/docker-entrypoint-initdb.d/01-example.sql");
     @Container static final GenericContainer<?> REDIS = new GenericContainer<>("redis:8.8.1").withExposedPorts(6379);
@@ -61,6 +62,8 @@ class ProjectHttpIT {
     static HttpServer permissionAuthority;
     static final java.util.concurrent.atomic.AtomicBoolean permissionAllowed = new java.util.concurrent.atomic.AtomicBoolean(true);
     static final java.util.concurrent.atomic.AtomicInteger permissionCalls = new java.util.concurrent.atomic.AtomicInteger();
+    static final Map<String, Set<String>> actorPermissions = new java.util.concurrent.ConcurrentHashMap<>();
+    static final java.util.concurrent.atomic.AtomicBoolean permissionUnavailable = new java.util.concurrent.atomic.AtomicBoolean();
     static RSAKey signingKey;
     static String base;
 
@@ -88,10 +91,16 @@ class ProjectHttpIT {
             permissionCalls.incrementAndGet();
             String query = exchange.getRequestURI().getRawQuery();
             String code = query == null ? "" : URLDecoder.decode(query.substring("code=".length()), StandardCharsets.UTF_8);
-            byte[] body = ("{\"code\":\"" + code + "\",\"allowed\":" + permissionAllowed.get() + "}")
+            String authorization = exchange.getRequestHeaders().getFirst("Authorization");
+            String actor;
+            try { actor = SignedJWT.parse(authorization.substring(7)).getJWTClaimsSet().getStringClaim("identityId"); }
+            catch (Exception invalid) { actor = ""; }
+            boolean allowed = permissionAllowed.get() &&
+                    (!actorPermissions.containsKey(actor) || actorPermissions.get(actor).contains(code));
+            byte[] body = ("{\"code\":\"" + code + "\",\"allowed\":" + allowed + "}")
                     .getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, body.length);
+            exchange.sendResponseHeaders(permissionUnavailable.get() ? 503 : 200, body.length);
             try (var output = exchange.getResponseBody()) { output.write(body); }
         });
         permissionAuthority.start();
@@ -131,6 +140,49 @@ class ProjectHttpIT {
             permissionAllowed.set(true);
         }
         assertThat(permissionCalls.get() - before).isEqualTo(2);
+    }
+
+    @Test @Order(-100) void allTenOperationsRespectDifferentRolesWithinOneTenant() throws Exception {
+        String project = projectPath(A);
+        String task = taskCreate(A, project, key(), "{\"title\":\"Existing\"}")
+                .headers().firstValue("Location").orElseThrow();
+        String limited = token(A, false, LIMITED_ACTOR);
+        actorPermissions.put(LIMITED_ACTOR, Set.of("example:project:list", "example:task:list"));
+        try {
+            assertThat(request("GET", "/api/v1/projects", limited, null, null).statusCode()).isEqualTo(200);
+            assertThat(request("GET", project + "/tasks", limited, null, null).statusCode()).isEqualTo(200);
+            assertProblem(request("POST", "/api/v1/projects", limited, key(), "{\"name\":\"Denied\"}"), 403, "PERMISSION_DENIED");
+            assertProblem(request("GET", project, limited, null, null), 403, "PERMISSION_DENIED");
+            assertProblem(request("PUT", project, limited, key(), "{\"name\":\"Denied\"}"), 403, "PERMISSION_DENIED");
+            assertProblem(request("DELETE", project, limited, key(), null), 403, "PERMISSION_DENIED");
+            assertProblem(request("POST", project + "/tasks", limited, key(), "{\"title\":\"Denied\"}"), 403, "PERMISSION_DENIED");
+            assertProblem(request("GET", task, limited, null, null), 403, "PERMISSION_DENIED");
+            assertProblem(request("PUT", task, limited, key(), "{\"title\":\"Denied\",\"status\":\"DONE\"}"), 403, "PERMISSION_DENIED");
+            assertProblem(request("DELETE", task, limited, key(), null), 403, "PERMISSION_DENIED");
+            assertThat(request("GET", project, token(A, false), null, null).statusCode()).isEqualTo(200);
+            assertThat(request("GET", task, token(A, false), null, null).statusCode()).isEqualTo(200);
+            assertThat(request("PUT", project, token(A, false), key(), "{\"name\":\"Updated\"}").statusCode()).isEqualTo(200);
+            assertThat(request("PUT", task, token(A, false), key(), "{\"title\":\"Updated\",\"status\":\"DONE\"}").statusCode()).isEqualTo(200);
+            assertThat(deleteResource(A, task, key(), "\"2\"").statusCode()).isEqualTo(204);
+            assertThat(deleteResource(A, project, key(), "\"2\"").statusCode()).isEqualTo(204);
+            assertThat(create(A, key(), "{\"name\":\"Allowed\"}").statusCode()).isEqualTo(201);
+            assertThat(taskCreate(A, projectPath(A), key(), "{\"title\":\"Allowed\"}").statusCode()).isEqualTo(201);
+        } finally {
+            actorPermissions.remove(LIMITED_ACTOR);
+        }
+    }
+
+    @Test @Order(-99) void unavailablePermissionAuthorityFailsClosedWithoutWriting() throws Exception {
+        permissionUnavailable.set(true);
+        try {
+            assertProblem(request("GET", "/api/v1/projects", token(A, false), null, null),
+                    503, "PERMISSION_AUTHORITY_UNAVAILABLE");
+            assertProblem(create(A, key(), "{\"name\":\"Must not commit\"}"),
+                    503, "PERMISSION_AUTHORITY_UNAVAILABLE");
+        } finally {
+            permissionUnavailable.set(false);
+        }
+        assertThat(request("GET", "/api/v1/projects", token(A, false), null, null).statusCode()).isEqualTo(200);
     }
 
     /** 由诊断脚本提供本轮新构建的应用 JAR；不进入阶段 3 产品完成判定。 */

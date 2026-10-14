@@ -2,6 +2,7 @@ package io.saas.forge.remotedelivery;
 
 import static org.assertj.core.api.Assertions.*;
 import java.time.Clock;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -98,6 +99,23 @@ class ManifestLifecycleIT {
             service.register(CI,declaration("3.0.1"));throw new IllegalStateException("rollback");
         })).hasMessage("rollback");
         assertThat(repository.version("project","3.0.1")).isEmpty();
+    }
+    @Test void permissionDeclarationPersistsAndCannotInventOrRewriteAnOperation() {
+        var request = new RegisterManifestRequest("project", "5.0.0",
+                "https://remote.saas.forge.test/project/5.0.0/remote.js", "1.4.0", "a".repeat(64),
+                List.of("example:project:list", "example:task:create"));
+        var saved = service.register(CI, request);
+        assertThat(saved.permissions()).containsExactly("example:project:list", "example:task:create");
+        assertThat(repository.version("project", "5.0.0").orElseThrow().permissions()).isEqualTo(saved.permissions());
+        assertThatThrownBy(() -> service.register(CI, new RegisterManifestRequest(
+                request.module(), request.version(), request.source(), request.uiVersion(), request.entrySha256(),
+                List.of("example:project:list")))).hasMessage("MANIFEST_VERSION_CONFLICT");
+        assertThatThrownBy(() -> service.register(CI, new RegisterManifestRequest("project", "5.0.1",
+                "https://remote.saas.forge.test/project/5.0.1/remote.js", "1.4.0", "a".repeat(64),
+                List.of("example:project:export")))).hasMessage("MANIFEST_PERMISSION_NOT_ALLOWED");
+        assertThatThrownBy(() -> service.register(CI, new RegisterManifestRequest("project", "5.0.2",
+                "https://remote.saas.forge.test/project/5.0.2/remote.js", "1.4.0", "a".repeat(64),
+                List.of("example:project:list", "example:project:list")))).hasMessage("MANIFEST_PERMISSION_NOT_ALLOWED");
     }
     private static RemoteManifest decide(UUID id,UUID key,String action) { return transaction.execute(status -> service.decide(ADMIN,key,id,action)); }
     private static RegisterManifestRequest declaration(String version) { return new RegisterManifestRequest("project",version,"https://remote.saas.forge.test/project/"+version+"/remote.js","1.4.0","a".repeat(64)); }
