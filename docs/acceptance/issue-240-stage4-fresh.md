@@ -4,11 +4,11 @@
 
 ## 当前可核对的基础
 
-后端 `scripts/acceptance-handoff.mjs` 的 `prepare-stage3` 可先保留新 runId，生成七服务隔离 Compose 覆盖；`ready` 核验项目网络、PostgreSQL/Redis/Kafka 新卷、七服务镜像来源与容器、JDK 17、Gateway 与受信 HTTPS 公钥一致性。`probe` 只验证 Gateway 公钥与精确 Origin。前端独立仓库的 `scripts/verify-browser.mjs` 只覆盖会话交接冒烟；阶段 4 专用聚合器在其 `scripts/stage4-aggregate.mjs`，不能把冒烟结果改名当完整报告。旧 Console 已迁出，本仓不读取前端源码或运行浏览器。
+后端 `scripts/acceptance-handoff.mjs` 的 `prepare-stage3` 可先保留新 runId，生成七服务隔离 Compose 覆盖；`ready` 核验项目网络、PostgreSQL/Redis/Kafka 新卷、七服务镜像来源与容器、JDK 17、Gateway 与受信 HTTPS 公钥一致性。`probe` 只验证 Gateway 公钥与精确 Origin。前端独立仓库的 `scripts/verify-browser.mjs` 只覆盖会话交接冒烟；阶段 4 专用聚合器 `scripts/stage4-aggregate.mjs` 目前仅在 #240 前端工作树暂存，尚未合入前端集成分支，正式使用前须确认其提交与验证状态。不能把冒烟结果改名当完整报告。旧 Console 已迁出，本仓不读取前端源码或运行浏览器。
 
 2026-10-14 本机已安装 Java `17.0.12`、桌面 Google Chrome `155.0.8059.80`。Google [2026-10-13 Desktop Stable 公告](https://chromereleases.googleblog.com/2026/10/stable-channel-update-for-desktop_01668083673.html)列出 Mac `155.0.8059.79/.80`；正式执行日仍需重新核对最新公告，并以报告中的 Chrome 运行版本为准。当前沙箱不能连接 Docker daemon；本准备阶段未请求更高权限运行完整环境，不推断宿主 Docker 服务状态。
 
-当前前端 `package.json` 和 `pnpm-lock.yaml` 固定 `@crane199709/saas-forge-api-client@0.5.0`，尚未包含阶段 4 全部正式 operation。#235、#238、#239 的最终集成、固定版本 Client 发布/锁文件更新、品牌 S3 兼容镜像及完整部署覆盖、受控 v2 开关与 Git hook 处置仍需落实后才能形成最终制品。本记录不把这些前提写作已通过。
+当前前端 `package.json` 和 `pnpm-lock.yaml` 固定 `@crane199709/saas-forge-api-client@0.5.0`，尚未包含阶段 4 全部正式 operation。#235、#238、#239 的前端切片与最终两仓集成、固定版本 Client 发布/锁文件更新、品牌 S3 兼容镜像及完整部署覆盖、受控 v2 开关与 Git hook 处置仍需落实后才能形成最终制品。本记录不把这些前提写作已通过。
 
 ### 正式 Client 升版准备
 
