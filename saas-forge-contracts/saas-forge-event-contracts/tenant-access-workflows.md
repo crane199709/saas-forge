@@ -13,6 +13,7 @@
 | `com.saas.forge.iam.password-setup-delivered.v1` | IAM | `identityId`、`deliveryRequestId`、`challengeExpiresAt` |
 | `com.saas.forge.iam.password-established.v1` | IAM | `identityId`、`credentialId` |
 | `com.saas.forge.tenant.created.v1` | Tenant Access | `tenantId`、`status`、`actorIdentityId` |
+| `com.saas.forge.brand.asset-uploaded.v1` | Tenant Access | `tenantId`、`assetId`、`actorIdentityId`、`kind`；不包含图像内容或对象存储凭据 |
 | `com.saas.forge.tenant.administrator-initialized.v1` | Tenant Access | `tenantId`、`membershipId`、`identityId`、`roleId`、`status`、`actorIdentityId` |
 | `com.saas.forge.quota-definition.created.v1` | Entitlement | `quotaDefinitionId`、`code`、`status`、`actorIdentityId` |
 | `com.saas.forge.quota-definition.activated.v1` | Entitlement | `quotaDefinitionId`、`code`、`status`、`actorIdentityId` |

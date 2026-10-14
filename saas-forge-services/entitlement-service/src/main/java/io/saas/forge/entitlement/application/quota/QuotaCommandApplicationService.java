@@ -146,8 +146,9 @@ public class QuotaCommandApplicationService {
         requireUuidV7(operationId, "Quota Operation ID");
         if (!INITIALIZATION_QUOTA.equals(quotaCode)
                 || amount != INITIALIZATION_AMOUNT
-                || purpose != QuotaOperationPurpose.TENANT_ADMIN_INITIALIZATION) {
-            throw new IllegalArgumentException("PENDING Tenant 初始化只允许占用或释放一个 max_users");
+                || (purpose != QuotaOperationPurpose.TENANT_ADMIN_INITIALIZATION
+                    && purpose != QuotaOperationPurpose.INVITATION_ACCEPTANCE)) {
+            throw new IllegalArgumentException("只允许占用或释放一个 max_users");
         }
     }
 

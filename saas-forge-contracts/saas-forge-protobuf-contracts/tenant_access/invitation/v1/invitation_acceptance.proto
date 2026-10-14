@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package io.saas.forge.contracts.tenantaccess.invitation.v1;
+
+option java_multiple_files = true;
+option java_package = "io.saas.forge.contracts.tenantaccess.invitation.v1";
+
+// IAM alone validates the browser session and calls this service with its own Service Token.
+service InvitationAcceptanceService {
+  rpc Accept(AcceptInvitationRequest) returns (AcceptInvitationResponse);
+}
+
+message AcceptInvitationRequest {
+  string token = 1;
+  string identity_id = 2;
+  string idempotency_key = 3;
+  string trace_id = 4;
+}
+
+message AcceptInvitationResponse {
+  string membership_id = 1;
+  string tenant_id = 2;
+  bool replayed = 3;
+}

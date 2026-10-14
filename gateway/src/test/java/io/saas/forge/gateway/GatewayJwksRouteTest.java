@@ -360,6 +360,27 @@ class GatewayJwksRouteTest {
     }
 
     @Test
+    void brandAssetReadIsAnonymousAndUploadKeepsControlledBrowserBoundary() throws Exception {
+        String id = "019535d9-0001-7000-8000-000000000028";
+        var read = send(HttpRequest.newBuilder(gatewayUri("/brands/" + id)).GET().build());
+        assertEquals(200, read.statusCode());
+        assertEquals("tenant-access", read.body());
+        assertEquals(404, send(HttpRequest.newBuilder(gatewayUri("/brands")).GET().build()).statusCode());
+
+        var preflight = send(HttpRequest.newBuilder(gatewayUri("/api/v1/brand-assets/logo"))
+                .header("Origin", "https://console.saas.forge.test")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "authorization,content-type,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(200, preflight.statusCode());
+        var rejected = send(HttpRequest.newBuilder(gatewayUri("/api/v1/brand-assets/logo"))
+                .header("Content-Type", "image/png")
+                .POST(HttpRequest.BodyPublishers.ofByteArray(new byte[] {1, 2, 3})).build());
+        assertEquals(403, rejected.statusCode());
+        assertTrue(rejected.body().contains("BROWSER_REQUEST_REJECTED"));
+    }
+
+    @Test
     void passwordSetupRequiresControlledOriginAndCsrfAndAllowsExactPreflight()
             throws IOException, InterruptedException {
         HttpRequest.Builder base = HttpRequest.newBuilder(gatewayUri("/api/v1/auth/password-setups"))

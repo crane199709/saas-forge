@@ -211,5 +211,10 @@ class ServiceAccessTokenReceiverRedisIT {
         public boolean hasActiveAssignment(UUID identityId, String roleKey, Instant at) {
             return IDENTITY_ID.equals(identityId) && "PLATFORM_ADMIN".equals(roleKey);
         }
+
+        @Override
+        public java.util.Optional<PlatformRoleAssignment> findActive(UUID identityId, String roleKey, Instant at) {
+            return java.util.Optional.empty();
+        }
     }
 }

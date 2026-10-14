@@ -1,0 +1,23 @@
+DO $$
+DECLARE
+    previous_action_check TEXT;
+    previous_resource_check TEXT;
+BEGIN
+    SELECT pg_get_expr(conbin, conrelid) INTO previous_action_check
+    FROM pg_constraint WHERE conrelid = 'audit_records'::regclass
+        AND conname = 'ck_audit_records_action';
+    SELECT pg_get_expr(conbin, conrelid) INTO previous_resource_check
+    FROM pg_constraint WHERE conrelid = 'audit_records'::regclass
+        AND conname = 'ck_audit_records_resource_type';
+    IF previous_action_check IS NULL OR previous_resource_check IS NULL THEN
+        RAISE EXCEPTION 'Audit action/resource_type constraints are required before V13';
+    END IF;
+
+    ALTER TABLE audit_records DROP CONSTRAINT ck_audit_records_action;
+    EXECUTE format('ALTER TABLE audit_records ADD CONSTRAINT ck_audit_records_action '
+                   || 'CHECK ((%s) OR action = %L)', previous_action_check, 'BRAND_ASSET_UPLOADED');
+
+    ALTER TABLE audit_records DROP CONSTRAINT ck_audit_records_resource_type;
+    EXECUTE format('ALTER TABLE audit_records ADD CONSTRAINT ck_audit_records_resource_type '
+                   || 'CHECK ((%s) OR resource_type = %L)', previous_resource_check, 'BRAND_ASSET');
+END $$;
