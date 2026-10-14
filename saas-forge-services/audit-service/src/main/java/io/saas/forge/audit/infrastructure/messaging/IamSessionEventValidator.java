@@ -11,14 +11,17 @@ public class IamSessionEventValidator {
     private final ObjectMapper objectMapper;
     private final SessionStartedEventValidator sessionStarted;
     private final TenantContextSwitchedEventValidator tenantContextSwitched;
+    private final PasswordRecoveredEventValidator passwordRecovered;
 
     public IamSessionEventValidator(
             ObjectMapper objectMapper,
             SessionStartedEventValidator sessionStarted,
-            TenantContextSwitchedEventValidator tenantContextSwitched) {
+            TenantContextSwitchedEventValidator tenantContextSwitched,
+            PasswordRecoveredEventValidator passwordRecovered) {
         this.objectMapper = objectMapper;
         this.sessionStarted = sessionStarted;
         this.tenantContextSwitched = tenantContextSwitched;
+        this.passwordRecovered = passwordRecovered;
     }
 
     public AuditRecord validate(String topic, String orderingKey, String consumerName, String payload) {
@@ -37,6 +40,8 @@ public class IamSessionEventValidator {
                     sessionStarted.validate(topic, orderingKey, consumerName, payload);
             case TenantContextSwitchedEventValidator.EVENT_TYPE ->
                     tenantContextSwitched.validate(topic, orderingKey, consumerName, payload);
+            case PasswordRecoveredEventValidator.EVENT_TYPE ->
+                    passwordRecovered.validate(topic, orderingKey, consumerName, payload);
             default -> throw new InvalidAuditEventException("IAM Session type 未获当前消费者处理授权");
         };
     }

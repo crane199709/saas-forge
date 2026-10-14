@@ -8,6 +8,7 @@ public class UserSessionRevocationRow {
     private String targetType;
     private UUID tenantId;
     private UUID membershipId;
+    private UUID identityId;
     private String revocationStatus;
     private UUID cursorFamilyId;
     private long revokedFamilyCount;
@@ -29,6 +30,8 @@ public class UserSessionRevocationRow {
     public void setTenantId(UUID value) { tenantId = value; }
     public UUID getMembershipId() { return membershipId; }
     public void setMembershipId(UUID value) { membershipId = value; }
+    public UUID getIdentityId() { return identityId; }
+    public void setIdentityId(UUID value) { identityId = value; }
     public String getRevocationStatus() { return revocationStatus; }
     public void setRevocationStatus(String value) { revocationStatus = value; }
     public UUID getCursorFamilyId() { return cursorFamilyId; }

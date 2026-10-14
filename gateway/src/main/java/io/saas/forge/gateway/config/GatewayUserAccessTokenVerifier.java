@@ -26,7 +26,8 @@ final class GatewayUserAccessTokenVerifier implements GatewayUserTokenVerifier {
     public void verify(String authorization) {
         try {
             var claims = signatures.verify(authorization);
-            revocations.assertAllowed(claims.jti(), claims.kid(), claims.membershipId(), claims.tenantId());
+            revocations.assertAllowed(claims.jti(), claims.kid(), claims.membershipId(), claims.tenantId(),
+                    claims.identityId());
         } catch (GatewayTokenRevocationStatusUnavailableException exception) {
             throw exception;
         } catch (GatewayUserTokenInvalidException exception) {
@@ -45,6 +46,10 @@ interface GatewayUserTokenVerifier {
 @FunctionalInterface
 interface GatewayUserTokenRevocationChecker {
     void assertAllowed(UUID jti, String kid, UUID membershipId, UUID tenantId);
+
+    default void assertAllowed(UUID jti, String kid, UUID membershipId, UUID tenantId, UUID identityId) {
+        assertAllowed(jti, kid, membershipId, tenantId);
+    }
 }
 
 final class GatewayUserTokenInvalidException extends RuntimeException {

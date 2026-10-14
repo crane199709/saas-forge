@@ -6,6 +6,7 @@
         <result property="targetType" column="target_type"/>
         <result property="tenantId" column="tenant_id"/>
         <result property="membershipId" column="membership_id"/>
+        <result property="identityId" column="identity_id"/>
         <result property="revocationStatus" column="revocation_status"/>
         <result property="cursorFamilyId" column="cursor_family_id"/>
         <result property="revokedFamilyCount" column="revoked_family_count"/>
@@ -33,7 +34,7 @@
     </resultMap>
 
     <sql id="workflowColumns">
-        w.revocation_request_id, f.target_type, f.tenant_id, f.membership_id,
+        w.revocation_request_id, f.target_type, f.tenant_id, f.membership_id, f.identity_id,
         w.revocation_status, w.cursor_family_id, w.revoked_family_count, w.revoked_jti_count,
         w.attempt_count, w.next_attempt_at, w.lease_owner, w.lease_until, w.fencing_token,
         w.recovery_exhausted_at, w.last_failure, w.completed_at
@@ -102,20 +103,23 @@
             SELECT f.id AS family_id,
                    (f.revoked_at IS NULL AND f.absolute_expires_at &gt; #{at}
                     AND ((#{targetType} = 'TENANT' AND f.tenant_id = #{tenantId})
-                      OR (#{targetType} = 'MEMBERSHIP' AND f.membership_id = #{membershipId}))) AS revoke_family
+                      OR (#{targetType} = 'MEMBERSHIP' AND f.membership_id = #{membershipId})
+                      OR (#{targetType} = 'IDENTITY' AND f.identity_id = #{identityId}))) AS revoke_family
             FROM iam_refresh_token_families f
-            WHERE f.family_purpose = 'USER_TENANT'
+            WHERE (#{targetType} = 'IDENTITY' OR f.family_purpose = 'USER_TENANT')
               AND (#{cursor}::uuid IS NULL OR f.id &gt; #{cursor})
               AND (
                 (f.revoked_at IS NULL AND f.absolute_expires_at &gt; #{at}
                  AND ((#{targetType} = 'TENANT' AND f.tenant_id = #{tenantId})
-                   OR (#{targetType} = 'MEMBERSHIP' AND f.membership_id = #{membershipId})))
+                   OR (#{targetType} = 'MEMBERSHIP' AND f.membership_id = #{membershipId})
+                   OR (#{targetType} = 'IDENTITY' AND f.identity_id = #{identityId})))
                 OR EXISTS (
                     SELECT 1 FROM iam_access_token_issuances x
                     WHERE x.family_id = f.id AND x.revoked_at IS NULL
                       AND x.expires_at + INTERVAL '30 seconds' &gt; #{at}
                       AND ((#{targetType} = 'TENANT' AND x.tenant_id = #{tenantId})
-                        OR (#{targetType} = 'MEMBERSHIP' AND x.membership_id = #{membershipId}))
+                        OR (#{targetType} = 'MEMBERSHIP' AND x.membership_id = #{membershipId})
+                        OR (#{targetType} = 'IDENTITY' AND x.identity_id = #{identityId}))
                 )
               )
             ORDER BY f.id LIMIT #{batchSize}
@@ -127,7 +131,8 @@
           AND i.revoked_at IS NULL AND i.expires_at + INTERVAL '30 seconds' &gt; #{at}
           AND (c.revoke_family
             OR (#{targetType} = 'TENANT' AND i.tenant_id = #{tenantId})
-            OR (#{targetType} = 'MEMBERSHIP' AND i.membership_id = #{membershipId}))
+            OR (#{targetType} = 'MEMBERSHIP' AND i.membership_id = #{membershipId})
+            OR (#{targetType} = 'IDENTITY' AND i.identity_id = #{identityId}))
         ORDER BY c.family_id, i.jti
     </select>
 

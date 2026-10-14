@@ -69,6 +69,7 @@ public final class ConsoleContextSelectionService {
                     return new ConsoleOperation(slot.id(), key, family.id(), created.kind(), fingerprint,
                             slot.revision());
                 }
+                issuanceFence.assertIdentityIssuable(family.identityId());
                 issuanceFence.assertIssuable(resolved.membershipId(), resolved.tenantId());
                 commit(slot, family, resolved, traceId);
                 return created;

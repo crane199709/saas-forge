@@ -93,7 +93,8 @@ class AuditConsumerFailureHandlerTest {
         var iam = new IamSessionEventValidator(
                 objectMapper,
                 new SessionStartedEventValidator(objectMapper, IAM_TOPIC),
-                new TenantContextSwitchedEventValidator(objectMapper, IAM_TOPIC));
+                new TenantContextSwitchedEventValidator(objectMapper, IAM_TOPIC),
+                new PasswordRecoveredEventValidator(objectMapper, IAM_TOPIC));
         var tenant = new TenantAccessEventValidator(
                 objectMapper, new TenantCreatedEventValidator(objectMapper, TENANT_TOPIC), TENANT_TOPIC);
         var topology = new AuditConsumerTopology(
