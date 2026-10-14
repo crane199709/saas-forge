@@ -200,6 +200,29 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     }
 
     @Test
+    void tenantDetailsUpdatedFactIsPersistedOnceAfterKafkaRedelivery() {
+        String eventId = "019535d9-0001-7000-8000-000000000009";
+        String group = "tenant-details-redelivery-" + UUID.randomUUID();
+        try (KafkaConsumer<String, String> consumer = consumer(TENANT_TOPIC, group)) {
+            seekToEnd(consumer);
+            send(TENANT_TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                    TenantAccessEventValidatorTest.tenantDetailsUpdatedEvent());
+            ConsumerRecord<String, String> message = pollOne(consumer);
+            tenantListener.consume(message, consumer::commitSync);
+            tenantListener.consume(message, () -> {});
+        }
+
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        assertEquals("New name", app.queryForObject(
+                "SELECT metadata->>'displayName' FROM audit_records WHERE source_event_id=?::uuid",
+                String.class, eventId));
+        assertEquals("TENANT_DETAILS_UPDATED", app.queryForObject(
+                "SELECT action FROM audit_records WHERE source_event_id=?::uuid",
+                String.class, eventId));
+    }
+
+    @Test
     void writesOnceAndSafelyAbsorbsRedeliveryAfterCommitBeforeAcknowledgmentFailure() {
         String eventId = uuidV7(11);
         String payload = event(eventId);

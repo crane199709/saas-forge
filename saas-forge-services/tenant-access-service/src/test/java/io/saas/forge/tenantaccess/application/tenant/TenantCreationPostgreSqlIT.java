@@ -37,6 +37,7 @@ import io.saas.forge.tenantaccess.infrastructure.persistence.MyBatisTenantAdmini
 import io.saas.forge.tenantaccess.infrastructure.persistence.MyBatisTenantCreationIdempotency;
 import io.saas.forge.tenantaccess.infrastructure.persistence.MyBatisTenantRepository;
 import io.saas.forge.tenantaccess.infrastructure.persistence.MyBatisTenantLifecycleRepository;
+import io.saas.forge.tenantaccess.infrastructure.persistence.MyBatisTenantDetailsRepository;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
@@ -153,7 +154,75 @@ class TenantCreationPostgreSqlIT {
     private TenantLifecycleService tenantLifecycle;
 
     @Autowired
+    private TenantDetailsService tenantDetails;
+
+    @Autowired
     private TenantLifecycleRepository tenantLifecycleWorkflows;
+
+    @Test
+    void tenantDetailsUpdateCommitsStableReplayAndOutboxWhileKeepingLifecycleState() throws SQLException {
+        UUID actor = uuidV7(910);
+        UUID key = uuidV7(911);
+        UUID tenantId = service.create(actor, uuidV7(912), "Original", null, null).id();
+        executeAsMigrator("INSERT INTO tenant_brand_profiles "
+                + "(tenant_id, display_name, primary_color, accent_color) VALUES ('"
+                + tenantId + "', 'Brand name', '#123456', '#654321')");
+        executeAsMigrator("UPDATE tenants SET tenant_status = 'ACTIVE', expires_at = now() - INTERVAL '1 minute' WHERE id = '"
+                + tenantId + "'");
+        Instant newExpiry = Instant.now().plusSeconds(3600).truncatedTo(ChronoUnit.MILLIS);
+
+        var changed = tenantDetails.update(actor, key, tenantId, "Managed name", newExpiry, null);
+        var replay = tenantDetails.update(actor, key, tenantId, "Managed name", newExpiry, null);
+
+        assertEquals(TenantStatus.ACTIVE, changed.status());
+        assertEquals(newExpiry, changed.expiresAt());
+        assertEquals(changed, replay);
+        assertEquals("Managed name", scalar("SELECT display_name FROM tenants WHERE id = '" + tenantId + "'"));
+        assertEquals("Brand name", scalar("SELECT display_name FROM tenant_brand_profiles WHERE tenant_id = '"
+                + tenantId + "'"));
+        assertEquals(1, Integer.parseInt(scalar("SELECT count(*) FROM tenant_access_outbox_events "
+                + "WHERE event_snapshot->>'type' = 'com.saas.forge.tenant.details-updated.v1'")));
+        assertEquals(1, Integer.parseInt(scalar("SELECT count(*) FROM tenant_detail_updates")));
+        tenantDetails.update(actor, uuidV7(915), tenantId, "Managed name", newExpiry, null);
+        assertEquals(1, Integer.parseInt(scalar("SELECT count(*) FROM tenant_access_outbox_events "
+                + "WHERE event_snapshot->>'type' = 'com.saas.forge.tenant.details-updated.v1'")));
+
+        executeAsMigrator("UPDATE tenants SET tenant_status = 'SUSPENDED' WHERE id = '" + tenantId + "'");
+        var cleared = tenantDetails.update(actor, uuidV7(913), tenantId, "Managed name", null, null);
+        assertEquals(TenantStatus.SUSPENDED, cleared.status());
+        assertNull(cleared.expiresAt());
+        assertThrows(IdempotencyKeyReusedException.class,
+                () -> tenantDetails.update(actor, key, tenantId, "Different", newExpiry, null));
+        executeAsMigrator("UPDATE tenants SET tenant_status = 'CLOSED' WHERE id = '" + tenantId + "'");
+        assertThrows(io.saas.forge.tenantaccess.domain.tenant.TenantStateTransitionNotAllowedException.class,
+                () -> tenantDetails.update(actor, uuidV7(914), tenantId, "Reopen", null, null));
+    }
+
+    @Test
+    void outboxInsertFailureRollsBackTenantDetailsAndIdempotency() throws SQLException {
+        UUID actor = uuidV7(920);
+        UUID tenantId = service.create(actor, uuidV7(921), "Original", null, null).id();
+        executeAsMigrator("""
+                CREATE FUNCTION fail_tenant_detail_outbox() RETURNS trigger LANGUAGE plpgsql AS $$
+                BEGIN
+                    IF NEW.event_snapshot->>'type' = 'com.saas.forge.tenant.details-updated.v1' THEN
+                        RAISE EXCEPTION 'forced detail outbox failure';
+                    END IF;
+                    RETURN NEW;
+                END $$;
+                CREATE TRIGGER fail_tenant_detail_outbox BEFORE INSERT ON tenant_access_outbox_events
+                FOR EACH ROW EXECUTE FUNCTION fail_tenant_detail_outbox()
+                """);
+        try {
+            assertThrows(RuntimeException.class,
+                    () -> tenantDetails.update(actor, uuidV7(922), tenantId, "Changed", null, null));
+            assertEquals("Original", scalar("SELECT display_name FROM tenants WHERE id = '" + tenantId + "'"));
+            assertEquals("0", scalar("SELECT count(*)::text FROM tenant_detail_updates"));
+        } finally {
+            executeAsMigrator("DROP TRIGGER fail_tenant_detail_outbox ON tenant_access_outbox_events; "
+                    + "DROP FUNCTION fail_tenant_detail_outbox()");
+        }
+    }
 
     @Autowired
     private ScriptedSessionRevocationGateway sessionRevocations;
@@ -1365,6 +1434,7 @@ class TenantCreationPostgreSqlIT {
             sqlSessionFactoryRef = "tenantAccessSqlSessionFactory")
     @Import({io.saas.forge.tenantaccess.infrastructure.persistence.MyBatisAdministratorPasswordSetupQueries.class, io.saas.forge.tenantaccess.infrastructure.persistence.MyBatisAdministratorInitializationQueries.class, MyBatisTenantRepository.class, MyBatisTenantCreationIdempotency.class,
             MyBatisTenantAccessOutboxEventRepository.class,
+            MyBatisTenantDetailsRepository.class,
             MyBatisTenantAdministratorInitializationRepository.class,
             MyBatisAdministratorPasswordSetupRepository.class,
             MyBatisTenantLifecycleRepository.class, TenantQueryService.class, RecoverableTenantCreationService.class,
@@ -1438,6 +1508,18 @@ class TenantCreationPostgreSqlIT {
         TenantSuspendedEventFactory tenantSuspendedEventFactory(ObjectMapper objectMapper, UuidV7Generator ids) {
             return new TenantSuspendedEventFactory(
                     objectMapper, ids, "saas.forge.test.tenant-access-service.events");
+        }
+
+        @Bean
+        TenantDetailsEventFactory tenantDetailsEventFactory(ObjectMapper objectMapper, UuidV7Generator ids) {
+            return new TenantDetailsEventFactory(objectMapper, ids,
+                    "saas.forge.test.tenant-access-service.events");
+        }
+
+        @Bean
+        TenantDetailsService tenantDetailsService(TenantDetailsRepository details,
+                OutboxEventRepository outbox, TenantDetailsEventFactory events, Clock clock) {
+            return new TenantDetailsService(details, outbox, events, clock);
         }
 
         @Bean
