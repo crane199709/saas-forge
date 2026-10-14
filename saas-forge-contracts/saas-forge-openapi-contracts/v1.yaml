@@ -4,9 +4,9 @@ info:
   version: 1.0.0
   description: |
     The versioned public REST contract for saas-forge. This document contains only
-    delivery-stage-two and delivery-stage-three resources. Permission, Feature,
-    and Quota runtime operations are intentionally absent until their domain
-    contracts are reviewed.
+    delivered resources, including stage-four Permission and Invitation operations.
+    Feature and Quota runtime operations remain absent until their domain contracts
+    are reviewed.
 servers:
   - url: https://api.example.invalid
     description: Deployment-specific API Gateway origin.
@@ -17,6 +17,7 @@ tags:
   - name: Platform entitlement bootstrap
   - name: OAuth clients
   - name: Permissions
+  - name: Invitations
 paths:
   /api/v1/auth/session:
     get:
@@ -440,6 +441,91 @@ paths:
         '400': { $ref: './common.yaml#/components/responses/Problem' }
         '401': { $ref: './common.yaml#/components/responses/Problem' }
         '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/invitations:
+    get:
+      tags: [Invitations]
+      operationId: listInvitations
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: List Invitations in the current Tenant Context
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: At most 100 recent Invitations, with derived expiry and no credential.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvitationPage' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+    post:
+      tags: [Invitations]
+      operationId: createInvitation
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Issue a seven-day Invitation and deliver its link by SMTP
+      security: [{ UserBearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateInvitationRequest' }
+      responses:
+        '201':
+          description: Invitation was created and its link delivered; no token is returned.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Invitation' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+  /api/v1/invitations/{invitationId}/resends:
+    post:
+      tags: [Invitations]
+      operationId: resendInvitation
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Rotate and redeliver a pending Invitation link without extending expiry
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      responses:
+        '200':
+          description: Link rotated and delivered; the former link is invalid.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Invitation' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+  /api/v1/invitations/{invitationId}/revocations:
+    post:
+      tags: [Invitations]
+      operationId: revokeInvitation
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Revoke a pending Invitation
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      responses:
+        '204': { description: Invitation revoked. }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
 
   /api/v1/platform/tenants:
@@ -2296,6 +2382,32 @@ components:
       required: true
       schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
   schemas:
+    CreateInvitationRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email: { type: string, format: email, minLength: 3, maxLength: 320 }
+    Invitation:
+      type: object
+      additionalProperties: false
+      required: [id, email, status, deliveryStatus, expiresAt, createdAt, updatedAt]
+      properties:
+        id: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        email: { type: string, format: email }
+        status: { type: string, enum: [PENDING, ACCEPTED, REVOKED, EXPIRED] }
+        deliveryStatus: { type: string, enum: [PENDING, SENT, FAILED] }
+        expiresAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    InvitationPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Invitation' }
     PermissionEntry:
       type: object
       additionalProperties: false

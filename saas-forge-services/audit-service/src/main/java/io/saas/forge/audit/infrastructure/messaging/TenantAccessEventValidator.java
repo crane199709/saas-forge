@@ -41,6 +41,7 @@ public class TenantAccessEventValidator {
     private final ObjectMapper objectMapper;
     private final TenantCreatedEventValidator tenantCreated;
     private final TenantDetailsUpdatedEventValidator tenantDetailsUpdated;
+    private final InvitationEventValidator invitationEvents;
     private final String expectedTopic;
 
     public TenantAccessEventValidator(
@@ -50,6 +51,7 @@ public class TenantAccessEventValidator {
         this.objectMapper = objectMapper;
         this.tenantCreated = tenantCreated;
         this.tenantDetailsUpdated = new TenantDetailsUpdatedEventValidator(objectMapper, expectedTopic);
+        this.invitationEvents = new InvitationEventValidator(objectMapper, expectedTopic);
         if (expectedTopic == null
                 || !expectedTopic.matches("^saas\\.forge\\.[a-z][a-z0-9-]*\\.tenant-access-service\\.events$")) {
             throw new IllegalArgumentException("Tenant Access Topic 配置不合法");
@@ -74,6 +76,10 @@ public class TenantAccessEventValidator {
                     tenantCreated.validate(topic, orderingKey, consumerName, payload));
             case TenantDetailsUpdatedEventValidator.EVENT_TYPE -> Optional.of(
                     tenantDetailsUpdated.validate(topic, orderingKey, consumerName, envelope));
+            case "com.saas.forge.invitation.created.v1",
+                 "com.saas.forge.invitation.resent.v1",
+                 "com.saas.forge.invitation.revoked.v1" -> Optional.of(
+                    invitationEvents.validate(topic, orderingKey, consumerName, envelope));
             case PERMISSION_CATALOG_CHANGED_TYPE -> Optional.of(
                     validatePermissionCatalogChanged(topic, orderingKey, consumerName, envelope));
             case TENANT_SUSPENDED_TYPE -> {
