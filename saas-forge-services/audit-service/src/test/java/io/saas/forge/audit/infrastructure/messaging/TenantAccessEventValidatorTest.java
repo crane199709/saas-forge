@@ -175,6 +175,32 @@ class TenantAccessEventValidatorTest {
     }
 
     @Test
+    void uploadedBrandAssetProducesAuditRecordWithoutObjectKey() {
+        String event = """
+                {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000029",
+                "source":"urn:saas.forge:tenant-access-service","type":"com.saas.forge.brand.asset-uploaded.v1",
+                "subject":"%s","time":"2026-08-28T10:15:30Z",
+                "datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/brand-asset-uploaded.v1.schema.json",
+                "data":{"tenantId":"%s","assetId":"019535d9-0001-7000-8000-000000000028",
+                "actorIdentityId":"%s","kind":"LOGO"}}
+                """.formatted(TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidatorTest.actorIdentityId()).replace("\n", "");
+        var record = validator.validate(TenantCreatedEventValidatorTest.TOPIC,
+                TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME, event).orElseThrow();
+        assertEquals("BRAND_ASSET_UPLOADED", record.action());
+        assertEquals("BRAND_ASSET", record.resourceType());
+        assertEquals(TenantCreatedEventValidatorTest.actorIdentityId(), record.actorIdentityId().toString());
+        assertEquals("{\"kind\":\"LOGO\"}", record.metadata());
+        assertThrows(InvalidAuditEventException.class, () -> validator.validate(
+                TenantCreatedEventValidatorTest.TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME,
+                event.replace("\"kind\":\"LOGO\"", "\"kind\":\"SCRIPT\"")));
+    }
+
+    @Test
     void rejectsUnregisteredTypeWrongSourceTopicOrConsumerThroughPermanentErrorEntry() {
         String registered = registeredTenantSuspendedEvent();
         assertThrows(InvalidAuditEventException.class, () -> validator.validate(
