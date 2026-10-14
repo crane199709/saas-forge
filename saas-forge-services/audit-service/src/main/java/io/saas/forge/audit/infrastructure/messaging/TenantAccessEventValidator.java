@@ -4,6 +4,7 @@ import io.saas.forge.audit.application.AuditRecord;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -17,6 +18,9 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 public class TenantAccessEventValidator {
     private static final String TENANT_SUSPENDED_TYPE = "com.saas.forge.tenant.suspended.v1";
+    private static final String PERMISSION_CATALOG_CHANGED_TYPE = "com.saas.forge.permission.catalog-changed.v1";
+    private static final String PERMISSION_CATALOG_CHANGED_SCHEMA =
+            "https://saas.forge.io/contracts/events/permission-catalog-changed.v1.schema.json";
     static final String TENANT_SUSPENDED_CONSUMER_NAME = "audit-service.tenant-lifecycle-events";
     private static final String TENANT_SUSPENDED_SCHEMA =
             "https://saas.forge.io/contracts/events/tenant-suspended.v1.schema.json";
@@ -28,6 +32,8 @@ public class TenantAccessEventValidator {
             "datacontenttype", "dataschema", "data");
     private static final Set<String> TENANT_SUSPENDED_DATA_FIELDS =
             Set.of("tenantId", "actorIdentityId", "revokedSessionCount");
+    private static final Set<String> PERMISSION_CATALOG_DATA_FIELDS =
+            Set.of("tenantId", "code", "enabled", "source", "revision");
     private static final Pattern UUID_V7 = Pattern.compile(
             "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$");
     private static final Pattern TRACE_ID = Pattern.compile("^(?!0{32}$)[0-9a-f]{32}$");
@@ -68,6 +74,8 @@ public class TenantAccessEventValidator {
                     tenantCreated.validate(topic, orderingKey, consumerName, payload));
             case TenantDetailsUpdatedEventValidator.EVENT_TYPE -> Optional.of(
                     tenantDetailsUpdated.validate(topic, orderingKey, consumerName, envelope));
+            case PERMISSION_CATALOG_CHANGED_TYPE -> Optional.of(
+                    validatePermissionCatalogChanged(topic, orderingKey, consumerName, envelope));
             case TENANT_SUSPENDED_TYPE -> {
                 validateRegisteredTenantSuspended(topic, orderingKey, consumerName, envelope);
                 requireOtherRegisteredConsumer(TENANT_SUSPENDED_CONSUMER_NAME, consumerName);
@@ -76,6 +84,44 @@ public class TenantAccessEventValidator {
             default -> throw new InvalidAuditEventException(
                     "Tenant Access type 未在工程注册表登记");
         };
+    }
+
+    private AuditRecord validatePermissionCatalogChanged(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(PERMISSION_CATALOG_CHANGED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals(PERMISSION_CATALOG_CHANGED_SCHEMA, text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, PERMISSION_CATALOG_DATA_FIELDS,
+                PERMISSION_CATALOG_DATA_FIELDS, "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        String code = text(data, "code");
+        String source = text(data, "source");
+        JsonNode enabled = data.get("enabled");
+        JsonNode revision = data.get("revision");
+        if (!code.matches("^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$")
+                || code.length() > 160 || !source.matches("^[a-z][a-z0-9-]*$") || source.length() > 80
+                || enabled == null || !enabled.isBoolean()
+                || revision == null || !revision.isIntegralNumber() || revision.asInt() < 1) {
+            throw invalid("data");
+        }
+        requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                PERMISSION_CATALOG_CHANGED_TYPE, occurredAt, traceId, null, tenantId,
+                "PERMISSION_CATALOG_CHANGED", "TENANT", tenantId,
+                objectMapper.writeValueAsString(Map.of("code", code, "enabled", enabled.asBoolean(),
+                        "source", source, "revision", revision.asInt())));
     }
 
     private void validateRegisteredTenantSuspended(

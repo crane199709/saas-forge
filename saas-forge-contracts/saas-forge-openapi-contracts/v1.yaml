@@ -16,6 +16,7 @@ tags:
   - name: Platform tenants
   - name: Platform entitlement bootstrap
   - name: OAuth clients
+  - name: Permissions
 paths:
   /api/v1/auth/session:
     get:
@@ -397,6 +398,49 @@ paths:
         '405': { $ref: './common.yaml#/components/responses/Problem' }
         '502': { $ref: './common.yaml#/components/responses/Problem' }
         '504': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/permissions:
+    get:
+      tags: [Permissions]
+      operationId: listPermissions
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: List the current controlled Permission catalog for a Tenant Administrator
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current catalog, including explicitly disabled entries; never cached.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermissionCatalog' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/permissions/decision:
+    get:
+      tags: [Permissions]
+      operationId: decidePermission
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Recheck one Permission against the current verified Membership
+      description: Unknown and disabled codes are denied. Every call reads the Tenant Access authority.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema: { type: string, pattern: '^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$', maxLength: 160 }
+      responses:
+        '200':
+          description: Current authoritative decision; no cache.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PermissionDecision' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
 
   /api/v1/platform/tenants:
     get:
@@ -2252,6 +2296,28 @@ components:
       required: true
       schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
   schemas:
+    PermissionEntry:
+      type: object
+      additionalProperties: false
+      required: [code, enabled]
+      properties:
+        code: { type: string, maxLength: 160 }
+        enabled: { type: boolean }
+    PermissionCatalog:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/PermissionEntry' }
+    PermissionDecision:
+      type: object
+      additionalProperties: false
+      required: [code, allowed]
+      properties:
+        code: { type: string, maxLength: 160 }
+        allowed: { type: boolean }
     CurrentSession:
       type: object
       additionalProperties: false

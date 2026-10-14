@@ -65,6 +65,32 @@ class TenantAccessEventValidatorTest {
     }
 
     @Test
+    void recordsPermissionCatalogChangeAndRejectsMalformedChange() {
+        String event = """
+                {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000009",
+                "source":"urn:saas.forge:tenant-access-service","type":"com.saas.forge.permission.catalog-changed.v1",
+                "subject":"%s","time":"2026-08-28T10:15:30Z",
+                "datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/permission-catalog-changed.v1.schema.json",
+                "data":{"tenantId":"%s","code":"example:project:list","enabled":false,
+                "source":"example-service","revision":2}}
+                """.formatted(TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidatorTest.tenantId()).replace("\n", "");
+
+        var record = validator.validate(TenantCreatedEventValidatorTest.TOPIC,
+                TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME, event).orElseThrow();
+        assertEquals("PERMISSION_CATALOG_CHANGED", record.action());
+        assertEquals("TENANT", record.resourceType());
+        assertEquals(TenantCreatedEventValidatorTest.tenantId(), record.resourceId().toString());
+        assertTrue(record.metadata().contains("\"enabled\":false"));
+        assertThrows(InvalidAuditEventException.class, () -> validator.validate(
+                TenantCreatedEventValidatorTest.TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME,
+                event.replace("\"revision\":2", "\"revision\":0")));
+    }
+
+    @Test
     void rejectsUnregisteredTypeWrongSourceTopicOrConsumerThroughPermanentErrorEntry() {
         String registered = registeredTenantSuspendedEvent();
         assertThrows(InvalidAuditEventException.class, () -> validator.validate(

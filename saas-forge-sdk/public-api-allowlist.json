@@ -22,6 +22,7 @@
         "io.saas.forge.sdk.core.rest.api.AuthenticationApi",
         "io.saas.forge.sdk.core.rest.api.DiscoveryApi",
         "io.saas.forge.sdk.core.rest.api.OAuthClientsApi",
+        "io.saas.forge.sdk.core.rest.api.PermissionsApi",
         "io.saas.forge.sdk.core.rest.api.PlatformEntitlementBootstrapApi",
         "io.saas.forge.sdk.core.rest.api.PlatformTenantsApi",
         "io.saas.forge.sdk.core.rest.model.AbstractOpenApiSchema",
@@ -49,6 +50,9 @@
         "io.saas.forge.sdk.core.rest.model.OAuthClientSecretResult",
         "io.saas.forge.sdk.core.rest.model.OAuthClientStatus",
         "io.saas.forge.sdk.core.rest.model.OAuthClientType",
+        "io.saas.forge.sdk.core.rest.model.PermissionCatalog",
+        "io.saas.forge.sdk.core.rest.model.PermissionDecision",
+        "io.saas.forge.sdk.core.rest.model.PermissionEntry",
         "io.saas.forge.sdk.core.rest.model.Plan",
         "io.saas.forge.sdk.core.rest.model.PlanQuotaLimit",
         "io.saas.forge.sdk.core.rest.model.PlanStatus",
@@ -68,7 +72,9 @@
     },
     "saas-forge-sdk-auth": {
       "module": "saas-forge-sdk/saas-forge-java/saas-forge-sdk-auth",
-      "packages": ["io.saas.forge.sdk.auth"],
+      "packages": [
+        "io.saas.forge.sdk.auth"
+      ],
       "publicTypes": [
         "io.saas.forge.sdk.auth.IdentityContext",
         "io.saas.forge.sdk.auth.IdentityContextAccessor",
@@ -99,7 +105,9 @@
     },
     "saas-forge-sdk-tenant": {
       "module": "saas-forge-sdk/saas-forge-java/saas-forge-sdk-tenant",
-      "packages": ["io.saas.forge.sdk.tenant"],
+      "packages": [
+        "io.saas.forge.sdk.tenant"
+      ],
       "publicTypes": [
         "io.saas.forge.sdk.tenant.TenantContextAccessor",
         "io.saas.forge.sdk.tenant.TenantContextSnapshot",
@@ -108,10 +116,26 @@
     },
     "saas-forge-spring-boot-starter": {
       "module": "saas-forge-sdk/saas-forge-starters/saas-forge-spring-boot-starter",
-      "packages": ["io.saas.forge.starter.security"],
+      "packages": [
+        "io.saas.forge.starter.security"
+      ],
       "publicTypes": [
+        "io.saas.forge.starter.security.PermissionMvcInterceptor",
         "io.saas.forge.starter.security.SaasForgeHttpAuthenticationAutoConfiguration",
         "io.saas.forge.starter.security.UserAccessTokenContextRevocationChecker"
+      ]
+    },
+    "saas-forge-sdk-permission": {
+      "module": "saas-forge-sdk/saas-forge-java/saas-forge-sdk-permission",
+      "packages": [
+        "io.saas.forge.sdk.permission"
+      ],
+      "publicTypes": [
+        "io.saas.forge.sdk.permission.HttpPermissionChecker",
+        "io.saas.forge.sdk.permission.PermissionAuthorityUnavailableException",
+        "io.saas.forge.sdk.permission.PermissionChecker",
+        "io.saas.forge.sdk.permission.PermissionDeniedException",
+        "io.saas.forge.sdk.permission.RequirePermission"
       ]
     }
   }

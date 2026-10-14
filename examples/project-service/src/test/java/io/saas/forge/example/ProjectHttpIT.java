@@ -58,6 +58,9 @@ class ProjectHttpIT {
     static final HttpClient HTTP = HttpClient.newHttpClient();
     static ConfigurableApplicationContext app;
     static HttpServer jwks;
+    static HttpServer permissionAuthority;
+    static final java.util.concurrent.atomic.AtomicBoolean permissionAllowed = new java.util.concurrent.atomic.AtomicBoolean(true);
+    static final java.util.concurrent.atomic.AtomicInteger permissionCalls = new java.util.concurrent.atomic.AtomicInteger();
     static RSAKey signingKey;
     static String base;
 
@@ -80,10 +83,23 @@ class ProjectHttpIT {
             try (var output = exchange.getResponseBody()) { output.write(body); }
         });
         jwks.start();
+        permissionAuthority = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        permissionAuthority.createContext("/api/v1/permissions/decision", exchange -> {
+            permissionCalls.incrementAndGet();
+            String query = exchange.getRequestURI().getRawQuery();
+            String code = query == null ? "" : URLDecoder.decode(query.substring("code=".length()), StandardCharsets.UTF_8);
+            byte[] body = ("{\"code\":\"" + code + "\",\"allowed\":" + permissionAllowed.get() + "}")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            try (var output = exchange.getResponseBody()) { output.write(body); }
+        });
+        permissionAuthority.start();
         // 受控认证设施只替代 IAM 的服务发现/JWKS；仍运行 Starter 的签名、声明和 Redis 撤销验证。
         app = new SpringApplicationBuilder(ProjectApplication.class).run(
                 "--server.port=0", "--spring.profiles.active=local-file", "--spring.cloud.nacos.config.enabled=false", "--saas.forge.example.outbox.enabled=false", "--spring.cloud.nacos.discovery.enabled=false",
                 "--spring.cloud.discovery.client.simple.instances.iam-service[0].uri=http://127.0.0.1:" + jwks.getAddress().getPort(),
+                "--spring.cloud.discovery.client.simple.instances.gateway[0].uri=http://127.0.0.1:" + permissionAuthority.getAddress().getPort(),
                 "--security.jwt.issuer=example-test", "--saas.forge.environment=example-test",
                 "--spring.data.redis.host=" + REDIS.getHost(), "--spring.data.redis.port=" + REDIS.getMappedPort(6379),
                 "--spring.kafka.bootstrap-servers=" + KAFKA.getBootstrapServers(),
@@ -101,6 +117,20 @@ class ProjectHttpIT {
     @AfterAll static void stop() {
         if (app != null) app.close();
         if (jwks != null) jwks.stop(0);
+        if (permissionAuthority != null) permissionAuthority.stop(0);
+    }
+
+    @Test @Order(-101) void projectListRechecksAuthorityAfterPermissionIsRevoked() throws Exception {
+        int before = permissionCalls.get();
+        assertThat(request("GET", "/api/v1/projects", token(A, false), null, null).statusCode()).isEqualTo(200);
+        permissionAllowed.set(false);
+        try {
+            assertProblem(request("GET", "/api/v1/projects", token(A, false), null, null),
+                    403, "PERMISSION_DENIED");
+        } finally {
+            permissionAllowed.set(true);
+        }
+        assertThat(permissionCalls.get() - before).isEqualTo(2);
     }
 
     /** 由诊断脚本提供本轮新构建的应用 JAR；不进入阶段 3 产品完成判定。 */
