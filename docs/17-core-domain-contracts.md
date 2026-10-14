@@ -12,7 +12,7 @@
 
 ## 外部状态变更幂等
 
-所有外部可见的创建和状态变更请求必须携带 `Idempotency-Key`；读取请求不要求该请求头。键按外部调用方跨全部状态变更接口唯一：用户令牌使用 `identityId`，服务令牌使用 `client_id`；未认证的 Invitation 激活请求在验证令牌后使用 `invitationId`。同键重试完全相同的请求时，服务原样重放首次完成请求的 HTTP 状态码和响应体，而不重新执行业务操作。
+所有外部可见的创建和状态变更请求必须携带 `Idempotency-Key`；读取请求不要求该请求头。键按外部调用方跨全部状态变更接口唯一：已验证用户身份使用 `identityId`，服务令牌使用 `client_id`。Invitation 最终接受要求匹配的已登录 Identity，按该 `identityId` 确定调用方，不再使用未认证激活的 `invitationId` 调用方规则，见 [ADR 0059](adr/0059-invitation-acceptance-follows-password-setup-and-login.md)。同键重试完全相同的请求时，服务原样重放首次完成请求的 HTTP 状态码和响应体，而不重新执行业务操作。
 
 同一键若对应不同 HTTP 方法、规范化路径或规范化请求体，服务以 `409 Conflict` 和 `IDEMPOTENCY_KEY_REUSED` 拒绝，不重放也不执行业务操作。幂等记录自首次完成起保留 24 小时；期满后同一键可视为新请求。
 
@@ -220,9 +220,59 @@ MVP 的 Plan Quota Limit 必须为非负整数。Quota Definition 缺失表示�
 
 创建 Quota Definition 时全局唯一的 `code` 已存在，服务返回 `409 Conflict` 和 `QUOTA_DEFINITION_CODE_ALREADY_EXISTS`。
 
+## Tenant 品牌素材
+
+MVP Logo/favicon 只接受静态 PNG；Logo 文件不超过 2 MiB，宽高各不超过 2048 像素；favicon 文件不超过 256 KiB，必须为正方形，边长为 32～256 像素。服务端须校验实际内容及解码结果，不仅依赖扩展名或请求 MIME。
+
+有效素材允许公开读取，任何知道素材 URL 的人均可查看图片；上传、替换和绑定受 Tenant 授权保护，只能绑定本 Tenant 的素材。使用平台生成的受控同站 URL，不开放存储目录枚举；组织、成员与品牌管理数据仍受保护，见 [ADR 0060](adr/0060-brand-assets-are-public-controlled-png-resources.md)。
+
+违规素材引用永久禁用，后续读取拒绝，Tenant 管理员须上传合规新素材并重新保存 Profile；原 Profile 因素材无效整份回退平台品牌，平台管理员不能代改品牌。不承诺撤回已下载的图片副本。未绑定素材上传满 24 小时后清理；已替换或禁用素材在对应变更满 7 天后清理，当前有效 Profile 引用的素材保留。禁用素材留存期间不可公开读取，清理保留必要审计元数据。
+
+品牌保存须携带已读取的 revision/ETag；版本过期时拒绝覆盖，保留未保存输入并提示刷新、重新确认，不自动合并或静默覆盖。提交时再次校验素材归属及有效性，已禁用或已清理的素材不能保存。Tenant 平台管理名称与品牌显示名各自维护，不互相覆盖。
+
+## Organization 与 Membership 组织归属
+
+本节为第 4 阶段已确认的设计要求，不表示组织模型或 API 已实现；领域边界见 [ADR 0056](adr/0056-tenant-organization-and-permission-boundaries.md)。
+
+每个 Tenant 一个 Organization，包含多棵 OrganizationUnit 树。一个 Membership 可关联零到多个组织单元，不设置主部门；组织归属不授予 Permission、不限定业务数据可见范围，也不产生额外 Membership 或 `max_users` 用量。仅允许删除没有子节点且没有成员关联的组织单元；有子节点或成员关联时拒绝，须先显式调整，不递归删除或隐式迁移。
+
+允许在同一 Organization 内移动整个子树或将节点提升为根节点，保留成员关联且不改变 Permission。每个节点至多一个父节点；禁止跨 Tenant 移动以及形成循环。
+
+## Membership 生命周期
+
+MVP 仅提供 Membership 禁用与重新启用，不提供 Membership 或全局 Identity 删除；Tenant 管理员的成员操作只影响本 Tenant 的成员关系。
+
+禁用保留角色和组织归属；重新启用按届时有效的配置恢复访问，并重新 `consume(1)` 占用一个 `max_users` 名额，额度不足则拒绝启用。原禁用的会话撤销或额度释放未完成时，禁止创建重新启用工作流，须先恢复并完成原流程。重新启用单独执行幂等计量，扣减后的本地失败须补偿，失败期间成员保持禁用。旧会话不复活，用户须重新登录或显式选择工作上下文；具体幂等与恢复契约见[跨服务工作流契约](18-tenant-access-cross-service-workflows.md#成员禁用与-tenant-suspension)及本切片后续评审。
+
+## Tenant Role 与 Permission 分配
+
+一个 Membership 所持多个 Tenant Role 的 Permission 取并集，未获得即拒绝；MVP 不提供显式 deny、角色继承或直接授予 Membership Permission。
+
+组织维护、邀请、普通成员启用/禁用可以委派；角色配置、Role-Permission 与 Membership-Role 分配保留给 Tenant Administrator，对应管理 Permission 不可绑定自定义 Tenant Role。普通管理者不能禁用管理员 Membership，也不能通过邀请授予管理员角色。Tenant Administrator 的自动业务授权与最后一个启用管理员保护见下文 Tenant 规则。
+
+有 Membership 绑定的自定义 Tenant Role 不可直接删除，必须先显式解绑并完成撤权，再删除角色；系统管理的 Tenant Administrator Role 始终不可删除。
+
+业务应用随发布提供版本化 Permission 清单，由受控部署流程导入目录；MVP 不开放普通运行实例自动注册，Manifest 声明不构成注册，见 [ADR 0058](adr/0058-business-permissions-use-controlled-release-catalogs.md)。业务 Permission 可显式停用与恢复，停用对所有角色生效，包括 Tenant Administrator；保留绑定，恢复后重新生效。代码及其操作语义不可重新解释或复用；清单缺少旧条目不隐式删除或停用，须显式声明变更。清单格式与导入契约仍待冻结。
+
+## Platform Role 管理
+
+MVP 只管理固定 `PLATFORM_ADMIN` 的授予与撤销，不开放自定义平台角色或 Platform Role-Permission 编辑器。角色管理不得使平台失去最后一名具有有效常规 Password Credential 的 `PLATFORM_ADMIN`；Default Platform Admin 也依据当前角色授权，没有永久保权特例。
+
+现有 Platform Admin 可按邮箱授予 `PLATFORM_ADMIN`，由 IAM 确认或创建 Identity；从未拥有凭据的新 Identity 接收首次 Password Setup，已有凭据不因角色授予而被重置。加入不要求 Tenant Membership，也不占用 Tenant 的 `max_users`，角色授予不自动登录或切换工作上下文。本节不表示管理 API 已实现。
+
+撤销 `PLATFORM_ADMIN` 立即终止平台授权，结束当前平台工作上下文的会话，并撤销该 Identity 仍有效的平台 Access Token，包括已切换至 Tenant 的会话历史上签发的平台 Token；当前合法 Tenant 会话与权限保留。Password Recovery 等全局安全事件才按 Identity 范围撤销全部会话。平台撤权的持久恢复与正式契约须在本切片评审中冻结。
+
+## Password Recovery
+
+Password Recovery 由 IAM 通过独立的一次性邮箱验证完成，恢复凭据有效期为 30 分钟，同一 Identity 同时最多一份有效，新签发使旧凭据失效，成功兑换后不可再次使用。请求入口统一反馈，不向未认证请求透露 Identity 是否存在；防滥用阈值通过环境策略配置。Tenant 管理员不能代设密码或取得恢复凭据。成功后须撤销该 Identity 的全部会话及仍有效的 Access Token，范围覆盖所有 Tenant、Platform 工作上下文和其他浏览器；不自动登录，不修改 Membership 或角色。并发兑换与幂等规则仍待第 4 阶段规格冻结，本节不表示恢复 API 已实现。
+
+有效恢复凭据验证后，一旦流程进入密码替换阶段，故障期间保持该 Identity 的访问阻断，由持久根工作流继续完成，不回滚旧密码或复活旧会话。密码替换和全部撤销完成才可返回成功；处理中或失败须提供明确可恢复状态。并发兑换与幂等的具体契约仍待冻结。
+
 ## Invitation
 
 Invitation 到期由 `expiresAt` 在激活时派生；`EXPIRED` 不属于其持久状态。实现不得依赖定时任务先改写状态；到期的激活请求必须即时拒绝。
+
+MVP Invitation 不携带预设角色；激活只建立成员关系，新 Membership 默认没有操作 Permission，由 Tenant Administrator 后续显式分配角色。受邀者可登录并建立 Tenant Context，受保护业务仍按默认拒绝执行；邀请不形成额外授权入口。无 Permission 的成员进入等待授权页面，可重新读取权限、切换工作上下文或登出；不显示无权业务菜单，不自动结束合法会话，获得角色后重新读取即可进入获授权功能。
 
 | 状态 | 语义 |
 |---|---|
@@ -244,17 +294,23 @@ Invitation 仅在密码凭据已建立、启用 Membership 已创建且 `max_use
 
 管理员按 Invitation ID 查询、撤销等操作的目标不存在时，服务返回 `404 Not Found` / `INVITATION_NOT_FOUND`。激活令牌无效或无法解析时仍返回 `400 Bad Request` / `INVITATION_TOKEN_INVALID`，不得借此泄露 Invitation 是否存在。
 
-Tenant Access 拥有 Invitation 状态迁移，并在激活时同步编排 IAM 的 Identity/凭据确认与 Entitlement 的 `max_users` `consume`。IAM 遇到已有可用凭据的 Identity 必须复用该 Identity，不得因 Invitation 修改既有密码。若扣减后的步骤失败，Tenant Access 必须持久化 `release` 补偿并保持 Invitation 为 `PENDING`。
+Tenant Access 拥有 Invitation 状态迁移。新 Identity 从有效 Invitation 进入首次 Password Setup，完成密码建立后登录，再显式接受邀请；已有可用凭据的 Identity 直接登录并复用，Invitation 不得修改既有密码。最终接受时同步确认当前凭据及登录身份，并编排 Entitlement 的 `max_users` `consume`；若扣减后的步骤失败，Tenant Access 必须持久化 `release` 补偿并保持 Invitation 为 `PENDING`。该顺序修订见 [ADR 0059](adr/0059-invitation-acceptance-follows-password-setup-and-login.md)。
+
+受邀者须以与 Invitation 规范化邮箱匹配的 Identity 登录，并同时证明持有有效 Invitation 凭据，才能接受邀请；登录为其他 Identity 时不得激活。忘记密码须走独立 Password Recovery，接受邀请不修改全局密码，也不自动切换当前 Tenant Context。该身份验证须在额度扣减或成员创建之前完成；无可用工作上下文的等待会话须经正式受限协议验证身份，不能依赖其并不存在的业务 Access Token，也不能将 Cookie、Origin 或 Identity 暴露为客户端可指定的业务参数。具体契约仍待冻结，本规则不表示 Invitation API 已实现。
+
+新邀请浏览器闭环以前置受控启用统一认证 v2 为条件；受限会话验证作为正式认证能力交付，业务资源按 v1 契约增量交付。Console 只能通过正式 Client 调用，Cookie 等仍由浏览器管理；实现本阶段能力不自动切换环境认证开关。
 
 一次激活尝试预先分配一对稳定 UUIDv7：一个用于 `max_users` `consume`，另一个用于必要时的 `release` 补偿。同一未完成尝试的重试必须复用这对 `operationId`；若该尝试的补偿已成功释放额度，后续重新激活必须创建新尝试和新的 `operationId`，以重新原子占用额度。激活尝试是工作流记录，不增加 Invitation 的持久状态。
 
-激活顺序固定为：验证令牌并解析 Invitation → 判定所属 Tenant 可访问 → 锁定并验证 `PENDING` Invitation → 使用本次激活尝试的 `consume operationId` 执行 `max_users` `consume` → IAM 确认 Identity 并在其尚无凭据时建立凭据 → Tenant Access 本地事务创建启用 Membership 并写入 `ACCEPTED`。扣减后的后续失败使用本次尝试的 `release operationId` 执行补偿；不得删除或重置已由 IAM 建立的 Identity/凭据。
+最终激活顺序固定为：验证令牌并解析 Invitation → 判定所属 Tenant 可访问 → 锁定并验证 `PENDING` Invitation → 权威验证当前密码凭据与匹配的登录 Identity → 使用本次激活尝试的 `consume operationId` 执行 `max_users` `consume` → Tenant Access 本地事务创建启用 Membership 并写入 `ACCEPTED`。密码建立在此流程之前独立完成，不在等待用户设置密码期间占用名额；扣减后的后续失败使用本次尝试的 `release operationId` 执行补偿，不得删除或重置已由 IAM 建立的 Identity/凭据。
 
 若 `release` 补偿尚未完成，Invitation 继续保持 `PENDING`，但不得接受新的激活尝试；服务返回 `503 Service Unavailable` / `INVITATION_ACTIVATION_COMPENSATING`，并携带 `Retry-After`。补偿完成后，Invitation 恢复可激活状态。
 
 激活必须依次判定：令牌有效、所属 Tenant 可访问、Invitation 未撤销、未到 `expiresAt`、尚未 `ACCEPTED`、`max_users` 有余量。令牌无效或无法解析时返回 `400 Bad Request` / `INVITATION_TOKEN_INVALID`；Tenant 不可访问时按 Tenant 访问错误返回对应 `TENANT_*`；已撤销时返回 `410 Gone` / `INVITATION_REVOKED`；已到期时返回 `410 Gone` / `INVITATION_EXPIRED`；已接受时返回 `409 Conflict` / `INVITATION_ALREADY_ACCEPTED`；额度满时返回 `409 Conflict` / `QUOTA_EXCEEDED`。
 
 平台创建 Invitation 时固定设置 7 天后的 `expiresAt`。租户管理员不可原地延长有效期；需要延长时必须撤销旧 Invitation 并新建一条。
+
+允许重发未过期的 `PENDING` Invitation，每次签发新链接并使旧链接失效，保持原 `expiresAt`；已到期、接受或撤销的邀请不得重发。Invitation 是 Tenant 已发出的邀请，不因创建人后续被禁用或失去邀请权限而自动失效；有权管理邀请的人可以显式撤销。
 
 创建 Invitation 时，邮箱缺失、格式不合法或无法规范化，服务返回 `400 Bad Request` / `INVITATION_EMAIL_INVALID`；不得创建 Invitation，也不得占用幂等键。
 
@@ -276,6 +332,8 @@ Tenant Access 拥有 Invitation 状态迁移，并在激活时同步编排 IAM �
 
 `expiresAt` 为可空有效期。到期由访问时刻派生，不依赖定时任务将 Tenant 改写为 `EXPIRED`。
 
+第 4 阶段平台可缩短、延长或清空 `expiresAt`，非空新值须为未来时间；已到期的 `ACTIVE` Tenant 延期后重新允许访问。`SUSPENDED` 仍须显式恢复，`CLOSED` 永久不可重开；立即阻断访问使用 Tenant Suspension，不把有效期改到过去。
+
 Tenant `expiresAt` 是平台级绝对访问截止时间，不表示从激活时开始计算的相对有效时长，也不替代 Subscription `endsAt`。创建 Tenant 时，非空 `expiresAt` 必须严格晚于服务端当前时间；管理员初始化必须在调用 IAM 或扣减 Quota 前再次检查，若已经达到该时间则返回 `409 Conflict` / `TENANT_EXPIRY_REACHED`，Tenant 保持 `PENDING` 且不产生 Identity、Membership 或 Quota 副作用。`TENANT_EXPIRED` 仍只表示 `ACTIVE` Tenant 的派生访问结果。
 
 ### 唯一允许的状态迁移
@@ -290,6 +348,8 @@ Tenant `expiresAt` 是平台级绝对访问截止时间，不表示从激活时�
 | `SUSPENDED` | `CLOSED` | 平台显式、高风险、可审计的终止操作。 |
 
 未列出的迁移一律拒绝：`PENDING` 不可转为 `SUSPENDED`，任何状态不可回到 `PENDING`，`CLOSED` 不可迁出。到期、冻结和关闭是不同概念；到期或冻结不会隐式触发关闭。
+
+Tenant Closure 先完成该 Tenant 的会话撤销，再提交不可逆 `CLOSED`，故障由持久根工作流继续完成。关闭保留成员、业务和审计记录，不自动取消 Subscription，也不触发品牌素材批量清除；素材继续遵循自身禁用和清理规则。页面明确使用“关闭”，与“冻结/恢复”分开。
 
 ### 访问拒绝错误
 
@@ -310,7 +370,11 @@ Tenant Administrator Initialization 由 Tenant Access 串行化。它必须先�
 
 Quota 已扣减而 Tenant Access 本地激活事务未提交时，根工作流进入 `COMPENSATING` 并持续使用原 `releaseOperationId`；补偿未完成期间，同一外部 Key 返回 `503 Service Unavailable` / `TENANT_ADMIN_INITIALIZATION_COMPENSATING` 与 `Retry-After`。补偿成功后，原根工作流稳定结束为 `409 Conflict` / `TENANT_ADMIN_INITIALIZATION_RETRY_REQUIRED`；客户端必须使用新的 `Idempotency-Key` 创建新根工作流及新的 Identity、consume、release 子操作 ID。Identity 保留并复用，Tenant 保持 `PENDING`；不得复用已被 release 抵消的 `consumeOperationId`，也不得在同一根工作流内无限产生新尝试。Password Setup 投递发生在本地激活提交后，失败只重试投递工作项，不触发 Quota 补偿。
 
-每个 Tenant 恰有一个系统管理的 Tenant Administrator Role，固定 `roleKey = TENANT_ADMINISTRATOR` 且 `systemManaged = true`，不得重命名、删除或转为自定义角色。初始化事务必须幂等创建该角色并建立唯一 Membership–Role Assignment；管理员身份只由该 Assignment 表达，不增加 `is_admin` 字段或绕过 RBAC。当前切片不提前创建 Permission 或 Role–Permission 数据；第 4 阶段只能为该既有角色绑定冻结的 `system:*` Permission，不得创建第二个管理员角色。
+每个 Tenant 恰有一个系统管理的 Tenant Administrator Role，固定 `roleKey = TENANT_ADMINISTRATOR` 且 `systemManaged = true`，不得重命名、删除或转为自定义角色。初始化事务必须幂等创建该角色并建立唯一 Membership–Role Assignment；管理员身份只由该 Assignment 表达，不增加 `is_admin` 字段或绕过 RBAC。管理员初始化切片不提前创建 Permission 或 Role–Permission 数据；第 4 阶段为该既有角色绑定核心管理 Permission，并自动授予所有受控注册且有效的租户业务 Permission，包括后续新增项，Platform Permission 不在此范围，不得创建第二个管理员角色。仅现有 Tenant Administrator 可授予或撤销该角色，对应管理 Permission 为系统保留，不可分配给自定义 Tenant Role。该设计扩展见 [ADR 0056](adr/0056-tenant-organization-and-permission-boundaries.md)，具体授权更新机制仍待冻结，不表示当前已实现通用 RBAC。
+
+第 4 阶段成员禁用或角色撤销不得使 Tenant 失去最后一个启用且持有 Tenant Administrator Role 的 Membership；该约束必须覆盖并发变更。Tenant 冻结、到期和关闭仍按既有生命周期规则执行。
+
+第 4 阶段撤权操作成功返回后，随后开始的请求必须采用新权限，不追溯回滚已进入执行的请求。MVP 每次服务端 Permission 判定都同步查询权威结果，本地缓存不独立放行请求；权威不可用时拒绝放行并返回可重试错误，Kafka 仅用于展示刷新等辅助失效。该一致性边界见 [ADR 0057](adr/0057-permission-revocation-is-effective-before-success.md)。
 
 Initial Tenant Administrator 是独立、不可变的 Tenant–Membership 关系，每个 Tenant 最多一条且 Membership 必须属于该 Tenant。它必须与 Membership、Tenant Administrator Role Assignment 和 `PENDING → ACTIVE` 在同一事务写入；后续授予或撤销管理员角色不改变该历史关系。Password Setup 重发只能通过它定位 Identity，不得在 Membership 冗余邮箱、密码状态或 `is_initial_admin`。已 `ACTIVE` 的 Tenant 使用新幂等键再次初始化时返回 `409 Conflict` / `TENANT_ALREADY_INITIALIZED`，不能替换 Initial Tenant Administrator。
 

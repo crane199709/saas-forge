@@ -2,7 +2,7 @@
 
 > **状态**：本文是设计基线，描述长期有效的目标与约束，不代表对应功能已实现；当前实现状态见 [README 的当前状态](../README.md#当前状态) 与开放 Issues，进度勾选见 [MVP 开发计划](16-mvp-development-plan.md)。
 
-本文冻结 Tenant 创建与管理员初始化、Invitation 激活、Tenant 切换、成员禁用与 Tenant 冻结的跨服务责任。它补充而不替代[核心领域契约](17-core-domain-contracts.md)：未在本文列出的状态、错误码和恢复动作不得由实现自行推定。
+本文冻结 Tenant 创建与管理员初始化、Invitation 激活、Password Recovery、Tenant 切换、成员禁用、Tenant 冻结与关闭的跨服务责任。它补充而不替代[核心领域契约](17-core-domain-contracts.md)：未在本文列出的状态、错误码和恢复动作不得由实现自行推定。
 
 ## 数据所有权与通用规则
 
@@ -50,11 +50,27 @@ Tenant Access 平台操作在验证 User Access Token 并经 IAM 复核 Platform
 
 Password Setup Challenge 由 IAM 的 `POST /api/v1/auth/password-setups` 匿名兑换；请求只携带 43 字符无填充 Base64URL Challenge Token 与新密码，不接受 Identity、Membership 或 Tenant 标识，并受受控 Origin 与 `X-SF-CSRF` 防护。邮件链接仅使用 `https://console.<root>/password-setup#token=<token>`，不得将 Token 放入查询参数；控制台读取后立即清除 Fragment 并只在内存保存。成功兑换只建立该 Identity 的首个 Password Credential，不建立登录会话，用户随后必须通过正常登录取得上下文。
 
+## Platform Admin 加入
+
+IAM 接收现有 Platform Admin 按邮箱授予 `PLATFORM_ADMIN` 的操作，确认或创建目标 Identity；只为从未拥有任何 Credential 的 Identity 投递首次 Password Setup，不重置已有凭据。该流程不建立 Tenant Membership、不计入 Tenant `max_users`，也不自动登录或切换工作上下文。目标的历史 Credential 恢复继续遵循 IAM 既有安全边界，不得用 Setup 绕过。
+
+角色授予与投递工作项的幂等、恢复及正式 API 须随切片冻结；不得把投递成功视为目标已建立密码。此处是加入范围决策，不表示管理 API 已实现。
+
+撤销 `PLATFORM_ADMIN` 只影响平台授权范围：结束当前平台工作上下文会话、撤销该 Identity 仍有效的平台 `jti`，包括已切换到 Tenant 的会话历史上签发的平台 Token；当前合法 Tenant 会话保留。IAM 须补齐平台范围的持久撤权及恢复契约，不能用 Identity 全局撤销代替；已完成的撤销事实不会因后续重新授予而复活。
+
+## Password Recovery
+
+IAM 拥有 Identity 全局 Password Recovery 根工作流。有效恢复凭据验证并进入密码替换阶段后，须阻断该 Identity 在所有 Tenant、Platform、未选择工作上下文及其他浏览器中的访问与并发会话/Token 签发；故障时以持久工作流继续完成，不回滚旧密码或复活旧会话。只有密码替换及全部会话、有效 `jti` 撤销完成后才可返回成功。
+
+当前 Membership/Tenant 目标撤销不能替代 Identity 全局屏障，也不能靠遍历 Membership 覆盖 Platform 或等待会话。Identity 级目标、签发屏障与恢复状态契约仍须本阶段补齐；恢复凭据策略见[核心领域契约](17-core-domain-contracts.md#password-recovery)。此处是已确认的安全完成边界，不表示现有撤销实现已支持 Identity 目标。
+
 ## Invitation 激活
 
-Invitation 激活的公网资源属于 Tenant Access：`POST /api/v1/tenant/invitation-activations`。它不信任客户端提供的 Tenant 上下文，而由 Invitation 令牌定位 Invitation 和 Tenant；Gateway 只路由该请求。Tenant Access 是根服务并拥有 Invitation 的锁定、验证和 `PENDING → ACCEPTED` 状态迁移。
+Invitation 激活的公网资源属于 Tenant Access：`POST /api/v1/tenant/invitation-activations`。它不信任客户端提供的 Tenant 上下文，而由 Invitation 令牌定位 Invitation 和 Tenant；Gateway 只路由该请求。Tenant Access 是根服务并拥有 Invitation 的锁定、验证和 `PENDING → ACCEPTED` 状态迁移。新 Identity 须先从有效邀请进入独立 Password Setup，完成后登录，再显式接受邀请；最终接受要求与邀请邮箱匹配的当前登录身份，顺序修订见 [ADR 0059](adr/0059-invitation-acceptance-follows-password-setup-and-login.md)。
 
-一次尝试固定 `consumeOperationId` 和 `releaseOperationId`，按以下顺序执行：验证令牌、Tenant 可访问性和 `PENDING` Invitation → Entitlement `consume(max_users, consumeOperationId)` → IAM 确认 Identity 并仅在其没有凭据时建立凭据 → Tenant Access 本地事务创建启用 Membership、接受 Invitation、写入 HTTP 幂等结果和 `com.saas.forge.invitation.accepted.v1`。已有凭据的 Identity 必须复用，Invitation 不得重置其密码。
+一次最终接受尝试固定 `consumeOperationId` 和 `releaseOperationId`，按以下顺序执行：验证令牌、Tenant 可访问性和 `PENDING` Invitation → IAM 权威确认当前密码凭据与匹配的登录 Identity → Entitlement `consume(max_users, consumeOperationId)` → Tenant Access 本地事务创建启用 Membership、接受 Invitation、写入 HTTP 幂等结果和 `com.saas.forge.invitation.accepted.v1`。Invitation 不重置既有密码，不预设角色，也不自动切换 Tenant Context。Password Setup 投递成功或 `EnsureIdentity` 首次幂等结果均不能替代当前凭据状态；等待会话身份证明的正式契约仍待冻结，Cookie 等浏览器管理边界不得作为业务参数。
+
+新浏览器闭环只在受控启用 v2 的环境交付；IAM 的受限会话验证须通过正式认证契约支持没有业务 Access Token 的等待会话，业务资源继续按 v1 增量交付。实现与验证不隐式切换认证开关，见 [ADR 0052](adr/0052-unified-console-authentication-uses-versioned-session-protocol.md)。
 
 扣减成功后的任何失败都只补偿 Quota：Tenant Access 以同一 `releaseOperationId` 重试，Invitation 保持 `PENDING`；Identity 和凭据不回滚。补偿未完成时拒绝新激活尝试并按既有 `503 / INVITATION_ACTIVATION_COMPENSATING` 契约返回。补偿完成后，新激活尝试必须生成新的 Quota 操作 ID，以重新占用额度。
 
@@ -69,6 +85,12 @@ IAM 从 Family 取得 `identityId`，使用 IAM 保留服务 Client 的有效 Se
 实际切换后，原请求同 Key 重放 `204`；客户端成功调用既有刷新接口取得目标 Tenant Token 前，其他切换返回 `409 / TENANT_CONTEXT_SWITCH_REFRESH_REQUIRED`。Switch 与 Refresh 对同一 Family 串行化并校验上下文版本；Refresh 在提交前发现 Family 已变化时不得保存已准备的 Token，也不得消费或轮换 Refresh Token。刷新时目标 Membership 已失效则撤销 Family 并要求重新登录；成功刷新只解除等待状态，不发布第二个切换事件。
 
 IAM 在第一次调用 Tenant Access 前持久化 Family 级根工作流，同一 Family 同时最多存在一个未终结切换。暂时失败返回 `503 / TENANT_CONTEXT_SWITCH_PENDING` 与 `Retry-After`，Worker 和同 Key 重试恢复同一流程，其他 Key 返回 `409 / TENANT_CONTEXT_SWITCH_IN_PROGRESS`。自动恢复默认最多尝试 10 次并可配置；耗尽后持久化时间与脱敏失败摘要，原 Key 稳定返回 `409 / TENANT_CONTEXT_SWITCH_RETRY_REQUIRED`，解除 Family 在途限制并允许新 Key 重试。Redis 已写入而数据库未提交时允许旧 Token 提前失效，但 Family 保持原上下文，额外拒绝不回滚。
+
+## Tenant Closure
+
+Tenant Access 拥有 Tenant Closure 根工作流；先由 IAM 完成 Tenant 范围会话及有效 `jti` 撤销，再提交不可逆 `CLOSED`。IAM 或本地提交失败时继续恢复原持久工作流，不以中断为由解除已建立的访问阻断，也不提供从 `CLOSED` 恢复访问的操作。既有生命周期在途冲突须沿用同 Tenant 串行化边界，不能直接跳过正在执行的初始化或冻结。
+
+关闭不删除成员、业务或审计记录，不自动取消 Subscription，也不批量清除品牌素材；素材按独立禁用与生命周期策略处理。已有冻结 Fence 的衔接、幂等与错误码须在本切片契约评审中冻结，本节不表示关闭 API 已实现。
 
 ## 成员禁用与 Tenant Suspension
 
@@ -91,5 +113,7 @@ IAM 最终计数只包含本请求首次产生的撤销：`revokedFamilyCount` �
 目标匹配同时考虑 Family 当前上下文和 Access Token Issuance 历史上下文：当前 `USER_TENANT` Family 匹配目标 Membership/Tenant 时撤销整个 Family 及其全部未过期 `jti`；Family 已切换到其他上下文时保留 Family，但仍撤销其为目标上下文签发且未过期的历史 `jti`。`USER_PLATFORM`、`USER_TENANT_SELECTION` 和 `INITIAL_PASSWORD_CHANGE` Family 不因 Membership/Tenant 目标而被撤销。已撤销或已过期记录只用于幂等重放与稳定计数，不重复产生副作用。
 
 成员禁用在 Tenant Access 的单一事务中写入 Membership 禁用事实、HTTP 幂等结果、`quotaReleasePending` 工作项和 `com.saas.forge.membership.disabled.v1`。提交后立即调 Entitlement `release(max_users, quotaReleaseOperationId)`；失败时 Membership 不恢复，工作项以同一 ID 持续重试。这样最坏情况只是额度暂未释放，而不会出现额度已释放但成员仍启用的窗口。
+
+成员重新启用必须等待原禁用的会话撤销及额度释放全部完成，不允许新启用工作流与未完成禁用互相覆盖。重新启用使用独立持久根工作流与稳定计量 ID；扣减额度后的本地失败须持久化补偿，失败期间 Membership 保持禁用。Fence 解除只能针对已完成原撤销及匹配代际，不清除既有 Family 或 `jti` 撤销事实。具体操作契约与恢复状态须随本切片冻结。
 
 Tenant Suspension 在 Tenant Access 的单一事务中完成 `ACTIVE → SUSPENDED`、HTTP 幂等结果和 `com.saas.forge.tenant.suspended.v1`。它不禁用 Membership、不释放 `max_users`，恢复为 `ACTIVE` 也不恢复已撤销会话；用户必须重新登录或重新切换 Tenant。恢复时 Tenant Access 使用 IAM 内部 `ReleaseUserSessionFence`：请求包含新 UUIDv7 `releaseRequestId`、原始 `revocationRequestId` 和同一强类型目标。IAM 只解除由该原始撤销请求建立的 ACTIVE Fence；同一释放请求稳定重放，Fence 已被后续撤销请求替代时必须拒绝，绝不删除新 Fence。IAM 确认对应批量撤销已完成并解除 Fence 后，Tenant Access 才提交 `SUSPENDED → ACTIVE`；解除 Fence 不得清除任何 Family 或 `jti` 撤销事实。如果本地恢复提交失败，Tenant 仍为 `SUSPENDED`，同一请求可幂等重试。对已为 `SUSPENDED` 的 Tenant 以新 Key 请求 Suspension，或对已为 `ACTIVE` 的 Tenant 以新 Key 请求恢复，都返回 `409 / TENANT_STATE_TRANSITION_NOT_ALLOWED` 且不调用 IAM；原始 Key 始终重放当时持久化的成功响应，不因后续状态变化改写历史结果。IAM 的成功会话撤销可独立发布 `com.saas.forge.iam.sessions-revoked.v1`，即使后续 Tenant Access 本地提交失败也只表示已发生的安全事实。

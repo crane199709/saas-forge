@@ -60,12 +60,14 @@ MembershipContext.getMembershipId();
 
 | 能力 | SDK 行为 | 一致性规则 |
 |---|---|---|
-| Permission | `@RequirePermission` 或编程式检查 | JWT 不携带权限；SDK 先查本地短缓存，未命中时经 Gateway 查询 Tenant Access；Kafka 事件失效缓存 |
-| Feature | `@RequireFeature` 或编程式检查 | 与 Permission 相同；两项校验可同时要求 |
+| Permission | `@RequirePermission` 或编程式检查 | JWT 不携带权限；每次判定同步经 Gateway 查询 Tenant Access 权威结果，本地缓存不独立放行，满足 ADR 0057 |
+| Feature | `@RequireFeature` 或编程式检查 | 本地短缓存、权威回源及 Kafka 失效；可与 Permission 同时要求，不沿用 Permission 的逐次回源策略 |
 | Quota | `check`、`consume`、`release`、`usage` | 始终同步调用 Entitlement；`consume/release` 带稳定 `operationId`，不以本地缓存作为额度真相 |
 | Audit | `@Audit` 或 `audit.log` | 将最小必要审计事件异步投递到 Audit 服务；不得记录凭据或原始敏感个人信息 |
 
-Permission 与 Feature 默认使用有容量上限的进程内短缓存。业务项目可以通过 SDK 缓存接口替换为自己的 Redis 实现，但必须使用业务项目自己的命名空间、凭据和 Registry，不得访问平台 Redis；缓存未命中、过期、失效或不可用时经 Gateway 回源权威接口。平台接口也不可用时 fail-closed，不使用已过期的允许结果。Kafka 失效事件用于快速收敛，短 TTL 负责事件丢失时的最终收敛。
+Permission 在 MVP 每次服务端判定时同步经 Gateway 查询 Tenant Access 权威结果，本地缓存不独立放行请求；权威不可用时 fail-closed 并返回可重试错误。Kafka 仅用于展示刷新等辅助失效，不承担撤权正确性，见 [ADR 0057](adr/0057-permission-revocation-is-effective-before-success.md)。授权缓存优化须在正确性与实测基础上另行设计。
+
+Feature 默认使用有容量上限的进程内短缓存。业务项目可以通过 SDK 缓存接口替换为自己的 Redis 实现，但必须使用业务项目自己的命名空间、凭据和 Registry，不得访问平台 Redis；缓存未命中、过期、失效或不可用时经 Gateway 回源权威接口。平台接口也不可用时 fail-closed，不使用已过期的允许结果。Kafka 失效事件用于快速收敛，短 TTL 负责事件丢失时的最终收敛。
 
 业务应用可声明：
 

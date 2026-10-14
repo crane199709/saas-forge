@@ -33,8 +33,12 @@ IAM 为从未拥有任何 Credential 的 Identity 签发的一次性、限时密
 _Avoid_: Password reset token, invitation token, initial password
 
 **Password Recovery**:
-已有 Password Credential 的 Identity 在无法继续使用当前凭据时，通过独立验证流程替换该凭据的恢复过程。
+已有 Password Credential 的 Identity 通过 IAM 独立的一次性、限时邮箱验证替换凭据的恢复过程；成功后结束该 Identity 的全部会话，不改变其 Membership 或角色。
 _Avoid_: Password Setup, Invitation activation, initial password
+
+**Password Recovery Challenge**:
+IAM 为 Password Recovery 签发的一次性、限时邮箱验证凭据，用于替换已有 Password Credential；它不是 Identity 的常规 Credential，也不用于首次 Password Setup。
+_Avoid_: Password Credential, Password Setup Challenge, Invitation
 
 **User Access Token**:
 IAM 为已认证 Identity 签发的短期用户访问凭证；它可以表示 Platform 全局身份，或成对绑定一个已验证的 Membership 与 Tenant Context。
@@ -69,7 +73,7 @@ _Avoid_: Menu permission, login intent, tenant operation target
 _Avoid_: Anonymous session, initial credential session, platform session
 
 **Platform Role**:
-在 Platform 全局范围内授予权限的角色，与只在单个 Tenant 内生效的 Tenant Role 相互独立。
+在 Platform 全局范围内授予权限的角色，与只在单个 Tenant 内生效的 Tenant Role 相互独立；MVP 仅管理固定的 `PLATFORM_ADMIN`。
 _Avoid_: Tenant role, membership role
 
 **JWT Signing Key**:

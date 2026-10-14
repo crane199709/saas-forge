@@ -94,10 +94,12 @@ flowchart TD
 ### 当前执行队列与 Issue 衔接
 
 1. 复用阶段 0～2 的已有能力和有效证据；阶段 1 的布局缺口由前端 #11 承接，相关视觉/无障碍及旧独有断言在对应页面与阶段验收前补齐，不推迟到发布时才处理。
-2. 下一业务里程碑是阶段 3：先细化 Example/Manifest 的公开契约与两仓子任务，再依次交付真实 API、平台审核页面、租户 Remote 和跨租户拒绝验收。
-3. 阶段 4～7 按依赖细化规格，不在同一任务中实现全部 MVP；发布工程持续跟随。
+2. 当前推进阶段 4，以已确认的主规格 [#219](https://github.com/crane199709/saas-forge/issues/219) 为基线，先完成各切片契约评审及两仓任务衔接；复用阶段 3 已交付的 Example/Remote 与其明确验收范围，不将阶段 3 局部证据扩大为阶段 4 完成。
+3. 后续阶段 5～7 按依赖细化规格，不在同一任务中实现全部 MVP；发布工程持续跟随。
 
-2026-09-30 在线核对：后端 [#88](https://github.com/crane199709/saas-forge/issues/88) 仍为阶段页面/浏览器交付总票，[#209](https://github.com/crane199709/saas-forge/issues/209) 是坐标与元数据迁移专项；#183、#189、#201 已关闭。#88 正文仍含旧双 Console、旧 UI 包与旧 Locale 描述，后续拆票需引用本计划及 ADR 0052 的现行边界。前端当前开放的 [#11](https://github.com/crane199709/saas-forge-web/issues/11) 承接响应式内容栅格与标准主辅栏布局，纳入阶段 1 的剩余覆盖。本文修改不创建、评论或关闭远端 Issue；后续阶段先复用已有任务，再补齐缺少的两仓子票，不虚构编号。
+2026-09-30 在线核对：后端 [#88](https://github.com/crane199709/saas-forge/issues/88) 仍为阶段页面/浏览器交付总票，[#209](https://github.com/crane199709/saas-forge/issues/209) 是坐标与元数据迁移专项；#183、#189、#201 已关闭。#88 正文仍含旧双 Console、旧 UI 包与旧 Locale 描述，后续拆票需引用本计划及 ADR 0052 的现行边界。该轮前端开放的 [#11](https://github.com/crane199709/saas-forge-web/issues/11) 承接响应式内容栅格与标准主辅栏布局，纳入阶段 1 的剩余覆盖。该轮计划修改未创建、评论或关闭远端 Issue；后续阶段先复用已有任务，再补齐缺少的两仓子票，不虚构编号。
+
+2026-10-14：阶段 4 完成设计访谈与整体确认，主规格 [#219](https://github.com/crane199709/saas-forge/issues/219) 已发布并标记 `ready-for-agent`，正文关联 #88；发布后已回读核对正文与标签，不修改历史总票或将规格发布计为实现完成。
 
 ## 验证方式与证据规则
 
@@ -144,7 +146,7 @@ flowchart TD
 - [x] 为 IAM、Tenant Access、Entitlement、Audit 分别配置独立数据库账号组、Flyway 迁移链和 PostgreSQL 18 原生 `uuidv7()` 主键生成；由独立集群引导工件创建数据库、账号与 `public` Schema 最小权限，每库以 `*_migrator` 执行迁移、以非所有者且无 `BYPASSRLS` 的 `*_app` 运行服务；迁移任务成功后才启动应用，应用不自动迁移且不持有迁移账号；禁止跨服务/跨数据库表引用、外键、`JOIN`、FDW 与 `dblink`，但允许同服务同库关系；见 [ADR 0017](adr/0017-separate-flyway-and-runtime-database-accounts.md)、[ADR 0018](adr/0018-postgresql-18-native-uuidv7-primary-keys.md)、[ADR 0019](adr/0019-cluster-bootstrap-precedes-service-flyway.md)、[ADR 0020](adr/0020-flyway-runs-as-a-predeployment-job.md) 与 [ADR 0021](adr/0021-runtime-accounts-cannot-create-database-objects.md)。
 - [x] 建立服务内 Transactional Outbox、可靠发布器和按事件 ID 幂等消费的统一工程约定；各服务在对应业务切片中落地自己的表和实现，事件携带并传递 `traceId`。
 - [x] 建立 Tenant 范围表的 RLS 测试夹具：非空 `tenant_id`、事务级 `app.tenant_id` 设置、默认拒绝策略，常规运行账号不拥有 `BYPASSRLS`；仅 `*_migrator` 可通过角色限定维护策略执行跨 Tenant 数据回填，`*_app` 不得继承或切换至该角色；见 [ADR 0022](adr/0022-migration-roles-are-the-only-rls-maintenance-exception.md)。
-- [x] **先发布 Redis Key Registry，再接入 Redis。** 为每个 Key 定义固定前缀/环境/服务/用途/版本/标识符格式、值序列化、TTL、最大基数、失效事件、单一写入所有者、读取者和故障策略；首版已覆盖 JWT `jti` 黑名单（TTL 为 Token 剩余有效期）、撤销 Signing Key `kid`、Refresh Token/会话缓存、登录保护和 Gateway 限流。Key 中禁止存放 Token、密码、Secret、邮箱等原始敏感值；Redis 不得作为 Quota 额度真相。SDK 的 Permission/Feature 默认使用进程内短缓存，业务可替换为自己的 Redis，未命中时经平台接口权威回源，不属于平台 Redis Registry。
+- [x] **先发布 Redis Key Registry，再接入 Redis。** 为每个 Key 定义固定前缀/环境/服务/用途/版本/标识符格式、值序列化、TTL、最大基数、失效事件、单一写入所有者、读取者和故障策略；首版已覆盖 JWT `jti` 黑名单（TTL 为 Token 剩余有效期）、撤销 Signing Key `kid`、Refresh Token/会话缓存、登录保护和 Gateway 限流。Key 中禁止存放 Token、密码、Secret、邮箱等原始敏感值；Redis 不得作为 Quota 额度真相。后续 Feature SDK 设计使用进程内短缓存，业务可替换为自己的 Redis，未命中时权威回源，不属于平台 Redis Registry；第 4 阶段 Permission 则按 ADR 0057 逐次权威判定，不以缓存独立放行。本条已勾选范围仍是既有 Registry 基线，不表示后续 SDK 已实现。
 - [x] **先发布结构化日志规范，再写业务日志。** [应用日志规范](20-application-logging.md)、[日志 Schema](../saas-forge-contracts/logging/application-log.schema.json)与[日志策略](../saas-forge-contracts/logging/policy.json)已定义基础必填和场景条件必填字段、关联字段、HTTP/异常字段、字段白名单与脱敏、级别、采样和保留类别。容器使用结构化标准输出由 Collector 收集；虚拟机以 `systemd`/日志转发收集，应用不依赖本地滚动日志文件。日志不能替代只追加的 Audit Record。
 - [x] 建立包含 Gateway、四个服务、PostgreSQL、Redis、Kafka 和 OpenTelemetry Collector 的最小 Docker Compose；S3 兼容存储随第 4 阶段的受控 Tenant 品牌素材加入，第 6 阶段在分离的存储边界内复用其基础能力承载 Audit 导出。
 - [x] 使用 Testcontainers 建立 PostgreSQL 18、Redis 和 Kafka 集成测试基础设施，并建立首版 GitHub Actions 构建、单元测试、契约兼容性和迁移检查；数据库门禁必须验证四库八账号、独立迁移链、运行时最小权限/RLS、数据库 UUIDv7 默认值，以及审计记录不可由 `audit_app` 修改或删除。
@@ -223,22 +225,25 @@ flowchart TD
 
 ### 4. 组织、成员与 Permission 闭环
 
+2026-10-14 设计访谈 Q1～Q44 已逐项确认，Q45 已完成整体确认，作为第 4 阶段后续实现基线。组织与 RBAC 边界见 [ADR 0056](adr/0056-tenant-organization-and-permission-boundaries.md)；逐次权威 Permission 校验与撤权完成边界见 [ADR 0057](adr/0057-permission-revocation-is-effective-before-success.md)，业务目录注册及停用/恢复见 [ADR 0058](adr/0058-business-permissions-use-controlled-release-catalogs.md)。v2 前置的邀请流程见 [ADR 0059](adr/0059-invitation-acceptance-follows-password-setup-and-login.md)；PNG 素材公开读取、永久禁用与清理策略见 [ADR 0060](adr/0060-brand-assets-are-public-controlled-png-resources.md)。具体领域规则统一记录在[核心领域契约](17-core-domain-contracts.md#tenant-品牌素材)，跨服务完成与恢复边界见[工作流契约](18-tenant-access-cross-service-workflows.md)。Example 本阶段覆盖现有 10 个 CRUD operation，导出留给阶段 5；本阶段验证成功事实落入 Audit，完整拒绝 Audit 与公开查询/导出留给阶段 6。以上是设计结论，不改变实现和验收状态。
+
 **后端：领域与服务**
 
-- [ ] 补全 Tenant 生命周期和平台侧管理：复用第 2 阶段已完成且受平台权限保护的 Tenant Suspension/恢复安全闭环，新增修改、启用、停用/到期，并为这些生命周期操作补齐审计事件。
+- [ ] 补全 Tenant 生命周期和平台侧管理：复用第 2 阶段已完成且受平台权限保护的管理员初始化、Tenant Suspension/Resumption 安全闭环，新增管理名称与有效期修改、不可逆 Tenant Closure，并补齐审计事件；到期继续是派生访问结果，不新增持久 `EXPIRED` 或独立启用入口。
 - [ ] 实现 Membership、Organization/OrganizationUnit、邀请、Role、Permission、Role-Permission、Membership-Role 的模型、RLS 访问与 v1 API。
 - [ ] 完成 Invitation 激活时仅面向从无凭据 Identity 的首次 Password Setup、已有 Password Credential 的 Password Recovery，以及成员禁用公开工作流；成员禁用复用第 2 阶段的按 Membership 批量会话与 `jti` 撤销能力。
 - [ ] 实现平台角色与租户角色的独立授权边界，以及 SDK/Gateway 所需的 Membership、Permission 查询接口。
-- [ ] 完成 `sdk-permission`，提供 `@RequirePermission` 和编程式检查；使用本地短缓存、Kafka 失效事件和经 Gateway 读取权威结果的回源路径。
-- [ ] 在 Example 注册 `project:create`、`project:list`、`project:export` 等 Permission，覆盖允许与拒绝路径；成员、角色、权限和邀请变更写入 Outbox 与审计事件。
+- [ ] 完成 `sdk-permission`，提供 `@RequirePermission` 和编程式检查；每次服务端判定同步经 Gateway 查询权威结果，本地缓存不独立放行，Kafka 仅辅助展示失效，权威不可用时返回可重试错误并拒绝放行，满足 ADR 0057 的撤权完成边界。
+- [ ] 为 Example 已有 Project/Task 各自的 `create/list/read/update/delete` 注册三段 Permission（`example:<resource>:<action>`），覆盖全部 10 个真实 operation 的允许与拒绝；本阶段不注册尚无执行入口的导出能力。成员、角色、权限和邀请变更写入 Outbox 与审计事件。
+- [ ] 平台角色、组织、成员、邀请、权限和品牌变更可靠写入 Outbox，并验证成功事实被 Audit 持久化；拒绝保留必要安全日志与指标，完整拒绝 Audit、公开查询和导出随阶段 6 交付，不以日志或仅发布事件代替 Audit Record。
 - [ ] 扩展 Manifest 的 Permission 声明和菜单授权元数据；声明只描述受控能力，服务端 Permission 权威校验不依赖客户端菜单可见性。
 - [ ] 由 Tenant Access 提供 Tenant Brand Profile 最小契约和平台生成的受控同站素材引用，不接受任意外部 HTTPS URL；保持已发布 v1 的 Logo/favicon 可选字段兼容，新写入只产生五字段完整 Profile，缺失或无效的旧 Profile 由运行时整份回退平台品牌。具有明确品牌管理 Permission 的 Tenant Administrator 可配置，Platform Administrator 只能按平台安全政策禁用违规素材，不能代替 Tenant 修改。
 - [ ] 在 Compose 中前移最小 S3 兼容对象存储，品牌素材与第 6 阶段 Audit 导出使用分离的存储边界、凭据、授权与生命周期策略；Logo、favicon 上传必须校验允许的类型、大小和安全策略。
 
 **前端：Console 交互**
 
-- [ ] Console 平台工作上下文提供 Tenant 修改、启用、停用/到期和 Platform Role 页面；Tenant Suspension/恢复直接复用第 2 阶段页面与安全语义，不重复建设另一套操作逻辑。
-- [ ] Console 租户工作上下文提供 Organization/OrganizationUnit、Membership、Invitation、Role、Permission、Role-Permission 和 Membership-Role 页面，统一使用共享列表、表单、危险操作确认与错误反馈。
+- [ ] Console 平台工作上下文提供 Tenant 管理名称/有效期修改、明确的 Tenant Closure 及固定 `PLATFORM_ADMIN` 授予/撤销页面；管理员初始化与 Tenant Suspension/Resumption 直接复用第 2 阶段页面和安全语义，不重复建设操作逻辑。
+- [ ] Console 租户工作上下文提供单 Organization 下的多棵 OrganizationUnit 树、Membership、Invitation、Role、Permission 目录、Role-Permission 和 Membership-Role 页面，以及无 Permission 成员的等待授权页，统一使用共享列表、表单、危险操作确认与错误反馈。
 - [ ] Console 租户工作上下文完成 Invitation 激活、首次 Password Setup、已有凭据 Identity 的 Password Recovery、登录、成员禁用和授权允许/拒绝的连续产品路径。
 - [ ] Tenant 设置页管理显示名称、Logo、favicon、主色与强调色 Token；未保存预览只能在隔离容器内复用同一解析器与品牌组件，不能改变当前 Shell、favicon 或标签页标题。保存成功后以 revision/ETag 和权威返回或权威回读更新真实 Shell，不通过时间戳猜测新旧；禁止自定义 CSS、布局、组件、状态/危险颜色和交互语义。
 
@@ -246,9 +251,25 @@ flowchart TD
 
 - [ ] 从全新 Compose 数据卷用 Playwright 完成平台 Tenant 生命周期/Platform Role，以及租户 Organization、邀请、Membership、Role 与 Permission 管理路径。
 - [ ] 验证新 Identity Password Setup、已有 Identity Password Recovery、成员禁用后的会话撤销、菜单隐藏与服务端授权拒绝；客户端菜单结果不得替代 Gateway/服务端 Permission 检查。
+- [ ] 验证无 Permission 等待授权、逐次权威判定及权威故障关闭、并发最后一个管理员保护、平台撤权不影响合法 Tenant 会话、历史平台 Token 拒绝，以及禁用/释放未完成不得重新启用和计量补偿恢复。
+- [ ] 验证 v2 受限会话身份验证与邀请接受、最新邀请/恢复链接有效性、30 分钟恢复凭据、全 Identity 撤销及恢复中断保持阻断；按同轮后端探针验证本阶段成功事实落入 Audit，不要求提前交付阶段 6 查询/导出页面。
 - [ ] 验证品牌素材上传、违规素材禁用、刷新恢复、Platform/Tenant 品牌边界和 Tenant Context 切换时无跨 Tenant 品牌泄漏，并覆盖中英文代表页面。浏览器证据必须包含无 Context 的完整平台品牌、合法 Profile 五项共同生效、任一字段或素材加载失败时五项共同回退、切换中间态立即回到平台品牌、新 Context 后一次切换、Logo 真实可见、迟到读取不得覆盖新品牌，以及 Remote 只继承 Brand Token Set 且不加载任意外部素材 URL。
 
-**完成标准：** Tenant Administrator 经真实 Console 租户工作上下文可邀请并激活成员、创建组织和角色、分配 Permission 与受控品牌；同一 Identity 在不同 Tenant 可拥有不同 Membership、角色和品牌上下文；Example 的权限允许/拒绝、成员禁用、凭据恢复和品牌隔离均由全新 Compose 浏览器路径覆盖。
+**完成标准：** Tenant Administrator 经真实 Console 租户工作上下文可邀请并激活成员、维护多棵组织单元树、创建角色、分配 Permission 与受控品牌；同一 Identity 在不同 Tenant 可拥有不同 Membership、角色和品牌上下文；Example 全部 10 个 CRUD operation 的权限允许/拒绝、成员禁用、凭据恢复和品牌隔离均由全新 Compose 浏览器路径覆盖。
+
+**后续契约评审与交付切片**
+
+| 切片 | 主要交付 | 前置与验收重点 |
+| --- | --- | --- |
+| Permission 目录与 Tenant RBAC | 受控目录、角色/绑定、管理员规则与权威查询 | 先冻结目录导入与公开/内部契约；RLS、并发管理员保护、停用/恢复及撤权完成边界 |
+| 组织与 Membership | 多棵树、多重归属、禁用/重新启用 | 复用 IAM 撤销基础；树无环、跨 Tenant 拒绝、原禁用完成前禁止启用、Quota 补偿 |
+| Invitation | 受控创建/重发/撤销、首次 Setup、登录后接受、无角色等待授权 | 受控启用 v2、正式受限会话验证及 `max_users` 计量；重试与补偿，不自动切换 Context |
+| IAM 与平台管理 | 全局 Password Recovery、固定平台角色、Tenant 修改/关闭 | 分别实现 Identity、平台、Tenant 撤销范围；历史 Token 与在途故障，保留数据 |
+| Tenant 品牌 | PNG 上传/绑定、并发保存、禁用与清理 | 明确品牌管理 Permission 与分离存储边界；五字段原子应用、素材归属、版本冲突及真实 Chrome |
+| SDK / Example / Console | 逐次 Permission 判定、10 个 CRUD、Manifest 菜单及真实页面 | 正式契约和固定版本 Client；同 Tenant 角色差异、跨 Tenant 隔离、服务端拒绝与双语/无障碍 |
+| 成功事实与联合验收 | 各变更切片同步补齐事件/Audit 消费；阶段聚合 | Fresh Compose + 当前稳定版桌面 Chrome、JDK 17，同轮两仓证据与全部必需场景 |
+
+字段、错误码、工作流恢复状态、Scope、幂等指纹及目录清单格式须在各切片契约评审中冻结；它们是后续工程工作，不视为已实现接口。新迁移、Redis Key 与 Nacos 策略分别遵循既有专项规则，环境数值须核实或实测；平台真实 Logo/favicon 按 ADR 0042 在 UI 实现前确认。每个切片执行相关模块检查，阶段最终执行完整 Fresh 联合验收；设计规格已发布为 [#219](https://github.com/crane199709/saas-forge/issues/219) 并标记 `ready-for-agent`，本次未实现产品能力或运行产品验收。
 
 ### 5. Subscription、Feature 与 Quota 闭环
 
@@ -260,6 +281,7 @@ flowchart TD
 - [ ] 实现 `max_users` 与 `max_projects` 的 `check`、`consume`、`release`、`usage`：以数据库为额度真相，使用条件更新或行锁确保不超额，`operationId` 唯一保证重试幂等。
 - [ ] 完成 `sdk-feature` 与 `sdk-quota`：提供 `@RequireFeature`、编程式 Feature 检查、同步 Quota API、Problem Details 异常映射及受控的超时、退避、重试和熔断。
 - [ ] 为 Free 与 Professional 套餐配置 `project.basic`、`project.export`、`project.analytics`，以及 `max_users`、`max_projects`；在 Example 覆盖允许、未订阅、到期、超额和重复 `operationId` 路径。
+- [ ] 在阶段 5 细化并增量交付真实 Project 导出 operation、`example:project:export` Permission 与 `project.export` Feature 的联合允许/拒绝路径；不将只有声明的导出能力视为产品交付。
 - [ ] 发布权益变更与配额变更事件，供 SDK 缓存失效和 Audit 消费。
 - [ ] 扩展 Manifest 的 Feature/Quota 声明和权益可见性元数据；客户端展示不替代服务端 Subscription、Feature 与 Quota 权威判定。
 

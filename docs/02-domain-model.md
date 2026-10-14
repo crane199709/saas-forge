@@ -59,7 +59,7 @@ Identity 表示平台中的自然人或机器身份，不能将 `User` 与 Tenan
 
 Membership 表示某 Identity 以成员身份加入某 Tenant；租户级 Role 应绑定 Membership，而非全局 Identity。这样同一用户可在 Tenant A 为管理员，在 Tenant B 为普通成员。
 
-Organization 描述租户内部组织结构。底层应采用通用的 `Organization`、`OrganizationUnit`、`Membership` 体系，而非仅设计为特定的 `Department`。
+每个 Tenant 一个 Organization，其中允许多棵 OrganizationUnit 树；Membership 可关联零到多个组织单元，不设置主部门。组织归属不授予 Permission 或限定业务数据可见范围，规则见[核心领域契约](17-core-domain-contracts.md#organization-与-membership-组织归属)。
 
 ## 访问控制模型
 
@@ -69,9 +69,9 @@ Organization 描述租户内部组织结构。底层应采用通用的 `Organiza
 Membership → Role → Permission
 ```
 
-平台权限与租户权限必须隔离。平台角色可拥有 `tenant:create`、`tenant:disable`、`plan:create`、`subscription:update`；租户角色可拥有 `system:user:create`、`system:role:update`。业务系统可注册如 `lis:specimen:list`、`lis:report:audit` 的权限，平台只负责定义、注册、绑定、授权和校验。
+平台权限与租户权限必须隔离，分别使用受控权限目录；租户角色可拥有 `system:user:create`、`system:role:update`。业务系统可注册如 `lis:specimen:list`、`lis:report:audit` 的权限，平台只负责定义、注册、绑定、授权和校验。Tenant 管理员管理已有 Permission 的分配，不自行定义或修改权限代码。
 
-Permission 推荐命名为 `namespace:resource:action`，例如 `system:user:list`、`lis:report:audit`、`crm:customer:create`。`system` 是内置命名空间，业务系统自行维护自己的命名空间。
+Permission 统一命名为 `namespace:resource:action`，例如 `system:user:list`、`lis:report:audit`、`crm:customer:create`；官方 Example 使用 `example:project:create` 等具体代码。`system` 是内置命名空间，业务系统在受控注册确定的命名空间内维护自己的 Permission。第 4 阶段边界见 [ADR 0056](adr/0056-tenant-organization-and-permission-boundaries.md)。
 
 ## 商业权益模型
 
