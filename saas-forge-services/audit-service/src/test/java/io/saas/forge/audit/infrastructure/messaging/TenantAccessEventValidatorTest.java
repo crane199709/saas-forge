@@ -191,6 +191,36 @@ class TenantAccessEventValidatorTest {
     }
 
     @Test
+    void membershipRoleChangeIdentifiesTargetMemberAndRejectsUnknownAction() {
+        String event = membershipRoleChangedEvent();
+        var record = validator.validate(TenantCreatedEventValidatorTest.TOPIC,
+                TenantCreatedEventValidatorTest.tenantId(), TenantCreatedEventValidator.CONSUMER_NAME,
+                event).orElseThrow();
+        assertEquals("MEMBERSHIP_ROLE_ASSIGNED", record.action());
+        assertEquals("MEMBERSHIP", record.resourceType());
+        assertEquals("019535d9-0001-7000-8000-000000000021", record.resourceId().toString());
+        assertThrows(InvalidAuditEventException.class, () -> validator.validate(
+                TenantCreatedEventValidatorTest.TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME, event.replace("ASSIGNED", "ELEVATED")));
+    }
+
+    static String membershipRoleChangedEvent() {
+        return """
+                {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000022",
+                "source":"urn:saas.forge:tenant-access-service","type":"com.saas.forge.membership-role.changed.v1",
+                "subject":"%s","time":"2026-10-14T10:15:30Z",
+                "datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/membership-role-changed.v1.schema.json",
+                "data":{"tenantId":"%s","actorIdentityId":"%s",
+                "membershipId":"019535d9-0001-7000-8000-000000000021",
+                "roleId":"019535d9-0001-7000-8000-000000000011","roleKey":"READER",
+                "action":"ASSIGNED"}}
+                """.formatted(TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidatorTest.actorIdentityId()).replace("\n", "");
+    }
+
+    @Test
     void recordsCommittedOrganizationChangeWithStableActorAndRejectsUnknownAction() {
         String event = """
                 {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000019",

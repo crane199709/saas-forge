@@ -173,6 +173,16 @@ class PermissionCatalogMigrationIT {
     @Order(1)
     void releaseImportPreservesOmittedPermissionsAndRejectsSemanticReuse() throws Exception {
         Flyway.configure().dataSource(url(), "tenant_access_migrator", "tenant-access-migrator-password")
+                .locations("classpath:db/migration").target("22").load().migrate();
+        try (var connection = DriverManager.getConnection(url(), "tenant_access_migrator", "tenant-access-migrator-password");
+                var statement = connection.prepareStatement("SELECT import_permission_catalog(?::jsonb, ?, ?)")) {
+            statement.setString(1, Files.readString(repositoryRoot().resolve(
+                    "saas-forge-services/tenant-access-service/permission-catalog/v1.json")));
+            statement.setString(2, "a".repeat(64));
+            statement.setString(3, "saas.forge.dev.tenant-access-service.events");
+            statement.execute();
+        }
+        Flyway.configure().dataSource(url(), "tenant_access_migrator", "tenant-access-migrator-password")
                 .locations("classpath:db/migration").load().migrate();
         try (var connection = DriverManager.getConnection(
                 url(), "tenant_access_migrator", "tenant-access-migrator-password");

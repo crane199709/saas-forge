@@ -806,6 +806,159 @@ paths:
         '404': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
 
+  /api/v1/members/{membershipId}/roles:
+    parameters:
+      - name: membershipId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+    get:
+      tags: [Members]
+      operationId: listMembershipRoles
+      x-saas.forge-service: tenant-access-service
+      summary: Read a Membership's current Tenant Role assignments
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current assignments for a Tenant Administrator; never cached.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberRoleAssignments' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/members/{membershipId}/roles/{roleId}:
+    parameters:
+      - name: membershipId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      - name: roleId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+    put:
+      tags: [Members]
+      operationId: assignMembershipRole
+      x-saas.forge-service: tenant-access-service
+      summary: Assign an existing Tenant Role to a Membership
+      description: Requires a current Tenant Administrator. Repeated assignment is idempotent and creates no new fact.
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current assignments after the change; never cached.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberRoleAssignments' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+    delete:
+      tags: [Members]
+      operationId: revokeMembershipRole
+      x-saas.forge-service: tenant-access-service
+      summary: Revoke one Tenant Role from a Membership
+      description: Cannot remove the last enabled Tenant Administrator, including concurrent changes.
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current assignments after the change; never cached.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberRoleAssignments' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/members/{membershipId}/disables:
+    parameters:
+      - name: membershipId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+    get:
+      tags: [Members]
+      operationId: readMembershipDisable
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Read the latest Membership disable progress
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current domain state and latest operation progress.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipDisableProgress' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+    post:
+      tags: [Members]
+      operationId: disableMembership
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Disable a Membership and revoke only its sessions
+      description: Idempotent durable workflow. A pending response keeps target access fenced and is recovered independently of the HTTP client.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      responses:
+        '200':
+          description: Membership disabled and quota release completed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipDisableProgress' }
+        '202':
+          description: Revocation or quota release remains pending; member access stays blocked.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipDisableProgress' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/members/{membershipId}/disables/recoveries:
+    parameters:
+      - name: membershipId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+    post:
+      tags: [Members]
+      operationId: recoverMembershipDisable
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Continue an exhausted Membership revocation using its original Fence generation
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Revocation and quota release completed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipDisableProgress' }
+        '202':
+          description: Original operation remains pending.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipDisableProgress' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
   /api/v1/invitations:
     get:
       tags: [Invitations]
@@ -2952,14 +3105,42 @@ components:
         items:
           type: array
           items: { $ref: '#/components/schemas/Member' }
+    MembershipDisableProgress:
+      type: object
+      additionalProperties: false
+      required: [operationStatus, membershipStatus, pending, recoveryRequired]
+      properties:
+        operationId: { $ref: './common.yaml#/components/schemas/UuidV7', nullable: true }
+        operationStatus: { type: string, enum: [NONE, REVOKING, RECOVERY_REQUIRED, RELEASE_PENDING, COMPLETED] }
+        membershipStatus: { type: string, enum: [ENABLED, DISABLED] }
+        pending: { type: boolean }
+        recoveryRequired: { type: boolean }
     Member:
       type: object
-      required: [membershipId, identityId, status]
+      required: [membershipId, identityId, status, administrator, disableStatus]
       properties:
         membershipId: { $ref: './common.yaml#/components/schemas/UuidV7' }
         identityId: { $ref: './common.yaml#/components/schemas/UuidV7' }
         status: { type: string, enum: [ENABLED, DISABLED] }
         invitedEmail: { type: string, format: email, nullable: true }
+        administrator: { type: boolean }
+        disableStatus: { type: string, enum: [NONE, REVOKING, RECOVERY_REQUIRED, RELEASE_PENDING, COMPLETED] }
+    MemberRoleAssignment:
+      type: object
+      additionalProperties: false
+      required: [roleId, roleKey, systemManaged]
+      properties:
+        roleId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        roleKey: { type: string }
+        systemManaged: { type: boolean }
+    MemberRoleAssignments:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/MemberRoleAssignment' }
     MembershipOrganizationUnitList:
       type: object
       additionalProperties: false
