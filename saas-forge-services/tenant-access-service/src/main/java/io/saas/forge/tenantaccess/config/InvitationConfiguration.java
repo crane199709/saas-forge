@@ -9,9 +9,13 @@ import io.saas.forge.tenantaccess.application.invitation.InvitationService;
 import io.saas.forge.tenantaccess.application.invitation.InvitationAcceptanceRepository;
 import io.saas.forge.tenantaccess.application.invitation.InvitationAcceptanceService;
 import io.saas.forge.tenantaccess.application.invitation.InvitationQuotaGateway;
+import io.saas.forge.tenantaccess.application.invitation.InvitationPasswordSetupGateway;
+import io.saas.forge.tenantaccess.application.invitation.InvitationPasswordSetupService;
 import io.saas.forge.tenantaccess.infrastructure.grpc.GrpcInvitationQuotaGateway;
+import io.saas.forge.tenantaccess.infrastructure.grpc.GrpcInvitationPasswordSetupGateway;
 import io.saas.forge.tenantaccess.infrastructure.security.IamServiceAccessTokenProvider;
 import io.saas.forge.contracts.entitlement.quota.v1.QuotaCommandServiceGrpc;
+import io.saas.forge.contracts.iam.passwordsetup.v1.PasswordSetupServiceGrpc;
 import io.grpc.Channel;
 import org.springframework.beans.factory.annotation.Qualifier;
 import io.saas.forge.tenantaccess.application.tenant.UuidV7Generator;
@@ -32,6 +36,19 @@ import tools.jackson.databind.ObjectMapper;
 
 @Configuration(proxyBeanMethods = false)
 public class InvitationConfiguration {
+    @Bean
+    InvitationPasswordSetupGateway invitationPasswordSetupGateway(
+            @Qualifier("iamServiceChannel") Channel channel, IamServiceAccessTokenProvider tokens) {
+        return new GrpcInvitationPasswordSetupGateway(PasswordSetupServiceGrpc.newBlockingStub(channel),
+                tokens::passwordSetupWriteToken);
+    }
+
+    @Bean
+    InvitationPasswordSetupService invitationPasswordSetupService(InvitationAcceptanceRepository invitations,
+            InvitationPasswordSetupGateway setups, PlatformTransactionManager manager, Clock clock) {
+        return new InvitationPasswordSetupService(invitations, setups, new TransactionTemplate(manager), clock);
+    }
+
     @Bean
     InvitationQuotaGateway invitationQuotaGateway(
             @Qualifier("entitlementServiceChannel") Channel channel, IamServiceAccessTokenProvider tokens) {

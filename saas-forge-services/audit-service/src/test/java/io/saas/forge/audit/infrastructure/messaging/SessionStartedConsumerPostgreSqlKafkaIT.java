@@ -67,6 +67,7 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     private static JdbcTemplate admin;
     private static JdbcTemplate app;
     private static IamSessionKafkaConsumer listener;
+    private static IamPasswordKafkaConsumer passwordListener;
     private static TenantAccessKafkaConsumer tenantListener;
     private static ExampleFactKafkaConsumer exampleListener;
     private static SimpleMeterRegistry meters;
@@ -120,6 +121,8 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
         listener = new IamSessionKafkaConsumer(
                 new IamSessionEventValidator(objectMapper, sessionStarted, tenantContextSwitched,
                         new PasswordRecoveredEventValidator(objectMapper, TOPIC)), service);
+        passwordListener = new IamPasswordKafkaConsumer(
+                new IamPasswordEventValidator(objectMapper, TOPIC), service, objectMapper);
         var tenantCreated = new TenantCreatedEventValidator(objectMapper, TENANT_TOPIC);
         meters = new SimpleMeterRegistry();
         tenantListener = new TenantAccessKafkaConsumer(
@@ -137,6 +140,29 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     @AfterAll
     static void closeIsolationProducer() {
         isolationProducerFactory.destroy();
+    }
+
+    @Test
+    void setupSuccessFactsArePersistedOnceByRegisteredPasswordConsumer() {
+        String delivered = IamPasswordEventValidatorTest.delivered();
+        String established = IamPasswordEventValidatorTest.established().replace(
+                IamPasswordEventValidatorTest.EVENT, uuidV7(993));
+        try (KafkaConsumer<String, String> kafka = consumer("audit-password-setup-" + UUID.randomUUID())) {
+            seekToEnd(kafka);
+            send(IamPasswordEventValidatorTest.IDENTITY, delivered);
+            ConsumerRecord<String, String> first = pollOne(kafka);
+            passwordListener.consume(first, kafka::commitSync);
+            passwordListener.consume(first, () -> {});
+            send(IamPasswordEventValidatorTest.IDENTITY, established);
+            passwordListener.consume(pollOne(kafka), kafka::commitSync);
+        }
+        assertEquals(1, count("audit_records", IamPasswordEventValidatorTest.EVENT));
+        assertEquals(1, count("audit_consumed_events", IamPasswordEventValidatorTest.EVENT));
+        assertEquals("PASSWORD_SETUP_DELIVERED", app.queryForObject(
+                "SELECT action FROM audit_records WHERE source_event_id=?::uuid", String.class,
+                IamPasswordEventValidatorTest.EVENT));
+        assertEquals("PASSWORD_ESTABLISHED", app.queryForObject(
+                "SELECT action FROM audit_records WHERE source_event_id=?::uuid", String.class, uuidV7(993)));
     }
 
     @Test
@@ -361,7 +387,7 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
 
     @Test
     void rollsBackDeduplicationWhenAuditRecordInsertFailsAndDoesNotAcknowledge() {
-        String eventId = uuidV7(12);
+        String eventId = uuidV7(994);
         admin.execute("""
                 CREATE FUNCTION fail_audit_record_insert() RETURNS trigger LANGUAGE plpgsql AS $$
                 BEGIN RAISE EXCEPTION 'forced audit insert failure'; END

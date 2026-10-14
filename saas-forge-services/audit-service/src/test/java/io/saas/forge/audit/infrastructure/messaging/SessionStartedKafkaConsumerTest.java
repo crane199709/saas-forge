@@ -13,6 +13,25 @@ import org.springframework.kafka.support.Acknowledgment;
 
 class SessionStartedKafkaConsumerTest {
     @Test
+    void passwordEventIsLeftToItsRegisteredConsumerGroup() {
+        List<String> calls = new ArrayList<>();
+        AuditRecordService service = new AuditRecordService((consumerName, actual, consumedAt) -> {
+            calls.add("record");
+            return true;
+        }, Clock.systemUTC());
+        var objectMapper = new tools.jackson.databind.ObjectMapper();
+        var validator = new IamSessionEventValidator(objectMapper,
+                new SessionStartedEventValidator(objectMapper, IamPasswordEventValidatorTest.TOPIC),
+                new TenantContextSwitchedEventValidator(objectMapper, IamPasswordEventValidatorTest.TOPIC),
+                new PasswordRecoveredEventValidator(objectMapper, IamPasswordEventValidatorTest.TOPIC));
+        new IamSessionKafkaConsumer(validator, service).consume(new ConsumerRecord<>(
+                IamPasswordEventValidatorTest.TOPIC, 0, 1,
+                IamPasswordEventValidatorTest.IDENTITY, IamPasswordEventValidatorTest.delivered()),
+                () -> calls.add("acknowledge"));
+        org.junit.jupiter.api.Assertions.assertEquals(List.of("acknowledge"), calls);
+    }
+
+    @Test
     void acknowledgesOnlyAfterTransactionalServiceReturns() {
         List<String> calls = new ArrayList<>();
         AuditRecordRepository repository = (consumerName, actual, consumedAt) -> {
