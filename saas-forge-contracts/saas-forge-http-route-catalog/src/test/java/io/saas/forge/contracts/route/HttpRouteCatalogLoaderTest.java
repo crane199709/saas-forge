@@ -17,7 +17,13 @@ class HttpRouteCatalogLoaderTest {
                 .count();
 
         assertEquals(HttpRouteCatalogLoader.SUPPORTED_SCHEMA_VERSION, catalog.schemaVersion());
-        assertEquals(109 + acceptanceRoutes, catalog.routes().size());
+        // #225 匿名 Password Setup、#226 角色管理、#228 成员禁用和 #227 组织归属操作均计入目录。
+        assertEquals(119 + acceptanceRoutes, catalog.routes().size());
+        var setup = catalog.routes().stream()
+                .filter(route -> route.operationId().equals("requestInvitationPasswordSetup"))
+                .findFirst().orElseThrow();
+        assertEquals("tenant-access-service", setup.serviceId());
+        assertEquals(HttpRouteCatalog.CredentialRequirement.ANONYMOUS, setup.credentialRequirement());
         var clients = catalog.routes().stream().filter(route -> route.operationId().equals("listOAuthClients"))
                 .findFirst().orElseThrow();
         assertEquals("iam-service", clients.serviceId());
@@ -28,7 +34,11 @@ class HttpRouteCatalogLoaderTest {
             assertEquals(HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, route.credentialRequirement());
         }
         for (String operation : java.util.List.of("listOrganizationUnits", "createOrganizationUnit",
-                "renameOrganizationUnit", "moveOrganizationUnit", "deleteOrganizationUnit")) {
+                "renameOrganizationUnit", "moveOrganizationUnit", "deleteOrganizationUnit",
+                "listMembershipOrganizationUnits", "addMembershipOrganizationUnit",
+                "removeMembershipOrganizationUnit", "listMembershipRoles", "assignMembershipRole",
+                "revokeMembershipRole", "readMembershipDisable", "disableMembership",
+                "recoverMembershipDisable")) {
             var route = catalog.routes().stream().filter(value -> value.operationId().equals(operation))
                     .findFirst().orElseThrow();
             assertEquals("tenant-access-service", route.serviceId());
