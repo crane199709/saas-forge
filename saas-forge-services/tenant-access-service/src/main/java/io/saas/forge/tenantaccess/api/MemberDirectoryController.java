@@ -17,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/v1/members")
 public final class MemberDirectoryController {
+    private static final String READ_PERMISSION = "tenant-access:membership:read";
     private final TenantContextAccessor contexts;
     private final PermissionAuthority permissions;
     private final JdbcTemplate jdbc;
@@ -31,7 +32,7 @@ public final class MemberDirectoryController {
     @GetMapping
     public ResponseEntity<Page> list() {
         var context = contexts.requireCurrent();
-        if (!permissions.isAdministrator(context))
+        if (!permissions.isAdministrator(context) && !permissions.allowed(context, READ_PERMISSION))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "成员列表权限不足");
         List<Member> items = transactions.execute(status -> {
             jdbc.queryForObject("SELECT set_config('app.tenant_id', ?, true)", String.class,
@@ -41,15 +42,25 @@ public final class MemberDirectoryController {
                            (SELECT i.email FROM invitations i
                             WHERE i.tenant_id = m.tenant_id AND i.identity_id = m.identity_id
                               AND i.invitation_status = 'ACCEPTED'
-                            ORDER BY i.updated_at DESC LIMIT 1)
+                            ORDER BY i.updated_at DESC LIMIT 1),
+                           EXISTS (SELECT 1 FROM membership_role_assignments assignment
+                                   JOIN tenant_roles role ON role.tenant_id = assignment.tenant_id
+                                     AND role.id = assignment.role_id
+                                   WHERE assignment.tenant_id = m.tenant_id AND assignment.membership_id = m.id
+                                     AND role.role_key = 'TENANT_ADMINISTRATOR' AND role.system_managed),
+                           COALESCE((SELECT workflow_status FROM membership_disable_workflows workflow
+                                     WHERE workflow.tenant_id = m.tenant_id AND workflow.membership_id = m.id
+                                     ORDER BY workflow.created_at DESC LIMIT 1), 'NONE')
                     FROM memberships m WHERE m.tenant_id = ?
                     ORDER BY m.id LIMIT 100
                     """, (row, index) -> new Member(row.getObject(1, UUID.class),
-                    row.getObject(2, UUID.class), row.getString(3), row.getString(4)), context.tenantId());
+                    row.getObject(2, UUID.class), row.getString(3), row.getString(4),
+                    row.getBoolean(5), row.getString(6)), context.tenantId());
         });
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new Page(items));
     }
 
     public record Page(List<Member> items) {}
-    public record Member(UUID membershipId, UUID identityId, String status, String invitedEmail) {}
+    public record Member(UUID membershipId, UUID identityId, String status, String invitedEmail,
+                         boolean administrator, String disableStatus) {}
 }
