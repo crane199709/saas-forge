@@ -34,6 +34,8 @@ class GatewayRouteConfiguration {
             builder.POST(route.path(), http());
         } else if (route.method() == HttpMethod.PUT) {
             builder.PUT(route.path(), http());
+        } else if (route.method() == HttpMethod.PATCH) {
+            builder.PATCH(route.path(), http());
         } else if (route.method() == HttpMethod.DELETE) {
             builder.DELETE(route.path(), http());
         } else {
