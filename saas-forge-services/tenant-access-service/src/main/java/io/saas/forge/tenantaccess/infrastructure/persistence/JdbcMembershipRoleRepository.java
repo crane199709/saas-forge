@@ -85,6 +85,9 @@ public class JdbcMembershipRoleRepository {
                   AND NOT EXISTS (SELECT 1 FROM membership_disable_workflows work
                                   WHERE work.tenant_id = member.tenant_id AND work.membership_id = member.id
                                     AND work.workflow_status IN ('REVOKING', 'RECOVERY_REQUIRED', 'RELEASE_PENDING'))
+                  AND NOT EXISTS (SELECT 1 FROM membership_enable_workflows work
+                                  WHERE work.tenant_id = member.tenant_id AND work.membership_id = member.id
+                                    AND work.workflow_status IN ('CONSUMING', 'COMPENSATION_PENDING', 'FENCE_PENDING'))
                 """, Integer.class, tenantId);
         return count == null ? 0 : count;
     }

@@ -149,7 +149,8 @@ public class QuotaCommandApplicationService {
                 || amount != INITIALIZATION_AMOUNT
                 || (purpose != QuotaOperationPurpose.TENANT_ADMIN_INITIALIZATION
                     && purpose != QuotaOperationPurpose.INVITATION_ACCEPTANCE
-                    && purpose != QuotaOperationPurpose.MEMBERSHIP_DISABLE)
+                    && purpose != QuotaOperationPurpose.MEMBERSHIP_DISABLE
+                    && purpose != QuotaOperationPurpose.MEMBERSHIP_ENABLE)
                 || (purpose == QuotaOperationPurpose.MEMBERSHIP_DISABLE
                     && action != QuotaOperationAction.RELEASE)) {
             throw new IllegalArgumentException("只允许占用或释放一个 max_users");
