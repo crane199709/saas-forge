@@ -15,7 +15,8 @@ class IamSessionEventValidatorTest {
     private final IamSessionEventValidator validator =
             new IamSessionEventValidator(objectMapper, sessionStarted, tenantContextSwitched,
                     new PasswordRecoveredEventValidator(objectMapper, TOPIC),
-                    new PlatformAdminGrantedEventValidator(objectMapper, TOPIC));
+                    new PlatformAdminGrantedEventValidator(objectMapper, TOPIC),
+                new PlatformAdminRevokedEventValidator(objectMapper, TOPIC));
 
     @Test
     void routesBothAuthorizedTypesToTheirStrictValidator() {

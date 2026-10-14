@@ -2,6 +2,8 @@ package io.saas.forge.iam.api;
 
 import io.saas.forge.iam.application.authentication.PasswordSetupDeliveryUnavailableException;
 import io.saas.forge.iam.application.client.OAuthClientManagementAuthorizationException;
+import io.saas.forge.iam.application.authorization.PlatformAdminRevokeException;
+import io.saas.forge.iam.application.authentication.RevocationIndexUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.UUID;
@@ -13,6 +15,20 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice(assignableTypes = PlatformAdministratorsController.class)
 public class PlatformAdminManagementExceptionHandler {
+    @ExceptionHandler(PlatformAdminRevokeException.class)
+    ResponseEntity<Problem> revoke(PlatformAdminRevokeException error, HttpServletRequest request) {
+        return switch (error.code()) {
+            case REQUEST_CONFLICT -> problem(HttpStatus.CONFLICT, "PLATFORM_ADMIN_REVOKE_REQUEST_CONFLICT", request);
+            case TARGET_UNAVAILABLE -> problem(HttpStatus.NOT_FOUND, "PLATFORM_ADMIN_NOT_FOUND", request);
+            case LAST_PASSWORD_ADMIN -> problem(HttpStatus.CONFLICT, "LAST_PASSWORD_PLATFORM_ADMIN", request);
+        };
+    }
+
+    @ExceptionHandler(RevocationIndexUnavailableException.class)
+    ResponseEntity<Problem> revocationUnavailable(RevocationIndexUnavailableException error,
+            HttpServletRequest request) {
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, RevocationIndexUnavailableException.CODE, request);
+    }
     @ExceptionHandler(OAuthClientManagementAuthorizationException.class)
     ResponseEntity<Problem> authorization(OAuthClientManagementAuthorizationException error,
             HttpServletRequest request) {
