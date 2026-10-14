@@ -56,7 +56,7 @@ class TenantAccessEventValidatorTest {
 
     static String invitationCreatedEvent() {
         return """
-                {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000010",
+                {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000012",
                 "source":"urn:saas.forge:tenant-access-service","type":"com.saas.forge.invitation.created.v1",
                 "subject":"%s","time":"2026-08-28T10:15:30Z",
                 "datacontenttype":"application/json",
@@ -118,6 +118,36 @@ class TenantAccessEventValidatorTest {
                 TenantCreatedEventValidatorTest.TOPIC, TenantCreatedEventValidatorTest.tenantId(),
                 TenantCreatedEventValidator.CONSUMER_NAME,
                 event.replace("\"revision\":2", "\"revision\":0")));
+    }
+
+    @Test
+    void roleChangeProducesPersistentAuditMetadataAndRejectsInvalidPermission() {
+        String event = tenantRoleChangedEvent();
+        var record = validator.validate(TenantCreatedEventValidatorTest.TOPIC,
+                TenantCreatedEventValidatorTest.tenantId(), TenantCreatedEventValidator.CONSUMER_NAME,
+                event).orElseThrow();
+        assertEquals("TENANT_ROLE_CHANGED", record.action());
+        assertEquals("TENANT_ROLE", record.resourceType());
+        assertTrue(record.metadata().contains("example:project:list"));
+        assertThrows(InvalidAuditEventException.class, () -> validator.validate(
+                TenantCreatedEventValidatorTest.TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidator.CONSUMER_NAME,
+                event.replace("example:project:list", "invalid")));
+    }
+
+    static String tenantRoleChangedEvent() {
+        return """
+                {"specversion":"1.0","id":"019535d9-0001-7000-8000-000000000010",
+                "source":"urn:saas.forge:tenant-access-service","type":"com.saas.forge.tenant-role.changed.v1",
+                "subject":"%s","time":"2026-08-28T10:15:30Z",
+                "datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/tenant-role-changed.v1.schema.json",
+                "data":{"tenantId":"%s","actorIdentityId":"%s",
+                "roleId":"019535d9-0001-7000-8000-000000000011","roleKey":"REPORT_READER",
+                "action":"CREATED","permissions":["example:project:list"]}}
+                """.formatted(TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidatorTest.tenantId(),
+                TenantCreatedEventValidatorTest.actorIdentityId()).replace("\n", "");
     }
 
     @Test

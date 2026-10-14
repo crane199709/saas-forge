@@ -18,6 +18,7 @@ tags:
   - name: OAuth clients
   - name: Permissions
   - name: Invitations
+  - name: Tenant roles
 paths:
   /api/v1/auth/session:
     get:
@@ -548,6 +549,106 @@ paths:
         '400': { $ref: './common.yaml#/components/responses/Problem' }
         '401': { $ref: './common.yaml#/components/responses/Problem' }
         '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/tenant-roles:
+    get:
+      tags: [Tenant roles]
+      operationId: listTenantRoles
+      x-saas.forge-service: tenant-access-service
+      summary: List roles of the authenticated Tenant for its administrator
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current roles and their Permission bindings; never cached.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenantRolePage' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+    post:
+      tags: [Tenant roles]
+      operationId: createTenantRole
+      x-saas.forge-service: tenant-access-service
+      summary: Create a custom Tenant Role with existing Permissions
+      description: A role key is unique within the Tenant. Duplicate keys return 409; after an uncertain response, list roles before retrying.
+      security: [{ UserBearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TenantRoleChange' }
+      responses:
+        '201':
+          description: Created role and authoritative binding result.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenantRole' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '422': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/tenant-roles/{roleId}:
+    parameters:
+      - name: roleId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Tenant roles]
+      operationId: getTenantRole
+      x-saas.forge-service: tenant-access-service
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current role.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenantRole' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+    put:
+      tags: [Tenant roles]
+      operationId: updateTenantRole
+      x-saas.forge-service: tenant-access-service
+      summary: Replace custom role name and Permission bindings
+      description: Replaces the full binding set atomically. An unchanged request succeeds without a new committed fact.
+      security: [{ UserBearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TenantRoleChange' }
+      responses:
+        '200':
+          description: Updated authoritative role.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenantRole' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '422': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+    delete:
+      tags: [Tenant roles]
+      operationId: deleteTenantRole
+      x-saas.forge-service: tenant-access-service
+      summary: Delete an unassigned custom Tenant Role
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '204': { description: Role deleted. }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
 
   /api/v1/invitations:
@@ -2573,6 +2674,36 @@ components:
       properties:
         code: { type: string, maxLength: 160 }
         allowed: { type: boolean }
+    TenantRoleChange:
+      type: object
+      additionalProperties: false
+      required: [roleKey, permissions]
+      properties:
+        roleKey: { type: string, pattern: '^[A-Z][A-Z0-9_]{2,63}$', maxLength: 64 }
+        permissions:
+          type: array
+          maxItems: 100
+          items: { type: string, pattern: '^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$', maxLength: 160 }
+    TenantRole:
+      type: object
+      additionalProperties: false
+      required: [id, roleKey, systemManaged, permissions, assignedMembers]
+      properties:
+        id: { type: string, format: uuid }
+        roleKey: { type: string }
+        systemManaged: { type: boolean }
+        permissions:
+          type: array
+          items: { type: string }
+        assignedMembers: { type: integer, minimum: 0 }
+    TenantRolePage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/TenantRole' }
     CurrentSession:
       type: object
       additionalProperties: false
