@@ -82,6 +82,9 @@ public class JdbcMembershipRoleRepository {
                 JOIN tenant_roles role ON role.id = assignment.role_id AND role.tenant_id = assignment.tenant_id
                 WHERE member.tenant_id = ? AND member.membership_status = 'ENABLED'
                   AND role.role_key = 'TENANT_ADMINISTRATOR' AND role.system_managed
+                  AND NOT EXISTS (SELECT 1 FROM membership_disable_workflows work
+                                  WHERE work.tenant_id = member.tenant_id AND work.membership_id = member.id
+                                    AND work.workflow_status IN ('REVOKING', 'RECOVERY_REQUIRED', 'RELEASE_PENDING'))
                 """, Integer.class, tenantId);
         return count == null ? 0 : count;
     }

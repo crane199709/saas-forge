@@ -70,7 +70,7 @@ public class QuotaCommandApplicationService {
             UUID operationId,
             QuotaOperationPurpose purpose,
             QuotaOperationAction action) {
-        validate(callerClientId, tenantId, quotaCode, amount, operationId, purpose);
+        validate(callerClientId, tenantId, quotaCode, amount, operationId, purpose, action);
         Instant now = clock.instant().truncatedTo(ChronoUnit.MILLIS);
         String fingerprint = fingerprint(tenantId, quotaCode, amount, operationId, purpose, action);
         operations.setOperationTarget(tenantId);
@@ -140,14 +140,18 @@ public class QuotaCommandApplicationService {
             String quotaCode,
             int amount,
             UUID operationId,
-            QuotaOperationPurpose purpose) {
+            QuotaOperationPurpose purpose,
+            QuotaOperationAction action) {
         requireUuidV7(callerClientId, "调用方 Client ID");
         requireUuidV7(tenantId, "Tenant ID");
         requireUuidV7(operationId, "Quota Operation ID");
         if (!INITIALIZATION_QUOTA.equals(quotaCode)
                 || amount != INITIALIZATION_AMOUNT
                 || (purpose != QuotaOperationPurpose.TENANT_ADMIN_INITIALIZATION
-                    && purpose != QuotaOperationPurpose.INVITATION_ACCEPTANCE)) {
+                    && purpose != QuotaOperationPurpose.INVITATION_ACCEPTANCE
+                    && purpose != QuotaOperationPurpose.MEMBERSHIP_DISABLE)
+                || (purpose == QuotaOperationPurpose.MEMBERSHIP_DISABLE
+                    && action != QuotaOperationAction.RELEASE)) {
             throw new IllegalArgumentException("只允许占用或释放一个 max_users");
         }
     }

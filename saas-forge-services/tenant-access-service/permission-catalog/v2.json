@@ -1,0 +1,9 @@
+{
+  "source": "tenant-access-service",
+  "revision": 2,
+  "permissions": [
+    { "code": "tenant-access:invitation:manage", "semanticId": "manageInvitations", "enabled": true },
+    { "code": "tenant-access:membership:read", "semanticId": "readMembers", "enabled": true },
+    { "code": "tenant-access:membership:disable", "semanticId": "disableMember", "enabled": true }
+  ]
+}

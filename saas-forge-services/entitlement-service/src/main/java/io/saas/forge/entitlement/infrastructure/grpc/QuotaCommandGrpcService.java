@@ -85,6 +85,7 @@ public final class QuotaCommandGrpcService extends QuotaCommandServiceGrpc.Quota
         return switch (purpose) {
             case TENANT_ADMIN_INITIALIZATION -> QuotaOperationPurpose.TENANT_ADMIN_INITIALIZATION;
             case INVITATION_ACCEPTANCE -> QuotaOperationPurpose.INVITATION_ACCEPTANCE;
+            case MEMBERSHIP_DISABLE -> QuotaOperationPurpose.MEMBERSHIP_DISABLE;
             default -> throw new IllegalArgumentException("Quota purpose 不允许");
         };
     }

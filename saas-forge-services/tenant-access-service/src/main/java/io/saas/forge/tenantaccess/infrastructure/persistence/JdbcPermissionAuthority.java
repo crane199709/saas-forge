@@ -26,6 +26,10 @@ public class JdbcPermissionAuthority implements PermissionAuthority {
                     JOIN tenants tenant ON tenant.id = member.tenant_id
                     WHERE permission.code = ? AND permission.enabled
                       AND member.identity_id = ? AND member.membership_status = 'ENABLED'
+                      AND NOT EXISTS (SELECT 1 FROM membership_disable_workflows disabling
+                                      WHERE disabling.tenant_id = member.tenant_id
+                                        AND disabling.membership_id = member.id
+                                        AND disabling.workflow_status IN ('REVOKING', 'RECOVERY_REQUIRED', 'RELEASE_PENDING'))
                       AND tenant.tenant_status = 'ACTIVE'
                       AND NOT EXISTS (
                           SELECT 1 FROM tenant_lifecycle_workflows closure
@@ -68,6 +72,10 @@ public class JdbcPermissionAuthority implements PermissionAuthority {
                     JOIN tenant_roles role ON role.id = assignment.role_id AND role.tenant_id = assignment.tenant_id
                     WHERE member.id = ? AND member.tenant_id = ? AND member.identity_id = ?
                       AND member.membership_status = 'ENABLED'
+                      AND NOT EXISTS (SELECT 1 FROM membership_disable_workflows disabling
+                                      WHERE disabling.tenant_id = member.tenant_id
+                                        AND disabling.membership_id = member.id
+                                        AND disabling.workflow_status IN ('REVOKING', 'RECOVERY_REQUIRED', 'RELEASE_PENDING'))
                       AND tenant.tenant_status = 'ACTIVE'
                       AND NOT EXISTS (
                           SELECT 1 FROM tenant_lifecycle_workflows closure
@@ -97,6 +105,10 @@ public class JdbcPermissionAuthority implements PermissionAuthority {
                 JOIN tenants tenant ON tenant.id = member.tenant_id
                 WHERE permission.enabled AND member.identity_id = ?
                   AND member.membership_status = 'ENABLED' AND tenant.tenant_status = 'ACTIVE'
+                  AND NOT EXISTS (SELECT 1 FROM membership_disable_workflows disabling
+                                  WHERE disabling.tenant_id = member.tenant_id
+                                    AND disabling.membership_id = member.id
+                                    AND disabling.workflow_status IN ('REVOKING', 'RECOVERY_REQUIRED', 'RELEASE_PENDING'))
                   AND (tenant.expires_at IS NULL OR tenant.expires_at > statement_timestamp())
                   AND (
                     EXISTS (
