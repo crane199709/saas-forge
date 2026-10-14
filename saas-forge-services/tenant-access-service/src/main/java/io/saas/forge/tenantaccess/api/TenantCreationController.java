@@ -241,6 +241,21 @@ public class TenantCreationController implements PlatformTenantsApi {
     }
 
     @Override
+    public ResponseEntity<Tenant> closeTenant(UUID tenantId, UUID idempotencyKey) {
+        HttpServletRequest request = currentRequest();
+        UUID actor = authorizer.authorize(request.getHeader(HttpHeaders.AUTHORIZATION));
+        return ResponseEntity.ok(toResponse(tenantLifecycle.close(actor, idempotencyKey, tenantId, traceId(request))));
+    }
+
+    @Override
+    public ResponseEntity<Tenant> recoverTenantClosure(UUID tenantId, UUID idempotencyKey) {
+        HttpServletRequest request = currentRequest();
+        UUID actor = authorizer.authorize(request.getHeader(HttpHeaders.AUTHORIZATION));
+        return ResponseEntity.ok(toResponse(tenantLifecycle.recoverClosure(
+                actor, idempotencyKey, tenantId, traceId(request))));
+    }
+
+    @Override
     public ResponseEntity<io.saas.forge.tenantaccess.contract.model.TenantLifecycle> getTenantLifecycle(UUID tenantId) {
         authorizer.authorize(currentRequest().getHeader(HttpHeaders.AUTHORIZATION));
         var value = tenantLifecycle.read(tenantId);
@@ -249,7 +264,8 @@ public class TenantCreationController implements PlatformTenantsApi {
                 .action(value.action() == null ? null : io.saas.forge.tenantaccess.contract.model.TenantLifecycle.ActionEnum.fromValue(value.action()))
                 .state(io.saas.forge.tenantaccess.contract.model.TenantLifecycle.StateEnum.fromValue(value.state()))
                 .canSuspend(value.canSuspend()).canResume(value.canResume())
-                .canRecoverSuspension(value.canRecoverSuspension()).canContinue(value.canContinue());
+                .canRecoverSuspension(value.canRecoverSuspension()).canContinue(value.canContinue())
+                .canClose(value.canClose()).canRecoverClosure(value.canRecoverClosure());
         return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(response);
     }
 

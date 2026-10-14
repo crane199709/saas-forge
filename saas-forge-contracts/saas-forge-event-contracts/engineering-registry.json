@@ -100,6 +100,34 @@
       ]
     },
     {
+      "type": "com.saas.forge.iam.platform-admin-granted.v1",
+      "producerService": "iam-service",
+      "source": "urn:saas.forge:iam-service",
+      "schema": "saas-forge-contracts/saas-forge-event-contracts/iam-platform-admin-granted.v1.schema.json",
+      "topic": "saas.forge.<environment>.iam-service.events",
+      "orderingKey": "identityId",
+      "allowedConsumers": [
+        {
+          "service": "audit-service",
+          "consumerName": "audit-service.iam-session-events"
+        }
+      ]
+    },
+    {
+      "type": "com.saas.forge.iam.platform-admin-revoked.v1",
+      "producerService": "iam-service",
+      "source": "urn:saas.forge:iam-service",
+      "schema": "saas-forge-contracts/saas-forge-event-contracts/iam-platform-admin-revoked.v1.schema.json",
+      "topic": "saas.forge.<environment>.iam-service.events",
+      "orderingKey": "identityId",
+      "allowedConsumers": [
+        {
+          "service": "audit-service",
+          "consumerName": "audit-service.iam-session-events"
+        }
+      ]
+    },
+    {
       "type": "com.saas.forge.iam.oauth-client.created.v1",
       "producerService": "iam-service",
       "source": "urn:saas.forge:iam-service",
@@ -258,10 +286,38 @@
       ]
     },
     {
+      "type": "com.saas.forge.brand.asset-uploaded.v1",
+      "producerService": "tenant-access-service",
+      "source": "urn:saas.forge:tenant-access-service",
+      "schema": "saas-forge-contracts/saas-forge-event-contracts/brand-asset-uploaded.v1.schema.json",
+      "topic": "saas.forge.<environment>.tenant-access-service.events",
+      "orderingKey": "tenantId",
+      "allowedConsumers": [
+        {
+          "service": "audit-service",
+          "consumerName": "audit-service.tenant-events"
+        }
+      ]
+    },
+    {
       "type": "com.saas.forge.tenant.created.v1",
       "producerService": "tenant-access-service",
       "source": "urn:saas.forge:tenant-access-service",
       "schema": "saas-forge-contracts/saas-forge-event-contracts/tenant-created.v1.schema.json",
+      "topic": "saas.forge.<environment>.tenant-access-service.events",
+      "orderingKey": "tenantId",
+      "allowedConsumers": [
+        {
+          "service": "audit-service",
+          "consumerName": "audit-service.tenant-events"
+        }
+      ]
+    },
+    {
+      "type": "com.saas.forge.tenant.closed.v1",
+      "producerService": "tenant-access-service",
+      "source": "urn:saas.forge:tenant-access-service",
+      "schema": "saas-forge-contracts/saas-forge-event-contracts/tenant-closed.v1.schema.json",
       "topic": "saas.forge.<environment>.tenant-access-service.events",
       "orderingKey": "tenantId",
       "allowedConsumers": [

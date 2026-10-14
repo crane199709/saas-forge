@@ -16,10 +16,64 @@ tags:
   - name: Platform tenants
   - name: Platform entitlement bootstrap
   - name: OAuth clients
+  - name: Platform administrators
   - name: Permissions
+  - name: Brand assets
   - name: Invitations
   - name: Tenant roles
 paths:
+  /api/v1/brand-assets/{kind}:
+    post:
+      tags: [Brand assets]
+      operationId: uploadBrandAsset
+      x-saas.forge-service: tenant-access-service
+      summary: Upload a validated PNG asset for the current Tenant
+      description: Upload does not save or change the Tenant Brand Profile.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: kind
+          in: path
+          required: true
+          schema: { type: string, enum: [logo, favicon] }
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema: { type: string, format: binary }
+      responses:
+        '201':
+          description: Created asset in the current Tenant; never cached.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BrandAsset' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '413': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /brands/{assetId}:
+    get:
+      tags: [Brand assets]
+      operationId: readPublicBrandAsset
+      x-saas.forge-service: tenant-access-service
+      summary: Read one active public PNG asset by platform generated ID
+      description: No directory listing or management information is exposed.
+      security: []
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      responses:
+        '200':
+          description: Active PNG; never cached so permanent disable takes effect on future reads.
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
   /api/v1/auth/session:
     get:
       tags: [Authentication]
@@ -1297,6 +1351,72 @@ paths:
         '409': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
 
+  /api/v1/platform/tenants/{tenantId}/closures:
+    post:
+      tags: [Platform tenants]
+      operationId: closeTenant
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Permanently close a Tenant
+      description: Requires a Platform Admin. Tenant target revocation completes before CLOSED is committed. Closure cannot be reversed.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Tenant target revocation completed and the Tenant is CLOSED.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tenant' }
+        '400': { $ref: './common.yaml#/components/responses/ValidationProblem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503':
+          description: Durable closure workflow is pending (`TENANT_CLOSURE_PENDING`).
+          headers:
+            Retry-After:
+              required: true
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+
+  /api/v1/platform/tenants/{tenantId}/closure-recoveries:
+    post:
+      tags: [Platform tenants]
+      operationId: recoverTenantClosure
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Continue an exhausted Tenant Closure
+      description: Requires a Platform Admin. Reuses the existing target revocation request and blocking generation.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: The original closure completed and the Tenant is CLOSED.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tenant' }
+        '400': { $ref: './common.yaml#/components/responses/ValidationProblem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503':
+          description: The recovered closure is still pending (`TENANT_CLOSURE_RECOVERY_PENDING`).
+          headers:
+            Retry-After:
+              required: true
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/problem+json:
+              schema: { $ref: './common.yaml#/components/schemas/ProblemDetails' }
+
   /api/v1/platform/tenants/{tenantId}/suspensions:
     post:
       tags: [Platform tenants]
@@ -2062,6 +2182,79 @@ paths:
         '403': { $ref: './common.yaml#/components/responses/Problem' }
         '409': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
+  /api/v1/platform/administrators:
+    get:
+      tags: [Platform administrators]
+      operationId: listPlatformAdministrators
+      x-saas.forge-service: iam-service
+      summary: List current fixed PLATFORM_ADMIN assignments
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current assignments and authoritative password readiness.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlatformAdministratorPage' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+    post:
+      tags: [Platform administrators]
+      operationId: grantPlatformAdministrator
+      x-saas.forge-service: iam-service
+      summary: Grant fixed PLATFORM_ADMIN to an email identity
+      description: |
+        Confirms or creates an IAM Identity without Tenant Membership. A first Setup
+        delivery is attempted only for an Identity with no Credential history. An
+        accepted delivery does not mean a password was established. Retry the same
+        Idempotency-Key after an uncertain response or delivery failure.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlatformAdminGrantRequest' }
+      responses:
+        '200':
+          description: Role grant fact and current Setup delivery result.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlatformAdminGrantResult' }
+        '400': { $ref: './common.yaml#/components/responses/ValidationProblem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/platform/administrators/{identityId}:
+    delete:
+      tags: [Platform administrators]
+      operationId: revokePlatformAdministrator
+      x-saas.forge-service: iam-service
+      summary: Revoke one fixed PLATFORM_ADMIN assignment and its platform tokens
+      description: |
+        Ends current Platform Context families and revokes every unexpired historical
+        Platform jti, including one in a family now switched to Tenant. Current legal
+        Tenant sessions remain valid. Retry the same Idempotency-Key after an uncertain
+        response; a failed revocation-index delivery is recovered from durable facts.
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: identityId
+          in: path
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { description: Role and platform token revocation effective }
+        '400': { $ref: './common.yaml#/components/responses/ValidationProblem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
   /api/v1/platform/oauth-clients/{clientId}/credential-status:
     get:
       tags: [OAuth clients]
@@ -2658,6 +2851,17 @@ components:
       required: true
       schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
   schemas:
+    BrandAsset:
+      type: object
+      additionalProperties: false
+      required: [id, tenantId, kind, url, width, height]
+      properties:
+        id: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        tenantId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        kind: { type: string, enum: [LOGO, FAVICON] }
+        url: { type: string, pattern: '^/brands/[0-9a-f-]{36}$' }
+        width: { type: integer, minimum: 1, maximum: 2048 }
+        height: { type: integer, minimum: 1, maximum: 2048 }
     CreateInvitationRequest:
       type: object
       additionalProperties: false
@@ -2865,16 +3069,18 @@ components:
       additionalProperties: false
     TenantLifecycle:
       type: object
-      required: [tenantId, state, canSuspend, canResume, canRecoverSuspension, canContinue]
+      required: [tenantId, state, canSuspend, canResume, canRecoverSuspension, canContinue, canClose, canRecoverClosure]
       properties:
         tenantId: { $ref: './common.yaml#/components/schemas/UuidV7' }
         operationId: { $ref: './common.yaml#/components/schemas/UuidV7' }
-        action: { type: string, enum: [SUSPEND, RESUME] }
+        action: { type: string, enum: [SUSPEND, RESUME, CLOSE] }
         state: { type: string, enum: [NONE, PENDING, COMPLETED, RETRY_REQUIRED, RECOVERY_REQUIRED] }
         canSuspend: { type: boolean }
         canResume: { type: boolean }
         canRecoverSuspension: { type: boolean }
         canContinue: { type: boolean }
+        canClose: { type: boolean }
+        canRecoverClosure: { type: boolean }
       additionalProperties: false
     PasswordSetupRequest:
       type: object
@@ -3429,6 +3635,41 @@ components:
           items: { $ref: '#/components/schemas/EnabledRemoteManifest' }
         nextCursor: { type: [string, 'null'], maxLength: 256 }
         hasMore: { type: boolean }
+    PlatformAdminGrantRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+    PlatformAdminGrantResult:
+      type: object
+      additionalProperties: false
+      required: [identityId, roleAssignmentId, newlyGranted, setupState]
+      properties:
+        identityId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        roleAssignmentId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        newlyGranted: { type: boolean }
+        setupState:
+          type: string
+          enum: [PENDING, DELIVERED, PASSWORD_READY, RECOVERY_REQUIRED, ALREADY_GRANTED]
+    PlatformAdministrator:
+      type: object
+      additionalProperties: false
+      required: [identityId, roleAssignmentId, email, passwordReady, assignedAt]
+      properties:
+        identityId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        roleAssignmentId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        email: { type: string, format: email }
+        passwordReady: { type: boolean }
+        assignedAt: { $ref: '#/components/schemas/Timestamp' }
+    PlatformAdministratorPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/PlatformAdministrator' }
     RuntimeScope:
       type: string
       enum:

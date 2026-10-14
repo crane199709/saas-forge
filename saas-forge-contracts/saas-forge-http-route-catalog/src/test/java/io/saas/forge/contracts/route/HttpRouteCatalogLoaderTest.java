@@ -17,7 +17,7 @@ class HttpRouteCatalogLoaderTest {
                 .count();
 
         assertEquals(HttpRouteCatalogLoader.SUPPORTED_SCHEMA_VERSION, catalog.schemaVersion());
-        assertEquals(99 + acceptanceRoutes, catalog.routes().size());
+        assertEquals(109 + acceptanceRoutes, catalog.routes().size());
         var clients = catalog.routes().stream().filter(route -> route.operationId().equals("listOAuthClients"))
                 .findFirst().orElseThrow();
         assertEquals("iam-service", clients.serviceId());
@@ -36,6 +36,13 @@ class HttpRouteCatalogLoaderTest {
         }
         for (String operation : java.util.List.of("listOAuthClientOperations", "recoverOAuthClientOperation", "getOAuthClientCredentialStatus")) {
             var route = catalog.routes().stream().filter(value -> value.operationId().equals(operation)).findFirst().orElseThrow();
+            assertEquals("iam-service", route.serviceId());
+            assertEquals(HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, route.credentialRequirement());
+        }
+        for (String operation : java.util.List.of("listPlatformAdministrators", "grantPlatformAdministrator",
+                "revokePlatformAdministrator")) {
+            var route = catalog.routes().stream().filter(value -> value.operationId().equals(operation))
+                    .findFirst().orElseThrow();
             assertEquals("iam-service", route.serviceId());
             assertEquals(HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, route.credentialRequirement());
         }

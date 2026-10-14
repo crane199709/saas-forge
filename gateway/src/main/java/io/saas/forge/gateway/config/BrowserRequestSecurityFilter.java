@@ -56,6 +56,7 @@ class BrowserRequestSecurityFilter extends OncePerRequestFilter {
             return true;
         }
         return !ALWAYS_PROTECTED_PATHS.contains(request.getRequestURI())
+                && !request.getRequestURI().matches("/api/v1/brand-assets/(logo|favicon)")
                 && request.getHeader(HttpHeaders.ORIGIN) == null
                 && request.getHeader(FETCH_SITE_HEADER) == null;
     }
@@ -98,8 +99,10 @@ class BrowserRequestSecurityFilter extends OncePerRequestFilter {
         }
         try {
             String contentType = request.getContentType();
+            MediaType expected = request.getRequestURI().matches("/api/v1/brand-assets/(logo|favicon)")
+                    ? MediaType.IMAGE_PNG : MediaType.APPLICATION_JSON;
             if (contentType == null
-                    || !MediaType.APPLICATION_JSON.isCompatibleWith(MediaType.parseMediaType(contentType))) {
+                    || !expected.isCompatibleWith(MediaType.parseMediaType(contentType))) {
                 return "CONTENT_TYPE";
             }
         } catch (IllegalArgumentException invalidContentType) {

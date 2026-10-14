@@ -13,6 +13,7 @@
 | `com.saas.forge.iam.password-setup-delivered.v1` | IAM | `identityId`、`deliveryRequestId`、`challengeExpiresAt` |
 | `com.saas.forge.iam.password-established.v1` | IAM | `identityId`、`credentialId` |
 | `com.saas.forge.tenant.created.v1` | Tenant Access | `tenantId`、`status`、`actorIdentityId` |
+| `com.saas.forge.brand.asset-uploaded.v1` | Tenant Access | `tenantId`、`assetId`、`actorIdentityId`、`kind`；不包含图像内容或对象存储凭据 |
 | `com.saas.forge.tenant.administrator-initialized.v1` | Tenant Access | `tenantId`、`membershipId`、`identityId`、`roleId`、`status`、`actorIdentityId` |
 | `com.saas.forge.quota-definition.created.v1` | Entitlement | `quotaDefinitionId`、`code`、`status`、`actorIdentityId` |
 | `com.saas.forge.quota-definition.activated.v1` | Entitlement | `quotaDefinitionId`、`code`、`status`、`actorIdentityId` |
@@ -26,6 +27,7 @@
 | `com.saas.forge.iam.tenant-context-switched.v1` | IAM | `identityId`、`previousMembershipId`、`membershipId`、`tenantId` |
 | `com.saas.forge.membership.disabled.v1` | Tenant Access | `membershipId`、`tenantId`、`identityId`、`actorIdentityId`、`quotaReleasePending` |
 | `com.saas.forge.tenant.suspended.v1` | Tenant Access | `tenantId`、`actorIdentityId`、`revokedSessionCount` |
+| `com.saas.forge.tenant.closed.v1` | Tenant Access | `tenantId`、`actorIdentityId`、`revokedSessionCount` |
 | `com.saas.forge.tenant.details-updated.v1` | Tenant Access | `tenantId`、`actorIdentityId`、管理名称和可空有效期 |
 | `com.saas.forge.iam.sessions-revoked.v1` | IAM | `revocationRequestId`、`scope`、`membershipId` 或 `tenantId`、`revokedSessionCount` |
 | `com.saas.forge.quota.consumed.v1` | Entitlement | `tenantId`、`quotaDefinitionId`、`operationId`、`amount`、`purpose` |

@@ -16,6 +16,9 @@ public interface TenantLifecycleRepository {
     TenantLifecycleClaim prepareRecovery(
             UUID actorIdentityId, UUID idempotencyKey, UUID tenantId, String fingerprint, Instant at);
 
+    TenantLifecycleClaim prepareClosureRecovery(
+            UUID actorIdentityId, UUID idempotencyKey, UUID tenantId, String fingerprint, Instant at);
+
     Optional<TenantLifecycleWorkflow> find(UUID workflowId);
 
     Tenant loadTenant(UUID tenantId);

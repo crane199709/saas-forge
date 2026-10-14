@@ -299,6 +299,10 @@ class GatewayJwksRouteTest {
                 route("DELETE", "/api/v1/platform/tenants/018f2d3a-4b5c-7d6e-8f90-123456789abc/suspensions", "tenant-access"),
                 route("POST", "/api/v1/platform/tenants/018f2d3a-4b5c-7d6e-8f90-123456789abc/suspension-recoveries",
                         "tenant-access"),
+                route("POST", "/api/v1/platform/tenants/018f2d3a-4b5c-7d6e-8f90-123456789abc/closures",
+                        "tenant-access"),
+                route("POST", "/api/v1/platform/tenants/018f2d3a-4b5c-7d6e-8f90-123456789abc/closure-recoveries",
+                        "tenant-access"),
                 route("POST", "/api/v1/platform/quota-definitions", "entitlement"),
                 route("POST", "/api/v1/platform/quota-definitions/018f2d3a-4b5c-7d6e-8f90-123456789abc/activations",
                         "entitlement"),
@@ -353,6 +357,27 @@ class GatewayJwksRouteTest {
         assertTrue(response.body().contains("\"code\":\"BROWSER_REQUEST_REJECTED\""));
         assertTrue(response.headers().firstValue("Access-Control-Allow-Origin").isEmpty());
         assertTrue(response.headers().firstValue("Access-Control-Allow-Credentials").isEmpty());
+    }
+
+    @Test
+    void brandAssetReadIsAnonymousAndUploadKeepsControlledBrowserBoundary() throws Exception {
+        String id = "019535d9-0001-7000-8000-000000000028";
+        var read = send(HttpRequest.newBuilder(gatewayUri("/brands/" + id)).GET().build());
+        assertEquals(200, read.statusCode());
+        assertEquals("tenant-access", read.body());
+        assertEquals(404, send(HttpRequest.newBuilder(gatewayUri("/brands")).GET().build()).statusCode());
+
+        var preflight = send(HttpRequest.newBuilder(gatewayUri("/api/v1/brand-assets/logo"))
+                .header("Origin", "https://console.saas.forge.test")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "authorization,content-type,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(200, preflight.statusCode());
+        var rejected = send(HttpRequest.newBuilder(gatewayUri("/api/v1/brand-assets/logo"))
+                .header("Content-Type", "image/png")
+                .POST(HttpRequest.BodyPublishers.ofByteArray(new byte[] {1, 2, 3})).build());
+        assertEquals(403, rejected.statusCode());
+        assertTrue(rejected.body().contains("BROWSER_REQUEST_REJECTED"));
     }
 
     @Test

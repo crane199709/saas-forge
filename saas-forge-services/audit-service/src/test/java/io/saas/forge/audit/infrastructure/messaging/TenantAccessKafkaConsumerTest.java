@@ -33,6 +33,21 @@ class TenantAccessKafkaConsumerTest {
     }
 
     @Test
+    void recordsTenantClosedBeforeAcknowledgment() {
+        List<String> calls = new ArrayList<>();
+        var consumer = consumer((consumerName, record, consumedAt) -> {
+            assertEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName);
+            assertEquals("TENANT_CLOSED", record.action());
+            calls.add("record");
+            return true;
+        }, new SimpleMeterRegistry());
+
+        consumer.consume(message(TenantAccessEventValidatorTest.registeredTenantClosedEvent()),
+                () -> calls.add("acknowledge"));
+        assertEquals(List.of("record", "acknowledge"), calls);
+    }
+
+    @Test
     void acknowledgesTypeRegisteredToOtherConsumerAndCountsIgnoredWithoutPersistence() {
         List<String> calls = new ArrayList<>();
         SimpleMeterRegistry meters = new SimpleMeterRegistry();
