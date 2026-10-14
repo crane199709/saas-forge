@@ -43,7 +43,7 @@ spring:
 saas.forge:
   environment: ${SAASFORGE_ENVIRONMENT:dev}
   audit:
-    required-migration-version: '19'
+    required-migration-version: '20'
     example-topic: saas.forge.${saas.forge.environment}.project-service.events
     example-isolation-topic: saas.forge.${saas.forge.environment}.audit-service.example-isolations
     iam-session-topic: saas.forge.${saas.forge.environment}.iam-service.events
