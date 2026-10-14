@@ -741,6 +741,75 @@ paths:
         '403': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
 
+  /api/v1/members/{membershipId}/roles:
+    parameters:
+      - name: membershipId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+    get:
+      tags: [Members]
+      operationId: listMembershipRoles
+      x-saas.forge-service: tenant-access-service
+      summary: Read a Membership's current Tenant Role assignments
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current assignments for a Tenant Administrator; never cached.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberRoleAssignments' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/members/{membershipId}/roles/{roleId}:
+    parameters:
+      - name: membershipId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      - name: roleId
+        in: path
+        required: true
+        schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+    put:
+      tags: [Members]
+      operationId: assignMembershipRole
+      x-saas.forge-service: tenant-access-service
+      summary: Assign an existing Tenant Role to a Membership
+      description: Requires a current Tenant Administrator. Repeated assignment is idempotent and creates no new fact.
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current assignments after the change; never cached.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberRoleAssignments' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+    delete:
+      tags: [Members]
+      operationId: revokeMembershipRole
+      x-saas.forge-service: tenant-access-service
+      summary: Revoke one Tenant Role from a Membership
+      description: Cannot remove the last enabled Tenant Administrator, including concurrent changes.
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current assignments after the change; never cached.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberRoleAssignments' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
   /api/v1/invitations:
     get:
       tags: [Invitations]
@@ -2824,6 +2893,22 @@ components:
         identityId: { $ref: './common.yaml#/components/schemas/UuidV7' }
         status: { type: string, enum: [ENABLED, DISABLED] }
         invitedEmail: { type: string, format: email, nullable: true }
+    MemberRoleAssignment:
+      type: object
+      additionalProperties: false
+      required: [roleId, roleKey, systemManaged]
+      properties:
+        roleId: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        roleKey: { type: string }
+        systemManaged: { type: boolean }
+    MemberRoleAssignments:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/MemberRoleAssignment' }
     Invitation:
       type: object
       additionalProperties: false
