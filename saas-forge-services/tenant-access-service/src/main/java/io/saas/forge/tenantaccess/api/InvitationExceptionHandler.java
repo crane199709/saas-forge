@@ -14,12 +14,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice(assignableTypes = InvitationController.class)
+@RestControllerAdvice(assignableTypes = {InvitationController.class, InvitationPasswordSetupController.class})
 public class InvitationExceptionHandler {
     @ExceptionHandler(InvitationFailure.class)
     ResponseEntity<Problem> invitation(InvitationFailure failure, HttpServletRequest request) {
         HttpStatus status = switch (failure.code()) {
-            case "INVITATION_NOT_FOUND" -> HttpStatus.NOT_FOUND;
+            case "INVITATION_NOT_FOUND", "INVITATION_INVALID" -> HttpStatus.NOT_FOUND;
             case "TENANT_NOT_ACCESSIBLE" -> HttpStatus.FORBIDDEN;
             default -> HttpStatus.CONFLICT;
         };

@@ -23,6 +23,24 @@ class AuditConsumerFailureHandlerTest {
     private static final String TENANT_TOPIC = "saas.forge.test.tenant-access-service.events";
 
     @Test
+    void passwordGroupFailureKeepsItsRegisteredConsumerIdentity() {
+        var repository = new CapturingRepository();
+        var handler = handler(repository);
+        var message = new ConsumerRecord<String, String>(IAM_TOPIC, 0, 3,
+                IamPasswordEventValidatorTest.IDENTITY, IamPasswordEventValidatorTest.delivered());
+        var failure = new org.springframework.kafka.listener.ListenerExecutionFailedException(
+                "IAM password insert failed", IamPasswordEventValidator.CONSUMER_NAME,
+                new IllegalStateException("database unavailable"));
+
+        handler.recordFailure(message, failure, 1);
+        handler.isolate(message, failure);
+
+        assertEquals(IamPasswordEventValidator.CONSUMER_NAME, repository.failure.consumerName());
+        assertEquals(IamPasswordEventValidator.CONSUMER_NAME, repository.isolation.consumerName());
+        assertEquals(IamPasswordEventValidatorTest.delivered(), repository.isolation.safeSnapshot());
+    }
+
+    @Test
     void permanentFailurePersistsDigestAndSanitizedDiagnosticWithoutPayload() {
         var repository = new CapturingRepository();
         var handler = handler(repository);
@@ -107,7 +125,8 @@ class AuditConsumerFailureHandlerTest {
         var service = new AuditConsumerIsolationService(
                 repository, Clock.fixed(Instant.parse("2026-08-29T04:00:00Z"), ZoneOffset.UTC));
         return new AuditConsumerFailureHandler(
-                objectMapper, iam, tenant, new ExampleFactEventValidator(objectMapper, "saas.forge.test.project-service.events"), topology, service,
+                objectMapper, iam, new IamPasswordEventValidator(objectMapper, IAM_TOPIC), tenant,
+                new ExampleFactEventValidator(objectMapper, "saas.forge.test.project-service.events"), topology, service,
                 new AuditConsumerFailurePolicy(10, java.time.Duration.ofSeconds(1),
                         java.time.Duration.ofMinutes(1)));
     }
