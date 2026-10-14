@@ -13,4 +13,9 @@ public interface PlatformRoleAssignmentMapper {
             @Param("identityId") UUID identityId,
             @Param("roleKey") String roleKey,
             @Param("at") OffsetDateTime at);
+
+    PlatformRoleAssignmentRow findActive(
+            @Param("identityId") UUID identityId,
+            @Param("roleKey") String roleKey,
+            @Param("at") OffsetDateTime at);
 }
