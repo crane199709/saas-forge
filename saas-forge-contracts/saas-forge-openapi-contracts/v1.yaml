@@ -781,6 +781,38 @@ paths:
         '403': { $ref: './common.yaml#/components/responses/Problem' }
         '409': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
+  /api/v1/invitation-password-setups:
+    post:
+      tags: [Invitations]
+      operationId: requestInvitationPasswordSetup
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Request first Password Setup through a currently valid Invitation
+      description: >-
+        The current Invitation token identifies its invited Identity; no caller-supplied
+        Identity or email is accepted. IAM decides from current Credential state whether
+        to deliver a first Setup email, report an existing password, or require Recovery.
+        No Membership, work Context, login session, or max_users usage is created here.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InvitationPasswordSetupRequest' }
+      responses:
+        '200':
+          description: Current IAM Credential disposition or SMTP accepted; no token or email is returned.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvitationPasswordSetupResult' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
   /api/v1/invitations/{invitationId}/resends:
     post:
       tags: [Invitations]
@@ -2836,6 +2868,18 @@ components:
       required: [email]
       properties:
         email: { type: string, format: email, minLength: 3, maxLength: 320 }
+    InvitationPasswordSetupRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token: { type: string, minLength: 43, maxLength: 43, pattern: '^[A-Za-z0-9_-]{43}$', writeOnly: true }
+    InvitationPasswordSetupResult:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: { type: string, enum: [MAIL_SERVICE_ACCEPTED, PASSWORD_READY, RECOVERY_REQUIRED] }
     MemberPage:
       type: object
       required: [items]

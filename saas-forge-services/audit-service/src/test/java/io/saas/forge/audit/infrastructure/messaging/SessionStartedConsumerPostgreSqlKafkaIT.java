@@ -67,6 +67,7 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     private static JdbcTemplate admin;
     private static JdbcTemplate app;
     private static IamSessionKafkaConsumer listener;
+    private static IamPasswordKafkaConsumer passwordListener;
     private static TenantAccessKafkaConsumer tenantListener;
     private static ExampleFactKafkaConsumer exampleListener;
     private static SimpleMeterRegistry meters;
@@ -121,7 +122,9 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
                 new IamSessionEventValidator(objectMapper, sessionStarted, tenantContextSwitched,
                         new PasswordRecoveredEventValidator(objectMapper, TOPIC),
                         new PlatformAdminGrantedEventValidator(objectMapper, TOPIC),
-                new PlatformAdminRevokedEventValidator(objectMapper, TOPIC)), service);
+                        new PlatformAdminRevokedEventValidator(objectMapper, TOPIC)), service);
+        passwordListener = new IamPasswordKafkaConsumer(
+                new IamPasswordEventValidator(objectMapper, TOPIC), service, objectMapper);
         var tenantCreated = new TenantCreatedEventValidator(objectMapper, TENANT_TOPIC);
         meters = new SimpleMeterRegistry();
         tenantListener = new TenantAccessKafkaConsumer(
@@ -139,6 +142,29 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     @AfterAll
     static void closeIsolationProducer() {
         isolationProducerFactory.destroy();
+    }
+
+    @Test
+    void setupSuccessFactsArePersistedOnceByRegisteredPasswordConsumer() {
+        String delivered = IamPasswordEventValidatorTest.delivered();
+        String established = IamPasswordEventValidatorTest.established().replace(
+                IamPasswordEventValidatorTest.EVENT, uuidV7(999));
+        try (KafkaConsumer<String, String> kafka = consumer("audit-password-setup-" + UUID.randomUUID())) {
+            seekToEnd(kafka);
+            send(IamPasswordEventValidatorTest.IDENTITY, delivered);
+            ConsumerRecord<String, String> first = pollOne(kafka);
+            passwordListener.consume(first, kafka::commitSync);
+            passwordListener.consume(first, () -> {});
+            send(IamPasswordEventValidatorTest.IDENTITY, established);
+            passwordListener.consume(pollOne(kafka), kafka::commitSync);
+        }
+        assertEquals(1, count("audit_records", IamPasswordEventValidatorTest.EVENT));
+        assertEquals(1, count("audit_consumed_events", IamPasswordEventValidatorTest.EVENT));
+        assertEquals("PASSWORD_SETUP_DELIVERED", app.queryForObject(
+                "SELECT action FROM audit_records WHERE source_event_id=?::uuid", String.class,
+                IamPasswordEventValidatorTest.EVENT));
+        assertEquals("PASSWORD_ESTABLISHED", app.queryForObject(
+                "SELECT action FROM audit_records WHERE source_event_id=?::uuid", String.class, uuidV7(999)));
     }
 
     @Test
