@@ -56,6 +56,15 @@ saas.forge:
     service-client-secret-file: ${SAASFORGE_SERVICE_CLIENT_SECRET_FILE:?SAASFORGE_SERVICE_CLIENT_SECRET_FILE is required}
     iam-service-client-id-file: ${IAM_SERVICE_CLIENT_ID_FILE:?IAM_SERVICE_CLIENT_ID_FILE is required}
     outbox-topic: saas.forge.${saas.forge.environment}.tenant-access-service.events
+    invitation:
+      smtp:
+        host: ${TENANT_INVITATION_SMTP_HOST:}
+        port: ${TENANT_INVITATION_SMTP_PORT:1025}
+        username: ${TENANT_INVITATION_SMTP_USERNAME:}
+        password: ${TENANT_INVITATION_SMTP_PASSWORD:}
+        from: ${TENANT_INVITATION_SMTP_FROM:}
+        starttls: ${TENANT_INVITATION_SMTP_STARTTLS:false}
+      page-uri: ${TENANT_INVITATION_PAGE_URI:}
 mybatis:
   mapper-locations: classpath*:mapper/**/*Mapper.xml
   type-handlers-package: io.saas.forge.tenantaccess.infrastructure.persistence.type

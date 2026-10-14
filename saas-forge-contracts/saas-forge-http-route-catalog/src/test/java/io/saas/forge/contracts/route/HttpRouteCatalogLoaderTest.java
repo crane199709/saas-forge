@@ -17,12 +17,12 @@ class HttpRouteCatalogLoaderTest {
                 .count();
 
         assertEquals(HttpRouteCatalogLoader.SUPPORTED_SCHEMA_VERSION, catalog.schemaVersion());
-        assertEquals(90 + acceptanceRoutes, catalog.routes().size());
+        assertEquals(99 + acceptanceRoutes, catalog.routes().size());
         var clients = catalog.routes().stream().filter(route -> route.operationId().equals("listOAuthClients"))
                 .findFirst().orElseThrow();
         assertEquals("iam-service", clients.serviceId());
         assertEquals(HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, clients.credentialRequirement());
-        for (String operation : java.util.List.of("getTenantLifecycle", "continueTenantLifecycle", "getTenantAdministratorPasswordSetup", "recoverTenantAdministratorPasswordSetup", "getTenantAdministratorInitialization", "recoverTenantAdministratorInitialization", "listPermissions", "decidePermission", "updatePlatformTenant")) {
+        for (String operation : java.util.List.of("getTenantLifecycle", "continueTenantLifecycle", "getTenantAdministratorPasswordSetup", "recoverTenantAdministratorPasswordSetup", "getTenantAdministratorInitialization", "recoverTenantAdministratorInitialization", "listPermissions", "decidePermission", "updatePlatformTenant", "listInvitations", "createInvitation", "resendInvitation", "revokeInvitation", "listTenantRoles", "createTenantRole", "getTenantRole", "updateTenantRole", "deleteTenantRole")) {
             var route = catalog.routes().stream().filter(value -> value.operationId().equals(operation)).findFirst().orElseThrow();
             assertEquals("tenant-access-service", route.serviceId());
             assertEquals(HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, route.credentialRequirement());

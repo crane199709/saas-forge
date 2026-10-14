@@ -4,9 +4,9 @@ info:
   version: 1.0.0
   description: |
     The versioned public REST contract for saas-forge. This document contains only
-    delivery-stage-two and delivery-stage-three resources. Permission, Feature,
-    and Quota runtime operations are intentionally absent until their domain
-    contracts are reviewed.
+    delivered resources, including stage-four Permission and Invitation operations.
+    Feature and Quota runtime operations remain absent until their domain contracts
+    are reviewed.
 servers:
   - url: https://api.example.invalid
     description: Deployment-specific API Gateway origin.
@@ -18,6 +18,8 @@ tags:
   - name: OAuth clients
   - name: Permissions
   - name: Brand assets
+  - name: Invitations
+  - name: Tenant roles
 paths:
   /api/v1/brand-assets/{kind}:
     post:
@@ -600,6 +602,191 @@ paths:
         '400': { $ref: './common.yaml#/components/responses/Problem' }
         '401': { $ref: './common.yaml#/components/responses/Problem' }
         '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/tenant-roles:
+    get:
+      tags: [Tenant roles]
+      operationId: listTenantRoles
+      x-saas.forge-service: tenant-access-service
+      summary: List roles of the authenticated Tenant for its administrator
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current roles and their Permission bindings; never cached.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenantRolePage' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+    post:
+      tags: [Tenant roles]
+      operationId: createTenantRole
+      x-saas.forge-service: tenant-access-service
+      summary: Create a custom Tenant Role with existing Permissions
+      description: A role key is unique within the Tenant. Duplicate keys return 409; after an uncertain response, list roles before retrying.
+      security: [{ UserBearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TenantRoleChange' }
+      responses:
+        '201':
+          description: Created role and authoritative binding result.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenantRole' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '422': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/tenant-roles/{roleId}:
+    parameters:
+      - name: roleId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Tenant roles]
+      operationId: getTenantRole
+      x-saas.forge-service: tenant-access-service
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: Current role.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenantRole' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+    put:
+      tags: [Tenant roles]
+      operationId: updateTenantRole
+      x-saas.forge-service: tenant-access-service
+      summary: Replace custom role name and Permission bindings
+      description: Replaces the full binding set atomically. An unchanged request succeeds without a new committed fact.
+      security: [{ UserBearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TenantRoleChange' }
+      responses:
+        '200':
+          description: Updated authoritative role.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenantRole' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '422': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+    delete:
+      tags: [Tenant roles]
+      operationId: deleteTenantRole
+      x-saas.forge-service: tenant-access-service
+      summary: Delete an unassigned custom Tenant Role
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '204': { description: Role deleted. }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+
+  /api/v1/invitations:
+    get:
+      tags: [Invitations]
+      operationId: listInvitations
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: List Invitations in the current Tenant Context
+      security: [{ UserBearerAuth: [] }]
+      responses:
+        '200':
+          description: At most 100 recent Invitations, with derived expiry and no credential.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvitationPage' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+    post:
+      tags: [Invitations]
+      operationId: createInvitation
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Issue a seven-day Invitation and deliver its link by SMTP
+      security: [{ UserBearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateInvitationRequest' }
+      responses:
+        '201':
+          description: Invitation was created and its link delivered; no token is returned.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Invitation' }
+        '400': { $ref: './common.yaml#/components/responses/Problem' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+  /api/v1/invitations/{invitationId}/resends:
+    post:
+      tags: [Invitations]
+      operationId: resendInvitation
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Rotate and redeliver a pending Invitation link without extending expiry
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      responses:
+        '200':
+          description: Link rotated and delivered; the former link is invalid.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Invitation' }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
+        '503': { $ref: './common.yaml#/components/responses/Problem' }
+  /api/v1/invitations/{invitationId}/revocations:
+    post:
+      tags: [Invitations]
+      operationId: revokeInvitation
+      x-saas.forge-service: tenant-access-service
+      x-saas.forge-java-sdk: true
+      summary: Revoke a pending Invitation
+      security: [{ UserBearerAuth: [] }]
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema: { $ref: './common.yaml#/components/schemas/UuidV7' }
+      responses:
+        '204': { description: Invitation revoked. }
+        '401': { $ref: './common.yaml#/components/responses/Problem' }
+        '403': { $ref: './common.yaml#/components/responses/Problem' }
+        '404': { $ref: './common.yaml#/components/responses/Problem' }
+        '409': { $ref: './common.yaml#/components/responses/Problem' }
         '503': { $ref: './common.yaml#/components/responses/Problem' }
 
   /api/v1/platform/tenants:
@@ -2467,6 +2654,32 @@ components:
         url: { type: string, pattern: '^/brands/[0-9a-f-]{36}$' }
         width: { type: integer, minimum: 1, maximum: 2048 }
         height: { type: integer, minimum: 1, maximum: 2048 }
+    CreateInvitationRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email: { type: string, format: email, minLength: 3, maxLength: 320 }
+    Invitation:
+      type: object
+      additionalProperties: false
+      required: [id, email, status, deliveryStatus, expiresAt, createdAt, updatedAt]
+      properties:
+        id: { $ref: './common.yaml#/components/schemas/UuidV7' }
+        email: { type: string, format: email }
+        status: { type: string, enum: [PENDING, ACCEPTED, REVOKED, EXPIRED] }
+        deliveryStatus: { type: string, enum: [PENDING, SENT, FAILED] }
+        expiresAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    InvitationPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Invitation' }
     OrganizationUnit:
       type: object
       additionalProperties: false
@@ -2525,6 +2738,36 @@ components:
       properties:
         code: { type: string, maxLength: 160 }
         allowed: { type: boolean }
+    TenantRoleChange:
+      type: object
+      additionalProperties: false
+      required: [roleKey, permissions]
+      properties:
+        roleKey: { type: string, pattern: '^[A-Z][A-Z0-9_]{2,63}$', maxLength: 64 }
+        permissions:
+          type: array
+          maxItems: 100
+          items: { type: string, pattern: '^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$', maxLength: 160 }
+    TenantRole:
+      type: object
+      additionalProperties: false
+      required: [id, roleKey, systemManaged, permissions, assignedMembers]
+      properties:
+        id: { type: string, format: uuid }
+        roleKey: { type: string }
+        systemManaged: { type: boolean }
+        permissions:
+          type: array
+          items: { type: string }
+        assignedMembers: { type: integer, minimum: 0 }
+    TenantRolePage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/TenantRole' }
     CurrentSession:
       type: object
       additionalProperties: false
