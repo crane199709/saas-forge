@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -69,6 +71,17 @@ class BrandAssetServiceTest {
         assertThrows(BrandAssetService.Forbidden.class,
                 () -> service().upload(context, BrandPng.Kind.FAVICON, png()));
         verifyNoInteractions(objects, assets, outbox);
+    }
+
+    @Test
+    void failedDatabaseWriteRemovesTheUploadedObject() throws Exception {
+        when(authority.allowed(context, "system:brand:manage")).thenReturn(true);
+        doThrow(new IllegalStateException("database unavailable")).when(assets).insert(any(), any(), anyInt());
+        assertThrows(IllegalStateException.class,
+                () -> service().upload(context, BrandPng.Kind.FAVICON, png()));
+        verify(objects).put(any(), any());
+        verify(objects).delete(any());
+        verifyNoInteractions(outbox);
     }
 
     private static byte[] png() throws Exception {
