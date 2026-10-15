@@ -28,7 +28,7 @@ class InvitationSmtpIT {
     void deliversLatestInvitationLinkToSmtpRecipient() throws Exception {
         String token = "test-invitation-token";
         var mailer = new InvitationConfiguration().invitationMailer(
-                "test", MAILPIT.getHost(), MAILPIT.getMappedPort(1025), "", "",
+                "test", "saas.forge.test", MAILPIT.getHost(), MAILPIT.getMappedPort(1025), "", "",
                 "invites@saas.forge.test", false, "https://console.saas.forge.test/invitation");
 
         mailer.send("invitee@example.test", token);
@@ -47,4 +47,5 @@ class InvitationSmtpIT {
         assertEquals(200, message.statusCode());
         assertTrue(message.body().contains("https://console.saas.forge.test/invitation#token=" + token));
     }
+
 }

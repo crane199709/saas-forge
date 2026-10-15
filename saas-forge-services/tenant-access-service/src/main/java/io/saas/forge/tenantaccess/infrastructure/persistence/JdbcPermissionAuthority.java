@@ -121,6 +121,9 @@ public class JdbcPermissionAuthority implements PermissionAuthority {
                                   WHERE enabling.tenant_id = member.tenant_id
                                     AND enabling.membership_id = member.id
                                     AND enabling.workflow_status IN ('CONSUMING', 'COMPENSATION_PENDING', 'FENCE_PENDING'))
+                  AND NOT EXISTS (SELECT 1 FROM tenant_lifecycle_workflows closure
+                                  WHERE closure.tenant_id = tenant.id AND closure.lifecycle_action = 'CLOSE'
+                                    AND closure.workflow_status IN ('PENDING', 'RECOVERY_REQUIRED'))
                   AND (tenant.expires_at IS NULL OR tenant.expires_at > statement_timestamp())
                   AND (
                     EXISTS (

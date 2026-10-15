@@ -3,6 +3,7 @@ package io.saas.forge.tenantaccess.infrastructure.persistence;
 import io.saas.forge.tenantaccess.application.brand.BrandAsset;
 import io.saas.forge.tenantaccess.application.brand.BrandAssetRepository;
 import io.saas.forge.tenantaccess.application.brand.BrandAssetCleanupRepository;
+import io.saas.forge.tenantaccess.application.brand.BrandUploadIntentRepository;
 import io.saas.forge.tenantaccess.application.brand.ClaimedBrandAsset;
 import io.saas.forge.tenantaccess.application.brand.BrandPng;
 import io.saas.forge.tenantaccess.application.brand.DisabledBrandAsset;
@@ -13,10 +14,45 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class JdbcBrandAssetRepository implements BrandAssetRepository, BrandAssetCleanupRepository {
+public class JdbcBrandAssetRepository implements BrandAssetRepository, BrandAssetCleanupRepository,
+        BrandUploadIntentRepository {
     private final JdbcTemplate jdbc;
 
     public JdbcBrandAssetRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+
+    @Override public void reserveUpload(BrandAsset asset, String objectKey) {
+        target(asset.tenantId());
+        jdbc.update("INSERT INTO brand_upload_intents (asset_id, tenant_id, object_key) VALUES (?, ?, ?)",
+                asset.id(), asset.tenantId(), objectKey);
+    }
+
+    @Override public void completeUpload(UUID tenantId, UUID assetId) {
+        target(tenantId);
+        if (jdbc.update("DELETE FROM brand_upload_intents WHERE tenant_id = ? AND asset_id = ? AND state = 'RESERVED'",
+                tenantId, assetId) != 1) throw new IllegalStateException("品牌上传已被清理领取");
+    }
+
+    @Override public void discardUpload(UUID tenantId, UUID assetId) {
+        target(tenantId);
+        jdbc.update("DELETE FROM brand_upload_intents WHERE tenant_id = ? AND asset_id = ? AND state = 'RESERVED'",
+                tenantId, assetId);
+    }
+
+    @Override public Optional<Intent> claimUpload(Instant now) {
+        return jdbc.query("SELECT asset_id, tenant_id, object_key FROM claim_next_brand_upload_cleanup(?)",
+                (row, index) -> new Intent(row.getObject(1, UUID.class), row.getObject(2, UUID.class),
+                        row.getString(3)), java.sql.Timestamp.from(now)).stream().findFirst();
+    }
+
+    @Override public void completeUploadCleanup(Intent intent) {
+        target(intent.tenantId());
+        jdbc.update("DELETE FROM brand_upload_intents WHERE tenant_id = ? AND asset_id = ? AND state = 'CLEANING'",
+                intent.tenantId(), intent.assetId());
+    }
+
+    private void target(UUID tenantId) {
+        jdbc.queryForObject("SELECT set_config('app.tenant_id', ?, true)", String.class, tenantId.toString());
+    }
 
     @Override
     public void insert(BrandAsset asset, String objectKey, int byteSize) {

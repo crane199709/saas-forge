@@ -12,6 +12,7 @@ public interface InvitationAcceptanceRepository {
     UUID invitedIdentity(UUID tenantId, UUID invitationId);
     boolean membershipExists(UUID tenantId, UUID identityId);
     Attempt lockAttempt(UUID tenantId, UUID invitationId);
+    Attempt claimNextCompensation(Instant now);
     void saveAttempt(Attempt attempt, Instant now);
     void state(Attempt attempt, String state, Instant now);
     void activate(Attempt attempt, Instant now);

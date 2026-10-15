@@ -106,7 +106,7 @@ public final class MembershipEnableService {
         Instant at = now();
         Work work = new Work(operationId, actor.tenantId(), membershipId, actor.membershipId(),
                 actor.identityId(), disable.id(), disable.revocationId(), ids.next(), ids.next(), ids.next(),
-                "CONSUMING");
+                "CONSUMING", null);
         jdbc.update("""
                 INSERT INTO membership_enable_workflows
                 (operation_id, tenant_id, membership_id, actor_membership_id, actor_identity_id,
@@ -139,7 +139,7 @@ public final class MembershipEnableService {
         if ("CONSUMING".equals(work.state())) {
             try {
                 quota.consume(work.tenantId(), work.consumeId());
-                // 一旦跨服务扣减成功，持久状态的默认恢复动作是补偿；本地提交才改为解除 Fence。
+                // 扣减后先持久化待提交状态；事务结果不明时只能重试本地提交，不能释放已使用名额。
                 Work consumed = work;
                 work = transactions.execute(status -> {
                     target(consumed.tenantId());
@@ -149,13 +149,6 @@ public final class MembershipEnableService {
                             """, sql(now()), consumed.operationId());
                     return find(consumed.tenantId(), consumed.operationId());
                 });
-                try {
-                    Work ready = work;
-                    work = transactions.execute(status -> commitEnabled(ready, traceId));
-                } catch (RuntimeException localFailure) {
-                    schedule(work, "LOCAL_COMMIT_FAILED", RETRY.toSeconds());
-                    return compensate(work);
-                }
             } catch (MembershipQuotaExceededException exhausted) {
                 rejectQuota(work);
                 return readProgress(work);
@@ -164,7 +157,36 @@ public final class MembershipEnableService {
                 return readProgress(work);
             }
         }
-        if ("COMPENSATION_PENDING".equals(work.state())) return compensate(work);
+        if ("COMPENSATION_PENDING".equals(work.state())) {
+            if ("LOCAL_COMMIT_FAILED".equals(work.lastFailure())
+                    || "QUOTA_COMPENSATION_UNAVAILABLE".equals(work.lastFailure())) return compensate(work);
+            try {
+                Work ready = work;
+                work = transactions.execute(status -> {
+                    try { return commitEnabled(ready, traceId); }
+                    catch (RuntimeException failure) { throw new LocalCommitFailure(failure); }
+                });
+            } catch (LocalCommitFailure localFailure) {
+                schedule(work, "LOCAL_COMMIT_FAILED", RETRY.toSeconds());
+                return compensate(work);
+            } catch (RuntimeException uncertain) {
+                // 提交已完成但应答丢失时，权威状态优先；不可判定时保留 Quota 并由 worker 重试。
+                Work attempted = work;
+                Work observed = transactions.execute(status -> {
+                    target(attempted.tenantId());
+                    Work current = find(attempted.tenantId(), attempted.operationId());
+                    if (current == null) throw new MembershipEnableFailure("MEMBERSHIP_ENABLE_IN_PROGRESS");
+                    if ("FENCE_PENDING".equals(current.state())
+                            && "ENABLED".equals(membershipStatus(attempted.tenantId(), attempted.membershipId()))) return current;
+                    return null;
+                });
+                if (observed == null) {
+                    schedule(work, "COMMIT_OUTCOME_UNKNOWN", RETRY.toSeconds());
+                    return readProgress(work);
+                }
+                work = observed;
+            }
+        }
         if ("FENCE_PENDING".equals(work.state())) {
             try {
                 fences.release(work.fenceReleaseId(), work.revocationId(),
@@ -290,7 +312,7 @@ public final class MembershipEnableService {
     private static final String WORK_SELECT = """
             SELECT operation_id, tenant_id, membership_id, actor_membership_id, actor_identity_id,
               disable_operation_id, revocation_request_id, consume_operation_id,
-              compensation_operation_id, fence_release_request_id, workflow_status
+              compensation_operation_id, fence_release_request_id, workflow_status, last_failure
             FROM membership_enable_workflows WHERE tenant_id = ?
             """;
 
@@ -298,7 +320,7 @@ public final class MembershipEnableService {
         return new Work(row.getObject(1, UUID.class), row.getObject(2, UUID.class),
                 row.getObject(3, UUID.class), row.getObject(4, UUID.class), row.getObject(5, UUID.class),
                 row.getObject(6, UUID.class), row.getObject(7, UUID.class), row.getObject(8, UUID.class),
-                row.getObject(9, UUID.class), row.getObject(10, UUID.class), row.getString(11));
+                row.getObject(9, UUID.class), row.getObject(10, UUID.class), row.getString(11), row.getString(12));
     }
 
     private Progress readProgress(Work work) {
@@ -356,6 +378,9 @@ public final class MembershipEnableService {
     private record Disable(UUID id, UUID revocationId, String status) {}
     private record Work(UUID operationId, UUID tenantId, UUID membershipId, UUID actorMembershipId,
             UUID actorIdentityId, UUID disableId, UUID revocationId, UUID consumeId,
-            UUID compensationId, UUID fenceReleaseId, String state) {}
+            UUID compensationId, UUID fenceReleaseId, String state, String lastFailure) {}
+    private static final class LocalCommitFailure extends RuntimeException {
+        LocalCommitFailure(RuntimeException cause) { super(cause); }
+    }
     public record Progress(UUID operationId, String operationStatus, String membershipStatus, boolean pending) {}
 }

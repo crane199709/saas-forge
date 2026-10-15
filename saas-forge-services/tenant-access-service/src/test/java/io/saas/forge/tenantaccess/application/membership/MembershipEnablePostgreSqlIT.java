@@ -31,6 +31,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
 
 @Testcontainers
@@ -69,6 +71,7 @@ class MembershipEnablePostgreSqlIT {
     private volatile boolean quotaExhausted;
     private volatile boolean consumeResponseLost;
     private volatile boolean outboxFailure;
+    private volatile boolean commitResponseLost;
     private volatile boolean fenceUnavailable;
     private volatile boolean releaseUnavailable;
 
@@ -92,6 +95,7 @@ class MembershipEnablePostgreSqlIT {
         consumedOperations.clear();
         releasedRevocations.clear();
         quotaExhausted = false; consumeResponseLost = false; outboxFailure = false;
+        commitResponseLost = false;
         fenceUnavailable = false; releaseUnavailable = false;
         outboxRepository = event -> {
             if (outboxFailure && event.eventSnapshot().contains("membership.enabled.v1"))
@@ -104,6 +108,11 @@ class MembershipEnablePostgreSqlIT {
                 OffsetDateTime.ofInstant(event.occurredAt(), ZoneOffset.UTC), event.topic(),
                 event.orderingKey(), event.traceId(), event.eventSnapshot(),
                 OffsetDateTime.ofInstant(event.occurredAt(), ZoneOffset.UTC));
+            if (commitResponseLost && event.eventSnapshot().contains("membership.enabled.v1")) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override public void afterCommit() { throw new IllegalStateException("commit response lost"); }
+                });
+            }
         };
         quotaGateway = new MembershipEnableQuotaGateway() {
                     @Override public void consume(UUID tenantId, UUID operationId) {
@@ -213,6 +222,18 @@ class MembershipEnablePostgreSqlIT {
         assertEquals(0, migrator.queryForObject("SELECT count(*) FROM tenant_access_outbox_events WHERE event_snapshot->>'type' = 'com.saas.forge.membership.enabled.v1'", Integer.class));
         assertEquals(0, migrator.queryForObject("SELECT count(*) FROM validate_membership(?, ?)", Integer.class,
                 fixture.memberIdentity(), fixture.member()));
+    }
+
+    @Test
+    void committedEnableWithLostResponseMustNotReleaseItsConsumedSeat() {
+        Fixture fixture = disabledMember("COMPLETED");
+        commitResponseLost = true;
+        var progress = service.enable(fixture.actor(), fixture.member(), ids.next(), null);
+        assertEquals("COMPLETED", progress.operationStatus());
+        assertEquals("ENABLED", status(fixture.member()));
+        assertEquals(1, consumes.get());
+        assertEquals(0, releases.get());
+        assertEquals(1, fenceReleases.get());
     }
 
     @Test

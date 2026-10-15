@@ -72,6 +72,15 @@ public final class JdbcInvitationAcceptanceRepository implements InvitationAccep
         return rows.isEmpty() ? null : rows.get(0);
     }
 
+    @Override public Attempt claimNextCompensation(Instant now) {
+        List<Attempt> rows = jdbc.query("SELECT * FROM claim_next_invitation_compensation(?)",
+                (row, index) -> new Attempt(row.getObject(1, UUID.class), row.getObject(2, UUID.class),
+                        row.getObject(3, UUID.class), row.getObject(4, UUID.class), row.getObject(5, UUID.class),
+                        row.getObject(6, UUID.class), row.getObject(7, UUID.class), row.getString(8)),
+                Timestamp.from(now));
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
     @Override public void saveAttempt(Attempt attempt, Instant now) {
         jdbc.update("""
                 INSERT INTO invitation_acceptance_attempts

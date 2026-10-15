@@ -9,6 +9,7 @@ import io.saas.forge.sdk.tenant.TenantContextSnapshot;
 import io.saas.forge.tenantaccess.application.administrator.IdentityCredentialDisposition;
 import io.saas.forge.tenantaccess.application.administrator.IdentityProvisioningGateway;
 import io.saas.forge.tenantaccess.application.administrator.QuotaUnavailableException;
+import io.saas.forge.tenantaccess.application.administrator.RemoteWorkflowUnavailableException;
 import io.saas.forge.tenantaccess.application.invitation.InvitationEventFactory;
 import io.saas.forge.tenantaccess.application.invitation.InvitationFailure;
 import io.saas.forge.tenantaccess.application.invitation.InvitationService;
@@ -264,6 +265,89 @@ class InvitationPersistenceTest {
         assertEquals("INVITATION_REVOKED", assertThrows(InvitationFailure.class,
                 () -> setups.request(delivered.get(1), ids.next())).code());
         assertEquals(List.of(key), setupRequests);
+    }
+
+    @Test
+    void revokedInvitationKeepsPendingQuotaCompensationVisible() {
+        Flyway.configure().dataSource(url(), "tenant_access_migrator", "tenant-access-migrator-password")
+                .locations("classpath:db/migration").load().migrate();
+        JdbcTemplate migrator = new JdbcTemplate(new DriverManagerDataSource(
+                url(), "tenant_access_migrator", "tenant-access-migrator-password"));
+        UUID tenant = migrator.queryForObject(
+                "INSERT INTO tenants (display_name, tenant_status) VALUES ('Compensation', 'ACTIVE') RETURNING id",
+                UUID.class);
+        UUID actor = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        UUID actorMembership = migrator.queryForObject("""
+                INSERT INTO memberships (tenant_id, identity_id, membership_status)
+                VALUES (?, ?, 'ENABLED') RETURNING id
+                """, UUID.class, tenant, actor);
+        UUID invitee = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        var datasource = new DriverManagerDataSource(url(), "tenant_access_app", "tenant-access-app-password");
+        JdbcTemplate jdbc = new JdbcTemplate(datasource);
+        var transactions = new TransactionTemplate(new DataSourceTransactionManager(datasource));
+        Instant at = Instant.parse("2026-10-14T10:00:00Z");
+        var ids = new UuidV7Generator(Clock.fixed(at, ZoneOffset.UTC), new SecureRandom());
+        var events = new InvitationEventFactory(new ObjectMapper(), ids, "saas.forge.test.events");
+        var repo = new JdbcInvitationRepository(jdbc);
+        List<String> delivered = new ArrayList<>();
+        IdentityProvisioningGateway identities = (requestId, email, displayName) ->
+                new IdentityProvisioningGateway.Result(invitee, IdentityCredentialDisposition.PASSWORD_READY);
+        var outbox = (io.saas.forge.tenantaccess.domain.outbox.OutboxEventRepository) event -> {
+            if (event.eventSnapshot().contains("invitation.accepted.v1"))
+                throw new IllegalStateException("accepted fact write unavailable");
+        };
+        var creator = new InvitationService(repo, identities, outbox, events,
+                (email, token) -> delivered.add(token), transactions, ids, new SecureRandom(),
+                Clock.fixed(at, ZoneOffset.UTC));
+        var invitation = creator.create(new TenantContextSnapshot(actor, actorMembership, tenant),
+                "compensation@example.test", null);
+        List<UUID> consumes = new ArrayList<>();
+        List<UUID> releases = new ArrayList<>();
+        AtomicBoolean releaseUnavailable = new AtomicBoolean(true);
+        InvitationQuotaGateway quota = new InvitationQuotaGateway() {
+            @Override public void consume(UUID target, UUID operationId) { consumes.add(operationId); }
+            @Override public void release(UUID target, UUID operationId) {
+                if (releaseUnavailable.get()) throw new RemoteWorkflowUnavailableException(new IllegalStateException());
+                releases.add(operationId);
+            }
+        };
+        var acceptor = new InvitationAcceptanceService(new JdbcInvitationAcceptanceRepository(jdbc), quota,
+                outbox, events, transactions, ids, Clock.fixed(at, ZoneOffset.UTC));
+        UUID key = ids.next();
+        assertEquals("INVITATION_ACTIVATION_COMPENSATING", assertThrows(InvitationFailure.class,
+                () -> acceptor.accept(delivered.get(0), invitee, key, null)).code());
+        assertEquals(1, consumes.size());
+        assertTrue(releases.isEmpty());
+        releaseUnavailable.set(false);
+        var firstRecovery = new InvitationAcceptanceService(new JdbcInvitationAcceptanceRepository(jdbc), quota,
+                outbox, events, transactions, ids,
+                Clock.fixed(at.plusSeconds(31), ZoneOffset.UTC));
+        assertTrue(firstRecovery.recoverNext());
+        assertEquals(1, releases.size());
+        assertEquals("INVITATION_ACCEPTANCE_RETRY_REQUIRED", assertThrows(InvitationFailure.class,
+                () -> firstRecovery.accept(delivered.get(0), invitee, ids.next(), null)).code());
+        assertEquals(2, consumes.size());
+        assertEquals(2, releases.size());
+        assertNotEquals(consumes.get(0), consumes.get(1));
+        assertNotEquals(releases.get(0), releases.get(1));
+        releaseUnavailable.set(true);
+        assertEquals("INVITATION_ACTIVATION_COMPENSATING", assertThrows(InvitationFailure.class,
+                () -> firstRecovery.accept(delivered.get(0), invitee, ids.next(), null)).code());
+        creator.revoke(new TenantContextSnapshot(actor, actorMembership, tenant), invitation.id(), null);
+        assertEquals("INVITATION_ACTIVATION_COMPENSATING", assertThrows(InvitationFailure.class,
+                () -> firstRecovery.accept(delivered.get(0), invitee, ids.next(), null)).code());
+        releaseUnavailable.set(false);
+        var recovered = new InvitationAcceptanceService(new JdbcInvitationAcceptanceRepository(jdbc), quota,
+                outbox, events, transactions, ids,
+                Clock.fixed(at.plusSeconds(8 * 86400), ZoneOffset.UTC));
+        assertTrue(recovered.recoverNext());
+        assertEquals(3, releases.size());
+        assertEquals("COMPENSATED", migrator.queryForObject(
+                "SELECT state FROM invitation_acceptance_attempts WHERE invitation_id = ?", String.class,
+                invitation.id()));
+        assertEquals(0, migrator.queryForObject(
+                "SELECT count(*) FROM memberships WHERE tenant_id = ? AND identity_id = ?", Integer.class,
+                tenant, invitee));
     }
 
     private static String url() {
