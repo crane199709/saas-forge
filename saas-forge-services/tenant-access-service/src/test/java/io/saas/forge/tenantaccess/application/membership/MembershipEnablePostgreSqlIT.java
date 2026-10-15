@@ -244,6 +244,9 @@ class MembershipEnablePostgreSqlIT {
         var pending = service.enable(fixture.actor(), fixture.member(), ids.next(), null);
         assertEquals("COMPENSATION_PENDING", pending.operationStatus());
         assertEquals("DISABLED", status(fixture.member()));
+        MembershipEnableFailure blocked = assertThrows(MembershipEnableFailure.class,
+                () -> service.enable(fixture.actor(), fixture.member(), ids.next(), null));
+        assertEquals("MEMBERSHIP_ENABLE_IN_PROGRESS", blocked.code());
         releaseUnavailable = false;
         migrator.update("UPDATE membership_enable_workflows SET next_attempt_at = now() - interval '1 second' WHERE operation_id = ?",
                 pending.operationId());
@@ -253,6 +256,40 @@ class MembershipEnablePostgreSqlIT {
         assertEquals("DISABLED", status(fixture.member()));
         assertEquals(1, consumes.get());
         assertEquals(1, releases.get());
+
+        outboxFailure = false;
+        assertEquals("COMPLETED", service.enable(fixture.actor(), fixture.member(), ids.next(), null).operationStatus());
+        assertEquals("ENABLED", status(fixture.member()));
+        assertEquals(2, consumes.get());
+        assertEquals(2, consumedOperations.size());
+        assertEquals(1, releases.get());
+        assertEquals(1, migrator.queryForObject("SELECT count(*) FROM tenant_access_outbox_events WHERE event_snapshot->>'type' = 'com.saas.forge.membership.enabled.v1'", Integer.class));
+    }
+
+    @Test
+    void newWorkerCompletesPendingFenceWithoutReconsumingQuotaOrRepeatingEnabledFact() {
+        Fixture fixture = disabledMember("COMPLETED");
+        fenceUnavailable = true;
+        var pending = service.enable(fixture.actor(), fixture.member(), ids.next(), null);
+        assertEquals("FENCE_PENDING", pending.operationStatus());
+        assertEquals("ENABLED", status(fixture.member()));
+        assertEquals(0, migrator.queryForObject("SELECT count(*) FROM validate_membership(?, ?)", Integer.class,
+                fixture.memberIdentity(), fixture.member()));
+        assertEquals(1, consumes.get());
+        assertEquals(0, releases.get());
+
+        fenceUnavailable = false;
+        migrator.update("UPDATE membership_enable_workflows SET next_attempt_at = now() - interval '1 second' WHERE operation_id = ?",
+                pending.operationId());
+        restartService();
+        service.recoverNext();
+        assertEquals("COMPLETED", service.read(fixture.actor(), fixture.member()).operationStatus());
+        assertEquals(1, migrator.queryForObject("SELECT count(*) FROM validate_membership(?, ?)", Integer.class,
+                fixture.memberIdentity(), fixture.member()));
+        assertEquals(1, consumes.get());
+        assertEquals(0, releases.get());
+        assertEquals(2, fenceReleases.get());
+        assertEquals(1, migrator.queryForObject("SELECT count(*) FROM tenant_access_outbox_events WHERE event_snapshot->>'type' = 'com.saas.forge.membership.enabled.v1'", Integer.class));
     }
 
     @Test
