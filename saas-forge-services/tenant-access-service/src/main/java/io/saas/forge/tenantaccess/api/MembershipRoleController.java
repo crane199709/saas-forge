@@ -7,15 +7,9 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Component;
 
-@RestController
-@RequestMapping("/api/v1/members/{membershipId}/roles")
+@Component
 public class MembershipRoleController {
     private final TenantContextAccessor contexts;
     private final MembershipRoleService service;
@@ -27,18 +21,15 @@ public class MembershipRoleController {
 
     public record RoleAssignments(List<Assignment> items) {}
 
-    @GetMapping
-    public ResponseEntity<RoleAssignments> list(@PathVariable UUID membershipId) {
+    public ResponseEntity<RoleAssignments> list(UUID membershipId) {
         return noStore(service.list(contexts.requireCurrent(), membershipId));
     }
 
-    @PutMapping("/{roleId}")
-    public ResponseEntity<RoleAssignments> assign(@PathVariable UUID membershipId, @PathVariable UUID roleId) {
+    public ResponseEntity<RoleAssignments> assign(UUID membershipId, UUID roleId) {
         return noStore(service.assign(contexts.requireCurrent(), membershipId, roleId));
     }
 
-    @DeleteMapping("/{roleId}")
-    public ResponseEntity<RoleAssignments> revoke(@PathVariable UUID membershipId, @PathVariable UUID roleId) {
+    public ResponseEntity<RoleAssignments> revoke(UUID membershipId, UUID roleId) {
         return noStore(service.revoke(contexts.requireCurrent(), membershipId, roleId));
     }
 

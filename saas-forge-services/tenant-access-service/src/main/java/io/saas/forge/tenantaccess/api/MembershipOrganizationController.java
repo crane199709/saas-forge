@@ -6,16 +6,9 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Component;
 
-@RestController
-@RequestMapping("/api/v1/members/{membershipId}/organization-units")
+@Component
 public final class MembershipOrganizationController {
     private final TenantContextAccessor contexts;
     private final MembershipOrganizationService service;
@@ -28,20 +21,17 @@ public final class MembershipOrganizationController {
     public record UnitList(List<UUID> unitIds) {}
     public record AddUnit(UUID unitId) {}
 
-    @GetMapping
-    public ResponseEntity<UnitList> list(@PathVariable UUID membershipId) {
+    public ResponseEntity<UnitList> list(UUID membershipId) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(new UnitList(service.list(contexts.requireCurrent(), membershipId)));
     }
 
-    @PostMapping
-    public ResponseEntity<Void> add(@PathVariable UUID membershipId, @RequestBody AddUnit body) {
+    public ResponseEntity<Void> add(UUID membershipId, AddUnit body) {
         service.add(contexts.requireCurrent(), membershipId, body == null ? null : body.unitId());
         return ResponseEntity.status(201).cacheControl(CacheControl.noStore()).build();
     }
 
-    @DeleteMapping("/{unitId}")
-    public ResponseEntity<Void> remove(@PathVariable UUID membershipId, @PathVariable UUID unitId) {
+    public ResponseEntity<Void> remove(UUID membershipId, UUID unitId) {
         service.remove(contexts.requireCurrent(), membershipId, unitId);
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }

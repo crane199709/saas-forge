@@ -7,15 +7,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Component;
 
-@RestController
-@RequestMapping("/api/v1/members/{membershipId}/enables")
+@Component
 public final class MembershipEnableController {
     private final TenantContextAccessor contexts;
     private final MembershipEnableService service;
@@ -24,15 +18,13 @@ public final class MembershipEnableController {
         this.contexts = contexts; this.service = service;
     }
 
-    @PostMapping
-    public ResponseEntity<MembershipEnableService.Progress> enable(@PathVariable UUID membershipId,
-            @RequestHeader("Idempotency-Key") UUID operationId, HttpServletRequest request) {
+    public ResponseEntity<MembershipEnableService.Progress> enable(UUID membershipId,
+            UUID operationId, HttpServletRequest request) {
         return response(service.enable(contexts.requireCurrent(), membershipId, operationId,
                 TenantCreationController.traceId(request)));
     }
 
-    @GetMapping
-    public ResponseEntity<MembershipEnableService.Progress> read(@PathVariable UUID membershipId) {
+    public ResponseEntity<MembershipEnableService.Progress> read(UUID membershipId) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(service.read(contexts.requireCurrent(), membershipId));
     }
