@@ -3,6 +3,7 @@ package io.saas.forge.tenantaccess.api;
 import io.saas.forge.tenantaccess.application.brand.BrandProfileService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -10,6 +11,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class BrandProfileExceptionHandler {
     @ExceptionHandler(BrandProfileController.BrandProfilePreconditionRequired.class)
     ProblemDetail preconditionRequired() { return problem(HttpStatus.PRECONDITION_REQUIRED, "BRAND_PROFILE_PRECONDITION_REQUIRED"); }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    ProblemDetail missingRevision(MissingRequestHeaderException failure) {
+        if (org.springframework.http.HttpHeaders.IF_MATCH.equalsIgnoreCase(failure.getHeaderName()))
+            return preconditionRequired();
+        return problem(HttpStatus.BAD_REQUEST, "BRAND_PROFILE_INVALID");
+    }
 
     @ExceptionHandler(BrandProfileService.Stale.class)
     ProblemDetail stale() { return problem(HttpStatus.PRECONDITION_FAILED, "BRAND_PROFILE_STALE"); }

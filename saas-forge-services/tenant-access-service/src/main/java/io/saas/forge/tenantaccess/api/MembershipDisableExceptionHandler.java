@@ -10,7 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice(assignableTypes = MembershipDisableController.class)
+@RestControllerAdvice(assignableTypes = MemberDirectoryController.class)
 public final class MembershipDisableExceptionHandler {
     @ExceptionHandler(MembershipDisableFailure.class)
     ResponseEntity<Problem> failure(MembershipDisableFailure failure, HttpServletRequest request) {

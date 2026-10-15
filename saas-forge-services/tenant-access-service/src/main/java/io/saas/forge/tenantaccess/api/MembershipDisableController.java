@@ -6,15 +6,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Component;
 
-@RestController
-@RequestMapping("/api/v1/members/{membershipId}/disables")
+@Component
 public final class MembershipDisableController {
     private final TenantContextAccessor contexts;
     private final MembershipDisableService service;
@@ -23,21 +17,18 @@ public final class MembershipDisableController {
         this.contexts = contexts; this.service = service;
     }
 
-    @PostMapping
-    public ResponseEntity<MembershipDisableService.Progress> disable(@PathVariable UUID membershipId,
-            @RequestHeader("Idempotency-Key") UUID operationId, HttpServletRequest request) {
+    public ResponseEntity<MembershipDisableService.Progress> disable(UUID membershipId,
+            UUID operationId, HttpServletRequest request) {
         return response(service.disable(contexts.requireCurrent(), membershipId, operationId,
                 TenantCreationController.traceId(request)));
     }
 
-    @GetMapping
-    public ResponseEntity<MembershipDisableService.Progress> read(@PathVariable UUID membershipId) {
+    public ResponseEntity<MembershipDisableService.Progress> read(UUID membershipId) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(service.read(contexts.requireCurrent(), membershipId));
     }
 
-    @PostMapping("/recoveries")
-    public ResponseEntity<MembershipDisableService.Progress> recover(@PathVariable UUID membershipId,
+    public ResponseEntity<MembershipDisableService.Progress> recover(UUID membershipId,
             HttpServletRequest request) {
         return response(service.recover(contexts.requireCurrent(), membershipId,
                 TenantCreationController.traceId(request)));
