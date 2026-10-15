@@ -14,7 +14,9 @@
 
 禁用一个未绑定的 Tenant B 品牌素材后，Platform 管理 API 返回 200、源 Outbox 与 Audit 记录唯一匹配、Tenant Access 直连公开读取返回 404，但正式 Gateway 公开读取返回 502；根因是该服务的错误正文缺少 Gateway 要求的完整 Problem Details 字段。相同契约缺陷也使重复邀请冲突从预期 409 转为 Gateway 502。已在工作区修复相关异常映射，`Stage4ProblemMappingTest`、`BrandProfileControllerTest`、`BrandAssetPolicyControllerTest` 定向测试通过。将本地修复临时封装为单独的诊断镜像后，正式 Gateway 对已禁用素材返回含六个必需字段的 404，对重复邀请返回含六个必需字段的 409；两项仅证明修复方向，不能覆盖原镜像的 `failed`。诊断后已恢复原 Tenant Access 镜像 ID，但容器重建使容器 ID 不再等于本轮冻结 handoff，因此**本轮后续运行态结果不能并入该 handoff 的正式验收**；修复提交和 CI 完成后须创建新 runId 重新冻结环境。四个已绑定素材的公开 PNG 检查通过，禁用测试不涉及它们。权威与 Audit 的脱敏分项状态见 [本轮独立摘要](issue-240-authority-audit-fresh-20261015.json)。
 
-修复已分别提交为后端 `854d6f06`（错误契约）、`62810cd6`（隔离 Mailpit）和前端 `a2b2c74`（浏览器观察驱动）。定向后端测试 10/10、Compose 布局检查、前端类型检查和全仓 ESLint 通过；前端提交钩子完整运行。当前仍须取得 Project 的精确 Nacos ACL 决策并完成修复提交；这些新提交的三条精确 CI 和新 Fresh 环境尚未执行。
+修复已分别提交为后端 `854d6f06`（错误契约）、`62810cd6`（隔离 Mailpit）和前端 `a2b2c74`（浏览器观察驱动）。定向后端测试 10/10、Compose 布局检查、前端类型检查和全仓 ESLint 通过；前端提交钩子完整运行。后端 `f1fc6f22` 的 [Verify](https://github.com/crane199709/saas-forge/actions/runs/38724199163) 与前端 `a2b2c74` 的 [Frontend verification](https://github.com/crane199709/saas-forge-web/actions/runs/38724192604) 已启动，当前均未给出最终结论。仍须取得 Project 的精确 Nacos ACL 决策并完成修复提交；对应最终提交的 API Client artifact 与新 Fresh 环境尚未执行。
+
+旧轮已执行本轮 Compose 项目的 `stop`，核对后无该项目运行容器；PostgreSQL、Redis、Kafka、品牌存储的四个隔离卷仍保留，未运行 `down -v`。`icube-*` 四个容器继续运行，其他项目未被停止。旧轮不再追加正式验收结果；新轮必须使用新 runId、重新冻结容器身份与源码制品。
 
 目前**未形成**阶段 4 全部 26 项同轮通过报告。特别是品牌素材 24 小时和 7 天清理需要真实时间窗，不能通过调整时间、修改数据库或调用聚合器代替。其余浏览器、权威、故障和 Audit 项按下面的必需证据逐项完成后，再运行聚合器；缺项保持 `not_run`，保留 #240 开放。
 
