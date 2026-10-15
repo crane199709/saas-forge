@@ -60,6 +60,8 @@ for topic in saas.forge.dev.iam-service.events saas.forge.dev.tenant-access-serv
 done
 grant_acl audit-service --consumer --topic saas.forge.dev.iam-service.events \
     --group audit-service.iam-session-events
+grant_acl audit-service --consumer --topic saas.forge.dev.iam-service.events \
+    --group audit-service.iam-password-events
 grant_acl audit-service --consumer --topic saas.forge.dev.tenant-access-service.events \
     --group audit-service.tenant-events
 grant_acl audit-service --producer --topic saas.forge.dev.audit-service.iam-session-isolations

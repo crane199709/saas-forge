@@ -16,7 +16,7 @@ class ManifestHttpContractTest {
         var authority = mock(ManifestAuthority.class);var service = mock(ManifestService.class);
         var actor = UUID.fromString("018f2d3a-4b5c-7d6e-8f90-123456789abc");
         var id = UUID.fromString("018f2d3a-4b5c-7d6e-8f90-123456789abd");
-        var value = new RemoteManifest(id,"project","1.0.0","https://remote.saas.forge.test/project/1.0.0/remote.js","1.4.0","a".repeat(64),RemoteManifest.State.PENDING_REVIEW,actor,Instant.parse("2026-10-02T12:00:00Z"),null,null,null,null);
+        var value = new RemoteManifest(id,"project","1.0.0","https://remote.saas.forge.test/project/1.0.0/remote.js","1.4.0","a".repeat(64),List.of("example:project:list"),RemoteManifest.State.PENDING_REVIEW,actor,Instant.parse("2026-10-02T12:00:00Z"),null,null,null,null);
         when(authority.administrator(any())).thenReturn(actor);when(authority.tenantScope()).thenReturn("tenant");
         when(service.list(null,20,actor.toString(),false)).thenReturn(new ManifestService.ManifestPage(List.of(value),null,false));
         when(service.list(null,20,"tenant",true)).thenReturn(new ManifestService.ManifestPage(List.of(value),null,false));
@@ -35,6 +35,7 @@ class ManifestHttpContractTest {
                 .andExpect(jsonPath("$.nextCursor").value(org.hamcrest.Matchers.nullValue()));
         mvc.perform(get("/api/v1/remote-manifests/enabled")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].source").value(value.source()))
+                .andExpect(jsonPath("$.items[0].permissions[0]").value("example:project:list"))
                 .andExpect(jsonPath("$.items[0].registeredBy").doesNotExist())
                 .andExpect(jsonPath("$.items[0].reviewedBy").doesNotExist());
         mvc.perform(post("/api/v1/platform/remote-manifests/"+id+"/approve")).andExpect(status().isBadRequest());

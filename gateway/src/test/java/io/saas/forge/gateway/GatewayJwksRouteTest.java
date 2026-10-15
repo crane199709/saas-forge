@@ -299,6 +299,10 @@ class GatewayJwksRouteTest {
                 route("DELETE", "/api/v1/platform/tenants/018f2d3a-4b5c-7d6e-8f90-123456789abc/suspensions", "tenant-access"),
                 route("POST", "/api/v1/platform/tenants/018f2d3a-4b5c-7d6e-8f90-123456789abc/suspension-recoveries",
                         "tenant-access"),
+                route("POST", "/api/v1/platform/tenants/018f2d3a-4b5c-7d6e-8f90-123456789abc/closures",
+                        "tenant-access"),
+                route("POST", "/api/v1/platform/tenants/018f2d3a-4b5c-7d6e-8f90-123456789abc/closure-recoveries",
+                        "tenant-access"),
                 route("POST", "/api/v1/platform/quota-definitions", "entitlement"),
                 route("POST", "/api/v1/platform/quota-definitions/018f2d3a-4b5c-7d6e-8f90-123456789abc/activations",
                         "entitlement"),
@@ -377,6 +381,41 @@ class GatewayJwksRouteTest {
     }
 
     @Test
+    void brandProfileRevisionPreflightAllowsOnlyControlledConsole() throws Exception {
+        var accepted = send(HttpRequest.newBuilder(gatewayUri("/api/v1/brand-profile"))
+                .header("Origin", "https://console.saas.forge.test")
+                .header("Access-Control-Request-Method", "PUT")
+                .header("Access-Control-Request-Headers", "authorization,content-type,if-match,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(200, accepted.statusCode());
+        assertTrue(accepted.headers().firstValue("Access-Control-Allow-Headers").orElse("")
+                .toLowerCase().contains("if-match"));
+        var rejected = send(HttpRequest.newBuilder(gatewayUri("/api/v1/brand-profile"))
+                .header("Origin", "https://platform.saas.forge.test")
+                .header("Access-Control-Request-Method", "PUT")
+                .header("Access-Control-Request-Headers", "authorization,content-type,if-match,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(403, rejected.statusCode());
+    }
+
+    @Test
+    void brandPolicyWriteIsLimitedToControlledConsoleBrowserOrigin() throws Exception {
+        String path = "/api/v1/platform/brand-assets/019535d9-0001-7000-8000-000000000028/disable";
+        var accepted = send(HttpRequest.newBuilder(gatewayUri(path))
+                .header("Origin", "https://console.saas.forge.test")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "authorization,content-type,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(200, accepted.statusCode());
+        var rejected = send(HttpRequest.newBuilder(gatewayUri(path))
+                .header("Origin", "https://platform.saas.forge.test")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "authorization,content-type,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(403, rejected.statusCode());
+    }
+
+    @Test
     void passwordSetupRequiresControlledOriginAndCsrfAndAllowsExactPreflight()
             throws IOException, InterruptedException {
         HttpRequest.Builder base = HttpRequest.newBuilder(gatewayUri("/api/v1/auth/password-setups"))
@@ -413,6 +452,33 @@ class GatewayJwksRouteTest {
         assertEquals("https://console.saas.forge.test",
                 preflight.headers().firstValue("Access-Control-Allow-Origin").orElseThrow());
         assertEquals("true", preflight.headers().firstValue("Access-Control-Allow-Credentials").orElseThrow());
+    }
+
+    @Test
+    void invitationPasswordSetupOnlyUsesTheConsoleOriginAndNeverRequiresABearerToken()
+            throws IOException, InterruptedException {
+        String path = "/api/v1/invitation-password-setups";
+        HttpRequest.Builder request = HttpRequest.newBuilder(gatewayUri(path))
+                .header("Content-Type", "application/json")
+                .header("X-SF-CSRF", "1")
+                .header("Sec-Fetch-Site", "same-site");
+        assertEquals(403, send(request.copy().POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build()).statusCode());
+        assertEquals(403, send(request.copy().header("Origin", "https://platform.saas.forge.test")
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build()).statusCode());
+        HttpResponse<String> allowed = send(request.copy()
+                .header("Origin", "https://console.saas.forge.test")
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build());
+        assertEquals(200, allowed.statusCode());
+        assertEquals("tenant-access", allowed.body());
+        var preflight = send(HttpRequest.newBuilder(gatewayUri(path))
+                .header("Origin", "https://console.saas.forge.test")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "content-type,idempotency-key,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(200, preflight.statusCode());
     }
 
     @Test

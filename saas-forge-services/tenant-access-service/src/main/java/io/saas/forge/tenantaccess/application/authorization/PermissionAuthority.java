@@ -11,5 +11,7 @@ public interface PermissionAuthority {
 
     List<PermissionEntry> catalog();
 
+    List<String> effective(TenantContextSnapshot context);
+
     record PermissionEntry(String code, boolean enabled) {}
 }

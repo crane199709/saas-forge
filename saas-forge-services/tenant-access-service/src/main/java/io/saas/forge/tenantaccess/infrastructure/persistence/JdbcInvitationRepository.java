@@ -30,6 +30,9 @@ public class JdbcInvitationRepository implements InvitationRepository {
     public boolean lockAccessibleTenant(UUID tenantId, Instant now) {
         return !jdbc.query("""
                 SELECT id FROM tenants WHERE id = ? AND tenant_status = 'ACTIVE'
+                  AND NOT EXISTS (SELECT 1 FROM tenant_lifecycle_workflows closure
+                      WHERE closure.tenant_id = tenants.id AND closure.lifecycle_action = 'CLOSE'
+                        AND closure.workflow_status IN ('PENDING', 'RECOVERY_REQUIRED'))
                   AND (expires_at IS NULL OR expires_at > ?) FOR UPDATE
                 """, (rs, row) -> rs.getObject(1, UUID.class), tenantId, Timestamp.from(now)).isEmpty();
     }

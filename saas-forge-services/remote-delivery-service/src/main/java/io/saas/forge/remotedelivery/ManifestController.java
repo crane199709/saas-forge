@@ -23,7 +23,7 @@ class ManifestController implements RemoteManifestsApi {
     @Override
     public ResponseEntity<io.saas.forge.remotedelivery.contract.model.RemoteManifest> registerRemoteManifest(
             io.saas.forge.remotedelivery.contract.model.RegisterRemoteManifestRequest body) {
-        var declaration = new RegisterManifestRequest(body.getModule(),body.getVersion(),body.getSource().toString(),body.getUiVersion(),body.getEntrySha256());
+        var declaration = new RegisterManifestRequest(body.getModule(),body.getVersion(),body.getSource().toString(),body.getUiVersion(),body.getEntrySha256(),body.getPermissions());
         return response(manifests.register(authority.ci(),declaration));
     }
     @Override
@@ -50,7 +50,7 @@ class ManifestController implements RemoteManifestsApi {
         var page = manifests.list(cursor,limit,authority.tenantScope(),true);
         // Shell 发现入口只需要声明，不返回平台管理员的身份与审批事实。
         var items = page.items().stream().map(value -> new EnabledRemoteManifest(value.id(),value.module(),value.version(),
-                value.source(),value.uiVersion(),value.entrySha256())).toList();
+                value.source(),value.uiVersion(),value.entrySha256()).permissions(value.permissions())).toList();
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new EnabledRemoteManifestPage(items,page.nextCursor(),page.hasMore()));
     }
     private ResponseEntity<io.saas.forge.remotedelivery.contract.model.RemoteManifest> decide(UUID id,UUID key,String action) {

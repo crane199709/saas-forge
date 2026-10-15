@@ -36,6 +36,14 @@ class ControlledBrowserCorsConfiguration {
         consoleCors.setAllowedHeaders(List.of("Content-Type", "Idempotency-Key", "If-Match", "X-SF-CSRF", "traceparent", "tracestate"));
         consoleCors.setExposedHeaders(List.of("ETag", "Retry-After"));
         source.registerCorsConfiguration("/api/v2/auth/**", consoleCors);
+        source.registerCorsConfiguration("/api/v1/invitation-password-setups", consoleCors);
+        CorsConfiguration brandProfileCors = new CorsConfiguration(cors);
+        brandProfileCors.setAllowedOrigins(List.of("https://console." + rootDomain));
+        brandProfileCors.setAllowedHeaders(List.of(
+                "Authorization", "Content-Type", "If-Match", "X-SF-CSRF", "traceparent", "tracestate"));
+        brandProfileCors.setExposedHeaders(List.of("ETag", "Retry-After"));
+        source.registerCorsConfiguration("/api/v1/brand-profile", brandProfileCors);
+        source.registerCorsConfiguration("/api/v1/platform/brand-assets/**", brandProfileCors);
         CorsConfiguration exampleCors = new CorsConfiguration(cors);
         exampleCors.setAllowedOrigins(List.of("https://console." + rootDomain));
         exampleCors.setAllowedHeaders(List.of(

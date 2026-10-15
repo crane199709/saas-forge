@@ -8,9 +8,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.saas.forge.sdk.tenant.TenantContextSnapshot;
 import io.saas.forge.tenantaccess.application.administrator.IdentityCredentialDisposition;
 import io.saas.forge.tenantaccess.application.administrator.IdentityProvisioningGateway;
+import io.saas.forge.tenantaccess.application.administrator.QuotaUnavailableException;
 import io.saas.forge.tenantaccess.application.invitation.InvitationEventFactory;
 import io.saas.forge.tenantaccess.application.invitation.InvitationFailure;
 import io.saas.forge.tenantaccess.application.invitation.InvitationService;
+import io.saas.forge.tenantaccess.application.invitation.InvitationAcceptanceService;
+import io.saas.forge.tenantaccess.application.invitation.InvitationPasswordSetupService;
+import io.saas.forge.tenantaccess.application.invitation.InvitationPasswordSetupGateway;
+import io.saas.forge.tenantaccess.application.invitation.InvitationQuotaGateway;
+import io.saas.forge.tenantaccess.infrastructure.persistence.JdbcInvitationAcceptanceRepository;
 import io.saas.forge.tenantaccess.application.tenant.UuidV7Generator;
 import io.saas.forge.tenantaccess.infrastructure.persistence.JdbcInvitationRepository;
 import java.nio.file.Files;
@@ -26,6 +32,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -117,7 +124,8 @@ class InvitationPersistenceTest {
         var later = new InvitationService(repository, identities, outbox, events,
                 (email, token) -> delivered.add(token), transactions, ids, new SecureRandom(),
                 Clock.fixed(at.plusSeconds(7 * 86400), ZoneOffset.UTC));
-        assertEquals("EXPIRED", later.list(context).get(0).status());
+        assertEquals("EXPIRED", later.list(context).stream()
+                .filter(item -> item.id().equals(replacement.id())).findFirst().orElseThrow().status());
         assertThrows(RuntimeException.class, () -> later.resend(context, replacement.id(), null));
         migrator.update("INSERT INTO memberships (tenant_id, identity_id, membership_status) VALUES (?, ?, 'DISABLED')",
                 tenantId, invitee);
@@ -128,6 +136,134 @@ class InvitationPersistenceTest {
             return jdbc.queryForObject("SELECT count(*) FROM tenant_access_outbox_events", Integer.class);
         }));
         assertTrue(delivered.stream().noneMatch(String::isBlank));
+    }
+
+    @Test
+    void authenticatedInviteeAcceptsOnceWithoutRoleAndReplayDoesNotConsumeAgain() {
+        Flyway.configure().dataSource(url(), "tenant_access_migrator", "tenant-access-migrator-password")
+                .locations("classpath:db/migration").load().migrate();
+        JdbcTemplate migrator = new JdbcTemplate(new DriverManagerDataSource(
+                url(), "tenant_access_migrator", "tenant-access-migrator-password"));
+        UUID tenantId = migrator.queryForObject(
+                "INSERT INTO tenants (display_name, tenant_status) VALUES ('Members', 'ACTIVE') RETURNING id",
+                UUID.class);
+        UUID actor = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        UUID actorMembership = migrator.queryForObject("""
+                INSERT INTO memberships (tenant_id, identity_id, membership_status)
+                VALUES (?, ?, 'ENABLED') RETURNING id
+                """, UUID.class, tenantId, actor);
+        UUID invitee = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        var datasource = new DriverManagerDataSource(url(), "tenant_access_app", "tenant-access-app-password");
+        JdbcTemplate jdbc = new JdbcTemplate(datasource);
+        var transactions = new TransactionTemplate(new DataSourceTransactionManager(datasource));
+        Instant at = Instant.parse("2026-10-14T10:00:00Z");
+        var ids = new UuidV7Generator(Clock.fixed(at, ZoneOffset.UTC), new SecureRandom());
+        List<String> delivered = new ArrayList<>();
+        var outbox = (io.saas.forge.tenantaccess.domain.outbox.OutboxEventRepository) event -> jdbc.update("""
+                INSERT INTO tenant_access_outbox_events
+                    (event_id, tenant_id, occurred_at, topic, ordering_key, trace_id, event_snapshot, next_attempt_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)
+                """, event.eventId(), event.tenantId(), Timestamp.from(event.occurredAt()), event.topic(),
+                event.orderingKey(), event.traceId(), event.eventSnapshot(), Timestamp.from(event.occurredAt()));
+        var events = new InvitationEventFactory(new ObjectMapper(), ids, "saas.forge.test.events");
+        var invitations = new JdbcInvitationRepository(jdbc);
+        IdentityProvisioningGateway identities = (requestId, email, displayName) ->
+                new IdentityProvisioningGateway.Result(invitee, IdentityCredentialDisposition.PASSWORD_READY);
+        var creator = new InvitationService(invitations, identities, outbox, events,
+                (email, token) -> delivered.add(token), transactions, ids, new SecureRandom(),
+                Clock.fixed(at, ZoneOffset.UTC));
+        var invitation = creator.create(new TenantContextSnapshot(actor, actorMembership, tenantId),
+                "member@example.com", null);
+        List<UUID> consumed = new ArrayList<>();
+        AtomicBoolean quotaExceeded = new AtomicBoolean(true);
+        InvitationQuotaGateway quota = new InvitationQuotaGateway() {
+            @Override public void consume(UUID target, UUID operationId) {
+                if (quotaExceeded.getAndSet(false))
+                    throw new QuotaUnavailableException("QUOTA_EXCEEDED", null);
+                consumed.add(operationId);
+            }
+            @Override public void release(UUID target, UUID operationId) { throw new AssertionError(); }
+        };
+        var acceptor = new InvitationAcceptanceService(new JdbcInvitationAcceptanceRepository(jdbc), quota,
+                outbox, events, transactions, ids, Clock.fixed(at, ZoneOffset.UTC));
+        UUID key = ids.next();
+        assertEquals("INVITATION_IDENTITY_MISMATCH", assertThrows(InvitationFailure.class,
+                () -> acceptor.accept(delivered.get(0), actor, key, null)).code());
+        assertEquals("QUOTA_EXCEEDED", assertThrows(InvitationFailure.class,
+                () -> acceptor.accept(delivered.get(0), invitee, key, null)).code());
+        assertEquals("INVITATION_ACCEPTANCE_RETRY_REQUIRED", assertThrows(InvitationFailure.class,
+                () -> acceptor.accept(delivered.get(0), invitee, key, null)).code());
+        UUID retryKey = ids.next();
+        var result = acceptor.accept(delivered.get(0), invitee, retryKey, null);
+        assertEquals(tenantId, result.tenantId());
+        assertEquals(false, result.replayed());
+        assertEquals(true, acceptor.accept(delivered.get(0), invitee, retryKey, null).replayed());
+        assertEquals(1, consumed.size());
+        assertEquals("ENABLED", transactions.execute(status -> {
+            invitations.setTarget(tenantId);
+            return jdbc.queryForObject("SELECT membership_status FROM memberships WHERE id = ?",
+                    String.class, result.membershipId());
+        }));
+        assertEquals(Integer.valueOf(0), transactions.execute(status -> {
+            invitations.setTarget(tenantId);
+            return jdbc.queryForObject("SELECT count(*) FROM membership_role_assignments WHERE membership_id = ?",
+                    Integer.class, result.membershipId());
+        }));
+        assertEquals("ACCEPTED", creator.list(new TenantContextSnapshot(actor, actorMembership, tenantId))
+                .stream().filter(item -> item.id().equals(invitation.id())).findFirst().orElseThrow().status());
+    }
+
+    @Test
+    void onlyCurrentPendingInvitationCanRequestFirstPasswordSetupWithoutUsingQuota() {
+        Flyway.configure().dataSource(url(), "tenant_access_migrator", "tenant-access-migrator-password")
+                .locations("classpath:db/migration").load().migrate();
+        JdbcTemplate migrator = new JdbcTemplate(new DriverManagerDataSource(
+                url(), "tenant_access_migrator", "tenant-access-migrator-password"));
+        UUID tenantId = migrator.queryForObject(
+                "INSERT INTO tenants (display_name, tenant_status) VALUES ('Setup', 'ACTIVE') RETURNING id", UUID.class);
+        UUID actor = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        UUID actorMembership = migrator.queryForObject("""
+                INSERT INTO memberships (tenant_id, identity_id, membership_status)
+                VALUES (?, ?, 'ENABLED') RETURNING id
+                """, UUID.class, tenantId, actor);
+        UUID invitee = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        var datasource = new DriverManagerDataSource(url(), "tenant_access_app", "tenant-access-app-password");
+        JdbcTemplate jdbc = new JdbcTemplate(datasource);
+        var transactions = new TransactionTemplate(new DataSourceTransactionManager(datasource));
+        Instant at = Instant.parse("2026-10-14T10:00:00Z");
+        var ids = new UuidV7Generator(Clock.fixed(at, ZoneOffset.UTC), new SecureRandom());
+        List<String> delivered = new ArrayList<>();
+        IdentityProvisioningGateway identities = (requestId, email, displayName) ->
+                new IdentityProvisioningGateway.Result(invitee, IdentityCredentialDisposition.SETUP_ALLOWED);
+        var outbox = (io.saas.forge.tenantaccess.domain.outbox.OutboxEventRepository) event -> {};
+        var invitations = new JdbcInvitationRepository(jdbc);
+        var creator = new InvitationService(invitations, identities, outbox,
+                new InvitationEventFactory(new ObjectMapper(), ids, "saas.forge.test.events"),
+                (email, token) -> delivered.add(token), transactions, ids, new SecureRandom(),
+                Clock.fixed(at, ZoneOffset.UTC));
+        var invitation = creator.create(new TenantContextSnapshot(actor, actorMembership, tenantId),
+                "new@example.com", null);
+        List<UUID> setupRequests = new ArrayList<>();
+        var setups = new InvitationPasswordSetupService(new JdbcInvitationAcceptanceRepository(jdbc),
+                (requestId, identityId) -> {
+                    assertEquals(invitee, identityId);
+                    setupRequests.add(requestId);
+                    return InvitationPasswordSetupGateway.Result.MAIL_SERVICE_ACCEPTED;
+                }, transactions, Clock.fixed(at, ZoneOffset.UTC));
+        UUID key = ids.next();
+        assertEquals("INVITATION_INVALID", assertThrows(InvitationFailure.class,
+                () -> setups.request("not-a-token", key)).code());
+        assertEquals(InvitationPasswordSetupGateway.Result.MAIL_SERVICE_ACCEPTED,
+                setups.request(delivered.get(0), key));
+        assertEquals(List.of(key), setupRequests);
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM invitations", Integer.class));
+        creator.resend(new TenantContextSnapshot(actor, actorMembership, tenantId), invitation.id(), null);
+        assertEquals("INVITATION_INVALID", assertThrows(InvitationFailure.class,
+                () -> setups.request(delivered.get(0), ids.next())).code());
+        creator.revoke(new TenantContextSnapshot(actor, actorMembership, tenantId), invitation.id(), null);
+        assertEquals("INVITATION_REVOKED", assertThrows(InvitationFailure.class,
+                () -> setups.request(delivered.get(1), ids.next())).code());
+        assertEquals(List.of(key), setupRequests);
     }
 
     private static String url() {

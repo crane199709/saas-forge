@@ -14,6 +14,7 @@ class OrganizationUnitServiceTest {
         @Override public boolean allowed(TenantContextSnapshot current, String code) { return allowed; }
         @Override public boolean isAdministrator(TenantContextSnapshot current) { return allowed; }
         @Override public List<PermissionEntry> catalog() { return List.of(); }
+        @Override public List<String> effective(TenantContextSnapshot current) { return List.of(); }
     };
     private final TenantContextSnapshot context = new TenantContextSnapshot(
             UUID.fromString("0199c200-0000-7000-8000-000000000001"),

@@ -27,10 +27,13 @@ public class AuditConsumerFailureHandler {
     private static final Set<String> KNOWN_TYPES = Set.of(
             SessionStartedEventValidator.EVENT_TYPE,
             TenantContextSwitchedEventValidator.EVENT_TYPE,
+            IamPasswordEventValidator.SETUP_DELIVERED,
+            IamPasswordEventValidator.PASSWORD_ESTABLISHED,
             TenantCreatedEventValidator.EVENT_TYPE);
 
     private final ObjectMapper objectMapper;
     private final IamSessionEventValidator iamValidator;
+    private final IamPasswordEventValidator passwordValidator;
     private final TenantAccessEventValidator tenantValidator;
     private final ExampleFactEventValidator exampleValidator;
     private final AuditConsumerTopology topology;
@@ -40,6 +43,7 @@ public class AuditConsumerFailureHandler {
     public AuditConsumerFailureHandler(
             ObjectMapper objectMapper,
             IamSessionEventValidator iamValidator,
+            IamPasswordEventValidator passwordValidator,
             TenantAccessEventValidator tenantValidator,
             ExampleFactEventValidator exampleValidator,
             AuditConsumerTopology topology,
@@ -47,6 +51,7 @@ public class AuditConsumerFailureHandler {
             AuditConsumerFailurePolicy policy) {
         this.objectMapper = objectMapper;
         this.iamValidator = iamValidator;
+        this.passwordValidator = passwordValidator;
         this.tenantValidator = tenantValidator;
         this.exampleValidator = exampleValidator;
         this.topology = topology;
@@ -57,7 +62,7 @@ public class AuditConsumerFailureHandler {
     public void recordFailure(ConsumerRecord<?, ?> message, Exception exception, int attemptCount) {
         Locator locator = locate(message.value());
         service.recordProcessingFailure(new AuditProcessingFailure(
-                topology.consumerName(message.topic()), message.topic(), message.partition(), message.offset(),
+                topology.consumerName(message.topic(), exception), message.topic(), message.partition(), message.offset(),
                 safeFailureKey(message), locator.eventId(), locator.source(), locator.sourceType(),
                 sha256(stringValue(message.value())),
                 permanent(exception) ? "PERMANENT_VALIDATION" : "TRANSIENT_PROCESSING",
@@ -78,7 +83,7 @@ public class AuditConsumerFailureHandler {
     /** 返回前隔离事务已经提交，Kafka ErrorHandler 随后才可提交原消息 Offset。 */
     public void isolate(ConsumerRecord<?, ?> message, Exception exception) {
         boolean permanent = permanent(exception);
-        String consumerName = topology.consumerName(message.topic());
+        String consumerName = topology.consumerName(message.topic(), exception);
         Locator locator = locate(message.value());
         String safeSnapshot = null;
         String isolationTopic = null;
@@ -104,6 +109,9 @@ public class AuditConsumerFailureHandler {
         String orderingKey = stringValue(message.key());
         if (SessionStartedEventValidator.CONSUMER_NAME.equals(consumerName)) {
             return Optional.of(iamValidator.validate(message.topic(), orderingKey, consumerName, payload));
+        }
+        if (IamPasswordEventValidator.CONSUMER_NAME.equals(consumerName)) {
+            return Optional.of(passwordValidator.validate(message.topic(), orderingKey, consumerName, payload));
         }
         if (ExampleFactEventValidator.CONSUMER_NAME.equals(consumerName))
             return Optional.of(exampleValidator.validate(message.topic(), orderingKey, consumerName, payload));
