@@ -10,7 +10,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public final class JdbcInvitationAcceptanceRepository implements InvitationAcceptanceRepository {
+public class JdbcInvitationAcceptanceRepository implements InvitationAcceptanceRepository {
     private final JdbcTemplate jdbc;
 
     public JdbcInvitationAcceptanceRepository(JdbcTemplate jdbc) {

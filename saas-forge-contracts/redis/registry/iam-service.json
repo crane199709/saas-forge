@@ -87,7 +87,7 @@
       "readers": ["iam-service"],
       "valueFormat": "integer",
       "ttl": {
-        "mode": "fixed",
+        "mode": "configured",
         "expression": "security.password-recovery.request-window"
       },
       "maxCardinality": "一个窗口内申请恢复的不同规范化邮箱数",

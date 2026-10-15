@@ -8,7 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public final class JdbcMembershipOrganizationRepository implements MembershipOrganizationRepository {
+public class JdbcMembershipOrganizationRepository implements MembershipOrganizationRepository {
     private final JdbcTemplate jdbc;
 
     public JdbcMembershipOrganizationRepository(JdbcTemplate jdbc) {
