@@ -32,10 +32,14 @@ function prepare(directory, consoleOrigin, apiOrigin, stage3 = false) {
   mkdirSync(directory, { mode: 0o700 });
   save(resolve(directory, 'preparation.json'), receipt);
   const infrastructure = ['postgres', 'redis', 'kafka', 'mailpit', 'otel-collector', 'nacos'];
+  const moduleFor = name => name === 'gateway' ? 'gateway' : name === 'project-service'
+    ? 'examples/project-service' : `saas-forge-services/${name}`;
   const overlay = ['services:', ...infrastructure.flatMap(name => [`  ${name}:`, '    ports: !reset []']),
     ...requiredServices.flatMap(name => [`  ${name}:`, '    ports: !reset []', `    image: saas.forge/acceptance-${runId}/${name}:local`, '    build:', '      labels:',
       `        org.opencontainers.image.revision: "${receipt.backend.commit}"`,
-      `        io.saasforge.source-dirty: "${receipt.backend.dirty}"`])];
+      `        io.saasforge.source-dirty: "${receipt.backend.dirty}"`,
+      `      context: ${JSON.stringify(repository)}`, '      dockerfile: deploy/docker/Dockerfile',
+      '      args:', `        MODULE: ${JSON.stringify(moduleFor(name))}`])];
   // Gateway 只在随机回环端口开放；受信 HTTPS Edge 由环境准备方另行配置。
   const gatewayIndex = overlay.indexOf('  gateway:');
   overlay[gatewayIndex + 1] = '    ports: !override ["127.0.0.1::8080"]';
