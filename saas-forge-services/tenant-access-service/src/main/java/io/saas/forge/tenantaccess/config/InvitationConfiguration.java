@@ -24,18 +24,24 @@ import java.net.URI;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.Properties;
+import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 @Configuration(proxyBeanMethods = false)
 public class InvitationConfiguration {
+    private static final Pattern ROOT_DOMAIN = Pattern.compile(
+            "^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$");
     @Bean
     InvitationPasswordSetupGateway invitationPasswordSetupGateway(
             @Qualifier("iamServiceChannel") Channel channel, IamServiceAccessTokenProvider tokens) {
@@ -64,6 +70,28 @@ public class InvitationConfiguration {
                 new TransactionTemplate(manager), ids, clock);
     }
     @Bean
+    InvitationCompensationWorker invitationCompensationWorker(InvitationAcceptanceService acceptance) {
+        return new InvitationCompensationWorker(acceptance);
+    }
+
+    static final class InvitationCompensationWorker {
+        private static final Logger log = LoggerFactory.getLogger(InvitationCompensationWorker.class);
+        private final InvitationAcceptanceService acceptance;
+        InvitationCompensationWorker(InvitationAcceptanceService acceptance) { this.acceptance = acceptance; }
+
+        @Scheduled(fixedDelay = 30_000)
+        public void recover() {
+            for (int i = 0; i < 100; i++) {
+                try {
+                    if (!acceptance.recoverNext()) return;
+                } catch (RuntimeException unavailable) {
+                    log.warn("Invitation Quota 补偿失败，将按持久状态重试", unavailable);
+                    return;
+                }
+            }
+        }
+    }
+    @Bean
     InvitationEventFactory invitationEventFactory(ObjectMapper json, UuidV7Generator ids,
             @Value("${saas.forge.tenant-access.outbox-topic}") String topic) {
         return new InvitationEventFactory(json, ids, topic);
@@ -80,15 +108,16 @@ public class InvitationConfiguration {
     @Bean
     InvitationMailer invitationMailer(
             @Value("${saas.forge.environment:dev}") String environment,
+            @Value("${browser.rootDomain}") String rootDomain,
             @Value("${saas.forge.tenant-access.invitation.smtp.host:}") String host,
             @Value("${saas.forge.tenant-access.invitation.smtp.port:1025}") int port,
             @Value("${saas.forge.tenant-access.invitation.smtp.username:}") String username,
             @Value("${saas.forge.tenant-access.invitation.smtp.password:}") String password,
             @Value("${saas.forge.tenant-access.invitation.smtp.from:}") String from,
-            @Value("${saas.forge.tenant-access.invitation.smtp.starttls:false}") boolean startTls,
+            @Value("${saas.forge.tenant-access.invitation.smtp.starttls}") boolean startTls,
             @Value("${saas.forge.tenant-access.invitation.page-uri:}") String pageUri) {
         boolean production = "prod".equalsIgnoreCase(environment) || "production".equalsIgnoreCase(environment);
-        if (production && (host.isBlank() || username.isBlank() || password.isBlank()
+        if (production && !host.isBlank() && (username.isBlank() || password.isBlank()
                 || from.isBlank() || pageUri.isBlank() || !startTls)) {
             throw new IllegalStateException("生产 Invitation SMTP 配置不完整");
         }
@@ -98,9 +127,14 @@ public class InvitationConfiguration {
         if (from.isBlank() || port < 1 || port > 65535) {
             throw new IllegalStateException("Invitation SMTP 配置不合法");
         }
+        if (rootDomain == null || !ROOT_DOMAIN.matcher(rootDomain).matches()) {
+            throw new IllegalStateException("browser.rootDomain 必须是规范小写 DNS 根域");
+        }
         URI page = URI.create(pageUri.isBlank()
-                ? "https://console.saas.forge.test/invitation" : pageUri);
-        if (!"https".equals(page.getScheme()) || page.getHost() == null
+                ? "https://console." + rootDomain + "/invitation" : pageUri);
+        if (!"https".equals(page.getScheme())
+                || !("console." + rootDomain).equals(page.getHost())
+                || page.getPort() != -1 || page.getUserInfo() != null
                 || page.getQuery() != null || page.getFragment() != null) {
             throw new IllegalStateException("Invitation 页面必须是受信 HTTPS 地址");
         }

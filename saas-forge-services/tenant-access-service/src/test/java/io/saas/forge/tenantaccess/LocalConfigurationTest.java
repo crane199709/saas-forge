@@ -54,6 +54,9 @@ class LocalConfigurationTest {
                     assertThat(environment.getProperty("spring.cloud.nacos.discovery.enabled")).isEqualTo("true");
                     assertThat(environment.getProperty("saas.forge.tenant-access.configuration-revision")).isEqualTo("local");
                     assertThat(environment.getProperty("security.jwt.issuer")).isEqualTo("https://issuer.saas.forge.test");
+                    assertThat(environment.getProperty("browser.rootDomain")).isEqualTo("saas.forge.test");
+                    assertThat(environment.getProperty("saas.forge.tenant-access.invitation.smtp.starttls"))
+                            .isEqualTo("false");
                     assertThat(environment.getProperty("spring.cloud.nacos.discovery.metadata.grpc.port")).isEqualTo("9092");
                     assertThat(environment.getProperty("spring.flyway.enabled")).isEqualTo("false");
                     assertThat(environment.getProperty("spring.config.import", "")).doesNotContain("nacos:");

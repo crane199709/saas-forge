@@ -86,6 +86,28 @@ class PermissionCatalogMigrationIT {
                     tenantId, membershipId, roleId);
         });
         assertThat(Boolean.TRUE.equals(transactions.execute(status -> authority.allowed(context, "example:project:list")))).isTrue();
+        UUID closure = UUID.fromString("019535d9-0001-7000-8000-000000000099");
+        try (var connection = DriverManager.getConnection(url(), "tenant_access_migrator", "tenant-access-migrator-password");
+                var statement = connection.prepareStatement("""
+                        INSERT INTO tenant_lifecycle_workflows
+                        (workflow_id, tenant_id, actor_identity_id, idempotency_key, request_fingerprint,
+                         lifecycle_action, revocation_request_id, workflow_status, next_attempt_at, created_at)
+                        VALUES (?, ?, ?, uuidv7(), ?, 'CLOSE', uuidv7(), 'PENDING', now(), now())
+                        """)) {
+            statement.setObject(1, closure);
+            statement.setObject(2, tenantId);
+            statement.setObject(3, identityId);
+            statement.setString(4, "a".repeat(64));
+            statement.executeUpdate();
+        }
+        assertThat(Boolean.TRUE.equals(transactions.execute(status -> authority.allowed(context, "example:project:list")))).isFalse();
+        java.util.List<String> effectiveDuringClosure = transactions.execute(status -> authority.effective(context));
+        assertThat(effectiveDuringClosure).isEmpty();
+        try (var connection = DriverManager.getConnection(url(), "tenant_access_migrator", "tenant-access-migrator-password");
+                var statement = connection.prepareStatement("DELETE FROM tenant_lifecycle_workflows WHERE workflow_id = ?")) {
+            statement.setObject(1, closure);
+            statement.executeUpdate();
+        }
         assertThatThrownBy(() -> transactions.executeWithoutResult(status -> roles.delete(tenantId, roleId)))
                 .hasMessageContaining("ROLE_ASSIGNED");
         transactions.executeWithoutResult(status -> roles.update(tenantId, roleId, "REPORT_READER", java.util.List.of()));

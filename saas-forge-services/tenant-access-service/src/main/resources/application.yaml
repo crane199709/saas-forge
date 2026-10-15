@@ -49,6 +49,8 @@ spring:
       host: ${REDIS_HOST:127.0.0.1}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD}
+browser:
+  rootDomain: ${BROWSER_ROOT_DOMAIN:saas.forge.test}
 saas.forge:
   environment: ${SAASFORGE_ENVIRONMENT:dev}
   tenant-access:
@@ -63,7 +65,6 @@ saas.forge:
         username: ${TENANT_INVITATION_SMTP_USERNAME:}
         password: ${TENANT_INVITATION_SMTP_PASSWORD:}
         from: ${TENANT_INVITATION_SMTP_FROM:}
-        starttls: ${TENANT_INVITATION_SMTP_STARTTLS:false}
       page-uri: ${TENANT_INVITATION_PAGE_URI:}
 mybatis:
   mapper-locations: classpath*:mapper/**/*Mapper.xml

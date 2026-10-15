@@ -8,6 +8,11 @@ import io.saas.forge.tenantaccess.application.brand.BrandProfileService;
 import io.saas.forge.tenantaccess.application.brand.BrandAssetDisabledEventFactory;
 import io.saas.forge.tenantaccess.application.brand.BrandAssetPolicyService;
 import io.saas.forge.tenantaccess.application.brand.BrandAssetCleanupService;
+import io.saas.forge.tenantaccess.application.brand.BrandAssetService;
+import io.saas.forge.tenantaccess.application.brand.BrandAssetEventFactory;
+import io.saas.forge.tenantaccess.application.brand.BrandUploadRecoveryService;
+import io.saas.forge.tenantaccess.application.brand.BrandPng;
+import io.saas.forge.sdk.tenant.TenantContextSnapshot;
 import io.saas.forge.tenantaccess.application.brand.BrandAssetRemovedEventFactory;
 import io.saas.forge.tenantaccess.application.brand.BrandObjectStore;
 import io.saas.forge.tenantaccess.application.tenant.UuidV7Generator;
@@ -22,6 +27,10 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import javax.imageio.ImageIO;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -51,6 +60,57 @@ class BrandAssetMigrationIT {
             .withEnv("AUDIT_APP_PASSWORD", "audit-app-password")
             .withCopyFileToContainer(MountableFile.forHostPath(repositoryRoot().resolve("deploy/postgresql/bootstrap.sh")),
                     "/docker-entrypoint-initdb.d/01-bootstrap.sh");
+
+    @Test
+    void failedDatabaseAndS3DeletionLeaveDurableUploadCleanup() throws Exception {
+        Flyway.configure().dataSource(url(), "tenant_access_migrator", "tenant-access-migrator-password")
+                .locations("classpath:db/migration").load().migrate();
+        var migrator = new JdbcTemplate(new DriverManagerDataSource(
+                url(), "tenant_access_migrator", "tenant-access-migrator-password"));
+        var source = new DriverManagerDataSource(url(), "tenant_access_app", "tenant-access-app-password");
+        var jdbc = new JdbcTemplate(source);
+        var tx = new TransactionTemplate(new DataSourceTransactionManager(source));
+        UUID tenant = migrator.queryForObject(
+                "INSERT INTO tenants (display_name, tenant_status) VALUES ('Orphan upload', 'ACTIVE') RETURNING id", UUID.class);
+        UUID identity = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        UUID membership = migrator.queryForObject(
+                "INSERT INTO memberships (tenant_id, identity_id, membership_status) VALUES (?, ?, 'ENABLED') RETURNING id",
+                UUID.class, tenant, identity);
+        var context = new TenantContextSnapshot(identity, membership, tenant);
+        var ids = new UuidV7Generator(Clock.systemUTC(), new SecureRandom());
+        AtomicBoolean deleteFails = new AtomicBoolean(true);
+        java.util.Set<String> stored = new java.util.HashSet<>();
+        BrandObjectStore objects = new BrandObjectStore() {
+            public void put(String key, byte[] png) { stored.add(key); }
+            public byte[] get(String key) { throw new UnsupportedOperationException(); }
+            public void delete(String key) {
+                if (deleteFails.get()) throw new IllegalStateException("S3 delete unavailable");
+                stored.remove(key);
+            }
+        };
+        var authority = org.mockito.Mockito.mock(
+                io.saas.forge.tenantaccess.application.authorization.PermissionAuthority.class);
+        org.mockito.Mockito.when(authority.allowed(context, "system:brand:manage")).thenReturn(true);
+        var assetService = new BrandAssetService(authority, new JdbcBrandAssetRepository(jdbc), objects,
+                new BrandAssetEventFactory(new ObjectMapper(), ids, Clock.systemUTC(), "brand.events"),
+                event -> { throw new IllegalStateException("outbox unavailable"); }, ids, tx);
+        var pngBytes = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB), "png", pngBytes);
+        assertThatThrownBy(() -> assetService.upload(context, BrandPng.Kind.FAVICON, pngBytes.toByteArray()))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("outbox unavailable");
+        assertThat(stored).hasSize(1);
+        assertThat(migrator.queryForObject("SELECT count(*) FROM brand_upload_intents WHERE tenant_id = ?",
+                Integer.class, tenant)).isEqualTo(1);
+        deleteFails.set(false);
+        var recovery = new BrandUploadRecoveryService(new JdbcBrandAssetRepository(jdbc), objects, tx,
+                Clock.offset(Clock.systemUTC(), java.time.Duration.ofMinutes(6)));
+        assertThat(recovery.cleanNext()).isTrue();
+        assertThat(stored).isEmpty();
+        assertThat(migrator.queryForObject("SELECT count(*) FROM brand_upload_intents WHERE tenant_id = ?",
+                Integer.class, tenant)).isZero();
+        assertThat(migrator.queryForObject("SELECT count(*) FROM tenant_brand_assets WHERE tenant_id = ?",
+                Integer.class, tenant)).isZero();
+    }
 
     @Test
     void cleanupSelectionCannotRemoveAnAssetBoundByConcurrentProfileSave() throws Exception {

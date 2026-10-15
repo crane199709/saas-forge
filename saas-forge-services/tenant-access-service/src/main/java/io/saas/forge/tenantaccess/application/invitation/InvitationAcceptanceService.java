@@ -70,29 +70,43 @@ public final class InvitationAcceptanceService {
             return beginCompensation(attempt);
         } catch (RuntimeException uncertain) {
             // 若提交成功但响应丢失，先查已提交状态；不可判定时绝不释放额度。
+            Attempt persisted;
             try {
-                Attempt persisted = transactions.execute(status -> {
+                persisted = transactions.execute(status -> {
                     repository.setTarget(attempt.tenantId());
                     return repository.lockAttempt(attempt.tenantId(), attempt.invitationId());
                 });
-                if (persisted != null && "SUCCEEDED".equals(persisted.state())) return result(persisted, true);
-                return beginCompensation(attempt);
             } catch (RuntimeException unavailable) {
                 throw new InvitationFailure("INVITATION_DEPENDENCY_UNAVAILABLE");
             }
+            if (persisted != null && "SUCCEEDED".equals(persisted.state())) return result(persisted, true);
+            return beginCompensation(attempt);
         }
+    }
+
+    /** 从持久尝试恢复额度释放；不复核已撤销、已过期邀请的激活资格。 */
+    public boolean recoverNext() {
+        Attempt claimed = transactions.execute(status -> repository.claimNextCompensation(now()));
+        if (claimed == null) return false;
+        releaseAndComplete(claimed);
+        return true;
     }
 
     private Attempt prepare(Target target, String hash, UUID identityId, UUID key) {
         repository.setTarget(target.tenantId());
-        if (!repository.lockAccessibleTenant(target.tenantId(), now()))
-            throw new InvitationFailure("TENANT_NOT_ACCESSIBLE");
+        boolean accessible = repository.lockAccessibleTenant(target.tenantId(), now());
         Invitation invitation = repository.lockInvitation(target.tenantId(), target.invitationId());
         if (invitation == null || !hash.equals(invitation.tokenHash()))
             throw new InvitationFailure("INVITATION_INVALID");
         if (!identityId.equals(repository.invitedIdentity(target.tenantId(), target.invitationId())))
             throw new InvitationFailure("INVITATION_IDENTITY_MISMATCH");
         Attempt previous = repository.lockAttempt(target.tenantId(), target.invitationId());
+        if (previous != null && "COMPENSATING".equals(previous.state())) {
+            if (previous.key().equals(key)) return previous;
+            throw new InvitationFailure("INVITATION_ACTIVATION_COMPENSATING");
+        }
+        if (!accessible)
+            throw new InvitationFailure("TENANT_NOT_ACCESSIBLE");
         if (invitation.status() == Invitation.Status.ACCEPTED) {
             if (previous != null && "SUCCEEDED".equals(previous.state()))
                 return previous;
@@ -150,6 +164,11 @@ public final class InvitationAcceptanceService {
     }
 
     private Result compensate(Attempt attempt) {
+        releaseAndComplete(attempt);
+        throw new InvitationFailure("INVITATION_ACCEPTANCE_RETRY_REQUIRED");
+    }
+
+    private void releaseAndComplete(Attempt attempt) {
         try {
             quota.release(attempt.tenantId(), attempt.releaseId());
         } catch (RemoteWorkflowUnavailableException unavailable) {
@@ -159,7 +178,6 @@ public final class InvitationAcceptanceService {
             repository.setTarget(attempt.tenantId());
             repository.state(attempt, "COMPENSATED", now());
         });
-        throw new InvitationFailure("INVITATION_ACCEPTANCE_RETRY_REQUIRED");
     }
 
     private Instant now() { return clock.instant().truncatedTo(ChronoUnit.MILLIS); }

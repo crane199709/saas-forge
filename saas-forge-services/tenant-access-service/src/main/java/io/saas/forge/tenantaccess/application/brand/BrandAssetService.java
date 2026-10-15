@@ -35,17 +35,44 @@ public class BrandAssetService {
         String key = context.tenantId() + "/" + id + ".png";
         var asset = new BrandAsset(id, context.tenantId(), kind, "/brands/" + id,
                 dimensions.width(), dimensions.height());
-        objects.put(key, png);
+        transactions.executeWithoutResult(status -> assets.reserveUpload(asset, key));
+        try {
+            objects.put(key, png);
+        } catch (RuntimeException failure) {
+            cleanupFailedUpload(asset, key, failure);
+            throw failure;
+        }
         try {
             transactions.executeWithoutResult(status -> {
-                assets.insert(asset, key, png.length);
-                outbox.append(events.uploaded(context, asset));
+                try {
+                    assets.completeUpload(asset.tenantId(), asset.id());
+                    assets.insert(asset, key, png.length);
+                    outbox.append(events.uploaded(context, asset));
+                } catch (RuntimeException failure) {
+                    throw new LocalWriteFailure(failure);
+                }
             });
-        } catch (RuntimeException failure) {
-            try { objects.delete(key); } catch (RuntimeException cleanupFailure) { failure.addSuppressed(cleanupFailure); }
+        } catch (LocalWriteFailure knownRollback) {
+            RuntimeException failure = knownRollback.original;
+            cleanupFailedUpload(asset, key, failure);
             throw failure;
         }
         return asset;
+    }
+
+    private void cleanupFailedUpload(BrandAsset asset, String key, RuntimeException failure) {
+        // 删除失败时保留先前提交的登记，由 worker 按精确键重试。
+        try {
+            objects.delete(key);
+            transactions.executeWithoutResult(status -> assets.discardUpload(asset.tenantId(), asset.id()));
+        } catch (RuntimeException cleanupFailure) {
+            failure.addSuppressed(cleanupFailure);
+        }
+    }
+
+    private static final class LocalWriteFailure extends RuntimeException {
+        private final RuntimeException original;
+        LocalWriteFailure(RuntimeException original) { super(original); this.original = original; }
     }
 
     public byte[] publicRead(UUID id) {
