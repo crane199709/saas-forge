@@ -3,6 +3,9 @@ package io.saas.forge.iam.api;
 import io.saas.forge.iam.application.authentication.ConsoleSessionException;
 import io.saas.forge.iam.application.authentication.ConsoleSessionService;
 import io.saas.forge.iam.application.authentication.InvitationAcceptanceGateway;
+import io.saas.forge.iam.console.contract.api.InvitationAcceptanceApi;
+import io.saas.forge.iam.console.contract.model.InvitationAcceptanceRequest;
+import io.saas.forge.iam.console.contract.model.InvitationAcceptanceResult;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Arrays;
@@ -10,16 +13,13 @@ import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @RestController
-@RequestMapping("/api/v2/auth/invitation-acceptances")
 @ConditionalOnProperty(name = "security.browser.console-enabled", havingValue = "true")
-public final class InvitationAcceptanceController {
+public class InvitationAcceptanceController implements InvitationAcceptanceApi {
     private final ConsoleSessionService sessions;
     private final InvitationAcceptanceGateway acceptance;
 
@@ -27,20 +27,21 @@ public final class InvitationAcceptanceController {
         this.sessions = sessions; this.acceptance = acceptance;
     }
 
-    @PostMapping
-    public ResponseEntity<Result> accept(@RequestHeader("If-Match") String revision,
-            @RequestHeader("Idempotency-Key") UUID key, @RequestBody Request body,
-            HttpServletRequest request) {
-        if (body == null || body.token() == null || !body.token().matches("[A-Za-z0-9_-]{43}")
+    @Override
+    public ResponseEntity<InvitationAcceptanceResult> acceptInvitation(String csrf, String revision,
+            UUID key, InvitationAcceptanceRequest body) {
+        if (body == null || body.getToken() == null || !body.getToken().matches("[A-Za-z0-9_-]{43}")
                 || key.version() != 7)
             throw new ConsoleSessionException(ConsoleSessionException.Code.VALIDATION_FAILED);
+        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes())
+                .getRequest();
         UUID identityId = sessions.invitationIdentity(
                 cookie(request, ConsoleAuthenticationController.SLOT_COOKIE),
                 cookie(request, ConsoleAuthenticationController.REFRESH_COOKIE), revision);
-        var result = acceptance.accept(body.token(), identityId, key,
+        var result = acceptance.accept(body.getToken(), identityId, key,
                 AuthenticationExceptionHandler.traceId(request));
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(new Result(result.membershipId(), result.tenantId(), result.replayed()));
+                .body(new InvitationAcceptanceResult(result.membershipId(), result.tenantId(), result.replayed()));
     }
 
     private static String cookie(HttpServletRequest request, String name) {
@@ -49,7 +50,4 @@ public final class InvitationAcceptanceController {
         if (values.size() > 1) throw new ConsoleSessionException(ConsoleSessionException.Code.VALIDATION_FAILED);
         return values.isEmpty() ? null : values.get(0).getValue();
     }
-
-    public record Request(String token) {}
-    public record Result(UUID membershipId, UUID tenantId, boolean replayed) {}
 }
