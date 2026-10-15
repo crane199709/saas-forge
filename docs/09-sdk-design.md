@@ -12,7 +12,7 @@ saas-forge-java
 ├── saas-forge-sdk-core                 # 首版公开
 ├── saas-forge-sdk-auth                 # 首版公开
 ├── saas-forge-sdk-tenant               # 首版公开
-├── saas-forge-sdk-permission           # 后续占位，不发布
+├── saas-forge-sdk-permission           # 第 4 阶段公开
 ├── saas-forge-sdk-feature              # 后续占位，不发布
 ├── saas-forge-sdk-quota                # 后续占位，不发布
 ├── saas-forge-sdk-audit                # 后续占位，不发布
@@ -23,7 +23,7 @@ saas-forge-java
 
 ## 首版发布面
 
-`saas-forge-bom` 只管理 `saas-forge-sdk-core`、`saas-forge-sdk-auth`、`saas-forge-sdk-tenant` 与 `saas-forge-spring-boot-starter`。Starter 在公开 SDK 中也只传递这三个 SDK；Permission、Feature、Quota 与 Audit 模块可以继续保留在 Reactor 中，但不进入 BOM、不成为 Starter 依赖，并显式跳过 Maven Central 发布。
+`saas-forge-bom` 只管理 `saas-forge-sdk-core`、`saas-forge-sdk-auth`、`saas-forge-sdk-tenant`、`saas-forge-sdk-permission` 与 `saas-forge-spring-boot-starter`。Starter 在公开 SDK 中也只传递这四个 SDK；Feature、Quota 与 Audit 模块可以继续保留在 Reactor 中，但不进入 BOM、不成为 Starter 依赖，并显式跳过 Maven Central 发布。
 
 Starter 还依赖可发布的 `saas-forge-http-route-catalog` 支撑制品，以便与 Gateway 消费同一份不可变路由和认证分类。它不是 BOM 管理的消费者 SDK，也不应由业务应用直接声明。
 

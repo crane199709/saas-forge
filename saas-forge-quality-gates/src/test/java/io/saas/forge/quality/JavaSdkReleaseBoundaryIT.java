@@ -45,6 +45,7 @@ class JavaSdkReleaseBoundaryIT {
             "saas-forge-sdk-core",
             "saas-forge-sdk-auth",
             "saas-forge-sdk-tenant",
+            "saas-forge-sdk-permission",
             "saas-forge-spring-boot-starter");
     private static final Set<String> PUBLISHED_ARTIFACTS = Set.of(
             "saas-forge",
@@ -53,11 +54,13 @@ class JavaSdkReleaseBoundaryIT {
             "saas-forge-sdk-core",
             "saas-forge-sdk-auth",
             "saas-forge-sdk-tenant",
+            "saas-forge-sdk-permission",
             "saas-forge-spring-boot-starter");
     private static final Set<String> STARTER_SDK_DEPENDENCIES = Set.of(
             "saas-forge-sdk-core",
             "saas-forge-sdk-auth",
-            "saas-forge-sdk-tenant");
+            "saas-forge-sdk-tenant",
+            "saas-forge-sdk-permission");
     private static final List<String> FORBIDDEN_TYPE_REFERENCES = List.of(
             "com.google.protobuf.",
             "io.grpc.",
@@ -98,7 +101,7 @@ class JavaSdkReleaseBoundaryIT {
     void bomAndStarterExposeOnlyTheSupportedFirstRelease() throws Exception {
         Document bom = parseXml(REPOSITORY.resolve("saas-forge-sdk/saas-forge-java/saas-forge-bom/pom.xml"));
         Map<String, String> managed = dependencies(bom);
-        assertEquals(CONSUMER_ARTIFACTS, managed.keySet(), "BOM 只能管理首版四个消费者制品");
+        assertEquals(CONSUMER_ARTIFACTS, managed.keySet(), "BOM 只能管理已评审的五个消费者制品");
         managed.forEach((artifact, version) -> assertEquals("${project.version}", version,
                 "BOM 必须以同一 project.version 管理 " + artifact));
 
@@ -111,7 +114,7 @@ class JavaSdkReleaseBoundaryIT {
             }
         }
         assertEquals(STARTER_SDK_DEPENDENCIES, starterSdkDependencies,
-                "Starter 在公开 SDK 中只能传递 core、auth 与 tenant");
+                "Starter 在公开 SDK 中只能传递 core、auth、tenant 与 permission");
 
         Set<String> unpublishedInternalDependencies = new LinkedHashSet<>();
         dependencies(starter).keySet().stream()
@@ -176,7 +179,7 @@ class JavaSdkReleaseBoundaryIT {
     void compiledPublicSurfaceMatchesTheExplicitAllowlist() throws Exception {
         JsonNode artifacts = JSON.readTree(ALLOWLIST.toFile()).path("artifacts");
         assertEquals(CONSUMER_ARTIFACTS, fieldNames(artifacts),
-                "公共 API allowlist 必须覆盖且只能覆盖首版四个消费者制品");
+                "公共 API allowlist 必须覆盖且只能覆盖已评审的五个消费者制品");
 
         for (String artifact : CONSUMER_ARTIFACTS) {
             JsonNode boundary = artifacts.path(artifact);

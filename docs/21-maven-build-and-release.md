@@ -19,7 +19,7 @@
 - Spring Boot 管理其生态内的依赖和插件版本；
 - 非 Spring Boot 第三方依赖由根 POM 的 `dependencyManagement` 和版本属性统一管理；
 - 仓库内部依赖由根 POM 统一管理，子模块不声明内部依赖版本；
-- `saas-forge-bom` 只向使用者导出首版 `sdk-core`、`sdk-auth`、`sdk-tenant` 与 Starter 的版本，不承担仓库构建管理；
+- `saas-forge-bom` 只向使用者导出已交付的 `sdk-core`、`sdk-auth`、`sdk-tenant`、`sdk-permission` 与 Starter 的版本，不承担仓库构建管理；
 - 子模块不得使用 `LATEST`、`RELEASE` 或版本区间；正式发布不得依赖任何 `SNAPSHOT`；
 - Enforcer 在 `validate` 阶段检查工具链、重复依赖、动态版本、依赖收敛、Reactor 版本一致性和插件版本。
 
@@ -45,10 +45,10 @@ Maven Central 发布白名单为：
 - 根父 POM `saas-forge`；
 - Starter 运行所需但不由消费者直接声明的 `saas-forge-http-route-catalog`；
 - `saas-forge-bom`；
-- `saas-forge-sdk-core`、`saas-forge-sdk-auth` 与 `saas-forge-sdk-tenant`；
+- `saas-forge-sdk-core`、`saas-forge-sdk-auth`、`saas-forge-sdk-tenant` 与 `saas-forge-sdk-permission`；
 - `saas-forge-spring-boot-starter`。
 
-Permission、Feature、Quota 与 Audit SDK 仍是未交付的 Reactor 占位模块，不进入 BOM、Starter 或发布白名单。Gateway、领域服务、`saas-forge-quality-gates`、测试支持、纯聚合模块及尚未确定打包契约的 OpenAPI、Protobuf、事件模块也不得部署到 Maven Central。每个 POM 必须显式声明 `maven.deploy.skip`，质量门会拒绝发布白名单漂移；仓库不发布远程 `SNAPSHOT`。
+Feature、Quota 与 Audit SDK 仍是未交付的 Reactor 占位模块，不进入 BOM、Starter 或发布白名单。Gateway、领域服务、`saas-forge-quality-gates`、测试支持、纯聚合模块及尚未确定打包契约的 OpenAPI、Protobuf、事件模块也不得部署到 Maven Central。每个 POM 必须显式声明 `maven.deploy.skip`，质量门会拒绝发布白名单漂移；仓库不发布远程 `SNAPSHOT`。
 
 首版公开 SDK 与 Starter 通过 [`saas-forge-sdk/public-api-allowlist.json`](../saas-forge-sdk/public-api-allowlist.json) 固定允许的 package 和公共类型。Maven Enforcer 检查传递依赖，制品质量门检查公共签名、JAR 内容与 `jdeps` 实现引用，拒绝内部 Protobuf、gRPC、持久化与浏览器安全参数泄漏。首个正式 SDK 发布前没有真实二进制兼容基线；发布首版后才以已发布制品启用版本间比较。
 

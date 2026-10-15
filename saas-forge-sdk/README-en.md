@@ -8,17 +8,18 @@ This directory contains the first-release BOM, Java SDKs, and Spring Boot Starte
 
 | Artifact | Status | Responsibility |
 |---|---|---|
-| `saas-forge-bom` | Published | Manages one compatible version for the four consumer artifacts below |
+| `saas-forge-bom` | Published | Manages one compatible version for the five consumer artifacts below |
 | `saas-forge-sdk-core` | Published | Low-level REST client generated from an explicitly safe OpenAPI subset |
 | `saas-forge-sdk-auth` | Published | Public contracts for immutable Identity and Service Contexts and token verification |
 | `saas-forge-sdk-tenant` | Published | Immutable Tenant Context snapshots and mandatory access |
+| `saas-forge-sdk-permission` | Published | Server-side permission annotation and synchronous authority checks |
 | `saas-forge-spring-boot-starter` | Published | Route Catalog-driven HTTP receiver authentication and context wiring |
 
-The Permission, Feature, Quota, and Audit SDKs are Reactor placeholders for later stages. They are absent from the BOM and Starter dependency graph and are skipped during Maven Central publication. The Starter's `saas-forge-http-route-catalog` dependency is a publishable internal support artifact and is not declared directly by business applications.
+The Feature, Quota, and Audit SDKs are Reactor placeholders for later stages. They are absent from the BOM and Starter dependency graph and are skipped during Maven Central publication. The Starter's `saas-forge-http-route-catalog` dependency is a publishable internal support artifact and is not declared directly by business applications.
 
 ## Maven dependencies
 
-Import the BOM and declare only the Starter. The four supported consumer artifacts do not need individual versions:
+Import the BOM and declare only the Starter. The five supported consumer artifacts do not need individual versions:
 
 ```xml
 <dependencyManagement>
@@ -82,7 +83,7 @@ Consumers explicitly configure the Gateway address and provide the Basic or Bear
 
 ## Release gates
 
-[`public-api-allowlist.json`](public-api-allowlist.json) records the exact public packages and types allowed in the four consumer artifacts. Maven verification checks the BOM, Starter, publication whitelist, public signatures, JAR contents, implementation references, and transitive dependencies. It rejects internal Protobuf, gRPC, database, MyBatis, Repository, migration, and browser-security leakage. Every new public type requires an explicit allowlist change.
+[`public-api-allowlist.json`](public-api-allowlist.json) records the exact public packages and types allowed in the five consumer artifacts. Maven verification checks the BOM, Starter, publication whitelist, public signatures, JAR contents, implementation references, and transitive dependencies. It rejects internal Protobuf, gRPC, database, MyBatis, Repository, migration, and browser-security leakage. Every new public type requires an explicit allowlist change.
 
 No invented Java binary-compatibility baseline is used before the first formal release. Later versions will compare against the actual published artifact.
 
