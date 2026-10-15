@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
-public final class MembershipOrganizationService {
+public class MembershipOrganizationService {
     private static final String MANAGE = "system:organization:manage";
     private final PermissionAuthority authority;
     private final MembershipOrganizationRepository repository;
