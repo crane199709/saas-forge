@@ -4,19 +4,19 @@
 
 ## 当前可核对的基础
 
-后端 `scripts/acceptance-handoff.mjs` 的 `prepare-stage3` 可先保留新 runId，生成七服务隔离 Compose 覆盖；`ready` 核验项目网络、PostgreSQL/Redis/Kafka 新卷、七服务镜像来源与容器、JDK 17、Gateway 与受信 HTTPS 公钥一致性。`probe` 只验证 Gateway 公钥与精确 Origin。前端独立仓库的 `scripts/verify-browser.mjs` 只覆盖会话交接冒烟；阶段 4 专用聚合器 `scripts/stage4-aggregate.mjs` 目前仅在 #240 前端工作树暂存，尚未合入前端集成分支，正式使用前须确认其提交与验证状态。不能把冒烟结果改名当完整报告。旧 Console 已迁出，本仓不读取前端源码或运行浏览器。
+后端 `scripts/acceptance-handoff.mjs` 的 `prepare-stage3` 可先保留新 runId，生成七服务隔离 Compose 覆盖；`ready` 核验项目网络、PostgreSQL/Redis/Kafka 新卷、七服务镜像来源与容器、JDK 17、Gateway 与受信 HTTPS 公钥一致性。`probe` 只验证 Gateway 公钥与精确 Origin。前端独立仓库的 `scripts/verify-browser.mjs` 只覆盖会话交接冒烟；阶段 4 专用聚合器 `scripts/stage4-aggregate.mjs` 已合入前端集成分支，本地定向测试 9/9 通过。不能把冒烟结果改名当完整报告。旧 Console 已迁出，本仓不读取前端源码或运行浏览器。
 
 2026-10-14 本机已安装 Java `17.0.12`、桌面 Google Chrome `155.0.8059.80`。Google [2026-10-13 Desktop Stable 公告](https://chromereleases.googleblog.com/2026/10/stable-channel-update-for-desktop_01668083673.html)列出 Mac `155.0.8059.79/.80`；正式执行日仍需重新核对最新公告，并以报告中的 Chrome 运行版本为准。2026-10-15 已通过本机 Docker 运行定向 S3 Testcontainers 测试；未因此运行或判定完整 Fresh 环境。
 
-当前前端 `package.json` 和 `pnpm-lock.yaml` 固定 `@crane199709/saas-forge-api-client@0.5.0`，尚未包含阶段 4 全部正式 operation。#235、#238、#239 的前端切片与最终两仓集成、正式 Client 的前端锁文件更新、受控 v2 开关与 Git hook 处置仍需落实。品牌 S3 兼容存储叠加已提交，但完整 Fresh 部署及产品验收未运行。本记录不把这些前提写作已通过。
+2026-10-15 前端集成分支提交 `d7890ab1eab1a918acc0ee4eac129ad65855874f` 已包含 #235、#238、#239、#240，`package.json` 与 `pnpm-lock.yaml` 均固定正式 Client `0.6.0`。本地 `pnpm install --frozen-lockfile`、`pnpm run verify`（276/276 Node 测试及构建）和隔离 Chromium UI（32/32）通过；这些检查不能代替真实 Chrome/Gateway 联调。品牌 S3 兼容存储叠加已提交，受控 v2 实际运行值、完整 Fresh 部署及产品验收仍待验证。本记录不把这些前提写作已通过。
 
 ### 正式 Client 发布与前端升版
 
-2026-10-15，后端 `package.json` 和 `package-lock.json` 已固定为 `0.6.0`；经批准的 `npm publish` 命令成功返回。官方 npm registry 的只读查询已返回 `0.6.0`，从 registry 下载的 tarball SHA-256 为 `ee9f7c30f095064c908cf3b3ddc0f081469f6807c08333a26fdadafb17cd6f51`，与发布候选包逐字节一致；包内 `contract-source.json` 指向提交 `3dd2ca04b26bb66ce2d5705c939aa6216abe5955`，`dirty=false`。这些结果只证明制品已传播且来源匹配，不代表前端升级、两仓 CI 或阶段 4 Fresh 验收通过。
+2026-10-15，后端 `package.json` 和 `package-lock.json` 已固定为 `0.6.0`；经批准的 `npm publish` 命令成功返回。官方 npm registry 的只读查询已返回 `0.6.0`，从 registry 下载的 tarball SHA-256 为 `ee9f7c30f095064c908cf3b3ddc0f081469f6807c08333a26fdadafb17cd6f51`，与发布候选包逐字节一致；包内 `contract-source.json` 指向提交 `3dd2ca04b26bb66ce2d5705c939aa6216abe5955`，`dirty=false`。这些结果证明制品已传播且来源匹配，不代表两仓 CI 或阶段 4 Fresh 验收通过。
 
 后端维护目录为 `saas-forge-contracts/saas-forge-openapi-contracts/typescript-client/`。同步修改其 `package.json` 与 `package-lock.json` 的版本；可用 `npm version <新版本> --no-git-tag-version` 生成一致改动。随后在该目录执行 `npm ci`、`npm run build`、`npm pack`，再将 tarball 安装到仓库外目录做生成 operation 导入与请求/反序列化检查。构建用 JDK 17、根 Maven Wrapper 和正式 v1/v2/Project 契约，包内 `contract-source.json` 记录来源提交、dirty 与输入 SHA-256。冻结代码并提交后在干净工作区复打包，使来源显示 `dirty=false`；`prepublishOnly` 会拒绝有未提交改动的发布。后端 `Verify` 与 `API Client artifact` CI 必须对应此提交，不能引用 0.5.0 的历史运行。
 
-正式 `npm publish` 是公开且不可覆盖的制品发布，需要发布者 npm 登录/2FA 与用户对具体制品的批准；仓库目前没有 npm trusted publisher。本次已获批准，registry 版本、`contract-source.json` 和完整性核对结果见上文。前端在独立仓执行 `pnpm add --save-exact @crane199709/saas-forge-api-client@0.6.0`，审查 `package.json`、`pnpm-lock.yaml` 与包完整性，然后 `pnpm install --frozen-lockfile`、`pnpm run verify`，并以真实 Chrome/Gateway 验证。`pnpm-workspace.yaml` 的发布时间例外当前只含已审阅的旧版本；新版本若被年龄门禁阻止，应先核对实际发布来源再决定是否加入精确例外，不预先放宽。前端 `build/provenance.ts` 仍要求正式安装包版本与锁文件一致、包来源 `dirty=false`。
+正式 `npm publish` 是公开且不可覆盖的制品发布，需要发布者 npm 登录/2FA 与用户对具体制品的批准；仓库目前没有 npm trusted publisher。本次已获批准，registry 版本、`contract-source.json` 和完整性核对结果见上文。前端已固定 `@crane199709/saas-forge-api-client@0.6.0` 并完成本地冻结安装与验证；`pnpm-workspace.yaml` 另为已审阅的精确版本 `0.6.0` 增加发布时间例外。前端 `build/provenance.ts` 仍要求正式安装包版本与锁文件一致、包来源 `dirty=false`。真实 Chrome/Gateway 验证仍待本轮 Fresh 环境执行。
 
 ## 同轮执行顺序
 
