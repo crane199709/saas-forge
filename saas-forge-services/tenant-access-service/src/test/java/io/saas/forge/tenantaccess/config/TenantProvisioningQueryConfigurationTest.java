@@ -1,11 +1,15 @@
 package io.saas.forge.tenantaccess.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import io.saas.forge.contracts.route.HttpRouteCatalog;
 import io.saas.forge.sdk.auth.ServiceAccessTokenRevocationChecker;
 import io.saas.forge.sdk.auth.ServiceAccessTokenSignatureVerifier;
+import io.saas.forge.sdk.auth.UserAccessTokenSignatureVerifier;
+import io.saas.forge.starter.security.SaasForgeHttpAuthenticationAutoConfiguration;
+import io.saas.forge.starter.security.UserAccessTokenContextRevocationChecker;
 import io.saas.forge.tenantaccess.domain.tenant.Tenant;
 import io.saas.forge.tenantaccess.domain.tenant.TenantRepository;
 import java.nio.file.Files;
@@ -15,8 +19,11 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.cloud.client.loadbalancer.LoadBalancerClient;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.web.client.RestClient;
+import tools.jackson.databind.ObjectMapper;
 
 class TenantProvisioningQueryConfigurationTest {
     private static final UUID IAM_SERVICE_CLIENT_ID =
@@ -29,16 +36,39 @@ class TenantProvisioningQueryConfigurationTest {
             new TenantProvisioningQueryConfiguration();
 
     @Test
-    void wiresEligibilityAndTokenAuthorization() {
-        assertNotNull(configuration.initialSubscriptionEligibilityService(
-                emptyTenantRepository(), Clock.systemUTC()));
-        ServiceAccessTokenSignatureVerifier signatures =
-                configuration.tenantAccessServiceAccessTokenSignatureVerifier(
-                        RestClient.create(), Clock.systemUTC(), "https://iam.test.saas.forge.invalid");
-        ServiceAccessTokenRevocationChecker revocations =
-                configuration.tenantAccessServiceAccessTokenRevocationChecker(
-                        org.mockito.Mockito.mock(StringRedisTemplate.class), "test");
-        assertNotNull(configuration.tenantAccessServiceAccessTokenAuthorizer(signatures, revocations));
+    void startsHttpAndGrpcReceiversWithTheCompleteDefaultAuthenticationAdapters() throws Exception {
+        Path clientIdFile = Files.writeString(directory.resolve("startup-iam-client-id"), IAM_SERVICE_CLIENT_ID.toString());
+        new WebApplicationContextRunner()
+                .withConfiguration(AutoConfigurations.of(SaasForgeHttpAuthenticationAutoConfiguration.class))
+                .withUserConfiguration(TenantProvisioningQueryConfiguration.class)
+                .withPropertyValues(
+                        "spring.application.name=tenant-access-service",
+                        "security.jwt.issuer=https://iam.test.saas.forge.invalid",
+                        "saas.forge.environment=test",
+                        "saas.forge.tenant-access.iam-service-client-id-file=" + clientIdFile)
+                .withBean(Clock.class, Clock::systemUTC)
+                .withBean(TenantRepository.class, TenantProvisioningQueryConfigurationTest::emptyTenantRepository)
+                .withBean(LoadBalancerClient.class, () -> org.mockito.Mockito.mock(LoadBalancerClient.class))
+                .withBean(StringRedisTemplate.class, () -> org.mockito.Mockito.mock(StringRedisTemplate.class))
+                .withBean(ObjectMapper.class, ObjectMapper::new)
+                .withBean(HttpRouteCatalog.class, () -> new HttpRouteCatalog(1, java.util.List.of(
+                        new HttpRouteCatalog.Route("readTenant", HttpRouteCatalog.HttpMethod.GET,
+                                "/api/v1/tenants", "tenant-access-service",
+                                HttpRouteCatalog.CredentialRequirement.USER_REQUIRED, java.util.List.of()))))
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasSingleBean(UserAccessTokenSignatureVerifier.class);
+                    assertThat(context).hasSingleBean(ServiceAccessTokenSignatureVerifier.class);
+                    assertThat(context).hasSingleBean(ServiceAccessTokenRevocationChecker.class);
+                    assertThat(context).hasSingleBean(UserAccessTokenContextRevocationChecker.class);
+                    assertThat(context).hasSingleBean(io.saas.forge.sdk.auth.ServiceAccessTokenAuthorizer.class);
+                });
+    }
+
+    @Test
+    void wiresEligibility() {
+        assertThat(configuration.initialSubscriptionEligibilityService(
+                emptyTenantRepository(), Clock.systemUTC())).isNotNull();
     }
 
     @Test
