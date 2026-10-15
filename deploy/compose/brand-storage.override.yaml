@@ -1,0 +1,56 @@
+# 显式叠加此文件才启动本地品牌对象存储；四份凭据文件由开发者在仓库外维护。
+services:
+  brand-storage:
+    image: docker.io/pgsty/silo:RELEASE.2026-09-16T00-00-00Z
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        export MINIO_ROOT_USER="$$(cat /run/secrets/root-access-key)";
+        export MINIO_ROOT_PASSWORD="$$(cat /run/secrets/root-secret-key)";
+        exec silo server /data --console-address :9001
+    ports:
+      - "127.0.0.1:9000:9000"
+    volumes:
+      - brand-storage-data:/data
+      - type: bind
+        source: ${SF_BRAND_ROOT_ACCESS_KEY_FILE:?root access key file is required}
+        target: /run/secrets/root-access-key
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ${SF_BRAND_ROOT_SECRET_KEY_FILE:?root secret key file is required}
+        target: /run/secrets/root-secret-key
+        read_only: true
+        bind: { create_host_path: false }
+
+  brand-storage-init:
+    image: docker.io/pgsty/silo:RELEASE.2026-09-16T00-00-00Z
+    entrypoint: ["/bin/sh", "/scripts/brand-s3-init.sh"]
+    depends_on:
+      brand-storage:
+        condition: service_started
+    volumes:
+      - ./brand-s3-init.sh:/scripts/brand-s3-init.sh:ro
+      - type: bind
+        source: ${SF_BRAND_ROOT_ACCESS_KEY_FILE:?root access key file is required}
+        target: /run/secrets/root-access-key
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ${SF_BRAND_ROOT_SECRET_KEY_FILE:?root secret key file is required}
+        target: /run/secrets/root-secret-key
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ${SF_BRAND_APP_ACCESS_KEY_FILE:?brand access key file is required}
+        target: /run/secrets/brand-access-key
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ${SF_BRAND_APP_SECRET_KEY_FILE:?brand secret key file is required}
+        target: /run/secrets/brand-secret-key
+        read_only: true
+        bind: { create_host_path: false }
+
+volumes:
+  brand-storage-data:

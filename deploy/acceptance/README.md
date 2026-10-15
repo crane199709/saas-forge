@@ -18,7 +18,9 @@
 - Redis、单节点 KRaft Kafka、单节点 Nacos 与 OpenTelemetry Collector
 - PostgreSQL、Redis、Kafka 的独立命名卷
 
-S3 兼容对象存储不属于当前拓扑：按 [ADR 0036](../../docs/adr/0036-tenant-access-owns-controlled-tenant-brand-profiles.md) 随第 4 阶段 Tenant 品牌素材引入最小能力，第 6 阶段的 Audit 导出在分离的存储边界内复用。当前 Collector 仅通过 `debug` exporter 输出遥测数据，不部署 Prometheus、Loki、Tempo 或 Grafana。
+默认拓扑不启动 S3 兼容对象存储。第 4 阶段品牌素材验收需叠加 `brand-storage.override.yaml`，它使用独立私有 Bucket、受限应用身份及独立数据卷；第 6 阶段 Audit 导出须使用分离的存储边界，见 [ADR 0036](../../docs/adr/0036-tenant-access-owns-controlled-tenant-brand-profiles.md)。当前 Collector 仅通过 `debug` exporter 输出遥测数据，不部署 Prometheus、Loki、Tempo 或 Grafana。
+
+品牌素材验收在本目录的隔离 Compose 项目中执行 `docker compose -f compose.yaml -f brand-storage.override.yaml up --build`。必须先设置 `SF_BRAND_ROOT_ACCESS_KEY_FILE`、`SF_BRAND_ROOT_SECRET_KEY_FILE`、`SF_BRAND_APP_ACCESS_KEY_FILE`、`SF_BRAND_APP_SECRET_KEY_FILE` 为仓库外的受限文件路径；文件内容不得写入 `.env`。叠加文件等待 Bucket/受限身份初始化成功后才启动 Tenant Access。需验收 Remote 与 Example 时，可在品牌叠加文件之前继续叠加 `stage3.override.yaml`。
 
 ## 启动
 

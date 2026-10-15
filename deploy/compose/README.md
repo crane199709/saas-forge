@@ -62,6 +62,10 @@ IAM 首次环境准备可从仓库根目录执行 `bash scripts/initialize-local
 
 ## HTTPS 与完整验收
 
+品牌 PNG 素材使用独立私有 S3 兼容 Bucket。开发者可选择叠加 `brand-storage.override.yaml` 启动本地对象存储及一次性 Bucket 初始化；`SF_BRAND_ROOT_ACCESS_KEY_FILE`、`SF_BRAND_ROOT_SECRET_KEY_FILE`、`SF_BRAND_APP_ACCESS_KEY_FILE`、`SF_BRAND_APP_SECRET_KEY_FILE` 均指向仓库外的受限凭据文件。原生运行 Tenant Access 时，设置非敏感的 `SAAS_FORGE_BRAND_S3_ENDPOINT=http://127.0.0.1:9000`、`SAAS_FORGE_BRAND_S3_REGION=us-east-1`、`SAAS_FORGE_BRAND_S3_BUCKET=sf-brand-assets`，并将 `SAAS_FORGE_BRAND_S3_ACCESS_KEY_FILE`、`SAAS_FORGE_BRAND_S3_SECRET_KEY_FILE` 指向应用凭据文件。未配置 Bucket 时素材 API 不启用。生产环境需提供受控私有 Bucket、受限对象身份及相应拓扑配置。
+
+对象存储使用固定版本的 [PGSTY Silo](https://github.com/pgsty/silo/releases/tag/RELEASE.2026-09-16T00-00-00Z)（AGPL-3.0-or-later）独立容器。四份凭据文件准备好后，在本目录执行 `docker compose -f compose.yaml -f brand-storage.override.yaml up -d brand-storage`，再执行 `docker compose -f compose.yaml -f brand-storage.override.yaml run --rm brand-storage-init`。初始化仅授予应用身份对品牌 Bucket 对象的读、写、删除权限，不授予列举权限。完整验收使用[品牌存储叠加文件](../acceptance/brand-storage.override.yaml)。
+
 `local-https-development.override.yaml` 保留原生开发 HTTPS Edge；它只连接已有后端，不再通过 `depends_on` 启动 Gateway。旧 Console 的容器 TLS/浏览器验收入口已迁出，见[迁出记录](../../docs/acceptance/consoles-extraction.md)。
 
 完整组合和场景覆盖文件位于 [`deploy/acceptance`](../acceptance/README.md)，通过 `extends` 复用应用定义并保留跨服务启动顺序。共用构建文件位于 [`deploy/docker`](../docker/)。完整验收项目使用自己的网络和数据卷，不接入日常共享网络。

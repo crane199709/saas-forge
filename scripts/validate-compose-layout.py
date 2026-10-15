@@ -17,7 +17,8 @@ APPLICATIONS = [ROOT / 'gateway/compose.yaml',
 OVERLAYS = sorted(ACCEPTANCE.parent.glob('*.override.yaml'))
 INFRASTRUCTURE = {'postgres', 'redis', 'kafka', 'mailpit', 'otel-collector', 'nacos', 'nacos-init'}
 FILES = [ENVIRONMENT, ACCEPTANCE, *APPLICATIONS, *OVERLAYS,
-         ENVIRONMENT.parent / 'local-https-development.override.yaml']
+         ENVIRONMENT.parent / 'local-https-development.override.yaml',
+         ENVIRONMENT.parent / 'brand-storage.override.yaml']
 
 # 仅构造语法校验占位值；不继承用户凭据、项目名或 COMPOSE_* 配置。
 environment = {key: os.environ[key] for key in ('PATH', 'HOME') if key in os.environ}
@@ -98,6 +99,18 @@ def main():
                     assert model['services'][service]['environment'].get(variable) == 'PT1H', (
                         f'{service}: 生命周期验收必须延迟后台接管，{variable} 应为 PT1H'
                     )
+            if overlay and overlay.name == 'brand-storage.override.yaml':
+                storage = model['services']['brand-storage']
+                init = model['services']['brand-storage-init']
+                tenant = model['services']['tenant-access-service']
+                assert not storage.get('ports'), '验收对象存储不得发布宿主机端口'
+                assert tenant['depends_on']['brand-storage-init']['condition'] == 'service_completed_successfully'
+                assert init['depends_on']['brand-storage']['condition'] == 'service_started'
+                assert tenant['environment']['SAAS_FORGE_BRAND_S3_BUCKET'] == 'sf-brand-assets'
+                assert tenant['environment']['SAAS_FORGE_BRAND_S3_ENDPOINT'] == 'http://brand-storage:9000'
+                assert {'/run/secrets/brand-access-key', '/run/secrets/brand-secret-key'} <= {
+                    mount['target'] for mount in tenant['volumes'] if mount['type'] == 'bind'
+                }
     edge = configuration([ENVIRONMENT, ENVIRONMENT.parent / 'local-https-development.override.yaml'])
     assert not edge['services']['local-https-edge'].get('depends_on'), 'HTTPS 入口不能自动启动应用'
     print(f'通过：{len(APPLICATIONS)} 个独立应用、{len(OVERLAYS)} 个验收场景、项目/网络/卷隔离、挂载与迁移门禁。')

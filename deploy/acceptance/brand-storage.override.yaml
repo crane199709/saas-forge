@@ -1,0 +1,38 @@
+# 与 compose.yaml 叠加，仅在 Stage 4 品牌素材验收时启用。
+services:
+  brand-storage:
+    extends:
+      file: ../compose/brand-storage.override.yaml
+      service: brand-storage
+    ports: !reset []
+  brand-storage-init:
+    extends:
+      file: ../compose/brand-storage.override.yaml
+      service: brand-storage-init
+    depends_on:
+      brand-storage:
+        condition: service_started
+  tenant-access-service:
+    environment:
+      SAAS_FORGE_BRAND_S3_ENDPOINT: http://brand-storage:9000
+      SAAS_FORGE_BRAND_S3_REGION: us-east-1
+      SAAS_FORGE_BRAND_S3_BUCKET: sf-brand-assets
+      SAAS_FORGE_BRAND_S3_ACCESS_KEY_FILE: /run/secrets/brand-access-key
+      SAAS_FORGE_BRAND_S3_SECRET_KEY_FILE: /run/secrets/brand-secret-key
+    volumes:
+      - type: bind
+        source: ${SF_BRAND_APP_ACCESS_KEY_FILE:?brand access key file is required}
+        target: /run/secrets/brand-access-key
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ${SF_BRAND_APP_SECRET_KEY_FILE:?brand secret key file is required}
+        target: /run/secrets/brand-secret-key
+        read_only: true
+        bind: { create_host_path: false }
+    depends_on:
+      brand-storage-init:
+        condition: service_completed_successfully
+
+volumes:
+  brand-storage-data:
