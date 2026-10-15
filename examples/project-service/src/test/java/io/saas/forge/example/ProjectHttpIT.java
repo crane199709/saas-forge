@@ -385,7 +385,19 @@ class ProjectHttpIT {
         var future = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC).plusSeconds(120);
         var first = transaction.execute(status -> mapper.claim(new ProjectOutboxMapper.Claim(key(), future, future.plusSeconds(30))));
         assertThat(first).isNotNull();
-        assertThat((ProjectOutboxMapper.ClaimedEvent) transaction.execute(status -> mapper.claim(new ProjectOutboxMapper.Claim(key(), future.plusSeconds(1), future.plusSeconds(31))))).isNull();
+        var early = transaction.execute(status -> mapper.claim(
+                new ProjectOutboxMapper.Claim(key(), future.plusSeconds(1), future.plusSeconds(31))));
+        // 全类测试可能留下其他待发布事件；租约只保护已领取的事件，不阻塞整个队列。
+        if (early != null) {
+            try {
+                assertThat(early.eventId()).isNotEqualTo(first.eventId());
+            } finally {
+                // 立即释放无关事件的测试租约，恢复为可重试状态。
+                assertThat((Integer) transaction.execute(status -> mapper.retry(new ProjectOutboxMapper.Completion(
+                        early.eventId(), early.claimToken(), java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC), null))))
+                        .isEqualTo(1);
+            }
+        }
         var second = transaction.execute(status -> mapper.claim(new ProjectOutboxMapper.Claim(key(), future.plusSeconds(31), future.plusSeconds(61))));
         assertThat(second.eventId()).isEqualTo(first.eventId());
         assertThat(second.payload()).isEqualTo(first.payload());
