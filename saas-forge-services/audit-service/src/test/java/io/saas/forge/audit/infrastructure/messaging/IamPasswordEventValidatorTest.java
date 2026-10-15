@@ -1,7 +1,9 @@
 package io.saas.forge.audit.infrastructure.messaging;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
@@ -30,6 +32,39 @@ class IamPasswordEventValidatorTest {
         assertThrows(InvalidAuditEventException.class, () -> validator.validate(TOPIC, IDENTITY,
                 IamPasswordEventValidator.CONSUMER_NAME,
                 established().replace("PASSWORD_ESTABLISHED", "DELIVERY_ATTEMPTED")));
+    }
+
+    @Test
+    void passwordFactsRejectForgedRoutesExpiryAndIdentityWhileKeepingValidTrace() {
+        for (String event : new String[] {delivered(), established()}) {
+            String traced = event.replace("\"data\":",
+                    "\"traceId\":\"1234567890abcdef1234567890abcdef\",\"data\":");
+            assertEquals("1234567890abcdef1234567890abcdef", validator.validate(TOPIC, IDENTITY,
+                    IamPasswordEventValidator.CONSUMER_NAME, traced).traceId());
+            assertThrows(InvalidAuditEventException.class, () -> validator.validate(
+                    "saas.forge.prod.iam-service.events", IDENTITY,
+                    IamPasswordEventValidator.CONSUMER_NAME, traced));
+            assertThrows(InvalidAuditEventException.class, () -> validator.validate(
+                    TOPIC, "019535d9-0001-7000-8000-000000000006",
+                    IamPasswordEventValidator.CONSUMER_NAME, traced));
+            for (String invalid : new String[] {
+                    traced.replace("urn:saas.forge:iam-service", "urn:saas.forge:other"),
+                    traced.replace("application/json", "text/plain"),
+                    traced.replace("1234567890abcdef1234567890abcdef", "00000000000000000000000000000000"),
+                    traced.replace("\"subject\":\"" + IDENTITY + "\"",
+                            "\"subject\":\"019535d9-0001-7000-8000-000000000006\""),
+                    traced.replace("\"id\":\"" + EVENT + "\"", "\"id\":\"not-a-uuid\""),
+                    traced.replace("\"data\":{", "\"data\":{\"password\":\"secret\","),
+                    traced.replace(".v1.schema.json", ".v2.schema.json")
+            }) {
+                assertThrows(InvalidAuditEventException.class, () -> validator.validate(TOPIC, IDENTITY,
+                        IamPasswordEventValidator.CONSUMER_NAME, invalid));
+            }
+        }
+        assertTrue(IamPasswordEventValidator.isPasswordEvent(delivered()));
+        assertTrue(IamPasswordEventValidator.isPasswordEvent(established()));
+        assertFalse(IamPasswordEventValidator.isPasswordEvent("[]"));
+        assertFalse(IamPasswordEventValidator.isPasswordEvent("not-json"));
     }
 
     static String delivered() {
