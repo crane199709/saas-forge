@@ -1,6 +1,6 @@
 # #240 阶段 4 Fresh Chrome 两仓联合验收
 
-状态：准备中。当前仅建立同轮证据判定入口；**未运行阶段 4 Fresh Compose、真实 Chrome 产品路径、权威探针或两仓新提交 CI**，不能据此勾选 #240。
+状态：准备中。已建立同轮 Audit 关联和后端 Authority 探针入口；**未运行阶段 4 Fresh Compose、真实 Chrome 产品路径、权威探针或两仓新提交 CI**，不能据此勾选 #240。
 
 ## 当前可核对的基础
 
@@ -54,6 +54,20 @@ node scripts/stage4-audit-links.mjs \
 ```
 
 输出仅含本轮 runId、输入文件哈希、每项状态和加盐事件 ID 哈希，不输出源事件 ID 或秘密值。原始观察文件与查询权限由环境准备方保管；长期证据只提交脱敏报告和哈希。此探针使用 Fresh PostgreSQL 管理连接读取内部表，**不构成**运行时数据库账号 RLS 通过证据。
+
+### 后端 Authority 探针入口
+
+`scripts/stage4-authority-probe.mjs` 只接受 `ready` 的同轮 Fresh Compose handoff，校验 Gateway JWKS、隔离 PostgreSQL 容器/卷和当前 Tenant JWT；通过正式 HTTPS Gateway 请求当前服务。它以两位 Tenant 管理员和各自的可区分组织、角色、成员、品牌资料，双向核对只读隔离；随后执行 Project/Task 各五种 CRUD、跨 Tenant 资源拒绝，并使用 **`project_app` 受限数据库账号** 在无 Tenant、Tenant A、Tenant B 三种上下文下查询 Project/Task RLS。最后在恰有两名管理员的 Tenant 内并发互相撤销管理员角色，核验只成功一项、保留最后一名管理员、旧 Token 的下一次管理请求立即 403、自撤销 409。它不会写数据库或直接修改角色；所有业务变化均经正式 API。
+
+执行前由环境准备方在本轮受限目录创建权限 0600 的 `authority-scenario.json`、两 Tenant 用户 Access Token 文件、并发测试两位管理员的用户 Access Token 文件，以及本轮 `project_app`、`tenant_access_app` 密码文件。场景顶层只允许 `runId`、`tenantA`、`tenantB`、`lastAdministrators`、`projectAppPasswordFile`、`tenantAccessAppPasswordFile`；每个 Tenant 需 `tenantId`、`tokenFile`、`organizationUnitId`、`roleId`、`membershipId`、`brandDisplayName`；`lastAdministrators` 需 `tenantId`、`administratorRoleId` 及 `first`/`second`，每位包含 `membershipId`、`tokenFile`。两个 Tenant 的哨兵值必须不同。准备方需确认测试 Tenant 当前恰有两位有效管理员且允许本轮撤销其中一位；探针验证此条件后才并发请求。不要在仓库中保存 Token、密码或可提交配置模板。
+
+```sh
+node scripts/stage4-authority-probe.mjs \
+  "$SF_ROUND/handoff.json" "$SF_ROUND/authority-scenario.json" \
+  "$SF_ROUND/authority-probe.json"
+```
+
+脚本依赖本机受信 HTTPS CA、`curl`、`docker`、`psql`（在本轮 PostgreSQL 容器内）。无 `--insecure` 路径；Bearer Token 与数据库密码只经子进程标准输入传递。输出权限 0600，包含同轮 handoff/场景哈希、检查状态和资源 ID 的加盐哈希，不输出凭据。若项目操作中途失败，已创建的测试资源保留供诊断；环境准备方按本轮隔离项目清理，不能把失败前的局部操作记作通过。此探针不注入故障，不覆盖浏览器产品路径、补偿恢复或完整审计；其 `kind=stage4-authority-probe` 仅能作为所列权威检查的同轮证据。
 
 ## 必需证据与状态
 
