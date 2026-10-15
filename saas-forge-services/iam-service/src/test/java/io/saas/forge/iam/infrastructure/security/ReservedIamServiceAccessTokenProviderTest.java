@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import io.saas.forge.iam.application.authentication.*;
+import io.saas.forge.iam.application.bootstrap.ReservedServiceClient;
 import io.saas.forge.iam.application.signing.*;
 import io.saas.forge.iam.domain.client.*;
 import io.saas.forge.iam.domain.signing.*;
@@ -30,7 +31,7 @@ class ReservedIamServiceAccessTokenProviderTest {
 
     @BeforeEach
     void setUp() {
-        var client = OAuthClient.register("iam-service", Set.of(OAuthScope.TENANT_ACCESS_MEMBERSHIP_READ),
+        var client = OAuthClient.register("iam-service", ReservedServiceClient.IAM.allowedScopes(),
                 NOW.minusSeconds(60)).identifiedBy(CLIENT_ID);
         when(clients.findActiveBySecretDigest(ClientSecretDigest.fromPlaintext(SECRET), NOW))
                 .thenReturn(Optional.of(client));
