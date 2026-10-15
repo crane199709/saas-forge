@@ -11,6 +11,38 @@ import org.junit.jupiter.api.Test;
 
 class HttpPermissionCheckerTest {
     @Test
+    void mismatchedDecisionAndMissingAuthorityFailClosedWhileAuthenticationDenialsStayDenied() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+        server.createContext("/api/v1/permissions/decision", exchange -> {
+            int call = calls.incrementAndGet();
+            byte[] body = "{\"code\":\"example:task:list\",\"allowed\":true}".getBytes();
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(call == 1 ? 200 : call == 2 ? 401 : 403, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        try {
+            var checker = new HttpPermissionChecker(() -> java.net.URI.create(
+                    "http://127.0.0.1:" + server.getAddress().getPort()));
+            assertThrows(PermissionAuthorityUnavailableException.class,
+                    () -> checker.require("example:project:list", "Bearer user-token"));
+            assertThrows(PermissionDeniedException.class,
+                    () -> checker.require("example:project:list", "Bearer user-token"));
+            assertThrows(PermissionDeniedException.class,
+                    () -> checker.require("example:project:list", "Bearer user-token"));
+            assertEquals(3, calls.get());
+        } finally {
+            server.stop(0);
+        }
+
+        var undiscoverable = new HttpPermissionChecker(() -> null);
+        assertThrows(PermissionAuthorityUnavailableException.class,
+                () -> undiscoverable.require("example:project:list", "Bearer user-token"));
+    }
+
+    @Test
     void eachRequestRechecksTheAuthorityAndFailsClosedOnOutage() throws Exception {
         AtomicInteger calls = new AtomicInteger();
         HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
