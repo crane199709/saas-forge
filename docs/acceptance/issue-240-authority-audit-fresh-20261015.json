@@ -1,0 +1,497 @@
+{
+  "schemaVersion": 1,
+  "kind": "issue-240-fresh-authority-audit-partial-evidence",
+  "runId": "235ada91-757a-429b-b7fe-037683961218",
+  "handoffSha256": "f21c126b5b871c1c1c544a6e06f22b3694e04532f37cff575c78874225f4ae22",
+  "source": {
+    "backendCommit": "7f6fbbb8e5bc34b51913989880306096ebefaf5f",
+    "backendDirty": false,
+    "readyAt": "2026-10-15T10:16:04.915Z",
+    "expiresAt": "2026-10-16T10:16:04.921Z"
+  },
+  "status": "incomplete",
+  "directResults": [
+    {
+      "name": "fresh-tenant-a-b-seed",
+      "status": "passed",
+      "requestStatuses": [
+        201,
+        201
+      ],
+      "report": "tenant-seed.json"
+    },
+    {
+      "name": "nacos-and-iam-v2-marker",
+      "status": "passed",
+      "requestStatuses": [],
+      "report": "v2-readback.json"
+    },
+    {
+      "name": "a-b-example-permission-grant",
+      "status": "passed",
+      "requestStatuses": [
+        200,
+        201,
+        200,
+        200,
+        200,
+        201,
+        200,
+        200
+      ],
+      "report": "example-permission-grant.json"
+    },
+    {
+      "name": "a-b-brand-profile-isolation",
+      "status": "passed",
+      "requestStatuses": [
+        200,
+        200
+      ],
+      "report": "brand-isolation-readback.json"
+    },
+    {
+      "name": "four-public-brand-png-reads",
+      "status": "passed",
+      "requestStatuses": [
+        200,
+        200,
+        200,
+        200
+      ],
+      "report": "brand-public-readback.json"
+    },
+    {
+      "name": "failed-mail-invitation-resend-recovery",
+      "status": "passed",
+      "requestStatuses": [
+        200,
+        200
+      ],
+      "report": "invitation-resend-recovery.json"
+    },
+    {
+      "name": "unused-brand-asset-disable-public-denial",
+      "status": "failed",
+      "requestStatuses": [
+        200,
+        502
+      ],
+      "upstreamStatus": 404,
+      "report": "brand-disable-observation.json"
+    },
+    {
+      "name": "ten-committed-outbox-audit-links-and-secret-scan",
+      "status": "passed",
+      "scope": "linked-observations-only",
+      "matched": 10,
+      "report": "audit-links-10.json"
+    },
+    {
+      "name": "duplicate-pending-invitation-conflict",
+      "status": "failed",
+      "requestStatuses": [
+        502
+      ],
+      "expectedStatus": 409,
+      "report": null
+    },
+    {
+      "name": "project-protected-get-after-grant",
+      "status": "failed",
+      "requestStatuses": [
+        503
+      ],
+      "code": "PERMISSION_AUTHORITY_UNAVAILABLE",
+      "report": null
+    },
+    {
+      "name": "seven-day-brand-physical-cleanup",
+      "status": "not_run",
+      "reason": "retention-window-not-elapsed",
+      "report": "brand-disable-observation.json"
+    },
+    {
+      "name": "a-b-quota-before-invitation-acceptance",
+      "status": "passed",
+      "scope": "one-initialized-admin-seat-each; acceptance-compensation-not-run",
+      "report": "quota-baseline-readback.json"
+    },
+    {
+      "name": "project-app-rls-readonly-no-tenant-a-b",
+      "status": "not_run",
+      "scope": "RLS enabled and forced; restricted role returned zero in all contexts; tables empty so positive cross-tenant control absent",
+      "report": "project-rls-readonly.json"
+    }
+  ],
+  "requiredScenarios": {
+    "authority": [
+      {
+        "name": "fresh-v2-controlled-enablement",
+        "status": "not_run",
+        "reason": "Nacos readback and IAM durable marker passed; Chrome protocol proof is in separate browser evidence"
+      },
+      {
+        "name": "cross-tenant-organization-role-data-brand-isolation",
+        "status": "not_run",
+        "reason": "A/B brand readback passed; organization, role and Project RLS full probe not yet run"
+      },
+      {
+        "name": "concurrent-last-admin-protection",
+        "status": "not_run",
+        "reason": "A second member has not accepted invitation"
+      },
+      {
+        "name": "invitation-quota-compensation-and-retry",
+        "status": "not_run",
+        "reason": "Failed mail resend recovered; quota compensation and acceptance not yet exercised"
+      },
+      {
+        "name": "membership-revocation-and-quota-recovery",
+        "status": "not_run",
+        "reason": "A second member has not accepted invitation"
+      },
+      {
+        "name": "password-recovery-fence-and-restart-recovery",
+        "status": "not_run",
+        "reason": "No direct recovery-fence probe"
+      },
+      {
+        "name": "platform-historical-token-rejection",
+        "status": "not_run",
+        "reason": "No direct historical-token probe"
+      },
+      {
+        "name": "tenant-closure-revocation-and-recovery",
+        "status": "not_run",
+        "reason": "No dedicated closable tenant probe"
+      },
+      {
+        "name": "brand-asset-validation-public-read-disable-cleanup",
+        "status": "failed",
+        "reason": "Four bound assets publicly read as PNG and unbound disable committed, but Gateway returned 502 for disabled asset instead of upstream 404; format rejection and 7-day cleanup not run"
+      },
+      {
+        "name": "permission-revocation-immediate-and-authority-failure",
+        "status": "not_run",
+        "reason": "Project Gateway authority currently fails due missing Nacos gateway naming read permission; no deliberate outage injection"
+      },
+      {
+        "name": "example-ten-crud-rls-version-idempotency",
+        "status": "failed",
+        "reason": "Protected Project GET/POST returned 503 PERMISSION_AUTHORITY_UNAVAILABLE after role grant; CRUD/RLS/version probe blocked"
+      }
+    ],
+    "audit": [
+      {
+        "name": "stage4-committed-facts-in-outbox-and-audit",
+        "status": "not_run",
+        "reason": "Ten real committed changes linked exactly once; remaining required Stage 4 changes not yet performed"
+      },
+      {
+        "name": "outbox-retry-and-audit-idempotency",
+        "status": "not_run",
+        "reason": "No Kafka interruption or duplicate-event injection during browser stability window"
+      },
+      {
+        "name": "failed-transactions-have-no-success-fact",
+        "status": "not_run",
+        "reason": "Duplicate pending invitation returned Gateway 502 rather than expected domain 409; no complete failed-transaction report"
+      },
+      {
+        "name": "audit-records-exclude-sensitive-material",
+        "status": "not_run",
+        "reason": "Ten linked events passed secret/field scan; full required operation set not yet available"
+      }
+    ]
+  },
+  "privateReportDigests": [
+    {
+      "file": "tenant-seed.json",
+      "sha256": "34cd6bf947908dedc4db6cf7b589d9b69ecbcfeec8a25eae5bb21f8f4164f7c5",
+      "kind": "stage4-authority-seed",
+      "status": "passed",
+      "checks": []
+    },
+    {
+      "file": "v2-readback.json",
+      "sha256": "fd03bd4e25962480cc1c95fbc0c008b0864d0e720606fabebb68558a8f3d8d7d",
+      "kind": "stage4-v2-readback",
+      "status": "passed",
+      "checks": [
+        {
+          "name": "iam-gateway-controlled-nacos-v2-readback",
+          "status": "passed"
+        },
+        {
+          "name": "iam-legacy-signing-fence-persisted",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "permission-import-receipt.json",
+      "sha256": "5551d826ca6d46ee605d7eb2a23f23213ba1cb49797e012052b1c7051d97ff9c",
+      "kind": null,
+      "status": null,
+      "checks": []
+    },
+    {
+      "file": "example-permission-grant.json",
+      "sha256": "0263c2ed68ed7ad4b98918067773734bde5f1f1a716597d3ebc612082c8f2e7d",
+      "kind": "stage4-example-permission-grant",
+      "status": "passed",
+      "checks": []
+    },
+    {
+      "file": "tenant-b-core-readback.json",
+      "sha256": "56677d4496fc59ca2f64ed289915a221b4a69f83cf1576e5b07481f02dd91d74",
+      "kind": "stage4-tenant-b-core-readback",
+      "status": "passed",
+      "checks": []
+    },
+    {
+      "file": "tenant-a-brand.json",
+      "sha256": "94a736d4c1a140a82703f226a86f84ccf9a1f43932b6fda733e7b299cdadc143",
+      "kind": null,
+      "status": "passed",
+      "checks": [
+        {
+          "name": "chrome-logo-upload",
+          "status": "passed"
+        },
+        {
+          "name": "chrome-favicon-upload",
+          "status": "passed"
+        },
+        {
+          "name": "chrome-five-fields-preview-save",
+          "status": "passed"
+        },
+        {
+          "name": "chrome-brand-persisted",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "tenant-b-brand-5.json",
+      "sha256": "b4146bc4f3729d3f8e0dce3f801ed09c8cbe159f9db444106c34bffae27c35b9",
+      "kind": null,
+      "status": "passed",
+      "checks": [
+        {
+          "name": "chrome-logo-upload",
+          "status": "passed"
+        },
+        {
+          "name": "chrome-favicon-upload",
+          "status": "passed"
+        },
+        {
+          "name": "chrome-five-fields-preview-save",
+          "status": "passed"
+        },
+        {
+          "name": "chrome-brand-persisted",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "brand-isolation-readback.json",
+      "sha256": "61f7997cbdc2c3a853334e419aa4fd125eae7bc83df25fdc207141b0d5e80669",
+      "kind": "stage4-brand-isolation-readback",
+      "status": "passed",
+      "checks": [
+        {
+          "name": "tenant-a-own-brand-persisted",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-b-own-brand-persisted",
+          "status": "passed"
+        },
+        {
+          "name": "brand-profile-and-assets-distinct-across-tenants",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "brand-public-readback.json",
+      "sha256": "9d9e4105ffeb5e84c23dcb44035a050aa5410697c6b816997bbea7e4ba9d3068",
+      "kind": "stage4-brand-public-readback",
+      "status": "passed",
+      "checks": [
+        {
+          "name": "tenant-a-logo-public-png",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-a-favicon-public-png",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-b-logo-public-png",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-b-favicon-public-png",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "brand-disable-observation.json",
+      "sha256": "45ef5111ede53d4e71a1370095abfa17750ec5fa5699386c0fc0015b6c8d96f0",
+      "kind": "stage4-brand-disable-observation",
+      "status": "failed",
+      "checks": [
+        {
+          "name": "platform-disable-accepted",
+          "status": "passed"
+        },
+        {
+          "name": "disabled-source-audit-linked",
+          "status": "passed"
+        },
+        {
+          "name": "disabled-upstream-404",
+          "status": "passed"
+        },
+        {
+          "name": "disabled-public-gateway-404",
+          "status": "failed"
+        },
+        {
+          "name": "current-bound-asset-remains-public",
+          "status": "passed"
+        },
+        {
+          "name": "seven-day-physical-cleanup",
+          "status": "not_run"
+        }
+      ]
+    },
+    {
+      "file": "invitation-resend-recovery.json",
+      "sha256": "78d5f26128c0738c63dde41a12551ac67f90fb7cfad7a11779e7cf3244e343d8",
+      "kind": "stage4-invitation-resend-recovery",
+      "status": "passed",
+      "checks": [
+        {
+          "name": "committed-pending-failed-before-resend",
+          "status": "passed"
+        },
+        {
+          "name": "formal-api-resend-sent",
+          "status": "passed"
+        },
+        {
+          "name": "mailpit-received-new-exclusive-message",
+          "status": "passed"
+        },
+        {
+          "name": "formal-api-delivery-readback-sent",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "audit-links-10.json",
+      "sha256": "fe4a0e1a58859cb3cef8c27b2c6c3e47f33fc5c0f1a15e086495960b37f69e79",
+      "kind": "stage4-audit-links",
+      "status": "passed",
+      "checks": [
+        {
+          "name": "tenant-a-created",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-b-created",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-a-logo-uploaded",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-a-favicon-uploaded",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-a-brand-profile-saved",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-b-logo-uploaded",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-b-favicon-uploaded",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-b-brand-profile-saved",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-a-invitation-resent",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-b-unused-brand-asset-disabled",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "file": "quota-baseline-readback.json",
+      "sha256": "5c97fac7e27c2f234a5cc5bf6aab6c9ba23fc40130a22f66d52c80005dd6bb7b",
+      "kind": "stage4-quota-baseline-readback",
+      "status": "passed",
+      "checks": [
+        {
+          "name": "a-b-admin-initialization-one-seat-each",
+          "status": "passed"
+        },
+        {
+          "name": "invitation-acceptance-compensation",
+          "status": "not_run",
+          "reason": "no-invitation-accepted"
+        }
+      ]
+    },
+    {
+      "file": "project-rls-readonly.json",
+      "sha256": "10e7517463bc251f37fe41a8eca580ef88215c7d78f214cd809d093bffb53441",
+      "kind": "stage4-project-rls-readonly",
+      "status": "not_run",
+      "checks": [
+        {
+          "name": "project-and-task-rls-enabled-forced",
+          "status": "passed"
+        },
+        {
+          "name": "project-app-no-tenant-empty",
+          "status": "passed"
+        },
+        {
+          "name": "a-b-positive-cross-tenant-isolation",
+          "status": "not_run"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "All listed runtime observations preceded a temporary Tenant Access image replacement. The baseline image was restored under a new container ID, so the frozen handoff container identity no longer matches; no later runtime result may be counted under this handoff.",
+    "This file summarizes direct observations only. The private round reports contain precise time windows and IDs; no token, password, cookie, raw email body, or object key is copied here.",
+    "Passing linked observations does not satisfy all four Audit scenarios or the eleven Authority scenarios.",
+    "Gateway converts incomplete downstream domain Problem responses to 502; Project Nacos ACL lacks gateway naming read. These are observed defects pending repair and re-test."
+  ],
+  "generatedAt": "2026-10-15T10:56:43.150Z",
+  "evidenceClass": "pre-replacement-diagnostic-only",
+  "freshAcceptanceEligible": false,
+  "handoffIdentityStatus": "invalidated-after-tenant-access-container-replacement"
+}

@@ -1,6 +1,22 @@
 # #240 阶段 4 Fresh Chrome 两仓联合验收
 
-状态：准备中，Fresh 验收按用户决定暂缓。两仓当前业务源码的 CI 已通过，隔离轮次的六层 Compose 配置与冻结前端制品预检已通过；**尚未构建或启动本轮 Fresh Compose，也未运行真实 Chrome 产品路径、权威或 Audit 场景**，不能据此勾选 #240。
+状态：2026-10-15 已按用户要求重启验收，新的隔离 Fresh 轮次正在执行。环境、三条精确提交 CI、真实 Chrome 平台 Manifest 审核启用、两 Tenant 登录与品牌路径、邀请重投递恢复已有直接记录；**阶段 4 的 11 项浏览器、11 项 Authority、4 项 Audit 尚未全部完成，不能据此勾选或关闭 #240**。旧的暂缓轮次和预检事实保留在下文，勿与本轮混用。
+
+### 2026-10-15 重启轮次进度
+
+本轮 runId `235ada91-757a-429b-b7fe-037683961218`，Compose 项目 `sf-acceptance-235ada91-757a-429b-b7fe-037683961218`。后端源码为干净提交 `7f6fbbb8e5bc34b51913989880306096ebefaf5f`，前端源码为干净提交 `59811e9d0028d2a0a50c40ef245f2ba9eecb928c`；前端锁文件 SHA-256 `6a8a13730d4290aa08c7a92ee54ae0b766aa25993e6ff4f51ea6e448ee8f427b`，使用正式 Client `0.6.0`。本轮 handoff SHA-256 `f21c126b5b871c1c1c544a6e06f22b3694e04532f37cff575c78874225f4ae22`，后端最小探针通过。对应 [后端 Verify](https://github.com/crane199709/saas-forge/actions/runs/38689684783)、[API Client artifact](https://github.com/crane199709/saas-forge/actions/runs/38705856249) 和 [前端 Frontend verification](https://github.com/crane199709/saas-forge-web/actions/runs/38689240355) 均对精确提交成功。
+
+七个应用与 PostgreSQL、Redis、Kafka、Nacos、Mailpit、固定版 Silo、HTTPS Edge 均在该项目运行；没有暂停或修改 `icube-*` 容器。Gateway、IAM、Tenant Access、Entitlement 用当前提交的原始 Dockerfile 构建；Audit、Project、Remote 的 Docker 构建遇到 Maven Central 下载截断，改由同一干净提交的 JDK 17 离线 Maven 制品封装进同一运行基镜像，并记录制品及镜像摘要。这是本轮构建方法偏差，不能说七个应用均由 Dockerfile 完整构建。Nacos 实际回读 IAM/Gateway 的 Console v2 开关为 `true`。Chrome 运行版本 `155.0.8059.80`，匹配文中列出的 2026-10-13 官方 Mac Stable 公告。
+
+平台初始登录与改密、两个新 Tenant 的管理员密码设置及登录均由真实 Chrome 完成。正式 Service OAuth2 Client 注册 Project Remote Manifest，平台真实 Chrome 将其从待审核依次审批、启用。Tenant A/B 分别经正式 Console 上传 Logo 与 Favicon、完成五字段隔离预览和保存，并在刷新后读回不同的品牌哨兵；正式 API 也核对两方各自五字段及素材 URL 不同。Tenant A 通过真实 Chrome 完成两个根组织、带 Project 权限的角色、邀请创建和品牌五字段预览保存四条选定观察路径。观察脚本原先使用错误的语言存储键，且直接读取 DevTools 中已被回收的响应正文；修正驱动并换用唯一邀请地址后的四条路径诊断重测通过，报告 SHA-256 `20e29002cd3a7a5467ac2d4bd1e6c56c8735cb9ac7273c5060ef833ec0896785`。该诊断报告明确记录前端 `dirty=true`、范围为 `selected-real-chrome-paths`，前端脚本修改尚未进入本轮冻结前端提交，因此不能替代 11 项完整浏览器验收。
+
+联调定位到两个环境缺口：Project 工作负载的 Nacos ACL 缺少 `gateway` 服务发现读取权，正式 Project 请求持续返回 503；精确仓库修复已准备，权限变更正待用户批准后在隔离 Nacos 应用。隔离 Tenant Access 起初未配置 Mailpit SMTP，邀请写入后投递失败并令浏览器收到 502；本轮仅重建该服务并补 `mailpit:1025` 及非敏感发件地址，随后已提交邀请通过正式 resend API 返回 `SENT`，Mailpit 和正式 GET 均读回 `SENT`。两个 Tenant 的正式权限目录回读包含全部 10 个 Example 权限码。对 A/B Tenant 创建、两方素材上传/品牌保存、A 邀请 resend 共 9 个已提交操作，源 Outbox 与 Audit Record 逐项唯一匹配且通过敏感字段检查；此结果仅是已观察成功事实关联，**不等于**四项完整 Audit 验收。这些前置故障期间的请求不可记作产品通过；本轮仍需重测其完整业务链。
+
+禁用一个未绑定的 Tenant B 品牌素材后，Platform 管理 API 返回 200、源 Outbox 与 Audit 记录唯一匹配、Tenant Access 直连公开读取返回 404，但正式 Gateway 公开读取返回 502；根因是该服务的错误正文缺少 Gateway 要求的完整 Problem Details 字段。相同契约缺陷也使重复邀请冲突从预期 409 转为 Gateway 502。已在工作区修复相关异常映射，`Stage4ProblemMappingTest`、`BrandProfileControllerTest`、`BrandAssetPolicyControllerTest` 定向测试通过。将本地修复临时封装为单独的诊断镜像后，正式 Gateway 对已禁用素材返回含六个必需字段的 404，对重复邀请返回含六个必需字段的 409；两项仅证明修复方向，不能覆盖原镜像的 `failed`。诊断后已恢复原 Tenant Access 镜像 ID，但容器重建使容器 ID 不再等于本轮冻结 handoff，因此**本轮后续运行态结果不能并入该 handoff 的正式验收**；修复提交和 CI 完成后须创建新 runId 重新冻结环境。四个已绑定素材的公开 PNG 检查通过，禁用测试不涉及它们。权威与 Audit 的脱敏分项状态见 [本轮独立摘要](issue-240-authority-audit-fresh-20261015.json)。
+
+修复已分别提交为后端 `854d6f06`（错误契约）、`62810cd6`（隔离 Mailpit）和前端 `a2b2c74`（浏览器观察驱动）。定向后端测试 10/10、Compose 布局检查、前端类型检查和全仓 ESLint 通过；前端提交钩子完整运行。当前仍须取得 Project 的精确 Nacos ACL 决策并完成修复提交；这些新提交的三条精确 CI 和新 Fresh 环境尚未执行。
+
+目前**未形成**阶段 4 全部 26 项同轮通过报告。特别是品牌素材 24 小时和 7 天清理需要真实时间窗，不能通过调整时间、修改数据库或调用聚合器代替。其余浏览器、权威、故障和 Audit 项按下面的必需证据逐项完成后，再运行聚合器；缺项保持 `not_run`，保留 #240 开放。
 
 ## 当前可核对的基础
 
