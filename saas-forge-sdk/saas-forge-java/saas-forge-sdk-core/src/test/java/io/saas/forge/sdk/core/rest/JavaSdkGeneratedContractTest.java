@@ -59,8 +59,9 @@ class JavaSdkGeneratedContractTest {
         assertFalse(generated.contains("BrowserOrigin:"));
         assertFalse(generated.contains("FetchSite:"));
         assertFalse(generated.contains("RefreshTokenCookie"));
-        assertFalse(generated.contains("LoginRequest:"));
-        assertFalse(generated.contains("PasswordSetupRequest:"));
-        assertFalse(generated.contains("SessionSlotRequest:"));
+        assertTrue(generated.lines().anyMatch("    InvitationPasswordSetupRequest:"::equals));
+        assertFalse(generated.lines().anyMatch("    LoginRequest:"::equals));
+        assertFalse(generated.lines().anyMatch("    PasswordSetupRequest:"::equals));
+        assertFalse(generated.lines().anyMatch("    SessionSlotRequest:"::equals));
     }
 }
