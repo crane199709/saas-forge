@@ -1,6 +1,7 @@
 package io.saas.forge.audit.infrastructure.messaging;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -35,6 +36,26 @@ class SessionStartedEventValidatorTest {
                 event("")).traceId());
     }
 
+    @Test
+    void firstPasswordChangeAndTenantSelectionAreAuditedWithoutTokenMaterial() {
+        String base = event("");
+        String traced = base.replace("\"data\":",
+                "\"traceId\":\"1234567890abcdef1234567890abcdef\",\"data\":");
+        for (String payload : new String[] {
+                traced.replace("USER_TENANT", "INITIAL_PASSWORD_CHANGE")
+                        .replace("ACCESS_TOKEN_ISSUED", "PASSWORD_CHANGE_REQUIRED")
+                        .replace("\"TENANT\"", "\"PLATFORM\""),
+                traced.replace("USER_TENANT", "USER_TENANT_SELECTION")
+                        .replace("ACCESS_TOKEN_ISSUED", "CONTEXT_SELECTION_REQUIRED")
+                        .replace("\"TENANT\"", "\"PLATFORM\"")
+        }) {
+            var record = validator.validate(TOPIC, identityId(), consumer(), payload);
+            assertEquals("SESSION_STARTED", record.action());
+            assertEquals("1234567890abcdef1234567890abcdef", record.traceId());
+            assertFalse(record.metadata().contains("token"));
+        }
+    }
+
     @ParameterizedTest
     @MethodSource("invalidContracts")
     void rejectsContractAndSecurityBoundaryViolations(String topic, String key, String consumer, String payload) {
@@ -56,7 +77,21 @@ class SessionStartedEventValidatorTest {
                         "\"occurredAt\":\"2026-08-28T10:15:30Z\"",
                         "\"occurredAt\":\"2026-08-28T10:15:31Z\"")),
                 Arguments.of(TOPIC, identityId(), consumer(), valid.replace(
-                        "019535d9-0001-7000-8000-000000000001", "019535d9-0001-4000-8000-000000000001")));
+                        "019535d9-0001-7000-8000-000000000001", "019535d9-0001-4000-8000-000000000001")),
+                Arguments.of(TOPIC, identityId(), consumer(), valid.replace("\"purpose\":\"USER_TENANT\"",
+                        "\"purpose\":\"SERVICE_CLIENT\"")),
+                Arguments.of(TOPIC, identityId(), consumer(), valid.replace("\"contextType\":\"TENANT\"",
+                        "\"contextType\":\"CROSS_TENANT\"")),
+                Arguments.of(TOPIC, identityId(), consumer(), valid.replace("\"result\":\"ACCESS_TOKEN_ISSUED\"",
+                        "\"result\":\"TOKEN_DISCLOSED\"")),
+                Arguments.of(TOPIC, identityId(), consumer(), valid.replace("\"data\":",
+                        "\"traceId\":\"00000000000000000000000000000000\",\"data\":")),
+                Arguments.of(TOPIC, identityId(), consumer(), valid.replace("\"time\":\"2026-08-28T10:15:30Z\"",
+                        "\"time\":\"2026-08-28T11:15:30+01:00\"")),
+                Arguments.of(TOPIC, identityId(), consumer(), valid.replace("\"data\":",
+                        "\"cookie\":\"secret\",\"data\":")),
+                Arguments.of(TOPIC, identityId(), consumer(), valid.replace("\"subject\":\"" + familyId() + "\"",
+                        "\"subject\":\"" + identityId() + "\"")));
     }
 
     static String event(String extraDataField) {

@@ -1,6 +1,7 @@
 package io.saas.forge.audit.infrastructure.messaging;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -39,6 +40,36 @@ class TenantAccessEventValidatorTest {
     }
 
     @Test
+    void tenantDetailsFactPreservesExpiryAndRejectsCrossTenantOrSensitivePayload() {
+        String base = tenantDetailsUpdatedEvent();
+        String expiring = base.replace("\"expiresAt\":null",
+                "\"expiresAt\":\"2026-11-14T10:15:30Z\"")
+                .replace("\"data\":", "\"traceId\":\"1234567890abcdef1234567890abcdef\",\"data\":");
+        var record = validator.validate(TenantCreatedEventValidatorTest.TOPIC,
+                TenantCreatedEventValidatorTest.tenantId(), TenantCreatedEventValidator.CONSUMER_NAME,
+                expiring).orElseThrow();
+        assertEquals("2026-11-14T10:15:30Z", objectMapper.readTree(record.metadata()).get("expiresAt").asText());
+        assertEquals("1234567890abcdef1234567890abcdef", record.traceId());
+
+        for (String invalid : new String[] {
+                expiring.replace("\"displayName\":", "\"email\":\"secret@example.test\",\"displayName\":"),
+                expiring.replace("\"displayName\":\"New name\"", "\"displayName\":\"\""),
+                expiring.replace("2026-11-14T10:15:30Z", "2026-11-14T10:15:30+01:00"),
+                expiring.replace("1234567890abcdef1234567890abcdef", "00000000000000000000000000000000"),
+                expiring.replace("\"subject\":\"" + TenantCreatedEventValidatorTest.tenantId() + "\"",
+                        "\"subject\":\"019535d9-0001-7000-8000-000000000047\""),
+                expiring.replace("\"expiresAt\":\"2026-11-14T10:15:30Z\"", "\"expiresAt\":2")
+        }) {
+            assertThrows(InvalidAuditEventException.class, () -> validator.validate(
+                    TenantCreatedEventValidatorTest.TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                    TenantCreatedEventValidator.CONSUMER_NAME, invalid));
+        }
+        assertThrows(InvalidAuditEventException.class, () -> validator.validate(
+                TenantCreatedEventValidatorTest.TOPIC, "019535d9-0001-7000-8000-000000000047",
+                TenantCreatedEventValidator.CONSUMER_NAME, expiring));
+    }
+
+    @Test
     void tenantClosureProducesStrictPersistentAuditFact() {
         String event = registeredTenantClosedEvent();
         var record = validator.validate(TenantCreatedEventValidatorTest.TOPIC,
@@ -67,6 +98,34 @@ class TenantAccessEventValidatorTest {
                 TenantCreatedEventValidatorTest.TOPIC, TenantCreatedEventValidatorTest.tenantId(),
                 TenantCreatedEventValidator.CONSUMER_NAME,
                 event.replace("\"expiresAt\":", "\"token\":\"secret\",\"expiresAt\":")));
+    }
+
+    @Test
+    void invitationResendAndRevocationRemainCommittedFactsWithoutRecipientAddress() {
+        String created = invitationCreatedEvent();
+        for (String action : new String[] {"resent", "revoked"}) {
+            String payload = created.replace("invitation.created.v1", "invitation." + action + ".v1")
+                    .replace("invitation-created.v1", "invitation-" + action + ".v1")
+                    .replace("\"data\":", "\"traceId\":\"1234567890abcdef1234567890abcdef\",\"data\":");
+            var record = validator.validate(TenantCreatedEventValidatorTest.TOPIC,
+                    TenantCreatedEventValidatorTest.tenantId(), TenantCreatedEventValidator.CONSUMER_NAME,
+                    payload).orElseThrow();
+            assertEquals("INVITATION_" + action.toUpperCase(java.util.Locale.ROOT), record.action());
+            assertEquals("1234567890abcdef1234567890abcdef", record.traceId());
+            assertTrue(record.metadata().contains("expiresAt"));
+            assertFalse(record.metadata().contains("email"));
+            for (String invalid : new String[] {
+                    payload.replace("invitation-" + action + ".v1", "invitation-created.v1"),
+                    payload.replace("1234567890abcdef1234567890abcdef", "00000000000000000000000000000000"),
+                    payload.replace("\"expiresAt\":\"2026-09-04T10:15:30Z\"",
+                            "\"expiresAt\":\"2026-09-04T10:15:30+01:00\""),
+                    payload.replace("\"actorIdentityId\":", "\"email\":\"recipient@example.test\",\"actorIdentityId\":"),
+                    payload.replace("\"subject\":\"" + TenantCreatedEventValidatorTest.tenantId() + "\"",
+                            "\"subject\":\"019535d9-0001-7000-8000-000000000099\"")
+            }) assertThrows(InvalidAuditEventException.class, () -> validator.validate(
+                    TenantCreatedEventValidatorTest.TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                    TenantCreatedEventValidator.CONSUMER_NAME, invalid));
+        }
     }
 
     @Test
