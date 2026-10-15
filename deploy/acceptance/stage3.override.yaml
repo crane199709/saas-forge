@@ -4,6 +4,9 @@ services:
   tenant-access-service:
     environment:
       SAAS_FORGE_TENANTACCESS_REMOTEDELIVERYSERVICECLIENTIDFILE: /run/secrets/remote-delivery-client-id
+      TENANT_INVITATION_SMTP_HOST: mailpit
+      TENANT_INVITATION_SMTP_PORT: "1025"
+      TENANT_INVITATION_SMTP_FROM: no-reply@saas.forge.test
     volumes:
       - type: bind
         source: ${REMOTE_DELIVERY_SERVICE_CLIENT_ID_FILE:?REMOTE_DELIVERY_SERVICE_CLIENT_ID_FILE is required}
