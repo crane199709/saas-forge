@@ -40,6 +40,21 @@
 5. 对上述**本轮**成功变更，按源事件 ID、Outbox、Audit Record 精确匹配持久行；验证重复投递幂等、事务失败无虚假成功及敏感材料缺失。所有报告使用同一 runId/handoff SHA-256，并按通过、失败、跳过、未执行分别记载。用前端阶段 4 聚合器离线复核，随后把脱敏原报告、散列清单、两仓 CI、诊断失败及最终结论写入 `docs/acceptance/`。本地 `.scratch/` 不能作为长期验收证据。
 6. 环境准备方按本轮项目名记录并执行清理决定。故障排查期间可保留受限环境；清理时只操作本轮 Compose 项目，不删除共享镜像、开发数据卷或其他环境。记录停止/保留的资源及责任人。
 
+### 同轮成功事实关联探针
+
+`scripts/stage4-audit-links.mjs` 只读取本轮 Fresh PostgreSQL，以操作的准确时间窗、源服务、action、resourceId、actorIdentityId 定位**唯一**持久 Audit 行，再按其 sourceEventId 关联源库中唯一已发布 Outbox 快照；还核对事件类型、时间与 trace，并拒绝已知敏感键及本轮受限文件中的秘密值。探针等待最多约 60 秒，以容纳异步投递。它不执行产品操作，也不覆盖重投递幂等或失败事务，因此输出为 `kind=stage4-audit-links`、`scope=linked-observations-only`，不能直接作为四项全部通过的 `stage4-audit` 报告。
+
+先将真实操作的时间窗、正式 API 响应资源 ID 与已验证的当前 Identity ID 写入仅本轮可读的 `audit-observations.json`（权限 0600），并列出本轮生成的纯文本 Secret 文件路径（同一所有者/组、权限 0600 或 0640）；不得填写旧轮事件 ID、Cookie、Token、密码或原始邮件。每个 `operations` 条目须含 `label`、`source`（`iam`、`tenant-access` 或 `project`）、`action`、`resourceId`、`actorIdentityId`（系统事件可为 `null`）、`startedAt`、`finishedAt`。顶层还需 `runId` 和非空的 `sensitiveFiles` 数组。时间窗必须位于 handoff 的 `readyAt` 与 `expiresAt` 内；同一操作若命中多条事实，探针拒绝歧义，需重做可区分的操作。具体 action/resource 的白名单以各 Audit EventValidator 和正式 API 响应为准。
+
+```sh
+chmod 600 "$SF_ROUND/audit-observations.json"
+node scripts/stage4-audit-links.mjs \
+  "$SF_ROUND/handoff.json" "$SF_ROUND/audit-observations.json" \
+  "$SF_ROUND/audit-links.json"
+```
+
+输出仅含本轮 runId、输入文件哈希、每项状态和加盐事件 ID 哈希，不输出源事件 ID 或秘密值。原始观察文件与查询权限由环境准备方保管；长期证据只提交脱敏报告和哈希。此探针使用 Fresh PostgreSQL 管理连接读取内部表，**不构成**运行时数据库账号 RLS 通过证据。
+
 ## 必需证据与状态
 
 | 边界 | 直接证据 |
