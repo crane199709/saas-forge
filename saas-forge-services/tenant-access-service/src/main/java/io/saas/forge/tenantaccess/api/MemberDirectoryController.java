@@ -25,7 +25,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
-public final class MemberDirectoryController implements MembersApi {
+public class MemberDirectoryController implements MembersApi {
     private static final String READ_PERMISSION = "tenant-access:membership:read";
     private final TenantContextAccessor contexts;
     private final PermissionAuthority permissions;
