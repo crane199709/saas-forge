@@ -295,6 +295,12 @@ export function assertAdministratorRace(responses, before, after, staleStatus, s
   assert.equal(selfStatus, 409, 'LAST_ADMIN_SELF_REVOCATION_ALLOWED');
 }
 
+export function assertAdminAssignment(assignments, roleId) {
+  assert.ok(assignments?.items?.some(item => item.roleId === roleId &&
+    item.roleKey === 'TENANT_ADMINISTRATOR' && item.systemManaged === true),
+  'ADMIN_ROLE_PRECONDITION');
+}
+
 async function administratorRace(api, scenario, countAdministrators) {
   const race = scenario.lastAdministrators;
   const first = requireTenantToken(secret(race.first.tokenFile), race.tenantId,
@@ -302,8 +308,10 @@ async function administratorRace(api, scenario, countAdministrators) {
   const second = requireTenantToken(secret(race.second.tokenFile), race.tenantId,
     race.second.membershipId);
   const list = id => `/api/v1/members/${id}/roles`;
-  expectStatus(await api(first, 'GET', list(race.first.membershipId)), 200);
-  expectStatus(await api(second, 'GET', list(race.second.membershipId)), 200);
+  for (const [token, member] of [[first, race.first], [second, race.second]]) {
+    const assignments = expectStatus(await api(token, 'GET', list(member.membershipId)), 200);
+    assertAdminAssignment(assignments, race.administratorRoleId);
+  }
   const before = await countAdministrators(race.tenantId);
   assert.equal(before, 2, 'ADMIN_RACE_PRECONDITION');
   const responses = await Promise.all([

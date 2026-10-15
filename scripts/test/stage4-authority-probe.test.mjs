@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assertAdministratorRace, assertRlsIsolation, projectCrud, uuidV7,
+import { assertAdminAssignment, assertAdministratorRace, assertRlsIsolation, projectCrud, uuidV7,
   requireTenantToken, tenantReadIsolation, validateScenario } from '../stage4-authority-probe.mjs';
 
 const id = suffix => `0199d1b0-1111-7000-8000-${String(suffix).padStart(12, '0')}`;
@@ -95,6 +95,11 @@ test('restricted Project role must see no rows without context and only its own 
 });
 
 test('last administrator race requires one committed revoke and immediate stale-token rejection', () => {
+  assertAdminAssignment({ items: [{ roleId: scenario.lastAdministrators.administratorRoleId,
+    roleKey: 'TENANT_ADMINISTRATOR', systemManaged: true }] },
+  scenario.lastAdministrators.administratorRoleId);
+  assert.throws(() => assertAdminAssignment({ items: [{ roleId: id(99),
+    roleKey: 'CUSTOM', systemManaged: false }] }, scenario.lastAdministrators.administratorRoleId));
   assertAdministratorRace([{ status: 403 }, { status: 200 }], 2, 1, 403, 200, 409);
   assert.throws(() => assertAdministratorRace([{ status: 200 }, { status: 200 }], 2, 0, 403, 200, 409));
   assert.throws(() => assertAdministratorRace([{ status: 200 }, { status: 403 }], 2, 1, 200, 200, 409));
