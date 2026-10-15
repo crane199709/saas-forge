@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.saas.forge.sdk.tenant.TenantContextSnapshot;
 import io.saas.forge.tenantaccess.application.authorization.MembershipRoleService;
 import io.saas.forge.tenantaccess.application.tenant.SessionRevocationGateway.Result;
+import io.saas.forge.tenantaccess.application.tenant.SessionRevocationRejectedException;
+import io.saas.forge.tenantaccess.application.tenant.SessionRevocationUnavailableException;
 import io.saas.forge.tenantaccess.application.tenant.UuidV7Generator;
 import io.saas.forge.tenantaccess.domain.outbox.OutboxEventRepository;
 import io.saas.forge.tenantaccess.infrastructure.persistence.JdbcPermissionAuthority;
@@ -18,6 +20,8 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
@@ -67,7 +71,13 @@ class MembershipDisablePostgreSqlIT {
     private TransactionTemplate transactions;
     private UuidV7Generator ids;
     private final AtomicInteger releases = new AtomicInteger();
+    private final AtomicInteger recoveries = new AtomicInteger();
+    private final List<UUID> revocationRequests = new ArrayList<>();
     private volatile boolean releaseFails;
+    private volatile boolean revocationPending;
+    private volatile boolean revocationRejected;
+    private volatile boolean recoveryUnavailable;
+    private volatile boolean outboxFails;
     private volatile CountDownLatch revocationEntered;
     private volatile CountDownLatch finishRevocation;
 
@@ -87,7 +97,10 @@ class MembershipDisablePostgreSqlIT {
         app = new JdbcTemplate(dataSource);
         transactions = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         ids = new UuidV7Generator(Clock.systemUTC(), new SecureRandom());
-        OutboxEventRepository outbox = event -> app.update("""
+        OutboxEventRepository outbox = event -> {
+            if (outboxFails && event.eventSnapshot().contains("membership.disabled.v1"))
+                throw new IllegalStateException("injected outbox failure");
+            app.update("""
                 INSERT INTO tenant_access_outbox_events
                   (event_id, tenant_id, occurred_at, topic, ordering_key, trace_id, event_snapshot, next_attempt_at)
                 VALUES (?, ?, ?, ?, ?, ?, CAST(? AS jsonb), ?)
@@ -95,8 +108,12 @@ class MembershipDisablePostgreSqlIT {
                 OffsetDateTime.ofInstant(event.occurredAt(), ZoneOffset.UTC), event.topic(),
                 event.orderingKey(), event.traceId(), event.eventSnapshot(),
                 OffsetDateTime.ofInstant(event.occurredAt(), ZoneOffset.UTC));
+        };
         MembershipRevocationGateway revocations = new MembershipRevocationGateway() {
             @Override public Result revoke(UUID requestId, UUID tenantId, UUID membershipId) {
+                revocationRequests.add(requestId);
+                if (revocationRejected) throw new SessionRevocationRejectedException();
+                if (revocationPending) return Result.pending(1);
                 CountDownLatch entered = revocationEntered;
                 if (entered != null) {
                     entered.countDown();
@@ -109,7 +126,11 @@ class MembershipDisablePostgreSqlIT {
                 }
                 return Result.completed(2, 3);
             }
-            @Override public void recover(UUID requestId, UUID tenantId, UUID membershipId) {}
+            @Override public void recover(UUID requestId, UUID tenantId, UUID membershipId) {
+                recoveries.incrementAndGet();
+                if (recoveryUnavailable)
+                    throw new SessionRevocationUnavailableException(new IllegalStateException("IAM unavailable"));
+            }
         };
         MembershipQuotaGateway quota = (tenantId, operationId) -> {
             releases.incrementAndGet();
@@ -123,7 +144,13 @@ class MembershipDisablePostgreSqlIT {
                 authority, revocations, quota, outbox,
                 new ObjectMapper(), ids, Clock.systemUTC(), TOPIC);
         releases.set(0);
+        recoveries.set(0);
+        revocationRequests.clear();
         releaseFails = false;
+        revocationPending = false;
+        revocationRejected = false;
+        recoveryUnavailable = false;
+        outboxFails = false;
         revocationEntered = null;
         finishRevocation = null;
     }
@@ -163,6 +190,98 @@ class MembershipDisablePostgreSqlIT {
         assertEquals(2, releases.get());
         assertEquals(1, count("SELECT count(*) FROM tenant_access_outbox_events WHERE event_snapshot->>'type' = 'com.saas.forge.membership.disabled.v1'"));
         assertThrows(MembershipDisableFailure.class, () -> service.disable(actor, member, ids.next(), null));
+    }
+
+    @Test
+    void pendingIamRevocationKeepsMemberFencedUntilWorkerCompletesOriginalRequest() {
+        UUID tenant = ids.next();
+        UUID administrator = ids.next();
+        UUID identity = ids.next();
+        UUID member = ids.next();
+        UUID memberIdentity = ids.next();
+        UUID role = ids.next();
+        seedTenant(tenant, role);
+        seedMembership(tenant, administrator, identity, role);
+        seedMembership(tenant, member, memberIdentity, null);
+        TenantContextSnapshot actor = new TenantContextSnapshot(identity, administrator, tenant);
+        revocationPending = true;
+
+        var pending = service.disable(actor, member, ids.next(), null);
+        assertEquals("REVOKING", pending.operationStatus());
+        assertEquals("ENABLED", scalar("SELECT membership_status FROM memberships WHERE id = ?", member));
+        assertEquals(0, count("SELECT count(*) FROM validate_membership(?, ?)", memberIdentity, member));
+        assertEquals(0, releases.get());
+        assertEquals(0, count("SELECT count(*) FROM tenant_access_outbox_events WHERE event_snapshot->>'type' = 'com.saas.forge.membership.disabled.v1'"));
+
+        revocationPending = false;
+        migrator.update("UPDATE membership_disable_workflows SET next_attempt_at = now() - interval '1 second' WHERE operation_id = ?", pending.operationId());
+        service.recoverNext();
+        assertEquals("COMPLETED", service.read(actor, member).operationStatus());
+        assertEquals("DISABLED", scalar("SELECT membership_status FROM memberships WHERE id = ?", member));
+        assertEquals(1, releases.get());
+        assertEquals(2, revocationRequests.size());
+        assertEquals(revocationRequests.get(0), revocationRequests.get(1));
+        assertEquals(1, count("SELECT count(*) FROM tenant_access_outbox_events WHERE event_snapshot->>'type' = 'com.saas.forge.membership.disabled.v1'"));
+    }
+
+    @Test
+    void rejectedIamRevocationRequiresExplicitRecoveryBeforeDisablingMember() {
+        UUID tenant = ids.next();
+        UUID administrator = ids.next();
+        UUID identity = ids.next();
+        UUID member = ids.next();
+        UUID role = ids.next();
+        seedTenant(tenant, role);
+        seedMembership(tenant, administrator, identity, role);
+        seedMembership(tenant, member, ids.next(), null);
+        TenantContextSnapshot actor = new TenantContextSnapshot(identity, administrator, tenant);
+        revocationRejected = true;
+
+        var blocked = service.disable(actor, member, ids.next(), null);
+        assertEquals("RECOVERY_REQUIRED", blocked.operationStatus());
+        assertEquals("ENABLED", scalar("SELECT membership_status FROM memberships WHERE id = ?", member));
+        assertEquals(0, releases.get());
+        recoveryUnavailable = true;
+        assertEquals("RECOVERY_REQUIRED", service.recover(actor, member, null).operationStatus());
+        assertEquals(0, releases.get());
+
+        recoveryUnavailable = false;
+        revocationRejected = false;
+        assertEquals("COMPLETED", service.recover(actor, member, null).operationStatus());
+        assertEquals("DISABLED", scalar("SELECT membership_status FROM memberships WHERE id = ?", member));
+        assertEquals(1, releases.get());
+        assertEquals(2, recoveries.get());
+        assertEquals(revocationRequests.get(0), revocationRequests.get(1));
+    }
+
+    @Test
+    void committedIamRevocationSurvivesLocalFactWriteFailureAndWorkerRetriesSameRequest() {
+        UUID tenant = ids.next();
+        UUID administrator = ids.next();
+        UUID identity = ids.next();
+        UUID member = ids.next();
+        UUID role = ids.next();
+        seedTenant(tenant, role);
+        seedMembership(tenant, administrator, identity, role);
+        seedMembership(tenant, member, ids.next(), null);
+        TenantContextSnapshot actor = new TenantContextSnapshot(identity, administrator, tenant);
+        outboxFails = true;
+
+        var pending = service.disable(actor, member, ids.next(), null);
+        assertEquals("REVOKING", pending.operationStatus());
+        assertEquals("ENABLED", scalar("SELECT membership_status FROM memberships WHERE id = ?", member));
+        assertEquals(0, releases.get());
+        assertEquals(0, count("SELECT count(*) FROM tenant_access_outbox_events WHERE event_snapshot->>'type' = 'com.saas.forge.membership.disabled.v1'"));
+
+        outboxFails = false;
+        migrator.update("UPDATE membership_disable_workflows SET next_attempt_at = now() - interval '1 second' WHERE operation_id = ?", pending.operationId());
+        service.recoverNext();
+        assertEquals("COMPLETED", service.read(actor, member).operationStatus());
+        assertEquals("DISABLED", scalar("SELECT membership_status FROM memberships WHERE id = ?", member));
+        assertEquals(1, releases.get());
+        assertEquals(2, revocationRequests.size());
+        assertEquals(revocationRequests.get(0), revocationRequests.get(1));
+        assertEquals(1, count("SELECT count(*) FROM tenant_access_outbox_events WHERE event_snapshot->>'type' = 'com.saas.forge.membership.disabled.v1'"));
     }
 
     @Test

@@ -350,6 +350,81 @@ class InvitationPersistenceTest {
                 tenant, invitee));
     }
 
+    @Test
+    void lostQuotaConsumeResponseRetriesSameAttemptWithoutDoubleCountingOrPrematureAcceptance() {
+        Flyway.configure().dataSource(url(), "tenant_access_migrator", "tenant-access-migrator-password")
+                .locations("classpath:db/migration").load().migrate();
+        JdbcTemplate migrator = new JdbcTemplate(new DriverManagerDataSource(
+                url(), "tenant_access_migrator", "tenant-access-migrator-password"));
+        UUID tenant = migrator.queryForObject(
+                "INSERT INTO tenants (display_name, tenant_status) VALUES ('Lost consume response', 'ACTIVE') RETURNING id",
+                UUID.class);
+        UUID administrator = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        UUID administratorMembership = migrator.queryForObject("""
+                INSERT INTO memberships (tenant_id, identity_id, membership_status)
+                VALUES (?, ?, 'ENABLED') RETURNING id
+                """, UUID.class, tenant, administrator);
+        UUID invitee = migrator.queryForObject("SELECT uuidv7()", UUID.class);
+        var datasource = new DriverManagerDataSource(url(), "tenant_access_app", "tenant-access-app-password");
+        JdbcTemplate jdbc = new JdbcTemplate(datasource);
+        var transactions = new TransactionTemplate(new DataSourceTransactionManager(datasource));
+        Instant at = Instant.parse("2026-10-14T10:00:00Z");
+        var ids = new UuidV7Generator(Clock.fixed(at, ZoneOffset.UTC), new SecureRandom());
+        var events = new InvitationEventFactory(new ObjectMapper(), ids, "saas.forge.test.events");
+        List<String> links = new ArrayList<>();
+        var outbox = (io.saas.forge.tenantaccess.domain.outbox.OutboxEventRepository) event -> jdbc.update("""
+                INSERT INTO tenant_access_outbox_events
+                    (event_id, tenant_id, occurred_at, topic, ordering_key, trace_id, event_snapshot, next_attempt_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)
+                """, event.eventId(), event.tenantId(), Timestamp.from(event.occurredAt()), event.topic(),
+                event.orderingKey(), event.traceId(), event.eventSnapshot(), Timestamp.from(event.occurredAt()));
+        var creator = new InvitationService(new JdbcInvitationRepository(jdbc),
+                (requestId, email, displayName) -> new IdentityProvisioningGateway.Result(
+                        invitee, IdentityCredentialDisposition.PASSWORD_READY),
+                outbox, events, (email, token) -> links.add(token), transactions, ids,
+                new SecureRandom(), Clock.fixed(at, ZoneOffset.UTC));
+        var invitation = creator.create(new TenantContextSnapshot(
+                administrator, administratorMembership, tenant), "lost@example.test", null);
+        List<UUID> attempted = new ArrayList<>();
+        AtomicBoolean responseLost = new AtomicBoolean(true);
+        InvitationQuotaGateway quota = new InvitationQuotaGateway() {
+            @Override public void consume(UUID target, UUID operationId) {
+                attempted.add(operationId);
+                if (responseLost.get())
+                    throw new RemoteWorkflowUnavailableException(new IllegalStateException("response lost"));
+            }
+            @Override public void release(UUID target, UUID operationId) {
+                throw new AssertionError("Uncertain consume must not be released");
+            }
+        };
+        var acceptor = new InvitationAcceptanceService(new JdbcInvitationAcceptanceRepository(jdbc),
+                quota, outbox, events, transactions, ids, Clock.fixed(at, ZoneOffset.UTC));
+        UUID originalKey = ids.next();
+
+        assertEquals("INVITATION_DEPENDENCY_UNAVAILABLE", assertThrows(InvitationFailure.class,
+                () -> acceptor.accept(links.get(0), invitee, originalKey, null)).code());
+        assertEquals("PENDING", creator.list(new TenantContextSnapshot(
+                administrator, administratorMembership, tenant)).stream()
+                .filter(item -> item.id().equals(invitation.id())).findFirst().orElseThrow().status());
+        assertEquals(0, migrator.queryForObject(
+                "SELECT count(*) FROM memberships WHERE tenant_id = ? AND identity_id = ?", Integer.class,
+                tenant, invitee));
+        responseLost.set(false);
+        var accepted = acceptor.accept(links.get(0), invitee, ids.next(), null);
+        assertEquals(false, accepted.replayed());
+        assertEquals(true, acceptor.accept(links.get(0), invitee, originalKey, null).replayed());
+        assertEquals(2, attempted.size());
+        assertEquals(attempted.get(0), attempted.get(1));
+        assertEquals(1, migrator.queryForObject(
+                "SELECT count(*) FROM memberships WHERE tenant_id = ? AND identity_id = ?", Integer.class,
+                tenant, invitee));
+        assertEquals(1, migrator.queryForObject("""
+                SELECT count(*) FROM tenant_access_outbox_events
+                WHERE event_snapshot->>'type' = 'com.saas.forge.invitation.accepted.v1'
+                AND tenant_id = ?
+                """, Integer.class, tenant));
+    }
+
     private static String url() {
         return "jdbc:postgresql://" + postgres.getHost() + ":" + postgres.getMappedPort(5432) + "/tenant_access_db";
     }

@@ -73,4 +73,37 @@ class BrandProfileServiceTest {
         assertThrows(BrandProfileService.Stale.class, () -> service.save(context, 1, change));
         verifyNoInteractions(outbox);
     }
+
+    @Test
+    void readRequiresBrandManagementPermission() {
+        assertThrows(BrandProfileService.Forbidden.class, () -> service.read(context));
+        verifyNoInteractions(profiles, outbox);
+        when(authority.allowed(context, "system:brand:manage")).thenReturn(true);
+        when(profiles.read(context.tenantId())).thenReturn(new BrandProfileRevision(3, change));
+        assertEquals(3, service.read(context).revision());
+        verifyNoInteractions(outbox);
+    }
+
+    @Test
+    void rejectsUnsafeNamesAssetReferencesAndUnreadableColorsBeforePublishingFact() {
+        when(authority.allowed(context, "system:brand:manage")).thenReturn(true);
+        var invalidChanges = java.util.List.of(
+                new BrandProfileChange(null, change.logoUrl(), change.faviconUrl(), "#123456", "#234567"),
+                new BrandProfileChange("  ", change.logoUrl(), change.faviconUrl(), "#123456", "#234567"),
+                new BrandProfileChange("A".repeat(201), change.logoUrl(), change.faviconUrl(), "#123456", "#234567"),
+                new BrandProfileChange("Acme\nInjected", change.logoUrl(), change.faviconUrl(), "#123456", "#234567"),
+                new BrandProfileChange("Acme", "https://attacker.example/logo.png", change.faviconUrl(), "#123456", "#234567"),
+                new BrandProfileChange("Acme", change.logoUrl(), "/brands/019535d9-0001-6000-8000-000000000012", "#123456", "#234567"),
+                new BrandProfileChange("Acme", change.logoUrl(), change.faviconUrl(), "red", "#234567"),
+                new BrandProfileChange("Acme", change.logoUrl(), change.faviconUrl(), "#FFFFFF", "#234567"),
+                new BrandProfileChange("Acme", change.logoUrl(), change.faviconUrl(), "#123456", null),
+                new BrandProfileChange("Acme", change.logoUrl(), change.faviconUrl(), "#123456", "#888888"));
+        for (BrandProfileChange invalid : invalidChanges) {
+            assertThrows(BrandProfileService.Invalid.class,
+                    () -> service.save(context, 0, invalid));
+        }
+        assertThrows(BrandProfileService.Invalid.class, () -> service.save(context, -1, change));
+        assertThrows(BrandProfileService.Invalid.class, () -> service.save(context, 0, null));
+        verifyNoInteractions(profiles, outbox);
+    }
 }
