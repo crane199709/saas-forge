@@ -1,6 +1,6 @@
 # #240 阶段 4 Fresh Chrome 两仓联合验收
 
-状态：准备中。已建立同轮 Audit 关联和后端 Authority 探针入口；**未运行阶段 4 Fresh Compose、真实 Chrome 产品路径、权威探针或两仓新提交 CI**，不能据此勾选 #240。
+状态：准备中，Fresh 验收按用户决定暂缓。两仓当前业务源码的 CI 已通过，隔离轮次的六层 Compose 配置与冻结前端制品预检已通过；**尚未构建或启动本轮 Fresh Compose，也未运行真实 Chrome 产品路径、权威或 Audit 场景**，不能据此勾选 #240。
 
 ## 当前可核对的基础
 
@@ -8,7 +8,15 @@
 
 2026-10-14 本机已安装 Java `17.0.12`、桌面 Google Chrome `155.0.8059.80`。Google [2026-10-13 Desktop Stable 公告](https://chromereleases.googleblog.com/2026/10/stable-channel-update-for-desktop_01668083673.html)列出 Mac `155.0.8059.79/.80`；正式执行日仍需重新核对最新公告，并以报告中的 Chrome 运行版本为准。2026-10-15 已通过本机 Docker 运行定向 S3 Testcontainers 测试；未因此运行或判定完整 Fresh 环境。
 
-2026-10-15 前端集成分支提交 `d7890ab1eab1a918acc0ee4eac129ad65855874f` 已包含 #235、#238、#239、#240，`package.json` 与 `pnpm-lock.yaml` 均固定正式 Client `0.6.0`。本地 `pnpm install --frozen-lockfile`、`pnpm run verify`（276/276 Node 测试及构建）和隔离 Chromium UI（32/32）通过；这些检查不能代替真实 Chrome/Gateway 联调。品牌 S3 兼容存储叠加已提交，受控 v2 实际运行值、完整 Fresh 部署及产品验收仍待验证。本记录不把这些前提写作已通过。
+2026-10-15 前端集成分支提交 `2f95dd2bbd54c70a5e9222be0e39e5951e50b3f8` 已包含 #235、#238、#239、#240，`package.json` 与 `pnpm-lock.yaml` 均固定正式 Client `0.6.0`。本地 `pnpm install --frozen-lockfile`、`pnpm run verify`（276/276 Node 测试及构建）和隔离 Chromium UI（32/32）通过；这些检查不能代替真实 Chrome/Gateway 联调。品牌 S3 兼容存储叠加已提交，受控 v2 实际运行值、完整 Fresh 部署及产品验收仍待验证。
+
+### 2026-10-15 精确提交 CI 与预检结果
+
+后端源码提交 `6acb5d5794fc3b78e36aae61baf0d0f73e6d8d10`、前端源码提交 `2f95dd2bbd54c70a5e9222be0e39e5951e50b3f8` 均在预检时无未提交改动。对应 [后端 Verify](https://github.com/crane199709/saas-forge/actions/runs/38686725682)、[API Client artifact](https://github.com/crane199709/saas-forge/actions/runs/38686756384) 与 [前端 Frontend verification](https://github.com/crane199709/saas-forge-web/actions/runs/38676569811) 均成功；后端 Verify 包含 JDK 17、Nacos 和独立 Fresh Tenant 生命周期，但它不是阶段 4 的七服务同轮验收。正式 Client `0.6.0` 的包和来源摘要见下节。
+
+为阶段 4 准备的全新隔离轮次 `1f1a3a84-8350-48ff-bbb9-50737ca61623` 只完成**不启动容器**的严格预检：七应用镜像构建来源指向上述后端提交，32 个本轮 Secret 挂载及两个 TLS 挂载均只读，冻结前端制品树 SHA-256 为 `f9fd428f9edc0c7db02d8aa409d6465038ea830026465a52cab23d27fbb1eae2`，与当前前端源码构建逐文件一致。本机 Chrome `155.0.8059.80` 与 2026-10-13 官方桌面稳定版公告一致。此轮次仅为 `prepared`，**没有 `ready` handoff、运行镜像、容器或 26 组业务报告**。
+
+部署资源门禁实测 Docker Desktop 限额约 7.75 GiB，其他项目 13 个容器占约 5.02 GiB，仅余约 2.73 GiB；七应用、Kafka 与 Nacos 的配置堆上限合计约 2.19 GiB，尚未计入 JVM 非堆、数据库、S3 与 Edge。用户选择保留其他项目运行并暂缓 Fresh，因此本轮在构建前停止，未停止、暂停或修改其他容器，也未占用 443/5174。恢复验收时应重新生成隔离 Secret/runId，并重核两仓提交、CI、Chrome 版本、端口与资源；旧 prepared 轮次不能充当直接验收证据。
 
 ### 正式 Client 发布与前端升版
 
