@@ -18,11 +18,11 @@ class Stage4ProblemMappingTest {
     @Test
     void organizationErrorsDistinguishBusinessConflictFromStorageOutage() {
         var handler = new OrganizationUnitExceptionHandler();
-        assertProblem(handler.forbidden(), HttpStatus.FORBIDDEN, "ORGANIZATION_PERMISSION_DENIED");
-        assertProblem(handler.invalid(), HttpStatus.BAD_REQUEST, "ORGANIZATION_UNIT_INVALID");
-        assertProblem(handler.missing(), HttpStatus.NOT_FOUND, "ORGANIZATION_UNIT_NOT_FOUND");
-        assertProblem(handler.conflict(), HttpStatus.CONFLICT, "ORGANIZATION_UNIT_CONFLICT");
         var organization = request("/api/v1/organization-units");
+        assertProblem(handler.forbidden(organization), HttpStatus.FORBIDDEN, "ORGANIZATION_PERMISSION_DENIED");
+        assertProblem(handler.invalid(organization), HttpStatus.BAD_REQUEST, "ORGANIZATION_UNIT_INVALID");
+        assertProblem(handler.missing(organization), HttpStatus.NOT_FOUND, "ORGANIZATION_UNIT_NOT_FOUND");
+        assertProblem(handler.conflict(organization), HttpStatus.CONFLICT, "ORGANIZATION_UNIT_CONFLICT");
         assertProblem(handler.concurrentReference(organization), HttpStatus.CONFLICT, "ORGANIZATION_UNIT_CONFLICT");
         assertProblem(handler.unavailable(organization), HttpStatus.SERVICE_UNAVAILABLE, "ORGANIZATION_UNAVAILABLE");
         var other = request("/api/v1/members");
@@ -41,6 +41,7 @@ class Stage4ProblemMappingTest {
         var conflict = handler.invitation(new InvitationFailure("INVITATION_ALREADY_PENDING"), request);
         assertThat(conflict.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(conflict.getBody().code()).isEqualTo("INVITATION_ALREADY_PENDING");
+        assertThat(conflict.getBody().detail()).isEqualTo("INVITATION_ALREADY_PENDING");
         assertThat(conflict.getBody().traceId()).isEqualTo(TRACE);
         assertThat(handler.unavailable(new InvitationUnavailableException(), request).getBody().code())
                 .isEqualTo("INVITATION_NOT_PENDING");
@@ -68,6 +69,8 @@ class Stage4ProblemMappingTest {
                 .isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(disable.failure(new MembershipDisableFailure("WORKFLOW_PENDING"), request).getBody().traceId())
                 .isEqualTo(TRACE);
+        assertThat(disable.failure(new MembershipDisableFailure("WORKFLOW_PENDING"), request).getBody().detail())
+                .isEqualTo("WORKFLOW_PENDING");
         assertThat(enable.failure(new MembershipEnableFailure("MEMBERSHIP_ENABLE_FORBIDDEN"), request).getStatusCode())
                 .isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(enable.failure(new MembershipEnableFailure("TENANT_NOT_FOUND"), request).getStatusCode())
@@ -76,6 +79,8 @@ class Stage4ProblemMappingTest {
                 .isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(enable.failure(new MembershipEnableFailure("MAX_USERS_EXCEEDED"), request).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
+        assertThat(enable.failure(new MembershipEnableFailure("MAX_USERS_EXCEEDED"), request).getBody().detail())
+                .isEqualTo("MAX_USERS_EXCEEDED");
     }
 
     @Test
@@ -105,5 +110,9 @@ class Stage4ProblemMappingTest {
     private static void assertProblem(org.springframework.http.ProblemDetail actual, HttpStatus status, String code) {
         assertThat(actual.getStatus()).isEqualTo(status.value());
         assertThat(actual.getProperties()).containsEntry("code", code);
+        assertThat(actual.getProperties()).containsEntry("traceId", TRACE);
+        assertThat(actual.getType().toString()).isEqualTo("urn:saas.forge:problem:" + code.toLowerCase().replace('_', '-'));
+        assertThat(actual.getTitle()).isNotBlank();
+        assertThat(actual.getDetail()).isNotBlank();
     }
 }

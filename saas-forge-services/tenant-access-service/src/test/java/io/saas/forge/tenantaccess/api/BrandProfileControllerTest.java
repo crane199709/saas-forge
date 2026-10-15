@@ -63,7 +63,10 @@ class BrandProfileControllerTest {
         mvc.perform(put("/api/v1/brand-profile").contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isPreconditionRequired())
-                .andExpect(jsonPath("$.code").value("BRAND_PROFILE_PRECONDITION_REQUIRED"));
+                .andExpect(jsonPath("$.code").value("BRAND_PROFILE_PRECONDITION_REQUIRED"))
+                .andExpect(jsonPath("$.type").value("urn:saas.forge:problem:brand-profile-precondition-required"))
+                .andExpect(jsonPath("$.detail").isNotEmpty())
+                .andExpect(jsonPath("$.traceId").isNotEmpty());
         verifyNoInteractions(service);
     }
 
@@ -82,6 +85,9 @@ class BrandProfileControllerTest {
                                 "primaryColor":"#123456","accentColor":"#234567"}
                                 """))
                 .andExpect(status().isPreconditionFailed())
-                .andExpect(jsonPath("$.code").value("BRAND_PROFILE_STALE"));
+                .andExpect(jsonPath("$.code").value("BRAND_PROFILE_STALE"))
+                .andExpect(jsonPath("$.type").value("urn:saas.forge:problem:brand-profile-stale"))
+                .andExpect(jsonPath("$.detail").isNotEmpty())
+                .andExpect(jsonPath("$.traceId").isNotEmpty());
     }
 }

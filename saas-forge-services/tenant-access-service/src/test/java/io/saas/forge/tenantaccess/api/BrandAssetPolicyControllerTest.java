@@ -3,6 +3,7 @@ package io.saas.forge.tenantaccess.api;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -12,6 +13,7 @@ import io.saas.forge.tenantaccess.application.brand.BrandAssetPolicyService;
 import io.saas.forge.tenantaccess.application.brand.BrandAssetService;
 import io.saas.forge.tenantaccess.application.brand.BrandPng;
 import io.saas.forge.tenantaccess.application.brand.DisabledBrandAsset;
+import io.saas.forge.sdk.tenant.TenantContextAccessor;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -22,6 +24,7 @@ class BrandAssetPolicyControllerTest {
     private static final UUID ASSET = UUID.fromString("019535d9-0001-7000-8000-000000000028");
     private static final UUID TENANT = UUID.fromString("019535d9-0001-7000-8000-000000000003");
     private static final UUID ACTOR = UUID.fromString("019535d9-0001-7000-8000-000000000001");
+    private static final String TRACE_ID = "019535d9000170008000000000000001";
 
     @Test
     void platformAuthorizationPrecedesDisableAndResponseDoesNotEditProfile() throws Exception {
@@ -50,8 +53,31 @@ class BrandAssetPolicyControllerTest {
         var mvc = MockMvcBuilders.standaloneSetup(new BrandAssetPolicyController(admins, service))
                 .setControllerAdvice(new BrandAssetExceptionHandler()).build();
         mvc.perform(post("/api/v1/platform/brand-assets/{assetId}/disable", ASSET)
-                        .header("Authorization", "Bearer platform-token").contentType(MediaType.APPLICATION_JSON))
+                        .header("Authorization", "Bearer platform-token")
+                        .header("traceparent", "00-" + TRACE_ID + "-019535d900017000-01")
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("BRAND_ASSET_NOT_FOUND"));
+                .andExpect(header().string("Content-Type", MediaType.APPLICATION_PROBLEM_JSON_VALUE))
+                .andExpect(jsonPath("$.type").value("urn:saas.forge:problem:brand-asset-not-found"))
+                .andExpect(jsonPath("$.title").isNotEmpty())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("BRAND_ASSET_NOT_FOUND"))
+                .andExpect(jsonPath("$.detail").isNotEmpty())
+                .andExpect(jsonPath("$.traceId").value(TRACE_ID));
+    }
+
+    @Test
+    void disabledPublicAssetReturnsGatewayEligibleNotFoundProblem() throws Exception {
+        var service = mock(BrandAssetService.class);
+        when(service.publicRead(ASSET)).thenThrow(new BrandAssetService.Missing());
+        var mvc = MockMvcBuilders.standaloneSetup(new BrandAssetController(mock(TenantContextAccessor.class), service))
+                .setControllerAdvice(new BrandAssetExceptionHandler()).build();
+        mvc.perform(get("/brands/{assetId}", ASSET)
+                        .header("traceparent", "00-" + TRACE_ID + "-019535d900017000-01"))
+                .andExpect(status().isNotFound())
+                .andExpect(header().string("Content-Type", MediaType.APPLICATION_PROBLEM_JSON_VALUE))
+                .andExpect(jsonPath("$.type").value("urn:saas.forge:problem:brand-asset-not-found"))
+                .andExpect(jsonPath("$.code").value("BRAND_ASSET_NOT_FOUND"))
+                .andExpect(jsonPath("$.traceId").value(TRACE_ID));
     }
 }

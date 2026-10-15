@@ -47,8 +47,8 @@ public class InvitationExceptionHandler {
         if (traceId == null) traceId = UUID.randomUUID().toString().replace("-", "");
         return ResponseEntity.status(status).contentType(MediaType.APPLICATION_PROBLEM_JSON)
                 .body(new Problem(URI.create("urn:saas.forge:problem:" + code.toLowerCase().replace('_', '-')),
-                        "Invitation request failed", status.value(), code, traceId));
+                        "Invitation request failed", status.value(), code, code, traceId));
     }
 
-    record Problem(URI type, String title, int status, String code, String traceId) {}
+    record Problem(URI type, String title, int status, String code, String detail, String traceId) {}
 }

@@ -24,8 +24,8 @@ public final class MembershipEnableExceptionHandler {
         if (traceId == null) traceId = UUID.randomUUID().toString().replace("-", "");
         return ResponseEntity.status(status).contentType(MediaType.APPLICATION_PROBLEM_JSON)
                 .body(new Problem(URI.create("urn:saas.forge:problem:" + failure.code().toLowerCase().replace('_', '-')),
-                        "Membership enable failed", status.value(), failure.code(), traceId));
+                        "Membership enable failed", status.value(), failure.code(), failure.code(), traceId));
     }
 
-    record Problem(URI type, String title, int status, String code, String traceId) {}
+    record Problem(URI type, String title, int status, String code, String detail, String traceId) {}
 }
