@@ -10,6 +10,8 @@
 - `local-service-replacement.sh <doctor|replace|status|restore> <gateway|iam-service|tenant-access-service|entitlement-service|audit-service>`：统一入口复用的单目标生命周期命令。在不构建应用镜像、不删除卷的前提下，受控切换一个唯一健康的容器服务和对应本机 JVM；只读取受限 Secret，输出不包含其值，`replace` 失败时自动恢复选定容器。
 - `publish-nacos-config.sh <environment>`：使用独立配置发布身份将一个已校验的环境清单发布到同名 Nacos namespace。
 - `verify-nacos-acl.sh`：针对临时或本地 Nacos 验证每个工作负载只能读取自己的配置，且不能发布配置。
+- `import-permission-catalog.sh <manifest.json>`：受控发布任务以 `tenant_access_migrator` 凭据导入权限目录清单，需设置 `PERMISSION_CATALOG_TOPIC`；SQL 见同名 `.sql`。
+- `verify-tenant-lifecycle-e2e.sh`：Tenant 生命周期跨服务验收；设置 `AUDIT_SUCCESS_FACTS_ONLY=true` 时只验证 Audit 成功事实，跳过 Tenant 深层负向矩阵。
 
 - `acceptance-handoff.mjs`：准备/校验独立环境交接并关联同轮后端与浏览器证据，详见[交接说明](../docs/acceptance/independent-verification.md)。
 
