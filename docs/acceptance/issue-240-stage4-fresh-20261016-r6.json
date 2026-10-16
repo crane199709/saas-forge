@@ -177,6 +177,19 @@
       "checks": 22,
       "scope": "linked-observations-only",
       "driverCommit": "3be7895d3b48e7509b0568f99ca02c2a88a4e9e4"
+    },
+    "passwordRecovery9ebe": {
+      "sha256": "1f3fd4ff32825d69872405a916a3b92c812b2fe72dc6a0046e71388581aee551",
+      "status": "passed",
+      "checks": 7,
+      "frontendCommit": "9ebe8da3cc3b9fa93978f226fdb77abdbe5e608c"
+    },
+    "localUiVerify9ebe": {
+      "status": "passed",
+      "checks": 34,
+      "command": "pnpm run verify:ui",
+      "frontendCommit": "9ebe8da3cc3b9fa93978f226fdb77abdbe5e608c",
+      "scope": "frontend-local-ui-supporting-only"
     }
   },
   "retention": {
@@ -266,6 +279,12 @@
       "status": "failed",
       "sha256": "142295952e372cd51d15adba082a5cf8eac46c9e9072c169d52d13080810d607",
       "resolution": "adjacent associations shared actor and membership; exact recorded unit and role IDs disambiguated 22 links"
+    },
+    {
+      "name": "current-frontend-recovery-wrong-mailpit-port",
+      "status": "failed",
+      "sha256": "f447dc844048b99e8aa68667c044e9942cfb64d6a3a9c57535f8810a503d4905",
+      "resolution": "verified isolated Mailpit host port 60118; current-frontend rerun passed 7/7"
     }
   ]
 }
