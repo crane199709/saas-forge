@@ -53,6 +53,17 @@ class Stage4ProblemMappingTest {
     void invitationProblemsPreserveStableCodesAndNeverExposeDependencyDetails() {
         var handler = new InvitationExceptionHandler();
         var request = request("/api/v1/invitations");
+        var denied = handler.responseStatus(new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "private invitation authorization reason"), request);
+        assertThat(denied.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(denied.getHeaders().getContentType()).isEqualTo(org.springframework.http.MediaType.APPLICATION_PROBLEM_JSON);
+        assertThat(denied.getBody().code()).isEqualTo("INVITATION_PERMISSION_DENIED");
+        assertThat(denied.getBody().status()).isEqualTo(403);
+        assertThat(denied.getBody().traceId()).isEqualTo(TRACE);
+        assertThat(denied.getBody().type().toString()).isEqualTo("urn:saas.forge:problem:invitation-permission-denied");
+        assertThat(denied.getBody().title()).isNotBlank();
+        assertThat(denied.getBody().detail()).isNotBlank();
+        assertThat(denied.getBody().toString()).doesNotContain("private invitation authorization reason");
         assertThat(handler.invitation(new InvitationFailure("INVITATION_NOT_FOUND"), request).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(handler.invitation(new InvitationFailure("TENANT_NOT_ACCESSIBLE"), request).getStatusCode())

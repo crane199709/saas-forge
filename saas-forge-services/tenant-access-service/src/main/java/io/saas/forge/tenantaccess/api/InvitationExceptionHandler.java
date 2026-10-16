@@ -13,9 +13,18 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice(assignableTypes = {InvitationController.class, InvitationPasswordSetupController.class})
 public class InvitationExceptionHandler {
+    @ExceptionHandler(ResponseStatusException.class)
+    ResponseEntity<Problem> responseStatus(ResponseStatusException failure, HttpServletRequest request) {
+        HttpStatus status = HttpStatus.resolve(failure.getStatusCode().value());
+        if (status == null) status = HttpStatus.INTERNAL_SERVER_ERROR;
+        return problem(status, status == HttpStatus.FORBIDDEN
+                ? "INVITATION_PERMISSION_DENIED" : "INVITATION_REQUEST_FAILED", request);
+    }
+
     @ExceptionHandler(InvitationFailure.class)
     ResponseEntity<Problem> invitation(InvitationFailure failure, HttpServletRequest request) {
         HttpStatus status = switch (failure.code()) {
