@@ -1,6 +1,18 @@
 # #240 阶段 4 Fresh Chrome 两仓联合验收
 
-状态：2026-10-15 已按用户要求重启验收，新的隔离 Fresh 轮次正在执行。环境、三条精确提交 CI、真实 Chrome 平台 Manifest 审核启用、两 Tenant 登录与品牌路径、邀请重投递恢复已有直接记录；**阶段 4 的 11 项浏览器、11 项 Authority、4 项 Audit 尚未全部完成，不能据此勾选或关闭 #240**。旧的暂缓轮次和预检事实保留在下文，勿与本轮混用。
+状态：2026-10-16 的隔离 Fresh 轮次仍在运行，已完成真实 Chrome 选定产品路径、双 Tenant 隔离、正式 Authority 探针及 10 条成功事实的 Outbox→Audit 关联。**阶段 4 的 11 项浏览器、11 项 Authority、4 项 Audit 尚未全部完成，不能据此勾选或关闭 #240**。本轮脱敏摘要见 [2026-10-16 r4 进度](issue-240-stage4-fresh-20261016-r4.json)；以下旧轮次事实仅供诊断，不得并入本轮。
+
+### 2026-10-16 隔离 Fresh r4
+
+在 r2 的 Project Manifest 注册 403 后，已按用户批准，将仅有 `remote-delivery:manifest:register` scope 的本轮 CI Client 精确绑定 `project` 模块，废弃旧 handoff，并从新 Secret、网络和卷启动 r3。r3 验出 Tenant Access 的角色及成员角色异常经 Gateway 被转换为 502；修复已提交为 `42b83b5a`，定向测试与 r3 诊断运行通过。r3 在诊断时替换了容器，故不把其后结果算作正式 handoff。r2/r3 已停止，未删除各自隔离卷；未暂停 `icube-*`。
+
+当前正式 r4 的 runId 为 `8fc09b2e-df2f-414e-b442-0f7bffa0c3c6`，Compose 项目 `sf-acceptance-8fc09b2e-df2f-414e-b442-0f7bffa0c3c6`，handoff SHA-256 为 `e6295dede97658720c91cdab18e0116d1f19a6d74f79840c74aefaeb0d816c7d`，有效窗口为 2026-10-16 02:06:42 至 2026-10-17 02:06:42 UTC。后端干净源码 `42b83b5ac5a9f72583eea0c2d83dc1222ff89ddb`，前端干净源码 `a2b2c74f76d757487c44b608d13b8e119d10ea26`，Client 固定 `0.6.0`，锁文件 SHA-256 `6a8a13730d4290aa08c7a92ee54ae0b766aa25993e6ff4f51ea6e448ee8f427b`。主机 JDK 17 离线 Maven `clean package` 后，七个应用装入经验证的 JDK 17 运行基镜像；这不是七个 Dockerfile 的完整构建。冻结的七个应用容器仍按 handoff 原 ID 运行，环境使用本轮独立网络、卷与受限 Secret。Chrome 为 `155.0.8059.85`，与 [2026-10-15 Mac Stable 公告](https://chromereleases.googleblog.com/2026/10/stable-channel-update-for-desktop_01886704284.html)一致。
+
+IAM/Gateway Nacos Console v2 配置回读与来源逐字节一致，七个工作负载的最小 ACL 校验通过。先完成 handoff `ready` 与 Gateway/Origin 探针；再用本轮限权 CI Client 经正式类型化 API 注册 Project Manifest，并由真实 Chrome 平台页面审批、启用。隔离 Frontend 147 个冻结产物逐文件等于当前前端构建，实际预览页面的 provenance、Client 版本和锁文件匹配；Chrome 会话冒烟 9/9 通过。两个新 Tenant 的管理员经 Mailpit 一次性链接，在真实 Chrome 完成设密与登录。Example 权限目录通过仓库受控导入脚本写入本轮隔离库，并经正式 Gateway 回读 10 个代码。
+
+Tenant A 的真实 Chrome 观察覆盖两个组织根、带 Project 权限的角色、邀请创建及五字段品牌预览/保存，4/4 通过；Tenant B 的品牌上传、预览、保存及刷新回读 4/4 通过。两 Tenant 品牌五字段和四个公开 PNG 均经正式 Gateway 双向回读。已提交的 10 个组织、角色、邀请及品牌操作，逐一对应唯一的源 Outbox 快照与持久 Audit 行，已知敏感值检查通过；其范围仅为 `linked-observations-only`。第二位受邀成员又经真实 Chrome 完成邮件设密和接受邀请。正式 Authority 探针 4/4 通过：双 Tenant 组织/角色/成员/品牌隔离、Project/Task 十项 CRUD 与外租户拒绝、`project_app` 受限账号的双 Tenant RLS、末管理员并发仅一项成功及撤权后旧 Token 立即拒绝和最后管理员自撤销 409。所有这些报告同属 r4 的 handoff，未在 r4 替换应用容器。
+
+精确后端提交的 [Verify](https://github.com/crane199709/saas-forge/actions/runs/38838158856) 已成功，包含 JDK 17、Nacos 权限和独立 Fresh Tenant 生命周期；精确前端提交的 [Frontend verification](https://github.com/crane199709/saas-forge-web/actions/runs/38724192604) 已成功。后端 [API Client artifact](https://github.com/crane199709/saas-forge/actions/runs/38839412744) 为本轮精确后端提交另行触发且已成功。当前 r4 仍保留运行以供后续验收；清理只限本轮项目，由环境准备方负责。完整 11/11/4 场景、Outbox 重试/失败事务、故障恢复、品牌素材真实 24 小时和 7 天清理及同轮聚合尚未执行，不把选定路径外推为阶段通过。
 
 ### 2026-10-15 重启轮次进度
 

@@ -1,0 +1,284 @@
+{
+  "schemaVersion": 1,
+  "kind": "stage4-fresh-progress",
+  "status": "incomplete",
+  "runId": "8fc09b2e-df2f-414e-b442-0f7bffa0c3c6",
+  "handoffSha256": "e6295dede97658720c91cdab18e0116d1f19a6d74f79840c74aefaeb0d816c7d",
+  "startedAt": "2026-10-16T02:01:05.586Z",
+  "readyAt": "2026-10-16T02:06:42.497Z",
+  "expiresAt": "2026-10-17T02:06:42.504Z",
+  "backend": {
+    "commit": "42b83b5ac5a9f72583eea0c2d83dc1222ff89ddb",
+    "dirty": false,
+    "jdkMajor": 17,
+    "imageMethod": "host-maven-offline-clean-package-into-verified-gateway-jdk17-runtime",
+    "imageManifestSha256": "84e78c3718e53352e98b4e2917f0fef6535979548a21c4119432e9fa9b174d69",
+    "frozenApplicationCount": 7
+  },
+  "frontend": {
+    "commit": "a2b2c74f76d757487c44b608d13b8e119d10ea26",
+    "dirty": false,
+    "sourceSha256": "1efc083732f3a1f1a6cce44fd2e13ec0ff0650a98fa0b7655f98740cc38fd051",
+    "lockSha256": "6a8a13730d4290aa08c7a92ee54ae0b766aa25993e6ff4f51ea6e448ee8f427b",
+    "versionSource": "served-html-provenance-matched"
+  },
+  "client": {
+    "name": "@crane199709/saas-forge-api-client",
+    "version": "0.6.0",
+    "sourceCommit": "3dd2ca04b26bb66ce2d5705c939aa6216abe5955"
+  },
+  "chrome": "155.0.8059.85",
+  "isolation": {
+    "project": "sf-acceptance-8fc09b2e-df2f-414e-b442-0f7bffa0c3c6",
+    "network": "sf-acceptance-8fc09b2e-df2f-414e-b442-0f7bffa0c3c6_default",
+    "volumeCount": 3,
+    "status": "running-retained",
+    "cleanupOwner": "environment-preparer"
+  },
+  "controlledProjectManifest": {
+    "status": "passed",
+    "registeredThroughLimitedCiClient": true,
+    "reviewedAndEnabledInChrome": true
+  },
+  "nacosAcl": {
+    "status": "passed",
+    "identities": 7
+  },
+  "reports": {
+    "gatewayAndOrigin": {
+      "status": "passed",
+      "sha256": "a7b6440bf3102b0c8b15a0ee5202dc90b84f5bcc852d3617a2d10ea9bc23fdb3",
+      "checks": [
+        {
+          "name": "gateway-public-key-environment",
+          "status": "passed"
+        },
+        {
+          "name": "console-origin-allowed",
+          "status": "passed"
+        },
+        {
+          "name": "untrusted-origin-denied",
+          "status": "passed"
+        }
+      ]
+    },
+    "chromeSessionSmoke": {
+      "status": "passed",
+      "sha256": "0ac0bb07940930cc8f0e2e99ec52adeb684eb99f953095ef57e0d14b9dda98b6",
+      "checks": [
+        {
+          "name": "trusted-console-and-same-gateway",
+          "status": "passed"
+        },
+        {
+          "name": "served-frontend-and-client-match-checkout",
+          "status": "passed"
+        },
+        {
+          "name": "login-language-theme-and-visual-captures",
+          "status": "passed"
+        },
+        {
+          "name": "real-login-authoritative-platform-context-heading-focus",
+          "status": "passed"
+        },
+        {
+          "name": "browser-managed-host-only-secure-httponly-cookies",
+          "status": "passed"
+        },
+        {
+          "name": "refresh-restores-workspace",
+          "status": "passed"
+        },
+        {
+          "name": "second-tab-restores-same-context",
+          "status": "passed"
+        },
+        {
+          "name": "logout-remains-anonymous-after-reload",
+          "status": "passed"
+        },
+        {
+          "name": "no-unexpected-console-page-or-api-errors",
+          "status": "passed"
+        }
+      ]
+    },
+    "platformManifestReview": {
+      "status": "passed",
+      "sha256": "17a2ff129b0ba20f1b7ce2f0a7f531e0d357ceac2e5847cd990ef5992da82ff0",
+      "checks": [
+        {
+          "name": "registered-manifest-pending-review-visible",
+          "status": "passed"
+        },
+        {
+          "name": "platform-chrome-approved-manifest",
+          "status": "passed"
+        },
+        {
+          "name": "platform-chrome-enabled-manifest",
+          "status": "passed"
+        }
+      ]
+    },
+    "nacosConfigurationReadback": {
+      "status": "passed",
+      "sha256": "a9030be601823527b9fe2349d0685a5881974915ce6c4530455c2a2b8916540e"
+    },
+    "permissionCatalogReadback": {
+      "status": "passed",
+      "sha256": "170ee1088f888508671d07be39e5043a43838cdada756882294b013e65f061c1"
+    },
+    "selectedChromeProductPaths": {
+      "status": "passed",
+      "sha256": "85c103b655527e8ae3043fa9ebad2c6d1e27b8b29f04875a7430d7515a80e08c",
+      "checks": [
+        {
+          "name": "organization-two-roots",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-role-with-project-permission",
+          "status": "passed"
+        },
+        {
+          "name": "invitation-created",
+          "status": "passed"
+        },
+        {
+          "name": "brand-five-fields-preview-and-save",
+          "status": "passed"
+        }
+      ],
+      "scope": "selected-real-chrome-paths"
+    },
+    "tenantBChromeBrand": {
+      "status": "passed",
+      "sha256": "50e03365087533e614fd1541aef6adbf4030b9711c153473cab2472cb6915fb9",
+      "checks": [
+        {
+          "name": "chrome-logo-upload",
+          "status": "passed"
+        },
+        {
+          "name": "chrome-favicon-upload",
+          "status": "passed"
+        },
+        {
+          "name": "chrome-five-fields-preview-save",
+          "status": "passed"
+        },
+        {
+          "name": "chrome-brand-persisted",
+          "status": "passed"
+        }
+      ]
+    },
+    "twoTenantBrandReadback": {
+      "status": "passed",
+      "sha256": "18d5a0ab88afaaacf166e5d6847c23f089a7e6d2fbf32103a68ef83e89ed17bd"
+    },
+    "linkedCommittedFacts": {
+      "status": "passed",
+      "sha256": "0f5fdb5adaa841f0f46f6c5c5362e4e0f64bf9bfa115988322c5fe0eddadab16",
+      "checks": [
+        {
+          "name": "org-root-1",
+          "status": "passed"
+        },
+        {
+          "name": "org-root-2",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-role-created",
+          "status": "passed"
+        },
+        {
+          "name": "invitation-created",
+          "status": "passed"
+        },
+        {
+          "name": "brand-logo-uploaded",
+          "status": "passed"
+        },
+        {
+          "name": "brand-favicon-uploaded",
+          "status": "passed"
+        },
+        {
+          "name": "brand-profile-saved",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-b-brand-logo-uploaded",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-b-brand-favicon-uploaded",
+          "status": "passed"
+        },
+        {
+          "name": "tenant-b-brand-profile-saved",
+          "status": "passed"
+        }
+      ],
+      "scope": "linked-observations-only"
+    },
+    "authorityProbe": {
+      "status": "passed",
+      "sha256": "dabaeeb148f833077935a2fe64ff998a14fe4da6c895b372939cc61e7a9ac2a3",
+      "checks": [
+        {
+          "name": "organization-role-member-brand-two-tenant-isolation",
+          "status": "passed"
+        },
+        {
+          "name": "project-app-rls-two-tenants",
+          "status": "passed"
+        },
+        {
+          "name": "project-task-ten-crud-and-foreign-denials",
+          "status": "passed"
+        },
+        {
+          "name": "last-admin-concurrency-and-stale-token-rejection",
+          "status": "passed"
+        }
+      ],
+      "scope": "project-crud-rls-admin-race-revocation"
+    }
+  },
+  "ci": {
+    "backendVerify": {
+      "status": "passed",
+      "commit": "42b83b5ac5a9f72583eea0c2d83dc1222ff89ddb",
+      "url": "https://github.com/crane199709/saas-forge/actions/runs/38838158856"
+    },
+    "apiClientArtifact": {
+      "status": "passed",
+      "commit": "42b83b5ac5a9f72583eea0c2d83dc1222ff89ddb",
+      "url": "https://github.com/crane199709/saas-forge/actions/runs/38839412744"
+    },
+    "frontendVerification": {
+      "status": "passed",
+      "commit": "a2b2c74f76d757487c44b608d13b8e119d10ea26",
+      "url": "https://github.com/crane199709/saas-forge-web/actions/runs/38724192604"
+    }
+  },
+  "remaining": {
+    "requiredBrowserSuite": "not_run",
+    "requiredAuthoritySuite": "not_run",
+    "requiredAuditSuite": "not_run",
+    "realTimeBrandRetention24h": "not_run",
+    "realTimeBrandRetention7d": "not_run",
+    "fullStage4Aggregate": "not_run"
+  },
+  "notes": [
+    "Selected browser paths, the authority probe, and linked committed facts have narrower scopes than the required 11/11/4 full suites.",
+    "All named report hashes refer to restricted local raw reports; this committed summary contains no credentials or invitation links.",
+    "A host JDK 17 offline Maven package was assembled into verified JDK 17 runtime images; this was not a seven-Dockerfile image build."
+  ]
+}
