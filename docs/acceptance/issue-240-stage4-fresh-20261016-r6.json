@@ -176,7 +176,24 @@
     "activeUnboundUploadedAt": "2026-10-16T03:28:13.681049+00:00",
     "disabledUnboundDisabledAt": "2026-10-16T03:28:05.100027+00:00",
     "clockOrRowsAltered": false,
-    "status": "awaiting-real-time-window"
+    "status": "awaiting-real-time-window",
+    "preDueProbes": {
+      "driverCommit": "96bc89aba89f3af308e730202b4e74b40199ac4e",
+      "active": {
+        "sha256": "4a84dc07476817fcd9e3f2c03f3a04332f84d09acf0f4d8362ec57fad2d79b",
+        "status": "waiting",
+        "databaseStatus": "ACTIVE",
+        "s3ObjectState": "present",
+        "publicHttpStatus": 200
+      },
+      "disabled": {
+        "sha256": "f065fbcd5e9ce57f850c271f69faf75fa886a2d683f370c4a710fda536d7a60e",
+        "status": "waiting",
+        "databaseStatus": "DISABLED",
+        "s3ObjectState": "present",
+        "publicHttpStatus": 404
+      }
+    }
   },
   "fullSuites": {
     "browser": {
