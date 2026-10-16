@@ -116,7 +116,7 @@ if [ -n "${NACOS_PROJECT_USERNAME:-}" ] || [ -n "${NACOS_PROJECT_PASSWORD:-}" ];
     --header "Authorization: Bearer $bootstrap_token" \
     --data-urlencode "username=$NACOS_PROJECT_USERNAME" \
     --data-urlencode 'role=project-service-dev' "$api/v3/auth/role" >/dev/null || true
-  for permission in "dev:SAAS_FORGE:config/project-service.yaml:r" "dev:DEFAULT_GROUP:naming/project-service:w" "dev:DEFAULT_GROUP:naming/project-service:r" "dev:DEFAULT_GROUP:naming/iam-service:r"; do
+  for permission in "dev:SAAS_FORGE:config/project-service.yaml:r" "dev:DEFAULT_GROUP:naming/project-service:w" "dev:DEFAULT_GROUP:naming/project-service:r" "dev:DEFAULT_GROUP:naming/iam-service:r" "dev:DEFAULT_GROUP:naming/gateway:r"; do
     curl --silent --show-error --request POST \
       --header "Authorization: Bearer $bootstrap_token" \
       --data-urlencode 'role=project-service-dev' \
