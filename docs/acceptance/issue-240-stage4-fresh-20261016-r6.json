@@ -152,6 +152,24 @@
       "sha256": "2ec7c742a3324f9dde2d394e63b2faee25885de2722cbdb13cd04995695745a1",
       "status": "passed",
       "driverCommit": "ffa5fe4f33a943b529f7be10d0672a8da9ce881a"
+    },
+    "productChrome9ebe": {
+      "sha256": "d91960b09634368c93f986cd83e70ddd9a5b927e56054204b6c825392ced674b",
+      "status": "passed",
+      "checks": 4,
+      "frontendCommit": "9ebe8da3cc3b9fa93978f226fdb77abdbe5e608c"
+    },
+    "tenantBBrandChrome9ebe": {
+      "sha256": "022b3e1221cd7c7c38211f4a5541421de349ef7a4fe00e6e9575f9b06861ee84",
+      "status": "passed",
+      "checks": 4,
+      "frontendCommit": "9ebe8da3cc3b9fa93978f226fdb77abdbe5e608c"
+    },
+    "brandIsolation9ebe": {
+      "sha256": "0e2dc1a0788b9f063da8aa7fc2b5d6a6ade29399c6339bde21d28cad6cd0c754",
+      "status": "passed",
+      "profiles": 2,
+      "publicPngs": 4
     }
   },
   "retention": {
