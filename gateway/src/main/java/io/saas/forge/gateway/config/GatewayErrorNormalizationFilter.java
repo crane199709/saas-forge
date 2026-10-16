@@ -72,8 +72,8 @@ class GatewayErrorNormalizationFilter extends OncePerRequestFilter {
     }
 
     private void resetPreservingCors(HttpServletResponse response) {
-        // Preserve the CORS decision already made by the controlled-origin filter,
-        // but discard upstream cookies, entity headers and the invalid error body.
+        // 202610162159：保留受控来源过滤器已确定的 CORS 响应头，避免浏览器无法读取规范化后的错误；
+        // 上游 Cookie、实体头和无效错误正文仍需清除，不能随错误转换继续透传。
         Map<String, List<String>> corsHeaders = new LinkedHashMap<>();
         for (String name : List.of("Access-Control-Allow-Origin", "Access-Control-Allow-Credentials",
                 "Access-Control-Expose-Headers", "Access-Control-Allow-Methods", "Access-Control-Allow-Headers",
