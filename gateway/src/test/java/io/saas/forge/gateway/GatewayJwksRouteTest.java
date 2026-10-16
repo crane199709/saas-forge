@@ -149,6 +149,30 @@ class GatewayJwksRouteTest {
     }
 
     @Test
+    void unavailableAuthenticationRemainsReadableOnlyByControlledConsole() throws Exception {
+        GatewayTestDiscoveryConfiguration.clearInstances(GatewayTestDiscoveryConfiguration.IAM_SERVICE_ID);
+        try {
+            for (String origin : List.of("https://console.saas.forge.test", "https://attacker.test")) {
+                var response = send(HttpRequest.newBuilder(gatewayUri("/api/v2/auth/bootstrap"))
+                        .header("Origin", origin).header("Sec-Fetch-Site", "same-site")
+                        .header("X-SF-CSRF", "1").header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString("{}")).build());
+                if (origin.equals("https://console.saas.forge.test")) {
+                    assertEquals(503, response.statusCode());
+                    assertTrue(response.body().contains("\"code\":\"UPSTREAM_UNAVAILABLE\""));
+                    assertEquals(origin, response.headers().firstValue("Access-Control-Allow-Origin").orElse(""));
+                    assertEquals("true", response.headers().firstValue("Access-Control-Allow-Credentials").orElse(""));
+                } else {
+                    assertEquals(403, response.statusCode());
+                    assertTrue(response.headers().firstValue("Access-Control-Allow-Origin").isEmpty());
+                }
+            }
+        } finally {
+            GatewayTestDiscoveryConfiguration.discoverAt(GatewayTestDiscoveryConfiguration.IAM_SERVICE_ID, IAM_URI);
+        }
+    }
+
+    @Test
     void returnsGateway503WhenNoHealthyOwningServiceInstanceExists()
             throws IOException, InterruptedException {
         for (UnavailableRoute route : List.of(

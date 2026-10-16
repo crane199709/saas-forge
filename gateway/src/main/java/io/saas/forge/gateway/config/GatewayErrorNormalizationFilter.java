@@ -7,6 +7,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.net.http.HttpTimeoutException;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 import org.springframework.core.Ordered;
@@ -49,23 +52,36 @@ class GatewayErrorNormalizationFilter extends OncePerRequestFilter {
             if (!hasUpstreamFailureCause(exception)) {
                 throw exception;
             }
-            cachedResponse.reset();
+            resetPreservingCors(cachedResponse);
             writeUpstreamProblem(request, cachedResponse, exception);
         } catch (RuntimeException exception) {
             if (!hasUpstreamFailureCause(exception)) {
                 throw exception;
             }
-            cachedResponse.reset();
+            resetPreservingCors(cachedResponse);
             writeUpstreamProblem(request, cachedResponse, exception);
         }
 
         if (!isGatewayProblem(request) && cachedResponse.getStatus() >= HttpStatus.BAD_REQUEST.value()
                 && !isEligibleDownstreamProblem(request, cachedResponse)) {
-            cachedResponse.reset();
+            resetPreservingCors(cachedResponse);
             problemDetailsWriter.write(request, cachedResponse, HttpStatus.BAD_GATEWAY, "UPSTREAM_INVALID_RESPONSE",
                     "The upstream service returned an invalid error response.");
         }
         cachedResponse.copyBodyToResponse();
+    }
+
+    private void resetPreservingCors(HttpServletResponse response) {
+        // Preserve the CORS decision already made by the controlled-origin filter,
+        // but discard upstream cookies, entity headers and the invalid error body.
+        Map<String, List<String>> corsHeaders = new LinkedHashMap<>();
+        for (String name : List.of("Access-Control-Allow-Origin", "Access-Control-Allow-Credentials",
+                "Access-Control-Expose-Headers", "Access-Control-Allow-Methods", "Access-Control-Allow-Headers",
+                "Access-Control-Max-Age", "Vary")) {
+            corsHeaders.put(name, List.copyOf(response.getHeaders(name)));
+        }
+        response.reset();
+        corsHeaders.forEach((name, values) -> values.forEach(value -> response.addHeader(name, value)));
     }
 
     private void writeUpstreamProblem(HttpServletRequest request, HttpServletResponse response, Throwable exception)
