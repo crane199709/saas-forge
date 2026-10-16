@@ -9,6 +9,7 @@
 | 原因 | 含义 | 现行依据 |
 | --- | --- | --- |
 | 界面代际更替 | 文档描述自建 React / Ant Design 控制台，已被 Vue 3 + Element Plus + Soybean Admin 取代 | [ADR 0050](../adr/0050-consoles-adopt-soybean-element-plus.md)、[Console 设计规范](../25-design-system.md) |
+| 前端迁出 | 文档描述本仓 `consoles/` 内的实施计划或浏览器验收，该目录已迁至独立 saas-forge-web | [迁出记录](../acceptance/consoles-extraction.md)、[saas-forge-web](https://github.com/crane199709/saas-forge-web) |
 
 ## 内容清单
 
@@ -18,6 +19,8 @@
 | [27-shared-responsive-layout-consumption-verification.md](27-shared-responsive-layout-consumption-verification.md) | 验证自建共享 React Shell 的响应式布局；该包已删除 |
 | [console-login-ui.md](console-login-ui.md) | 自建登录壳的视觉改造记录；该壳已删除，现行登录页见 [Issue #191 验证记录](../acceptance/issue-191-platform-soybean.md) |
 | [console-tenant-ui-a.md](console-tenant-ui-a.md) | Tenant 界面「A 方案」验证记录；对应的界面代际已删除 |
+| [console-soybean-element-plus-refactoring.md](console-soybean-element-plus-refactoring.md) | 本仓 Console 迁到 Soybean 的实施计划；已实施，决策见 [ADR 0050](../adr/0050-consoles-adopt-soybean-element-plus.md)、[ADR 0051](../adr/0051-consoles-use-complete-soybean-applications.md)，`consoles/` 已迁出 |
+| [32-stage2-browser-acceptance.md](32-stage2-browser-acceptance.md) | 第 2 阶段浏览器聚合验收规格；浏览器侧由 saas-forge-web 承接，后端侧见 [Stage 2 聚合](../agents/stage2-aggregation.md) |
 
 ## 与 `docs/acceptance/` 的分工
 

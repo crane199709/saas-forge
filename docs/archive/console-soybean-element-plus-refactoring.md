@@ -1,5 +1,7 @@
 # Console 使用 Soybean Admin Element Plus 重构
 
+> **已归档**：本计划已实施，所述 `consoles/` 已迁至独立 saas-forge-web，仅作为历史证据保留。现行决策见 [ADR 0050](../adr/0050-consoles-adopt-soybean-element-plus.md) 与 [ADR 0051](../adr/0051-consoles-use-complete-soybean-applications.md)，迁出边界见[迁出记录](../acceptance/consoles-extraction.md)。
+
 日期：2026-09-15。
 状态：全部实施决策已确认，已按用户最新指示切换为 Vue 3 / Element Plus，正式业务入口已切换至 Vue，旧 UI 已清理，本地回归通过；真实后端与四域验收未执行。
 

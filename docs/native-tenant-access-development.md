@@ -51,7 +51,7 @@ Tenant Access 默认 HTTP 8082、gRPC 9092、注册 IP `127.0.0.1`。可配置 `
 
 ## 真实链路验收
 
-按 [Console 与 HTTPS Edge](native-console-development.md) 启动真实 Tenant Console。浏览器仅访问 `https://console.saas.forge.test` 和既有 HTTPS API Gateway，不手工注入 Cookie、Origin、Fetch Metadata 或 Bearer Token。
+按[原生开发总入口](native-local-development.md)准备 HTTPS Edge，并按 [saas-forge-web](https://github.com/crane199709/saas-forge-web) 说明启动真实 Tenant Console。浏览器仅访问 `https://console.saas.forge.test` 和既有 HTTPS API Gateway，不手工注入 Cookie、Origin、Fetch Metadata 或 Bearer Token。
 
 1. 在三个应用的 IDE Console 确认启动。Tenant Access 可在 `MembershipValidationGrpcService.validateMembership` 放断点，IAM 可在 `AuthenticationController.refreshAccessToken` 放断点，以真实请求确认并恢复执行；修改后由 IDE 编译、重启。
 2. 用已有合法 Membership 的 Identity 登录 Tenant Console，必要时选择 Tenant；刷新页面，确认 Tenant Session Slot 恢复及当前 Tenant 正确。IAM 的 Membership 校验携带内部签发的保留服务 Token，Tenant Access 通过发现的 IAM JWKS 和共享撤销索引复验。

@@ -26,7 +26,7 @@
 
 用户复核发现默认 Vite 日志只显示内部 HTTP 地址，容易误导访问。已将两个应用的 URL 输出改为各自受控 HTTPS“浏览器入口”，实际 host:port 则标为“内部监听（非浏览器入口）”。新增两项真实 Vite Server 输出测试经过红→绿验证；两个应用类型检查、ESLint、格式检查和追加双轴审查均通过。
 
-本机原始证据位于 `/private/tmp/saas-forge-issue-162/`：`lifecycle.json`、`hmr.json`、两个 `*-hmr.png`、`console-tests.log`、`auth-final.log`、`auth-final/browser-sessions.json` 及两个认证截图。该临时目录不提交，以上表格保留关键运行结果；复现步骤见 [开发说明](../native-console-development.md)。
+本机原始证据位于 `/private/tmp/saas-forge-issue-162/`：`lifecycle.json`、`hmr.json`、两个 `*-hmr.png`、`console-tests.log`、`auth-final.log`、`auth-final/browser-sessions.json` 及两个认证截图。该临时目录不提交，以上表格保留关键运行结果；复现步骤原见 `docs/native-console-development.md`，该文档已删除，按[历史追溯](console-history-reproduction.md)从 Git 历史复现。
 
 ## 已解决的环境失败
 

@@ -1,10 +1,12 @@
 # 第 2 阶段浏览器聚合验收
 
-> **2026-09-29 前端迁移状态**：统一 Console 已在独立 saas-forge-web 实现，v2 已实现但启用须受控切换，见 [ADR 0052](adr/0052-unified-console-authentication-uses-versioned-session-protocol.md)。下文双 Console、自建包、`consoles/`、旧命令/截图数量及其完成时态保留原设计或历史事实，不代表当前入口与验收。当前检查见[测试归属](console-testing-baseline.md)，未迁及待聚合项见[#207 清单](acceptance/issue-207-cleanup.md)；原历史勾选不自动证明父 #201 完成。
+> **已归档**：浏览器侧验收已由独立 saas-forge-web 承接，后端侧入口见 [Stage 2 聚合](../agents/stage2-aggregation.md)，仅作为历史证据保留。
+
+> **2026-09-29 前端迁移状态**：统一 Console 已在独立 saas-forge-web 实现，v2 已实现但启用须受控切换，见 [ADR 0052](../adr/0052-unified-console-authentication-uses-versioned-session-protocol.md)。下文双 Console、自建包、`consoles/`、旧命令/截图数量及其完成时态保留原设计或历史事实，不代表当前入口与验收。当前检查见[测试归属](../console-testing-baseline.md)，未迁及待聚合项见[#207 清单](../acceptance/issue-207-cleanup.md)；原历史勾选不自动证明父 #201 完成。
 
 状态：2026-09-14，Q1～Q8 已逐项确认，验收边界已收敛，并发布为 [GitHub Issue #183](https://github.com/crane199709/saas-forge/issues/183)，标记 `ready-for-agent`，关联总计划 #88。本文是验收规格，不代表本轮聚合验收已实现、执行或通过。
 
-关联：[MVP 开发计划](16-mvp-development-plan.md#2-身份与租户最小闭环)、[Platform Console 初始化闭环](30-platform-console-tenant-initialization.md)、[租户访问与 OAuth Client 管理](31-console-tenant-access-and-oauth-client-management.md)。
+关联：[MVP 开发计划](../16-mvp-development-plan.md#2-身份与租户最小闭环)、[Platform Console 初始化闭环](../30-platform-console-tenant-initialization.md)、[租户访问与 OAuth Client 管理](../31-console-tenant-access-and-oauth-client-management.md)。
 
 ## 已确认边界
 
@@ -50,7 +52,7 @@ OAuth Client 创建、Secret 一次展示、结果不确定恢复、轮换与吊
 
 ### Runtime Client 的真实服务接收端
 
-复用 [Gateway 服务路由规格](23-gateway-service-scope-routing.md#14-非生产真实接收端)定义的非生产真实接收端，使用真实 Gateway、Starter、Redis 与 Nacos，验证经 Console 创建的 Runtime Client 的允许访问、权限不足和吊销拒绝。
+复用 [Gateway 服务路由规格](../23-gateway-service-scope-routing.md#14-非生产真实接收端)定义的非生产真实接收端，使用真实 Gateway、Starter、Redis 与 Nacos，验证经 Console 创建的 Runtime Client 的允许访问、权限不足和吊销拒绝。
 
 该接收端只存在于验收环境，沿用测试 Registry overlay 与独立测试契约，不进入生产服务目录或默认部署。证据标记为“平台机制验收”，不声称已完成生产 Runtime 或 Project SaaS 业务闭环，也不使用 Reserved Client 管理路径替代 Console 的 Runtime Client 管理。
 
@@ -58,7 +60,7 @@ OAuth Client 创建、Secret 一次展示、结果不确定恢复、轮换与吊
 
 对本轮浏览器业务产生的 `Session Started`、`Tenant Created` 和 `Tenant Context Switched`，由真实服务提交事实，经真实 Kafka 与 Audit 服务消费后，只读查询 Audit 数据库，核对事件、操作者、资源及 Trace 的关联。
 
-记录必须能追溯到本轮具体操作，不得以任意历史记录存在作为通过依据。允许有界等待异步消费，超时保留未完成状态与诊断证据。本轮不新增 Audit Console；审计事实定义与消费规则沿用 [Audit 成功事实规格](24-audit-success-fact-consumption.md)。
+记录必须能追溯到本轮具体操作，不得以任意历史记录存在作为通过依据。允许有界等待异步消费，超时保留未完成状态与诊断证据。本轮不新增 Audit Console；审计事实定义与消费规则沿用 [Audit 成功事实规格](../24-audit-success-fact-consumption.md)。
 
 ## 聚合证据与完成边界
 
@@ -77,4 +79,4 @@ OAuth Client 创建、Secret 一次展示、结果不确定恢复、轮换与吊
 
 ### 主链切片入口（Issue #184）
 
-`bash scripts/verify-console-authentication-e2e.sh --stage2` 在独立 Fresh Compose 中执行中文产品主链与 Audit 关联。[运行说明与当前验证边界](acceptance/issue-184-stage2-main-chain.md)记录同轮内存复用接口和脱敏产物；该入口不执行后续安全、OAuth 或英文切片，不能单独完成父规格。
+`bash scripts/verify-console-authentication-e2e.sh --stage2` 在独立 Fresh Compose 中执行中文产品主链与 Audit 关联。[运行说明与当前验证边界](../acceptance/issue-184-stage2-main-chain.md)记录同轮内存复用接口和脱敏产物；该入口不执行后续安全、OAuth 或英文切片，不能单独完成父规格。
