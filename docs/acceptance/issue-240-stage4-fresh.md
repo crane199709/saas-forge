@@ -71,11 +71,11 @@ Tenant A 的真实 Chrome 观察覆盖两个组织根、带 Project 权限的角
 3. 部署方完成镜像构建、迁移、引导、受信 HTTPS Edge、正式 Console/Remote 不可变制品及 Mailpit/品牌存储准备后，运行：
 
    ```sh
-   node scripts/acceptance-handoff.mjs ready "$SF_ROUND_DIR"
+   node scripts/acceptance-handoff.mjs ready-stage4 "$SF_ROUND_DIR"
    node scripts/acceptance-handoff.mjs probe "$SF_ROUND_DIR/handoff.json" "$SF_ROUND_DIR/backend.json"
    ```
 
-   `ready` 与 `probe` 通过只表示同轮环境身份和最小 Gateway 安全边界；不能代替业务场景、审计或品牌隔离。运行时记录所有镜像/容器 ID、网络/卷、Gateway/Edge、JDK、受控 v2 开关和清理责任。
+   `ready-stage4` 只接受七应用 Fresh 环境，给本轮固定九天的 handoff 窗口，以便在创建素材后真实等待 24 小时和 7 天；普通 `ready` 仍为一天。它与 `probe` 通过只表示同轮环境身份和最小 Gateway 安全边界；不能代替业务场景、审计或品牌隔离。运行时记录所有镜像/容器 ID、网络/卷、Gateway/Edge、JDK、受控 v2 开关和清理责任。
 4. 前端使用正式固定 Client 和真实当前稳定版 Chrome，在本轮 Console/Remote 路径执行组织/角色/邀请/成员/恢复/平台生命周期/品牌/10 CRUD、中文英文、键盘、无障碍、视觉、拒绝与恢复；浏览器自行管理 Cookie、Origin 和 Fetch Metadata。后端独立通过正式 API、受限服务账号/数据库和故障注入窗口验证并发保护、历史 Token、补偿、RLS、即时撤权、品牌存储与服务恢复。每次注入记录准确作用范围、时间、结果和恢复，不以手工改状态冒充真实等待。
 5. 对上述**本轮**成功变更，按源事件 ID、Outbox、Audit Record 精确匹配持久行；验证重复投递幂等、事务失败无虚假成功及敏感材料缺失。所有报告使用同一 runId/handoff SHA-256，并按通过、失败、跳过、未执行分别记载。用前端阶段 4 聚合器离线复核，随后把脱敏原报告、散列清单、两仓 CI、诊断失败及最终结论写入 `docs/acceptance/`。本地 `.scratch/` 不能作为长期验收证据。
 6. 环境准备方按本轮项目名记录并执行清理决定。故障排查期间可保留受限环境；清理时只操作本轮 Compose 项目，不删除共享镜像、开发数据卷或其他环境。记录停止/保留的资源及责任人。

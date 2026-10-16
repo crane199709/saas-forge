@@ -89,11 +89,12 @@ test('ready verifies fresh resource ownership and rejects containers attached to
   const root = mkdtempSync(join(tmpdir(), 'handoff-test-'));
   try {
     const directory = join(root, 'round');
-    spawnSync(process.execPath, [cli, 'prepare', directory, 'https://console.example.test', 'https://api.example.test']);
+    spawnSync(process.execPath, [cli, 'prepare-stage3', directory, 'https://console.example.test', 'https://api.example.test']);
     const receipt = JSON.parse(readFileSync(join(directory, 'preparation.json')));
     const project = receipt.isolation.project;
     const created = new Date().toISOString();
-    const services = ['gateway', 'iam-service', 'tenant-access-service', 'entitlement-service', 'audit-service', 'postgres', 'redis', 'kafka'];
+    const services = ['gateway', 'iam-service', 'tenant-access-service', 'entitlement-service', 'audit-service',
+      'project-service', 'remote-delivery-service', 'postgres', 'redis', 'kafka'];
     const containers = services.map(service => ({ Id: service, Image: `sha256:${'a'.repeat(64)}`,
       Created: created, Config: { Labels: { 'com.docker.compose.project': project, 'com.docker.compose.service': service } },
       State: { Running: true }, Mounts: ['postgres', 'redis', 'kafka'].includes(service) ? [{ Type: 'volume', Name: `${project}_${service}-data` }] : [], NetworkSettings: { Networks: { [`${project}_default`]: {} },
@@ -116,7 +117,14 @@ else process.exit(2);`, { mode: 0o700 });
     assert.equal(result.status, 0, result.stderr);
     const handoff = JSON.parse(readFileSync(join(directory, 'handoff.json')));
     assert.equal(handoff.isolation.volumes.length, 3);
-    assert.equal(handoff.backend.images.length, 5);
+    assert.equal(handoff.backend.images.length, 7);
+    assert.equal(Date.parse(handoff.expiresAt) - Date.parse(handoff.readyAt), 86400000);
+    rmSync(join(directory, 'handoff.json'));
+    const stage4 = spawnSync(process.execPath, [cli, 'ready-stage4', directory], {
+      env: { ...process.env, PATH: `${root}:${process.env.PATH}` }, encoding: 'utf8' });
+    assert.equal(stage4.status, 0, stage4.stderr);
+    const longHandoff = JSON.parse(readFileSync(join(directory, 'handoff.json')));
+    assert.equal(Date.parse(longHandoff.expiresAt) - Date.parse(longHandoff.readyAt), 9 * 86400000);
     rmSync(join(directory, 'handoff.json'));
     containers.find(c => c.Id === 'postgres').Mounts = [];
     writeFileSync(fixturePath, JSON.stringify(containers));

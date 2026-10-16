@@ -98,7 +98,7 @@ function publicJwks(target, edge) {
   return createHash('sha256').update(JSON.stringify(keys.map(key => ({ kid: key.kid, n: key.n, e: key.e }))
     .sort((a, b) => a.kid.localeCompare(b.kid)))).digest('hex');
 }
-function ready(directory) {
+function ready(directory, stage4 = false) {
   const receipt = read(resolve(directory, 'preparation.json'));
   if (receipt.status !== 'prepared' || receipt.isolation.project !== `sf-acceptance-${receipt.runId}` ||
       receipt.backend.commit !== git('rev-parse', 'HEAD')) throw new Error('PREPARATION_CHANGED');
@@ -119,6 +119,8 @@ function ready(directory) {
       requiredServices.some(service => !permitted.has(service)) || new Set(requiredServices).size !== requiredServices.length) {
     throw new Error('SERVICE_SET_INVALID');
   }
+  if (stage4 && (requiredServices.length !== permitted.size ||
+      [...permitted].some(service => !requiredServices.includes(service)))) throw new Error('STAGE4_SERVICE_SET_INVALID');
   const images = [];
   for (const service of requiredServices) {
     const instances = containers.filter(c => c.Config.Labels['com.docker.compose.service'] === service &&
@@ -161,8 +163,9 @@ function ready(directory) {
     edge = { host: '127.0.0.1', port: Number(edgePorts[0].HostPort), containerId: edgeContainer.Id };
   }
   if (publicJwks(receipt.apiOrigin, edge) !== jwksSha256) throw new Error('HTTPS_WRONG_ENVIRONMENT');
-  save(resolve(directory, 'handoff.json'), { ...receipt, status: 'ready', readyAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 86400000).toISOString(), edge,
+  const readyAt = new Date();
+  save(resolve(directory, 'handoff.json'), { ...receipt, status: 'ready', readyAt: readyAt.toISOString(),
+    expiresAt: new Date(readyAt.getTime() + (stage4 ? 9 : 1) * 86400000).toISOString(), edge,
     backend: { ...receipt.backend, images, jdkMajor: 17 },
     isolation: { ...receipt.isolation, volumes, network: network.Name }, jwksSha256 });
 }
@@ -219,6 +222,7 @@ try {
   if (command === 'prepare' && args.length === 3) prepare(...args);
   else if (command === 'prepare-stage3' && args.length === 3) prepare(...args, true);
   else if (command === 'ready' && args.length === 1) ready(...args);
+  else if (command === 'ready-stage4' && args.length === 1) ready(...args, true);
   else if (command === 'attach' && args.length === 3) attach(...args);
   else if (command === 'probe' && args.length === 2) probe(...args);
   else if (command === 'correlate' && args.length === 4) correlate(...args);
