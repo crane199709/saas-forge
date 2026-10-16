@@ -57,3 +57,19 @@ test('rejects credential fields or known secret values in persisted facts', () =
     ...outbox, event_snapshot: { ...outbox.event_snapshot, data: { note: 'known-private-value' } }
   }], ['known-private-value']));
 });
+
+test('distinguishes two member events with the same actor and membership by the changed unit', () => {
+  const unitId = '0199d1b0-1111-7000-8000-000000000004';
+  const association = { ...expected, action: 'MEMBERSHIP_ORGANIZATION_UNIT_ADDED',
+    relatedResourceId: unitId };
+  const linkedAudit = { ...audit, action: association.action, metadata: { unitId } };
+  const linkedOutbox = { ...outbox,
+    event_snapshot: { ...outbox.event_snapshot, data: { unitId } } };
+  assert.equal(validateLinkedFact(association, [linkedAudit], [linkedOutbox]), true);
+  assert.throws(() => validateLinkedFact(association,
+    [{ ...linkedAudit, metadata: { unitId: expected.resourceId } }], [linkedOutbox]),
+  /AUDIT_RELATED_ID_MISMATCH/);
+  assert.throws(() => validateLinkedFact(association, [linkedAudit], [{ ...linkedOutbox,
+    event_snapshot: { ...linkedOutbox.event_snapshot, data: { unitId: expected.resourceId } }
+  }]), /EVENT_RELATED_ID_MISMATCH/);
+});

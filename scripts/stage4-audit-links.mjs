@@ -27,14 +27,20 @@ function privateJson(path) {
 
 function validateObservation(value) {
   assert.ok(value && typeof value === 'object' && !Array.isArray(value));
-  assert.deepEqual(Object.keys(value).sort(),
-    ['action', 'actorIdentityId', 'finishedAt', 'label', 'resourceId', 'source',
-      'startedAt'].sort());
+  const keys = ['action', 'actorIdentityId', 'finishedAt', 'label', 'resourceId', 'source',
+    'startedAt'];
+  if (Object.hasOwn(value, 'relatedResourceId')) keys.push('relatedResourceId');
+  assert.deepEqual(Object.keys(value).sort(), keys.sort());
   assert.match(value.label, /^[a-z][a-z0-9-]{2,80}$/);
   assert.ok(Object.hasOwn(SOURCES, value.source));
   assert.match(value.resourceId, UUID);
   assert.ok(value.actorIdentityId === null || UUID.test(value.actorIdentityId));
   assert.match(value.action, ACTION);
+  if (value.relatedResourceId !== undefined) {
+    assert.match(value.relatedResourceId, UUID);
+    assert.ok(['MEMBERSHIP_ORGANIZATION_UNIT_ADDED', 'MEMBERSHIP_ORGANIZATION_UNIT_REMOVED',
+      'MEMBERSHIP_ROLE_ASSIGNED', 'MEMBERSHIP_ROLE_REVOKED'].includes(value.action));
+  }
   assert.ok(Number.isFinite(Date.parse(value.startedAt)) &&
     Number.isFinite(Date.parse(value.finishedAt)) &&
     Date.parse(value.startedAt) <= Date.parse(value.finishedAt), 'OPERATION_WINDOW_INVALID');
@@ -70,6 +76,11 @@ export function validateLinkedFact(expected, auditRows, outboxRows, secrets = []
   assert.equal(audit.result, 'SUCCESS');
   assert.equal(audit.resource_id, expected.resourceId);
   assert.equal(audit.actor_identity_id, expected.actorIdentityId);
+  if (expected.relatedResourceId !== undefined) {
+    const key = expected.action.startsWith('MEMBERSHIP_ROLE_') ? 'roleId' : 'unitId';
+    assert.equal(audit.metadata?.[key], expected.relatedResourceId, 'AUDIT_RELATED_ID_MISMATCH');
+    assert.equal(event.data?.[key], expected.relatedResourceId, 'EVENT_RELATED_ID_MISMATCH');
+  }
   const occurredAt = Date.parse(audit.occurred_at);
   assert.ok(Number.isFinite(occurredAt) &&
     occurredAt >= Date.parse(expected.startedAt) - 2000 &&
@@ -120,12 +131,15 @@ function rows(postgres, expected) {
   const to = new Date(Date.parse(expected.finishedAt) + 2000).toISOString();
   const actor = expected.actorIdentityId === null ? 'actor_identity_id IS NULL'
     : `actor_identity_id='${expected.actorIdentityId}'`;
+  const relatedKey = expected.action.startsWith('MEMBERSHIP_ROLE_') ? 'roleId' : 'unitId';
+  const related = expected.relatedResourceId === undefined ? ''
+    : `AND metadata->>'${relatedKey}'='${expected.relatedResourceId}'`;
   // Only validated UUID, normalized timestamps, strict action and fixed source enter SQL.
   const audit = query(postgres, 'audit_db', `SELECT COALESCE(json_agg(a),'[]'::json) FROM (
     SELECT source_event_id,source,source_type,action,result,resource_id,actor_identity_id,
       trace_id,metadata,occurred_at
     FROM audit_records WHERE source='${source.source}' AND action='${expected.action}'
-      AND resource_id='${expected.resourceId}' AND ${actor}
+      AND resource_id='${expected.resourceId}' AND ${actor} ${related}
       AND occurred_at BETWEEN '${from}' AND '${to}') a`);
   assert.ok(audit.length <= 1, 'AUDIT_OPERATION_AMBIGUOUS');
   if (audit.length === 0) return { audit, outbox: [] };
