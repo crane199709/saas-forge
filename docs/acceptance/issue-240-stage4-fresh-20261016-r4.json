@@ -38,7 +38,10 @@
   "controlledProjectManifest": {
     "status": "passed",
     "registeredThroughLimitedCiClient": true,
-    "reviewedAndEnabledInChrome": true
+    "reviewedAndEnabledInChrome": true,
+    "isolatedCiClientId": "01a14275-a56a-7731-9747-5f97065f1d5c",
+    "scope": "remote-delivery:manifest:register",
+    "module": "project"
   },
   "nacosAcl": {
     "status": "passed",
