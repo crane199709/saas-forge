@@ -302,6 +302,52 @@
           "status": "passed"
         }
       ]
+    },
+    "selectedLivePermissionRevocation": {
+      "status": "passed",
+      "sha256": "e7b7fdf538f933540f30bb9d63df9c9a296125fa249b934be62a8a875f26bd9c",
+      "checks": [
+        {
+          "name": "no-role-project-create-denied",
+          "status": "passed"
+        },
+        {
+          "name": "administrator-assigns-project-create-role",
+          "status": "passed"
+        },
+        {
+          "name": "same-member-token-project-create-allowed-after-assignment",
+          "status": "passed"
+        },
+        {
+          "name": "administrator-revokes-project-create-role",
+          "status": "passed"
+        },
+        {
+          "name": "same-member-token-next-create-denied-after-revocation",
+          "status": "passed"
+        },
+        {
+          "name": "administrator-cleans-up-test-project",
+          "status": "passed"
+        }
+      ]
+    },
+    "tenantBMemberChromeJoin": {
+      "status": "passed",
+      "sha256": "420218b44151a2312320813ecfd97b0c9cb9eb8a0e37050fe26d23ec90cfc68a",
+      "checks": []
+    },
+    "selectedMembershipDisableEnable": {
+      "status": "failed",
+      "sha256": "e55fcff0a8493abf4dbaf9477ae7287f5df6ec839a1ea98f5869edd65bacb572",
+      "checks": [
+        {
+          "name": "member-token-valid-before-disable",
+          "status": "passed"
+        }
+      ],
+      "reason": "REVOKING remained pending past 30 seconds; IAM pending had zero worker attempts"
     }
   },
   "ci": {
@@ -323,7 +369,7 @@
   },
   "remaining": {
     "requiredBrowserSuite": "not_run",
-    "requiredAuthoritySuite": "not_run",
+    "requiredAuthoritySuite": "failed",
     "requiredAuditSuite": "not_run",
     "realTimeBrandRetention24h": "not_run",
     "realTimeBrandRetention7d": "not_run",
@@ -333,5 +379,19 @@
     "Selected browser paths, the authority probe, and linked committed facts have narrower scopes than the required 11/11/4 full suites.",
     "All named report hashes refer to restricted local raw reports; this committed summary contains no credentials or invitation links.",
     "A host JDK 17 offline Maven package was assembled into verified JDK 17 runtime images; this was not a seven-Dockerfile image build."
-  ]
+  ],
+  "environmentFinding": {
+    "status": "confirmed",
+    "currentRoundWorkerDelays": {
+      "iamSessionRevocation": "PT1H",
+      "tenantAccessLifecycle": "PT1H"
+    },
+    "source": "tenant-lifecycle-e2e.override.yaml",
+    "stage4OverlayPrepared": "deploy/acceptance/stage4-fresh.override.yaml",
+    "stage4OverlayEffectiveValuesValidated": {
+      "iamSessionRevocation": "PT1S",
+      "tenantAccessLifecycle": "PT1S"
+    },
+    "currentRoundRuntimeChanged": false
+  }
 }

@@ -127,6 +127,7 @@ def main():
             ACCEPTANCE.parent / 'stage3.override.yaml',
             ACCEPTANCE.parent / 'brand-storage.override.yaml',
             round_dir / 'compose.override.yaml',
+            ACCEPTANCE.parent / 'stage4-fresh.override.yaml',
         ], project)
         for service, module in (
             ('gateway', 'gateway'),
@@ -147,9 +148,13 @@ def main():
         assert not model['services']['brand-storage'].get('ports')
         ports = model['services']['gateway']['ports']
         assert len(ports) == 1 and ports[0]['host_ip'] == '127.0.0.1' and ports[0]['target'] == 8080
+        assert model['services']['iam-service']['environment'][
+            'SAAS_FORGE_IAM_SESSION_REVOCATION_WORKER_DELAY'] == 'PT1S'
+        assert model['services']['tenant-access-service']['environment'][
+            'SAAS_FORGE_TENANT_ACCESS_LIFECYCLE_RECOVERY_DELAY'] == 'PT1S'
     edge = configuration([ENVIRONMENT, ENVIRONMENT.parent / 'local-https-development.override.yaml'])
     assert not edge['services']['local-https-edge'].get('depends_on'), 'HTTPS 入口不能自动启动应用'
-    print(f'通过：{len(APPLICATIONS)} 个独立应用、{len(OVERLAYS)} 个验收场景、阶段 4 五层组合构建、项目/网络/卷隔离、挂载与迁移门禁。')
+    print(f'通过：{len(APPLICATIONS)} 个独立应用、{len(OVERLAYS)} 个验收场景、阶段 4 六层组合构建、项目/网络/卷隔离、挂载与迁移门禁。')
 
 
 if __name__ == '__main__':

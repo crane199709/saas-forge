@@ -12,7 +12,7 @@ IAM/Gateway Nacos Console v2 配置回读与来源逐字节一致，七个工作
 
 Tenant A 的真实 Chrome 观察覆盖两个组织根、带 Project 权限的角色、邀请创建及五字段品牌预览/保存，4/4 通过；Tenant B 的品牌上传、预览、保存及刷新回读 4/4 通过。两 Tenant 品牌五字段和四个公开 PNG 均经正式 Gateway 双向回读。已提交的 11 个组织、角色、邀请及品牌操作，逐一对应唯一的源 Outbox 快照与持久 Audit 行，已知敏感值检查通过；其范围仅为 `linked-observations-only`。第二位受邀成员又经真实 Chrome 完成邮件设密和接受邀请。正式 Authority 探针 4/4 通过：双 Tenant 组织/角色/成员/品牌隔离、Project/Task 十项 CRUD 与外租户拒绝、`project_app` 受限账号的双 Tenant RLS、末管理员并发仅一项成功及撤权后旧 Token 立即拒绝和最后管理员自撤销 409。同轮还经正式类型化 Client 验证重复有效邀请 409 完整 Problem Details 与撤销；经真实 Chrome 上传未绑定 PNG 后，验证匿名公开读取、平台永久禁用及随后 404 完整 Problem Details。禁用成功事实已经并入上述 11 条审计关联。所有这些报告同属 r4 的 handoff，未在 r4 替换应用容器。
 
-精确后端提交的 [Verify](https://github.com/crane199709/saas-forge/actions/runs/38838158856) 已成功，包含 JDK 17、Nacos 权限和独立 Fresh Tenant 生命周期；精确前端提交的 [Frontend verification](https://github.com/crane199709/saas-forge-web/actions/runs/38724192604) 已成功。后端 [API Client artifact](https://github.com/crane199709/saas-forge/actions/runs/38839412744) 为本轮精确后端提交另行触发且已成功。当前 r4 仍保留运行以供后续验收；清理只限本轮项目，由环境准备方负责。完整 11/11/4 场景、Outbox 重试/失败事务、故障恢复、品牌素材真实 24 小时和 7 天清理及同轮聚合尚未执行，不把选定路径外推为阶段通过。
+精确后端提交的 [Verify](https://github.com/crane199709/saas-forge/actions/runs/38838158856) 已成功，包含 JDK 17、Nacos 权限和独立 Fresh Tenant 生命周期；精确前端提交的 [Frontend verification](https://github.com/crane199709/saas-forge-web/actions/runs/38724192604) 已成功。后端 [API Client artifact](https://github.com/crane199709/saas-forge/actions/runs/38839412744) 为本轮精确后端提交另行触发且已成功。当前 r4 仍保留运行以供后续验收；清理只限本轮项目，由环境准备方负责。Tenant B 新成员又经真实 Chrome 完成设密、接受邀请和无角色登录；用同一短期令牌验证 Project 创建从 403 经角色分配变为 201，撤权后下一次请求立即恢复 403，测试 Project 已清理，6/6 通过。成员禁用/启用另一路径已执行但**失败**：禁用受理后 30 秒仍为 `REVOKING`，IAM 撤销维持 `PENDING` 且 worker 尝试数为 0。隔离容器的实际调度值由通用 Tenant lifecycle E2E 叠加覆盖为 `PT1H`，与本阶段故障恢复验收不符。已新增 `stage4-fresh.override.yaml`，仅在未来新轮次最后叠加，最终 Compose 解析核对两个 worker 均为 `PT1S`；r4 容器未重建，故本轮这项保持失败。完整 11/11/4 场景、Outbox 重试/失败事务、故障恢复、品牌素材真实 24 小时和 7 天清理及同轮聚合尚未执行，不把选定路径外推为阶段通过。
 
 ### 2026-10-15 重启轮次进度
 
@@ -67,7 +67,7 @@ Tenant A 的真实 Chrome 观察覆盖两个组织根、带 Project 权限的角
    node scripts/acceptance-handoff.mjs prepare-stage3 "$SF_ROUND_DIR" "$SF_CONSOLE_ORIGIN" "$SF_API_ORIGIN"
    ```
 
-   `$SF_ROUND_DIR` 必须尚不存在，父目录已存在。最终 Compose 需合并现有 `deploy/acceptance/compose.yaml`、`tenant-lifecycle-e2e.override.yaml`、`stage3.override.yaml`、`brand-storage.override.yaml` 和本轮生成的 `compose.override.yaml`；实际组合应先由 `docker compose config` 与布局校验核对，再执行 build/bootstrap/up。品牌存储叠加已定义，但完整 Fresh 仍需本轮受限凭据、受信 Edge 和制品，本页不提供假定可运行的完整启动命令。
+   `$SF_ROUND_DIR` 必须尚不存在，父目录已存在。最终 Compose 需合并现有 `deploy/acceptance/compose.yaml`、`tenant-lifecycle-e2e.override.yaml`、`stage3.override.yaml`、`brand-storage.override.yaml` 和本轮生成的 `compose.override.yaml`，并在最后加入 `stage4-fresh.override.yaml`，以免生命周期 E2E 的 `PT1H` 故障注入延迟阻止本阶段恢复测试；实际组合应先由 `docker compose config` 与布局校验核对，再执行 build/bootstrap/up。品牌存储叠加已定义，但完整 Fresh 仍需本轮受限凭据、受信 Edge 和制品，本页不提供假定可运行的完整启动命令。
 3. 部署方完成镜像构建、迁移、引导、受信 HTTPS Edge、正式 Console/Remote 不可变制品及 Mailpit/品牌存储准备后，运行：
 
    ```sh
