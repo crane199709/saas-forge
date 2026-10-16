@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "issue": 240,
+  "kind": "stage4-fresh-progress",
+  "status": "incomplete",
+  "runId": "27bbf0b5-87a3-42aa-bc63-d67d3c7b248e",
+  "handoffSha256": "9eb2ada2c303d23a54d9a25c82bd859ef50e17f5d6bb612ae50b0a9dd35d8847",
+  "readyAt": "2026-10-16T03:25:35.699Z",
+  "expiresAt": "2026-10-25T03:25:35.699Z",
+  "backend": {
+    "commit": "acd19a9858c083b1a289128adf92602f5e2baada",
+    "jdkMajor": 17,
+    "sourceDirty": false,
+    "applicationCount": 7
+  },
+  "frontend": {
+    "commit": "a2b2c74f76d757487c44b608d13b8e119d10ea26",
+    "clientVersion": "0.6.0",
+    "chrome": "155.0.8059.85"
+  },
+  "selectedEvidence": {
+    "handoff": {
+      "sha256": "9eb2ada2c303d23a54d9a25c82bd859ef50e17f5d6bb612ae50b0a9dd35d8847",
+      "status": "ready"
+    },
+    "tenantSeed": {
+      "sha256": "c3703028bd322bf33179742d9bb1158240c09c74307b2525cb1823e8fe545a01",
+      "status": "passed"
+    },
+    "manifestReview": {
+      "sha256": "c16008ec84f2ecb58fb840505a9d938e1052c0cd8b5a0de4ddfb661a31082b82",
+      "status": "passed"
+    },
+    "productChrome": {
+      "sha256": "dd0d7d377228d7f1d583e84bec010dfc02efcfd9b978d824ebda93843e3d6a8f",
+      "status": "passed"
+    },
+    "tenantBBrandChrome": {
+      "sha256": "1da965078754eafa0a4b187a74ac614205d1139211aa1f4997a577b0761afacc",
+      "status": "passed"
+    },
+    "brandIsolation": {
+      "sha256": "974a875aa43bb51034e2e7b91f4f5d3b77d6f757c985887e4df9b2552ef5ba65",
+      "status": "passed"
+    },
+    "invitation403": {
+      "sha256": "5698ede820eca347b7419edce652b0313f83b2813ec50e580d38e62d341f29d8",
+      "status": "passed"
+    },
+    "authority": {
+      "sha256": "97cbe5e83f91ceea00420e7c25f7ca5e93b9a1d60f14f7572882b389edb73b0c",
+      "status": "passed"
+    },
+    "auditLinked": {
+      "sha256": "7e1ca30edcca42413e2dad892ef0cf08c1a442602e6d4bb26ff25f2293e246c1",
+      "status": "passed"
+    },
+    "retentionBaseline": {
+      "sha256": "f135dddf74da27539758bb0e6d82562fc7525859ca5e9de3c49d1b67cf921c47",
+      "status": "passed"
+    }
+  },
+  "retention": {
+    "activeUnboundUploadedAt": "2026-10-16T03:28:13.681049+00:00",
+    "disabledUnboundDisabledAt": "2026-10-16T03:28:05.100027+00:00",
+    "clockOrRowsAltered": false,
+    "status": "awaiting-real-time-window"
+  },
+  "fullSuites": {
+    "browser": {
+      "required": 11,
+      "status": "not_run"
+    },
+    "authority": {
+      "required": 11,
+      "status": "not_run"
+    },
+    "audit": {
+      "required": 4,
+      "status": "not_run"
+    }
+  },
+  "ci": {
+    "backendVerify": {
+      "status": "passed",
+      "url": "https://github.com/crane199709/saas-forge/actions/runs/38844793329"
+    },
+    "apiClientArtifact": {
+      "status": "not_run",
+      "reason": "GitHub API EOF while dispatching exact-commit workflow"
+    },
+    "frontendVerify": {
+      "status": "passed",
+      "url": "https://github.com/crane199709/saas-forge-web/actions/runs/38724192604"
+    }
+  },
+  "conclusion": "Selected same-run paths passed. The 11 browser, 11 authority, and 4 audit suite gates remain incomplete."
+}

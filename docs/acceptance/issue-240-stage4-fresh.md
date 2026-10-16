@@ -1,14 +1,24 @@
 # #240 阶段 4 Fresh Chrome 两仓联合验收
 
-状态：2026-10-16 的隔离 Fresh r5 正在运行，已完成真实 Chrome 选定产品路径、双 Tenant Authority 探针及 16 条成功事实的 Outbox→Audit 关联。未绑定素材的真实 24 小时、已禁用素材的真实 7 天清理正在等待时间窗。**阶段 4 的 11 项浏览器、11 项 Authority、4 项 Audit 尚未全部完成，不能据此勾选或关闭 #240**。本轮脱敏摘要见 [2026-10-16 r5 进度](issue-240-stage4-fresh-20261016-r5.json)；旧轮次事实不得并入 r5。
+状态：2026-10-16 的隔离 Fresh r6 正在运行，已完成真实 Chrome 选定产品路径、双 Tenant Authority 探针及 16 条成功事实的 Outbox→Audit 关联。未绑定素材的真实 24 小时、已禁用素材的真实 7 天清理正在等待时间窗。**阶段 4 的 11 项浏览器、11 项 Authority、4 项 Audit 尚未全部完成，不能据此勾选或关闭 #240**。本轮脱敏摘要见 [2026-10-16 r6 进度](issue-240-stage4-fresh-20261016-r6.json)；旧轮次事实不得并入 r6。
+
+### 2026-10-16 长时隔离 Fresh r6
+
+r5 验出普通成员读取邀请列表时，Tenant Access 的 403 响应缺少 Gateway 要求的 Problem Details 字段，Gateway 因而返回 502。修复在 `acd19a9858c083b1a289128adf92602f5e2baada`，定向测试 5/5 通过；r5 已停止，隔离卷及诊断记录保留。r6 从新 Secret、网络和卷启动，未暂停其他项目容器。r6 的 runId 为 `27bbf0b5-87a3-42aa-bc63-d67d3c7b248e`，handoff SHA-256 为 `9eb2ada2c303d23a54d9a25c82bd859ef50e17f5d6bb612ae50b0a9dd35d8847`，有效窗口为 2026-10-16 03:25:35 至 2026-10-25 03:25:35 UTC。七个 JDK 17 应用镜像与容器 ID 已冻结，Stage 4 覆盖文件仍在 Compose 最后一层，IAM 与 Tenant Access 恢复 worker 均为 `PT1S`。前端 147 个冻结文件逐字节匹配已核实的 `a2b2c74f76d757487c44b608d13b8e119d10ea26` 来源，正式 Client 为 `0.6.0`，真实 Chrome 为 `155.0.8059.85`。
+
+Project Manifest 由本轮限权 CI Client 注册，再由真实 Chrome 平台页面审批和启用 3/3。两位新 Tenant 管理员经 Mailpit 一次性链接设密登录；Example 权限目录的十个代码由受控迁移脚本导入并经 Gateway 回读。Tenant A 选定 Chrome 产品路径 4/4，Tenant B 品牌路径 4/4，两 Tenant 品牌五字段及四个公开 PNG 双向回读通过。普通成员读取邀请列表的回归检查 2/2：管理员返回 200，普通成员收到完整六字段 403 `INVITATION_PERMISSION_DENIED`。正式 Authority 探针 4/4，覆盖双 Tenant 数据与品牌隔离、Project/Task 十项 CRUD 与跨 Tenant 拒绝、受限账号 RLS、末管理员并发保护。16 条成功事实逐项匹配本轮唯一源 Outbox 与持久 Audit 行，并检查本轮已知敏感值；这仅是已列操作的关联证据，尚未覆盖 Audit 四项完整套件。
+
+只读数据库基线确认两件素材均从未绑定且未修改时间或记录：ACTIVE 素材于 2026-10-16 03:28:13.681049 UTC 上传，须在 2026-10-17 03:28:13.681049 UTC 后核验真实 24 小时清理；DISABLED 素材于 2026-10-16 03:28:05.100027 UTC 禁用，须在 2026-10-23 03:28:05.100027 UTC 后核验真实七天清理。精确后端提交的 [Verify](https://github.com/crane199709/saas-forge/actions/runs/38844793329) 已成功；精确提交的 API Client artifact 工作流触发时 GitHub API 连续返回 EOF，仍待补验。完整 11/11/4 套件、故障注入与恢复、Outbox 重投递及失败事务仍需 r6 同轮直接证据；不能以已通过的选定路径替代聚合器结论。
 
 ### 2026-10-16 长时隔离 Fresh r5
+
+r5 于 2026-10-16 发现邀请列表 403 响应缺陷后停止，隔离卷和诊断记录保留。以下记录仅说明 r5 历史过程，不并入 r6 的完整验收。
 
 按用户批准，`ready-stage4` 将七应用 Fresh handoff 固定为九天，普通 `ready` 仍为一天。r5 的 runId 为 `ed2a93af-2b10-4e7b-8c30-112df938695d`，handoff SHA-256 为 `e4d1dc3894d2a0ca5ed27fad7414e19c8cf063cd1ff1a66e08670d64d7f83114`，有效窗口为 2026-10-16 02:49:39 至 2026-10-25 02:49:39 UTC。后端干净提交 `6733aae93a18800abe4b55924e89dedae9112fe7` 的七个 JDK 17 应用镜像与容器 ID 已冻结；前端干净提交 `a2b2c74f76d757487c44b608d13b8e119d10ea26` 的 147 个冻结文件逐项与上一轮已核实的来源摘要一致，正式 Client 为 `0.6.0`。r4 已停止，隔离卷和失败记录保留；其他项目容器未暂停。r5 只使用独立 Secret、网络与卷，Stage 4 覆盖文件放在最后，IAM 与 Tenant Access 恢复 worker 最终值均为 `PT1S`。
 
 正式 Gateway/Origin 探针 3/3、Chrome 会话冒烟 9/9、Project Manifest 经限权 CI Client 注册并由 Chrome 审批启用 3/3 均通过。两位新 Tenant 管理员经 Mailpit 一次性链接由 Chrome 设密登录；Example 权限目录经受控脚本导入并由 Gateway 回读。Tenant A 组织、角色、邀请、品牌选定产品路径 4/4，Tenant B 品牌 4/4，双 Tenant 的五字段资料及四个公开 PNG 回读通过。第二位 Tenant A 管理员和 Tenant B 业务成员均经 Chrome 接受邀请。正式 Authority 探针 4/4，含双 Tenant 隔离、Project/Task CRUD 与拒绝、受限账号 RLS、末管理员并发；相同成员令牌的权限分配/撤销即时生效 6/6，成员禁用/启用、旧令牌持续拒绝 5/5。重复邀请 409 和禁用素材公开 404 均返回完整 Problem Details；16 条本轮成功变更的源 Outbox 与持久 Audit 行逐项唯一匹配并通过已知敏感值检查。上述均是各报告所列的选定范围，不替代完整 11/11/4 套件。
 
-一件未绑定素材于 2026-10-16 02:54:24 UTC 上传，须在 2026-10-17 02:54:24 UTC 后核验真实 24 小时清理；另一件素材于 2026-10-16 02:54:15 UTC 禁用，须在 2026-10-23 02:54:15 UTC 后核验真实七天清理。只读数据库基线确认状态、时间戳和两者均未绑定；没有改动数据库时间或行。r5 精确后端提交的 [Verify](https://github.com/crane199709/saas-forge/actions/runs/38841604896) 与 [API Client artifact](https://github.com/crane199709/saas-forge/actions/runs/38843484186)、精确前端提交的 [Frontend verification](https://github.com/crane199709/saas-forge-web/actions/runs/38724192604) 均成功。完整浏览器、Authority、Audit 矩阵及 Outbox 重试/失败事务等仍需本轮直接证据；清理时间窗到达前保持 r5 运行，不运行聚合器宣称通过。
+一件未绑定素材于 2026-10-16 02:54:24 UTC 上传，另一件素材于 2026-10-16 02:54:15 UTC 禁用。只读数据库基线确认状态、时间戳和两者均未绑定；没有改动数据库时间或行。r5 停止后不再将其清理等待作为有效完整验收。r5 精确后端提交的 [Verify](https://github.com/crane199709/saas-forge/actions/runs/38841604896) 与 [API Client artifact](https://github.com/crane199709/saas-forge/actions/runs/38843484186)、精确前端提交的 [Frontend verification](https://github.com/crane199709/saas-forge-web/actions/runs/38724192604) 均成功；这些旧轮证据不替代 r6 的完整浏览器、Authority、Audit 矩阵及 Outbox 重试/失败事务检查。
 
 ### 2026-10-16 隔离 Fresh r4
 
