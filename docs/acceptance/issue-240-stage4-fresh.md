@@ -1,6 +1,6 @@
 # #240 阶段 4 Fresh Chrome 两仓联合验收
 
-状态：2026-10-16 的隔离 Fresh 轮次仍在运行，已完成真实 Chrome 选定产品路径、双 Tenant 隔离、正式 Authority 探针及 10 条成功事实的 Outbox→Audit 关联。**阶段 4 的 11 项浏览器、11 项 Authority、4 项 Audit 尚未全部完成，不能据此勾选或关闭 #240**。本轮脱敏摘要见 [2026-10-16 r4 进度](issue-240-stage4-fresh-20261016-r4.json)；以下旧轮次事实仅供诊断，不得并入本轮。
+状态：2026-10-16 的隔离 Fresh 轮次仍在运行，已完成真实 Chrome 选定产品路径、双 Tenant 隔离、正式 Authority 探针及 11 条成功事实的 Outbox→Audit 关联。**阶段 4 的 11 项浏览器、11 项 Authority、4 项 Audit 尚未全部完成，不能据此勾选或关闭 #240**。本轮脱敏摘要见 [2026-10-16 r4 进度](issue-240-stage4-fresh-20261016-r4.json)；以下旧轮次事实仅供诊断，不得并入本轮。
 
 ### 2026-10-16 隔离 Fresh r4
 
@@ -10,7 +10,7 @@
 
 IAM/Gateway Nacos Console v2 配置回读与来源逐字节一致，七个工作负载的最小 ACL 校验通过。先完成 handoff `ready` 与 Gateway/Origin 探针；再用本轮限权 CI Client `01a14275-a56a-7731-9747-5f97065f1d5c`（仅 `remote-delivery:manifest:register`）经正式类型化 API 注册 Project Manifest，并由真实 Chrome 平台页面审批、启用。隔离 Frontend 147 个冻结产物逐文件等于当前前端构建，实际预览页面的 provenance、Client 版本和锁文件匹配；Chrome 会话冒烟 9/9 通过。两个新 Tenant 的管理员经 Mailpit 一次性链接，在真实 Chrome 完成设密与登录。Example 权限目录通过仓库受控导入脚本写入本轮隔离库，并经正式 Gateway 回读 10 个代码。
 
-Tenant A 的真实 Chrome 观察覆盖两个组织根、带 Project 权限的角色、邀请创建及五字段品牌预览/保存，4/4 通过；Tenant B 的品牌上传、预览、保存及刷新回读 4/4 通过。两 Tenant 品牌五字段和四个公开 PNG 均经正式 Gateway 双向回读。已提交的 10 个组织、角色、邀请及品牌操作，逐一对应唯一的源 Outbox 快照与持久 Audit 行，已知敏感值检查通过；其范围仅为 `linked-observations-only`。第二位受邀成员又经真实 Chrome 完成邮件设密和接受邀请。正式 Authority 探针 4/4 通过：双 Tenant 组织/角色/成员/品牌隔离、Project/Task 十项 CRUD 与外租户拒绝、`project_app` 受限账号的双 Tenant RLS、末管理员并发仅一项成功及撤权后旧 Token 立即拒绝和最后管理员自撤销 409。所有这些报告同属 r4 的 handoff，未在 r4 替换应用容器。
+Tenant A 的真实 Chrome 观察覆盖两个组织根、带 Project 权限的角色、邀请创建及五字段品牌预览/保存，4/4 通过；Tenant B 的品牌上传、预览、保存及刷新回读 4/4 通过。两 Tenant 品牌五字段和四个公开 PNG 均经正式 Gateway 双向回读。已提交的 11 个组织、角色、邀请及品牌操作，逐一对应唯一的源 Outbox 快照与持久 Audit 行，已知敏感值检查通过；其范围仅为 `linked-observations-only`。第二位受邀成员又经真实 Chrome 完成邮件设密和接受邀请。正式 Authority 探针 4/4 通过：双 Tenant 组织/角色/成员/品牌隔离、Project/Task 十项 CRUD 与外租户拒绝、`project_app` 受限账号的双 Tenant RLS、末管理员并发仅一项成功及撤权后旧 Token 立即拒绝和最后管理员自撤销 409。同轮还经正式类型化 Client 验证重复有效邀请 409 完整 Problem Details 与撤销；经真实 Chrome 上传未绑定 PNG 后，验证匿名公开读取、平台永久禁用及随后 404 完整 Problem Details。禁用成功事实已经并入上述 11 条审计关联。所有这些报告同属 r4 的 handoff，未在 r4 替换应用容器。
 
 精确后端提交的 [Verify](https://github.com/crane199709/saas-forge/actions/runs/38838158856) 已成功，包含 JDK 17、Nacos 权限和独立 Fresh Tenant 生命周期；精确前端提交的 [Frontend verification](https://github.com/crane199709/saas-forge-web/actions/runs/38724192604) 已成功。后端 [API Client artifact](https://github.com/crane199709/saas-forge/actions/runs/38839412744) 为本轮精确后端提交另行触发且已成功。当前 r4 仍保留运行以供后续验收；清理只限本轮项目，由环境准备方负责。完整 11/11/4 场景、Outbox 重试/失败事务、故障恢复、品牌素材真实 24 小时和 7 天清理及同轮聚合尚未执行，不把选定路径外推为阶段通过。
 

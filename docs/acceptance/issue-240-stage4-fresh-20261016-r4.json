@@ -185,7 +185,7 @@
     },
     "linkedCommittedFacts": {
       "status": "passed",
-      "sha256": "0f5fdb5adaa841f0f46f6c5c5362e4e0f64bf9bfa115988322c5fe0eddadab16",
+      "sha256": "5f51182c26a752701c647d680fd7c61fc2026ff6df4aa1461fe96bf7a5b19f1c",
       "checks": [
         {
           "name": "org-root-1",
@@ -226,6 +226,10 @@
         {
           "name": "tenant-b-brand-profile-saved",
           "status": "passed"
+        },
+        {
+          "name": "tenant-b-unbound-brand-disabled",
+          "status": "passed"
         }
       ],
       "scope": "linked-observations-only"
@@ -252,6 +256,52 @@
         }
       ],
       "scope": "project-crud-rls-admin-race-revocation"
+    },
+    "selectedInvitationRejections": {
+      "status": "passed",
+      "sha256": "9aa378484f9acc3503b58a50cfb9d8c521042586ad5dfb024fb690cfed45a5cb",
+      "checks": [
+        {
+          "name": "create-pending-invitation",
+          "status": "passed"
+        },
+        {
+          "name": "duplicate-pending-invitation-gateway-problem-409",
+          "status": "passed"
+        },
+        {
+          "name": "revoke-pending-invitation",
+          "status": "passed"
+        }
+      ]
+    },
+    "unboundChromeBrandUpload": {
+      "status": "passed",
+      "sha256": "8fcb3539a82c341bb0116c20cfefc35cf0cd84ab9537f9fd7dbd6dc86d5d9596",
+      "checks": [
+        {
+          "name": "browser-managed-unbound-logo-upload",
+          "status": "passed"
+        }
+      ]
+    },
+    "selectedBrandPolicyRejection": {
+      "status": "passed",
+      "sha256": "024c8d056555b06c16ac526668e5e53fe6d1b30700c1ca78cfea1f32b777580b",
+      "checks": [
+        {
+          "name": "anonymous-read-active-png",
+          "status": "passed"
+        },
+        {
+          "name": "platform-permanently-disables-unbound-png",
+          "status": "passed"
+        },
+        {
+          "name": "anonymous-read-disabled-png-problem-404",
+          "status": "passed"
+        }
+      ]
     }
   },
   "ci": {
