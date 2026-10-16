@@ -73,10 +73,23 @@ COMPOSE_PROJECT_NAME="$project_name" \
 LOCAL_COMPOSE_OVERRIDE_FILE="$compose_directory/failure-recovery.override.yaml" \
   bash "$repository_root/scripts/initialize-local-iam-signing-key.sh"
 
+# 在独立步骤完成 Nacos 初始化，避免与 IAM/Gateway 启动并发。
+compose up --detach --wait nacos
+if ! compose run --rm --no-deps nacos-init; then
+  compose logs --no-color --tail=80 nacos-init nacos >&2
+  exit 1
+fi
+
 if [[ "${NACOS_RECOVERY_BUILD_IMAGES:-true}" == "true" ]]; then
-  compose up --detach --build gateway
+  if ! compose up --detach --build gateway; then
+    compose logs --no-color --tail=80 nacos-init nacos >&2
+    exit 1
+  fi
 else
-  compose up --detach gateway
+  if ! compose up --detach gateway; then
+    compose logs --no-color --tail=80 nacos-init nacos >&2
+    exit 1
+  fi
 fi
 wait_for_gateway_available
 
