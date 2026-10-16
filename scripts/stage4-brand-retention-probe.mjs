@@ -136,8 +136,8 @@ async function main(handoffPath, baselinePath, mode, clientDir, outputPath) {
     assert.equal(row.profileBindings, 0, 'ASSET_BECAME_BOUND');
     assert.equal(row.everBoundAt, null, 'ASSET_WAS_BOUND');
     assert.equal(row.retiredAt, null, 'ASSET_WAS_RETIRED');
-    assert.equal(Date.parse(row.uploadedAt), Date.parse(record.uploadedAt), 'UPLOAD_TIME_DRIFT');
-    assert.equal(Date.parse(row.disabledAt), Date.parse(record.disabledAt), 'DISABLE_TIME_DRIFT');
+    assert.equal(row.uploadedAt, record.uploadedAt, 'UPLOAD_TIME_DRIFT');
+    assert.equal(row.disabledAt, record.disabledAt, 'DISABLE_TIME_DRIFT');
     const objectState = s3ObjectState(storage, row.objectKey);
     const apiStatus = await publicStatus(clientDir, h.apiOrigin, record.assetId);
     report.databaseStatus = row.status;
