@@ -170,6 +170,13 @@
       "status": "passed",
       "profiles": 2,
       "publicPngs": 4
+    },
+    "auditLinkedCurrentFrontend": {
+      "sha256": "448fae8078eb91e2880cb8638c0bd572e918401138bff62d361dcefa338f7610",
+      "status": "passed",
+      "checks": 22,
+      "scope": "linked-observations-only",
+      "driverCommit": "3be7895d3b48e7509b0568f99ca02c2a88a4e9e4"
     }
   },
   "retention": {
@@ -253,6 +260,12 @@
       "status": "failed",
       "sha256": "988b2931d5b67d4af1ea87e101ef8b53cc3fe7def0963e45893091d87eea9064",
       "resolution": "gRPC call timed out; IAM restored; tenant-scoped database fault passed on a new disposable tenant"
+    },
+    {
+      "name": "current-frontend-audit-first-link",
+      "status": "failed",
+      "sha256": "142295952e372cd51d15adba082a5cf8eac46c9e9072c169d52d13080810d607",
+      "resolution": "adjacent associations shared actor and membership; exact recorded unit and role IDs disambiguated 22 links"
     }
   ]
 }
