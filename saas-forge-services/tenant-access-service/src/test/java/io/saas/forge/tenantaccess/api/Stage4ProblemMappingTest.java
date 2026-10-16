@@ -11,9 +11,28 @@ import io.saas.forge.tenantaccess.domain.invitation.InvitationUnavailableExcepti
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.server.ResponseStatusException;
 
 class Stage4ProblemMappingTest {
     private static final String TRACE = "0123456789abcdef0123456789abcdef";
+
+    @Test
+    void roleAndMembershipRejectionsRemainCompleteProblemDetailsThroughGateway() {
+        var handler = new AccessControlProblemHandler();
+        var request = request("/api/v1/tenant-roles");
+        assertProblem(handler.responseStatus(new ResponseStatusException(HttpStatus.NOT_FOUND, "ROLE_NOT_FOUND"),
+                request), HttpStatus.NOT_FOUND, "ROLE_NOT_FOUND");
+        assertProblem(handler.responseStatus(new ResponseStatusException(HttpStatus.NOT_FOUND, "MEMBERSHIP_NOT_FOUND"),
+                request), HttpStatus.NOT_FOUND, "MEMBERSHIP_NOT_FOUND");
+        assertProblem(handler.responseStatus(new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "TENANT_ADMINISTRATOR_REQUIRED"), request), HttpStatus.FORBIDDEN, "TENANT_ADMINISTRATOR_REQUIRED");
+        assertProblem(handler.responseStatus(new ResponseStatusException(HttpStatus.CONFLICT,
+                "LAST_TENANT_ADMINISTRATOR"), request), HttpStatus.CONFLICT, "LAST_TENANT_ADMINISTRATOR");
+        var unsafe = handler.responseStatus(new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "raw member email should stay private"), request);
+        assertProblem(unsafe, HttpStatus.FORBIDDEN, "TENANT_ACCESS_REQUEST_FAILED");
+        assertThat(unsafe.toString()).doesNotContain("raw member email");
+    }
 
     @Test
     void organizationErrorsDistinguishBusinessConflictFromStorageOutage() {
