@@ -240,8 +240,8 @@
       "commit": "acd19a9858c083b1a289128adf92602f5e2baada"
     },
     "frontendVerify": {
-      "status": "not_run",
-      "reason": "current frontend commit remains local pending explicit push authorization",
+      "status": "passed",
+      "url": "https://github.com/crane199709/saas-forge-web/actions/runs/38856794738",
       "commit": "9ebe8da3cc3b9fa93978f226fdb77abdbe5e608c",
       "historicalPassed": {
         "commit": "b57b9ffb17f7ed561b002008ec55995569d3f07e",
@@ -249,7 +249,7 @@
       }
     }
   },
-  "conclusion": "Same-run selected Chrome, Authority and Audit fault paths passed; exact-current-frontend CI, full 11/11/4 suites and real 24-hour/7-day retention remain incomplete.",
+  "conclusion": "Same-run selected Chrome, Authority and Audit fault paths passed; full 11/11/4 suites and real 24-hour/7-day retention remain incomplete.",
   "frontendTransition": {
     "reason": "Password recovery and Remote draft race fixes, followed by the role permission error display fix",
     "backendHandoffAndApplicationContainerIdsUnchanged": true,
