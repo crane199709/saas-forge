@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "kind": "stage4-fresh-progress",
+  "status": "incomplete",
+  "runId": "ed2a93af-2b10-4e7b-8c30-112df938695d",
+  "handoffSha256": "e4d1dc3894d2a0ca5ed27fad7414e19c8cf063cd1ff1a66e08670d64d7f83114",
+  "startedAt": "2026-10-16T02:40:34.115Z",
+  "readyAt": "2026-10-16T02:49:39.816Z",
+  "expiresAt": "2026-10-25T02:49:39.816Z",
+  "observedAt": "2026-10-16T03:03:32.693601+00:00",
+  "backend": {
+    "commit": "6733aae93a18800abe4b55924e89dedae9112fe7",
+    "dirty": false,
+    "jdkMajor": 17,
+    "imageMethod": "host-maven-offline-clean-package-into-verified-gateway-jdk17-runtime",
+    "imageManifestSha256": "370e435f8f9d738da9cdfa9ad63fe56cd5d45dde7d7393c85587d97abfece5d6",
+    "frozenApplicationCount": 7,
+    "containerIdsUnchangedAndRunning": true
+  },
+  "frontend": {
+    "commit": "a2b2c74f76d757487c44b608d13b8e119d10ea26",
+    "dirty": false,
+    "sourceSha256": "1efc083732f3a1f1a6cce44fd2e13ec0ff0650a98fa0b7655f98740cc38fd051",
+    "lockSha256": "6a8a13730d4290aa08c7a92ee54ae0b766aa25993e6ff4f51ea6e448ee8f427b",
+    "versionSource": "served-html-provenance-matched"
+  },
+  "client": {
+    "name": "@crane199709/saas-forge-api-client",
+    "version": "0.6.0",
+    "sourceCommit": "3dd2ca04b26bb66ce2d5705c939aa6216abe5955"
+  },
+  "chrome": "155.0.8059.85",
+  "isolation": {
+    "project": "sf-acceptance-ed2a93af-2b10-4e7b-8c30-112df938695d",
+    "network": "sf-acceptance-ed2a93af-2b10-4e7b-8c30-112df938695d_default",
+    "coreVolumeCount": 3,
+    "status": "running-retained",
+    "cleanupOwner": "environment-preparer",
+    "otherProjectContainersStopped": false
+  },
+  "runtimeRecoveryWorkers": {
+    "iamSessionRevocation": "PT1S",
+    "tenantAccessLifecycle": "PT1S"
+  },
+  "controlledProjectManifest": {
+    "status": "passed",
+    "registeredThroughLimitedCiClient": true,
+    "reviewedAndEnabledInChrome": true,
+    "scope": "remote-delivery:manifest:register",
+    "module": "project"
+  },
+  "reports": {
+    "gatewayAndOrigin": {
+      "status": "passed",
+      "sha256": "6373a7dab3cc396de334daa94c5c67d58edbbe9ca635e036ffab47c4782d522a",
+      "checkCount": 3
+    },
+    "chromeSessionSmoke": {
+      "status": "passed",
+      "sha256": "8572403892c72ac4de5aa0350ec27b92f3dcffacf8a71ee5196c748f9bac4418",
+      "checkCount": 9
+    },
+    "platformManifestReview": {
+      "status": "passed",
+      "sha256": "37929a7e427742baad696529bca8dd141af8a66fc74e7810f95b264d4c5fafcd",
+      "checkCount": 3
+    },
+    "permissionCatalogReadback": {
+      "status": "passed",
+      "sha256": "ff8a5a3078e4caef1cda5ac4ad9cb2c33af0f8418a49c9fc362b6c3fc5d0112b"
+    },
+    "selectedChromeProductPaths": {
+      "status": "passed",
+      "sha256": "f11cd5b363d617f486e82e4dbd4446f25ee82b49386ff4109898f7439bef746c",
+      "checkCount": 4,
+      "scope": "selected-real-chrome-paths"
+    },
+    "tenantBChromeBrand": {
+      "status": "passed",
+      "sha256": "18f470528eac2b4f8390a4f9d2cd4e770250ea43f9f203ab8df5e86813384da2",
+      "checkCount": 4
+    },
+    "twoTenantBrandReadback": {
+      "status": "passed",
+      "sha256": "cda385af8e7e9d568aaeec35b3750aa221b48b64f9ce53871a39c8859f3d122f"
+    },
+    "authorityProbe": {
+      "status": "passed",
+      "sha256": "4bfdaa0b5f0a25a7c09c6dda9a6c2c0d1bf5dad012862db196dcd8f18c3d9312",
+      "checkCount": 4
+    },
+    "linkedCommittedFacts": {
+      "status": "passed",
+      "sha256": "3e81f6b247ab118939c1829fdf3572e75797513a451132087017800c3cd0e33d",
+      "checkCount": 16,
+      "scope": "linked-observations-only"
+    },
+    "selectedInvitationRejections": {
+      "status": "passed",
+      "sha256": "9c40bd63325b1eb0634cc41767f0bc0c653339e33ad09bb2acd87e15437b52a4",
+      "checkCount": 3
+    },
+    "selectedBrandPolicyRejection": {
+      "status": "passed",
+      "sha256": "6608fca81787f001e65637aba7aca2e664cb575af710724792fef8cb1cca26dc",
+      "checkCount": 3
+    },
+    "selectedLivePermissionRevocation": {
+      "status": "passed",
+      "sha256": "9aef3b61ade3980e36688c8af98321de3608fe06fc61f0788d545697a574a6a2",
+      "checkCount": 6
+    },
+    "selectedMembershipDisableEnable": {
+      "status": "passed",
+      "sha256": "6e124697b809fdeb1ae5f36e4bed44891b43aa19cc8919d428de5b633878ea50",
+      "checkCount": 5
+    },
+    "brandRetentionBaseline": {
+      "status": "passed",
+      "sha256": "7112a5e766478a3fdc880e9728c1f27cc9f2970165440ea2966b455cf688dc24"
+    }
+  },
+  "retention": {
+    "status": "awaiting-real-time",
+    "baselineSha256": "7112a5e766478a3fdc880e9728c1f27cc9f2970165440ea2966b455cf688dc24",
+    "assets": [
+      {
+        "assetSha256": "ddf5c4e656ca66f5c2387a0f7daa9fc356f7b75d51fb0cf5de64edb65662dc9c",
+        "stateAtBaseline": "DISABLED",
+        "baselineAt": "2026-10-16T02:54:15.776617+00:00",
+        "dueAt": "2026-10-23T02:54:15.776617+00:00",
+        "status": "awaiting-real-time"
+      },
+      {
+        "assetSha256": "03d5fa9d7e0b2ee68af9f5f095f9448adcff4c759a99b924288d958fb4a3c3f1",
+        "stateAtBaseline": "ACTIVE",
+        "baselineAt": "2026-10-16T02:54:24.956646+00:00",
+        "dueAt": "2026-10-17T02:54:24.956646+00:00",
+        "status": "awaiting-real-time"
+      }
+    ],
+    "databaseClockChanged": false,
+    "databaseRowsManuallyUpdated": false
+  },
+  "ci": {
+    "backendVerify": {
+      "status": "passed",
+      "commit": "6733aae93a18800abe4b55924e89dedae9112fe7",
+      "url": "https://github.com/crane199709/saas-forge/actions/runs/38841604896"
+    },
+    "apiClientArtifact": {
+      "status": "passed",
+      "commit": "6733aae93a18800abe4b55924e89dedae9112fe7",
+      "url": "https://github.com/crane199709/saas-forge/actions/runs/38843484186"
+    },
+    "frontendVerification": {
+      "status": "passed",
+      "commit": "a2b2c74f76d757487c44b608d13b8e119d10ea26",
+      "url": "https://github.com/crane199709/saas-forge-web/actions/runs/38724192604"
+    }
+  },
+  "remaining": {
+    "requiredBrowserSuite": "not_run",
+    "requiredAuthoritySuite": "not_run",
+    "requiredAuditSuite": "not_run",
+    "realTimeBrandRetention24h": "awaiting-real-time",
+    "realTimeBrandRetention7d": "awaiting-real-time",
+    "outboxRetryAndFailurePaths": "not_run",
+    "fullStage4Aggregate": "not_run"
+  },
+  "notes": [
+    "Selected Chrome paths, Authority probe and linked committed facts have narrower scopes than the required 11/11/4 full suites.",
+    "Report hashes refer to restricted local raw reports; this committed summary contains no credentials, emails or invitation links.",
+    "The seven application JARs were built on host JDK 17 and packaged into verified local runtime images; this was not seven full Dockerfile builds."
+  ]
+}
