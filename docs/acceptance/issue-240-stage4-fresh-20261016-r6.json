@@ -190,13 +190,18 @@
       "command": "pnpm run verify:ui",
       "frontendCommit": "9ebe8da3cc3b9fa93978f226fdb77abdbe5e608c",
       "scope": "frontend-local-ui-supporting-only"
+    },
+    "active24hRetention": {
+      "sha256": "9ceedc1f33166c686fbdc73375f88ffc0a76f6d8d7ebc3dfdeace667ac17cbc3",
+      "status": "passed",
+      "scope": "ACTIVE unbound asset only"
     }
   },
   "retention": {
     "activeUnboundUploadedAt": "2026-10-16T03:28:13.681049+00:00",
     "disabledUnboundDisabledAt": "2026-10-16T03:28:05.100027+00:00",
     "clockOrRowsAltered": false,
-    "status": "awaiting-real-time-window",
+    "status": "active-24h-passed-disabled-7d-pending",
     "preDueProbes": {
       "driverCommit": "1451ba40c2010c5c1d135b4278095d61cee59071",
       "active": {
@@ -213,6 +218,16 @@
         "s3ObjectState": "present",
         "publicHttpStatus": 404
       }
+    },
+    "active24h": {
+      "status": "passed",
+      "evidenceSha256": "9ceedc1f33166c686fbdc73375f88ffc0a76f6d8d7ebc3dfdeace667ac17cbc3",
+      "dueAt": "2026-10-17T03:28:13.681Z",
+      "removedAt": "2026-10-17T03:45:19.681232+00:00",
+      "publicHttpStatus": 404,
+      "s3ObjectState": "absent",
+      "sourceOutboxRows": 1,
+      "persistentAuditRows": 1
     }
   },
   "fullSuites": {
@@ -249,7 +264,7 @@
       }
     }
   },
-  "conclusion": "Same-run selected Chrome, Authority and Audit fault paths passed; full 11/11/4 suites and real 24-hour/7-day retention remain incomplete.",
+  "conclusion": "Same-run selected Chrome, Authority and Audit fault paths plus ACTIVE unbound 24-hour retention passed; full 11/11/4 suites and DISABLED seven-day retention remain incomplete.",
   "frontendTransition": {
     "reason": "Password recovery and Remote draft race fixes, followed by the role permission error display fix",
     "backendHandoffAndApplicationContainerIdsUnchanged": true,
