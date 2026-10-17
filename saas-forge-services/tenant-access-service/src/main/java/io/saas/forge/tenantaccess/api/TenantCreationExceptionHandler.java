@@ -66,7 +66,8 @@ public class TenantCreationExceptionHandler {
         HttpStatus status = switch (exception.code()) {
             case "TENANT_NOT_FOUND", "TENANT_CREATION_NOT_FOUND" -> HttpStatus.NOT_FOUND;
             case "TENANT_SUSPENSION_PENDING", "TENANT_RESUME_PENDING",
-                    "TENANT_SUSPENSION_RECOVERY_PENDING" -> HttpStatus.SERVICE_UNAVAILABLE;
+                    "TENANT_SUSPENSION_RECOVERY_PENDING", "TENANT_CLOSURE_PENDING",
+                    "TENANT_CLOSURE_RECOVERY_PENDING" -> HttpStatus.SERVICE_UNAVAILABLE;
             default -> HttpStatus.CONFLICT;
         };
         ResponseEntity<Problem> response = problem(status, exception.code(),

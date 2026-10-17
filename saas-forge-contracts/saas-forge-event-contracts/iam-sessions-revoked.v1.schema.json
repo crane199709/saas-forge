@@ -16,21 +16,27 @@
           "required": ["revocationRequestId", "scope", "revokedSessionCount"],
           "properties": {
             "revocationRequestId": { "$ref": "#/$defs/uuidV7" },
-            "scope": { "enum": ["TENANT", "MEMBERSHIP"] },
+            "scope": { "enum": ["TENANT", "MEMBERSHIP", "IDENTITY"] },
             "membershipId": { "$ref": "#/$defs/uuidV7" },
             "tenantId": { "$ref": "#/$defs/uuidV7" },
+            "identityId": { "$ref": "#/$defs/uuidV7" },
             "revokedSessionCount": { "type": "integer", "minimum": 0 }
           },
           "oneOf": [
             {
               "required": ["tenantId"],
               "properties": { "scope": { "const": "TENANT" } },
-              "not": { "required": ["membershipId"] }
+              "not": { "anyOf": [{ "required": ["membershipId"] }, { "required": ["identityId"] }] }
             },
             {
               "required": ["membershipId"],
               "properties": { "scope": { "const": "MEMBERSHIP" } },
-              "not": { "required": ["tenantId"] }
+              "not": { "anyOf": [{ "required": ["tenantId"] }, { "required": ["identityId"] }] }
+            },
+            {
+              "required": ["identityId"],
+              "properties": { "scope": { "const": "IDENTITY" } },
+              "not": { "anyOf": [{ "required": ["tenantId"] }, { "required": ["membershipId"] }] }
             }
           ]
         }

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -171,6 +172,53 @@ class TenantContextSwitchServiceTest {
 
         verify(transaction).switchContext(
                 workflow, family, 0, TARGET_MEMBERSHIP_ID, TARGET_TENANT_ID, NOW, null);
+    }
+
+    @Test
+    void workerRejectsCurrentMembershipLostDuringRecoveryWithoutCheckingTarget() {
+        TenantContextSwitchWorkflow workflow = workflow(TARGET_MEMBERSHIP_ID, TenantContextSwitchStatus.PENDING);
+        when(workflows.claimNext("test-worker", NOW, NOW.plusSeconds(30), 10))
+                .thenReturn(Optional.of(workflow));
+        when(memberships.validate(IDENTITY_ID, CURRENT_MEMBERSHIP_ID)).thenReturn(Optional.empty());
+
+        service.recoverNext();
+
+        verify(transaction).rejectCurrent(workflow, NOW);
+        verify(memberships, never()).validate(IDENTITY_ID, TARGET_MEMBERSHIP_ID);
+        verify(workflows, never()).scheduleRetry(any(), any(), any());
+    }
+
+    @Test
+    void workerRejectsTargetMembershipLostDuringRecoveryWithoutEndingCurrentSession() {
+        TenantContextSwitchWorkflow workflow = workflow(TARGET_MEMBERSHIP_ID, TenantContextSwitchStatus.PENDING);
+        when(workflows.claimNext("test-worker", NOW, NOW.plusSeconds(30), 10))
+                .thenReturn(Optional.of(workflow));
+        when(memberships.validate(IDENTITY_ID, CURRENT_MEMBERSHIP_ID))
+                .thenReturn(Optional.of(new ValidatedMembership(CURRENT_MEMBERSHIP_ID, CURRENT_TENANT_ID)));
+        when(memberships.validate(IDENTITY_ID, TARGET_MEMBERSHIP_ID)).thenReturn(Optional.empty());
+
+        service.recoverNext();
+
+        verify(transaction).complete(workflow, TenantContextSwitchStatus.TARGET_REJECTED, NOW);
+        verify(transaction, never()).rejectCurrent(any(), any());
+        verify(workflows, never()).scheduleRetry(any(), any(), any());
+    }
+
+    @Test
+    void targetLostBetweenValidationAndCommitRejectsSwitchWithoutEndingCurrentSession() {
+        TenantContextSwitchWorkflow workflow = workflow(TARGET_MEMBERSHIP_ID, TenantContextSwitchStatus.PENDING);
+        claimed(TenantContextSwitchClaim.Status.CREATED, workflow);
+        validMemberships();
+        doThrow(new AccessContextUnavailableException()).when(transaction).switchContext(
+                workflow, family, 0, TARGET_MEMBERSHIP_ID, TARGET_TENANT_ID, NOW, null);
+
+        TenantContextSwitchAccessRejectedException rejection = assertThrows(
+                TenantContextSwitchAccessRejectedException.class,
+                () -> service.switchContext(IDEMPOTENCY_KEY, REFRESH_TOKEN, TARGET_MEMBERSHIP_ID));
+
+        assertEquals(false, rejection.clearRefreshCookie());
+        verify(transaction).complete(workflow, TenantContextSwitchStatus.TARGET_REJECTED, NOW);
+        verify(transaction, never()).rejectCurrent(any(), any());
     }
 
     @Test

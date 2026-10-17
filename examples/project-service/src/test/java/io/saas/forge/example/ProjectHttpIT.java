@@ -33,6 +33,7 @@ class ProjectHttpIT {
     static final String ID = "018f5f2a-7b3c-7def-8123-456789abcdef";
     static final String A = "018f5f2a-7b3c-7def-8123-456789abcdea";
     static final String B = "018f5f2a-7b3c-7def-8123-456789abcdeb";
+    static final String LIMITED_ACTOR = "018f5f2a-7b3c-7def-8123-456789abcdec";
     @Container static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:18")
             .withCopyFileToContainer(MountableFile.forHostPath("deploy/bootstrap.sql"), "/docker-entrypoint-initdb.d/01-example.sql");
     @Container static final GenericContainer<?> REDIS = new GenericContainer<>("redis:8.8.1").withExposedPorts(6379);
@@ -58,6 +59,11 @@ class ProjectHttpIT {
     static final HttpClient HTTP = HttpClient.newHttpClient();
     static ConfigurableApplicationContext app;
     static HttpServer jwks;
+    static HttpServer permissionAuthority;
+    static final java.util.concurrent.atomic.AtomicBoolean permissionAllowed = new java.util.concurrent.atomic.AtomicBoolean(true);
+    static final java.util.concurrent.atomic.AtomicInteger permissionCalls = new java.util.concurrent.atomic.AtomicInteger();
+    static final Map<String, Set<String>> actorPermissions = new java.util.concurrent.ConcurrentHashMap<>();
+    static final java.util.concurrent.atomic.AtomicBoolean permissionUnavailable = new java.util.concurrent.atomic.AtomicBoolean();
     static RSAKey signingKey;
     static String base;
 
@@ -80,10 +86,29 @@ class ProjectHttpIT {
             try (var output = exchange.getResponseBody()) { output.write(body); }
         });
         jwks.start();
+        permissionAuthority = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        permissionAuthority.createContext("/api/v1/permissions/decision", exchange -> {
+            permissionCalls.incrementAndGet();
+            String query = exchange.getRequestURI().getRawQuery();
+            String code = query == null ? "" : URLDecoder.decode(query.substring("code=".length()), StandardCharsets.UTF_8);
+            String authorization = exchange.getRequestHeaders().getFirst("Authorization");
+            String actor;
+            try { actor = SignedJWT.parse(authorization.substring(7)).getJWTClaimsSet().getStringClaim("identityId"); }
+            catch (Exception invalid) { actor = ""; }
+            boolean allowed = permissionAllowed.get() &&
+                    (!actorPermissions.containsKey(actor) || actorPermissions.get(actor).contains(code));
+            byte[] body = ("{\"code\":\"" + code + "\",\"allowed\":" + allowed + "}")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(permissionUnavailable.get() ? 503 : 200, body.length);
+            try (var output = exchange.getResponseBody()) { output.write(body); }
+        });
+        permissionAuthority.start();
         // 受控认证设施只替代 IAM 的服务发现/JWKS；仍运行 Starter 的签名、声明和 Redis 撤销验证。
         app = new SpringApplicationBuilder(ProjectApplication.class).run(
                 "--server.port=0", "--spring.profiles.active=local-file", "--spring.cloud.nacos.config.enabled=false", "--saas.forge.example.outbox.enabled=false", "--spring.cloud.nacos.discovery.enabled=false",
                 "--spring.cloud.discovery.client.simple.instances.iam-service[0].uri=http://127.0.0.1:" + jwks.getAddress().getPort(),
+                "--spring.cloud.discovery.client.simple.instances.gateway[0].uri=http://127.0.0.1:" + permissionAuthority.getAddress().getPort(),
                 "--security.jwt.issuer=example-test", "--saas.forge.environment=example-test",
                 "--spring.data.redis.host=" + REDIS.getHost(), "--spring.data.redis.port=" + REDIS.getMappedPort(6379),
                 "--spring.kafka.bootstrap-servers=" + KAFKA.getBootstrapServers(),
@@ -101,6 +126,63 @@ class ProjectHttpIT {
     @AfterAll static void stop() {
         if (app != null) app.close();
         if (jwks != null) jwks.stop(0);
+        if (permissionAuthority != null) permissionAuthority.stop(0);
+    }
+
+    @Test @Order(-101) void projectListRechecksAuthorityAfterPermissionIsRevoked() throws Exception {
+        int before = permissionCalls.get();
+        assertThat(request("GET", "/api/v1/projects", token(A, false), null, null).statusCode()).isEqualTo(200);
+        permissionAllowed.set(false);
+        try {
+            assertProblem(request("GET", "/api/v1/projects", token(A, false), null, null),
+                    403, "PERMISSION_DENIED");
+        } finally {
+            permissionAllowed.set(true);
+        }
+        assertThat(permissionCalls.get() - before).isEqualTo(2);
+    }
+
+    @Test @Order(-98) void allTenOperationsRespectDifferentRolesWithinOneTenant() throws Exception {
+        String project = projectPath(A);
+        String task = taskCreate(A, project, key(), "{\"title\":\"Existing\"}")
+                .headers().firstValue("Location").orElseThrow();
+        String limited = token(A, false, LIMITED_ACTOR);
+        actorPermissions.put(LIMITED_ACTOR, Set.of("example:project:list", "example:task:list"));
+        try {
+            assertThat(request("GET", "/api/v1/projects", limited, null, null).statusCode()).isEqualTo(200);
+            assertThat(request("GET", project + "/tasks", limited, null, null).statusCode()).isEqualTo(200);
+            assertProblem(request("POST", "/api/v1/projects", limited, key(), "{\"name\":\"Denied\"}"), 403, "PERMISSION_DENIED");
+            assertProblem(request("GET", project, limited, null, null), 403, "PERMISSION_DENIED");
+            assertProblem(request("PUT", project, limited, key(), "{\"name\":\"Denied\"}"), 403, "PERMISSION_DENIED");
+            assertProblem(request("DELETE", project, limited, key(), null), 403, "PERMISSION_DENIED");
+            assertProblem(request("POST", project + "/tasks", limited, key(), "{\"title\":\"Denied\"}"), 403, "PERMISSION_DENIED");
+            assertProblem(request("GET", task, limited, null, null), 403, "PERMISSION_DENIED");
+            assertProblem(request("PUT", task, limited, key(), "{\"title\":\"Denied\",\"status\":\"DONE\"}"), 403, "PERMISSION_DENIED");
+            assertProblem(request("DELETE", task, limited, key(), null), 403, "PERMISSION_DENIED");
+            assertThat(request("GET", project, token(A, false), null, null).statusCode()).isEqualTo(200);
+            assertThat(request("GET", task, token(A, false), null, null).statusCode()).isEqualTo(200);
+            assertThat(request("PUT", project, token(A, false), key(), "{\"name\":\"Updated\"}").statusCode()).isEqualTo(200);
+            assertThat(request("PUT", task, token(A, false), key(), "{\"title\":\"Updated\",\"status\":\"DONE\"}").statusCode()).isEqualTo(200);
+            assertThat(deleteResource(A, task, key(), "\"2\"").statusCode()).isEqualTo(204);
+            assertThat(deleteResource(A, project, key(), "\"2\"").statusCode()).isEqualTo(204);
+            assertThat(create(A, key(), "{\"name\":\"Allowed\"}").statusCode()).isEqualTo(201);
+            assertThat(taskCreate(A, projectPath(A), key(), "{\"title\":\"Allowed\"}").statusCode()).isEqualTo(201);
+        } finally {
+            actorPermissions.remove(LIMITED_ACTOR);
+        }
+    }
+
+    @Test @Order(-99) void unavailablePermissionAuthorityFailsClosedWithoutWriting() throws Exception {
+        permissionUnavailable.set(true);
+        try {
+            assertProblem(request("GET", "/api/v1/projects", token(A, false), null, null),
+                    503, "PERMISSION_AUTHORITY_UNAVAILABLE");
+            assertProblem(create(A, key(), "{\"name\":\"Must not commit\"}"),
+                    503, "PERMISSION_AUTHORITY_UNAVAILABLE");
+        } finally {
+            permissionUnavailable.set(false);
+        }
+        assertThat(request("GET", "/api/v1/projects", token(A, false), null, null).statusCode()).isEqualTo(200);
     }
 
     /** 由诊断脚本提供本轮新构建的应用 JAR；不进入阶段 3 产品完成判定。 */
@@ -303,7 +385,19 @@ class ProjectHttpIT {
         var future = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC).plusSeconds(120);
         var first = transaction.execute(status -> mapper.claim(new ProjectOutboxMapper.Claim(key(), future, future.plusSeconds(30))));
         assertThat(first).isNotNull();
-        assertThat((ProjectOutboxMapper.ClaimedEvent) transaction.execute(status -> mapper.claim(new ProjectOutboxMapper.Claim(key(), future.plusSeconds(1), future.plusSeconds(31))))).isNull();
+        var early = transaction.execute(status -> mapper.claim(
+                new ProjectOutboxMapper.Claim(key(), future.plusSeconds(1), future.plusSeconds(31))));
+        // 全类测试可能留下其他待发布事件；租约只保护已领取的事件，不阻塞整个队列。
+        if (early != null) {
+            try {
+                assertThat(early.eventId()).isNotEqualTo(first.eventId());
+            } finally {
+                // 立即释放无关事件的测试租约，恢复为可重试状态。
+                assertThat((Integer) transaction.execute(status -> mapper.retry(new ProjectOutboxMapper.Completion(
+                        early.eventId(), early.claimToken(), java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC), null))))
+                        .isEqualTo(1);
+            }
+        }
         var second = transaction.execute(status -> mapper.claim(new ProjectOutboxMapper.Claim(key(), future.plusSeconds(31), future.plusSeconds(61))));
         assertThat(second.eventId()).isEqualTo(first.eventId());
         assertThat(second.payload()).isEqualTo(first.payload());

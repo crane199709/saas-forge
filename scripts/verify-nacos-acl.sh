@@ -121,7 +121,9 @@ verify_workload() {
   assert_own_config_readable "$application" "$token"
   assert_config_access_denied "$application" "$token" "$other_application"
   case "$application" in
-    project-service) assert_collaborator_discovery_readable "$application" "$token" iam-service ;;
+    project-service)
+      assert_collaborator_discovery_readable "$application" "$token" iam-service
+      assert_collaborator_discovery_readable "$application" "$token" gateway ;;
     remote-delivery-service)
       assert_collaborator_discovery_readable "$application" "$token" iam-service
       assert_collaborator_discovery_readable "$application" "$token" tenant-access-service ;;

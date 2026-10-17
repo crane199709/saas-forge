@@ -4,7 +4,7 @@
 
 > **状态**：**已确认，未实施**。实施由 [Issue #199](https://github.com/crane199709/saas-forge/issues/199) 追踪，且被 #193–#198（各页面迁入官方应用）阻塞。
 >
-> 正文用完成时语态描述**目标状态**，不代表已经落地：目前只有 platform-console 已按官方应用结构切换；tenant-console-shell 仍通过 `@saas-forge/admin` 的 `mountConsole` 与自建 `Workspace.vue` 挂载，待迁移。`@saas-forge/admin` 与 `@saas-forge/i18n` 两个包当前都仍然存在。迁移范围与待办见[重构计划](../plans/console-soybean-element-plus-refactoring.md)。
+> 正文用完成时语态描述**目标状态**，不代表已经落地：目前只有 platform-console 已按官方应用结构切换；tenant-console-shell 仍通过 `@saas-forge/admin` 的 `mountConsole` 与自建 `Workspace.vue` 挂载，待迁移。`@saas-forge/admin` 与 `@saas-forge/i18n` 两个包当前都仍然存在。迁移范围与待办见[重构计划](../archive/console-soybean-element-plus-refactoring.md)。
 
 2026-09-15，用户确认上一轮只复用底层布局、另行拼装认证页的实现不符合直接使用 Soybean 成熟界面的目标。两个 Console 以固定版本官方应用结构、登录页、布局、主题和导航为基础，接入本项目品牌与业务，删除演示页面和未支持入口；不合并应用、启动入口、受控 Origin 或 Browser Session Slot。
 

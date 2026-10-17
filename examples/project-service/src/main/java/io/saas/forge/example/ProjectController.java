@@ -1,5 +1,6 @@
 package io.saas.forge.example;
 
+import io.saas.forge.sdk.permission.RequirePermission;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Collections;
@@ -19,6 +20,7 @@ class ProjectController {
     ProjectController(ProjectService projects) { this.projects = projects; }
 
     @PostMapping(consumes = "application/json", produces = "application/json;charset=UTF-8")
+    @RequirePermission("example:project:create")
     ResponseEntity<String> create(@RequestHeader(value = "Idempotency-Key", required = false) String key,
             @Valid @RequestBody CreateProjectRequest request, HttpServletRequest http) {
         rejectTenantInput(http);
@@ -36,12 +38,14 @@ class ProjectController {
     }
 
     @GetMapping(path = "/{projectId}", produces = "application/json;charset=UTF-8")
+    @RequirePermission("example:project:read")
     ProjectResult get(@PathVariable String projectId, HttpServletRequest http) {
         rejectTenantInput(http);
         return projects.get(uuid(projectId, "VALIDATION_FAILED"));
     }
 
     @GetMapping(produces = "application/json;charset=UTF-8")
+    @RequirePermission("example:project:list")
     ProjectPage list(HttpServletRequest http) {
         rejectTenantInput(http, Set.of("cursor", "limit"));
         String rawLimit = http.getParameter("limit");
@@ -55,6 +59,7 @@ class ProjectController {
     }
 
     @PutMapping(path = "/{projectId}", consumes = "application/json", produces = "application/json;charset=UTF-8")
+    @RequirePermission("example:project:update")
     ResponseEntity<String> update(@PathVariable String projectId,
             @RequestHeader(value = "Idempotency-Key", required = false) String key,
             @RequestHeader(value = "If-Match", required = false) String version,
@@ -66,6 +71,7 @@ class ProjectController {
     }
 
     @DeleteMapping(path = "/{projectId}")
+    @RequirePermission("example:project:delete")
     ResponseEntity<String> delete(@PathVariable String projectId,
             @RequestHeader(value = "Idempotency-Key", required = false) String key,
             @RequestHeader(value = "If-Match", required = false) String version, HttpServletRequest http) {

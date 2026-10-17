@@ -4,6 +4,7 @@ import io.saas.forge.audit.application.AuditRecord;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -13,10 +14,43 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-/** 按工程注册的 type 区分 Tenant Created 与本切片应确认忽略的合法事件。 */
+/** 按工程注册的事件类型校验 Tenant Access 事实并映射 Audit 记录。 */
 @Component
 public class TenantAccessEventValidator {
     private static final String TENANT_SUSPENDED_TYPE = "com.saas.forge.tenant.suspended.v1";
+    private static final String TENANT_CLOSED_TYPE = "com.saas.forge.tenant.closed.v1";
+    private static final String MEMBERSHIP_DISABLED_TYPE = "com.saas.forge.membership.disabled.v1";
+    private static final String MEMBERSHIP_DISABLED_SCHEMA =
+            "https://saas.forge.io/contracts/events/membership-disabled.v1.schema.json";
+    private static final String MEMBERSHIP_ENABLED_TYPE = "com.saas.forge.membership.enabled.v1";
+    private static final String MEMBERSHIP_ENABLED_SCHEMA =
+            "https://saas.forge.io/contracts/events/membership-enabled.v1.schema.json";
+    private static final String PERMISSION_CATALOG_CHANGED_TYPE = "com.saas.forge.permission.catalog-changed.v1";
+    private static final String TENANT_ROLE_CHANGED_TYPE = "com.saas.forge.tenant-role.changed.v1";
+    private static final String MEMBERSHIP_ROLE_CHANGED_TYPE = "com.saas.forge.membership-role.changed.v1";
+    private static final String MEMBERSHIP_ROLE_CHANGED_SCHEMA =
+            "https://saas.forge.io/contracts/events/membership-role-changed.v1.schema.json";
+    private static final String TENANT_ROLE_CHANGED_SCHEMA =
+            "https://saas.forge.io/contracts/events/tenant-role-changed.v1.schema.json";
+    private static final String ORGANIZATION_UNIT_CHANGED_TYPE = "com.saas.forge.organization.unit-changed.v1";
+    private static final String MEMBERSHIP_ORGANIZATION_UNIT_CHANGED_TYPE =
+            "com.saas.forge.membership.organization-unit-changed.v1";
+    private static final String BRAND_ASSET_UPLOADED_TYPE = "com.saas.forge.brand.asset-uploaded.v1";
+    private static final String BRAND_ASSET_DISABLED_TYPE = "com.saas.forge.brand.asset-disabled.v1";
+    private static final String BRAND_ASSET_REMOVED_TYPE = "com.saas.forge.brand.asset-removed.v1";
+    private static final String BRAND_PROFILE_SAVED_TYPE = "com.saas.forge.brand.profile-saved.v1";
+    private static final String BRAND_ASSET_UPLOADED_SCHEMA =
+            "https://saas.forge.io/contracts/events/brand-asset-uploaded.v1.schema.json";
+    private static final String BRAND_ASSET_DISABLED_SCHEMA =
+            "https://saas.forge.io/contracts/events/brand-asset-disabled.v1.schema.json";
+    private static final String BRAND_ASSET_REMOVED_SCHEMA =
+            "https://saas.forge.io/contracts/events/brand-asset-removed.v1.schema.json";
+    private static final String ORGANIZATION_UNIT_CHANGED_SCHEMA =
+            "https://saas.forge.io/contracts/events/organization-unit-changed.v1.schema.json";
+    private static final String MEMBERSHIP_ORGANIZATION_UNIT_CHANGED_SCHEMA =
+            "https://saas.forge.io/contracts/events/membership-organization-unit-changed.v1.schema.json";
+    private static final String PERMISSION_CATALOG_CHANGED_SCHEMA =
+            "https://saas.forge.io/contracts/events/permission-catalog-changed.v1.schema.json";
     static final String TENANT_SUSPENDED_CONSUMER_NAME = "audit-service.tenant-lifecycle-events";
     private static final String TENANT_SUSPENDED_SCHEMA =
             "https://saas.forge.io/contracts/events/tenant-suspended.v1.schema.json";
@@ -28,12 +62,34 @@ public class TenantAccessEventValidator {
             "datacontenttype", "dataschema", "data");
     private static final Set<String> TENANT_SUSPENDED_DATA_FIELDS =
             Set.of("tenantId", "actorIdentityId", "revokedSessionCount");
+    private static final Set<String> PERMISSION_CATALOG_DATA_FIELDS =
+            Set.of("tenantId", "code", "enabled", "source", "revision");
+    private static final Set<String> TENANT_ROLE_DATA_FIELDS =
+            Set.of("tenantId", "actorIdentityId", "roleId", "roleKey", "action", "permissions");
+    private static final Set<String> MEMBERSHIP_ROLE_DATA_FIELDS =
+            Set.of("tenantId", "actorIdentityId", "membershipId", "roleId", "roleKey", "action");
+    private static final Set<String> ORGANIZATION_UNIT_DATA_FIELDS =
+            Set.of("tenantId", "unitId", "actorIdentityId", "action", "parentId");
+    private static final Set<String> MEMBERSHIP_ORGANIZATION_UNIT_DATA_FIELDS =
+            Set.of("tenantId", "membershipId", "unitId", "actorIdentityId", "action");
+    private static final Set<String> BRAND_ASSET_DATA_FIELDS =
+            Set.of("tenantId", "assetId", "actorIdentityId", "kind");
+    private static final Set<String> BRAND_ASSET_REMOVED_DATA_FIELDS =
+            Set.of("tenantId", "assetId", "kind", "reason");
+    private static final Set<String> BRAND_PROFILE_DATA_FIELDS =
+            Set.of("tenantId", "actorIdentityId", "revision", "logoAssetId", "faviconAssetId");
+    private static final Set<String> MEMBERSHIP_DISABLED_DATA_FIELDS =
+            Set.of("tenantId", "membershipId", "identityId", "actorIdentityId", "quotaReleasePending");
+    private static final Set<String> MEMBERSHIP_ENABLED_DATA_FIELDS =
+            Set.of("tenantId", "membershipId", "identityId", "actorIdentityId", "fenceReleasePending");
     private static final Pattern UUID_V7 = Pattern.compile(
             "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$");
     private static final Pattern TRACE_ID = Pattern.compile("^(?!0{32}$)[0-9a-f]{32}$");
 
     private final ObjectMapper objectMapper;
     private final TenantCreatedEventValidator tenantCreated;
+    private final TenantDetailsUpdatedEventValidator tenantDetailsUpdated;
+    private final InvitationEventValidator invitationEvents;
     private final String expectedTopic;
 
     public TenantAccessEventValidator(
@@ -42,6 +98,8 @@ public class TenantAccessEventValidator {
             @Value("${saas.forge.audit.tenant-access-topic}") String expectedTopic) {
         this.objectMapper = objectMapper;
         this.tenantCreated = tenantCreated;
+        this.tenantDetailsUpdated = new TenantDetailsUpdatedEventValidator(objectMapper, expectedTopic);
+        this.invitationEvents = new InvitationEventValidator(objectMapper, expectedTopic);
         if (expectedTopic == null
                 || !expectedTopic.matches("^saas\\.forge\\.[a-z][a-z0-9-]*\\.tenant-access-service\\.events$")) {
             throw new IllegalArgumentException("Tenant Access Topic 配置不合法");
@@ -64,6 +122,37 @@ public class TenantAccessEventValidator {
         return switch (type.asText()) {
             case TenantCreatedEventValidator.EVENT_TYPE -> Optional.of(
                     tenantCreated.validate(topic, orderingKey, consumerName, payload));
+            case TenantDetailsUpdatedEventValidator.EVENT_TYPE -> Optional.of(
+                    tenantDetailsUpdated.validate(topic, orderingKey, consumerName, envelope));
+            case "com.saas.forge.invitation.created.v1",
+                 "com.saas.forge.invitation.resent.v1",
+                 "com.saas.forge.invitation.revoked.v1",
+                 "com.saas.forge.invitation.accepted.v1" -> Optional.of(
+                    invitationEvents.validate(topic, orderingKey, consumerName, envelope));
+            case PERMISSION_CATALOG_CHANGED_TYPE -> Optional.of(
+                    validatePermissionCatalogChanged(topic, orderingKey, consumerName, envelope));
+            case TENANT_ROLE_CHANGED_TYPE -> Optional.of(
+                    validateTenantRoleChanged(topic, orderingKey, consumerName, envelope));
+            case MEMBERSHIP_ROLE_CHANGED_TYPE -> Optional.of(
+                    validateMembershipRoleChanged(topic, orderingKey, consumerName, envelope));
+            case ORGANIZATION_UNIT_CHANGED_TYPE -> Optional.of(
+                    validateOrganizationUnitChanged(topic, orderingKey, consumerName, envelope));
+            case MEMBERSHIP_ORGANIZATION_UNIT_CHANGED_TYPE -> Optional.of(
+                    validateMembershipOrganizationUnitChanged(topic, orderingKey, consumerName, envelope));
+            case TENANT_CLOSED_TYPE -> Optional.of(
+                    validateTenantClosed(topic, orderingKey, consumerName, envelope));
+            case MEMBERSHIP_DISABLED_TYPE -> Optional.of(
+                    validateMembershipDisabled(topic, orderingKey, consumerName, envelope));
+            case MEMBERSHIP_ENABLED_TYPE -> Optional.of(
+                    validateMembershipEnabled(topic, orderingKey, consumerName, envelope));
+            case BRAND_ASSET_UPLOADED_TYPE -> Optional.of(
+                    validateBrandAssetUploaded(topic, orderingKey, consumerName, envelope));
+            case BRAND_ASSET_DISABLED_TYPE -> Optional.of(
+                    validateBrandAssetDisabled(topic, orderingKey, consumerName, envelope));
+            case BRAND_ASSET_REMOVED_TYPE -> Optional.of(
+                    validateBrandAssetRemoved(topic, orderingKey, consumerName, envelope));
+            case BRAND_PROFILE_SAVED_TYPE -> Optional.of(
+                    validateBrandProfileSaved(topic, orderingKey, consumerName, envelope));
             case TENANT_SUSPENDED_TYPE -> {
                 validateRegisteredTenantSuspended(topic, orderingKey, consumerName, envelope);
                 requireOtherRegisteredConsumer(TENANT_SUSPENDED_CONSUMER_NAME, consumerName);
@@ -72,6 +161,366 @@ public class TenantAccessEventValidator {
             default -> throw new InvalidAuditEventException(
                     "Tenant Access type 未在工程注册表登记");
         };
+    }
+
+    private AuditRecord validateMembershipDisabled(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(MEMBERSHIP_DISABLED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals(MEMBERSHIP_DISABLED_SCHEMA, text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, MEMBERSHIP_DISABLED_DATA_FIELDS, MEMBERSHIP_DISABLED_DATA_FIELDS, "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        UUID membershipId = uuidV7(text(data, "membershipId"), "data.membershipId");
+        UUID identityId = uuidV7(text(data, "identityId"), "data.identityId");
+        UUID actorId = uuidV7(text(data, "actorIdentityId"), "data.actorIdentityId");
+        if (!data.path("quotaReleasePending").isBoolean() || !data.path("quotaReleasePending").asBoolean())
+            throw invalid("data.quotaReleasePending");
+        requireEquals(membershipId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                MEMBERSHIP_DISABLED_TYPE, occurredAt, traceId, actorId, tenantId,
+                "MEMBERSHIP_DISABLED", "MEMBERSHIP", membershipId,
+                objectMapper.writeValueAsString(Map.of("identityId", identityId.toString(),
+                        "quotaReleasePending", true)));
+    }
+
+    private AuditRecord validateMembershipEnabled(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(MEMBERSHIP_ENABLED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals(MEMBERSHIP_ENABLED_SCHEMA, text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, MEMBERSHIP_ENABLED_DATA_FIELDS, MEMBERSHIP_ENABLED_DATA_FIELDS, "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        UUID membershipId = uuidV7(text(data, "membershipId"), "data.membershipId");
+        UUID identityId = uuidV7(text(data, "identityId"), "data.identityId");
+        UUID actorId = uuidV7(text(data, "actorIdentityId"), "data.actorIdentityId");
+        if (!data.path("fenceReleasePending").isBoolean() || !data.path("fenceReleasePending").asBoolean())
+            throw invalid("data.fenceReleasePending");
+        requireEquals(membershipId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                MEMBERSHIP_ENABLED_TYPE, occurredAt, traceId, actorId, tenantId,
+                "MEMBERSHIP_ENABLED", "MEMBERSHIP", membershipId,
+                objectMapper.writeValueAsString(Map.of("identityId", identityId.toString(),
+                        "fenceReleasePending", true)));
+    }
+
+    private AuditRecord validateBrandAssetUploaded(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(BRAND_ASSET_UPLOADED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals(BRAND_ASSET_UPLOADED_SCHEMA, text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, BRAND_ASSET_DATA_FIELDS, BRAND_ASSET_DATA_FIELDS, "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        UUID assetId = uuidV7(text(data, "assetId"), "data.assetId");
+        UUID actorId = uuidV7(text(data, "actorIdentityId"), "data.actorIdentityId");
+        String kind = text(data, "kind");
+        if (!Set.of("LOGO", "FAVICON").contains(kind)) throw invalid("data.kind");
+        requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                BRAND_ASSET_UPLOADED_TYPE, occurredAt, traceId, actorId, tenantId,
+                "BRAND_ASSET_UPLOADED", "BRAND_ASSET", assetId,
+                objectMapper.writeValueAsString(Map.of("kind", kind)));
+    }
+
+    private AuditRecord validateBrandAssetDisabled(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(BRAND_ASSET_DISABLED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals(BRAND_ASSET_DISABLED_SCHEMA, text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, BRAND_ASSET_DATA_FIELDS, BRAND_ASSET_DATA_FIELDS, "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        UUID assetId = uuidV7(text(data, "assetId"), "data.assetId");
+        UUID actorId = uuidV7(text(data, "actorIdentityId"), "data.actorIdentityId");
+        String kind = text(data, "kind");
+        if (!Set.of("LOGO", "FAVICON").contains(kind)) throw invalid("data.kind");
+        requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                BRAND_ASSET_DISABLED_TYPE, occurredAt, traceId, actorId, tenantId,
+                "BRAND_ASSET_DISABLED", "BRAND_ASSET", assetId,
+                objectMapper.writeValueAsString(Map.of("kind", kind)));
+    }
+
+    private AuditRecord validateBrandAssetRemoved(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(BRAND_ASSET_REMOVED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals(BRAND_ASSET_REMOVED_SCHEMA, text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, BRAND_ASSET_REMOVED_DATA_FIELDS, BRAND_ASSET_REMOVED_DATA_FIELDS, "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        UUID assetId = uuidV7(text(data, "assetId"), "data.assetId");
+        String kind = text(data, "kind");
+        String reason = text(data, "reason");
+        if (!Set.of("LOGO", "FAVICON").contains(kind)) throw invalid("data.kind");
+        if (!Set.of("UNBOUND", "REPLACED", "DISABLED", "LEGACY").contains(reason)) throw invalid("data.reason");
+        requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                BRAND_ASSET_REMOVED_TYPE, occurredAt, traceId, null, tenantId,
+                "BRAND_ASSET_REMOVED", "BRAND_ASSET", assetId,
+                objectMapper.writeValueAsString(Map.of("kind", kind, "reason", reason)));
+    }
+
+    private AuditRecord validateBrandProfileSaved(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(BRAND_PROFILE_SAVED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals("https://saas.forge.io/contracts/events/brand-profile-saved.v1.schema.json",
+                text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, BRAND_PROFILE_DATA_FIELDS, BRAND_PROFILE_DATA_FIELDS, "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        UUID actorId = uuidV7(text(data, "actorIdentityId"), "data.actorIdentityId");
+        UUID logoId = uuidV7(text(data, "logoAssetId"), "data.logoAssetId");
+        UUID faviconId = uuidV7(text(data, "faviconAssetId"), "data.faviconAssetId");
+        JsonNode revision = data.get("revision");
+        if (revision == null || !revision.isIntegralNumber() || revision.asLong() < 1) throw invalid("data");
+        requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                BRAND_PROFILE_SAVED_TYPE, occurredAt, traceId, actorId, tenantId,
+                "BRAND_PROFILE_SAVED", "TENANT", tenantId,
+                objectMapper.writeValueAsString(Map.of("revision", revision.asLong(), "logoAssetId", logoId,
+                        "faviconAssetId", faviconId)));
+    }
+
+    private AuditRecord validateTenantRoleChanged(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(TENANT_ROLE_CHANGED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals(TENANT_ROLE_CHANGED_SCHEMA, text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, TENANT_ROLE_DATA_FIELDS, TENANT_ROLE_DATA_FIELDS, "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        UUID actorId = uuidV7(text(data, "actorIdentityId"), "data.actorIdentityId");
+        UUID roleId = uuidV7(text(data, "roleId"), "data.roleId");
+        String roleKey = text(data, "roleKey");
+        String action = text(data, "action");
+        if (!roleKey.matches("^[A-Z][A-Z0-9_]{2,63}$")
+                || !Set.of("CREATED", "UPDATED", "DELETED").contains(action)) throw invalid("data");
+        JsonNode permissions = data.get("permissions");
+        if (permissions == null || !permissions.isArray() || permissions.size() > 100) throw invalid("data.permissions");
+        Set<String> seen = new HashSet<>();
+        for (JsonNode permission : permissions) {
+            if (!permission.isTextual() || !permission.asText().matches(
+                    "^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$")
+                    || permission.asText().length() > 160 || !seen.add(permission.asText())) {
+                throw invalid("data.permissions");
+            }
+        }
+        requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                TENANT_ROLE_CHANGED_TYPE, occurredAt, traceId, actorId, tenantId,
+                "TENANT_ROLE_CHANGED", "TENANT_ROLE", roleId,
+                objectMapper.writeValueAsString(Map.of("roleKey", roleKey, "action", action,
+                        "permissions", seen.stream().sorted().toList())));
+    }
+
+    private AuditRecord validateMembershipRoleChanged(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(MEMBERSHIP_ROLE_CHANGED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals(MEMBERSHIP_ROLE_CHANGED_SCHEMA, text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, MEMBERSHIP_ROLE_DATA_FIELDS, MEMBERSHIP_ROLE_DATA_FIELDS, "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        UUID actorId = uuidV7(text(data, "actorIdentityId"), "data.actorIdentityId");
+        UUID membershipId = uuidV7(text(data, "membershipId"), "data.membershipId");
+        UUID roleId = uuidV7(text(data, "roleId"), "data.roleId");
+        String roleKey = text(data, "roleKey");
+        String action = text(data, "action");
+        if (!roleKey.matches("^[A-Z][A-Z0-9_]{2,63}$")
+                || !Set.of("ASSIGNED", "REVOKED").contains(action)) throw invalid("data");
+        requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                MEMBERSHIP_ROLE_CHANGED_TYPE, occurredAt, traceId, actorId, tenantId,
+                "MEMBERSHIP_ROLE_" + action, "MEMBERSHIP", membershipId,
+                objectMapper.writeValueAsString(Map.of("roleId", roleId.toString(), "roleKey", roleKey)));
+    }
+
+    private AuditRecord validateOrganizationUnitChanged(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(ORGANIZATION_UNIT_CHANGED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals(ORGANIZATION_UNIT_CHANGED_SCHEMA, text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, ORGANIZATION_UNIT_DATA_FIELDS,
+                Set.of("tenantId", "unitId", "actorIdentityId", "action"), "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        UUID unitId = uuidV7(text(data, "unitId"), "data.unitId");
+        UUID actorId = uuidV7(text(data, "actorIdentityId"), "data.actorIdentityId");
+        String action = text(data, "action");
+        if (!Set.of("CREATED", "RENAMED", "MOVED", "DELETED").contains(action)) throw invalid("data.action");
+        JsonNode parent = data.get("parentId");
+        if (parent != null && !parent.isNull()) uuidV7(parent.asText(), "data.parentId");
+        requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        var details = new java.util.LinkedHashMap<String, Object>();
+        details.put("unitId", unitId.toString());
+        details.put("parentId", parent == null || parent.isNull() ? null : parent.asText());
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                ORGANIZATION_UNIT_CHANGED_TYPE, occurredAt, traceId, actorId, tenantId,
+                "ORGANIZATION_UNIT_" + action, "ORGANIZATION_UNIT", unitId,
+                objectMapper.writeValueAsString(details));
+    }
+
+    private AuditRecord validateMembershipOrganizationUnitChanged(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(MEMBERSHIP_ORGANIZATION_UNIT_CHANGED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals(MEMBERSHIP_ORGANIZATION_UNIT_CHANGED_SCHEMA, text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, MEMBERSHIP_ORGANIZATION_UNIT_DATA_FIELDS,
+                MEMBERSHIP_ORGANIZATION_UNIT_DATA_FIELDS, "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        UUID membershipId = uuidV7(text(data, "membershipId"), "data.membershipId");
+        UUID unitId = uuidV7(text(data, "unitId"), "data.unitId");
+        UUID actorId = uuidV7(text(data, "actorIdentityId"), "data.actorIdentityId");
+        String action = text(data, "action");
+        if (!Set.of("ADDED", "REMOVED").contains(action)) throw invalid("data.action");
+        requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                MEMBERSHIP_ORGANIZATION_UNIT_CHANGED_TYPE, occurredAt, traceId, actorId, tenantId,
+                "MEMBERSHIP_ORGANIZATION_UNIT_" + action, "MEMBERSHIP", membershipId,
+                objectMapper.writeValueAsString(Map.of("unitId", unitId.toString())));
+    }
+
+    private AuditRecord validatePermissionCatalogChanged(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(PERMISSION_CATALOG_CHANGED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals(PERMISSION_CATALOG_CHANGED_SCHEMA, text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, PERMISSION_CATALOG_DATA_FIELDS,
+                PERMISSION_CATALOG_DATA_FIELDS, "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        String code = text(data, "code");
+        String source = text(data, "source");
+        JsonNode enabled = data.get("enabled");
+        JsonNode revision = data.get("revision");
+        if (!code.matches("^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$")
+                || code.length() > 160 || !source.matches("^[a-z][a-z0-9-]*$") || source.length() > 80
+                || enabled == null || !enabled.isBoolean()
+                || revision == null || !revision.isIntegralNumber() || revision.asInt() < 1) {
+            throw invalid("data");
+        }
+        requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                PERMISSION_CATALOG_CHANGED_TYPE, occurredAt, traceId, null, tenantId,
+                "PERMISSION_CATALOG_CHANGED", "TENANT", tenantId,
+                objectMapper.writeValueAsString(Map.of("code", code, "enabled", enabled.asBoolean(),
+                        "source", source, "revision", revision.asInt())));
     }
 
     private void validateRegisteredTenantSuspended(
@@ -103,6 +552,37 @@ public class TenantAccessEventValidator {
         }
         requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
         requireEquals(tenantId.toString(), orderingKey, "ordering key");
+    }
+
+    private AuditRecord validateTenantClosed(
+            String topic, String orderingKey, String consumerName, JsonNode envelope) {
+        requireObjectWithAllowedFields(envelope, ENVELOPE_FIELDS, REQUIRED_ENVELOPE_FIELDS, "Envelope");
+        requireEquals("1.0", text(envelope, "specversion"), "specversion");
+        requireEquals(TenantCreatedEventValidator.SOURCE, text(envelope, "source"), "source");
+        requireEquals(TENANT_CLOSED_TYPE, text(envelope, "type"), "type");
+        requireEquals("application/json", text(envelope, "datacontenttype"), "datacontenttype");
+        requireEquals("https://saas.forge.io/contracts/events/tenant-closed.v1.schema.json",
+                text(envelope, "dataschema"), "dataschema");
+        requireEquals(TenantCreatedEventValidator.CONSUMER_NAME, consumerName, "consumer");
+        requireEquals(expectedTopic, topic, "topic");
+        UUID eventId = uuidV7(text(envelope, "id"), "id");
+        Instant occurredAt = utcInstant(text(envelope, "time"), "time");
+        String traceId = optionalText(envelope, "traceId");
+        if (traceId != null && !TRACE_ID.matcher(traceId).matches()) throw invalid("traceId");
+        JsonNode data = envelope.path("data");
+        requireObjectWithAllowedFields(data, TENANT_SUSPENDED_DATA_FIELDS, TENANT_SUSPENDED_DATA_FIELDS, "data");
+        UUID tenantId = uuidV7(text(data, "tenantId"), "data.tenantId");
+        UUID actorId = uuidV7(text(data, "actorIdentityId"), "data.actorIdentityId");
+        JsonNode revoked = data.get("revokedSessionCount");
+        if (revoked == null || !revoked.isIntegralNumber() || revoked.asLong() < 0) {
+            throw invalid("data.revokedSessionCount");
+        }
+        requireEquals(tenantId.toString(), text(envelope, "subject"), "subject");
+        requireEquals(tenantId.toString(), orderingKey, "ordering key");
+        return new AuditRecord(eventId, TenantCreatedEventValidator.SOURCE,
+                TENANT_CLOSED_TYPE, occurredAt, traceId, actorId, tenantId,
+                "TENANT_CLOSED", "TENANT", tenantId,
+                objectMapper.writeValueAsString(Map.of("revokedSessionCount", revoked.asLong())));
     }
 
     private void requireOtherRegisteredConsumer(String registeredConsumer, String consumerName) {

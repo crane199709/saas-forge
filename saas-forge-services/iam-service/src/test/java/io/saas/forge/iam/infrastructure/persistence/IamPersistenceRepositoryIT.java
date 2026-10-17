@@ -26,6 +26,14 @@ import io.saas.forge.iam.application.bootstrap.ReservedServiceClientReplacementI
 import io.saas.forge.iam.application.bootstrap.ReservedServiceClientReplacementResult;
 import io.saas.forge.iam.application.bootstrap.ReservedServiceClientReplacementService;
 import io.saas.forge.iam.application.authentication.UuidV7Generator;
+import io.saas.forge.iam.application.authorization.PlatformAdminGrantTransaction;
+import io.saas.forge.iam.application.authorization.PlatformAdminRevokeTransaction;
+import io.saas.forge.iam.application.authorization.PlatformAdminRevokedEventFactory;
+import io.saas.forge.iam.application.authorization.PlatformAdminRevokeException;
+import io.saas.forge.iam.domain.authorization.PlatformRoleAssignment;
+import io.saas.forge.iam.application.authorization.PlatformAdminGrantedEventFactory;
+import io.saas.forge.iam.application.authorization.PlatformAdminSetupCaller;
+import io.saas.forge.iam.domain.authorization.PlatformRoleAssignmentRepository;
 import io.saas.forge.iam.application.client.OAuthClientCreatedEventFactory;
 import io.saas.forge.iam.domain.client.ReservedServiceClientReplacementRepository;
 import io.saas.forge.iam.domain.outbox.OutboxEventRepository;
@@ -60,6 +68,7 @@ import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Clock;
 import java.time.Instant;
@@ -135,6 +144,12 @@ class IamPersistenceRepositoryIT {
     private IdentityRepository identities;
 
     @Autowired
+    private PlatformRoleAssignmentRepository platformRoles;
+
+    @Autowired
+    private OutboxEventRepository outboxEvents;
+
+    @Autowired
     private RefreshTokenFamilyRepository refreshTokenFamilies;
 
     @Autowired
@@ -177,6 +192,172 @@ class IamPersistenceRepositoryIT {
                 .locations(iamMigrationLocation())
                 .load()
                 .migrate();
+    }
+
+    @Test
+    void platformAdminGrantPersistsRoleAndOutboxOnceOnRequestReplay() {
+        Instant at = Instant.parse("2026-08-21T08:00:00Z");
+        Identity actor = identities.create(Identity.register("platform-grant-actor@example.test", null, at));
+        Identity target = identities.create(Identity.register("platform-grant-target@example.test", null, at));
+        identities.create(PasswordCredential.regular(target.id(), Argon2idPasswordHash.of(ARGON2ID_HASH), at));
+        UUID requestId = UUID.fromString("0198c9d5-0f25-7b21-8d67-31c8652d4c90");
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        var grant = new PlatformAdminGrantTransaction(jdbc, identities, platformRoles, outboxEvents,
+                new PlatformAdminGrantedEventFactory(new tools.jackson.databind.ObjectMapper(),
+                        new UuidV7Generator(Clock.fixed(at, ZoneOffset.UTC), new SecureRandom()), "test"),
+                new PlatformAdminSetupCaller(jdbc), Clock.fixed(at, ZoneOffset.UTC));
+        var transactions = new TransactionTemplate(transactionManager);
+
+        var first = transactions.execute(status -> grant.grant(actor.id(), requestId,
+                "platform-grant-target@example.test", null));
+        var replay = transactions.execute(status -> grant.grant(actor.id(), requestId,
+                "PLATFORM-GRANT-TARGET@example.test", null));
+
+        assertNotNull(first);
+        assertEquals(first, replay);
+        assertTrue(first.newlyGranted());
+        assertTrue(platformRoles.hasActiveAssignment(target.id(), "PLATFORM_ADMIN", at));
+        assertEquals(1, jdbc.queryForObject("""
+                SELECT count(*) FROM iam_outbox_events WHERE ordering_key = ?
+                """, Integer.class, target.id().toString()));
+    }
+
+    @Test
+    void platformRevokePreservesTenantAndWaitingFamiliesAndNeverRevivesHistoricalJti() {
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        Identity target = identities.create(Identity.register("platform-revoke-target@example.test", null, now));
+        Identity survivor = identities.create(Identity.register("platform-revoke-survivor@example.test", null, now));
+        identities.create(PasswordCredential.regular(survivor.id(), Argon2idPasswordHash.of(ARGON2ID_HASH), now));
+        identities.create(PasswordCredential.regular(target.id(), Argon2idPasswordHash.of(ARGON2ID_HASH), now));
+        platformRoles.grant(PlatformRoleAssignment.grant(target.id(), "PLATFORM_ADMIN", now));
+        platformRoles.grant(PlatformRoleAssignment.grant(survivor.id(), "PLATFORM_ADMIN", now));
+        RefreshTokenFamily currentPlatform = refreshTokenFamilies.create(
+                RefreshTokenFamily.start(target.id(), RefreshTokenFamilyPurpose.USER_PLATFORM, null, null, now),
+                digest(92), now);
+        RefreshTokenFamily switched = refreshTokenFamilies.create(
+                RefreshTokenFamily.start(target.id(), RefreshTokenFamilyPurpose.USER_PLATFORM, null, null, now),
+                digest(93), now);
+        RefreshTokenFamily waiting = refreshTokenFamilies.create(
+                RefreshTokenFamily.start(target.id(), RefreshTokenFamilyPurpose.USER_TENANT_SELECTION,
+                        null, null, now), digest(94), now);
+        String kid = "platform-revoke-" + UUID.randomUUID();
+        SigningKey published = signingKeys.savePublished(SigningKey.publish(
+                kid, "kms/" + kid, "modulus-" + kid, "AQAB", now.minusSeconds(360)));
+        signingKeys.activate(published.id(), now);
+        UUID currentJti = uuidV7();
+        UUID historicalJti = uuidV7();
+        UUID tenantJti = uuidV7();
+        accessTokenIssuances.create(new AccessTokenIssuance(currentJti, currentPlatform.id(), target.id(),
+                null, null, kid, now, now.plusSeconds(900)));
+        accessTokenIssuances.create(new AccessTokenIssuance(historicalJti, switched.id(), target.id(),
+                null, null, kid, now, now.plusSeconds(900)));
+        UUID membership = uuidV7();
+        UUID tenant = uuidV7();
+        refreshTokenFamilies.switchWorkContext(switched.id(), RefreshTokenFamilyPurpose.USER_TENANT,
+                membership, tenant);
+        accessTokenIssuances.create(new AccessTokenIssuance(tenantJti, switched.id(), target.id(),
+                membership, tenant, kid, now, now.plusSeconds(900)));
+
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        var revoke = new PlatformAdminRevokeTransaction(jdbc, outboxEvents,
+                new PlatformAdminRevokedEventFactory(new tools.jackson.databind.ObjectMapper(),
+                        new UuidV7Generator(Clock.fixed(now, ZoneOffset.UTC), new SecureRandom()), "test"),
+                Clock.fixed(now, ZoneOffset.UTC));
+        UUID request = uuidV7();
+        var tx = new TransactionTemplate(transactionManager);
+        assertEquals(Boolean.FALSE, tx.execute(status -> revoke.prepare(survivor.id(), target.id(), request, null)));
+        assertEquals(Boolean.FALSE, tx.execute(status -> revoke.prepare(survivor.id(), target.id(), request, null)));
+        assertEquals(Set.of(currentJti, historicalJti), revoke.pendingJtis(request).stream()
+                .map(PlatformAdminRevokeTransaction.Jti::jti).collect(java.util.stream.Collectors.toSet()));
+        assertNotNull(refreshTokenFamilies.findById(currentPlatform.id()).orElseThrow().revokedAt());
+        assertNull(refreshTokenFamilies.findById(switched.id()).orElseThrow().revokedAt());
+        assertNull(refreshTokenFamilies.findById(waiting.id()).orElseThrow().revokedAt());
+        assertNull(jdbc.queryForObject("SELECT revoked_at FROM iam_access_token_issuances WHERE jti = ?",
+                OffsetDateTime.class, tenantJti));
+        assertEquals(1, jdbc.queryForObject("""
+                SELECT count(*) FROM iam_outbox_events WHERE ordering_key = ?
+                  AND event_snapshot ->> 'type' = 'com.saas.forge.iam.platform-admin-revoked.v1'
+                """, Integer.class, target.id().toString()));
+        platformRoles.grant(PlatformRoleAssignment.grant(target.id(), "PLATFORM_ADMIN", now.plusSeconds(1)));
+        assertNotNull(jdbc.queryForObject("SELECT revoked_at FROM iam_access_token_issuances WHERE jti = ?",
+                OffsetDateTime.class, historicalJti));
+    }
+
+    @Test
+    void revokingLastPasswordAdministratorIsRejected() {
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        Identity only = identities.create(Identity.register("platform-last-password@example.test", null, now));
+        identities.create(PasswordCredential.regular(only.id(), Argon2idPasswordHash.of(ARGON2ID_HASH), now));
+        platformRoles.grant(PlatformRoleAssignment.grant(only.id(), "PLATFORM_ADMIN", now));
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        var revoke = new PlatformAdminRevokeTransaction(jdbc, outboxEvents,
+                new PlatformAdminRevokedEventFactory(new tools.jackson.databind.ObjectMapper(),
+                        new UuidV7Generator(Clock.fixed(now, ZoneOffset.UTC), new SecureRandom()), "test"),
+                Clock.fixed(now, ZoneOffset.UTC));
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            // 本类共用 Testcontainer；仅在回滚事务内隔离其他测试留下的平台管理员。
+            jdbc.update("""
+                    UPDATE iam_platform_role_assignments SET revoked_at = GREATEST(assigned_at, ?)
+                    WHERE identity_id <> ? AND role_key = 'PLATFORM_ADMIN' AND revoked_at IS NULL
+                    """, Timestamp.from(now), only.id());
+            assertThrows(PlatformAdminRevokeException.class,
+                    () -> revoke.prepare(only.id(), only.id(), uuidV7(), null));
+            status.setRollbackOnly();
+        });
+        assertTrue(platformRoles.hasActiveAssignment(only.id(), "PLATFORM_ADMIN", now));
+    }
+
+    @Test
+    void concurrentPlatformRevokesKeepOnePasswordAdministrator() throws Exception {
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        Identity first = identities.create(Identity.register("concurrent-revoke-first@example.test", null, now));
+        Identity second = identities.create(Identity.register("concurrent-revoke-second@example.test", null, now));
+        for (Identity identity : List.of(first, second)) {
+            identities.create(PasswordCredential.regular(identity.id(), Argon2idPasswordHash.of(ARGON2ID_HASH), now));
+            platformRoles.grant(PlatformRoleAssignment.grant(identity.id(), "PLATFORM_ADMIN", now));
+        }
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        var revoke = new PlatformAdminRevokeTransaction(jdbc, outboxEvents,
+                new PlatformAdminRevokedEventFactory(new tools.jackson.databind.ObjectMapper(),
+                        new UuidV7Generator(Clock.fixed(now, ZoneOffset.UTC), new SecureRandom()), "test"),
+                Clock.fixed(now, ZoneOffset.UTC));
+        List<UUID> isolated = jdbc.query("""
+                UPDATE iam_platform_role_assignments SET revoked_at = GREATEST(assigned_at, ?)
+                WHERE identity_id NOT IN (?, ?) AND role_key = 'PLATFORM_ADMIN' AND revoked_at IS NULL
+                RETURNING id
+                """, (rs, row) -> rs.getObject(1, UUID.class), Timestamp.from(now), first.id(), second.id());
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            CountDownLatch start = new CountDownLatch(1);
+            var one = executor.submit(() -> {
+                start.await();
+                return attemptPlatformRevoke(revoke, first.id(), second.id());
+            });
+            var two = executor.submit(() -> {
+                start.await();
+                return attemptPlatformRevoke(revoke, second.id(), first.id());
+            });
+            start.countDown();
+            assertEquals(1, (one.get(20, TimeUnit.SECONDS) ? 1 : 0) +
+                    (two.get(20, TimeUnit.SECONDS) ? 1 : 0));
+            assertTrue(platformRoles.hasActiveAssignment(first.id(), "PLATFORM_ADMIN", now.plusSeconds(1))
+                    || platformRoles.hasActiveAssignment(second.id(), "PLATFORM_ADMIN", now.plusSeconds(1)));
+        } finally {
+            executor.shutdownNow();
+            for (UUID id : isolated) jdbc.update(
+                    "UPDATE iam_platform_role_assignments SET revoked_at = NULL WHERE id = ?", id);
+        }
+    }
+
+    private boolean attemptPlatformRevoke(PlatformAdminRevokeTransaction revoke, UUID actor, UUID target) {
+        try {
+            new TransactionTemplate(transactionManager).execute(status ->
+                    revoke.prepare(actor, target, uuidV7(), null));
+            return true;
+        } catch (PlatformAdminRevokeException expected) {
+            assertEquals(PlatformAdminRevokeException.Code.LAST_PASSWORD_ADMIN, expected.code());
+            return false;
+        }
     }
 
     @Test
@@ -823,6 +1004,7 @@ class IamPersistenceRepositoryIT {
         UUID otherMembership = uuidV7();
         UUID identityId = identities.create(Identity.register(
                 "batch-" + UUID.randomUUID() + "@example.test", null, now)).id();
+        platformRoles.grant(PlatformRoleAssignment.grant(identityId, "PLATFORM_ADMIN", now));
         RefreshTokenFamily current = refreshTokenFamilies.create(
                 RefreshTokenFamily.start(identityId, RefreshTokenFamilyPurpose.USER_TENANT,
                         targetMembership, targetTenant, now), digest(71), now);

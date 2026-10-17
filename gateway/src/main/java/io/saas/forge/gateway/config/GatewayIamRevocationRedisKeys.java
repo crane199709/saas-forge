@@ -41,6 +41,10 @@ final class GatewayIamRevocationRedisKeys {
         return prefix + "user-session-revocation-fence:v1:membership:" + membershipId;
     }
 
+    String identityFence(UUID identityId) {
+        return prefix + "user-session-revocation-fence:v1:identity:" + identityId;
+    }
+
     private static String digest(String value) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")

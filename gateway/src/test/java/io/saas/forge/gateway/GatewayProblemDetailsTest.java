@@ -109,10 +109,15 @@ class GatewayProblemDetailsTest {
                         + "\"detail\":\"The tenant does not exist.\",\"traceId\":\"00000000000000000000000000000001\"}", 0)
         }) {
             IAM_RESPONSE.set(invalid);
-            assertGatewayProblem(send(HttpRequest.newBuilder(gatewayUri("/.well-known/jwks.json"))
+            var response = send(HttpRequest.newBuilder(gatewayUri("/.well-known/jwks.json"))
                     .header("traceparent", traceparent)
+                    .header("Origin", "https://console.saas.forge.test")
                     .GET()
-                    .build()), 502, "UPSTREAM_INVALID_RESPONSE", traceId);
+                    .build());
+            assertGatewayProblem(response, 502, "UPSTREAM_INVALID_RESPONSE", traceId);
+            assertEquals("https://console.saas.forge.test",
+                    response.headers().firstValue("Access-Control-Allow-Origin").orElse(""));
+            assertTrue(response.headers().firstValue("Access-Control-Allow-Credentials").isEmpty());
         }
     }
 
@@ -120,9 +125,12 @@ class GatewayProblemDetailsTest {
     void mapsTheConfiguredUpstreamReadTimeoutWithoutRetrying() throws IOException, InterruptedException {
         IAM_RESPONSE.set(new DownstreamResponse(200, "application/json", "late", 2000));
 
-        HttpResponse<String> response = send("GET", "/.well-known/jwks.json");
+        HttpResponse<String> response = send(HttpRequest.newBuilder(gatewayUri("/.well-known/jwks.json"))
+                .header("Origin", "https://console.saas.forge.test").GET().build());
 
         assertGatewayProblem(response, 504, "UPSTREAM_TIMEOUT", null);
+        assertEquals("https://console.saas.forge.test",
+                response.headers().firstValue("Access-Control-Allow-Origin").orElse(""));
         assertEquals(1, IAM_REQUESTS.get());
     }
 

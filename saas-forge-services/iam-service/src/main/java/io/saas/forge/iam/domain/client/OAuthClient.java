@@ -142,7 +142,8 @@ public final class OAuthClient {
     private static void validateScopeBoundary(
             OAuthClientType type, ReservedServiceKey key, Set<OAuthScope> scopes) {
         Set<OAuthScope> expected = switch (key == null ? ReservedServiceKey.IAM : key) {
-            case IAM -> Set.of(OAuthScope.TENANT_ACCESS_MEMBERSHIP_READ);
+            case IAM -> Set.of(OAuthScope.TENANT_ACCESS_MEMBERSHIP_READ,
+                    OAuthScope.TENANT_ACCESS_INVITATION_ACCEPT);
             case TENANT_ACCESS -> Set.of(
                     OAuthScope.IAM_IDENTITY_WRITE, OAuthScope.IAM_PASSWORD_SETUP_WRITE,
                     OAuthScope.IAM_PLATFORM_ROLE_READ, OAuthScope.IAM_SESSIONS_WRITE,
@@ -166,7 +167,8 @@ public final class OAuthClient {
     }
 
     private static ReservedServiceKey reservedServiceKeyFor(Set<OAuthScope> scopes) {
-        if (Set.of(OAuthScope.TENANT_ACCESS_MEMBERSHIP_READ).equals(scopes)) return ReservedServiceKey.IAM;
+        if (Set.of(OAuthScope.TENANT_ACCESS_MEMBERSHIP_READ,
+                OAuthScope.TENANT_ACCESS_INVITATION_ACCEPT).equals(scopes)) return ReservedServiceKey.IAM;
         if (Set.of(OAuthScope.IAM_IDENTITY_WRITE, OAuthScope.IAM_PASSWORD_SETUP_WRITE,
                 OAuthScope.IAM_PLATFORM_ROLE_READ, OAuthScope.IAM_SESSIONS_WRITE,
                 OAuthScope.ENTITLEMENT_QUOTA_WRITE).equals(scopes)) return ReservedServiceKey.TENANT_ACCESS;

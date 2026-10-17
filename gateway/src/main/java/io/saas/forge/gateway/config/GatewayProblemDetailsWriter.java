@@ -54,6 +54,8 @@ class GatewayProblemDetailsWriter {
             case "ACCESS_TOKEN_INVALID" -> "Access Token invalid";
             case "ACCESS_TOKEN_SCOPE_INSUFFICIENT" -> "Access Token scope insufficient";
             case "TOKEN_REVOCATION_STATUS_UNAVAILABLE" -> "Token revocation status unavailable";
+            case "PERMISSION_DENIED" -> "Permission denied";
+            case "PERMISSION_AUTHORITY_UNAVAILABLE" -> "Permission authority unavailable";
             default -> throw new IllegalArgumentException("Unsupported Gateway Problem Details code: " + code);
         };
     }

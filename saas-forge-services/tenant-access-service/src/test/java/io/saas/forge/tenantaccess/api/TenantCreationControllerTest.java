@@ -1,6 +1,7 @@
 package io.saas.forge.tenantaccess.api;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -29,6 +30,19 @@ class TenantCreationControllerTest {
     private static final UUID KEY = UUID.fromString("019535d9-0000-7000-8000-000000000001");
 
     @Test
+    void updateTenantRequiresCurrentPlatformAuthority() throws Exception {
+        MockMvc mvc = mvc(authorization -> { throw new PlatformAuthorizationDeniedException(); }, unusedCreation());
+
+        mvc.perform(put("/api/v1/platform/tenants/{tenantId}", KEY)
+                        .header("Authorization", "Bearer platform-token")
+                        .header("Idempotency-Key", KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"New name\",\"expiresAt\":null}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("PLATFORM_AUTHORIZATION_DENIED"));
+    }
+
+    @Test
     void everyTenantReadAndRecoveryRechecksCurrentPlatformAuthorization() throws Exception {
         MockMvc mvc = mvc(authorization -> { throw new PlatformAuthorizationDeniedException(); }, unusedCreation());
         for (var request : java.util.List.of(
@@ -38,6 +52,8 @@ class TenantCreationControllerTest {
                 org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/platform/tenant-creations/" + KEY),
                 org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/platform/tenants/" + KEY + "/lifecycle"),
                 post("/api/v1/platform/tenants/" + KEY + "/lifecycle-operations/" + KEY + "/continuations"),
+                post("/api/v1/platform/tenants/" + KEY + "/closures").header("Idempotency-Key", KEY),
+                post("/api/v1/platform/tenants/" + KEY + "/closure-recoveries").header("Idempotency-Key", KEY),
                 post("/api/v1/platform/tenant-creations/" + KEY + "/recovery").header("Idempotency-Key", KEY)
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))) {
             mvc.perform(request.header("Authorization", "Bearer platform-token"))
@@ -50,7 +66,7 @@ class TenantCreationControllerTest {
     void lifecycleReadAndContinuationAreNoStoreAndUseThePublishedOperationIdentity() throws Exception {
         var lifecycle = org.mockito.Mockito.mock(io.saas.forge.tenantaccess.application.tenant.TenantLifecycleService.class);
         var observed = new io.saas.forge.tenantaccess.application.tenant.TenantLifecycleProgress(
-                KEY, KEY, "SUSPEND", "PENDING", false, false, false, true);
+                KEY, KEY, "SUSPEND", "PENDING", false, false, false, true, false, false);
         org.mockito.Mockito.when(lifecycle.read(KEY)).thenReturn(observed);
         Instant at = Instant.parse("2026-09-14T00:00:00Z");
         org.mockito.Mockito.when(lifecycle.continueOperation(org.mockito.ArgumentMatchers.eq(KEY),

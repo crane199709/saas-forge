@@ -19,7 +19,8 @@ public interface UserSessionRevocationMapper {
             @Param("maximumAttempts") int maximumAttempts, @Param("failure") String failure);
     List<UserSessionRevocationCandidateRow> findCandidates(
             @Param("targetType") String targetType, @Param("tenantId") UUID tenantId,
-            @Param("membershipId") UUID membershipId, @Param("cursor") UUID cursor,
+            @Param("membershipId") UUID membershipId, @Param("identityId") UUID identityId,
+            @Param("cursor") UUID cursor,
             @Param("at") OffsetDateTime at, @Param("batchSize") int batchSize);
     int revokeFamilies(@Param("familyIds") List<UUID> familyIds, @Param("at") OffsetDateTime at);
     int revokeIssuances(@Param("jtis") List<UUID> jtis, @Param("at") OffsetDateTime at);

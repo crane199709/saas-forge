@@ -29,6 +29,7 @@ import io.saas.forge.contracts.tenantaccess.membership.v1.MembershipValidationSe
 import io.saas.forge.contracts.tenantaccess.membership.v1.ValidateMembershipRequest;
 import io.saas.forge.contracts.tenantaccess.membership.v1.ValidateMembershipResponse;
 import io.saas.forge.iam.application.authentication.*;
+import io.saas.forge.iam.application.bootstrap.ReservedServiceClient;
 import io.saas.forge.iam.domain.session.ConsoleSessionRepository;
 import io.saas.forge.iam.domain.outbox.OutboxEventRepository;
 import io.saas.forge.iam.application.authentication.InitialPasswordChangeService;
@@ -304,6 +305,15 @@ class AuthenticationHttpIT {
     PasswordSetupService passwordSetupService;
 
     @Autowired
+    PasswordRecoveryService passwordRecoveryService;
+
+    @Autowired
+    PasswordSetupChallengeIssuer recoveryTokens;
+
+    @Autowired
+    io.saas.forge.iam.infrastructure.persistence.PasswordRecoveryRepository recoveryChallenges;
+
+    @Autowired
     StringRedisTemplate redis;
 
     @Autowired
@@ -562,7 +572,11 @@ class AuthenticationHttpIT {
         UUID tenantA = uuidV7(80511), tenantB = uuidV7(80512);
         accessibleMemberships(user.identity().id(), membership(first, tenantA, "Company A"),
                 membership(second, tenantB, "Company B"));
-        tenantBrandProfile(tenantA, "Brand A", null, null, "#123456", "#654321");
+        UUID logoId = uuidV7(91_005), faviconId = uuidV7(91_006);
+        tenantBrandAsset(tenantA, logoId, "LOGO");
+        tenantBrandAsset(tenantA, faviconId, "FAVICON");
+        tenantBrandProfile(tenantA, "Brand A", "/brands/" + logoId, "/brands/" + faviconId,
+                "#123456", "#654321");
         var bootstrap = http.perform(consolePost("bootstrap").content("{}")).andExpect(status().isOk()).andReturn();
         Cookie locator = bootstrap.getResponse().getCookie("__Host-sf_console_slot");
         var login = consoleLogin(http, locator, "console-dual@example.test")
@@ -814,10 +828,13 @@ class AuthenticationHttpIT {
                             catch (java.lang.reflect.InvocationTargetException failure) { throw failure.getCause(); }
                         })));
         context.setServletContext(webApplicationContext.getServletContext());
+        context.addBeanFactoryPostProcessor(factory -> factory.registerSingleton(
+                "tenantAccessMembershipChannel", TENANT_ACCESS_CHANNEL));
         context.getEnvironment().getPropertySources().addFirst(new org.springframework.core.env.MapPropertySource(
                 "console-test", Map.of("security.browser.console-enabled", "true")));
         context.register(io.saas.forge.iam.config.ConsoleSessionConfiguration.class,
-                ConsoleAuthenticationController.class, ConsoleBrowserRequestFilter.class,
+                ConsoleAuthenticationController.class, PasswordRecoveryController.class,
+                ConsoleBrowserRequestFilter.class,
                 ConsoleAuthenticationExceptionHandler.class, ConsoleWebConfiguration.class);
         context.refresh();
         consoleContexts.add(context);
@@ -1202,6 +1219,7 @@ class AuthenticationHttpIT {
                 .getResponse().getContentAsByteArray())));
         assertEquals(Set.of(
                 "runtime:read", "runtime:quota:write", "tenant-access:membership:read",
+                "tenant-access:invitation:accept",
                 "iam:identity:write", "iam:password-setup:write", "iam:platform-role:read",
                 "iam:sessions:write", "entitlement:quota:write", "tenant-access:tenant:read"),
                 representedScopes);
@@ -1588,7 +1606,11 @@ class AuthenticationHttpIT {
         UUID membershipId = UUID.fromString("0198c9d5-0f25-7b21-8d67-31c8652d4d90");
         UUID tenantId = UUID.fromString("0198c9d5-0f25-7b21-8d67-31c8652d4d91");
         accessibleMemberships(user.identity().id(), membership(membershipId, tenantId, "当前租户"));
-        tenantBrandProfile(tenantId, "当前品牌", "/logo.svg", "/icon.svg", "#155EEF", "#7A5AF8");
+        UUID logoId = uuidV7(91_001), faviconId = uuidV7(91_002);
+        tenantBrandAsset(tenantId, logoId, "LOGO");
+        tenantBrandAsset(tenantId, faviconId, "FAVICON");
+        tenantBrandProfile(tenantId, "当前品牌", "/brands/" + logoId, "/brands/" + faviconId,
+                "#155EEF", "#7A5AF8");
         MvcResult login = login("context-reader@example.test", "correct-password", "TENANT")
                 .andExpect(status().isOk()).andReturn();
 
@@ -1698,11 +1720,14 @@ class AuthenticationHttpIT {
         UUID membershipId = UUID.fromString("0198c9d5-0f25-7b21-8d67-31c8652d4c90");
         UUID tenantId = UUID.fromString("0198c9d5-0f25-7b21-8d67-31c8652d4c91");
         accessibleMemberships(user.identity().id(), membership(membershipId, tenantId, "唯一租户"));
+        UUID logoId = uuidV7(91_003), faviconId = uuidV7(91_004);
+        tenantBrandAsset(tenantId, logoId, "LOGO");
+        tenantBrandAsset(tenantId, faviconId, "FAVICON");
         tenantBrandProfile(
                 tenantId,
                 "唯一品牌",
-                "/brands/single-logo.svg",
-                "/brands/single-favicon.svg",
+                "/brands/" + logoId,
+                "/brands/" + faviconId,
                 "#155EEF",
                 "#7A5AF8");
 
@@ -1717,9 +1742,9 @@ class AuthenticationHttpIT {
                         .value(membershipId.toString()))
                 .andExpect(jsonPath("$.tenantContext.brandProfile.displayName").value("唯一品牌"))
                 .andExpect(jsonPath("$.tenantContext.brandProfile.logoUrl")
-                        .value("/brands/single-logo.svg"))
+                        .value("/brands/" + logoId))
                 .andExpect(jsonPath("$.tenantContext.brandProfile.faviconUrl")
-                        .value("/brands/single-favicon.svg"))
+                        .value("/brands/" + faviconId))
                 .andExpect(jsonPath("$.tenantContext.brandProfile.primaryColor").value("#155EEF"))
                 .andExpect(jsonPath("$.tenantContext.brandProfile.accentColor").value("#7A5AF8"))
                 .andExpect(header().exists("Set-Cookie"))
@@ -3392,6 +3417,130 @@ class AuthenticationHttpIT {
     }
 
     @Test
+    @Order(36)
+    void identityRevocationRejectsPlatformAndTenantSessionsAcrossContexts() throws Exception {
+        revocationIndexRecovery.recover();
+        TestUser user = createUser("identity-revoke@example.test", "correct-password", true, Credential.REGULAR);
+        UUID tenant = uuidV7(96_001);
+        UUID membershipId = uuidV7(96_002);
+        accessibleMemberships(user.identity().id(), membership(membershipId, tenant, "Company"));
+        MvcResult platform = login("identity-revoke@example.test", "correct-password", "PLATFORM").andReturn();
+        MvcResult company = login("identity-revoke@example.test", "correct-password", "TENANT").andReturn();
+        UUID platformJti = UUID.fromString(tokenClaims(platform).get("jti").asString());
+        UUID companyJti = UUID.fromString(tokenClaims(company).get("jti").asString());
+
+        UUID requestId = uuidV7(96_003);
+        RevocationFenceTarget target = RevocationFenceTarget.identity(user.identity().id());
+        UserSessionRevocationResult result = null;
+        for (int attempt = 0; attempt < 5; attempt++) {
+            result = userSessionRevocationService.revoke(requestId, target);
+            if (result.status() == UserSessionRevocationResult.Status.COMPLETED) break;
+        }
+        assertNotNull(result);
+        assertEquals(UserSessionRevocationResult.Status.COMPLETED, result.status());
+        assertEquals("1", redis.opsForValue().get(jtiRevocationKey(platformJti)));
+        assertEquals("1", redis.opsForValue().get(jtiRevocationKey(companyJti)));
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT count(*) FROM iam_refresh_token_families WHERE identity_id = ? AND revoked_at IS NULL",
+                Integer.class, user.identity().id()));
+    }
+
+    @Test
+    @Order(38)
+    void passwordRecoveryReplacesCredentialOnlyAfterGlobalRevocationAndNeverCreatesSession() throws Exception {
+        revocationIndexRecovery.recover();
+        String email = "password-recovery-http@example.test";
+        TestUser user = createUser(email, "Old-recovery-password-2026", true, Credential.REGULAR);
+        UUID tenant = uuidV7(96_101);
+        accessibleMemberships(user.identity().id(), membership(uuidV7(96_102), tenant, "Company"));
+        MvcResult platform = login(email, "Old-recovery-password-2026", "PLATFORM").andReturn();
+        MvcResult company = login(email, "Old-recovery-password-2026", "TENANT").andReturn();
+        UUID platformJti = UUID.fromString(tokenClaims(platform).get("jti").asString());
+        UUID companyJti = UUID.fromString(tokenClaims(company).get("jti").asString());
+        var http = unifiedConsole();
+        http.perform(consolePost("password-recovery-requests")
+                        .content("{\"email\":\"nobody-recovery@example.test\"}"))
+                .andExpect(status().isAccepted()).andExpect(jsonPath("$.status").value("ACCEPTED"))
+                .andExpect(header().doesNotExist("Set-Cookie"));
+        var material = recoveryTokens.issue();
+        var challenge = recoveryChallenges.replace(user.identity().id(), material.digest(), Instant.now());
+        assertEquals(1800, java.time.Duration.between(challenge.issuedAt(), challenge.expiresAt()).toSeconds());
+        MvcResult response = null;
+        for (int attempt = 0; attempt < 8; attempt++) {
+            response = http.perform(consolePost("password-recoveries")
+                            .content(new ObjectMapper().writeValueAsBytes(Map.of(
+                                    "token", material.token(), "newPassword", "New-recovery-password-2026"))))
+                    .andExpect(header().doesNotExist("Set-Cookie"))
+                    .andReturn();
+            if (response.getResponse().getStatus() == 200) break;
+            assertEquals(202, response.getResponse().getStatus());
+        }
+        assertNotNull(response);
+        assertEquals(200, response.getResponse().getStatus());
+        assertEquals("COMPLETED", json(response.getResponse().getContentAsByteArray()).get("status").asString());
+        assertEquals("1", redis.opsForValue().get(jtiRevocationKey(platformJti)));
+        assertEquals("1", redis.opsForValue().get(jtiRevocationKey(companyJti)));
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT count(*) FROM iam_refresh_token_families WHERE identity_id = ? AND revoked_at IS NULL",
+                Integer.class, user.identity().id()));
+        assertEquals(1, jdbc.queryForObject(
+                "SELECT count(*) FROM iam_outbox_events WHERE event_snapshot::text LIKE '%password.recovered.v1%' "
+                        + "AND ordering_key = ?", Integer.class, user.identity().id().toString()));
+        login(email, "Old-recovery-password-2026", "PLATFORM").andExpect(status().isUnauthorized());
+        login(email, "New-recovery-password-2026", "PLATFORM").andExpect(status().isOk());
+        http.perform(consolePost("password-recoveries")
+                        .content(new ObjectMapper().writeValueAsBytes(Map.of(
+                                "token", material.token(), "newPassword", "Another-password-2026"))))
+                .andExpect(status().isGone());
+    }
+
+    @Test
+    @Order(39)
+    void passwordRecoveryReturnsPendingWhenRevocationFailsAndResumesSameChallenge() throws Exception {
+        revocationIndexRecovery.recover();
+        String email = "password-recovery-retry@example.test";
+        TestUser user = createUser(email, "Old-recovery-password-2026", true, Credential.REGULAR);
+        MvcResult prior = login(email, "Old-recovery-password-2026", "PLATFORM").andReturn();
+        UUID priorJti = UUID.fromString(tokenClaims(prior).get("jti").asString());
+        var material = recoveryTokens.issue();
+        var challenge = recoveryChallenges.replace(user.identity().id(), material.digest(), Instant.now());
+        var http = unifiedConsole();
+        byte[] body = new ObjectMapper().writeValueAsBytes(Map.of(
+                "token", material.token(), "newPassword", "New-recovery-password-2026"));
+
+        setIamAppIssuanceUpdatePrivilege(false);
+        try {
+            http.perform(consolePost("password-recoveries").content(body))
+                    .andExpect(status().isAccepted())
+                    .andExpect(jsonPath("$.status").value("PENDING"))
+                    .andExpect(header().doesNotExist("Set-Cookie"));
+        } finally {
+            setIamAppIssuanceUpdatePrivilege(true);
+        }
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT count(*) FROM iam_outbox_events WHERE event_snapshot::text LIKE '%password.recovered.v1%' "
+                        + "AND ordering_key = ?", Integer.class, user.identity().id().toString()));
+        assertNotNull(recoveryChallenges.find(material.digest()).orElseThrow().startedAt());
+        assertEquals(null, recoveryChallenges.find(material.digest()).orElseThrow().completedAt());
+
+        MvcResult completed = null;
+        for (int attempt = 0; attempt < 8; attempt++) {
+            jdbc.update("UPDATE iam_user_session_revocations SET next_attempt_at = now() - interval '1 second' "
+                    + "WHERE revocation_request_id = ?", challenge.id());
+            completed = http.perform(consolePost("password-recoveries").content(body)).andReturn();
+            if (completed.getResponse().getStatus() == 200) break;
+            assertEquals(202, completed.getResponse().getStatus());
+        }
+        assertNotNull(completed);
+        assertEquals(200, completed.getResponse().getStatus());
+        assertEquals("1", redis.opsForValue().get(jtiRevocationKey(priorJti)));
+        assertNotNull(recoveryChallenges.find(material.digest()).orElseThrow().completedAt());
+        assertEquals(1, jdbc.queryForObject(
+                "SELECT count(*) FROM iam_outbox_events WHERE event_snapshot::text LIKE '%password.recovered.v1%' "
+                        + "AND ordering_key = ?", Integer.class, user.identity().id().toString()));
+    }
+
+    @Test
     @Order(37)
     void batchRevocationRecoversAfterPostgresFailureAndReleaseNeverRevivesOldTokens() throws Exception {
         revocationIndexRecovery.recover();
@@ -4151,6 +4300,23 @@ class AuthenticationHttpIT {
         }
     }
 
+    private static void tenantBrandAsset(UUID tenantId, UUID assetId, String kind) {
+        try (Connection connection = tenantAccessMigratorConnection();
+                PreparedStatement statement = connection.prepareStatement("""
+                        INSERT INTO tenant_brand_assets
+                            (id, tenant_id, kind, object_key, byte_size, width, height)
+                        VALUES (?, ?, ?, ?, 1, 1, 1)
+                        """)) {
+            statement.setObject(1, assetId);
+            statement.setObject(2, tenantId);
+            statement.setString(3, kind);
+            statement.setString(4, "iam-test/" + assetId);
+            statement.executeUpdate();
+        } catch (Exception exception) {
+            throw new IllegalStateException("无法准备 Tenant Brand Asset 权威数据", exception);
+        }
+    }
+
     private static UUID uuidV7(long suffix) {
         return UUID.fromString(String.format("0198c9d5-0f25-7000-8000-%012x", suffix));
     }
@@ -4330,7 +4496,7 @@ class AuthenticationHttpIT {
         oauthClients.createWithId(
                 OAuthClient.register(
                                 "iam-service",
-                                Set.of(OAuthScope.TENANT_ACCESS_MEMBERSHIP_READ),
+                                ReservedServiceClient.IAM.allowedScopes(),
                                 issuedAt)
                         .identifiedBy(IAM_SERVICE_CLIENT_ID),
                 ClientSecretDigest.fromPlaintext(IAM_SERVICE_CLIENT_SECRET),
@@ -4482,9 +4648,12 @@ class AuthenticationHttpIT {
             MyBatisIdentityRepository.class,
             AuthenticationController.class,
             OutboxPublisher.class
-    }, excludeFilters = @ComponentScan.Filter(
-            type = org.springframework.context.annotation.FilterType.ANNOTATION,
-            classes = org.springframework.boot.test.context.TestConfiguration.class))
+    }, excludeFilters = {
+            @ComponentScan.Filter(type = org.springframework.context.annotation.FilterType.ANNOTATION,
+                    classes = org.springframework.boot.test.context.TestConfiguration.class),
+            @ComponentScan.Filter(type = org.springframework.context.annotation.FilterType.ASSIGNABLE_TYPE,
+                    classes = PlatformAdministratorsController.class)
+    })
     @Import({AuthenticationConfiguration.class, PasswordSetupMailConfiguration.class,
             io.saas.forge.iam.config.OAuthClientManagementConfiguration.class})
     static class TestConfiguration {

@@ -1,0 +1,305 @@
+{
+  "schemaVersion": 1,
+  "issue": 240,
+  "kind": "stage4-fresh-progress",
+  "status": "incomplete",
+  "runId": "27bbf0b5-87a3-42aa-bc63-d67d3c7b248e",
+  "handoffSha256": "9eb2ada2c303d23a54d9a25c82bd859ef50e17f5d6bb612ae50b0a9dd35d8847",
+  "readyAt": "2026-10-16T03:25:35.699Z",
+  "expiresAt": "2026-10-25T03:25:35.699Z",
+  "backend": {
+    "commit": "acd19a9858c083b1a289128adf92602f5e2baada",
+    "jdkMajor": 17,
+    "sourceDirty": false,
+    "applicationCount": 7
+  },
+  "frontend": {
+    "commit": "9ebe8da3cc3b9fa93978f226fdb77abdbe5e608c",
+    "initialCommit": "a2b2c74f76d757487c44b608d13b8e119d10ea26",
+    "clientVersion": "0.6.0",
+    "chrome": "155.0.8059.85",
+    "sourceSha256": "4be3fd62fa90f06c1c522f63b74d8b16a68cb25e45fc719443689927bb79d15d",
+    "lockSha256": "6a8a13730d4290aa08c7a92ee54ae0b766aa25993e6ff4f51ea6e448ee8f427b",
+    "servedHtmlProvenanceVerified": true,
+    "previousVerifiedCommits": [
+      "3f6f5c683f764e31d131f585ab42f34baf134cf9",
+      "b57b9ffb17f7ed561b002008ec55995569d3f07e"
+    ]
+  },
+  "selectedEvidence": {
+    "handoff": {
+      "sha256": "9eb2ada2c303d23a54d9a25c82bd859ef50e17f5d6bb612ae50b0a9dd35d8847",
+      "status": "ready"
+    },
+    "tenantSeed": {
+      "sha256": "c3703028bd322bf33179742d9bb1158240c09c74307b2525cb1823e8fe545a01",
+      "status": "passed"
+    },
+    "manifestReview": {
+      "sha256": "c16008ec84f2ecb58fb840505a9d938e1052c0cd8b5a0de4ddfb661a31082b82",
+      "status": "passed"
+    },
+    "productChrome": {
+      "sha256": "dd0d7d377228d7f1d583e84bec010dfc02efcfd9b978d824ebda93843e3d6a8f",
+      "status": "passed",
+      "frontendCommit": "a2b2c74f76d757487c44b608d13b8e119d10ea26"
+    },
+    "tenantBBrandChrome": {
+      "sha256": "1da965078754eafa0a4b187a74ac614205d1139211aa1f4997a577b0761afacc",
+      "status": "passed",
+      "frontendCommit": "a2b2c74f76d757487c44b608d13b8e119d10ea26"
+    },
+    "brandIsolation": {
+      "sha256": "974a875aa43bb51034e2e7b91f4f5d3b77d6f757c985887e4df9b2552ef5ba65",
+      "status": "passed"
+    },
+    "invitation403": {
+      "sha256": "5698ede820eca347b7419edce652b0313f83b2813ec50e580d38e62d341f29d8",
+      "status": "passed"
+    },
+    "authority": {
+      "sha256": "97cbe5e83f91ceea00420e7c25f7ca5e93b9a1d60f14f7572882b389edb73b0c",
+      "status": "passed"
+    },
+    "auditLinked": {
+      "sha256": "7e1ca30edcca42413e2dad892ef0cf08c1a442602e6d4bb26ff25f2293e246c1",
+      "status": "passed"
+    },
+    "retentionBaseline": {
+      "sha256": "f135dddf74da27539758bb0e6d82562fc7525859ca5e9de3c49d1b67cf921c47",
+      "status": "passed"
+    },
+    "productChromeCurrent": {
+      "sha256": "dfe41d5f416b1b006f45bf48213f41659914ddfb04243768f3a7217b1e8d2cf7",
+      "status": "passed",
+      "frontendCommit": "3f6f5c683f764e31d131f585ab42f34baf134cf9"
+    },
+    "tenantBBrandChromeCurrent": {
+      "sha256": "3e0fb7352fe8a19ec778fcb98fe9cd5c74a1414aed1f0bc625fb20b46942d5c3",
+      "status": "passed",
+      "frontendCommit": "3f6f5c683f764e31d131f585ab42f34baf134cf9"
+    },
+    "brandIsolationCurrent": {
+      "sha256": "42aabaca5e1d6765533867a6a8e18d5ea02f37e5652321b7db5e03d75edbc620",
+      "status": "passed"
+    },
+    "passwordRecoveryCurrent": {
+      "sha256": "f46b19bfb4d41f4113be709a5150a6a0c4c8ece2933ee297b37041f9a743a2f6",
+      "status": "passed",
+      "frontendCommit": "3f6f5c683f764e31d131f585ab42f34baf134cf9"
+    },
+    "browserSmokeCurrent": {
+      "sha256": "3bdfbd1b2c1fe063e64d28fe1d38759aa85fb1cb940d068bbf0834e2c59ffc64",
+      "status": "passed",
+      "checks": 9,
+      "frontendCommit": "3f6f5c683f764e31d131f585ab42f34baf134cf9"
+    },
+    "permissionRevocation": {
+      "sha256": "87be6371b4176e169c924f3541d4c7a8fc3d30061ab396069c5bfe1b41f53e4c",
+      "status": "passed"
+    },
+    "membershipDisableEnable": {
+      "sha256": "ccac6f5a74e4c50279ecece1ba9339b1319645dcae3056d1755d1208a46bc7f6",
+      "status": "passed"
+    },
+    "platformRoleRevoke": {
+      "sha256": "b2333c36b9c0f40bbd430d34a4d34e03fc67486b72a21ba925de8052a8141e77",
+      "status": "passed"
+    },
+    "wrongIdentityInvitation": {
+      "sha256": "fb77831de372005778ab24a7fb66d5748d38fd30cb2449fd761b22cb72ff6287",
+      "status": "passed"
+    },
+    "multiContextLogin": {
+      "sha256": "8d7e69016a9ce601b9c4d3a9752ed7ac3649c738ca85c1ce420da8be1913128f",
+      "status": "passed"
+    },
+    "browserSmoke9ebe": {
+      "sha256": "076ae0c0828f0c0324ffc10995d0196d274f1a9144211da0285809982d1412c2",
+      "status": "passed",
+      "checks": 9,
+      "frontendCommit": "9ebe8da3cc3b9fa93978f226fdb77abdbe5e608c"
+    },
+    "browserOrganizationAndDelegation9ebe": {
+      "sha256": "08ca5619fa76842a7162e729eac6cd6cbe0b9bf3d8c2c4511b683c7f8cd8573c",
+      "status": "passed",
+      "checks": 2,
+      "frontendCommit": "9ebe8da3cc3b9fa93978f226fdb77abdbe5e608c"
+    },
+    "projectRemote9ebe": {
+      "sha256": "3040f3b3412c793ed903f988cb8a328ad0c6bc0437ac5cb55c63a371a01457e3",
+      "status": "passed",
+      "checks": 11,
+      "frontendCommit": "9ebe8da3cc3b9fa93978f226fdb77abdbe5e608c"
+    },
+    "auditOutboxRetryAndRollback": {
+      "sha256": "a286894a00fb074740f26fad3c6102ff90efee606d477405358ead2224514fde",
+      "status": "passed",
+      "checks": 2,
+      "driverCommit": "653a16fb6f6b07e4038b8a7e0d17317056a19061"
+    },
+    "authorityDisposableClosure": {
+      "sha256": "62c9a8114d88652a1749ac5beff6b0006d6eb45c16265e0cfc67bf53d0addad4",
+      "status": "passed",
+      "driverCommit": "ffa5fe4f33a943b529f7be10d0672a8da9ce881a"
+    },
+    "authorityDisposableClosureRecovery": {
+      "sha256": "cc86c16351e28c10d83d09a883d1b6e4283c787f38b15d4bac8a45ccc0beb6f8",
+      "status": "passed",
+      "driverCommit": "ffa5fe4f33a943b529f7be10d0672a8da9ce881a"
+    },
+    "authorityInvitationCompensation": {
+      "sha256": "2ec7c742a3324f9dde2d394e63b2faee25885de2722cbdb13cd04995695745a1",
+      "status": "passed",
+      "driverCommit": "ffa5fe4f33a943b529f7be10d0672a8da9ce881a"
+    },
+    "productChrome9ebe": {
+      "sha256": "d91960b09634368c93f986cd83e70ddd9a5b927e56054204b6c825392ced674b",
+      "status": "passed",
+      "checks": 4,
+      "frontendCommit": "9ebe8da3cc3b9fa93978f226fdb77abdbe5e608c"
+    },
+    "tenantBBrandChrome9ebe": {
+      "sha256": "022b3e1221cd7c7c38211f4a5541421de349ef7a4fe00e6e9575f9b06861ee84",
+      "status": "passed",
+      "checks": 4,
+      "frontendCommit": "9ebe8da3cc3b9fa93978f226fdb77abdbe5e608c"
+    },
+    "brandIsolation9ebe": {
+      "sha256": "0e2dc1a0788b9f063da8aa7fc2b5d6a6ade29399c6339bde21d28cad6cd0c754",
+      "status": "passed",
+      "profiles": 2,
+      "publicPngs": 4
+    },
+    "auditLinkedCurrentFrontend": {
+      "sha256": "448fae8078eb91e2880cb8638c0bd572e918401138bff62d361dcefa338f7610",
+      "status": "passed",
+      "checks": 22,
+      "scope": "linked-observations-only",
+      "driverCommit": "3be7895d3b48e7509b0568f99ca02c2a88a4e9e4"
+    },
+    "passwordRecovery9ebe": {
+      "sha256": "1f3fd4ff32825d69872405a916a3b92c812b2fe72dc6a0046e71388581aee551",
+      "status": "passed",
+      "checks": 7,
+      "frontendCommit": "9ebe8da3cc3b9fa93978f226fdb77abdbe5e608c"
+    },
+    "localUiVerify9ebe": {
+      "status": "passed",
+      "checks": 34,
+      "command": "pnpm run verify:ui",
+      "frontendCommit": "9ebe8da3cc3b9fa93978f226fdb77abdbe5e608c",
+      "scope": "frontend-local-ui-supporting-only"
+    },
+    "active24hRetention": {
+      "sha256": "9ceedc1f33166c686fbdc73375f88ffc0a76f6d8d7ebc3dfdeace667ac17cbc3",
+      "status": "passed",
+      "scope": "ACTIVE unbound asset only"
+    }
+  },
+  "retention": {
+    "activeUnboundUploadedAt": "2026-10-16T03:28:13.681049+00:00",
+    "disabledUnboundDisabledAt": "2026-10-16T03:28:05.100027+00:00",
+    "clockOrRowsAltered": false,
+    "status": "active-24h-passed-disabled-7d-pending",
+    "preDueProbes": {
+      "driverCommit": "1451ba40c2010c5c1d135b4278095d61cee59071",
+      "active": {
+        "sha256": "55cc6e41c9788a2d4072e8ba5f45814c3c12650ab1912630c42c293e83e0ae53",
+        "status": "waiting",
+        "databaseStatus": "ACTIVE",
+        "s3ObjectState": "present",
+        "publicHttpStatus": 200
+      },
+      "disabled": {
+        "sha256": "16099873e6b40be7e225fc64be8982700ad9b2998b5a409e357b76932af7841b",
+        "status": "waiting",
+        "databaseStatus": "DISABLED",
+        "s3ObjectState": "present",
+        "publicHttpStatus": 404
+      }
+    },
+    "active24h": {
+      "status": "passed",
+      "evidenceSha256": "9ceedc1f33166c686fbdc73375f88ffc0a76f6d8d7ebc3dfdeace667ac17cbc3",
+      "dueAt": "2026-10-17T03:28:13.681Z",
+      "removedAt": "2026-10-17T03:45:19.681232+00:00",
+      "publicHttpStatus": 404,
+      "s3ObjectState": "absent",
+      "sourceOutboxRows": 1,
+      "persistentAuditRows": 1
+    }
+  },
+  "fullSuites": {
+    "browser": {
+      "required": 11,
+      "status": "not_run"
+    },
+    "authority": {
+      "required": 11,
+      "status": "not_run"
+    },
+    "audit": {
+      "required": 4,
+      "status": "not_run"
+    }
+  },
+  "ci": {
+    "backendVerify": {
+      "status": "passed",
+      "url": "https://github.com/crane199709/saas-forge/actions/runs/38844793329"
+    },
+    "apiClientArtifact": {
+      "status": "passed",
+      "url": "https://github.com/crane199709/saas-forge/actions/runs/38847391072",
+      "commit": "acd19a9858c083b1a289128adf92602f5e2baada"
+    },
+    "frontendVerify": {
+      "status": "passed",
+      "url": "https://github.com/crane199709/saas-forge-web/actions/runs/38856794738",
+      "commit": "9ebe8da3cc3b9fa93978f226fdb77abdbe5e608c",
+      "historicalPassed": {
+        "commit": "b57b9ffb17f7ed561b002008ec55995569d3f07e",
+        "url": "https://github.com/crane199709/saas-forge-web/actions/runs/38849056406"
+      }
+    }
+  },
+  "conclusion": "Same-run selected Chrome, Authority and Audit fault paths plus ACTIVE unbound 24-hour retention passed; full 11/11/4 suites and DISABLED seven-day retention remain incomplete.",
+  "frontendTransition": {
+    "reason": "Password recovery and Remote draft race fixes, followed by the role permission error display fix",
+    "backendHandoffAndApplicationContainerIdsUnchanged": true,
+    "earlierBrowserReportsCountOnlyForTheirRecordedFrontendCommits": true
+  },
+  "diagnostics": [
+    {
+      "name": "browser-core-first-formal-run",
+      "status": "failed",
+      "sha256": "278be4fc512f5e2d30017c0a237ab4f051d9a05332f9dcb02722b1955ac7ebe9",
+      "resolution": "exact test assignments cleared; clean formal rerun passed 2/2"
+    },
+    {
+      "name": "closure-recovery-initial-window",
+      "status": "failed",
+      "sha256": "67619a1aa9113486423746b9eacc67fd92af0f4df4401b40ef357b35ad90a6fd",
+      "resolution": "closure completed before IAM pause; new disposable tenant used"
+    },
+    {
+      "name": "closure-recovery-container-fault",
+      "status": "failed",
+      "sha256": "988b2931d5b67d4af1ea87e101ef8b53cc3fe7def0963e45893091d87eea9064",
+      "resolution": "gRPC call timed out; IAM restored; tenant-scoped database fault passed on a new disposable tenant"
+    },
+    {
+      "name": "current-frontend-audit-first-link",
+      "status": "failed",
+      "sha256": "142295952e372cd51d15adba082a5cf8eac46c9e9072c169d52d13080810d607",
+      "resolution": "adjacent associations shared actor and membership; exact recorded unit and role IDs disambiguated 22 links"
+    },
+    {
+      "name": "current-frontend-recovery-wrong-mailpit-port",
+      "status": "failed",
+      "sha256": "f447dc844048b99e8aa68667c044e9942cfb64d6a3a9c57535f8810a503d4905",
+      "resolution": "verified isolated Mailpit host port 60118; current-frontend rerun passed 7/7"
+    }
+  ]
+}

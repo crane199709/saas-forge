@@ -1,6 +1,9 @@
 saas.forge:
   tenant-access:
-    configuration-revision: "5"
+    configuration-revision: "6"
+    invitation:
+      smtp:
+        starttls: false
     outbox:
       publish-delay: PT1S
       lease-duration: PT30S

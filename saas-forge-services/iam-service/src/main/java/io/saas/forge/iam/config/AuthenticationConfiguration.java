@@ -24,6 +24,10 @@ import io.saas.forge.iam.application.authentication.PasswordSetupDeliveryService
 import io.saas.forge.iam.application.authentication.PasswordSetupDeliveryTransaction;
 import io.saas.forge.iam.application.authentication.PasswordSetupMailer;
 import io.saas.forge.iam.application.authentication.PasswordSetupService;
+import io.saas.forge.iam.application.authentication.PasswordRecoveryService;
+import io.saas.forge.iam.application.authentication.PasswordRecoveryMailer;
+import io.saas.forge.iam.application.authentication.PasswordRecoveredEventFactory;
+import io.saas.forge.iam.application.authentication.PasswordRecoveryWorker;
 import io.saas.forge.iam.application.authentication.RefreshTokenIssuer;
 import io.saas.forge.iam.application.authentication.RevocationIndex;
 import io.saas.forge.iam.application.authentication.RevocationIndexRecovery;
@@ -70,6 +74,8 @@ import io.saas.forge.iam.domain.signing.SigningKeyRepository;
 import io.saas.forge.iam.infrastructure.grpc.GrpcAccessibleMemberships;
 import io.saas.forge.iam.infrastructure.security.RedisLoginProtection;
 import io.saas.forge.iam.infrastructure.security.RedisRevocationIndex;
+import io.saas.forge.iam.infrastructure.security.RedisPasswordRecoveryRateLimiter;
+import io.saas.forge.iam.infrastructure.persistence.PasswordRecoveryRepository;
 import io.saas.forge.iam.infrastructure.security.RedisRefreshRotationLease;
 import io.saas.forge.iam.infrastructure.security.NimbusPresentedAccessTokenVerifier;
 import io.saas.forge.iam.api.BrowserRequestSecurity;
@@ -86,6 +92,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import io.grpc.Channel;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -377,6 +385,38 @@ public class AuthenticationConfiguration {
     @Bean
     UserSessionRevocationWorker userSessionRevocationWorker(UserSessionRevocationService service) {
         return new UserSessionRevocationWorker(service);
+    }
+
+    @Bean
+    RedisPasswordRecoveryRateLimiter passwordRecoveryRateLimiter(StringRedisTemplate redis,
+            @Value("${saas.forge.environment:dev}") String environment,
+            @Value("${security.password-recovery.maximum-requests:3}") int maximumRequests,
+            @Value("${security.password-recovery.request-window:PT1H}") Duration requestWindow) {
+        return new RedisPasswordRecoveryRateLimiter(redis, environment, maximumRequests, requestWindow);
+    }
+
+    @Bean
+    PasswordRecoveredEventFactory passwordRecoveredEventFactory(ObjectMapper json, UuidV7Generator ids,
+            @Value("${saas.forge.environment:dev}") String environment) {
+        return new PasswordRecoveredEventFactory(json, ids, environment);
+    }
+
+    @Bean
+    PasswordRecoveryService passwordRecoveryService(PasswordRecoveryRepository challenges,
+            IdentityRepository identities, RevocationFenceRepository fences, PasswordSetupChallengeIssuer tokens,
+            PasswordRecoveryMailer mailer, RedisPasswordRecoveryRateLimiter rateLimiter,
+            PasswordPolicy policy, CompromisedPasswordChecker compromised, PasswordVerifier verifier,
+            UserSessionRevocationTransaction revocationTransaction, UserSessionRevocationService revocations,
+            UserSessionRevocationRepository workflows, OutboxEventRepository outbox,
+            PasswordRecoveredEventFactory events, PlatformTransactionManager manager, Clock clock) {
+        return new PasswordRecoveryService(challenges, identities, fences, tokens, mailer, rateLimiter,
+                policy, compromised, verifier, revocationTransaction, revocations, workflows, outbox,
+                events, new TransactionTemplate(manager), clock);
+    }
+
+    @Bean
+    PasswordRecoveryWorker passwordRecoveryWorker(PasswordRecoveryService service) {
+        return new PasswordRecoveryWorker(service);
     }
 
     @Bean

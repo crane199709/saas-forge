@@ -42,6 +42,20 @@ public class AuditConsumerTopology {
         throw new IllegalArgumentException("消息不属于已配置的 Audit Consumer Topic");
     }
 
+    public String consumerName(String inputTopic, Throwable failure) {
+        if (iamInputTopic.equals(inputTopic)) {
+            Throwable current = failure;
+            while (current != null) {
+                if (current instanceof org.springframework.kafka.listener.ListenerExecutionFailedException listener
+                        && IamPasswordEventValidator.CONSUMER_NAME.equals(listener.getGroupId())) {
+                    return IamPasswordEventValidator.CONSUMER_NAME;
+                }
+                current = current.getCause();
+            }
+        }
+        return consumerName(inputTopic);
+    }
+
     public String isolationTopic(String inputTopic) {
         if (iamInputTopic.equals(inputTopic)) {
             return iamIsolationTopic;

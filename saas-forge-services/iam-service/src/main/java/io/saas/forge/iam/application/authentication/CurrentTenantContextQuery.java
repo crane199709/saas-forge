@@ -24,7 +24,8 @@ public final class CurrentTenantContextQuery {
             throw new AccessContextUnavailableException();
         }
         try {
-            if (revocations.isTokenRevoked(claims.jti(), claims.kid())) {
+            if (revocations.isTokenRevoked(claims.jti(), claims.kid())
+                    || revocations.isIdentityFenced(claims.identityId())) {
                 throw new UserAccessTokenInvalidException();
             }
             if (revocations.isUserTokenFenced(

@@ -6,6 +6,7 @@ import io.saas.forge.tenantaccess.application.administrator.ResendAdministratorP
 import io.saas.forge.tenantaccess.application.administrator.TenantAdministratorInitializationResult;
 import io.saas.forge.tenantaccess.application.tenant.RecoverableTenantCreationService;
 import io.saas.forge.tenantaccess.application.tenant.TenantQueryService;
+import io.saas.forge.tenantaccess.application.tenant.TenantDetailsService;
 import io.saas.forge.tenantaccess.contract.model.TenantPage;
 import io.saas.forge.tenantaccess.contract.model.TenantCreationRecovery;
 import io.saas.forge.tenantaccess.contract.model.TenantCreationPage;
@@ -14,6 +15,7 @@ import io.saas.forge.tenantaccess.application.tenant.TenantLifecycleResult;
 import io.saas.forge.tenantaccess.application.tenant.TenantLifecycleService;
 import io.saas.forge.tenantaccess.contract.api.PlatformTenantsApi;
 import io.saas.forge.tenantaccess.contract.model.CreateTenantRequest;
+import io.saas.forge.tenantaccess.contract.model.UpdateTenantRequest;
 import io.saas.forge.tenantaccess.contract.model.AdministratorInitializationRequest;
 import io.saas.forge.tenantaccess.contract.model.Tenant;
 import io.saas.forge.tenantaccess.contract.model.TenantStatus;
@@ -42,6 +44,7 @@ public class TenantCreationController implements PlatformTenantsApi {
     private final ResendAdministratorPasswordSetupService administratorPasswordSetup;
     private final TenantLifecycleService tenantLifecycle;
     private final TenantQueryService tenantQueries;
+    private final TenantDetailsService tenantDetails;
     private final io.saas.forge.tenantaccess.application.administrator.AdministratorInitializationQueryService initializationQueries;
 
     private final io.saas.forge.tenantaccess.application.administrator.AdministratorPasswordSetupQueryService notificationQueries;
@@ -55,15 +58,30 @@ public class TenantCreationController implements PlatformTenantsApi {
             TenantLifecycleService tenantLifecycle,
             TenantQueryService tenantQueries,
             io.saas.forge.tenantaccess.application.administrator.AdministratorInitializationQueryService initializationQueries,
-            io.saas.forge.tenantaccess.application.administrator.AdministratorPasswordSetupQueryService notificationQueries) {
+            io.saas.forge.tenantaccess.application.administrator.AdministratorPasswordSetupQueryService notificationQueries,
+            TenantDetailsService tenantDetails) {
         this.authorizer = authorizer;
         this.tenantCreation = tenantCreation;
         this.administratorInitialization = administratorInitialization;
         this.administratorPasswordSetup = administratorPasswordSetup;
         this.tenantLifecycle = tenantLifecycle;
         this.tenantQueries = tenantQueries;
+        this.tenantDetails = tenantDetails;
         this.initializationQueries = initializationQueries;
         this.notificationQueries = notificationQueries;
+    }
+
+    public TenantCreationController(
+            PlatformAdminAuthorizer authorizer,
+            RecoverableTenantCreationService tenantCreation,
+            InitializeTenantAdministratorService administratorInitialization,
+            ResendAdministratorPasswordSetupService administratorPasswordSetup,
+            TenantLifecycleService tenantLifecycle,
+            TenantQueryService tenantQueries,
+            io.saas.forge.tenantaccess.application.administrator.AdministratorInitializationQueryService initializationQueries,
+            io.saas.forge.tenantaccess.application.administrator.AdministratorPasswordSetupQueryService notificationQueries) {
+        this(authorizer, tenantCreation, administratorInitialization, administratorPasswordSetup,
+                tenantLifecycle, tenantQueries, initializationQueries, notificationQueries, null);
     }
 
     public TenantCreationController(
@@ -198,6 +216,17 @@ public class TenantCreationController implements PlatformTenantsApi {
                 .body(toResponse(tenantQueries.get(tenantId)));
     }
 
+    @Override
+    public ResponseEntity<Tenant> updatePlatformTenant(
+            UUID tenantId, UUID idempotencyKey, UpdateTenantRequest body) {
+        HttpServletRequest request = currentRequest();
+        UUID actor = authorizer.authorize(request.getHeader(HttpHeaders.AUTHORIZATION));
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore())
+                .body(toResponse(tenantDetails.update(actor, idempotencyKey, tenantId,
+                        body.getDisplayName(), body.getExpiresAt() == null ? null : body.getExpiresAt().toInstant(),
+                        traceId(request))));
+    }
+
     private static Tenant toResponse(io.saas.forge.tenantaccess.domain.tenant.Tenant tenant) {
         return new Tenant(tenant.id(), tenant.displayName(), TenantStatus.valueOf(tenant.status().name()),
                 asUtc(tenant.expiresAt()), asUtc(tenant.createdAt()), asUtc(tenant.updatedAt()));
@@ -212,6 +241,21 @@ public class TenantCreationController implements PlatformTenantsApi {
     }
 
     @Override
+    public ResponseEntity<Tenant> closeTenant(UUID tenantId, UUID idempotencyKey) {
+        HttpServletRequest request = currentRequest();
+        UUID actor = authorizer.authorize(request.getHeader(HttpHeaders.AUTHORIZATION));
+        return ResponseEntity.ok(toResponse(tenantLifecycle.close(actor, idempotencyKey, tenantId, traceId(request))));
+    }
+
+    @Override
+    public ResponseEntity<Tenant> recoverTenantClosure(UUID tenantId, UUID idempotencyKey) {
+        HttpServletRequest request = currentRequest();
+        UUID actor = authorizer.authorize(request.getHeader(HttpHeaders.AUTHORIZATION));
+        return ResponseEntity.ok(toResponse(tenantLifecycle.recoverClosure(
+                actor, idempotencyKey, tenantId, traceId(request))));
+    }
+
+    @Override
     public ResponseEntity<io.saas.forge.tenantaccess.contract.model.TenantLifecycle> getTenantLifecycle(UUID tenantId) {
         authorizer.authorize(currentRequest().getHeader(HttpHeaders.AUTHORIZATION));
         var value = tenantLifecycle.read(tenantId);
@@ -220,7 +264,8 @@ public class TenantCreationController implements PlatformTenantsApi {
                 .action(value.action() == null ? null : io.saas.forge.tenantaccess.contract.model.TenantLifecycle.ActionEnum.fromValue(value.action()))
                 .state(io.saas.forge.tenantaccess.contract.model.TenantLifecycle.StateEnum.fromValue(value.state()))
                 .canSuspend(value.canSuspend()).canResume(value.canResume())
-                .canRecoverSuspension(value.canRecoverSuspension()).canContinue(value.canContinue());
+                .canRecoverSuspension(value.canRecoverSuspension()).canContinue(value.canContinue())
+                .canClose(value.canClose()).canRecoverClosure(value.canRecoverClosure());
         return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(response);
     }
 

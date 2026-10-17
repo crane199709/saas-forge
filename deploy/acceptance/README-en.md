@@ -18,7 +18,9 @@ This directory provides the minimum saas-forge local runtime topology for develo
 - Redis, single-node KRaft Kafka, single-node Nacos, and the OpenTelemetry Collector
 - Separate named volumes for PostgreSQL, Redis, and Kafka
 
-S3-compatible object storage is outside this topology. Per [ADR 0036](../../docs/adr/0036-tenant-access-owns-controlled-tenant-brand-profiles.md) a minimal capability arrives in phase 4 with tenant brand assets, and phase 6 reuses it for audit exports behind a separate storage boundary. The Collector currently uses only the `debug` exporter; Prometheus, Loki, Tempo, and Grafana are not deployed.
+The default topology does not start S3-compatible object storage. Phase 4 brand asset acceptance adds `brand-storage.override.yaml`, with a private bucket, restricted application identity, and separate volume. Phase 6 audit exports require a separate storage boundary under [ADR 0036](../../docs/adr/0036-tenant-access-owns-controlled-tenant-brand-profiles.md). The Collector currently uses only the `debug` exporter; Prometheus, Loki, Tempo, and Grafana are not deployed.
+
+For brand asset acceptance, run `docker compose -f compose.yaml -f brand-storage.override.yaml up --build` in this directory's isolated Compose project. First set `SF_BRAND_ROOT_ACCESS_KEY_FILE`, `SF_BRAND_ROOT_SECRET_KEY_FILE`, `SF_BRAND_APP_ACCESS_KEY_FILE`, and `SF_BRAND_APP_SECRET_KEY_FILE` to restricted file paths outside the repository; never put their contents in `.env`. The overlay starts Tenant Access only after bucket and restricted identity initialization succeeds. To include Remote and Example, add `stage3.override.yaml` before the brand overlay.
 
 ## Start the stack
 

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://saas.forge.io/contracts/events/tenant-details-updated.v1.schema.json",
+  "title": "Tenant Details Updated v1",
+  "allOf": [
+    { "$ref": "cloudevents-envelope.v1.schema.json" },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "com.saas.forge.tenant.details-updated.v1" },
+        "source": { "const": "urn:saas.forge:tenant-access-service" },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tenantId", "actorIdentityId", "displayName", "expiresAt"],
+          "properties": {
+            "tenantId": { "$ref": "#/$defs/uuidV7" },
+            "actorIdentityId": { "$ref": "#/$defs/uuidV7" },
+            "displayName": { "type": "string", "minLength": 1, "maxLength": 200 },
+            "expiresAt": { "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }] }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "uuidV7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    }
+  }
+}

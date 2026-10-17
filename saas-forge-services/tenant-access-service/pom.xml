@@ -20,12 +20,24 @@
 
     <dependencies>
         <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>saas-forge-spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>saas-forge-service-discovery</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -167,7 +179,7 @@
                             <apiPackage>io.saas.forge.tenantaccess.contract.api</apiPackage>
                             <modelPackage>io.saas.forge.tenantaccess.contract.model</modelPackage>
                             <generateApis>true</generateApis>
-                            <apisToGenerate>PlatformTenants</apisToGenerate>
+                            <apisToGenerate>PlatformTenants,Organization,BrandAssets,BrandProfiles,Invitations,Members,Permissions,PlatformBrandPolicy,TenantRoles</apisToGenerate>
                             <generateModels>true</generateModels>
                             <generateSupportingFiles>true</generateSupportingFiles>
                             <generateApiTests>false</generateApiTests>

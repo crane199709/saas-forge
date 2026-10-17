@@ -66,6 +66,7 @@ public class MyBatisUserSessionRevocationRepository implements UserSessionRevoca
             UserSessionRevocationWorkflow workflow, int batchSize, Instant at) {
         List<UserSessionRevocationCandidateRow> rows = mapper.findCandidates(
                 workflow.target().type().name(), workflow.target().tenantId(), workflow.target().membershipId(),
+                workflow.target().identityId(),
                 workflow.cursorFamilyId(), IamTime.asOffsetDateTime(at), batchSize);
         LinkedHashSet<UUID> scanned = new LinkedHashSet<>();
         LinkedHashSet<UUID> families = new LinkedHashSet<>();
@@ -135,10 +136,11 @@ public class MyBatisUserSessionRevocationRepository implements UserSessionRevoca
     }
 
     private static UserSessionRevocationWorkflow toDomain(UserSessionRevocationRow row) {
-        RevocationFenceTarget target = RevocationFenceTargetType.valueOf(row.getTargetType())
-                == RevocationFenceTargetType.TENANT
-                ? RevocationFenceTarget.tenant(row.getTenantId())
-                : RevocationFenceTarget.membership(row.getMembershipId(), row.getTenantId());
+        RevocationFenceTarget target = switch (RevocationFenceTargetType.valueOf(row.getTargetType())) {
+            case TENANT -> RevocationFenceTarget.tenant(row.getTenantId());
+            case MEMBERSHIP -> RevocationFenceTarget.membership(row.getMembershipId(), row.getTenantId());
+            case IDENTITY -> RevocationFenceTarget.identity(row.getIdentityId());
+        };
         return new UserSessionRevocationWorkflow(row.getRevocationRequestId(), target,
                 UserSessionRevocationStatus.valueOf(row.getRevocationStatus()), row.getCursorFamilyId(),
                 row.getRevokedFamilyCount(), row.getRevokedJtiCount(), row.getAttemptCount(),

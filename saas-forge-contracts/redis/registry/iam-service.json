@@ -63,7 +63,7 @@
       "id": "iam.user-session-revocation-fence.v1",
       "schemaVersion": 1,
       "keyPattern": "sf:<environment>:iam-service:user-session-revocation-fence:v1:<target_type>:<target_uuid>",
-      "purpose": "在按 Membership 或 Tenant 批量撤销期间拒绝目标范围的 User Access Token 签发和使用",
+      "purpose": "在按 Membership、Tenant 或 Identity 批量撤销期间拒绝目标范围的 User Access Token 签发和使用",
       "writer": "iam-service",
       "readers": ["iam-service", "gateway", "saas-forge-spring-boot-starter"],
       "valueFormat": "string",
@@ -71,11 +71,30 @@
         "mode": "authority-expiry",
         "expression": "ACTIVE Fence 无 TTL，仅在持久 Fence 解除且 revocationRequestId 匹配时条件删除"
       },
-      "maxCardinality": "当前处于 ACTIVE 状态的 Membership 和 Tenant Fence 数量",
-      "identifierPolicy": "target_type 只允许 membership 或 tenant；target_uuid 与值都使用规范 UUIDv7，不包含 Token、邮箱或 Secret",
+      "maxCardinality": "当前处于 ACTIVE 状态的 Membership、Tenant 和 Identity Fence 数量",
+      "identifierPolicy": "target_type 只允许 membership、tenant 或 identity；target_uuid 与值都使用规范 UUIDv7，不包含 Token、邮箱或 Secret",
       "invalidation": "IAM 仅在校验原 revocationRequestId 后使用 Lua 条件删除；Redis 恢复时从 PostgreSQL 重建 ACTIVE Fence",
       "failurePolicy": "fail-closed",
       "migrationStrategy": "不兼容变更创建新 schemaVersion，所有签发与验证方完成并行读取后才解除旧版 Fence",
+      "containsRawSensitiveData": false
+    },
+    {
+      "id": "iam.password-recovery-request.v1",
+      "schemaVersion": 1,
+      "keyPattern": "sf:<environment>:iam-service:password-recovery-request:v1:<email_sha256>",
+      "purpose": "限制同一规范化邮箱在固定窗口内的公开 Password Recovery 申请次数",
+      "writer": "iam-service",
+      "readers": ["iam-service"],
+      "valueFormat": "integer",
+      "ttl": {
+        "mode": "configured",
+        "expression": "security.password-recovery.request-window"
+      },
+      "maxCardinality": "一个窗口内申请恢复的不同规范化邮箱数",
+      "identifierPolicy": "仅使用规范化邮箱 SHA-256 摘要，不保存原始邮箱或 Token",
+      "invalidation": "TTL 到期自动删除",
+      "failurePolicy": "fail-closed",
+      "migrationStrategy": "不兼容变更创建新 schemaVersion",
       "containsRawSensitiveData": false
     },
     {

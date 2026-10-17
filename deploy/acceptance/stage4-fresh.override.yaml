@@ -1,0 +1,10 @@
+# Stage 4 的完整恢复路径使用与 dev Nacos 一致的 PT1S 重试频率。
+# Tenant lifecycle E2E 为可控故障注入把这两个 worker 延迟到 PT1H；
+# 本覆盖文件必须排在该 E2E 覆盖文件之后，覆盖仅用于故障注入的值。
+services:
+  iam-service:
+    environment:
+      SAAS_FORGE_IAM_SESSION_REVOCATION_WORKER_DELAY: PT1S
+  tenant-access-service:
+    environment:
+      SAAS_FORGE_TENANT_ACCESS_LIFECYCLE_RECOVERY_DELAY: PT1S

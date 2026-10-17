@@ -9,6 +9,7 @@ public class RevocationFenceRow {
     private UUID targetId;
     private UUID tenantId;
     private UUID membershipId;
+    private UUID identityId;
     private String fenceStatus;
     private OffsetDateTime establishedAt;
     private OffsetDateTime releasedAt;
@@ -23,6 +24,8 @@ public class RevocationFenceRow {
     public void setTenantId(UUID tenantId) { this.tenantId = tenantId; }
     public UUID getMembershipId() { return membershipId; }
     public void setMembershipId(UUID membershipId) { this.membershipId = membershipId; }
+    public UUID getIdentityId() { return identityId; }
+    public void setIdentityId(UUID identityId) { this.identityId = identityId; }
     public String getFenceStatus() { return fenceStatus; }
     public void setFenceStatus(String fenceStatus) { this.fenceStatus = fenceStatus; }
     public OffsetDateTime getEstablishedAt() { return establishedAt; }

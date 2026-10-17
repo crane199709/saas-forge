@@ -67,6 +67,7 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     private static JdbcTemplate admin;
     private static JdbcTemplate app;
     private static IamSessionKafkaConsumer listener;
+    private static IamPasswordKafkaConsumer passwordListener;
     private static TenantAccessKafkaConsumer tenantListener;
     private static ExampleFactKafkaConsumer exampleListener;
     private static SimpleMeterRegistry meters;
@@ -118,7 +119,12 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
         var sessionStarted = new SessionStartedEventValidator(objectMapper, TOPIC);
         var tenantContextSwitched = new TenantContextSwitchedEventValidator(objectMapper, TOPIC);
         listener = new IamSessionKafkaConsumer(
-                new IamSessionEventValidator(objectMapper, sessionStarted, tenantContextSwitched), service);
+                new IamSessionEventValidator(objectMapper, sessionStarted, tenantContextSwitched,
+                        new PasswordRecoveredEventValidator(objectMapper, TOPIC),
+                        new PlatformAdminGrantedEventValidator(objectMapper, TOPIC),
+                        new PlatformAdminRevokedEventValidator(objectMapper, TOPIC)), service);
+        passwordListener = new IamPasswordKafkaConsumer(
+                new IamPasswordEventValidator(objectMapper, TOPIC), service, objectMapper);
         var tenantCreated = new TenantCreatedEventValidator(objectMapper, TENANT_TOPIC);
         meters = new SimpleMeterRegistry();
         tenantListener = new TenantAccessKafkaConsumer(
@@ -136,6 +142,130 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
     @AfterAll
     static void closeIsolationProducer() {
         isolationProducerFactory.destroy();
+    }
+
+    @Test
+    void setupSuccessFactsArePersistedOnceByRegisteredPasswordConsumer() {
+        String delivered = IamPasswordEventValidatorTest.delivered();
+        String established = IamPasswordEventValidatorTest.established().replace(
+                IamPasswordEventValidatorTest.EVENT, uuidV7(999));
+        try (KafkaConsumer<String, String> kafka = consumer("audit-password-setup-" + UUID.randomUUID())) {
+            seekToEnd(kafka);
+            send(IamPasswordEventValidatorTest.IDENTITY, delivered);
+            ConsumerRecord<String, String> first = pollOne(kafka);
+            passwordListener.consume(first, kafka::commitSync);
+            passwordListener.consume(first, () -> {});
+            send(IamPasswordEventValidatorTest.IDENTITY, established);
+            passwordListener.consume(pollOne(kafka), kafka::commitSync);
+        }
+        assertEquals(1, count("audit_records", IamPasswordEventValidatorTest.EVENT));
+        assertEquals(1, count("audit_consumed_events", IamPasswordEventValidatorTest.EVENT));
+        assertEquals("PASSWORD_SETUP_DELIVERED", app.queryForObject(
+                "SELECT action FROM audit_records WHERE source_event_id=?::uuid", String.class,
+                IamPasswordEventValidatorTest.EVENT));
+        assertEquals("PASSWORD_ESTABLISHED", app.queryForObject(
+                "SELECT action FROM audit_records WHERE source_event_id=?::uuid", String.class, uuidV7(999)));
+    }
+
+    @Test
+    void platformAdminGrantIsPersistedOnceAcrossKafkaRedelivery() {
+        String eventId = uuidV7(993);
+        String identityId = identityId();
+        String actorId = uuidV7(994);
+        String assignmentId = uuidV7(995);
+        String payload = """
+                {"specversion":"1.0","id":"%s","source":"urn:saas.forge:iam-service",
+                "type":"com.saas.forge.iam.platform-admin-granted.v1","subject":"%s",
+                "time":"2026-08-28T10:16:00Z","datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/iam-platform-admin-granted.v1.schema.json",
+                "data":{"identityId":"%s","actorIdentityId":"%s","roleAssignmentId":"%s",
+                "roleKey":"PLATFORM_ADMIN","occurredAt":"2026-08-28T10:16:00Z"}}
+                """.formatted(eventId, identityId, identityId, actorId, assignmentId);
+        try (KafkaConsumer<String, String> kafka = consumer("audit-platform-admin-" + UUID.randomUUID())) {
+            seekToEnd(kafka);
+            send(identityId, payload);
+            ConsumerRecord<String, String> message = pollOne(kafka);
+            listener.consume(message, kafka::commitSync);
+            listener.consume(message, () -> {});
+        }
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        Map<String, Object> record = app.queryForMap("""
+                SELECT action, resource_type, resource_id, actor_identity_id
+                FROM audit_records WHERE source_event_id = ?::uuid
+                """, eventId);
+        assertEquals("PLATFORM_ADMIN_GRANTED", record.get("action"));
+        assertEquals("PLATFORM_ROLE_ASSIGNMENT", record.get("resource_type"));
+        assertEquals(assignmentId, record.get("resource_id").toString());
+        assertEquals(actorId, record.get("actor_identity_id").toString());
+    }
+
+    @Test
+    void platformAdminRevokeIsPersistedOnceAcrossKafkaRedelivery() {
+        String eventId = uuidV7(996);
+        String identityId = identityId();
+        String actorId = uuidV7(997);
+        String assignmentId = uuidV7(998);
+        String payload = """
+                {"specversion":"1.0","id":"%s","source":"urn:saas.forge:iam-service",
+                "type":"com.saas.forge.iam.platform-admin-revoked.v1","subject":"%s",
+                "time":"2026-08-28T10:16:00Z","datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/iam-platform-admin-revoked.v1.schema.json",
+                "data":{"identityId":"%s","actorIdentityId":"%s","roleAssignmentId":"%s",
+                "roleKey":"PLATFORM_ADMIN","occurredAt":"2026-08-28T10:16:00Z"}}
+                """.formatted(eventId, identityId, identityId, actorId, assignmentId);
+        try (KafkaConsumer<String, String> kafka = consumer("audit-platform-admin-revoke-" + UUID.randomUUID())) {
+            seekToEnd(kafka);
+            send(identityId, payload);
+            ConsumerRecord<String, String> message = pollOne(kafka);
+            listener.consume(message, kafka::commitSync);
+            listener.consume(message, () -> {});
+        }
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        Map<String, Object> record = app.queryForMap("""
+                SELECT action, resource_type, resource_id, actor_identity_id
+                FROM audit_records WHERE source_event_id = ?::uuid
+                """, eventId);
+        assertEquals("PLATFORM_ADMIN_REVOKED", record.get("action"));
+        assertEquals("PLATFORM_ROLE_ASSIGNMENT", record.get("resource_type"));
+        assertEquals(assignmentId, record.get("resource_id").toString());
+        assertEquals(actorId, record.get("actor_identity_id").toString());
+    }
+
+    @Test
+    void passwordRecoveredIsPersistedOnceAcrossKafkaRedelivery() {
+        String eventId = uuidV7(990);
+        String identityId = identityId();
+        String challengeId = uuidV7(991);
+        String credentialId = uuidV7(992);
+        String payload = """
+                {"specversion":"1.0","id":"%s","source":"urn:saas.forge:iam-service",
+                "type":"com.saas.forge.iam.password.recovered.v1","subject":"%s",
+                "time":"2026-08-28T10:16:00Z","datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/iam-password-recovered.v1.schema.json",
+                "data":{"identityId":"%s","challengeId":"%s","credentialId":"%s",
+                "occurredAt":"2026-08-28T10:16:00Z"}}
+                """.formatted(eventId, identityId, identityId, challengeId, credentialId);
+        try (KafkaConsumer<String, String> kafka = consumer("audit-password-recovery-" + UUID.randomUUID())) {
+            seekToEnd(kafka);
+            send(identityId, payload);
+            ConsumerRecord<String, String> message = pollOne(kafka);
+            listener.consume(message, kafka::commitSync);
+            listener.consume(message, () -> {});
+        }
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        Map<String, Object> record = app.queryForMap("""
+                SELECT action, resource_type, resource_id, actor_identity_id,
+                       metadata ->> 'challengeId' AS challenge_id
+                FROM audit_records WHERE source_event_id = ?::uuid
+                """, eventId);
+        assertEquals("PASSWORD_RECOVERED", record.get("action"));
+        assertEquals("IDENTITY", record.get("resource_type"));
+        assertEquals(identityId, record.get("resource_id").toString());
+        assertEquals(identityId, record.get("actor_identity_id").toString());
+        assertEquals(challengeId, record.get("challenge_id"));
     }
 
     @Test
@@ -161,6 +291,140 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
                 "UPDATE audit_records SET action='TASK_DELETED' WHERE source_event_id=?::uuid", eventId));
         assertThrows(org.springframework.dao.DataAccessException.class, () -> app.update(
                 "DELETE FROM audit_records WHERE source_event_id=?::uuid", eventId));
+    }
+
+    @Test
+    void organizationChangeIsPersistedOnceAfterKafkaRedelivery() {
+        String eventId = uuidV7(119);
+        String tenantId = TenantCreatedEventValidatorTest.tenantId();
+        String actorId = TenantCreatedEventValidatorTest.actorIdentityId();
+        String unitId = uuidV7(120);
+        String payload = """
+                {"specversion":"1.0","id":"%s","source":"urn:saas.forge:tenant-access-service",
+                "type":"com.saas.forge.organization.unit-changed.v1","subject":"%s",
+                "time":"2026-08-28T10:15:30Z","datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/organization-unit-changed.v1.schema.json",
+                "data":{"tenantId":"%s","unitId":"%s","actorIdentityId":"%s",
+                "action":"CREATED","parentId":null}}
+                """.formatted(eventId, tenantId, tenantId, unitId, actorId).replace("\n", "");
+        String group = "organization-redelivery-" + UUID.randomUUID();
+        try (var consumer = consumer(TENANT_TOPIC, group)) {
+            seekToEnd(consumer);
+            send(TENANT_TOPIC, tenantId, payload);
+            var message = pollOne(consumer);
+            tenantListener.consume(message, consumer::commitSync);
+            tenantListener.consume(message, () -> {});
+        }
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        var row = app.queryForMap("""
+                SELECT action, resource_type, resource_id, actor_identity_id, tenant_id
+                FROM audit_records WHERE source_event_id = ?::uuid
+                """, eventId);
+        assertEquals("ORGANIZATION_UNIT_CREATED", row.get("action"));
+        assertEquals("ORGANIZATION_UNIT", row.get("resource_type"));
+        assertEquals(unitId, row.get("resource_id").toString());
+        assertEquals(actorId, row.get("actor_identity_id").toString());
+        assertEquals(tenantId, row.get("tenant_id").toString());
+    }
+
+    @Test
+    void membershipOrganizationChangeIsPersistedOnceAfterKafkaRedelivery() {
+        String eventId = uuidV7(121);
+        String tenantId = TenantCreatedEventValidatorTest.tenantId();
+        String actorId = TenantCreatedEventValidatorTest.actorIdentityId();
+        String membershipId = uuidV7(122);
+        String unitId = uuidV7(123);
+        String payload = """
+                {"specversion":"1.0","id":"%s","source":"urn:saas.forge:tenant-access-service",
+                "type":"com.saas.forge.membership.organization-unit-changed.v1","subject":"%s",
+                "time":"2026-08-28T10:15:30Z","datacontenttype":"application/json",
+                "dataschema":"https://saas.forge.io/contracts/events/membership-organization-unit-changed.v1.schema.json",
+                "data":{"tenantId":"%s","membershipId":"%s","unitId":"%s",
+                "actorIdentityId":"%s","action":"ADDED"}}
+                """.formatted(eventId, tenantId, tenantId, membershipId, unitId, actorId).replace("\n", "");
+        String group = "membership-organization-redelivery-" + UUID.randomUUID();
+        try (var consumer = consumer(TENANT_TOPIC, group)) {
+            seekToEnd(consumer);
+            send(TENANT_TOPIC, tenantId, payload);
+            var message = pollOne(consumer);
+            tenantListener.consume(message, consumer::commitSync);
+            tenantListener.consume(message, () -> {});
+        }
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        var row = app.queryForMap("""
+                SELECT action, resource_type, resource_id, actor_identity_id, tenant_id
+                FROM audit_records WHERE source_event_id = ?::uuid
+                """, eventId);
+        assertEquals("MEMBERSHIP_ORGANIZATION_UNIT_ADDED", row.get("action"));
+        assertEquals("MEMBERSHIP", row.get("resource_type"));
+        assertEquals(membershipId, row.get("resource_id").toString());
+        assertEquals(actorId, row.get("actor_identity_id").toString());
+        assertEquals(tenantId, row.get("tenant_id").toString());
+    }
+
+    @Test
+    void tenantDetailsUpdatedFactIsPersistedOnceAfterKafkaRedelivery() {
+        String eventId = "019535d9-0001-7000-8000-000000000009";
+        String group = "tenant-details-redelivery-" + UUID.randomUUID();
+        try (KafkaConsumer<String, String> consumer = consumer(TENANT_TOPIC, group)) {
+            seekToEnd(consumer);
+            send(TENANT_TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                    TenantAccessEventValidatorTest.tenantDetailsUpdatedEvent());
+            ConsumerRecord<String, String> message = pollOne(consumer);
+            tenantListener.consume(message, consumer::commitSync);
+            tenantListener.consume(message, () -> {});
+        }
+
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        assertEquals("New name", app.queryForObject(
+                "SELECT metadata->>'displayName' FROM audit_records WHERE source_event_id=?::uuid",
+                String.class, eventId));
+        assertEquals("TENANT_DETAILS_UPDATED", app.queryForObject(
+                "SELECT action FROM audit_records WHERE source_event_id=?::uuid",
+                String.class, eventId));
+    }
+
+    @Test
+    void invitationCreatedFactIsPersistedOnceAfterKafkaRedelivery() {
+        String eventId = "019535d9-0001-7000-8000-000000000012";
+        String group = "invitation-redelivery-" + UUID.randomUUID();
+        try (KafkaConsumer<String, String> consumer = consumer(TENANT_TOPIC, group)) {
+            seekToEnd(consumer);
+            send(TENANT_TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                    TenantAccessEventValidatorTest.invitationCreatedEvent());
+            ConsumerRecord<String, String> message = pollOne(consumer);
+            tenantListener.consume(message, consumer::commitSync);
+            tenantListener.consume(message, () -> {});
+        }
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        assertEquals("INVITATION_CREATED", app.queryForObject(
+                "SELECT action FROM audit_records WHERE source_event_id=?::uuid", String.class, eventId));
+        String metadata = app.queryForObject(
+                "SELECT metadata::text FROM audit_records WHERE source_event_id=?::uuid", String.class, eventId);
+        org.junit.jupiter.api.Assertions.assertFalse(metadata.contains("email"));
+        org.junit.jupiter.api.Assertions.assertFalse(metadata.contains("token"));
+    }
+
+    @Test
+    void tenantRoleChangeIsPersistedOnceAfterKafkaRedelivery() {
+        String eventId = "019535d9-0001-7000-8000-000000000010";
+        String group = "tenant-role-redelivery-" + UUID.randomUUID();
+        try (KafkaConsumer<String, String> consumer = consumer(TENANT_TOPIC, group)) {
+            seekToEnd(consumer);
+            send(TENANT_TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                    TenantAccessEventValidatorTest.tenantRoleChangedEvent());
+            ConsumerRecord<String, String> message = pollOne(consumer);
+            tenantListener.consume(message, consumer::commitSync);
+            tenantListener.consume(message, () -> {});
+        }
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        assertEquals("TENANT_ROLE_CHANGED", app.queryForObject(
+                "SELECT action FROM audit_records WHERE source_event_id=?::uuid", String.class, eventId));
     }
 
     @Test
@@ -227,7 +491,7 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
 
     @Test
     void rollsBackDeduplicationWhenAuditRecordInsertFailsAndDoesNotAcknowledge() {
-        String eventId = uuidV7(12);
+        String eventId = uuidV7(1200);
         admin.execute("""
                 CREATE FUNCTION fail_audit_record_insert() RETURNS trigger LANGUAGE plpgsql AS $$
                 BEGIN RAISE EXCEPTION 'forced audit insert failure'; END
@@ -350,6 +614,34 @@ class SessionStartedConsumerPostgreSqlKafkaIT {
                 .tag("consumer", TenantCreatedEventValidator.CONSUMER_NAME)
                 .tag("result", "ignored")
                 .counter().count());
+    }
+
+    @Test
+    void tenantClosureIsPersistedOnceDespiteKafkaReplay() {
+        String eventId = uuidV7(84);
+        String group = "audit-tenant-closure-" + UUID.randomUUID();
+
+        try (KafkaConsumer<String, String> tenant = consumer(TENANT_TOPIC, group)) {
+            seekToEnd(tenant);
+            send(TENANT_TOPIC, TenantCreatedEventValidatorTest.tenantId(),
+                    TenantAccessEventValidatorTest.registeredTenantClosedEvent());
+            var message = pollOne(tenant);
+            tenantListener.consume(message, tenant::commitSync);
+            tenantListener.consume(message, tenant::commitSync);
+        }
+
+        assertEquals(1, count("audit_records", eventId));
+        assertEquals(1, count("audit_consumed_events", eventId));
+        Map<String, Object> record = app.queryForMap("""
+                SELECT action, resource_type, resource_id, result,
+                       metadata ->> 'revokedSessionCount' AS revoked_session_count
+                FROM audit_records WHERE source_event_id = ?::uuid
+                """, eventId);
+        assertEquals("TENANT_CLOSED", record.get("action"));
+        assertEquals("TENANT", record.get("resource_type"));
+        assertEquals(TenantCreatedEventValidatorTest.tenantId(), record.get("resource_id").toString());
+        assertEquals("SUCCESS", record.get("result"));
+        assertEquals("2", record.get("revoked_session_count"));
     }
 
     @Test

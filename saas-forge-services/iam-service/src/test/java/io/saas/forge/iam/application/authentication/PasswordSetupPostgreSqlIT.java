@@ -14,6 +14,10 @@ import io.saas.forge.iam.domain.outbox.OutboxEvent;
 import io.saas.forge.iam.domain.outbox.OutboxEventRepository;
 import io.saas.forge.iam.infrastructure.persistence.MyBatisIdentityRepository;
 import java.nio.charset.StandardCharsets;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -47,10 +51,14 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import tools.jackson.databind.ObjectMapper;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+import io.saas.forge.iam.infrastructure.mail.SmtpPasswordSetupMailer;
 
 @Testcontainers
 @SpringJUnitConfig(PasswordSetupPostgreSqlIT.TestConfiguration.class)
@@ -79,6 +87,12 @@ class PasswordSetupPostgreSqlIT {
                             REPOSITORY_ROOT.resolve("deploy/postgresql/bootstrap.sh")),
                     "/docker-entrypoint-initdb.d/01-bootstrap.sh");
 
+    @Container
+    private static final GenericContainer<?> MAILPIT = new GenericContainer<>(
+            DockerImageName.parse("axllent/mailpit:v1.30.7"))
+            .withExposedPorts(1025, 8025)
+            .waitingFor(Wait.forHttp("/api/v1/info").forPort(8025));
+
     static {
         POSTGRES.start();
     }
@@ -87,12 +101,14 @@ class PasswordSetupPostgreSqlIT {
     @Autowired @Qualifier("failingPasswordSetupService") private PasswordSetupService failingService;
     @Autowired private IdentityRepository identities;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private PasswordSetupDeliveryTransaction deliveryTransaction;
 
     @BeforeAll
     void migrate() {
         Flyway.configure()
                 .dataSource(iamJdbcUrl(), "iam_migrator", "iam-migrator-password")
-                .locations("classpath:db/migration")
+                .locations("filesystem:" + REPOSITORY_ROOT.resolve(
+                        "saas-forge-services/iam-service/src/main/resources/db/migration"))
                 .load()
                 .migrate();
     }
@@ -106,8 +122,7 @@ class PasswordSetupPostgreSqlIT {
     @Test
     void notificationReadDistinguishesPendingAndSmtpAcceptanceWithoutSending() {
         UUID identityId = createIdentity("notification-read@example.test");
-        clients.createWithId(io.saas.forge.iam.domain.client.OAuthClient.register("notification-query-test", io.saas.forge.iam.application.bootstrap.ReservedServiceClient.TENANT_ACCESS.allowedScopes(), NOW).identifiedBy(KEY_A),
-                io.saas.forge.iam.domain.shared.Sha256Digest.of(new byte[32]), NOW);
+        ensureTenantAccessClient();
         var query = new PasswordSetupNotificationQueryService(deliveries, identities, Clock.fixed(NOW, ZoneOffset.UTC));
         assertEquals(PasswordSetupNotificationQueryService.State.NOT_REQUESTED, query.get(KEY_A, KEY_B, identityId));
         var challenge = service.issueChallenge(identityId);
@@ -119,6 +134,42 @@ class PasswordSetupPostgreSqlIT {
         assertEquals(PasswordSetupNotificationQueryService.State.PASSWORD_READY, query.get(KEY_A, KEY_B, identityId));
         identities.invalidate(identities.findCredentials(identityId).get(0).id(), NOW);
         assertEquals(PasswordSetupNotificationQueryService.State.RECOVERY_REQUIRED, query.get(KEY_A, KEY_B, identityId));
+    }
+
+    @Test
+    void invitationSetupUsesCurrentCredentialAndPersistsOnlyRealSmtpDelivery() throws Exception {
+        UUID identityId = createIdentity("invited-first-setup@example.test");
+        ensureTenantAccessClient();
+        JavaMailSenderImpl sender = new JavaMailSenderImpl();
+        sender.setHost(MAILPIT.getHost());
+        sender.setPort(MAILPIT.getMappedPort(1025));
+        var delivery = new PasswordSetupDeliveryService(deliveryTransaction,
+                new SmtpPasswordSetupMailer(sender, "no-reply@saas.forge.test"),
+                URI.create("https://console.saas.forge.test/password-setup"));
+        UUID deliveryRequest = UUID.fromString("0198c9d5-0f25-7b21-8d67-31c8652d4e06");
+
+        assertEquals(PasswordSetupDeliveryResult.DELIVERED,
+                delivery.deliver(KEY_A, deliveryRequest, identityId, null));
+        String mail = HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create(
+                        "http://" + MAILPIT.getHost() + ":" + MAILPIT.getMappedPort(8025)
+                                + "/api/v1/message/latest")).GET().build(),
+                HttpResponse.BodyHandlers.ofString()).body();
+        assertTrue(mail.contains("invited-first-setup@example.test"));
+        String challenge = java.util.regex.Pattern.compile("#token=([A-Za-z0-9_-]{43})")
+                .matcher(mail).results().findFirst().orElseThrow().group(1);
+        assertEquals(1, countWhere("iam_outbox_events", "ordering_key = '" + identityId
+                + "' AND event_snapshot::TEXT LIKE '%password-setup-delivered%'"));
+        service.establishPassword(KEY_A, challenge, "Invited-Password-2026", null);
+        UUID freshRequest = UUID.fromString("0198c9d5-0f25-7b21-8d67-31c8652d4e03");
+        assertEquals(PasswordSetupDeliveryResult.PASSWORD_READY,
+                delivery.deliver(KEY_A, freshRequest, identityId, null));
+        assertEquals(1, countWhere("iam_password_setup_challenges", "identity_id = '" + identityId + "'"));
+        identities.invalidate(identities.findCredentials(identityId).get(0).id(), NOW);
+        UUID historicalRequest = UUID.fromString("0198c9d5-0f25-7b21-8d67-31c8652d4e04");
+        assertThrows(IdentityCredentialRecoveryRequiredException.class,
+                () -> delivery.deliver(KEY_A, historicalRequest, identityId, null));
+        assertEquals(1, countWhere("iam_outbox_events", "ordering_key = '" + identityId
+                + "' AND event_snapshot::TEXT LIKE '%password-setup-delivered%'"));
     }
 
     @Test
@@ -218,6 +269,15 @@ class PasswordSetupPostgreSqlIT {
         return identities.create(Identity.register(email, null, NOW)).id();
     }
 
+    private void ensureTenantAccessClient() {
+        if (clients.findById(KEY_A).isEmpty()) {
+            clients.createWithId(io.saas.forge.iam.domain.client.OAuthClient.register(
+                            "password-setup-test", io.saas.forge.iam.application.bootstrap.ReservedServiceClient.TENANT_ACCESS.allowedScopes(), NOW)
+                            .identifiedBy(KEY_A),
+                    io.saas.forge.iam.domain.shared.Sha256Digest.of(new byte[32]), NOW);
+        }
+    }
+
     private int countWhere(String table, String condition) {
         return jdbc.queryForObject("SELECT count(*) FROM " + table + " WHERE " + condition, Integer.class);
     }
@@ -273,6 +333,16 @@ class PasswordSetupPostgreSqlIT {
         @Bean PasswordEstablishedEventFactory eventFactory(Clock clock, SecureRandom random) {
             return new PasswordEstablishedEventFactory(
                     new ObjectMapper(), new UuidV7Generator(clock, random), "test");
+        }
+        @Bean PasswordSetupDeliveredEventFactory deliveredEventFactory(Clock clock, SecureRandom random) {
+            return new PasswordSetupDeliveredEventFactory(
+                    new ObjectMapper(), new UuidV7Generator(clock, random), "test");
+        }
+        @Bean PasswordSetupDeliveryTransaction deliveryTransaction(
+                io.saas.forge.iam.domain.identity.PasswordSetupDeliveryRepository deliveries,
+                IdentityRepository identities, PasswordSetupService setups, OutboxEventRepository outbox,
+                PasswordSetupDeliveredEventFactory events, Clock clock) {
+            return new PasswordSetupDeliveryTransaction(deliveries, identities, setups, outbox, events, clock);
         }
         @Bean
         @Primary
