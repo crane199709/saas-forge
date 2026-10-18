@@ -14,6 +14,8 @@ Project Manifest 由本轮限权 CI Client 注册，再由真实 Chrome 平台�
 
 2026-10-17 03:50 UTC 的 [r6 24 小时清理脱敏证据](issue-240-brand-retention-24h-r6.json) 已通过：ACTIVE 未绑定素材在 03:28:13 UTC 到期，03:45:19 UTC 标记 `REMOVED/UNBOUND`，原上传时间未变，S3 对象不存在，正式 Client `0.6.0` 经受信 HTTPS 公开读取为 404。源 Outbox 已发布记录与持久 Audit `BRAND_ASSET_REMOVED` 各恰好一条，关联同一事件 ID。到期探针核对了同一 handoff 及七个冻结应用容器 ID；独立 Gateway JWKS、允许与拒绝 Origin 探针 3/3 通过。为释放 443，按用户授权临时停止本地开发 edge；r6 原 edge 的 API 目标文件曾指向本机开发 Gateway，现已指回本轮 `gateway:8080`，完成正式探针后停止 r6 edge 并恢复原本地开发 edge。首次品牌探针因 Node 默认 CA 集合未包含本机受信 CA 而失败，保留失败私有报告；使用 `node --use-system-ca` 重跑通过。七个应用与隔离基础设施继续运行；此分项通过不等于七天清理或完整 11/11/4 套件通过。
 
+2026-10-18 的 [r6 运行恢复记录](issue-240-r6-runtime-recovery-20261018.json) 发现七个应用和七个基础设施容器在 2026-10-17 14:17 UTC 集中退出；Docker 未标记 OOM，确切原因未查明。核对 handoff、七个冻结应用容器和镜像 ID 后，于 2026-10-18 04:47–04:48 UTC 依次以原容器恢复基础设施和应用，未重建容器或卷。基础设施健康检查通过、Gateway HTTP 可达、Tenant Access 已启动；只读数据库检查确认 DISABLED 素材仍未绑定且未清理，原禁用时间不变。r6 验收 edge 仍停止，本地开发 edge 继续占用 443。该运行恢复记录不计入浏览器、Authority、Audit 或七天公开 HTTPS 清理通过项。
+
 时间窗到达后，以受限文件目录 `SF_ROUND` 和正式 Client 包目录的绝对路径运行以下只读核验；分别使用全新输出路径，保留 `waiting` 与失败报告，不覆盖它们。探针先核对 handoff、基线摘要和七个冻结应用容器，再读取本轮 PostgreSQL、Silo 对象及正式公开读取 operation；不会修改时钟、数据库行或对象。
 
 ```sh

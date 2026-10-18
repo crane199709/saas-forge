@@ -195,6 +195,11 @@
       "sha256": "9ceedc1f33166c686fbdc73375f88ffc0a76f6d8d7ebc3dfdeace667ac17cbc3",
       "status": "passed",
       "scope": "ACTIVE unbound asset only"
+    },
+    "runtimeRecovery20261018": {
+      "sha256": "a479417afb71101071cff3ee4656f76fae311019e93a59cc231ff1b97eebebd8",
+      "status": "recovered",
+      "scope": "same-container operational continuity only; no formal acceptance items counted"
     }
   },
   "retention": {
