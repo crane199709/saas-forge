@@ -181,7 +181,7 @@
                             <apiPackage>io.saas.forge.iam.contract.api</apiPackage>
                             <modelPackage>io.saas.forge.iam.contract.model</modelPackage>
                             <generateApis>true</generateApis>
-                            <apisToGenerate>Authentication,Discovery,OAuthClients</apisToGenerate>
+                            <apisToGenerate>Authentication,Discovery,OAuthClients,PlatformAdministrators</apisToGenerate>
                             <generateModels>true</generateModels>
                             <generateSupportingFiles>true</generateSupportingFiles>
                             <generateApiTests>false</generateApiTests>
@@ -212,7 +212,7 @@
                             <apiPackage>io.saas.forge.iam.console.contract.api</apiPackage>
                             <modelPackage>io.saas.forge.iam.console.contract.model</modelPackage>
                             <generateApis>true</generateApis>
-                            <apisToGenerate>ConsoleAuthentication</apisToGenerate>
+                            <apisToGenerate>ConsoleAuthentication,PasswordRecovery,InvitationAcceptance</apisToGenerate>
                             <generateModels>true</generateModels>
                             <generateSupportingFiles>true</generateSupportingFiles>
                             <generateApiTests>false</generateApiTests>

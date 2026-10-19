@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://saas.forge.io/contracts/events/invitation-accepted.v1.schema.json",
+  "title": "Invitation Accepted v1",
+  "allOf": [
+    {
+      "$ref": "cloudevents-envelope.v1.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "com.saas.forge.invitation.accepted.v1"
+        },
+        "source": {
+          "const": "urn:saas.forge:tenant-access-service"
+        },
+        "subject": {
+          "$ref": "#/$defs/uuidV7"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "invitationId",
+            "tenantId",
+            "actorIdentityId",
+            "identityId",
+            "membershipId"
+          ],
+          "properties": {
+            "invitationId": {
+              "$ref": "#/$defs/uuidV7"
+            },
+            "tenantId": {
+              "$ref": "#/$defs/uuidV7"
+            },
+            "actorIdentityId": {
+              "$ref": "#/$defs/uuidV7"
+            },
+            "identityId": {
+              "$ref": "#/$defs/uuidV7"
+            },
+            "membershipId": {
+              "$ref": "#/$defs/uuidV7"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "uuidV7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    }
+  }
+}

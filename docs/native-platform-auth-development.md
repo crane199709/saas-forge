@@ -41,7 +41,7 @@ Maven 项目使用根 POM 支持的 JDK 17。首次导入并同步 Maven，使�
 
 ## 真实浏览器认证
 
-按 [Console 与独立 HTTPS Edge 说明](native-console-development.md) 准备证书、域名、现有 Console 和 Edge。浏览器仅访问 `https://platform.saas.forge.test`。Edge 的现有 `deploy/compose/.secrets/local-service-replacement/api-target.json` 可设为：
+按[原生开发总入口](native-local-development.md)准备证书、域名、现有 Console 和 Edge。浏览器仅访问 `https://platform.saas.forge.test`。Edge 的现有 `deploy/compose/.secrets/local-service-replacement/api-target.json` 可设为：
 
 ```json
 {"hostname":"host.docker.internal","port":8080}

@@ -73,4 +73,43 @@ class SigningKeyTest {
         SigningKey revoked = stored.revoke(publishedAt.plusSeconds(1));
         assertSame(revoked, revoked.revoke(publishedAt.plusSeconds(2)));
     }
+
+    @Test
+    void storedKeyCannotBypassPublicationOrRestoreAnInconsistentRetirementWindow() {
+        Instant publishedAt = Instant.parse("2026-08-20T00:00:00Z");
+        UUID id = UUID.randomUUID();
+        assertThrows(IllegalArgumentException.class, () -> SigningKey.publish(
+                "kid", " ", "modulus", "AQAB", publishedAt));
+        assertThrows(IllegalArgumentException.class, () -> SigningKey.publish(
+                "kid", "kms/v1", " ", "AQAB", publishedAt));
+        assertThrows(IllegalArgumentException.class, () -> SigningKey.publish(
+                "kid", "kms/v1", "modulus", " ", publishedAt));
+        assertThrows(IllegalArgumentException.class, () -> SigningKey.publish(
+                "kid", "kms/v1", "modulus", "AQAB", null));
+        assertThrows(IllegalArgumentException.class, () -> SigningKey.restore(id, "kid", "kms/v1",
+                "modulus", "AQAB", SigningKeyStatus.RETIRING, Duration.ZERO,
+                publishedAt, publishedAt.plusSeconds(300), publishedAt.plusSeconds(360),
+                null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> SigningKey.restore(id, "kid", "kms/v1",
+                "modulus", "AQAB", SigningKeyStatus.REVOKED, Duration.ZERO,
+                publishedAt, null, null, null, null, null));
+    }
+
+    @Test
+    void invalidIssuedTtlCannotShortenPublicKeyRetention() {
+        Instant publishedAt = Instant.parse("2026-08-20T00:00:00Z");
+        SigningKey published = SigningKey.publish("kid-ttl", "kms/ttl", "modulus", "AQAB", publishedAt);
+        assertThrows(IllegalStateException.class, () -> published.recordIssuedTokenTtl(Duration.ofMinutes(1)));
+        assertThrows(IllegalStateException.class, () -> published.activate(null));
+        SigningKey active = published.activate(publishedAt.plusSeconds(300));
+        for (Duration invalid : new Duration[] {Duration.ZERO, Duration.ofSeconds(-1),
+                Duration.ofMillis(500)}) {
+            assertThrows(IllegalArgumentException.class, () -> active.recordIssuedTokenTtl(invalid));
+        }
+        assertThrows(IllegalArgumentException.class, () -> active.recordIssuedTokenTtl(null));
+        assertThrows(IllegalStateException.class, () -> active.beginRetirement(null));
+        SigningKey retiring = active.beginRetirement(publishedAt.plusSeconds(360));
+        assertThrows(IllegalStateException.class, () -> retiring.retire(null));
+        assertThrows(IllegalStateException.class, () -> retiring.recordIssuedTokenTtl(Duration.ofHours(1)));
+    }
 }

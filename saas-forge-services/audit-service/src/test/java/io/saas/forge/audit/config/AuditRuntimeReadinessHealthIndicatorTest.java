@@ -46,6 +46,7 @@ class AuditRuntimeReadinessHealthIndicatorTest {
                 IAM_TOPIC, mock(TopicDescription.class),
                 TENANT_TOPIC, mock(TopicDescription.class), EXAMPLE_TOPIC, mock(TopicDescription.class)));
         configureAssignment("audit-iam-session-events", iamListener, IAM_TOPIC);
+        configureAssignment("audit-iam-password-events", mock(MessageListenerContainer.class), IAM_TOPIC);
         configureAssignment("audit-tenant-events", tenantListener, TENANT_TOPIC);
         configureAssignment("audit-example-events", mock(MessageListenerContainer.class), EXAMPLE_TOPIC);
     }
@@ -67,7 +68,7 @@ class AuditRuntimeReadinessHealthIndicatorTest {
         var existing = new AuditRuntimeReadinessHealthIndicator(jdbc, kafkaAdmin, listeners,
                 "6", IAM_TOPIC, TENANT_TOPIC, EXAMPLE_TOPIC, false);
         assertEquals(Status.UP, existing.health().getStatus());
-        assertEquals(2, existing.health().getDetails().get("consumerAssignments"));
+        assertEquals(3, existing.health().getDetails().get("consumerAssignments"));
     }
 
     @Test void exampleAssignmentIsRequired() {

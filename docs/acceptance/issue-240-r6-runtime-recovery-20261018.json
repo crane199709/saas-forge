@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "issue": 240,
+  "kind": "stage4-fresh-runtime-recovery",
+  "runId": "27bbf0b5-87a3-42aa-bc63-d67d3c7b248e",
+  "handoffSha256": "9eb2ada2c303d23a54d9a25c82bd859ef50e17f5d6bb612ae50b0a9dd35d8847",
+  "backendSourceCommit": "acd19a9858c083b1a289128adf92602f5e2baada",
+  "observedExitWindowUtc": {
+    "first": "2026-10-17T14:17:09.489668711Z",
+    "last": "2026-10-17T14:17:13.296325880Z"
+  },
+  "exitFinding": "All 14 application and infrastructure containers had exited; the exact cause was not established. Docker marked none of them OOMKilled.",
+  "recovery": {
+    "method": "docker start on the same 14 verified containers; infrastructure before applications",
+    "firstInfrastructureStartUtc": "2026-10-18T04:47:45.607479381Z",
+    "firstApplicationStartUtc": "2026-10-18T04:48:19.318771674Z",
+    "lastApplicationStartUtc": "2026-10-18T04:48:22.140465134Z",
+    "allFourteenRunning": true,
+    "sevenFrozenApplicationContainerAndImageIdsMatchHandoff": true,
+    "postgresRedisKafkaNacosMailpitHealthy": true,
+    "gatewayHttpReachable": true,
+    "tenantAccessApplicationStarted": true,
+    "acceptanceEdge": "stopped; local development edge retains port 443",
+    "iamMigrate": "completed one-off remained stopped"
+  },
+  "retentionReadOnlyCheck": {
+    "disabledAssetStatus": "DISABLED",
+    "disabledAtUtc": "2026-10-16T03:28:05.100027Z",
+    "everBoundAt": null,
+    "removedAt": null,
+    "cleanupReason": null,
+    "activeAssetStatus": "REMOVED",
+    "activeAssetRemovedAtUtc": "2026-10-17T03:45:19.681232Z",
+    "activeAssetCleanupReason": "UNBOUND"
+  },
+  "acceptanceImpact": "Runtime recovered before the seven-day due time. No new formal browser, Authority, Audit, or public HTTPS retention result is counted by this operational check."
+}

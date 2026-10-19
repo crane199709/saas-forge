@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://saas.forge.io/contracts/events/permission-catalog-changed.v1.schema.json",
+  "title": "Permission Catalog Changed v1",
+  "allOf": [
+    { "$ref": "cloudevents-envelope.v1.schema.json" },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "com.saas.forge.permission.catalog-changed.v1" },
+        "source": { "const": "urn:saas.forge:tenant-access-service" },
+        "subject": { "$ref": "#/$defs/uuidV7" },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tenantId", "code", "enabled", "source", "revision"],
+          "properties": {
+            "tenantId": { "$ref": "#/$defs/uuidV7" },
+            "code": { "type": "string", "pattern": "^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$", "maxLength": 160 },
+            "enabled": { "type": "boolean" },
+            "source": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "maxLength": 80 },
+            "revision": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "uuidV7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    }
+  }
+}

@@ -8,4 +8,4 @@
 
 后续 [ADR 0051](0051-consoles-use-complete-soybean-applications.md) 细化了本决定的完整应用接入范围：共享 UI 载体将从 `@saas-forge/admin` 迁入两个官方应用结构。
 
-最终清除旧 React UI、旧应用壳、兼容层、原型、废弃依赖与入口，并更新失效文档和检查。必要业务、安全及无障碍测试迁入 Vue 实现后保留覆盖。先前接入但未接管正式入口的 Skyroc 代码和新增依赖立即退出，不作为兼容层保留。实施进度见 [重构计划](../plans/console-soybean-element-plus-refactoring.md)。
+最终清除旧 React UI、旧应用壳、兼容层、原型、废弃依赖与入口，并更新失效文档和检查。必要业务、安全及无障碍测试迁入 Vue 实现后保留覆盖。先前接入但未接管正式入口的 Skyroc 代码和新增依赖立即退出，不作为兼容层保留。实施进度见 [重构计划](../archive/console-soybean-element-plus-refactoring.md)。

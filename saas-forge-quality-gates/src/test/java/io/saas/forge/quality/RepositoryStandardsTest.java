@@ -42,20 +42,38 @@ class RepositoryStandardsTest {
             "entitlement-service", "io.saas.forge.entitlement",
             "audit-service", "io.saas.forge.audit",
             "remote-delivery-service", "io.saas.forge.remotedelivery");
-    private static final Map<String, String> OPENAPI_TAG_OWNERS = Map.of(
-            "Authentication", "iam-service",
-            "Discovery", "iam-service",
-            "OAuth clients", "iam-service",
-            "Platform tenants", "tenant-access-service",
-            "Platform entitlement bootstrap", "entitlement-service",
-            "RemoteManifests", "remote-delivery-service");
-    private static final Map<String, String> OPENAPI_TAG_GENERATOR_NAMES = Map.of(
-            "Authentication", "Authentication",
-            "Discovery", "Discovery",
-            "OAuth clients", "OAuthClients",
-            "Platform tenants", "PlatformTenants",
-            "Platform entitlement bootstrap", "PlatformEntitlementBootstrap",
-            "RemoteManifests", "RemoteManifests");
+    private static final Map<String, String> OPENAPI_TAG_OWNERS = Map.ofEntries(
+            Map.entry("Authentication", "iam-service"),
+            Map.entry("Discovery", "iam-service"),
+            Map.entry("OAuth clients", "iam-service"),
+            Map.entry("Platform administrators", "iam-service"),
+            Map.entry("Platform tenants", "tenant-access-service"),
+            Map.entry("Organization", "tenant-access-service"),
+            Map.entry("Brand assets", "tenant-access-service"),
+            Map.entry("Brand profiles", "tenant-access-service"),
+            Map.entry("Invitations", "tenant-access-service"),
+            Map.entry("Members", "tenant-access-service"),
+            Map.entry("Permissions", "tenant-access-service"),
+            Map.entry("Platform brand policy", "tenant-access-service"),
+            Map.entry("Tenant roles", "tenant-access-service"),
+            Map.entry("Platform entitlement bootstrap", "entitlement-service"),
+            Map.entry("RemoteManifests", "remote-delivery-service"));
+    private static final Map<String, String> OPENAPI_TAG_GENERATOR_NAMES = Map.ofEntries(
+            Map.entry("Authentication", "Authentication"),
+            Map.entry("Discovery", "Discovery"),
+            Map.entry("OAuth clients", "OAuthClients"),
+            Map.entry("Platform administrators", "PlatformAdministrators"),
+            Map.entry("Platform tenants", "PlatformTenants"),
+            Map.entry("Organization", "Organization"),
+            Map.entry("Brand assets", "BrandAssets"),
+            Map.entry("Brand profiles", "BrandProfiles"),
+            Map.entry("Invitations", "Invitations"),
+            Map.entry("Members", "Members"),
+            Map.entry("Permissions", "Permissions"),
+            Map.entry("Platform brand policy", "PlatformBrandPolicy"),
+            Map.entry("Tenant roles", "TenantRoles"),
+            Map.entry("Platform entitlement bootstrap", "PlatformEntitlementBootstrap"),
+            Map.entry("RemoteManifests", "RemoteManifests"));
     private static final Pattern ANNOTATED_SQL = Pattern.compile(
             "@(Select|Insert|Update|Delete)(Provider)?\\b");
     private static final Pattern VERSIONED_MIGRATION = Pattern.compile(
@@ -475,7 +493,10 @@ class RepositoryStandardsTest {
         Path receiverRoot = REPOSITORY.resolve(
                 "saas-forge-services/tenant-access-service/src/main/java/io/saas/forge/tenantaccess/infrastructure/grpc");
         List<Path> interceptors = filesUnder(receiverRoot, "ServerInterceptor.java");
-        assertEquals(2, interceptors.size(), "Tenant Access Service Token gRPC 接收端清单发生变化时必须显式评审");
+        assertEquals(Set.of("MembershipValidationServerInterceptor.java",
+                        "TenantProvisioningQueryServerInterceptor.java", "InvitationAcceptanceServerInterceptor.java"),
+                interceptors.stream().map(path -> path.getFileName().toString()).collect(java.util.stream.Collectors.toSet()),
+                "Tenant Access Service Token gRPC 接收端清单发生变化时必须显式评审");
         for (Path interceptor : interceptors) {
             String source = Files.readString(interceptor, StandardCharsets.UTF_8);
             assertTrue(source.contains("ServiceAccessTokenAuthorizer"),

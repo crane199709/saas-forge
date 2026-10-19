@@ -6,7 +6,8 @@ import java.util.Set;
 
 /** 部署引导允许创建的固定内部服务身份。 */
 public enum ReservedServiceClient {
-    IAM(ReservedServiceKey.IAM, "iam-service", Set.of(OAuthScope.TENANT_ACCESS_MEMBERSHIP_READ)),
+    IAM(ReservedServiceKey.IAM, "iam-service", Set.of(OAuthScope.TENANT_ACCESS_MEMBERSHIP_READ,
+            OAuthScope.TENANT_ACCESS_INVITATION_ACCEPT)),
     TENANT_ACCESS(ReservedServiceKey.TENANT_ACCESS, "tenant-access-service", Set.of(
             OAuthScope.IAM_IDENTITY_WRITE,
             OAuthScope.IAM_PASSWORD_SETUP_WRITE,

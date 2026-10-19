@@ -39,4 +39,21 @@ public record Tenant(
         }
         return new Tenant(id, displayName, TenantStatus.ACTIVE, expiresAt, createdAt, now);
     }
+
+    public Tenant close(Instant now) {
+        if (status != TenantStatus.ACTIVE && status != TenantStatus.SUSPENDED) {
+            throw new TenantStateTransitionNotAllowedException();
+        }
+        return new Tenant(id, displayName, TenantStatus.CLOSED, expiresAt, createdAt, now);
+    }
+
+    public Tenant updateDetails(String nextDisplayName, Instant nextExpiresAt, Instant now) {
+        if (status == TenantStatus.CLOSED) {
+            throw new TenantStateTransitionNotAllowedException();
+        }
+        if (now == null || (nextExpiresAt != null && !nextExpiresAt.isAfter(now))) {
+            throw new TenantExpiryInvalidException();
+        }
+        return new Tenant(id, nextDisplayName, status, nextExpiresAt, createdAt, now);
+    }
 }

@@ -24,6 +24,10 @@ public class IamSessionKafkaConsumer {
             topics = "${saas.forge.audit.iam-session-topic}",
             groupId = SessionStartedEventValidator.CONSUMER_NAME)
     public void consume(ConsumerRecord<String, String> message, Acknowledgment acknowledgment) {
+        if (IamPasswordEventValidator.isPasswordEvent(message.value())) {
+            acknowledgment.acknowledge();
+            return;
+        }
         var record = validator.validate(
                 message.topic(), message.key(), SessionStartedEventValidator.CONSUMER_NAME, message.value());
         service.record(SessionStartedEventValidator.CONSUMER_NAME, record);

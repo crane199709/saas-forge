@@ -13,6 +13,22 @@ class RedisGatewayUserTokenRevocationCheckerTest {
     private static final UUID JTI = UUID.fromString("018f2d3a-4b5c-7d6e-8f90-123456789abf");
     private static final UUID MEMBERSHIP_ID = UUID.fromString("018f2d3a-4b5c-7d6e-8f90-123456789abd");
     private static final UUID TENANT_ID = UUID.fromString("018f2d3a-4b5c-7d6e-8f90-123456789abe");
+    private static final UUID IDENTITY_ID = UUID.fromString("018f2d3a-4b5c-7d6e-8f90-123456789abc");
+
+    @Test
+    void rejectsIdentityFenceEvenForPlatformTokenWithoutTenantContext() {
+        GatewayIamRevocationRedisKeys keys = new GatewayIamRevocationRedisKeys("test");
+        AtomicReference<List<String>> observed = new AtomicReference<>();
+        GatewayRedisValueReader values = names -> {
+            observed.set(names);
+            return Arrays.asList("1", null, null, "1");
+        };
+        assertThrows(GatewayUserTokenInvalidException.class,
+                () -> new RedisGatewayUserTokenRevocationChecker(values, "test")
+                        .assertAllowed(JTI, "kid-1", null, null, IDENTITY_ID));
+        org.junit.jupiter.api.Assertions.assertEquals(List.of(
+                keys.ready(), keys.jti(JTI), keys.kid("kid-1"), keys.identityFence(IDENTITY_ID)), observed.get());
+    }
 
     @Test
     void allowsOnlyReadyIndexWithoutJtiKidOrFenceEntries() {

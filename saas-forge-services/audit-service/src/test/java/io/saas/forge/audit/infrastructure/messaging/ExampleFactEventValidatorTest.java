@@ -56,6 +56,37 @@ class ExampleFactEventValidatorTest {
                 .isInstanceOf(InvalidAuditEventException.class);
     }
 
+    @Test void projectAndTaskFactsCannotCrossProjectOrCarryUnreviewedBody() {
+        var validator = new ExampleFactEventValidator(JSON, TOPIC);
+        String project = event("project", "created", PROJECT);
+        String task = event("task", "updated", PROJECT);
+        String other = "019535d9-0001-7000-8000-000000000099";
+        String crossProject = project.replace("\"resourceId\":\"" + PROJECT + "\"",
+                "\"resourceId\":\"" + other + "\"");
+        String taskUnderProject = task.replace("\"resourceId\":\"" + PROJECT + "\"",
+                "\"resourceId\":\"" + other + "\"")
+                .replace("\"subject\":\"" + PROJECT + "\"", "\"subject\":\"" + other + "\"");
+        assertThat(validator.validate(TOPIC, PROJECT, ExampleFactEventValidator.CONSUMER_NAME,
+                taskUnderProject).resourceId().toString()).isEqualTo(other);
+        for (String invalid : java.util.List.of(
+                crossProject.replace("\"subject\":\"" + PROJECT + "\"",
+                        "\"subject\":\"" + other + "\""),
+                project.replace("\"source\":\"" + ExampleFactEventValidator.SOURCE + "\"",
+                        "\"source\":\"urn:saas.forge:other-service\""),
+                project.replace("\"time\":\"2026-10-02T00:00:00Z\"",
+                        "\"time\":\"2026-10-02T01:00:00+01:00\""),
+                project.replace("\"data\":", "\"cookie\":\"secret\",\"data\":"),
+                project.replace("\"version\":1", "\"version\":\"1\""),
+                project.replace("\"version\":1", "\"version\":9223372036854775808"),
+                project.replace("\"dataschema\":", "\"wrongSchema\":"),
+                "{malformed")
+        ) assertThatThrownBy(() -> validator.validate(TOPIC, PROJECT,
+                ExampleFactEventValidator.CONSUMER_NAME, invalid))
+                .isInstanceOf(InvalidAuditEventException.class);
+        assertThatThrownBy(() -> validator.validate(TOPIC, PROJECT, "audit-service.other", project))
+                .isInstanceOf(InvalidAuditEventException.class);
+    }
+
     @Test void doesNotAcknowledgeFailedPersistence() {
         var calls = new ArrayList<String>();
         var service = new io.saas.forge.audit.application.AuditRecordService((consumer, record, at) -> {

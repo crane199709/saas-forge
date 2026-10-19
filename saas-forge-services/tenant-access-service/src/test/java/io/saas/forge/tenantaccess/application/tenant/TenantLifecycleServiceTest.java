@@ -90,6 +90,27 @@ class TenantLifecycleServiceTest {
     }
 
     @Test
+    void closureRequiresTargetRevocationBeforeReportingClosed() {
+        TenantLifecycleWorkflow pending = workflow(TenantLifecycleAction.CLOSE, TenantLifecycleStatus.PENDING, null, null);
+        when(ids.next()).thenReturn(WORKFLOW_ID, REVOCATION_REQUEST_ID);
+        when(workflows.prepare(eq(ACTOR_ID), eq(IDEMPOTENCY_KEY), eq(TENANT_ID),
+                eq(TenantLifecycleAction.CLOSE), anyString(), eq(WORKFLOW_ID),
+                eq(REVOCATION_REQUEST_ID), isNull(), eq(NOW)))
+                .thenReturn(new TenantLifecycleClaim(TenantLifecycleClaim.Status.CREATED, pending));
+        when(workflows.claim(WORKFLOW_ID, "worker-test", NOW, NOW.plusSeconds(30), 10))
+                .thenReturn(Optional.of(pending));
+        when(revocations.revoke(REVOCATION_REQUEST_ID, TENANT_ID))
+                .thenReturn(SessionRevocationGateway.Result.pending(4));
+
+        TenantLifecycleException error = assertThrows(TenantLifecycleException.class,
+                () -> service.close(ACTOR_ID, IDEMPOTENCY_KEY, TENANT_ID, null));
+        assertEquals("TENANT_CLOSURE_PENDING", error.code());
+        org.mockito.Mockito.verify(workflows, org.mockito.Mockito.never())
+                .complete(any(), any(), org.mockito.ArgumentMatchers.anyLong(),
+                        org.mockito.ArgumentMatchers.anyLong(), any(), any());
+    }
+
+    @Test
     void workerKeepsRecoverableFailureAndBusinessPendingNonInteractive() {
         TenantLifecycleWorkflow workflow = pendingWorkflow();
         when(workflows.claimNext(any(), any(), any(), anyInt()))

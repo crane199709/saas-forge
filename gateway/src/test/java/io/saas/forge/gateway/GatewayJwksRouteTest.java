@@ -149,6 +149,30 @@ class GatewayJwksRouteTest {
     }
 
     @Test
+    void unavailableAuthenticationRemainsReadableOnlyByControlledConsole() throws Exception {
+        GatewayTestDiscoveryConfiguration.clearInstances(GatewayTestDiscoveryConfiguration.IAM_SERVICE_ID);
+        try {
+            for (String origin : List.of("https://console.saas.forge.test", "https://attacker.test")) {
+                var response = send(HttpRequest.newBuilder(gatewayUri("/api/v2/auth/bootstrap"))
+                        .header("Origin", origin).header("Sec-Fetch-Site", "same-site")
+                        .header("X-SF-CSRF", "1").header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString("{}")).build());
+                if (origin.equals("https://console.saas.forge.test")) {
+                    assertEquals(503, response.statusCode());
+                    assertTrue(response.body().contains("\"code\":\"UPSTREAM_UNAVAILABLE\""));
+                    assertEquals(origin, response.headers().firstValue("Access-Control-Allow-Origin").orElse(""));
+                    assertEquals("true", response.headers().firstValue("Access-Control-Allow-Credentials").orElse(""));
+                } else {
+                    assertEquals(403, response.statusCode());
+                    assertTrue(response.headers().firstValue("Access-Control-Allow-Origin").isEmpty());
+                }
+            }
+        } finally {
+            GatewayTestDiscoveryConfiguration.discoverAt(GatewayTestDiscoveryConfiguration.IAM_SERVICE_ID, IAM_URI);
+        }
+    }
+
+    @Test
     void returnsGateway503WhenNoHealthyOwningServiceInstanceExists()
             throws IOException, InterruptedException {
         for (UnavailableRoute route : List.of(
@@ -299,6 +323,10 @@ class GatewayJwksRouteTest {
                 route("DELETE", "/api/v1/platform/tenants/018f2d3a-4b5c-7d6e-8f90-123456789abc/suspensions", "tenant-access"),
                 route("POST", "/api/v1/platform/tenants/018f2d3a-4b5c-7d6e-8f90-123456789abc/suspension-recoveries",
                         "tenant-access"),
+                route("POST", "/api/v1/platform/tenants/018f2d3a-4b5c-7d6e-8f90-123456789abc/closures",
+                        "tenant-access"),
+                route("POST", "/api/v1/platform/tenants/018f2d3a-4b5c-7d6e-8f90-123456789abc/closure-recoveries",
+                        "tenant-access"),
                 route("POST", "/api/v1/platform/quota-definitions", "entitlement"),
                 route("POST", "/api/v1/platform/quota-definitions/018f2d3a-4b5c-7d6e-8f90-123456789abc/activations",
                         "entitlement"),
@@ -356,6 +384,62 @@ class GatewayJwksRouteTest {
     }
 
     @Test
+    void brandAssetReadIsAnonymousAndUploadKeepsControlledBrowserBoundary() throws Exception {
+        String id = "019535d9-0001-7000-8000-000000000028";
+        var read = send(HttpRequest.newBuilder(gatewayUri("/brands/" + id)).GET().build());
+        assertEquals(200, read.statusCode());
+        assertEquals("tenant-access", read.body());
+        assertEquals(404, send(HttpRequest.newBuilder(gatewayUri("/brands")).GET().build()).statusCode());
+
+        var preflight = send(HttpRequest.newBuilder(gatewayUri("/api/v1/brand-assets/logo"))
+                .header("Origin", "https://console.saas.forge.test")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "authorization,content-type,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(200, preflight.statusCode());
+        var rejected = send(HttpRequest.newBuilder(gatewayUri("/api/v1/brand-assets/logo"))
+                .header("Content-Type", "image/png")
+                .POST(HttpRequest.BodyPublishers.ofByteArray(new byte[] {1, 2, 3})).build());
+        assertEquals(403, rejected.statusCode());
+        assertTrue(rejected.body().contains("BROWSER_REQUEST_REJECTED"));
+    }
+
+    @Test
+    void brandProfileRevisionPreflightAllowsOnlyControlledConsole() throws Exception {
+        var accepted = send(HttpRequest.newBuilder(gatewayUri("/api/v1/brand-profile"))
+                .header("Origin", "https://console.saas.forge.test")
+                .header("Access-Control-Request-Method", "PUT")
+                .header("Access-Control-Request-Headers", "authorization,content-type,if-match,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(200, accepted.statusCode());
+        assertTrue(accepted.headers().firstValue("Access-Control-Allow-Headers").orElse("")
+                .toLowerCase().contains("if-match"));
+        var rejected = send(HttpRequest.newBuilder(gatewayUri("/api/v1/brand-profile"))
+                .header("Origin", "https://platform.saas.forge.test")
+                .header("Access-Control-Request-Method", "PUT")
+                .header("Access-Control-Request-Headers", "authorization,content-type,if-match,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(403, rejected.statusCode());
+    }
+
+    @Test
+    void brandPolicyWriteIsLimitedToControlledConsoleBrowserOrigin() throws Exception {
+        String path = "/api/v1/platform/brand-assets/019535d9-0001-7000-8000-000000000028/disable";
+        var accepted = send(HttpRequest.newBuilder(gatewayUri(path))
+                .header("Origin", "https://console.saas.forge.test")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "authorization,content-type,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(200, accepted.statusCode());
+        var rejected = send(HttpRequest.newBuilder(gatewayUri(path))
+                .header("Origin", "https://platform.saas.forge.test")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "authorization,content-type,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(403, rejected.statusCode());
+    }
+
+    @Test
     void passwordSetupRequiresControlledOriginAndCsrfAndAllowsExactPreflight()
             throws IOException, InterruptedException {
         HttpRequest.Builder base = HttpRequest.newBuilder(gatewayUri("/api/v1/auth/password-setups"))
@@ -392,6 +476,33 @@ class GatewayJwksRouteTest {
         assertEquals("https://console.saas.forge.test",
                 preflight.headers().firstValue("Access-Control-Allow-Origin").orElseThrow());
         assertEquals("true", preflight.headers().firstValue("Access-Control-Allow-Credentials").orElseThrow());
+    }
+
+    @Test
+    void invitationPasswordSetupOnlyUsesTheConsoleOriginAndNeverRequiresABearerToken()
+            throws IOException, InterruptedException {
+        String path = "/api/v1/invitation-password-setups";
+        HttpRequest.Builder request = HttpRequest.newBuilder(gatewayUri(path))
+                .header("Content-Type", "application/json")
+                .header("X-SF-CSRF", "1")
+                .header("Sec-Fetch-Site", "same-site");
+        assertEquals(403, send(request.copy().POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build()).statusCode());
+        assertEquals(403, send(request.copy().header("Origin", "https://platform.saas.forge.test")
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build()).statusCode());
+        HttpResponse<String> allowed = send(request.copy()
+                .header("Origin", "https://console.saas.forge.test")
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build());
+        assertEquals(200, allowed.statusCode());
+        assertEquals("tenant-access", allowed.body());
+        var preflight = send(HttpRequest.newBuilder(gatewayUri(path))
+                .header("Origin", "https://console.saas.forge.test")
+                .header("Access-Control-Request-Method", "POST")
+                .header("Access-Control-Request-Headers", "content-type,idempotency-key,x-sf-csrf")
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody()).build());
+        assertEquals(200, preflight.statusCode());
     }
 
     @Test

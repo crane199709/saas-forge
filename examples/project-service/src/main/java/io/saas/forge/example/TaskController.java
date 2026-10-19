@@ -1,5 +1,6 @@
 package io.saas.forge.example;
 
+import io.saas.forge.sdk.permission.RequirePermission;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -14,6 +15,7 @@ class TaskController {
     TaskController(TaskService tasks) { this.tasks = tasks; }
 
     @PostMapping(consumes = "application/json", produces = "application/json;charset=UTF-8")
+    @RequirePermission("example:task:create")
     ResponseEntity<String> create(@PathVariable String projectId,
             @RequestHeader(value = "Idempotency-Key", required = false) String key,
             @Valid @RequestBody CreateTaskRequest request, HttpServletRequest http) {
@@ -28,6 +30,7 @@ class TaskController {
     }
 
     @PutMapping(path = "/{taskId}", consumes = "application/json", produces = "application/json;charset=UTF-8")
+    @RequirePermission("example:task:update")
     ResponseEntity<String> update(@PathVariable String projectId, @PathVariable String taskId,
             @RequestHeader(value = "Idempotency-Key", required = false) String key,
             @RequestHeader(value = "If-Match", required = false) String version,
@@ -40,6 +43,7 @@ class TaskController {
     }
 
     @DeleteMapping(path = "/{taskId}")
+    @RequirePermission("example:task:delete")
     ResponseEntity<String> delete(@PathVariable String projectId, @PathVariable String taskId,
             @RequestHeader(value = "Idempotency-Key", required = false) String key,
             @RequestHeader(value = "If-Match", required = false) String version, HttpServletRequest http) {
@@ -51,12 +55,14 @@ class TaskController {
     }
 
     @GetMapping(path = "/{taskId}", produces = "application/json;charset=UTF-8")
+    @RequirePermission("example:task:read")
     TaskResult get(@PathVariable String projectId, @PathVariable String taskId, HttpServletRequest http) {
         ProjectController.rejectTenantInput(http);
         return tasks.get(ProjectController.uuid(projectId, "VALIDATION_FAILED"), ProjectController.uuid(taskId, "VALIDATION_FAILED"));
     }
 
     @GetMapping(produces = "application/json;charset=UTF-8")
+    @RequirePermission("example:task:list")
     TaskPage list(@PathVariable String projectId, @RequestParam(required = false) String cursor,
             @RequestParam(required = false) String limit, HttpServletRequest http) {
         ProjectController.rejectTenantInput(http, java.util.Set.of("cursor", "limit"));

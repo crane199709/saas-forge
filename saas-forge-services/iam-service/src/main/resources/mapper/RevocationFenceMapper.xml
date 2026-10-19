@@ -7,6 +7,7 @@
         <result property="targetId" column="target_id"/>
         <result property="tenantId" column="tenant_id"/>
         <result property="membershipId" column="membership_id"/>
+        <result property="identityId" column="identity_id"/>
         <result property="fenceStatus" column="fence_status"/>
         <result property="establishedAt" column="established_at"/>
         <result property="releasedAt" column="released_at"/>
@@ -17,39 +18,46 @@
     </select>
 
     <select id="findByRequestId" resultMap="fenceRow">
-        SELECT revocation_request_id, target_type, target_id, tenant_id, membership_id,
+        SELECT revocation_request_id, target_type, target_id, tenant_id, membership_id, identity_id,
                fence_status, established_at, released_at
         FROM iam_revocation_fences
         WHERE revocation_request_id = #{revocationRequestId}
     </select>
 
     <select id="findActiveTenant" resultMap="fenceRow">
-        SELECT revocation_request_id, target_type, target_id, tenant_id, membership_id,
+        SELECT revocation_request_id, target_type, target_id, tenant_id, membership_id, identity_id,
                fence_status, established_at, released_at
         FROM iam_revocation_fences
         WHERE target_type = 'TENANT' AND tenant_id = #{tenantId} AND fence_status = 'ACTIVE'
     </select>
 
     <select id="findActiveMembership" resultMap="fenceRow">
-        SELECT revocation_request_id, target_type, target_id, tenant_id, membership_id,
+        SELECT revocation_request_id, target_type, target_id, tenant_id, membership_id, identity_id,
                fence_status, established_at, released_at
         FROM iam_revocation_fences
         WHERE target_type = 'MEMBERSHIP' AND membership_id = #{membershipId} AND fence_status = 'ACTIVE'
     </select>
 
+    <select id="findActiveIdentity" resultMap="fenceRow">
+        SELECT revocation_request_id, target_type, target_id, tenant_id, membership_id, identity_id,
+               fence_status, established_at, released_at
+        FROM iam_revocation_fences
+        WHERE target_type = 'IDENTITY' AND identity_id = #{identityId} AND fence_status = 'ACTIVE'
+    </select>
+
     <select id="insert" resultMap="fenceRow" affectData="true" flushCache="true">
         INSERT INTO iam_revocation_fences
-            (revocation_request_id, target_type, target_id, tenant_id, membership_id,
+            (revocation_request_id, target_type, target_id, tenant_id, membership_id, identity_id,
              fence_status, established_at, released_at)
         VALUES
             (#{row.revocationRequestId}, #{row.targetType}, #{row.targetId}, #{row.tenantId},
-             #{row.membershipId}, #{row.fenceStatus}, #{row.establishedAt}, #{row.releasedAt})
-        RETURNING revocation_request_id, target_type, target_id, tenant_id, membership_id,
+             #{row.membershipId}, #{row.identityId}, #{row.fenceStatus}, #{row.establishedAt}, #{row.releasedAt})
+        RETURNING revocation_request_id, target_type, target_id, tenant_id, membership_id, identity_id,
                   fence_status, established_at, released_at
     </select>
 
     <select id="findActive" resultMap="fenceRow">
-        SELECT revocation_request_id, target_type, target_id, tenant_id, membership_id,
+        SELECT revocation_request_id, target_type, target_id, tenant_id, membership_id, identity_id,
                fence_status, established_at, released_at
         FROM iam_revocation_fences
         WHERE fence_status = 'ACTIVE'

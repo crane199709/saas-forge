@@ -25,6 +25,19 @@ public final class TenantSuspendedEventFactory {
 
     public OutboxEvent create(
             Tenant tenant, UUID actorIdentityId, long revokedSessionCount, Instant occurredAt, String traceId) {
+        return create(tenant, actorIdentityId, revokedSessionCount, occurredAt, traceId,
+                EVENT_TYPE, "tenant-suspended.v1.schema.json");
+    }
+
+    public OutboxEvent createClosure(
+            Tenant tenant, UUID actorIdentityId, long revokedSessionCount, Instant occurredAt, String traceId) {
+        return create(tenant, actorIdentityId, revokedSessionCount, occurredAt, traceId,
+                "com.saas.forge.tenant.closed.v1", "tenant-closed.v1.schema.json");
+    }
+
+    private OutboxEvent create(
+            Tenant tenant, UUID actorIdentityId, long revokedSessionCount, Instant occurredAt, String traceId,
+            String eventType, String schema) {
         UUID eventId = ids.next();
         Instant eventTime = occurredAt.truncatedTo(ChronoUnit.MILLIS);
         Map<String, Object> data = new LinkedHashMap<>();
@@ -37,11 +50,11 @@ public final class TenantSuspendedEventFactory {
         snapshot.put("specversion", "1.0");
         snapshot.put("id", eventId.toString());
         snapshot.put("source", SOURCE);
-        snapshot.put("type", EVENT_TYPE);
+        snapshot.put("type", eventType);
         snapshot.put("subject", tenant.id().toString());
         snapshot.put("time", eventTime.toString());
         snapshot.put("datacontenttype", "application/json");
-        snapshot.put("dataschema", "https://saas.forge.io/contracts/events/tenant-suspended.v1.schema.json");
+        snapshot.put("dataschema", "https://saas.forge.io/contracts/events/" + schema);
         if (traceId != null) snapshot.put("traceId", traceId);
         snapshot.put("data", data);
         return new OutboxEvent(eventId, tenant.id(), eventTime, topic, tenant.id().toString(), traceId,

@@ -29,7 +29,8 @@ class BrowserRequestSecurityFilter extends OncePerRequestFilter {
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
             "/api/v1/auth/logout",
-            "/api/v1/auth/password-setups");
+            "/api/v1/auth/password-setups",
+            "/api/v1/invitation-password-setups");
 
     private final Set<String> controlledOrigins;
     private final String consoleOrigin;
@@ -55,6 +56,7 @@ class BrowserRequestSecurityFilter extends OncePerRequestFilter {
             return true;
         }
         return !ALWAYS_PROTECTED_PATHS.contains(request.getRequestURI())
+                && !request.getRequestURI().matches("/api/v1/brand-assets/(logo|favicon)")
                 && request.getHeader(HttpHeaders.ORIGIN) == null
                 && request.getHeader(FETCH_SITE_HEADER) == null;
     }
@@ -81,6 +83,11 @@ class BrowserRequestSecurityFilter extends OncePerRequestFilter {
             if (!Set.of("same-site", "same-origin").contains(String.valueOf(request.getHeader(FETCH_SITE_HEADER)))) return "FETCH_SITE";
             if (HttpMethod.GET.matches(request.getMethod())) return null;
         }
+        if ("/api/v1/invitation-password-setups".equals(request.getRequestURI())) {
+            if (!consoleOrigin.equals(origin)) return "ORIGIN";
+            if (!Set.of("same-site", "same-origin").contains(String.valueOf(request.getHeader(FETCH_SITE_HEADER))))
+                return "FETCH_SITE";
+        }
         if (origin == null || !controlledOrigins.contains(origin)) {
             return "ORIGIN";
         }
@@ -92,8 +99,10 @@ class BrowserRequestSecurityFilter extends OncePerRequestFilter {
         }
         try {
             String contentType = request.getContentType();
+            MediaType expected = request.getRequestURI().matches("/api/v1/brand-assets/(logo|favicon)")
+                    ? MediaType.IMAGE_PNG : MediaType.APPLICATION_JSON;
             if (contentType == null
-                    || !MediaType.APPLICATION_JSON.isCompatibleWith(MediaType.parseMediaType(contentType))) {
+                    || !expected.isCompatibleWith(MediaType.parseMediaType(contentType))) {
                 return "CONTENT_TYPE";
             }
         } catch (IllegalArgumentException invalidContentType) {

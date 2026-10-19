@@ -5,6 +5,7 @@ import io.saas.forge.iam.domain.authorization.PlatformRoleAssignmentRepository;
 import io.saas.forge.iam.infrastructure.persistence.mapper.PlatformRoleAssignmentMapper;
 import io.saas.forge.iam.infrastructure.persistence.record.PlatformRoleAssignmentRow;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
@@ -29,6 +30,12 @@ public class MyBatisPlatformRoleAssignmentRepository implements PlatformRoleAssi
     @Override
     public boolean hasActiveAssignment(UUID identityId, String roleKey, Instant at) {
         return mapper.countActive(identityId, roleKey, IamTime.asOffsetDateTime(at)) > 0;
+    }
+
+    @Override
+    public Optional<PlatformRoleAssignment> findActive(UUID identityId, String roleKey, Instant at) {
+        return Optional.ofNullable(mapper.findActive(identityId, roleKey, IamTime.asOffsetDateTime(at)))
+                .map(MyBatisPlatformRoleAssignmentRepository::toDomain);
     }
 
     private static PlatformRoleAssignment toDomain(PlatformRoleAssignmentRow row) {

@@ -22,7 +22,12 @@ final class RedisGatewayUserTokenRevocationChecker implements GatewayUserTokenRe
 
     @Override
     public void assertAllowed(UUID jti, String kid, UUID membershipId, UUID tenantId) {
-        List<String> revocationKeys = keys(jti, kid, membershipId, tenantId);
+        assertAllowed(jti, kid, membershipId, tenantId, null);
+    }
+
+    @Override
+    public void assertAllowed(UUID jti, String kid, UUID membershipId, UUID tenantId, UUID identityId) {
+        List<String> revocationKeys = keys(jti, kid, membershipId, tenantId, identityId);
         try {
             List<String> values = redis.multiGet(revocationKeys);
             if (values == null || values.size() != revocationKeys.size() || !"1".equals(values.get(0))) {
@@ -38,16 +43,18 @@ final class RedisGatewayUserTokenRevocationChecker implements GatewayUserTokenRe
         }
     }
 
-    private List<String> keys(UUID jti, String kid, UUID membershipId, UUID tenantId) {
+    private List<String> keys(UUID jti, String kid, UUID membershipId, UUID tenantId, UUID identityId) {
+        var keysToRead = new java.util.ArrayList<String>();
+        keysToRead.add(keys.ready());
+        keysToRead.add(keys.jti(jti));
+        keysToRead.add(keys.kid(kid));
+        if (identityId != null) keysToRead.add(keys.identityFence(identityId));
         if (membershipId == null) {
-            return List.of(keys.ready(), keys.jti(jti), keys.kid(kid));
+            return keysToRead;
         }
-        return List.of(
-                keys.ready(),
-                keys.jti(jti),
-                keys.kid(kid),
-                keys.tenantFence(tenantId),
-                keys.membershipFence(membershipId));
+        keysToRead.add(keys.tenantFence(tenantId));
+        keysToRead.add(keys.membershipFence(membershipId));
+        return keysToRead;
     }
 }
 

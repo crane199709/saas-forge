@@ -33,8 +33,10 @@ public final class UserSessionsRevokedEventFactory {
         data.put("scope", target.type().name());
         if (target.membershipId() != null) {
             data.put("membershipId", target.membershipId().toString());
-        } else {
+        } else if (target.tenantId() != null) {
             data.put("tenantId", target.tenantId().toString());
+        } else {
+            data.put("identityId", target.identityId().toString());
         }
         data.put("revokedSessionCount", revokedFamilyCount);
 

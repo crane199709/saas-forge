@@ -93,6 +93,12 @@ class PlatformAuthorizationGrpcServiceIT {
                         && PLATFORM_ADMIN.equals(roleKey)
                         && assigned.get();
             }
+
+            @Override
+            public java.util.Optional<PlatformRoleAssignment> findActive(
+                    UUID identityId, String roleKey, Instant at) {
+                return java.util.Optional.empty();
+            }
         };
         authorizationService = new PlatformRoleAuthorizationService(roles, Clock.fixed(NOW, ZoneOffset.UTC));
         PlatformAuthorizationGrpcService grpcService = new PlatformAuthorizationGrpcService(authorizationService);

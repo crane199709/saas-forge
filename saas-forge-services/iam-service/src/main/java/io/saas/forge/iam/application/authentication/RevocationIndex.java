@@ -33,6 +33,8 @@ public interface RevocationIndex {
 
     boolean isUserTokenFenced(RevocationFenceTarget target);
 
+    default boolean isIdentityFenced(UUID identityId) { return false; }
+
     boolean isReady();
 
     boolean isJtiRevoked(UUID jti);

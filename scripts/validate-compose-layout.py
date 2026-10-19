@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 ENVIRONMENT = ROOT / 'deploy/compose/compose.yaml'
@@ -17,7 +18,8 @@ APPLICATIONS = [ROOT / 'gateway/compose.yaml',
 OVERLAYS = sorted(ACCEPTANCE.parent.glob('*.override.yaml'))
 INFRASTRUCTURE = {'postgres', 'redis', 'kafka', 'mailpit', 'otel-collector', 'nacos', 'nacos-init'}
 FILES = [ENVIRONMENT, ACCEPTANCE, *APPLICATIONS, *OVERLAYS,
-         ENVIRONMENT.parent / 'local-https-development.override.yaml']
+         ENVIRONMENT.parent / 'local-https-development.override.yaml',
+         ENVIRONMENT.parent / 'brand-storage.override.yaml']
 
 # 仅构造语法校验占位值；不继承用户凭据、项目名或 COMPOSE_* 配置。
 environment = {key: os.environ[key] for key in ('PATH', 'HOME') if key in os.environ}
@@ -40,7 +42,7 @@ def configuration(files, project=None):
     if result.returncode:
         raise RuntimeError(result.stderr.strip())
     model = json.loads(result.stdout)
-    for service in model['services'].values():
+    for name, service in model['services'].items():
         for mount in service.get('volumes', []):
             if mount['type'] != 'bind' or mount['target'].startswith('/run/'):
                 continue
@@ -48,7 +50,7 @@ def configuration(files, project=None):
             assert source.exists(), f'挂载源丢失: {source}'
         if isinstance(service.get('build'), dict):
             build = service['build']
-            assert (Path(build['context']) / build['dockerfile']).is_file(), 'Dockerfile 路径失效'
+            assert (Path(build['context']) / build['dockerfile']).is_file(), f'{name}: Dockerfile 路径失效'
     return model
 
 
@@ -98,9 +100,61 @@ def main():
                     assert model['services'][service]['environment'].get(variable) == 'PT1H', (
                         f'{service}: 生命周期验收必须延迟后台接管，{variable} 应为 PT1H'
                     )
+            if overlay and overlay.name == 'brand-storage.override.yaml':
+                storage = model['services']['brand-storage']
+                init = model['services']['brand-storage-init']
+                tenant = model['services']['tenant-access-service']
+                assert not storage.get('ports'), '验收对象存储不得发布宿主机端口'
+                assert tenant['depends_on']['brand-storage-init']['condition'] == 'service_completed_successfully'
+                assert init['depends_on']['brand-storage']['condition'] == 'service_started'
+                assert tenant['environment']['SAAS_FORGE_BRAND_S3_BUCKET'] == 'sf-brand-assets'
+                assert tenant['environment']['SAAS_FORGE_BRAND_S3_ENDPOINT'] == 'http://brand-storage:9000'
+                assert {'/run/secrets/brand-access-key', '/run/secrets/brand-secret-key'} <= {
+                    mount['target'] for mount in tenant['volumes'] if mount['type'] == 'bind'
+                }
+    with tempfile.TemporaryDirectory(prefix='sf-stage4-layout-') as temporary:
+        round_dir = Path(temporary) / 'round'
+        prepared = subprocess.run(
+            ['node', str(ROOT / 'scripts/acceptance-handoff.mjs'), 'prepare-stage3', str(round_dir),
+             'https://console.saas.forge.test', 'https://api.saas.forge.test'],
+            env=environment, capture_output=True, text=True, cwd=ROOT)
+        assert prepared.returncode == 0, '阶段 4 handoff 准备失败'
+        receipt = json.loads((round_dir / 'preparation.json').read_text())
+        project = receipt['isolation']['project']
+        model = configuration([
+            ACCEPTANCE,
+            ACCEPTANCE.parent / 'tenant-lifecycle-e2e.override.yaml',
+            ACCEPTANCE.parent / 'stage3.override.yaml',
+            ACCEPTANCE.parent / 'brand-storage.override.yaml',
+            round_dir / 'compose.override.yaml',
+            ACCEPTANCE.parent / 'stage4-fresh.override.yaml',
+        ], project)
+        for service, module in (
+            ('gateway', 'gateway'),
+            ('iam-service', 'saas-forge-services/iam-service'),
+            ('tenant-access-service', 'saas-forge-services/tenant-access-service'),
+            ('entitlement-service', 'saas-forge-services/entitlement-service'),
+            ('audit-service', 'saas-forge-services/audit-service'),
+            ('project-service', 'examples/project-service'),
+            ('remote-delivery-service', 'saas-forge-services/remote-delivery-service'),
+        ):
+            build = model['services'][service]['build']
+            assert Path(build['context']).resolve() == ROOT and build['dockerfile'] == 'deploy/docker/Dockerfile', service
+            assert build['args']['MODULE'] == module, service
+            assert build['labels']['org.opencontainers.image.revision'] == receipt['backend']['commit'], service
+            assert build['labels']['io.saasforge.source-dirty'] == str(receipt['backend']['dirty']).lower(), service
+        assert model['networks']['default']['name'] == project + '_default'
+        assert all(volume['name'].startswith(project + '_') for volume in model['volumes'].values())
+        assert not model['services']['brand-storage'].get('ports')
+        ports = model['services']['gateway']['ports']
+        assert len(ports) == 1 and ports[0]['host_ip'] == '127.0.0.1' and ports[0]['target'] == 8080
+        assert model['services']['iam-service']['environment'][
+            'SAAS_FORGE_IAM_SESSION_REVOCATION_WORKER_DELAY'] == 'PT1S'
+        assert model['services']['tenant-access-service']['environment'][
+            'SAAS_FORGE_TENANT_ACCESS_LIFECYCLE_RECOVERY_DELAY'] == 'PT1S'
     edge = configuration([ENVIRONMENT, ENVIRONMENT.parent / 'local-https-development.override.yaml'])
     assert not edge['services']['local-https-edge'].get('depends_on'), 'HTTPS 入口不能自动启动应用'
-    print(f'通过：{len(APPLICATIONS)} 个独立应用、{len(OVERLAYS)} 个验收场景、项目/网络/卷隔离、挂载与迁移门禁。')
+    print(f'通过：{len(APPLICATIONS)} 个独立应用、{len(OVERLAYS)} 个验收场景、阶段 4 六层组合构建、项目/网络/卷隔离、挂载与迁移门禁。')
 
 
 if __name__ == '__main__':

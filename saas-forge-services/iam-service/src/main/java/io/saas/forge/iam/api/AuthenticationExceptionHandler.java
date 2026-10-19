@@ -17,6 +17,7 @@ import io.saas.forge.iam.application.authentication.PasswordChangeSessionInvalid
 import io.saas.forge.iam.application.authentication.PasswordCompromisedException;
 import io.saas.forge.iam.application.authentication.PasswordPolicyException;
 import io.saas.forge.iam.application.authentication.PasswordSetupTokenInvalidException;
+import io.saas.forge.iam.application.authentication.PasswordRecoveryTokenInvalidException;
 import io.saas.forge.iam.application.authentication.RefreshAuthorizationRejectedException;
 import io.saas.forge.iam.application.authentication.RefreshContextChangedException;
 import io.saas.forge.iam.application.authentication.RefreshSessionInvalidException;
@@ -223,6 +224,13 @@ public class AuthenticationExceptionHandler {
             PasswordSetupTokenInvalidException exception, HttpServletRequest request) {
         return problem(HttpStatus.BAD_REQUEST, PasswordSetupTokenInvalidException.CODE,
                 "Password setup token invalid", exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(PasswordRecoveryTokenInvalidException.class)
+    ResponseEntity<Problem> passwordRecoveryTokenInvalid(
+            PasswordRecoveryTokenInvalidException exception, HttpServletRequest request) {
+        return problem(HttpStatus.GONE, "PASSWORD_RECOVERY_TOKEN_INVALID",
+                "Password recovery token invalid", "密码恢复链接无效或已使用", request);
     }
 
     @ExceptionHandler(PasswordChangeSessionInvalidException.class)
