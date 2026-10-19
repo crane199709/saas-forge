@@ -275,6 +275,16 @@
     "backendHandoffAndApplicationContainerIdsUnchanged": true,
     "earlierBrowserReportsCountOnlyForTheirRecordedFrontendCommits": true
   },
+  "runtimePolicy": {
+    "confirmedByUserAtLocalDate": "2026-10-19",
+    "betweenTestSessions": "stopped",
+    "originalSixteenContainersObservedStopped": true,
+    "sevenFrozenApplicationContainerAndImageIdsStillMatch": true,
+    "nextScheduledStartLocal": "2026-10-23T10:58:00+08:00",
+    "sevenDayCleanupDueUtc": "2026-10-23T03:28:05.100027Z",
+    "stopAfterTest": "original seven applications and seven infrastructure containers only; preserve IDs and volumes",
+    "httpsEdgeSwap": "requires separate authorization"
+  },
   "diagnostics": [
     {
       "name": "browser-core-first-formal-run",
