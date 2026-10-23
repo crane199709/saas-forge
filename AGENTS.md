@@ -13,3 +13,7 @@ Uses the five default triage roles (`needs-triage`, `needs-info`, `ready-for-age
 ### Domain docs
 
 Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+## Coding standards
+
+手写 SQL 只能写在 mapper XML，禁止 `@Select` 等注解、`QueryWrapper`、带 SQL 片段的 Wrapper 方法与 `JdbcTemplate`；仅允许 `BaseMapper` 主键 CRUD 与单表 `LambdaQueryWrapper`。注释写「为什么」，不设占比指标，SDK public API 与 Mapper 方法必须有文档注释。完整规则见 `docs/agents/coding-standards.md`。
