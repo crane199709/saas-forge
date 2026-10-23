@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Operator 独立建表，不与 Identity 共用
+- [ ] Operator 以 Flyway 迁移独立建表，不与 Identity 共用
 - [ ] iam 同时作为两个 issuer 签发 Token，各自暴露 JWKS 与 OIDC 元数据
 - [ ] 网关按路由配置可接受的 issuer
 - [ ] platform 服务经 SDK 验签并读取当前 Operator

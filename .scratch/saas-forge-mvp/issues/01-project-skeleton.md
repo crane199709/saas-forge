@@ -9,6 +9,9 @@
 - [ ] 后端为 Maven 多模块工程，含 BOM，版本为 JDK 17、Spring Boot 4.0.9、Spring Cloud 2025.1.4、Spring Cloud Alibaba 2025.1.0.0；groupId 为 `io.saasforge`
 - [ ] SDK starter 模块按规格第 4 节建立空壳并能被 demo-service 引入
 - [ ] docker compose 一键启动全部本地依赖，数据卷位于已忽略的本地数据目录
+- [ ] 每个服务在同一 PostgreSQL 实例中使用独立 schema；docker compose 初始化时为每个服务创建 schema 与两个账号：迁移账号（schema 所有者，供 Flyway 使用）与运行账号（仅数据读写权限、非表所有者，供应用连接）
+- [ ] Flyway 统一接入：BOM 锁定 Flyway 与其 PostgreSQL 模块版本（Boot 4 需单独的 Flyway starter，且需显式引入 PostgreSQL 数据库模块）；各服务启动时以迁移账号执行本服务迁移，应用数据源使用运行账号
+- [ ] 迁移脚本命名为 `V<版本>__<描述>.sql`，已执行的脚本不可修改；每个服务至少有一个初始迁移证明链路可用
 - [ ] 四个服务启动成功并在 Nacos 可见，配置通过 `spring.config.import` 从 Nacos 读取
 - [ ] 网关能路由到各服务，并聚合展示各服务的 OpenAPI（springdoc 3.x + Swagger UI）
 - [ ] 前端为 pnpm workspace，含两个 Shell App 与 `@forge/ui`、`@forge/sdk` 空包，均可运行与构建；Element Plus、Pinia、vue-i18n 已接入

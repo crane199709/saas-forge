@@ -21,7 +21,7 @@ SDK 第一期面向组织内部团队，接口按「将来可能开源」的标�
 | 注册/配置 | Nacos（SCA 自带，client 3.1.x），配置使用 `spring.config.import` |
 | 网关 | Spring Cloud Gateway + Sentinel |
 | 认证 | Spring Security 7 内置 Authorization Server（`spring-boot-starter-security-oauth2-authorization-server`）（ADR-0004） |
-| 持久化 | PostgreSQL 17、MyBatis-Plus 3.5.16+（`mybatis-plus-spring-boot4-starter`，显式引入 jsqlparser 模块）、Flyway（ADR-0007） |
+| 持久化 | PostgreSQL 17、MyBatis-Plus 3.5.16+（`mybatis-plus-spring-boot4-starter`，显式引入 jsqlparser 模块）、Flyway（Boot 4 需 `spring-boot-starter-flyway`，并显式引入 `flyway-database-postgresql`）（ADR-0007） |
 | 主键 | 应用侧生成 UUIDv7（ADR-0014） |
 | 缓存 | Redis |
 | 消息 | RocketMQ 5.x，客户端 `rocketmq-client-java`（ADR-0012） |
@@ -145,7 +145,9 @@ SDK 在服务启动时（也支持 CI 阶段）上报：Permission Code（扫描
 ## 8. 租户隔离（SDK）
 
 - MyBatis-Plus `TenantLineInnerInterceptor` 自动注入 `tenant_id`；可声明忽略表（全局字典等）。
-- 每次获取连接时设置会话变量（如 `SET app.tenant_id`），各业务表启用 RLS 策略作为兜底。
+- 每次获取连接时设置会话变量（如 `SET app.tenant_id`），各业务表同时启用 `ENABLE` 与 `FORCE ROW LEVEL SECURITY` 作为兜底。
+- 每个服务在同一 PostgreSQL 实例中使用独立 schema，禁止跨 schema 访问；将来拆分独立库只需改连接配置。
+- 每个服务两个数据库账号：迁移账号（schema 所有者，供 Flyway）与运行账号（仅数据读写、非表所有者，供应用）；均不得为超级用户或拥有 `BYPASSRLS`。
 - 「当前租户 → 数据源」为扩展点接口，第一期只有单数据源实现。
 - Redis key 统一前缀 `{service}:{tenant_id}:`。
 - S3 对象 key 前缀 `{tenant_id}/{service}/`，访问经预签名 URL。

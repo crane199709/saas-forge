@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] iam 建立 Identity、Tenant（最小字段）、Membership 的表结构与预置数据
+- [ ] iam 以 Flyway 迁移建立 Identity、Tenant（最小字段）、Membership 的表结构与预置数据
 - [ ] 账号/邮箱 + 密码登录成功，Access Token（约 15 分钟）claims 含 `sub`、`tenant_id`、`membership_id`、`ver`
 - [ ] 错误密码、未知账号返回统一的认证失败响应
 - [ ] Refresh Token 可换取新的 Access Token
