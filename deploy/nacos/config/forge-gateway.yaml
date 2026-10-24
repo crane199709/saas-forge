@@ -1,0 +1,37 @@
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          # 只有来自可信代理的请求才会追加 X-Forwarded-*。这里只信任本机，适用于浏览器在本机直连网关的本地开发；
+          # 网关前面另有代理或从其他机器访问时需改成对应地址，否则 springdoc 的 servers 会退回服务本机端口
+          trusted-proxies: '127\.0\.0\.1|0:0:0:0:0:0:0:1'
+          routes:
+            - id: forge-iam
+              uri: lb://forge-iam
+              predicates:
+                - Path=/iam/**
+              filters:
+                - StripPrefix=1
+            - id: forge-platform
+              uri: lb://forge-platform
+              predicates:
+                - Path=/platform/**
+              filters:
+                - StripPrefix=1
+            - id: demo-service
+              uri: lb://demo-service
+              predicates:
+                - Path=/demo/**
+              filters:
+                - StripPrefix=1
+
+springdoc:
+  swagger-ui:
+    urls:
+      - name: forge-iam
+        url: /iam/v3/api-docs
+      - name: forge-platform
+        url: /platform/v3/api-docs
+      - name: demo-service
+        url: /demo/v3/api-docs

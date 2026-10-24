@@ -1,0 +1,9 @@
+server:
+  # 经网关访问时按 X-Forwarded-* 还原外部地址，springdoc 生成的 servers 才会指向网关而不是服务本机端口
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

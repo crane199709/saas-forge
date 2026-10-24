@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- 同一 reactor 内的 BOM 无法以 import 方式引用，因此父 POM 直接继承 BOM -->
+    <parent>
+        <groupId>io.saasforge</groupId>
+        <artifactId>forge-dependencies</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>forge-dependencies/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>forge-parent</artifactId>
+    <packaging>pom</packaging>
+    <name>Forge Parent</name>
+    <description>SaaS Forge 后端父 POM：统一构建与格式化配置</description>
+
+    <modules>
+        <module>forge-dependencies</module>
+        <module>forge-sdk</module>
+        <module>forge-gateway</module>
+        <module>forge-iam</module>
+        <module>forge-platform</module>
+        <module>examples/demo-service</module>
+    </modules>
+
+    <properties>
+        <java.version>17</java.version>
+        <palantir-java-format.version>2.102.0</palantir-java-format.version>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <configuration>
+                    <java>
+                        <removeUnusedImports/>
+                        <palantirJavaFormat>
+                            <version>${palantir-java-format.version}</version>
+                        </palantirJavaFormat>
+                    </java>
+                    <pom>
+                        <!-- BOM 不继承本 POM，由根模块代为检查；子模块中该路径不存在，不会误匹配 -->
+                        <includes>
+                            <include>pom.xml</include>
+                            <include>forge-dependencies/pom.xml</include>
+                        </includes>
+                        <sortPom>
+                            <nrOfIndentSpace>4</nrOfIndentSpace>
+                            <expandEmptyElements>false</expandEmptyElements>
+                        </sortPom>
+                    </pom>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <phase>verify</phase>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

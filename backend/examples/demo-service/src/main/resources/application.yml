@@ -1,0 +1,24 @@
+server:
+  port: ${FORGE_DEMO_PORT:8201}
+
+spring:
+  application:
+    name: demo-service
+  config:
+    import:
+      - optional:nacos:forge-common.yaml
+  cloud:
+    nacos:
+      server-addr: ${FORGE_NACOS_ADDR:127.0.0.1:8848}
+  # 应用只用运行账号连接（仅数据读写、非表所有者），DDL 只由 Flyway 以迁移账号执行（ADR-0001）
+  datasource:
+    url: jdbc:postgresql://${FORGE_DB_HOST:127.0.0.1}:${FORGE_DB_PORT:5432}/forge
+    username: demo_app
+    password: ${FORGE_DEMO_DB_PASSWORD:demo_app}
+  flyway:
+    user: demo_migrator
+    password: ${FORGE_DEMO_DB_MIGRATOR_PASSWORD:demo_migrator}
+    schemas: demo
+    default-schema: demo
+    # schema 由 compose 初始化脚本创建并归属迁移账号，迁移账号本身没有建 schema 的权限
+    create-schemas: false

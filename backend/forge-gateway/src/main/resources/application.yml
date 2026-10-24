@@ -1,0 +1,15 @@
+server:
+  port: ${FORGE_GATEWAY_PORT:8080}
+
+spring:
+  application:
+    name: forge-gateway
+  # 路由与 Swagger UI 聚合列表只在 Nacos 的 forge-gateway.yaml 中维护。SCA 对不存在的 dataId 只告警
+  # 「config ... is empty」而不会启动失败，网关没有路由时先确认 nacos-init 已发布配置
+  config:
+    import:
+      - optional:nacos:forge-common.yaml
+      - optional:nacos:${spring.application.name}.yaml
+  cloud:
+    nacos:
+      server-addr: ${FORGE_NACOS_ADDR:127.0.0.1:8848}

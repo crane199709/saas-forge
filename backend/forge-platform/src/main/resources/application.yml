@@ -1,0 +1,24 @@
+server:
+  port: ${FORGE_PLATFORM_PORT:8102}
+
+spring:
+  application:
+    name: forge-platform
+  config:
+    import:
+      - optional:nacos:forge-common.yaml
+  cloud:
+    nacos:
+      server-addr: ${FORGE_NACOS_ADDR:127.0.0.1:8848}
+  # 应用只用运行账号连接（仅数据读写、非表所有者），DDL 只由 Flyway 以迁移账号执行（ADR-0001）
+  datasource:
+    url: jdbc:postgresql://${FORGE_DB_HOST:127.0.0.1}:${FORGE_DB_PORT:5432}/forge
+    username: platform_app
+    password: ${FORGE_PLATFORM_DB_PASSWORD:platform_app}
+  flyway:
+    user: platform_migrator
+    password: ${FORGE_PLATFORM_DB_MIGRATOR_PASSWORD:platform_migrator}
+    schemas: platform
+    default-schema: platform
+    # schema 由 compose 初始化脚本创建并归属迁移账号，迁移账号本身没有建 schema 的权限
+    create-schemas: false

@@ -1,0 +1,23 @@
+{
+  "name": "saas-forge-frontend",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev:platform": "pnpm --filter @forge/platform-console dev",
+    "dev:tenant": "pnpm --filter @forge/tenant-app dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@vue/tsconfig": "0.9.1",
+    "prettier": "3.9.10",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.saasforge</groupId>
+        <artifactId>forge-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>forge-sdk</artifactId>
+    <packaging>pom</packaging>
+    <name>Forge SDK</name>
+    <description>Forge SDK：按能力拆分的 Spring Boot Starter</description>
+
+    <modules>
+        <module>forge-sdk-core</module>
+        <module>forge-sdk-security</module>
+        <module>forge-sdk-tenant</module>
+        <module>forge-sdk-abac</module>
+        <module>forge-sdk-mq</module>
+        <module>forge-sdk-audit</module>
+        <module>forge-sdk-storage</module>
+        <module>forge-sdk-openapi</module>
+        <module>forge-sdk-manifest</module>
+    </modules>
+</project>
