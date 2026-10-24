@@ -9,8 +9,10 @@
 - [ ] App Registry 的增删改与按环境的入口地址配置
 - [ ] 菜单节点可指向某 Sub-App 的路由
 - [ ] Shell App 启动时获取当前可加载的 Sub-App 列表，只加载套餐允许且菜单可见的 Sub-App
+- [ ] Sub-App 加载有超时；单个 Sub-App 加载慢或失败时，Shell App 首页、导航及其他 Sub-App 照常可用，仅该 Sub-App 区域提示错误
 - [ ] 共享依赖版本低于 Sub-App 声明的最低版本时拒绝加载并提示
 - [ ] Sub-App 经共享的 `@forge/sdk` 获取 Token 与租户上下文，自身不处理登录
 - [ ] 切换租户时卸载全部 Sub-App、清空共享 Pinia 状态后重载
 - [ ] 按 02 的结论把隔离约定写入 Sub-App 脚手架与 lint 规则
+- [ ] Sub-App 团队可独立本地开发：无需启动完整 Shell App 工程即可运行和调试 Sub-App（如由脚手架提供开发用宿主），并验证修改代码后的热更新（HMR）
 - [ ] 测试：修改注册表地址后加载到新版本；未在套餐中的 Sub-App 不被加载
