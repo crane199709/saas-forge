@@ -16,4 +16,4 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/ag
 
 ## Coding standards
 
-手写 SQL 只能写在 mapper XML，禁止 `@Select` 等注解、`QueryWrapper`、带 SQL 片段的 Wrapper 方法与 `JdbcTemplate`；仅允许 `BaseMapper` 主键 CRUD 与单表 `LambdaQueryWrapper`。注释写「为什么」，不设占比指标，SDK public API 与 Mapper 方法必须有文档注释。完整规则见 `docs/agents/coding-standards.md`。
+手写 SQL 只能写在 mapper XML，禁止 `@Select` 等注解、`QueryWrapper`、带 SQL 片段的 Wrapper 方法与 `JdbcTemplate`；仅允许 `BaseMapper` 主键 CRUD 与单表 `LambdaQueryWrapper`。SDK 不允许出现模块级或包级循环依赖。注释写「为什么」，不设占比指标，SDK public API 与 Mapper 方法必须有文档注释。完整规则见 `docs/agents/coding-standards.md`。
