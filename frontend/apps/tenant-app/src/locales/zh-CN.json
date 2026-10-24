@@ -11,5 +11,19 @@
     "scope": "Shell 局部样式",
     "singleton": "{name}: singleton",
     "duplicate": "{name}: duplicate"
+  },
+  "auth": {
+    "title": "租户登录",
+    "account": "账号或邮箱",
+    "password": "密码",
+    "login": "登录",
+    "identity": "当前身份",
+    "tenant": "当前租户",
+    "identityId": "Identity ID",
+    "tenantId": "Tenant ID",
+    "membershipId": "Membership ID",
+    "loginAgain": "重新登录",
+    "failed": "账号或密码错误，或会话已失效",
+    "contextFailed": "无法读取当前上下文，请检查服务后重新登录。"
   }
 }

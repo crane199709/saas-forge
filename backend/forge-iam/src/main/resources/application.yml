@@ -22,3 +22,15 @@ spring:
     default-schema: iam
     # schema 由 compose 初始化脚本创建并归属迁移账号，迁移账号本身没有建 schema 的权限
     create-schemas: false
+
+  session:
+    timeout: 30m
+    redis:
+      namespace: iam:global:session
+  data:
+    redis:
+      host: ${FORGE_REDIS_HOST:127.0.0.1}
+      port: ${FORGE_REDIS_PORT:6379}
+mybatis-plus:
+  configuration:
+    arg-name-based-constructor-auto-mapping: true

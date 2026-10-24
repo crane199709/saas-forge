@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { ref, watchEffect } from 'vue'
 import { themeTokens } from '@forge/ui'
+import LoginPanel from './LoginPanel.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -31,6 +32,7 @@ defineProps<{ sharedChecks?: Record<string, boolean>; loadError?: string }>()
     <el-main>
       <el-card>
         <h1>{{ t('app.welcome') }}</h1>
+        <LoginPanel />
         <nav>
           <router-link to="/">{{ t('spike.home') }}</router-link>
           <router-link to="/apps/demo/overview">{{ t('spike.demo') }}</router-link>

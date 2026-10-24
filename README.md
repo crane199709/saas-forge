@@ -91,7 +91,7 @@ java -jar backend/forge-gateway/target/forge-gateway-0.1.0-SNAPSHOT.jar
 
 - Nacos 控制台 <http://localhost:18080> 的服务列表中可见四个服务
 - 聚合的接口文档：<http://localhost:8080/swagger-ui.html>（右上角切换服务）
-- 示例 i18n 文案：`curl http://localhost:8080/demo/greeting`
+- 示例 i18n 文案：登录后使用 `curl -H "Authorization: Bearer <accessToken>" http://localhost:8080/demo/greeting`；业务接口现在要求 Tenant Realm Token。
 
 ### 3. 启动前端
 
@@ -106,6 +106,8 @@ pnpm dev:tenant
 ```
 
 platform-console 运行在 <http://localhost:5173>，tenant-app 运行在 <http://localhost:5174>。
+
+租户登录的演示账号、IAM `demo` profile、签名密钥和接口说明见 [Tenant Realm 最小登录](docs/tenant-login.md)。演示数据需显式启用，默认迁移不插入已知密码的身份。
 
 ## 构建与测试
 
