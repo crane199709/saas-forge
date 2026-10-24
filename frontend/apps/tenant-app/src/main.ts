@@ -4,9 +4,30 @@ import 'element-plus/dist/index.css'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
+import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import { i18n } from './i18n'
+import { loadSubApp } from './load-sub-app'
 
 document.title = i18n.global.t('app.title')
 
-createApp(App).use(createPinia()).use(i18n).use(ElementPlus, { locale: zhCn }).mount('#app')
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [{ path: '/', component: { render: () => null } }],
+})
+let sharedChecks: Record<string, boolean> = {}
+let loadError = ''
+try {
+  const subApp = await loadSubApp()
+  router.addRoute({ path: '/apps/demo', children: subApp.routes })
+  sharedChecks = subApp.checks
+} catch (error) {
+  console.error(error)
+  loadError = i18n.global.t('spike.loadError')
+}
+createApp(App, { sharedChecks, loadError })
+  .use(createPinia())
+  .use(i18n)
+  .use(router)
+  .use(ElementPlus, { locale: zhCn })
+  .mount('#app')

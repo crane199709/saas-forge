@@ -2,5 +2,14 @@
   "app": {
     "title": "SaaS Forge 租户端",
     "welcome": "欢迎使用 SaaS Forge 租户端"
+  },
+  "spike": {
+    "home": "Shell 首页",
+    "demo": "示例子应用",
+    "loadError": "子应用加载失败，请检查入口配置后刷新。",
+    "theme": "切换主题",
+    "scope": "Shell 局部样式",
+    "singleton": "{name}: singleton",
+    "duplicate": "{name}: duplicate"
   }
 }

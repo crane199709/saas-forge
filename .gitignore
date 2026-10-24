@@ -42,6 +42,7 @@ replay_pid*
 # ---- Node / pnpm / Vite（frontend/）----
 node_modules/
 dist/
+dist-v2/
 dist-ssr/
 .vite/
 *.local

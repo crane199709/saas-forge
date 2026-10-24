@@ -1,3 +1,7 @@
 dist
+dist-v2
 coverage
+test-results
+playwright-report
+blob-report
 pnpm-lock.yaml

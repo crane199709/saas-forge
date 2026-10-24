@@ -1,2 +1,2 @@
-// @forge/ui 入口。工程骨架阶段为空包，共享组件与主题 token 在后续工单中加入。
-export {}
+/** Shell 与 Sub-App 共用的主题 token；CSS 变量由 Shell 写入文档根节点。 */
+export const themeTokens = Object.freeze({ primary: '#409eff', alternate: '#8b5cf6' })
