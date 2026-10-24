@@ -1,0 +1,41 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Backend: IAM",
+      "request": "launch",
+      "mainClass": "io.saasforge.iam.IamApplication",
+      "projectName": "forge-iam",
+      "cwd": "${workspaceFolder}/backend/forge-iam",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "java",
+      "name": "Backend: Platform",
+      "request": "launch",
+      "mainClass": "io.saasforge.platform.PlatformApplication",
+      "projectName": "forge-platform",
+      "cwd": "${workspaceFolder}/backend/forge-platform",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "java",
+      "name": "Backend: Gateway",
+      "request": "launch",
+      "mainClass": "io.saasforge.gateway.GatewayApplication",
+      "projectName": "forge-gateway",
+      "cwd": "${workspaceFolder}/backend/forge-gateway",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "java",
+      "name": "Backend: Demo",
+      "request": "launch",
+      "mainClass": "io.saasforge.demo.DemoApplication",
+      "projectName": "demo-service",
+      "cwd": "${workspaceFolder}/backend/examples/demo-service",
+      "console": "integratedTerminal"
+    }
+  ]
+}
