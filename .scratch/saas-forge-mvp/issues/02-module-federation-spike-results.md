@@ -36,7 +36,9 @@ pnpm test:e2e
 - Sub-App v1：`http://127.0.0.1:5175/remoteEntry.js`
 - Sub-App v2：`http://127.0.0.1:5176/remoteEntry.js`
 
-手动体验：构建后在三个终端分别运行以下命令，打开 Shell 的 `/apps/demo/overview`：
+日常本地体验：先在 `frontend` 目录运行 `pnpm start:demo`（构建 Sub-App 后保持 5175 服务运行），另开终端运行 `pnpm dev:tenant`，打开 `http://localhost:5174/apps/demo/overview`。单独运行 Shell 不会启动 Sub-App；E2E 完成后也会关闭它启动的临时服务。
+
+手动体验 production build：构建后在三个终端分别运行以下命令，打开 Shell 的 `/apps/demo/overview`：
 
 ```bash
 pnpm --filter @forge/tenant-app preview --host 127.0.0.1 --port 5174
@@ -44,7 +46,7 @@ pnpm --filter @forge/demo-sub-app preview --host 127.0.0.1 --port 5175
 pnpm --filter @forge/demo-sub-app preview --outDir dist-v2 --host 127.0.0.1 --port 5176
 ```
 
-修改 `frontend/apps/tenant-app/dist/sub-apps.json` 的 `remoteEntry` 为 v2 地址，再刷新 Shell 即可切换；改回 5175 后刷新恢复 v1。不要重新构建 Shell，否则 public 中的默认配置会覆盖该文件。自动测试实际修改此文件，并在 finally 中恢复，不使用网络 mock。上述三个命令默认用于验收 production build；纯 Sub-App 页面不能独立挂载，因为它只消费 Shell 提供的依赖。开发模式与生产 CDN 未作为本次验收对象。
+修改 `frontend/apps/tenant-app/dist/sub-apps.json` 的 `remoteEntry` 为 v2 地址，再刷新 Shell 即可切换；改回 5175 后刷新恢复 v1。不要重新构建 Shell，否则 public 中的默认配置会覆盖该文件。自动测试实际修改此文件，并在 finally 中恢复，不使用网络 mock。上述三个命令默认用于验收 production build；纯 Sub-App 页面不能独立挂载，因为它只消费 Shell 提供的依赖。生产 CDN 与完整开发 HMR 未作为本次验收对象。
 
 ## 浏览器证据
 
@@ -69,7 +71,7 @@ pnpm --filter @forge/demo-sub-app preview --outDir dist-v2 --host 127.0.0.1 --po
 3. **i18n 也需要共享。** 组件使用 Shell 注入的语言上下文；Sub-App 的文案放 local scope，避免覆盖 Shell 文案。
 4. **弹层依赖全局主题与库 CSS。** Shell 只加载一次 Element Plus CSS。Sub-App 的 scoped CSS 不能依赖祖先容器去控制 teleport 到 body 的弹层。切换主题时，Element Plus 的 light-3/5/7/8/9、dark-2 必须与 primary 同步，否则悬停等状态仍是旧颜色。
 5. **共享根包不等于共享任意子路径。** Sub-App 从共享包根入口导入，不独立引入 Element Plus 样式或绕过共享声明的内部实现路径。新增子路径应另行验证重复实例风险。
-6. **加载时序与刷新。** 在首次导航前注册路由，确保深链接被匹配；Shell 静态服务器必须提供 history fallback。Sub-App 资源用相对 base，跨源资源须允许 Shell 源的 CORS；此 spike 只允许 `http://127.0.0.1:5174`。
+6. **加载时序与刷新。** 在首次导航前注册路由，确保深链接被匹配；Shell 静态服务器必须提供 history fallback。Sub-App 资源用相对 base，跨源资源须允许 Shell 源的 CORS；此 spike 允许 `http://127.0.0.1:5174` 与 `http://localhost:5174` 两个本地源。
 7. **版本切换是配置加整页刷新。** 不对已加载容器调用强制覆盖。生产版本应使用不可变地址，配置/入口不能被旧缓存长期固定，hash 资源可长期缓存。此 spike 用两个本地端口验证，不代替 CDN 验收。
 8. **自动化环境。** 当前会话没有 Browser 插件，使用 Playwright。资源压力较高，构建、浏览器 worker 与审查均串行；Module Federation 插件在 Vitest 中禁用，联邦运行时行为由真实浏览器测试负责。
 
@@ -88,8 +90,17 @@ pnpm test:e2e
 pnpm format:check
 ```
 
-上述检查全部通过：5 个子包类型检查、工具配置/E2E 类型检查、全部前端包构建（含 Sub-App v2）、2 个 Vitest 单测、6 个 Chromium E2E，以及 Prettier 检查。
+上述检查全部通过：5 个子包类型检查、工具配置/E2E 类型检查、全部前端包构建（含 Sub-App v2）、2 个 Vitest 单测、7 个 Chromium E2E，以及 Prettier 检查。
 
 仅变更前端和规格文档，未改后端或数据库，未启动后端依赖。浏览器覆盖 Chromium；Firefox、Safari、生产 CDN、跨版本依赖协商和开发 HMR 未验证。Element Plus 全量共享产物仍触发 Vite 的大于 500 kB chunk 提示，此工单没有做体积优化。
 
 参考：[Module Federation Vite 插件](https://module-federation.io/integrations/build-tool/vite)、[运行时 API](https://module-federation.io/guide/runtime/runtime-api)、[插件源码与 host-only shared 说明](https://github.com/module-federation/vite)。具体可行性以上述本地构建与浏览器结果为准。
+
+## localhost 加载失败回归
+
+2026-10-24 根据实际开发页面复现并修复：
+
+- 首先是 5175 的 Sub-App 服务未启动，浏览器报 `ERR_CONNECTION_REFUSED`。启动服务后又复现 CORS 拒绝：原配置只允许 `127.0.0.1:5174`，不允许页面使用的 `localhost:5174`。
+- CORS 现精确允许上述两个本地源；新增 `pnpm start:demo`，构建并保持 Sub-App 服务运行。
+- 在浏览器公开边界增加 localhost 回归：修复前确实因 CORS 失败，修复后通过。测试将 localhost 解析到自有 IPv4 preview 服务，URL 和 Origin 仍为 localhost，避免误连机器上已有的 IPv6 开发服务。
+- 7 个 production-build E2E、工具类型检查与格式检查通过。另对用户正在运行的 `http://localhost:5174/apps/demo/overview` 开发模式 Shell 实测：7 个共享引用检查、详情路由和 Dialog 均通过，无浏览器 warning/error。此项确认 dev Shell 加载已构建 Sub-App 可用，不代表验证了 Sub-App HMR。

@@ -17,5 +17,9 @@ export default defineConfig(({ mode }) => ({
     }),
   ],
   define: { __DEMO_VERSION__: JSON.stringify(mode === 'v2' ? 'v2' : 'v1') },
-  preview: { port: 5175, strictPort: true, cors: { origin: 'http://127.0.0.1:5174' } },
+  preview: {
+    port: 5175,
+    strictPort: true,
+    cors: { origin: ['http://127.0.0.1:5174', 'http://localhost:5174'] },
+  },
 }))

@@ -6,6 +6,8 @@ export default defineConfig({
   workers: 1,
   use: {
     channel: 'chromium',
+    // 两种源地址都连接本测试启动的 IPv4 服务，避免误用用户已有的 IPv6 开发服务。
+    launchOptions: { args: ['--host-resolver-rules=MAP localhost 127.0.0.1'] },
     baseURL: 'http://127.0.0.1:5174',
     viewport: { width: 1280, height: 900 },
     trace: 'retain-on-failure',

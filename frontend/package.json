@@ -9,6 +9,7 @@
   "scripts": {
     "dev:platform": "pnpm --filter @forge/platform-console dev",
     "dev:tenant": "pnpm --filter @forge/tenant-app dev",
+    "start:demo": "pnpm --filter @forge/demo-sub-app build && pnpm --filter @forge/demo-sub-app preview --host 127.0.0.1 --port 5175",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck && pnpm typecheck:tools",
     "test": "pnpm -r test",

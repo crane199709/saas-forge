@@ -94,23 +94,25 @@ for (const viewport of [
   })
 }
 
-test('Shell 从独立端口加载 Sub-App，六个共享依赖具有相同的运行时引用', async ({ page }) => {
-  await page.goto('/apps/demo/overview')
-  await expect(page.getByRole('heading', { name: '示例子应用 v1' })).toBeVisible()
-  await expect(page).toHaveTitle('SaaS Forge 租户端')
-  await expect(page.locator('vite-error-overlay')).toHaveCount(0)
-  for (const dependency of [
-    'vue',
-    'vue-router',
-    'pinia',
-    'element-plus',
-    '@forge/ui',
-    '@forge/sdk',
-    'vue-i18n',
-  ]) {
-    await expect(page.getByTestId(`shared-${dependency}`)).toHaveText(`${dependency}: singleton`)
-  }
-})
+for (const host of ['127.0.0.1', 'localhost']) {
+  test(`Shell 从 ${host} 加载 Sub-App，共享依赖具有相同的运行时引用`, async ({ page }) => {
+    await page.goto(`http://${host}:5174/apps/demo/overview`)
+    await expect(page.getByRole('heading', { name: '示例子应用 v1' })).toBeVisible()
+    await expect(page).toHaveTitle('SaaS Forge 租户端')
+    await expect(page.locator('vite-error-overlay')).toHaveCount(0)
+    for (const dependency of [
+      'vue',
+      'vue-router',
+      'pinia',
+      'element-plus',
+      '@forge/ui',
+      '@forge/sdk',
+      'vue-i18n',
+    ]) {
+      await expect(page.getByTestId(`shared-${dependency}`)).toHaveText(`${dependency}: singleton`)
+    }
+  })
+}
 
 test('主题 token 同步，Sub-App scoped CSS 不泄漏到 Shell', async ({ page }) => {
   await page.goto('/apps/demo/overview')
