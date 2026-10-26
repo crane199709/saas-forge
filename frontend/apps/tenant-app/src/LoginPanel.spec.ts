@@ -195,3 +195,37 @@ it('没有有效 Membership 时展示无租户页', async () => {
   expect(wrapper.text()).toContain('暂无可进入的租户')
   expect(wrapper.find('form').exists()).toBe(false)
 })
+
+it('会话被清除（如刷新失败）后回到登录表单', async () => {
+  sessionStorage.setItem(
+    'forge.tenant.session',
+    JSON.stringify({
+      accessToken: 'a',
+      refreshToken: 'r',
+      identityName: '演示身份',
+      tenantName: '演示租户',
+    }),
+  )
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          identityId: 'identity-1',
+          tenantId: 'tenant-1',
+          membershipId: 'membership-1',
+          version: 1,
+        }),
+      ),
+    ),
+  )
+  const client = createTenantClient(sessionStorage)
+  const wrapper = mount(LoginPanel, {
+    global: { plugins: [i18n, ElementPlus], provide: { [tenantClientKey]: client } },
+  })
+  await vi.waitFor(() => expect(wrapper.text()).toContain('membership-1'))
+  client.clear()
+  await flushPromises()
+  expect(wrapper.find('input[name="password"]').exists()).toBe(true)
+  expect(wrapper.text()).not.toContain('演示身份')
+})

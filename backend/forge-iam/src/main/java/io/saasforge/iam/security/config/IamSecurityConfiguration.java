@@ -6,8 +6,10 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.saasforge.iam.identity.model.ActiveMembership;
 import io.saasforge.iam.identity.service.IdentityService;
+import io.saasforge.iam.membership.service.MembershipStateService;
 import io.saasforge.iam.security.filter.TokenGrantLockFilter;
 import io.saasforge.iam.security.service.RedisAuthorizationService;
+import io.saasforge.iam.tenant.service.TenantStateService;
 import jakarta.servlet.DispatcherType;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -131,7 +133,8 @@ class IamSecurityConfiguration {
     }
 
     @Bean
-    OAuth2TokenCustomizer<JwtEncodingContext> tenantClaims(IdentityService identities) {
+    OAuth2TokenCustomizer<JwtEncodingContext> tenantClaims(
+            IdentityService identities, MembershipStateService membershipStates, TenantStateService tenantStates) {
         return context -> {
             UUID identityId = UUID.fromString(context.getPrincipal().getName());
             ActiveMembership membership;
@@ -157,6 +160,9 @@ class IamSecurityConfiguration {
                 membership = matches.size() == 1 ? matches.get(0) : null;
             }
             if (membership == null) throw new OAuth2AuthenticationException("invalid_grant");
+            // 网关只认 Redis 中的状态，缺失即拒绝；每次签发都按数据库补齐，被淘汰的状态随刷新恢复（ADR-0005）。
+            membershipStates.publish(membership.tenantId(), membership.membershipId(), membership.version());
+            tenantStates.publishActive(membership.tenantId());
             context.getClaims()
                     .subject(membership.identityId().toString())
                     .claim("tenant_id", membership.tenantId().toString())

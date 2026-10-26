@@ -110,6 +110,8 @@ export function createTenantClient(storage: Storage) {
       body: JSON.stringify(body),
     })
     if (response.status === 403) throw new Error('auth.tenantAccessDenied')
+    // 服务端故障（如 IAM 依赖的 Redis 不可用）不代表凭证失效，与凭证被拒绝区分开。
+    if (response.status >= 500) throw new Error('auth.unavailable')
     if (!response.ok) {
       throw new Error('auth.failed')
     }
@@ -234,6 +236,10 @@ export function createTenantClient(storage: Storage) {
     return operation
   }
 
+  /**
+   * 轮换刷新凭证；并发调用共用进行中的一次。凭证被拒绝（如 Membership 或租户已停用）时清除会话，
+   * 服务端或网络故障以原错误失败并保留会话。
+   */
   function refresh(): Promise<TenantSession> {
     if (pendingRotation) return pendingRotation
     const value = session()
@@ -241,7 +247,11 @@ export function createTenantClient(storage: Storage) {
     const started = generation
     const operation = exchange('/iam/auth/refresh', { refreshToken: value.refreshToken })
       .catch((error: unknown) => {
-        if (started === generation) clear()
+        // 只有刷新凭证被拒绝才登出；服务端或网络故障保留会话，恢复后可继续刷新。
+        const rejected =
+          error instanceof Error &&
+          ['auth.failed', 'auth.tenantAccessDenied'].includes(error.message)
+        if (rejected && started === generation) clear()
         throw error
       })
       .finally(() => {

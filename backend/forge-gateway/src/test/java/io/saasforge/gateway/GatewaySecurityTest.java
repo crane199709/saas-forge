@@ -11,16 +11,24 @@ import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.sun.net.httpserver.HttpServer;
+import io.saasforge.sdk.core.MembershipStateKeys;
 import java.net.InetSocketAddress;
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.RestClient;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -29,8 +37,15 @@ import org.springframework.web.client.RestClient;
             "spring.cloud.gateway.server.webflux.routes[0].id=demo",
                     "spring.cloud.gateway.server.webflux.routes[0].predicates[0]=Path=/demo/**"
         })
+@Testcontainers
 class GatewaySecurityTest {
     static final String ISSUER = "http://tenant-realm.test";
+    static final UUID TENANT_ID = UUID.fromString("019a0110-0000-7000-8000-000000000001");
+    static final UUID MEMBERSHIP_ID = UUID.fromString("019a0110-0000-7000-8000-000000000003");
+
+    @Container
+    static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+
     static final RSAKey KEY;
     static final HttpServer JWKS;
 
@@ -67,6 +82,8 @@ class GatewaySecurityTest {
         registry.add(
                 "spring.cloud.gateway.server.webflux.routes[0].uri",
                 () -> "http://127.0.0.1:" + JWKS.getAddress().getPort());
+        registry.add("spring.data.redis.host", redis::getHost);
+        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
         registry.add("forge.security.issuer", () -> ISSUER);
         registry.add(
                 "forge.security.jwk-set-uri",
@@ -80,6 +97,42 @@ class GatewaySecurityTest {
 
     @LocalServerPort
     int port;
+
+    @Autowired
+    StringRedisTemplate redisTemplate;
+
+    // 模拟 iam 签发 Token 时发布的状态：Membership 版本 1、租户 active。
+    @BeforeEach
+    void publishActiveState() {
+        redisTemplate.opsForValue().set(MembershipStateKeys.version(TENANT_ID, MEMBERSHIP_ID), "1");
+        redisTemplate.opsForValue().set(MembershipStateKeys.tenantStatus(TENANT_ID), "active");
+    }
+
+    @Test
+    void incrementedMembershipVersionRejectsOldTokenAndAcceptsRefreshedOne() throws Exception {
+        String old = token(KEY, ISSUER, Instant.now().plusSeconds(900));
+        assertThat(status(old)).isEqualTo(200);
+        // 停用 Membership 或修改角色时 iam 递增版本：下一次请求即被拒绝，无需等待 Token 过期。
+        redisTemplate.opsForValue().set(MembershipStateKeys.version(TENANT_ID, MEMBERSHIP_ID), "2");
+        assertThat(status(old)).isEqualTo(401);
+        assertThat(status(token(KEY, ISSUER, Instant.now().plusSeconds(900), 2)))
+                .isEqualTo(200);
+    }
+
+    @Test
+    void suspendedTenantRejectsOtherwiseValidToken() throws Exception {
+        redisTemplate.opsForValue().set(MembershipStateKeys.tenantStatus(TENANT_ID), "suspended");
+        assertThat(status(token(KEY, ISSUER, Instant.now().plusSeconds(900)))).isEqualTo(401);
+    }
+
+    @Test
+    void missingPublishedStateRejectsUntilRefreshRepublishesIt() throws Exception {
+        redisTemplate.delete(MembershipStateKeys.version(TENANT_ID, MEMBERSHIP_ID));
+        assertThat(status(token(KEY, ISSUER, Instant.now().plusSeconds(900)))).isEqualTo(401);
+        publishActiveState();
+        redisTemplate.delete(MembershipStateKeys.tenantStatus(TENANT_ID));
+        assertThat(status(token(KEY, ISSUER, Instant.now().plusSeconds(900)))).isEqualTo(401);
+    }
 
     @Test
     void rejectsMissingForgedWrongRealmAndExpiredTokens() throws Exception {
@@ -164,15 +217,19 @@ class GatewaySecurityTest {
     }
 
     static String token(RSAKey key, String issuer, Instant expires) throws Exception {
+        return token(key, issuer, expires, 1);
+    }
+
+    static String token(RSAKey key, String issuer, Instant expires, long version) throws Exception {
         var claims = new JWTClaimsSet.Builder()
                 .issuer(issuer)
                 .subject("019a0110-0000-7000-8000-000000000002")
                 .audience("tenant-app")
                 .issueTime(Date.from(Instant.now().minusSeconds(300)))
                 .expirationTime(Date.from(expires))
-                .claim("tenant_id", "019a0110-0000-7000-8000-000000000001")
-                .claim("membership_id", "019a0110-0000-7000-8000-000000000003")
-                .claim("ver", 1)
+                .claim("tenant_id", TENANT_ID.toString())
+                .claim("membership_id", MEMBERSHIP_ID.toString())
+                .claim("ver", version)
                 .build();
         var jwt = new SignedJWT(
                 new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(KEY.getKeyID()).build(), claims);

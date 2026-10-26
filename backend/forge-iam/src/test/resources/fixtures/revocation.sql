@@ -1,0 +1,18 @@
+-- 仅供隔离集成测试：每个即时失效用例独占一个身份、租户与 Membership，状态变更不影响其他用例。
+INSERT INTO tenant (id, name) VALUES
+('019a0110-0000-7000-8000-00000000000e', '版本测试租户'),
+('019a0110-0000-7000-8000-000000000010', '停用成员测试租户'),
+('019a0110-0000-7000-8000-000000000012', '停用租户测试租户')
+ON CONFLICT DO NOTHING;
+INSERT INTO identity (id, account, email, display_name, password_hash)
+SELECT v.id::uuid, v.account, v.account || '@example.com', v.account, i.password_hash
+FROM identity i, (VALUES
+    ('019a0110-0000-7000-8000-00000000000d', 'rev-version'),
+    ('019a0110-0000-7000-8000-00000000000f', 'rev-deactivate'),
+    ('019a0110-0000-7000-8000-000000000011', 'rev-suspend')) AS v (id, account)
+WHERE i.account = 'demo' ON CONFLICT DO NOTHING;
+INSERT INTO membership (id, identity_id, tenant_id) VALUES
+('019a0110-0000-7000-8000-000000000013', '019a0110-0000-7000-8000-00000000000d', '019a0110-0000-7000-8000-00000000000e'),
+('019a0110-0000-7000-8000-000000000014', '019a0110-0000-7000-8000-00000000000f', '019a0110-0000-7000-8000-000000000010'),
+('019a0110-0000-7000-8000-000000000015', '019a0110-0000-7000-8000-000000000011', '019a0110-0000-7000-8000-000000000012')
+ON CONFLICT DO NOTHING;

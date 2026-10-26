@@ -13,3 +13,7 @@ spring:
   cloud:
     nacos:
       server-addr: ${FORGE_NACOS_ADDR:127.0.0.1:8848}
+  data:
+    redis:
+      host: ${FORGE_REDIS_HOST:127.0.0.1}
+      port: ${FORGE_REDIS_PORT:6379}

@@ -38,17 +38,17 @@ Vite 将 `/iam` 与 `/demo` 代理到本地网关 `http://localhost:8080`。部�
 
 Access Token 有效期 15 分钟，包含 `sub`、`tenant_id`、`membership_id`、`ver`，audience 为 `tenant-app`。网关和 SDK 都检查签名、issuer、有效期、audience 和必要上下文；客户端租户请求头不能覆盖 JWT。平台业务路由当前拒绝 Tenant Token，Platform Realm 在工单 08 接入。
 
-Redis 保存 Spring Session 登录会话和标准 `OAuth2Authorization`，刷新凭证有效期 7 天。授权码/Token 的索引使用 SHA-256；认证前的索引和会话统一使用 `iam:global:` 前缀，因查询前还没有可相信的租户标识。授权状态采用 Spring 的 JDK 序列化器，只连接受信任的 Redis。Token 端点按授权 ID 使用 Redis 互斥，避免同一授权的凭证并发消费。重放撤销不等待这把锁；在途换码或刷新只能原子更新仍然存在的授权，不能重新创建被撤销的授权。标准提供者负责授权码失效和刷新轮换；旧 Refresh Token 的摘要保留至其原始过期时间，检测到重放就删除该授权及当前 Token 索引，使其后续刷新失败。这也意味着丢失刷新响应后重试旧凭证会要求重新登录。刷新时重新查询原会话绑定的身份、租户和 Membership，不能隐式切换租户。Redis 故障时登录或刷新失败。工单 07 的 Access Token 即时吊销尚未接入；刷新失败后前端清除本地凭证。
+Redis 保存 Spring Session 登录会话和标准 `OAuth2Authorization`，刷新凭证有效期 7 天。授权码/Token 的索引使用 SHA-256；认证前的索引和会话统一使用 `iam:global:` 前缀，因查询前还没有可相信的租户标识。授权状态采用 Spring 的 JDK 序列化器，只连接受信任的 Redis。Token 端点按授权 ID 使用 Redis 互斥，避免同一授权的凭证并发消费。重放撤销不等待这把锁；在途换码或刷新只能原子更新仍然存在的授权，不能重新创建被撤销的授权。标准提供者负责授权码失效和刷新轮换；旧 Refresh Token 的摘要保留至其原始过期时间，检测到重放就删除该授权及当前 Token 索引，使其后续刷新失败。这也意味着丢失刷新响应后重试旧凭证会要求重新登录。刷新时重新查询原会话绑定的身份、租户和 Membership，不能隐式切换租户。Redis 故障时登录或刷新失败。停用 Membership 或租户后 Access Token 的即时失效见下文「即时失效」；刷新失败后前端清除本地凭证。
 
 当前重放检测**没有宽限期**。复制标签页时，若浏览器同时复制了 sessionStorage，两个标签页就会持有相同的 Refresh Token；一个标签页轮换后，另一个使用旧凭证会撤销整条授权的后续刷新能力。两个独立客户端并发刷新时，后到的请求若已被识别为使用旧凭证，即使遇到锁争用，也会触发撤销。两边都需要重新登录，但持有的 Access Token 在过期前仍可能有效，界面不一定立即同步退出。Shell 的共享实例只能合并同一实例内正在进行的刷新，不能协调复制出的标签页。暂不加入宽限期，以保持旧凭证一经识别为重放即撤销的语义。
 
-每次轮换保留一个 `:used-refresh` 摘要键，TTL 截止该旧凭证原来的过期时间，最长约 7 天；撤销授权后历史摘要也按各自 TTL 自然过期。按每 15 分钟刷新一次、连续活跃 7 天估算，一条授权约积累 672 个历史键；主动调用刷新接口会更多，因此这不是数量上限。运维需结合实际刷新频率关注键数、TTL、Redis 内存和淘汰情况，不能通过提前删除摘要来降低内存占用，否则会丢失重放关联。工单 07 评估按授权聚合存储及过期清理；本次保持现有存储结构。
+每次轮换保留一个 `:used-refresh` 摘要键，TTL 截止该旧凭证原来的过期时间，最长约 7 天；撤销授权后历史摘要也按各自 TTL 自然过期。按每 15 分钟刷新一次、连续活跃 7 天估算，一条授权约积累 672 个历史键；主动调用刷新接口会更多，因此这不是数量上限。运维需结合实际刷新频率关注键数、TTL、Redis 内存和淘汰情况，不能通过提前删除摘要来降低内存占用，否则会丢失重放关联。工单 07 评估了按授权聚合（每条授权一个以过期时间为分值的有序集合，轮换时顺带清理已过期成员）：重放检测要从被重放的凭证反查授权，而标准 Refresh Token 是不含授权 ID 的随机值，聚合必须改写 Refresh Token 生成器把授权 ID 编入凭证，并兼容已签发的旧格式凭证。键数虽减少，总条目与内存量级不变（摘要仍需逐条保留到原始过期时间），收益有限，因此保持现有存储结构，以上运维关注点不变。
 
 `@forge/sdk` 的 `createTenantClient(sessionStorage)` 提供登录、退出、刷新、同源请求和会话读取。Shell 的 `App.vue` 创建唯一实例并 `provide(tenantClientKey, client)`；LoginPanel 与后续 Sub-App 通过 `inject(tenantClientKey)` 获取同一实例，不再自行创建客户端。注入键携带 `InjectionKey<TenantClient>` 类型信息。并发刷新只在这个共享实例内合并；不同标签页不共享刷新队列。demo-service `/context` 的响应类型由 tenant-app 调用方维护，不由通用 SDK 导出。
 
 Token 保存在当前标签页的 sessionStorage。请求遇到 401 时合并刷新并只重试一次。生产环境必须使用 HTTPS，并防止脚本读取浏览器凭证。
 
-「重新登录」调用 `/auth/logout`，清除本地凭证并等待服务端销毁 IAM 会话；失败时显示“浏览器仍可能保持登录”并允许重试。此接口只接受 JSON，不启用跨域访问。IAM 登录会话的空闲超时为 30 分钟（访问可延长会话）；未退出时，同一浏览器可用新 PKCE 再次授权而不输入密码，这是保留的 SSO 行为。**关闭标签页或单独调用 SDK `clear()` 不会退出 IAM 会话**。退出当前浏览器会话不撤销已签发的 Access/Refresh Token，也不清除其他标签页的凭证；已泄漏 Access Token 在过期前仍可通过离线验签，即时吊销由工单 07 接入。
+「重新登录」调用 `/auth/logout`，清除本地凭证并等待服务端销毁 IAM 会话；失败时显示“浏览器仍可能保持登录”并允许重试。此接口只接受 JSON，不启用跨域访问。IAM 登录会话的空闲超时为 30 分钟（访问可延长会话）；未退出时，同一浏览器可用新 PKCE 再次授权而不输入密码，这是保留的 SSO 行为。**关闭标签页或单独调用 SDK `clear()` 不会退出 IAM 会话**。退出当前浏览器会话不撤销已签发的 Access/Refresh Token，也不清除其他标签页的凭证；已泄漏 Access Token 在过期前仍可通过网关。即时失效按 Membership 与租户生效，不能单独吊销某一个 Token。
 
 账号区分大小写，邮箱按不区分大小写匹配并保持唯一；账号禁止 `@`，邮箱必须包含非空的 `@` 两侧，避免两个登录标识命名空间重叠。V3 迁移只增加约束，不自动改写历史数据；已有非法邮箱或仅大小写不同的重复邮箱会使迁移失败，需要先由维护者处理。
 
@@ -66,6 +66,24 @@ Token 保存在当前标签页的 sessionStorage。请求遇到 401 时合并刷
 
 IAM 认证阶段 Membership 查询的 RLS 例外及边界见 [ADR-0001](adr/0001-shared-schema-tenant-isolation.md)。
 
+## 即时失效
+
+工单：[07](../.scratch/saas-forge-mvp/issues/07-immediate-revocation.md)，决策见 [ADR-0005](adr/0005-immediate-revocation-via-membership-version.md)。iam 在 Redis 发布以下状态，键名约定在 SDK `MembershipStateKeys`，iam 是唯一写入方：
+
+| 键 | 值 | 写入时机 |
+| --- | --- | --- |
+| `iam:{tenant_id}:membership:{membership_id}:version` | 当前 `version` | 签发 Token 时；停用 Membership、角色变更时 |
+| `iam:{tenant_id}:status` | 租户状态，如 `active`、`suspended` | 签发 Token 时（仅键缺失时补写）；租户状态变更时 |
+| `iam:{tenant_id}:membership:{membership_id}:grants:{version}` | 该版本的角色与权限 JSON，TTL 1 小时 | 签发 Token 时；版本递增时 |
+
+- **网关**：验签后用一次 `MGET` 读取前两项。Token 的 `ver` 与版本不等、租户不是 `active` 或任一键缺失都返回 401 `invalid_token`；Redis 不可用时返回 503，避免 401 触发刷新后把用户登出。业务服务仍只做离线验签，绕过网关直连业务服务的请求不受即时失效保护。
+- **iam 变更入口**：`MembershipStateService.deactivate`（停用并递增版本）、`MembershipStateService.incrementVersion`（角色变更时调用）、`TenantStateService.changeStatus`。目前只有服务方法，管理接口在工单 15、16、17 接入。变更先提交数据库再写 Redis；Redis 写入失败时调用方收到异常，刷新已按数据库拒绝，但已签发的 Access Token 在过期前仍会通过网关，需重试变更。状态必须经由这些方法修改：直接改库不会更新 Redis。
+- **并发**：签发时读到的旧版本不能覆盖并发变更已发布的新版本（版本只前进，Lua 脚本比较后写入）；租户状态在签发时只补写缺失的键，不会用签发前读到的 `active` 覆盖并发写入的停用状态。重新启用租户后，停用前签发且未过期的 Access Token 会重新可用。
+- **状态丢失**：Redis 淘汰或清空后，请求先得到 401，前端刷新时 iam 按数据库重新发布状态，用户无需重新登录。
+- **刷新**：Membership、租户或身份不再 active 时刷新失败（401）；版本递增后刷新签发携带新 `ver` 的 Token。切换租户不递增版本，切换前所在租户的 Access Token 在过期前仍有效。
+- **角色与权限明细**不进入 JWT。业务服务注入 SDK `MembershipGrantStore`，按 Token 的 `membership_id + ver` 读取并按 Membership 本地缓存（最多 1 万条），版本变化即重新读取；明细未发布时抛出异常而不是视为无权限。角色管理（工单 16）之前发布的明细为空。
+- **前端**：`@forge/sdk` 的请求遇到 401 时合并为一次刷新并重放一次（只合并同时在途的刷新，刷新完成后才收到 401 的旧请求会再刷新一次）。刷新凭证被拒绝时清除会话，Shell 回到 `/`，登录面板回到登录表单；刷新接口 5xx（如 IAM 依赖的 Redis 不可用）或网络故障时保留会话，请求以 `auth.unavailable` 或原错误失败。
+
 ## 配置
 
 | 配置 | 默认值 | 说明 |
@@ -76,13 +94,13 @@ IAM 认证阶段 Membership 查询的 RLS 例外及边界见 [ADR-0001](adr/0001
 | `forge.iam.client-secret` | 每次启动随机生成 | 服务端适配器持有；多实例需一致；不构成浏览器客户端认证 |
 | `forge.iam.token-base-uri` | 按 IAM 实际监听地址、端口、TLS 和 context-path 推导 | 可显式配置内部基址（含 context-path、不含 `/oauth2/token`）；HTTPS 须通过 JVM 信任链和主机名验证 |
 | `forge.iam.signing-key-file` | `deploy/data/iam/signing.jwk` | IAM 首次启动生成 RSA 私钥文件，权限 0600；后续启动复用，禁止提交 |
-| `FORGE_REDIS_HOST` / `FORGE_REDIS_PORT` | `127.0.0.1` / `6379` | IAM 会话 Redis |
+| `FORGE_REDIS_HOST` / `FORGE_REDIS_PORT` | `127.0.0.1` / `6379` | IAM 会话与即时失效状态的 Redis；网关与使用 `MembershipGrantStore` 的业务服务必须连接同一实例 |
 
 变更端口或域名时同步调整 issuer、JWKS、注册回调 URI 和代理目标。多实例 IAM 应提供同一受保护密钥；本工单不提供密钥轮换管理。
 
 ## 验收命令
 
-后端：`cd backend && ./mvnw verify`。IAM 测试使用临时 PostgreSQL、Redis 容器及独立签名文件；网关与 demo-service 测试经真实 HTTP/JWKS 验签，不替换 JwtDecoder。前端：`cd frontend && pnpm test && pnpm typecheck && pnpm build && pnpm format:check`。数据库迁移测试与 IAM 测试需要 Docker。
+后端：`cd backend && ./mvnw verify`。IAM 测试使用临时 PostgreSQL、Redis 容器及独立签名文件；网关测试使用临时 Redis 容器；网关与 demo-service 测试经真实 HTTP/JWKS 验签，不替换 JwtDecoder。前端：`cd frontend && pnpm test && pnpm typecheck && pnpm build && pnpm format:check`。数据库迁移测试与 IAM 测试需要 Docker。
 
 
 IPv6 回归（运行环境需支持 `::1`）：

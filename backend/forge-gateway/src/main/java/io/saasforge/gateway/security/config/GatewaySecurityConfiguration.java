@@ -1,5 +1,6 @@
 package io.saasforge.gateway.security.config;
 
+import io.saasforge.gateway.security.service.MembershipStateVerifier;
 import io.saasforge.sdk.security.TenantJwtValidator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -19,11 +20,13 @@ class GatewaySecurityConfiguration {
     @Bean
     ReactiveJwtDecoder tenantDecoder(
             @Value("${forge.security.issuer:http://localhost:8080/iam}") String issuer,
-            @Value("${forge.security.jwk-set-uri:http://localhost:8101/oauth2/jwks}") String jwks) {
+            @Value("${forge.security.jwk-set-uri:http://localhost:8101/oauth2/jwks}") String jwks,
+            MembershipStateVerifier states) {
         var decoder = NimbusReactiveJwtDecoder.withJwkSetUri(jwks).build();
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(issuer), new TenantJwtValidator()));
-        return decoder;
+        // 验签之后再比对即时失效状态：BadJwtException 由资源服务器转换为 401 invalid_token。
+        return token -> decoder.decode(token).flatMap(states::verify);
     }
 
     @Bean

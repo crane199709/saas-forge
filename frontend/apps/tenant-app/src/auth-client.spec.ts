@@ -127,6 +127,54 @@ it('刷新失败清除会话且不重复业务请求', async () => {
   expect(fetcher).toHaveBeenCalledTimes(2)
 })
 
+it('并发请求同时遇到 401 只触发一次刷新，并各自用新 Token 重放', async () => {
+  sessionStorage.setItem(
+    'forge.tenant.session',
+    JSON.stringify({ accessToken: 'old-access', refreshToken: 'old-refresh' }),
+  )
+  let finishRefresh!: (response: Response) => void
+  const fetcher = vi.fn().mockImplementation((path: string, init?: RequestInit) => {
+    if (path === '/iam/auth/refresh')
+      return new Promise<Response>((resolve) => {
+        finishRefresh = resolve
+      })
+    const token = new Headers(init?.headers).get('Authorization')
+    return Promise.resolve(
+      token === 'Bearer new-access' ? new Response('{}') : new Response(null, { status: 401 }),
+    )
+  })
+  vi.stubGlobal('fetch', fetcher)
+  const client = createTenantClient(sessionStorage)
+  const first = client.request('/demo/orders')
+  const second = client.request('/demo/context')
+  await vi.waitFor(() => expect(finishRefresh).toBeDefined())
+  finishRefresh(
+    new Response(JSON.stringify({ accessToken: 'new-access', refreshToken: 'new-refresh' })),
+  )
+  expect((await first).status).toBe(200)
+  expect((await second).status).toBe(200)
+  const refreshes = fetcher.mock.calls.filter(([path]) => path === '/iam/auth/refresh')
+  expect(refreshes).toHaveLength(1)
+  expect(client.session()?.refreshToken).toBe('new-refresh')
+})
+
+it('刷新接口故障（如 Redis 不可用）时保留会话，不把用户登出', async () => {
+  sessionStorage.setItem(
+    'forge.tenant.session',
+    JSON.stringify({ accessToken: 'old-access', refreshToken: 'old-refresh' }),
+  )
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(new Response(null, { status: 503 })),
+  )
+  const client = createTenantClient(sessionStorage)
+  await expect(client.request('/demo/context')).rejects.toThrow('auth.unavailable')
+  expect(client.session()?.refreshToken).toBe('old-refresh')
+})
+
 it('拒绝向外站发送凭证，损坏的本地会话可恢复', async () => {
   sessionStorage.setItem('forge.tenant.session', 'broken')
   const client = createTenantClient(sessionStorage)

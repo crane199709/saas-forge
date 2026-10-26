@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.membership.mapper.MembershipMapper">
+    <!-- RETURNING 在同一语句内取得递增后的版本，避免先改后查之间被并发变更插入。 -->
+    <select id="deactivate" flushCache="true" resultType="io.saasforge.iam.membership.model.MembershipChange">
+        UPDATE membership SET status = 'suspended', version = version + 1
+        WHERE id = #{membershipId}
+        RETURNING tenant_id, version
+    </select>
+    <select id="incrementVersion" flushCache="true" resultType="io.saasforge.iam.membership.model.MembershipChange">
+        UPDATE membership SET version = version + 1
+        WHERE id = #{membershipId}
+        RETURNING tenant_id, version
+    </select>
+</mapper>

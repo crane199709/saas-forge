@@ -1,16 +1,24 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
-import { provide, ref, watchEffect } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { onUnmounted, provide, ref, watchEffect } from 'vue'
 import { createTenantClient, tenantClientKey } from '@forge/sdk'
 import { themeTokens } from '@forge/ui'
 import LoginPanel from './LoginPanel.vue'
 import TenantSwitcher from './TenantSwitcher.vue'
 
-provide(tenantClientKey, createTenantClient(sessionStorage))
+const client = createTenantClient(sessionStorage)
+provide(tenantClientKey, client)
 
 const { t } = useI18n()
 const route = useRoute()
+const router = useRouter()
+// 会话失效后离开 Sub-App 路由，不再展示属于已失效会话的页面。
+onUnmounted(
+  client.onSessionChange((value) => {
+    if (!value) void router.replace('/')
+  }),
+)
 const alternateTheme = ref(false)
 watchEffect(() => {
   const color = alternateTheme.value ? themeTokens.alternate : themeTokens.primary

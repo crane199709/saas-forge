@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, onMounted, ref } from 'vue'
+import { inject, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { tenantClientKey } from '@forge/sdk'
 import type { TenantMembership } from '@forge/sdk'
@@ -92,6 +92,14 @@ async function reset() {
     busy.value = false
   }
 }
+// 刷新失败（Membership 或租户已停用、凭证被撤销）时 SDK 清除会话，面板随之回到登录表单。
+const unsubscribe = client.onSessionChange((value) => {
+  if (value) return
+  contextGeneration += 1
+  session.value = null
+  context.value = null
+})
+onUnmounted(unsubscribe)
 onMounted(async () => {
   if (!session.value) return
   const started = contextGeneration

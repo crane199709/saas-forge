@@ -3,6 +3,9 @@ package io.saasforge.iam;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.saasforge.iam.membership.service.MembershipStateService;
+import io.saasforge.iam.tenant.service.TenantStateService;
+import io.saasforge.sdk.core.MembershipStateKeys;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -12,14 +15,17 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -259,6 +265,100 @@ class TenantLoginTest {
         assertThat(status).isIn(400, 401);
         assertThat(refresh(current).get("accessToken")).isInstanceOf(String.class);
     }
+
+    @Autowired
+    MembershipStateService membershipStates;
+
+    @Autowired
+    TenantStateService tenantStates;
+
+    @Autowired
+    StringRedisTemplate redisTemplate;
+
+    @Test
+    @Sql("/fixtures/revocation.sql")
+    void incrementedVersionInvalidatesOldTokensAndRefreshIssuesTheCurrentVersion() {
+        Map<?, ?> issued = login("rev-version", "Demo-password-123!");
+        long version = ((Number) decode((String) issued.get("accessToken")).getClaim("ver")).longValue();
+        assertThat(redisTemplate
+                        .opsForValue()
+                        .get(MembershipStateKeys.version(REV_VERSION_TENANT, REV_VERSION_MEMBERSHIP)))
+                .isEqualTo(String.valueOf(version));
+        assertThat(redisTemplate.opsForValue().get(MembershipStateKeys.tenantStatus(REV_VERSION_TENANT)))
+                .isEqualTo("active");
+        assertThat(redisTemplate
+                        .opsForValue()
+                        .get(MembershipStateKeys.grants(REV_VERSION_TENANT, REV_VERSION_MEMBERSHIP, version)))
+                .isEqualTo("{\"roles\":[],\"permissions\":[]}");
+
+        membershipStates.incrementVersion(REV_VERSION_MEMBERSHIP);
+        // 网关据此拒绝仍携带旧 ver 的 Access Token。
+        assertThat(redisTemplate
+                        .opsForValue()
+                        .get(MembershipStateKeys.version(REV_VERSION_TENANT, REV_VERSION_MEMBERSHIP)))
+                .isEqualTo(String.valueOf(version + 1));
+
+        Map<?, ?> refreshed = refresh((String) issued.get("refreshToken"));
+        assertThat(((Number) decode((String) refreshed.get("accessToken")).getClaim("ver")).longValue())
+                .isEqualTo(version + 1);
+        assertThat(redisTemplate
+                        .opsForValue()
+                        .get(MembershipStateKeys.grants(REV_VERSION_TENANT, REV_VERSION_MEMBERSHIP, version + 1)))
+                .isNotNull();
+    }
+
+    @Test
+    @Sql("/fixtures/revocation.sql")
+    void deactivatedMembershipInvalidatesTokensAndCannotRefresh() {
+        Map<?, ?> issued = login("rev-deactivate", "Demo-password-123!");
+        long version = ((Number) decode((String) issued.get("accessToken")).getClaim("ver")).longValue();
+
+        membershipStates.deactivate(REV_DEACTIVATE_MEMBERSHIP);
+
+        assertThat(redisTemplate
+                        .opsForValue()
+                        .get(MembershipStateKeys.version(REV_DEACTIVATE_TENANT, REV_DEACTIVATE_MEMBERSHIP)))
+                .isEqualTo(String.valueOf(version + 1));
+        assertThatThrownBy(() -> refresh((String) issued.get("refreshToken")))
+                .isInstanceOf(HttpClientErrorException.Unauthorized.class);
+    }
+
+    @Test
+    @Sql("/fixtures/revocation.sql")
+    void suspendedTenantIsPublishedAndCannotRefresh() {
+        Map<?, ?> issued = login("rev-suspend", "Demo-password-123!");
+
+        tenantStates.changeStatus(REV_SUSPEND_TENANT, "suspended");
+
+        assertThat(redisTemplate.opsForValue().get(MembershipStateKeys.tenantStatus(REV_SUSPEND_TENANT)))
+                .isEqualTo("suspended");
+        assertThatThrownBy(() -> refresh((String) issued.get("refreshToken")))
+                .isInstanceOf(HttpClientErrorException.Unauthorized.class);
+    }
+
+    @Test
+    void refreshRepublishesStateMissingFromRedis() {
+        Map<?, ?> issued = login("demo", "Demo-password-123!");
+        var tenant = UUID.fromString(DEMO_TENANT);
+        var membership = UUID.fromString(DEMO_MEMBERSHIP);
+        // Redis 丢失状态时网关拒绝请求；刷新必须恢复状态，否则用户只能重新登录。
+        redisTemplate.delete(
+                List.of(MembershipStateKeys.version(tenant, membership), MembershipStateKeys.tenantStatus(tenant)));
+
+        Map<?, ?> refreshed = refresh((String) issued.get("refreshToken"));
+
+        long version = ((Number) decode((String) refreshed.get("accessToken")).getClaim("ver")).longValue();
+        assertThat(redisTemplate.opsForValue().get(MembershipStateKeys.version(tenant, membership)))
+                .isEqualTo(String.valueOf(version));
+        assertThat(redisTemplate.opsForValue().get(MembershipStateKeys.tenantStatus(tenant)))
+                .isEqualTo("active");
+    }
+
+    private static final UUID REV_VERSION_TENANT = UUID.fromString("019a0110-0000-7000-8000-00000000000e");
+    private static final UUID REV_VERSION_MEMBERSHIP = UUID.fromString("019a0110-0000-7000-8000-000000000013");
+    private static final UUID REV_DEACTIVATE_TENANT = UUID.fromString("019a0110-0000-7000-8000-000000000010");
+    private static final UUID REV_DEACTIVATE_MEMBERSHIP = UUID.fromString("019a0110-0000-7000-8000-000000000014");
+    private static final UUID REV_SUSPEND_TENANT = UUID.fromString("019a0110-0000-7000-8000-000000000012");
 
     private static final String VERIFIER = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG";
 
