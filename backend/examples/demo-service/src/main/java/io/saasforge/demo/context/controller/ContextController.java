@@ -1,4 +1,4 @@
-package io.saasforge.demo;
+package io.saasforge.demo.context.controller;
 
 import io.saasforge.sdk.security.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;

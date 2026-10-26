@@ -1,4 +1,4 @@
-package io.saasforge.gateway;
+package io.saasforge.gateway.security.config;
 
 import io.saasforge.sdk.security.TenantJwtValidator;
 import org.springframework.beans.factory.annotation.Value;
