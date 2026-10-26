@@ -12,6 +12,10 @@ java -jar backend/forge-iam/target/forge-iam-0.1.0-SNAPSHOT.jar --spring.profile
 
 `demo` profile 在普通迁移之外加载 `db/demo` 的 Flyway 演示数据。仅用于独立本地数据库，不要在共享环境启用。账号 `demo`，邮箱 `demo@example.com`，密码 `Demo-password-123!`。不启用此 profile 时只创建表，不插入已知密码的身份。
 
+在 Cursor / VS Code 中选择 `Backend: IAM (demo)` 启动本地演示环境。仓库仅保留这一个 IAM 调试配置，避免 Java 插件按主类匹配时选到不带 profile 的重复配置。未执行过演示迁移的数据库如需不加载演示数据，可在终端使用不带 `--spring.profiles.active=demo` 的启动命令。
+
+同一个本地数据库执行过 `demo` 迁移后，后续启动仍需启用 `demo` profile；否则 Flyway 会报 `Detected applied migration not resolved locally: demo identity`，并连带导致 `sqlSessionTemplate`、`identityMapper` 创建失败。使用上面的启动命令或演示启动项即可恢复迁移目录，无需执行 `repair` 或关闭校验。
+
 按 README 启动 demo-service 和网关，然后在 `frontend` 运行 `pnpm dev:tenant`，访问 <http://localhost:5174>。登录区展示当前身份、租户，以及 demo-service 验签后返回的三个 ID。原有子应用技术验证区域仍保留。
 
 Vite 将 `/iam` 与 `/demo` 代理到本地网关 `http://localhost:8080`。部署前端时需由同源反向代理提供这两个路径。

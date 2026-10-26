@@ -3,11 +3,12 @@
   "configurations": [
     {
       "type": "java",
-      "name": "Backend: IAM",
+      "name": "Backend: IAM (demo)",
       "request": "launch",
       "mainClass": "io.saasforge.iam.IamApplication",
       "projectName": "forge-iam",
       "cwd": "${workspaceFolder}/backend/forge-iam",
+      "args": ["--spring.profiles.active=demo"],
       "console": "integratedTerminal"
     },
     {
