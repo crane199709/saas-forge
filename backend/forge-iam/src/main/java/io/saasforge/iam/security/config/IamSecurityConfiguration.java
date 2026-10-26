@@ -4,8 +4,8 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-import io.saasforge.iam.identity.mapper.IdentityMapper;
 import io.saasforge.iam.identity.model.LoginIdentity;
+import io.saasforge.iam.identity.service.IdentityService;
 import io.saasforge.iam.security.filter.TokenGrantLockFilter;
 import io.saasforge.iam.security.service.RedisAuthorizationService;
 import jakarta.servlet.DispatcherType;
@@ -118,7 +118,7 @@ class IamSecurityConfiguration {
     }
 
     @Bean
-    OAuth2TokenCustomizer<JwtEncodingContext> tenantClaims(IdentityMapper identities) {
+    OAuth2TokenCustomizer<JwtEncodingContext> tenantClaims(IdentityService identities) {
         return context -> {
             UUID identityId = UUID.fromString(context.getPrincipal().getName());
             LoginIdentity identity;

@@ -1,7 +1,7 @@
 package io.saasforge.iam.session.service;
 
 import com.nimbusds.jwt.SignedJWT;
-import io.saasforge.iam.identity.mapper.IdentityMapper;
+import io.saasforge.iam.identity.service.IdentityService;
 import io.saasforge.iam.security.config.TenantClientCredentials;
 import io.saasforge.iam.session.model.TokenResponse;
 import java.text.ParseException;
@@ -22,7 +22,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class TokenExchangeService {
     private final ServletWebServerApplicationContext application;
     private final TenantClientCredentials credentials;
-    private final IdentityMapper identities;
+    private final IdentityService identities;
     private final String redirectUri;
     private final ServerProperties server;
     private final String tokenBaseUri;
@@ -30,7 +30,7 @@ public class TokenExchangeService {
     TokenExchangeService(
             ServletWebServerApplicationContext application,
             TenantClientCredentials credentials,
-            IdentityMapper identities,
+            IdentityService identities,
             @Value("${forge.iam.redirect-uri:http://localhost:5174/}") String redirectUri,
             ServerProperties server,
             @Value("${forge.iam.token-base-uri:}") String tokenBaseUri) {
