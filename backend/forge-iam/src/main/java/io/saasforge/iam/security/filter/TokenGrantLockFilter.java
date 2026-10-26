@@ -1,5 +1,6 @@
-package io.saasforge.iam;
+package io.saasforge.iam.security.filter;
 
+import io.saasforge.iam.security.service.RedisAuthorizationService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,11 +15,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientAuthenticationToken;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-final class TokenGrantLockFilter extends OncePerRequestFilter {
+public final class TokenGrantLockFilter extends OncePerRequestFilter {
     private final StringRedisTemplate redis;
     private final RedisAuthorizationService authorizations;
 
-    TokenGrantLockFilter(StringRedisTemplate redis, RedisAuthorizationService authorizations) {
+    public TokenGrantLockFilter(StringRedisTemplate redis, RedisAuthorizationService authorizations) {
         this.redis = redis;
         this.authorizations = authorizations;
     }

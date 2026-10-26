@@ -1,9 +1,13 @@
-package io.saasforge.iam;
+package io.saasforge.iam.security.config;
 
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import io.saasforge.iam.identity.mapper.IdentityMapper;
+import io.saasforge.iam.identity.model.LoginIdentity;
+import io.saasforge.iam.security.filter.TokenGrantLockFilter;
+import io.saasforge.iam.security.service.RedisAuthorizationService;
 import jakarta.servlet.DispatcherType;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;

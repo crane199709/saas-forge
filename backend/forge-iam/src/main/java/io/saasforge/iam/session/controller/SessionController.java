@@ -1,5 +1,8 @@
-package io.saasforge.iam;
+package io.saasforge.iam.session.controller;
 
+import io.saasforge.iam.session.model.TokenResponse;
+import io.saasforge.iam.session.service.TenantSessionService;
+import io.saasforge.iam.session.service.TokenExchangeService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

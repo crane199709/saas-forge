@@ -1,4 +1,4 @@
-package io.saasforge.iam;
+package io.saasforge.iam.security.service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -20,7 +20,7 @@ import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.stereotype.Service;
 
 @Service
-class RedisAuthorizationService implements OAuth2AuthorizationService {
+public class RedisAuthorizationService implements OAuth2AuthorizationService {
     private final StringRedisTemplate redis;
     private final JdkSerializationRedisSerializer serializer = new JdkSerializationRedisSerializer();
 
@@ -105,7 +105,7 @@ class RedisAuthorizationService implements OAuth2AuthorizationService {
         return matching != null && matching.getToken().getTokenValue().equals(token) ? authorization : null;
     }
 
-    boolean revokeUsedRefreshToken(String token) {
+    public boolean revokeUsedRefreshToken(String token) {
         String id = redis.opsForValue().get(usedRefreshKey(token));
         if (id == null) return false;
         var compromised = findById(id);
@@ -113,7 +113,7 @@ class RedisAuthorizationService implements OAuth2AuthorizationService {
         return true;
     }
 
-    static String tokenKey(String token) {
+    public static String tokenKey(String token) {
         try {
             return "iam:global:oauth-token:"
                     + HexFormat.of()

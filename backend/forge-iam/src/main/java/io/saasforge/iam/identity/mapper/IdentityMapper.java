@@ -1,5 +1,6 @@
-package io.saasforge.iam;
+package io.saasforge.iam.identity.mapper;
 
+import io.saasforge.iam.identity.model.LoginIdentity;
 import java.util.List;
 import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;

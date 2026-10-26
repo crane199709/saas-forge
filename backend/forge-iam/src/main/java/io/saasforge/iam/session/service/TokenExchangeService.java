@@ -1,6 +1,9 @@
-package io.saasforge.iam;
+package io.saasforge.iam.session.service;
 
 import com.nimbusds.jwt.SignedJWT;
+import io.saasforge.iam.identity.mapper.IdentityMapper;
+import io.saasforge.iam.security.config.TenantClientCredentials;
+import io.saasforge.iam.session.model.TokenResponse;
 import java.text.ParseException;
 import java.util.Map;
 import java.util.UUID;
@@ -16,7 +19,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
-class TokenExchangeService {
+public class TokenExchangeService {
     private final ServletWebServerApplicationContext application;
     private final TenantClientCredentials credentials;
     private final IdentityMapper identities;
@@ -39,7 +42,7 @@ class TokenExchangeService {
         this.tokenBaseUri = tokenBaseUri;
     }
 
-    TokenResponse code(String code, String verifier) {
+    public TokenResponse code(String code, String verifier) {
         return exchange(Map.of(
                 "grant_type",
                 "authorization_code",
@@ -51,7 +54,7 @@ class TokenExchangeService {
                 redirectUri));
     }
 
-    TokenResponse refresh(String token) {
+    public TokenResponse refresh(String token) {
         return exchange(Map.of("grant_type", "refresh_token", "refresh_token", token));
     }
 

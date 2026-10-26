@@ -1,4 +1,4 @@
-package io.saasforge.iam;
+package io.saasforge.iam.identity.model;
 
 import java.util.UUID;
 

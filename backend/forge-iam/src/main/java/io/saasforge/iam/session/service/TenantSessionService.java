@@ -1,5 +1,7 @@
-package io.saasforge.iam;
+package io.saasforge.iam.session.service;
 
+import io.saasforge.iam.identity.mapper.IdentityMapper;
+import io.saasforge.iam.identity.model.LoginIdentity;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -10,7 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
-class TenantSessionService {
+public class TenantSessionService {
     private final IdentityMapper identities;
     private final PasswordEncoder passwords;
     private final String dummyHash;
@@ -21,7 +23,7 @@ class TenantSessionService {
         dummyHash = passwords.encode(UUID.randomUUID().toString());
     }
 
-    Authentication authenticate(String account, String password) {
+    public Authentication authenticate(String account, String password) {
         List<LoginIdentity> matches = identities.findForLogin(account);
         String hash = matches.isEmpty() ? dummyHash : matches.get(0).passwordHash();
         boolean valid = passwords.matches(password, hash);

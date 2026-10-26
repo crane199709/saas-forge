@@ -1,6 +1,6 @@
-package io.saasforge.iam;
+package io.saasforge.iam.session.model;
 
-record TokenResponse(
+public record TokenResponse(
         String accessToken,
         String refreshToken,
         String tokenType,
