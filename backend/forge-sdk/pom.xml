@@ -15,6 +15,7 @@
 
     <modules>
         <module>forge-sdk-core</module>
+        <module>forge-sdk-web</module>
         <module>forge-sdk-security</module>
         <module>forge-sdk-tenant</module>
         <module>forge-sdk-abac</module>

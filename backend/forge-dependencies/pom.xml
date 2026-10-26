@@ -37,6 +37,11 @@
             </dependency>
             <dependency>
                 <groupId>io.saasforge</groupId>
+                <artifactId>forge-sdk-web</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.saasforge</groupId>
                 <artifactId>forge-sdk-security</artifactId>
                 <version>${project.version}</version>
             </dependency>
