@@ -20,7 +20,7 @@ class GreetingControllerTest {
         assertThat(mvc.get().uri("/greeting"))
                 .hasStatusOk()
                 .bodyJson()
-                .extractingPath("$.message")
+                .extractingPath("$.data.message")
                 .isEqualTo("你好，这是 demo-service 通过 i18n key 渲染的示例文案");
     }
 }

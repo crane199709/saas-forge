@@ -3,6 +3,7 @@ package io.saasforge.iam.session.controller;
 import io.saasforge.iam.session.model.TokenResponse;
 import io.saasforge.iam.session.service.TenantSessionService;
 import io.saasforge.iam.session.service.TokenExchangeService;
+import io.saasforge.sdk.core.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -42,7 +43,7 @@ class SessionController {
 
     @Operation(summary = "认证身份并建立标准授权流程的登录会话")
     @PostMapping(value = "/auth/login", consumes = "application/json")
-    ResponseEntity<LoginResponse> login(
+    ResponseEntity<ApiResponse<LoginResponse>> login(
             @Valid @RequestBody LoginRequest body, HttpServletRequest request, HttpServletResponse response) {
         var authentication = sessions.authenticate(body.account(), body.password());
         if (request.getSession(false) != null) request.changeSessionId();
@@ -54,23 +55,23 @@ class SessionController {
         var memberships = toMembershipResponses(UUID.fromString(authentication.getName()));
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(new LoginResponse("tenant-app", redirectUri, memberships));
+                .body(ApiResponse.ok(new LoginResponse("tenant-app", redirectUri, memberships)));
     }
 
     @Operation(summary = "列出当前 Access Token 所属身份可进入的有效 Membership")
     @GetMapping("/auth/memberships")
-    ResponseEntity<List<MembershipResponse>> memberships(@AuthenticationPrincipal Jwt jwt) {
+    ResponseEntity<ApiResponse<List<MembershipResponse>>> memberships(@AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(toMembershipResponses(UUID.fromString(jwt.getSubject())));
+                .body(ApiResponse.ok(toMembershipResponses(UUID.fromString(jwt.getSubject()))));
     }
 
     @Operation(summary = "用当前刷新凭证换发绑定目标 Membership 的 Token，旧刷新凭证随之轮换失效")
     @PostMapping(value = "/auth/switch", consumes = "application/json")
-    ResponseEntity<TokenResponse> switchTenant(@Valid @RequestBody SwitchRequest request) {
+    ResponseEntity<ApiResponse<TokenResponse>> switchTenant(@Valid @RequestBody SwitchRequest request) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(tokens.switchTenant(request.refreshToken(), request.membershipId()));
+                .body(ApiResponse.ok(tokens.switchTenant(request.refreshToken(), request.membershipId())));
     }
 
     private List<MembershipResponse> toMembershipResponses(UUID identityId) {
@@ -82,25 +83,27 @@ class SessionController {
 
     @Operation(summary = "退出当前浏览器的 IAM 登录会话，不吊销已签发的 Token")
     @PostMapping(value = "/auth/logout", consumes = "application/json")
-    ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+    ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request, HttpServletResponse response) {
         // 仅接受同源 JSON 请求；同时销毁 Redis 会话和当前请求的安全上下文。
         new SecurityContextLogoutHandler()
                 .logout(request, response, SecurityContextHolder.getContext().getAuthentication());
-        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(ApiResponse.ok());
     }
 
     @Operation(summary = "以授权码和 PKCE 校验值交换 Token，匿名适配器不认证浏览器客户端")
     @PostMapping(value = "/auth/exchange", consumes = "application/json")
-    ResponseEntity<TokenResponse> exchange(@Valid @RequestBody CodeRequest request) {
+    ResponseEntity<ApiResponse<TokenResponse>> exchange(@Valid @RequestBody CodeRequest request) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(tokens.code(request.code(), request.codeVerifier(), request.membershipId()));
+                .body(ApiResponse.ok(tokens.code(request.code(), request.codeVerifier(), request.membershipId())));
     }
 
     @Operation(summary = "通过标准 refresh_token grant 轮换刷新凭证")
     @PostMapping(value = "/auth/refresh", consumes = "application/json")
-    ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshRequest request) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(tokens.refresh(request.refreshToken()));
+    ResponseEntity<ApiResponse<TokenResponse>> refresh(@Valid @RequestBody RefreshRequest request) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(ApiResponse.ok(tokens.refresh(request.refreshToken())));
     }
 
     record LoginResponse(String clientId, String redirectUri, List<MembershipResponse> memberships) {}

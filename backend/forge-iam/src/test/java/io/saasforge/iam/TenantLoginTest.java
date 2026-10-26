@@ -106,7 +106,9 @@ class TenantLoginTest {
     @Test
     void wrongPasswordAndUnknownIdentityHaveIdenticalFailure() {
         String known = failure("demo", "incorrect");
-        assertThat(failure("unknown", "incorrect")).isEqualTo(known).contains("auth.failed");
+        assertThat(failure("unknown", "incorrect"))
+                .isEqualTo(known)
+                .contains("\"code\":\"auth.failed\"", "\"httpStatus\":401", "\"userTip\":\"账号或密码错误，或会话已失效\"");
     }
 
     @Test
@@ -196,7 +198,7 @@ class TenantLoginTest {
             assertThatThrownBy(() -> switchTenant(refreshToken, target))
                     .isInstanceOf(HttpClientErrorException.Forbidden.class)
                     .satisfies(error -> assertThat(((HttpClientErrorException) error).getResponseBodyAsString())
-                            .contains("auth.tenantAccessDenied"));
+                            .contains("\"code\":\"auth.tenantAccessDenied\"", "\"httpStatus\":403", "\"traceId\":"));
         }
         // 被拒绝的切换不消费刷新凭证，会话仍留在原租户。
         Map<?, ?> refreshed = refresh(refreshToken);
@@ -208,13 +210,19 @@ class TenantLoginTest {
 
     @Test
     void membershipListingRequiresAValidAccessToken() {
-        int anonymous = RestClient.create(baseUrl())
+        String anonymous = RestClient.create(baseUrl())
                 .get()
                 .uri("/auth/memberships")
-                .exchange((req, response) -> response.getStatusCode().value());
-        assertThat(anonymous).isEqualTo(401);
+                .exchange((req, response) -> {
+                    assertThat(response.getStatusCode().value()).isEqualTo(401);
+                    return new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
+                });
+        assertThat(anonymous).contains("\"code\":\"auth.unauthenticated\"", "\"httpStatus\":401", "\"traceId\":");
         String refreshToken = (String) login("demo", "Demo-password-123!").get("refreshToken");
-        assertThatThrownBy(() -> memberships(refreshToken)).isInstanceOf(HttpClientErrorException.Unauthorized.class);
+        assertThatThrownBy(() -> memberships(refreshToken))
+                .isInstanceOf(HttpClientErrorException.Unauthorized.class)
+                .satisfies(error -> assertThat(((HttpClientErrorException) error).getResponseBodyAsString())
+                        .contains("\"code\":\"auth.unauthenticated\"", "\"userTip\":"));
     }
 
     @Test
@@ -380,30 +388,32 @@ class TenantLoginTest {
     private Map<?, ?> exchange(String code, String membershipId) {
         var body = new HashMap<String, String>(Map.of("code", code, "codeVerifier", VERIFIER));
         if (membershipId != null) body.put("membershipId", membershipId);
-        return RestClient.create(baseUrl())
+        return data(RestClient.create(baseUrl())
                 .post()
                 .uri("/auth/exchange")
                 .body(body)
                 .retrieve()
-                .body(Map.class);
+                .body(Map.class));
     }
 
     private Map<?, ?> switchTenant(String refreshToken, String membershipId) {
-        return RestClient.create(baseUrl())
+        return data(RestClient.create(baseUrl())
                 .post()
                 .uri("/auth/switch")
                 .body(Map.of("refreshToken", refreshToken, "membershipId", membershipId))
                 .retrieve()
-                .body(Map.class);
+                .body(Map.class));
     }
 
     private List<?> memberships(String accessToken) {
-        return RestClient.create(baseUrl())
+        var response = RestClient.create(baseUrl())
                 .get()
                 .uri("/auth/memberships")
                 .headers(headers -> headers.setBearerAuth(accessToken))
                 .retrieve()
-                .body(List.class);
+                .toEntity(Map.class);
+        assertThat(response.getHeaders().getCacheControl()).isEqualTo("no-store");
+        return (List<?>) data(response.getBody());
     }
 
     private Jwt decode(String accessToken) {
@@ -428,7 +438,8 @@ class TenantLoginTest {
                 .body(Map.of("account", account, "password", password))
                 .retrieve()
                 .toEntity(Map.class);
-        return new SignedIn(login.getHeaders().getFirst("Set-Cookie").split(";")[0], login.getBody());
+        assertThat(login.getHeaders().getCacheControl()).isEqualTo("no-store");
+        return new SignedIn(login.getHeaders().getFirst("Set-Cookie").split(";")[0], data(login.getBody()));
     }
 
     private String authorize(String account, String password) {
@@ -481,13 +492,17 @@ class TenantLoginTest {
                 .retrieve()
                 .toEntity(Map.class);
         String cookie = login.getHeaders().getFirst("Set-Cookie").split(";")[0];
-        int logoutStatus = client.post()
+        var logout = client.post()
                 .uri("/auth/logout")
                 .header("Cookie", cookie)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of())
-                .exchange((req, response) -> response.getStatusCode().value());
-        assertThat(logoutStatus).isEqualTo(204);
+                .retrieve()
+                .toEntity(Map.class);
+        assertThat(logout.getStatusCode().value()).isEqualTo(200);
+        assertThat(logout.getHeaders().getCacheControl()).isEqualTo("no-store");
+        assertThat(logout.getBody()).containsEntry("code", "ok").containsEntry("httpStatus", 200);
+        assertThat(logout.getBody()).doesNotContainKey("data");
         var response = client.get()
                 .uri(builder -> builder.path("/oauth2/authorize")
                         .queryParam("response_type", "code")
@@ -513,7 +528,12 @@ class TenantLoginTest {
         form.add("code_verifier", VERIFIER);
         Map<?, ?> response = tokenGrant(form);
         assertThat(response.get("access_token")).isInstanceOf(String.class);
-        assertThatThrownBy(() -> tokenGrant(form)).isInstanceOf(HttpClientErrorException.BadRequest.class);
+        // 标准 Token 端点保持 RFC 6749 的错误格式，不使用信封
+        assertThatThrownBy(() -> tokenGrant(form))
+                .isInstanceOf(HttpClientErrorException.BadRequest.class)
+                .satisfies(error -> assertThat(((HttpClientErrorException) error).getResponseBodyAs(Map.class))
+                        .containsKey("error")
+                        .doesNotContainKey("traceId"));
         String otherCode = authorize("demo", "Demo-password-123!");
         form.set("code", otherCode);
         form.set("code_verifier", "wrong-verifier-abcdefghijklmnopqrstuvwxyz0123456789");
@@ -552,12 +572,12 @@ class TenantLoginTest {
     @Test
     void consumedAuthorizationCodeAndAccessTokenCannotBeUsedAsRefreshCredentials() {
         String code = authorize("demo", "Demo-password-123!");
-        Map<?, ?> issued = RestClient.create(baseUrl())
+        Map<?, ?> issued = data(RestClient.create(baseUrl())
                 .post()
                 .uri("/auth/exchange")
                 .body(Map.of("code", code, "codeVerifier", VERIFIER))
                 .retrieve()
-                .body(Map.class);
+                .body(Map.class));
         assertThatThrownBy(() -> refresh(code)).isInstanceOf(HttpClientErrorException.Unauthorized.class);
         var form = new LinkedMultiValueMap<String, String>();
         form.add("grant_type", "refresh_token");
@@ -610,21 +630,33 @@ class TenantLoginTest {
     }
 
     private Map<?, ?> refresh(String token) {
-        return RestClient.create(baseUrl())
+        return data(RestClient.create(baseUrl())
                 .post()
                 .uri("/auth/refresh")
                 .body(Map.of("refreshToken", token))
                 .retrieve()
-                .body(Map.class);
+                .body(Map.class));
     }
 
+    /** 失败信封去掉每次请求都不同的 traceId 后的原文。 */
     private String failure(String account, String password) {
-        try {
-            login(account, password);
-            throw new AssertionError("Login must fail");
-        } catch (HttpClientErrorException.Unauthorized error) {
-            return error.getResponseBodyAsString();
-        }
+        String body = noRedirectClient()
+                .post()
+                .uri("/auth/login")
+                .body(Map.of("account", account, "password", password))
+                .exchange((req, response) -> {
+                    assertThat(response.getStatusCode().value()).isEqualTo(401);
+                    return new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
+                });
+        assertThat(body).contains("\"traceId\":");
+        return body.replaceAll("\"traceId\":\"[0-9a-f]+\"", "");
+    }
+
+    private static <T> T data(Map<?, ?> envelope) {
+        assertThat(envelope.get("code")).isEqualTo("ok");
+        @SuppressWarnings("unchecked")
+        T data = (T) envelope.get("data");
+        return data;
     }
 
     @Test

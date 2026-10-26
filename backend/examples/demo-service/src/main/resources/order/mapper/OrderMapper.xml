@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.demo.order.mapper.OrderMapper">
+    <select id="selectPage" resultType="io.saasforge.demo.order.entity.Order">
+        SELECT id, title, amount, created_at FROM orders
+        ORDER BY
+        <foreach collection="sorts" item="sort">
+            <!-- ${} 白名单：列名取自 OrderService.SORT_COLUMNS，方向取自 PageQuery.Direction 枚举，均不含请求原文 -->
+            ${sort.column} ${sort.direction},
+        </foreach>
+        id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+</mapper>

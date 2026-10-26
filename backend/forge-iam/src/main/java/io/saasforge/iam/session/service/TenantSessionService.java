@@ -3,9 +3,9 @@ package io.saasforge.iam.session.service;
 import io.saasforge.iam.identity.model.ActiveMembership;
 import io.saasforge.iam.identity.model.LoginCredential;
 import io.saasforge.iam.identity.service.IdentityService;
+import io.saasforge.sdk.core.api.ForgeException;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.User;
@@ -30,7 +30,7 @@ public class TenantSessionService {
         String hash = credential == null ? dummyHash : credential.passwordHash();
         boolean valid = passwords.matches(password, hash);
         if (!valid || credential == null) {
-            throw new BadCredentialsException("auth.failed");
+            throw ForgeException.withErrorMessage(SessionErrorCode.AUTH_FAILED, "Bad credentials");
         }
         // 会话只保留身份标识，不序列化数据库投影或密码哈希。
         var principal = User.withUsername(credential.identityId().toString())

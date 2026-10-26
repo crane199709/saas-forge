@@ -18,12 +18,14 @@ Vite 将 `/iam` 与 `/demo` 代理到本地网关 `http://localhost:8080`。部�
 
 ## 接口与验证边界
 
+`/auth/*` 与 `/demo/*` 的成功与失败响应均为统一信封（[ADR-0015](adr/0015-unified-api-envelope.md)）：下表「结果」列描述的是 `data` 的内容，错误以 `code` 区分；`/oauth2/*` 保持 RFC 6749 / OIDC 原格式。
+
 | 接口（网关路径） | 请求 | 结果 |
 | --- | --- | --- |
 | `POST /iam/auth/login` | JSON `account`、`password` | Redis 登录会话 Cookie、`clientId`、`redirectUri`、`memberships`（可进入的租户） |
 | `GET /iam/oauth2/authorize` | 标准 authorization_code + S256 PKCE 参数 | 重定向至注册回调，携带一次性 code 和 state |
 | `POST /iam/auth/exchange` | JSON `code`、`codeVerifier`，可选 `membershipId` | 服务端经标准 Token 端点交换，返回 `accessToken`、`refreshToken`、`tokenType`、`expiresIn`、`identityName`、`tenantId`、`tenantName`、`membershipId` |
-| `POST /iam/auth/logout` | 同源 JSON `{}` + IAM 会话 Cookie | 销毁当前浏览器的 Redis 登录会话，返回 204 |
+| `POST /iam/auth/logout` | 同源 JSON `{}` + IAM 会话 Cookie | 销毁当前浏览器的 Redis 登录会话，返回 200，`data` 为空 |
 | `POST /iam/auth/refresh` | JSON `refreshToken` | 新的一对 Token；旧 Refresh Token 重放会撤销同一授权的后续刷新能力 |
 | `POST /iam/auth/switch` | JSON `refreshToken`、`membershipId` | 绑定目标 Membership 的新一对 Token；目标不可进入时 403 `auth.tenantAccessDenied` |
 | `GET /iam/auth/memberships` | `Authorization: Bearer …` | 当前身份的有效 Membership：`membershipId`、`tenantId`、`tenantName` |

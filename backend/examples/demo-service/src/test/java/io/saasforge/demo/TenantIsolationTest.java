@@ -7,6 +7,8 @@ import io.saasforge.demo.order.entity.Order;
 import io.saasforge.demo.order.service.OrderService;
 import io.saasforge.sdk.core.CurrentTenant;
 import io.saasforge.sdk.tenant.TenantRedisTemplate;
+import io.saasforge.sdk.web.PageQuery;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -47,6 +49,7 @@ import org.testcontainers.utility.MountableFile;
 class TenantIsolationTest {
     static final UUID TENANT_A = UUID.fromString("019a0110-0000-7000-8000-0000000000aa");
     static final UUID TENANT_B = UUID.fromString("019a0110-0000-7000-8000-0000000000bb");
+    static final PageQuery FIRST_PAGE = new PageQuery(1, PageQuery.MAX_SIZE, List.of());
 
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
@@ -91,27 +94,34 @@ class TenantIsolationTest {
         UUID orderB = createOrder(TENANT_B, "B 的订单");
 
         assertThat(orderA.version()).isEqualTo(7);
-        List<?> visibleToA = call(TENANT_A, HttpMethod.GET, "/orders", null).body(List.class);
+        List<?> visibleToA = (List<?>) data(call(TENANT_A, HttpMethod.GET, "/orders", null));
         assertThat(visibleToA)
                 .<Object>extracting(order -> ((Map<?, ?>) order).get("id"))
                 .contains(orderA.toString())
                 .doesNotContain(orderB.toString());
 
         Map<String, Object> change = Map.of("title", "被 A 篡改", "amount", 1);
-        assertThat(status(TENANT_A, HttpMethod.GET, "/orders/" + orderB, null)).isEqualTo(404);
+        // 跨租户与不存在的订单响应相同（traceId 除外），不泄露订单是否存在
+        String crossTenant = failure(TENANT_A, HttpMethod.GET, "/orders/" + orderB, null);
+        assertThat(crossTenant)
+                .isEqualTo(failure(TENANT_A, HttpMethod.GET, "/orders/" + orderB, null))
+                .contains("\"code\":\"order.notFound\"", "\"httpStatus\":404");
+        UUID missing = UUID.randomUUID();
+        assertThat(failure(TENANT_A, HttpMethod.GET, "/orders/" + missing, null)
+                        .replace(missing.toString(), orderB.toString()))
+                .isEqualTo(crossTenant);
         assertThat(status(TENANT_A, HttpMethod.PUT, "/orders/" + orderB, change))
                 .isEqualTo(404);
         assertThat(status(TENANT_A, HttpMethod.DELETE, "/orders/" + orderB, null))
                 .isEqualTo(404);
 
-        Map<?, ?> untouched =
-                call(TENANT_B, HttpMethod.GET, "/orders/" + orderB, null).body(Map.class);
+        Map<?, ?> untouched = (Map<?, ?>) data(call(TENANT_B, HttpMethod.GET, "/orders/" + orderB, null));
         assertThat(untouched.get("title")).isEqualTo("B 的订单");
 
         assertThat(status(TENANT_A, HttpMethod.PUT, "/orders/" + orderA, change))
                 .isEqualTo(200);
         assertThat(status(TENANT_A, HttpMethod.DELETE, "/orders/" + orderA, null))
-                .isEqualTo(204);
+                .isEqualTo(200);
         assertThat(status(TENANT_A, HttpMethod.GET, "/orders/" + orderA, null)).isEqualTo(404);
     }
 
@@ -121,23 +131,21 @@ class TenantIsolationTest {
         UUID membershipB = UUID.fromString("019a0110-0000-7000-8000-0000000000b1");
         String tokenA = TestTokens.forMembership(TENANT_A, membershipA);
         String tokenB = TestTokens.forMembership(TENANT_B, membershipB);
-        Map<?, ?> createdA = client(tokenA)
+        Map<?, ?> createdA = (Map<?, ?>) data(client(tokenA)
                 .post()
                 .uri("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("title", "切换前 A 的订单", "amount", 1))
-                .retrieve()
-                .body(Map.class);
-        Map<?, ?> createdB = client(tokenB)
+                .retrieve());
+        Map<?, ?> createdB = (Map<?, ?>) data(client(tokenB)
                 .post()
                 .uri("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("title", "切换后 B 的订单", "amount", 2))
-                .retrieve()
-                .body(Map.class);
+                .retrieve());
 
-        List<?> seenInA = client(tokenA).get().uri("/orders").retrieve().body(List.class);
-        List<?> seenInB = client(tokenB).get().uri("/orders").retrieve().body(List.class);
+        List<?> seenInA = (List<?>) data(client(tokenA).get().uri("/orders").retrieve());
+        List<?> seenInB = (List<?>) data(client(tokenB).get().uri("/orders").retrieve());
         assertThat(seenInA)
                 .<Object>extracting(order -> ((Map<?, ?>) order).get("id"))
                 .contains(createdA.get("id"))
@@ -146,7 +154,8 @@ class TenantIsolationTest {
                 .<Object>extracting(order -> ((Map<?, ?>) order).get("id"))
                 .contains(createdB.get("id"))
                 .doesNotContain(createdA.get("id"));
-        Map<?, ?> contextB = client(tokenB).get().uri("/context").retrieve().body(Map.class);
+        Map<?, ?> contextB =
+                (Map<?, ?>) data(client(tokenB).get().uri("/context").retrieve());
         assertThat(contextB.get("identityId")).isEqualTo(TestTokens.IDENTITY_ID.toString());
         assertThat(contextB.get("tenantId")).isEqualTo(TENANT_B.toString());
         assertThat(contextB.get("membershipId")).isEqualTo(membershipB.toString());
@@ -195,12 +204,12 @@ class TenantIsolationTest {
         var carried = new AtomicReference<Future<List<UUID>>>();
         CurrentTenant.run(
                 TENANT_A,
-                () -> carried.set(executor.submit(
-                        () -> orderService.list().stream().map(Order::getId).toList())));
+                () -> carried.set(executor.submit(() ->
+                        orderService.list(FIRST_PAGE).stream().map(Order::getId).toList())));
         assertThat(carried.get().get()).contains(orderA);
 
         // 定时任务等没有提交方上下文的线程与此相同：未声明租户时显式失败，而不是读到空结果或跨租户数据
-        Future<?> undeclared = executor.submit(() -> orderService.list());
+        Future<?> undeclared = executor.submit(() -> orderService.list(FIRST_PAGE));
         assertThatThrownBy(undeclared::get)
                 .isInstanceOf(ExecutionException.class)
                 .hasRootCauseInstanceOf(IllegalStateException.class);
@@ -274,9 +283,22 @@ class TenantIsolationTest {
     }
 
     private UUID createOrder(UUID tenantId, String title) throws Exception {
-        Map<?, ?> created = call(tenantId, HttpMethod.POST, "/orders", Map.of("title", title, "amount", 100))
-                .body(Map.class);
+        Map<?, ?> created =
+                (Map<?, ?>) data(call(tenantId, HttpMethod.POST, "/orders", Map.of("title", title, "amount", 100)));
         return UUID.fromString((String) created.get("id"));
+    }
+
+    private static Object data(RestClient.ResponseSpec response) {
+        Map<?, ?> envelope = response.body(Map.class);
+        assertThat(envelope.get("code")).isEqualTo("ok");
+        return envelope.get("data");
+    }
+
+    /** 失败信封去掉 traceId 后的原文，用于比较两次失败是否可区分。 */
+    private String failure(UUID tenantId, HttpMethod method, String uri, Object body) throws Exception {
+        return request(tenantId, method, uri, body)
+                .exchange((req, response) -> new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8))
+                .replaceAll("\"traceId\":\"[0-9a-f]+\"", "");
     }
 
     private RestClient.ResponseSpec call(UUID tenantId, HttpMethod method, String uri, Object body) throws Exception {
