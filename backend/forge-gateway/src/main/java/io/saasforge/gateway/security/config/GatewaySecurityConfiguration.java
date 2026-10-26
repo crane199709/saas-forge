@@ -1,6 +1,8 @@
 package io.saasforge.gateway.security.config;
 
+import io.saasforge.gateway.envelope.service.ErrorEnvelopeService;
 import io.saasforge.gateway.security.service.MembershipStateVerifier;
+import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import io.saasforge.sdk.security.TenantJwtValidator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -13,6 +15,8 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.ServerAuthenticationEntryPoint;
+import org.springframework.security.web.server.authorization.ServerAccessDeniedHandler;
 import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository;
 
 @Configuration(proxyBeanMethods = false)
@@ -29,9 +33,25 @@ class GatewaySecurityConfiguration {
         return token -> decoder.decode(token).flatMap(states::verify);
     }
 
+    /**
+     * 缺失、伪造、issuer 不符、过期 Token 以及 Membership 状态不一致都在这里输出 401 信封。资源服务器与
+     * {@code exceptionHandling} 各有入口，两处都要配置，否则 Bearer Token 无效时仍是空响应体。
+     */
     @Bean
-    SecurityWebFilterChain gatewaySecurity(ServerHttpSecurity http) {
+    SecurityWebFilterChain gatewaySecurity(ServerHttpSecurity http, ErrorEnvelopeService envelopes) {
+        ServerAuthenticationEntryPoint entryPoint = (exchange, ex) -> envelopes.write(
+                exchange,
+                FrameworkErrorCode.AUTH_UNAUTHENTICATED,
+                FrameworkErrorCode.AUTH_UNAUTHENTICATED.httpStatus(),
+                ex.getMessage());
+        ServerAccessDeniedHandler accessDeniedHandler = (exchange, ex) -> envelopes.write(
+                exchange,
+                FrameworkErrorCode.AUTH_FORBIDDEN,
+                FrameworkErrorCode.AUTH_FORBIDDEN.httpStatus(),
+                ex.getMessage());
         return http.csrf(csrf -> csrf.disable())
+                .exceptionHandling(exceptions ->
+                        exceptions.authenticationEntryPoint(entryPoint).accessDeniedHandler(accessDeniedHandler))
                 .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
                 .authorizeExchange(auth -> auth.pathMatchers(
                                 HttpMethod.POST,
@@ -62,7 +82,9 @@ class GatewaySecurityConfiguration {
                         // Platform Realm 由工单 08 接入，Tenant Token 不能访问平台路由。
                         .anyExchange()
                         .denyAll())
-                .oauth2ResourceServer(server -> server.jwt(Customizer.withDefaults()))
+                .oauth2ResourceServer(server -> server.authenticationEntryPoint(entryPoint)
+                        .accessDeniedHandler(accessDeniedHandler)
+                        .jwt(Customizer.withDefaults()))
                 .build();
     }
 }

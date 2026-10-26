@@ -10,25 +10,38 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import io.saasforge.sdk.core.MembershipStateKeys;
+import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpMethod;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.server.RouterFunction;
+import org.springframework.web.reactive.function.server.RouterFunctions;
+import org.springframework.web.reactive.function.server.ServerResponse;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -42,32 +55,36 @@ class GatewaySecurityTest {
     static final String ISSUER = "http://tenant-realm.test";
     static final UUID TENANT_ID = UUID.fromString("019a0110-0000-7000-8000-000000000001");
     static final UUID MEMBERSHIP_ID = UUID.fromString("019a0110-0000-7000-8000-000000000003");
+    static final String DOWNSTREAM_ENVELOPE = "{\"code\":\"order.notFound\",\"httpStatus\":404,"
+            + "\"errorMessage\":\"Order o-1 not found\",\"userTip\":\"订单不存在\",\"traceId\":\"from-service\"}";
+    static final JsonMapper JSON = JsonMapper.builder().build();
+    static final AtomicReference<String> RECEIVED_TRACEPARENT = new AtomicReference<>();
 
     @Container
     static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
 
     static final RSAKey KEY;
+    // 同时充当 JWKS 端点与下游业务服务
     static final HttpServer JWKS;
 
     static {
         try {
             KEY = new RSAKeyGenerator(2048).keyID("tenant-key").generate();
             JWKS = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-            JWKS.createContext("/jwks", exchange -> {
-                byte[] body = new JWKSet(KEY.toPublicJWK()).toString().getBytes();
-                exchange.getResponseHeaders().add("Content-Type", "application/json");
-                exchange.sendResponseHeaders(200, body.length);
-                try (var stream = exchange.getResponseBody()) {
-                    stream.write(body);
-                }
-            });
+            JWKS.setExecutor(Executors.newCachedThreadPool());
+            JWKS.createContext("/jwks", exchange -> respond(exchange, 200, new JWKSet(KEY.toPublicJWK()).toString()));
             JWKS.createContext("/demo/context", exchange -> {
-                byte[] body = "{}".getBytes();
-                exchange.getResponseHeaders().add("Content-Type", "application/json");
-                exchange.sendResponseHeaders(200, body.length);
-                try (var stream = exchange.getResponseBody()) {
-                    stream.write(body);
+                RECEIVED_TRACEPARENT.set(exchange.getRequestHeaders().getFirst("traceparent"));
+                respond(exchange, 200, "{}");
+            });
+            JWKS.createContext("/demo/missing", exchange -> respond(exchange, 404, DOWNSTREAM_ENVELOPE));
+            JWKS.createContext("/demo/slow", exchange -> {
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                 }
+                respond(exchange, 200, "{}");
             });
             JWKS.start();
         } catch (Exception error) {
@@ -77,22 +94,42 @@ class GatewaySecurityTest {
 
     @DynamicPropertySource
     static void security(DynamicPropertyRegistry registry) {
+        String downstream = "http://127.0.0.1:" + JWKS.getAddress().getPort();
         registry.add("spring.cloud.gateway.server.webflux.routes[0].id", () -> "demo");
         registry.add("spring.cloud.gateway.server.webflux.routes[0].predicates[0]", () -> "Path=/demo/**");
-        registry.add(
-                "spring.cloud.gateway.server.webflux.routes[0].uri",
-                () -> "http://127.0.0.1:" + JWKS.getAddress().getPort());
+        registry.add("spring.cloud.gateway.server.webflux.routes[0].uri", () -> downstream);
+        // 端口 1 无服务监听，模拟下游不可用
+        registry.add("spring.cloud.gateway.server.webflux.routes[1].id", () -> "unavailable");
+        registry.add("spring.cloud.gateway.server.webflux.routes[1].predicates[0]", () -> "Path=/demo/unavailable/**");
+        registry.add("spring.cloud.gateway.server.webflux.routes[1].uri", () -> "http://127.0.0.1:1");
+        registry.add("spring.cloud.gateway.server.webflux.routes[1].order", () -> "-1");
+        registry.add("spring.cloud.gateway.server.webflux.routes[2].id", () -> "slow");
+        registry.add("spring.cloud.gateway.server.webflux.routes[2].predicates[0]", () -> "Path=/demo/slow");
+        registry.add("spring.cloud.gateway.server.webflux.routes[2].uri", () -> downstream);
+        registry.add("spring.cloud.gateway.server.webflux.routes[2].order", () -> "-1");
+        registry.add("spring.cloud.gateway.server.webflux.routes[2].metadata.response-timeout", () -> "300");
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
         registry.add("forge.security.issuer", () -> ISSUER);
-        registry.add(
-                "forge.security.jwk-set-uri",
-                () -> "http://127.0.0.1:" + JWKS.getAddress().getPort() + "/jwks");
+        registry.add("forge.security.jwk-set-uri", () -> downstream + "/jwks");
     }
 
     @AfterAll
     static void stop() {
         JWKS.stop(0);
+    }
+
+    /** 网关自身处理的请求抛出未知异常，用于验证 500 不泄漏异常信息。 */
+    @TestConfiguration
+    static class FailingEndpoint {
+        @Bean
+        RouterFunction<ServerResponse> failingRoute() {
+            return RouterFunctions.route()
+                    .GET("/demo/boom", request -> {
+                        throw new IllegalStateException("redis password=secret leaked");
+                    })
+                    .build();
+        }
     }
 
     @LocalServerPort
@@ -114,7 +151,7 @@ class GatewaySecurityTest {
         assertThat(status(old)).isEqualTo(200);
         // 停用 Membership 或修改角色时 iam 递增版本：下一次请求即被拒绝，无需等待 Token 过期。
         redisTemplate.opsForValue().set(MembershipStateKeys.version(TENANT_ID, MEMBERSHIP_ID), "2");
-        assertThat(status(old)).isEqualTo(401);
+        assertUnauthenticated(old);
         assertThat(status(token(KEY, ISSUER, Instant.now().plusSeconds(900), 2)))
                 .isEqualTo(200);
     }
@@ -122,29 +159,26 @@ class GatewaySecurityTest {
     @Test
     void suspendedTenantRejectsOtherwiseValidToken() throws Exception {
         redisTemplate.opsForValue().set(MembershipStateKeys.tenantStatus(TENANT_ID), "suspended");
-        assertThat(status(token(KEY, ISSUER, Instant.now().plusSeconds(900)))).isEqualTo(401);
+        assertUnauthenticated(token(KEY, ISSUER, Instant.now().plusSeconds(900)));
     }
 
     @Test
     void missingPublishedStateRejectsUntilRefreshRepublishesIt() throws Exception {
         redisTemplate.delete(MembershipStateKeys.version(TENANT_ID, MEMBERSHIP_ID));
-        assertThat(status(token(KEY, ISSUER, Instant.now().plusSeconds(900)))).isEqualTo(401);
+        assertUnauthenticated(token(KEY, ISSUER, Instant.now().plusSeconds(900)));
         publishActiveState();
         redisTemplate.delete(MembershipStateKeys.tenantStatus(TENANT_ID));
-        assertThat(status(token(KEY, ISSUER, Instant.now().plusSeconds(900)))).isEqualTo(401);
+        assertUnauthenticated(token(KEY, ISSUER, Instant.now().plusSeconds(900)));
     }
 
     @Test
     void rejectsMissingForgedWrongRealmAndExpiredTokens() throws Exception {
-        assertThat(status(null)).isEqualTo(401);
-        assertThat(status(token(
-                        new RSAKeyGenerator(2048).generate(),
-                        ISSUER,
-                        Instant.now().plusSeconds(900))))
-                .isEqualTo(401);
-        assertThat(status(token(KEY, "http://platform-realm.test", Instant.now().plusSeconds(900))))
-                .isEqualTo(401);
-        assertThat(status(token(KEY, ISSUER, Instant.now().minusSeconds(120)))).isEqualTo(401);
+        assertUnauthenticated(null);
+        assertUnauthenticated(token(
+                new RSAKeyGenerator(2048).generate(), ISSUER, Instant.now().plusSeconds(900)));
+        assertUnauthenticated(
+                token(KEY, "http://platform-realm.test", Instant.now().plusSeconds(900)));
+        assertUnauthenticated(token(KEY, ISSUER, Instant.now().minusSeconds(120)));
     }
 
     @Test
@@ -152,15 +186,64 @@ class GatewaySecurityTest {
         assertThat(status(token(KEY, ISSUER, Instant.now().plusSeconds(900)))).isEqualTo(200);
     }
 
+    // 下游从 traceparent 继承同一 trace，日志中的 traceId 因此与响应头一致
+    @Test
+    void propagatesTraceToDownstreamAndReturnsTraceIdHeader() throws Exception {
+        RECEIVED_TRACEPARENT.set(null);
+        Response response = call(
+                HttpMethod.GET,
+                "/demo/context",
+                token(KEY, ISSUER, Instant.now().plusSeconds(900)));
+        assertThat(response.status()).isEqualTo(200);
+        assertThat(response.traceIdHeader()).hasSize(32);
+        assertThat(RECEIVED_TRACEPARENT.get()).isNotNull();
+        assertThat(RECEIVED_TRACEPARENT.get().split("-")[1]).isEqualTo(response.traceIdHeader());
+    }
+
+    @Test
+    void passesDownstreamEnvelopeThroughUnchanged() throws Exception {
+        Response response = call(
+                HttpMethod.GET,
+                "/demo/missing",
+                token(KEY, ISSUER, Instant.now().plusSeconds(900)));
+        assertThat(response.status()).isEqualTo(404);
+        assertThat(response.rawBody()).isEqualTo(DOWNSTREAM_ENVELOPE);
+        assertThat(response.traceIdHeader()).hasSize(32);
+    }
+
+    @Test
+    void unavailableDownstreamIs503Envelope() throws Exception {
+        Response response = call(
+                HttpMethod.GET,
+                "/demo/unavailable/x",
+                token(KEY, ISSUER, Instant.now().plusSeconds(900)));
+        assertEnvelope(response, 503, "system.unavailable");
+        assertThat(response.body().path("errorMessage").asString()).isEqualTo("Internal error");
+        assertThat(response.body().path("userTip").asString()).isEqualTo("服务暂时不可用，请稍后重试");
+    }
+
+    @Test
+    void downstreamTimeoutIs503Envelope() throws Exception {
+        Response response = call(
+                HttpMethod.GET, "/demo/slow", token(KEY, ISSUER, Instant.now().plusSeconds(900)));
+        assertEnvelope(response, 503, "system.unavailable");
+    }
+
+    @Test
+    void unknownGatewayErrorIs500EnvelopeWithoutExceptionText() throws Exception {
+        Response response = call(
+                HttpMethod.GET, "/demo/boom", token(KEY, ISSUER, Instant.now().plusSeconds(900)));
+        assertEnvelope(response, 500, "system.error");
+        assertThat(response.body().path("errorMessage").asString()).isEqualTo("Internal error");
+        assertThat(response.rawBody()).doesNotContain("secret").doesNotContain("IllegalStateException");
+    }
+
     @Test
     void tenantTokenCannotAccessPlatformAndNeedsCompleteContext() throws Exception {
         String token = token(KEY, ISSUER, Instant.now().plusSeconds(900));
-        int platformStatus = RestClient.create("http://localhost:" + port)
-                .get()
-                .uri("/platform/anything")
-                .header("Authorization", "Bearer " + token)
-                .exchange((req, response) -> response.getStatusCode().value());
-        assertThat(platformStatus).isEqualTo(403);
+        Response platform = call(HttpMethod.GET, "/platform/anything", token);
+        assertEnvelope(platform, 403, "auth.forbidden");
+        assertThat(platform.body().path("userTip").asString()).isEqualTo("没有权限执行该操作");
         var original = SignedJWT.parse(token);
         var incomplete = new SignedJWT(
                 original.getHeader(),
@@ -168,52 +251,82 @@ class GatewaySecurityTest {
                         .claim("tenant_id", null)
                         .build());
         incomplete.sign(new RSASSASigner(KEY));
-        assertThat(status(incomplete.serialize())).isEqualTo(401);
+        assertUnauthenticated(incomplete.serialize());
     }
 
     @Test
     void internalTokenEndpointIsNotExposedByGateway() throws Exception {
-        var client = RestClient.create("http://localhost:" + port);
-        int anonymous = client.post()
-                .uri("/iam/oauth2/token")
-                .exchange((req, response) -> response.getStatusCode().value());
-        assertThat(anonymous).isEqualTo(401);
-        int authenticated = client.post()
-                .uri("/iam/oauth2/token")
-                .header(
-                        "Authorization",
-                        "Bearer " + token(KEY, ISSUER, Instant.now().plusSeconds(900)))
-                .exchange((req, response) -> response.getStatusCode().value());
-        assertThat(authenticated).isEqualTo(403);
+        assertThat(call(HttpMethod.POST, "/iam/oauth2/token", null).status()).isEqualTo(401);
+        assertThat(call(
+                                HttpMethod.POST,
+                                "/iam/oauth2/token",
+                                token(KEY, ISSUER, Instant.now().plusSeconds(900)))
+                        .status())
+                .isEqualTo(403);
     }
 
     @Test
     void tenantSwitchEndpointsAreReachableWithTheirOwnCredentials() throws Exception {
-        var client = RestClient.create("http://localhost:" + port);
-        // 测试未配置 IAM 路由：通过安全规则后得到 404，被拦截则为 401/403。
-        int switchStatus = client.post()
-                .uri("/iam/auth/switch")
-                .exchange((req, response) -> response.getStatusCode().value());
-        assertThat(switchStatus).isEqualTo(404);
-        int anonymousListing = client.get()
-                .uri("/iam/auth/memberships")
-                .exchange((req, response) -> response.getStatusCode().value());
-        assertThat(anonymousListing).isEqualTo(401);
-        int listing = client.get()
-                .uri("/iam/auth/memberships")
-                .header(
-                        "Authorization",
-                        "Bearer " + token(KEY, ISSUER, Instant.now().plusSeconds(900)))
-                .exchange((req, response) -> response.getStatusCode().value());
-        assertThat(listing).isEqualTo(404);
+        // 测试未配置 IAM 路由：通过安全规则后得到路由 404，被拦截则为 401/403。
+        assertEnvelope(call(HttpMethod.POST, "/iam/auth/switch", null), 404, "request.notFound");
+        assertUnauthenticatedAt("/iam/auth/memberships", null);
+        assertEnvelope(
+                call(
+                        HttpMethod.GET,
+                        "/iam/auth/memberships",
+                        token(KEY, ISSUER, Instant.now().plusSeconds(900))),
+                404,
+                "request.notFound");
+    }
+
+    private void assertUnauthenticated(String token) {
+        assertUnauthenticatedAt("/demo/context", token);
+    }
+
+    private void assertUnauthenticatedAt(String path, String token) {
+        Response response = call(HttpMethod.GET, path, token);
+        assertEnvelope(response, 401, "auth.unauthenticated");
+        assertThat(response.body().path("userTip").asString()).isEqualTo("登录已失效，请重新登录");
+    }
+
+    private static void assertEnvelope(Response response, int status, String code) {
+        assertThat(response.status()).isEqualTo(status);
+        assertThat(response.body().path("code").asString()).isEqualTo(code);
+        assertThat(response.body().path("httpStatus").asInt()).isEqualTo(status);
+        assertThat(response.traceIdHeader()).hasSize(32);
+        assertThat(response.body().path("traceId").asString()).isEqualTo(response.traceIdHeader());
     }
 
     private int status(String token) {
-        var request = RestClient.create("http://localhost:" + port).get().uri("/demo/context");
+        return call(HttpMethod.GET, "/demo/context", token).status();
+    }
+
+    private Response call(HttpMethod method, String path, String token) {
+        var request =
+                RestClient.create("http://localhost:" + port).method(method).uri(path);
         if (token != null) {
             request.header("Authorization", "Bearer " + token);
         }
-        return request.exchange((req, response) -> response.getStatusCode().value());
+        return request.exchange((req, response) -> {
+            String body = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
+            return new Response(
+                    response.getStatusCode().value(), response.getHeaders().getFirst("X-Trace-Id"), body);
+        });
+    }
+
+    record Response(int status, String traceIdHeader, String rawBody) {
+        JsonNode body() {
+            return JSON.readTree(rawBody);
+        }
+    }
+
+    private static void respond(HttpExchange exchange, int status, String body) throws IOException {
+        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().add("Content-Type", "application/json");
+        exchange.sendResponseHeaders(status, bytes.length);
+        try (var stream = exchange.getResponseBody()) {
+            stream.write(bytes);
+        }
     }
 
     static String token(RSAKey key, String issuer, Instant expires) throws Exception {
