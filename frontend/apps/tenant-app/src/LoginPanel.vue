@@ -2,7 +2,9 @@
 import { inject, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { tenantClientKey } from '@forge/sdk'
+import type { TenantMembership } from '@forge/sdk'
 import type { TenantContextResponse } from './demo-context'
+import TenantSelect from './TenantSelect.vue'
 
 const { t } = useI18n()
 const providedClient = inject(tenantClientKey)
@@ -14,6 +16,9 @@ const account = ref('')
 const password = ref('')
 const busy = ref(false)
 const error = ref('')
+// 密码已校验、尚未选定租户时的可选 Membership；noTenant 表示没有任何有效 Membership。
+const choices = ref<TenantMembership[] | null>(null)
+const noTenant = ref(false)
 let contextGeneration = 0
 
 async function loadContext() {
@@ -30,19 +35,45 @@ async function login() {
   busy.value = true
   error.value = ''
   try {
-    session.value = await client.login(account.value, password.value)
+    const result = await client.login(account.value, password.value)
     password.value = ''
-    await loadContext()
+    if (result.status === 'selectTenant') {
+      choices.value = result.memberships
+    } else if (result.status === 'noTenant') {
+      noTenant.value = true
+    } else {
+      session.value = result.session
+      await loadContext()
+    }
   } catch (cause) {
-    error.value =
-      cause instanceof Error &&
-      ['auth.contextFailed', 'auth.membershipSelectionRequired'].includes(cause.message)
-        ? cause.message
-        : 'auth.failed'
+    error.value = errorCode(cause)
     session.value = client.session()
   } finally {
     busy.value = false
   }
+}
+async function select(membershipId: string) {
+  contextGeneration += 1
+  busy.value = true
+  error.value = ''
+  try {
+    session.value = await client.selectTenant(membershipId)
+    choices.value = null
+    await loadContext()
+  } catch (cause) {
+    error.value = errorCode(cause)
+    // 登录会话失效时只能重新输入凭证；租户被拒绝时留在选择页。
+    if (error.value === 'auth.failed') choices.value = null
+    session.value = client.session()
+  } finally {
+    busy.value = false
+  }
+}
+function errorCode(cause: unknown) {
+  return cause instanceof Error &&
+    ['auth.contextFailed', 'auth.tenantAccessDenied'].includes(cause.message)
+    ? cause.message
+    : 'auth.failed'
 }
 async function reset() {
   contextGeneration += 1
@@ -55,6 +86,8 @@ async function reset() {
   } finally {
     session.value = null
     context.value = null
+    choices.value = null
+    noTenant.value = false
     password.value = ''
     busy.value = false
   }
@@ -79,7 +112,13 @@ onMounted(async () => {
     <el-button v-if="error === 'auth.logoutFailed'" :loading="busy" @click="reset">{{
       t('auth.retryLogout')
     }}</el-button>
-    <el-form v-if="!session" label-position="top" @submit.prevent="login">
+    <TenantSelect v-if="choices" :memberships="choices" :busy="busy" @select="select" />
+    <div v-else-if="noTenant" class="no-tenant">
+      <h3>{{ t('tenant.noneTitle') }}</h3>
+      <p>{{ t('tenant.noneHint') }}</p>
+      <el-button :loading="busy" @click="reset">{{ t('auth.loginAgain') }}</el-button>
+    </div>
+    <el-form v-else-if="!session" label-position="top" @submit.prevent="login">
       <el-form-item :label="t('auth.account')" for="tenant-account">
         <el-input
           id="tenant-account"

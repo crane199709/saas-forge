@@ -35,7 +35,8 @@ class GatewaySecurityConfiguration {
                                 "/iam/auth/login",
                                 "/iam/auth/logout",
                                 "/iam/auth/exchange",
-                                "/iam/auth/refresh")
+                                "/iam/auth/refresh",
+                                "/iam/auth/switch")
                         .permitAll()
                         .pathMatchers(
                                 HttpMethod.GET,
@@ -51,6 +52,8 @@ class GatewaySecurityConfiguration {
                                 "/demo/v3/api-docs/**",
                                 "/platform/v3/api-docs/**")
                         .permitAll()
+                        .pathMatchers(HttpMethod.GET, "/iam/auth/memberships")
+                        .authenticated()
                         .pathMatchers("/demo/**")
                         .authenticated()
                         // Platform Realm 由工单 08 接入，Tenant Token 不能访问平台路由。

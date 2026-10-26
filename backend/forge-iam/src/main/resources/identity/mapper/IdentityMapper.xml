@@ -1,22 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.saasforge.iam.identity.mapper.IdentityMapper">
-    <sql id="activeIdentity">
-        SELECT i.id AS identity_id, i.password_hash, i.display_name AS identity_name,
+    <sql id="activeMembership">
+        SELECT i.id AS identity_id, i.display_name AS identity_name,
                t.id AS tenant_id, t.name AS tenant_name, m.id AS membership_id, m.version
         FROM identity i JOIN membership m ON m.identity_id = i.id JOIN tenant t ON t.id = m.tenant_id
         WHERE i.status = 'active' AND m.status = 'active' AND t.status = 'active'
     </sql>
-    <select id="findForLogin" resultType="io.saasforge.iam.identity.model.LoginIdentity">
-        <include refid="activeIdentity"/>
-        AND (i.account = #{account} OR lower(i.email) = lower(#{account}))
+    <select id="findCredential" resultType="io.saasforge.iam.identity.model.LoginCredential">
+        SELECT id AS identity_id, password_hash FROM identity
+        WHERE status = 'active' AND (account = #{account} OR lower(email) = lower(#{account}))
     </select>
-    <select id="findForIdentity" resultType="io.saasforge.iam.identity.model.LoginIdentity">
-        <include refid="activeIdentity"/>
+    <select id="findActiveMemberships" resultType="io.saasforge.iam.identity.model.ActiveMembership">
+        <include refid="activeMembership"/>
         AND i.id = #{identityId}
+        ORDER BY t.name, m.id
     </select>
-    <select id="findForRefresh" resultType="io.saasforge.iam.identity.model.LoginIdentity">
-        <include refid="activeIdentity"/>
+    <select id="findForRefresh" resultType="io.saasforge.iam.identity.model.ActiveMembership">
+        <include refid="activeMembership"/>
         AND i.id = #{identityId} AND m.id = #{membershipId} AND t.id = #{tenantId}
     </select>
 </mapper>

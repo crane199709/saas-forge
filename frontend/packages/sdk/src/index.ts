@@ -2,4 +2,10 @@
 export const sdkRuntime = Object.freeze({ version: '0.1.0' })
 
 export { createTenantClient, tenantClientKey } from './auth'
-export type { TenantClient, TenantSession } from './auth'
+export type {
+  TenantClient,
+  TenantLoginResult,
+  TenantMembership,
+  TenantSession,
+  TenantSessionListener,
+} from './auth'

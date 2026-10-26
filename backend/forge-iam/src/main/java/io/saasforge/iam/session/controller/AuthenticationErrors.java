@@ -1,6 +1,6 @@
 package io.saasforge.iam.session.controller;
 
-import io.saasforge.iam.session.service.MembershipSelectionRequiredException;
+import io.saasforge.iam.session.service.TenantAccessDeniedException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.CacheControl;
@@ -27,13 +27,12 @@ class AuthenticationErrors {
 
     record AuthenticationErrorResponse(String code, String message) {}
 
-    @ExceptionHandler(MembershipSelectionRequiredException.class)
-    ResponseEntity<AuthenticationErrorResponse> membershipSelectionRequired() {
-        return ResponseEntity.status(409)
+    @ExceptionHandler(TenantAccessDeniedException.class)
+    ResponseEntity<AuthenticationErrorResponse> tenantAccessDenied() {
+        return ResponseEntity.status(403)
                 .cacheControl(CacheControl.noStore())
                 .body(new AuthenticationErrorResponse(
-                        "auth.membershipSelectionRequired",
-                        messages.getMessage(
-                                "auth.membershipSelectionRequired", null, LocaleContextHolder.getLocale())));
+                        "auth.tenantAccessDenied",
+                        messages.getMessage("auth.tenantAccessDenied", null, LocaleContextHolder.getLocale())));
     }
 }

@@ -3,6 +3,7 @@ package io.saasforge.iam.session.service;
 import com.nimbusds.jwt.SignedJWT;
 import io.saasforge.iam.identity.service.IdentityService;
 import io.saasforge.iam.security.config.TenantClientCredentials;
+import io.saasforge.iam.security.config.TenantTokenParameters;
 import io.saasforge.iam.session.model.TokenResponse;
 import java.text.ParseException;
 import java.util.Map;
@@ -12,6 +13,7 @@ import org.springframework.boot.web.server.autoconfigure.ServerProperties;
 import org.springframework.boot.web.server.servlet.context.ServletWebServerApplicationContext;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
@@ -42,25 +44,34 @@ public class TokenExchangeService {
         this.tokenBaseUri = tokenBaseUri;
     }
 
-    public TokenResponse code(String code, String verifier) {
-        return exchange(Map.of(
-                "grant_type",
-                "authorization_code",
-                "code",
-                code,
-                "code_verifier",
-                verifier,
-                "redirect_uri",
-                redirectUri));
+    /** membershipId 为空时只允许身份恰有一个有效 Membership，否则由 Token 定制器拒绝。 */
+    public TokenResponse code(String code, String verifier, UUID membershipId) {
+        var form = new LinkedMultiValueMap<String, String>();
+        form.add("grant_type", "authorization_code");
+        form.add("code", code);
+        form.add("code_verifier", verifier);
+        form.add("redirect_uri", redirectUri);
+        if (membershipId != null) form.add(TenantTokenParameters.MEMBERSHIP_ID, membershipId.toString());
+        return exchange(form);
     }
 
     public TokenResponse refresh(String token) {
-        return exchange(Map.of("grant_type", "refresh_token", "refresh_token", token));
+        var form = new LinkedMultiValueMap<String, String>();
+        form.add("grant_type", "refresh_token");
+        form.add("refresh_token", token);
+        return exchange(form);
     }
 
-    private TokenResponse exchange(Map<String, String> parameters) {
+    // 切换租户就是携带目标 Membership 的一次标准刷新：沿用同一授权的轮换、重放撤销与互斥（ADR-0002）。
+    public TokenResponse switchTenant(String token, UUID membershipId) {
         var form = new LinkedMultiValueMap<String, String>();
-        parameters.forEach(form::add);
+        form.add("grant_type", "refresh_token");
+        form.add("refresh_token", token);
+        form.add(TenantTokenParameters.MEMBERSHIP_ID, membershipId.toString());
+        return exchange(form);
+    }
+
+    private TokenResponse exchange(LinkedMultiValueMap<String, String> form) {
         Map<?, ?> result;
         try {
             // 地址只来自服务端配置，不能由请求头或客户端指定；所有 grant 仍由标准过滤器校验。
@@ -73,6 +84,10 @@ public class TokenExchangeService {
                     .retrieve()
                     .body(Map.class);
         } catch (HttpClientErrorException error) {
+            Map<?, ?> body = error.getResponseBodyAs(Map.class);
+            if (body != null && OAuth2ErrorCodes.ACCESS_DENIED.equals(body.get("error"))) {
+                throw new TenantAccessDeniedException();
+            }
             throw new BadCredentialsException("auth.failed");
         }
         try {
@@ -90,7 +105,9 @@ public class TokenExchangeService {
                     "Bearer",
                     ((Number) result.get("expires_in")).longValue(),
                     identity.identityName(),
-                    identity.tenantName());
+                    identity.tenantId(),
+                    identity.tenantName(),
+                    identity.membershipId());
         } catch (ParseException error) {
             throw new IllegalStateException(error);
         }

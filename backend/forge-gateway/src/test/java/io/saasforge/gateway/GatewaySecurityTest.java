@@ -134,6 +134,27 @@ class GatewaySecurityTest {
         assertThat(authenticated).isEqualTo(403);
     }
 
+    @Test
+    void tenantSwitchEndpointsAreReachableWithTheirOwnCredentials() throws Exception {
+        var client = RestClient.create("http://localhost:" + port);
+        // 测试未配置 IAM 路由：通过安全规则后得到 404，被拦截则为 401/403。
+        int switchStatus = client.post()
+                .uri("/iam/auth/switch")
+                .exchange((req, response) -> response.getStatusCode().value());
+        assertThat(switchStatus).isEqualTo(404);
+        int anonymousListing = client.get()
+                .uri("/iam/auth/memberships")
+                .exchange((req, response) -> response.getStatusCode().value());
+        assertThat(anonymousListing).isEqualTo(401);
+        int listing = client.get()
+                .uri("/iam/auth/memberships")
+                .header(
+                        "Authorization",
+                        "Bearer " + token(KEY, ISSUER, Instant.now().plusSeconds(900)))
+                .exchange((req, response) -> response.getStatusCode().value());
+        assertThat(listing).isEqualTo(404);
+    }
+
     private int status(String token) {
         var request = RestClient.create("http://localhost:" + port).get().uri("/demo/context");
         if (token != null) {

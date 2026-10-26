@@ -9,6 +9,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -21,6 +22,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -117,14 +119,96 @@ class TenantLoginTest {
 
     @Test
     @Sql("/fixtures/multiple_memberships.sql")
-    void emailLookupIgnoresCaseAndMultipleMembershipsRequireSelectionOnlyAfterPasswordCheck() {
+    void emailLookupIgnoresCaseAndMultipleMembershipsAreListedOnlyAfterPasswordCheck() {
         assertThat(login("DEMO@EXAMPLE.COM", "Demo-password-123!").get("accessToken"))
                 .isInstanceOf(String.class);
         assertThat(failure("multi", "wrong")).isEqualTo(failure("unknown", "wrong"));
-        assertThatThrownBy(() -> login("multi", "Demo-password-123!"))
-                .isInstanceOf(HttpClientErrorException.Conflict.class)
-                .satisfies(error -> assertThat(((HttpClientErrorException) error).getResponseBodyAsString())
-                        .contains("auth.membershipSelectionRequired"));
+        assertThat(failure("lonely", "wrong")).isEqualTo(failure("unknown", "wrong"));
+        List<?> memberships =
+                (List<?>) authenticate("multi", "Demo-password-123!").body().get("memberships");
+        // 租户已停用或 Membership 非 active 的都不可被选择，因此不列出。
+        assertThat(memberships)
+                .<Object>extracting(item -> ((Map<?, ?>) item).get("membershipId"))
+                .containsExactlyInAnyOrder(MULTI_IN_DEMO_TENANT, MULTI_IN_SECOND_TENANT);
+        assertThat(memberships)
+                .<Object>extracting(item -> ((Map<?, ?>) item).get("tenantName"))
+                .containsExactlyInAnyOrder("演示租户", "第二租户");
+    }
+
+    @Test
+    @Sql("/fixtures/multiple_memberships.sql")
+    void identityWithoutActiveMembershipSignsInButCannotObtainTokens() {
+        var session = authenticate("lonely", "Demo-password-123!");
+        assertThat((List<?>) session.body().get("memberships")).isEmpty();
+        String code = authorize(session.cookie());
+        assertThatThrownBy(() -> exchange(code, null)).isInstanceOf(HttpClientErrorException.Unauthorized.class);
+    }
+
+    @Test
+    @Sql("/fixtures/multiple_memberships.sql")
+    void selectedTenantAndTenantSwitchRebindTokenToTheChosenMembership() {
+        var session = authenticate("multi", "Demo-password-123!");
+        Map<?, ?> second = exchange(authorize(session.cookie()), MULTI_IN_SECOND_TENANT);
+        assertThat(second.get("tenantName")).isEqualTo("第二租户");
+        assertThat(second.get("membershipId")).isEqualTo(MULTI_IN_SECOND_TENANT);
+        var claims = decode((String) second.get("accessToken"));
+        assertThat(claims.getSubject()).isEqualTo(MULTI_IDENTITY);
+        assertThat(claims.getClaimAsString("tenant_id")).isEqualTo(SECOND_TENANT);
+        assertThat(claims.getClaimAsString("membership_id")).isEqualTo(MULTI_IN_SECOND_TENANT);
+
+        List<?> listed = memberships((String) second.get("accessToken"));
+        assertThat(listed)
+                .<Object>extracting(item -> ((Map<?, ?>) item).get("tenantId"))
+                .containsExactlyInAnyOrder(DEMO_TENANT, SECOND_TENANT);
+
+        Map<?, ?> switched = switchTenant((String) second.get("refreshToken"), MULTI_IN_DEMO_TENANT);
+        claims = decode((String) switched.get("accessToken"));
+        assertThat(claims.getSubject()).isEqualTo(MULTI_IDENTITY);
+        assertThat(claims.getClaimAsString("tenant_id")).isEqualTo(DEMO_TENANT);
+        assertThat(claims.getClaimAsString("membership_id")).isEqualTo(MULTI_IN_DEMO_TENANT);
+        assertThat(switched.get("tenantName")).isEqualTo("演示租户");
+
+        // 切换沿用同一授权的刷新轮换：旧凭证失效，之后的刷新留在新租户。
+        Map<?, ?> refreshed = refresh((String) switched.get("refreshToken"));
+        assertThat(decode((String) refreshed.get("accessToken")).getClaimAsString("tenant_id"))
+                .isEqualTo(DEMO_TENANT);
+        assertThatThrownBy(() -> refresh((String) second.get("refreshToken")))
+                .isInstanceOf(HttpClientErrorException.Unauthorized.class);
+    }
+
+    @Test
+    @Sql("/fixtures/multiple_memberships.sql")
+    void tenantsOutsideActiveMembershipsCannotBeSelectedOrSwitchedInto() {
+        var session = authenticate("multi", "Demo-password-123!");
+        for (String target : List.of(DEMO_MEMBERSHIP, MULTI_IN_SUSPENDED_TENANT, MULTI_SUSPENDED)) {
+            String code = authorize(session.cookie());
+            assertThatThrownBy(() -> exchange(code, target)).isInstanceOf(HttpClientErrorException.Forbidden.class);
+        }
+        String refreshToken = (String)
+                exchange(authorize(session.cookie()), MULTI_IN_DEMO_TENANT).get("refreshToken");
+        for (String target : List.of(DEMO_MEMBERSHIP, MULTI_IN_SUSPENDED_TENANT, MULTI_SUSPENDED)) {
+            assertThatThrownBy(() -> switchTenant(refreshToken, target))
+                    .isInstanceOf(HttpClientErrorException.Forbidden.class)
+                    .satisfies(error -> assertThat(((HttpClientErrorException) error).getResponseBodyAsString())
+                            .contains("auth.tenantAccessDenied"));
+        }
+        // 被拒绝的切换不消费刷新凭证，会话仍留在原租户。
+        Map<?, ?> refreshed = refresh(refreshToken);
+        assertThat(decode((String) refreshed.get("accessToken")).getClaimAsString("tenant_id"))
+                .isEqualTo(DEMO_TENANT);
+        assertThatThrownBy(() -> switchTenant("invalid", MULTI_IN_SECOND_TENANT))
+                .isInstanceOf(HttpClientErrorException.Unauthorized.class);
+    }
+
+    @Test
+    void membershipListingRequiresAValidAccessToken() {
+        int anonymous = RestClient.create(baseUrl())
+                .get()
+                .uri("/auth/memberships")
+                .exchange((req, response) -> response.getStatusCode().value());
+        assertThat(anonymous).isEqualTo(401);
+        String refreshToken = (String) login("demo", "Demo-password-123!").get("refreshToken");
+        assertThatThrownBy(() -> memberships(refreshToken)).isInstanceOf(HttpClientErrorException.Unauthorized.class);
     }
 
     @Test
@@ -178,35 +262,87 @@ class TenantLoginTest {
 
     private static final String VERIFIER = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG";
 
+    private static final String DEMO_TENANT = "019a0110-0000-7000-8000-000000000001";
+    private static final String SECOND_TENANT = "019a0110-0000-7000-8000-000000000004";
+    private static final String DEMO_MEMBERSHIP = "019a0110-0000-7000-8000-000000000003";
+    private static final String MULTI_IDENTITY = "019a0110-0000-7000-8000-000000000005";
+    private static final String MULTI_IN_DEMO_TENANT = "019a0110-0000-7000-8000-000000000006";
+    private static final String MULTI_IN_SECOND_TENANT = "019a0110-0000-7000-8000-000000000007";
+    private static final String MULTI_IN_SUSPENDED_TENANT = "019a0110-0000-7000-8000-00000000000a";
+    private static final String MULTI_SUSPENDED = "019a0110-0000-7000-8000-00000000000b";
+
+    private record SignedIn(String cookie, Map<?, ?> body) {}
+
     private Map<?, ?> login(String account, String password) {
-        String code = authorize(account, password);
+        return exchange(authorize(account, password), null);
+    }
+
+    private Map<?, ?> exchange(String code, String membershipId) {
+        var body = new HashMap<String, String>(Map.of("code", code, "codeVerifier", VERIFIER));
+        if (membershipId != null) body.put("membershipId", membershipId);
         return RestClient.create(baseUrl())
                 .post()
                 .uri("/auth/exchange")
-                .body(Map.of("code", code, "codeVerifier", VERIFIER))
+                .body(body)
                 .retrieve()
                 .body(Map.class);
     }
 
-    private String authorize(String account, String password) {
-        var client = RestClient.builder()
+    private Map<?, ?> switchTenant(String refreshToken, String membershipId) {
+        return RestClient.create(baseUrl())
+                .post()
+                .uri("/auth/switch")
+                .body(Map.of("refreshToken", refreshToken, "membershipId", membershipId))
+                .retrieve()
+                .body(Map.class);
+    }
+
+    private List<?> memberships(String accessToken) {
+        return RestClient.create(baseUrl())
+                .get()
+                .uri("/auth/memberships")
+                .headers(headers -> headers.setBearerAuth(accessToken))
+                .retrieve()
+                .body(List.class);
+    }
+
+    private Jwt decode(String accessToken) {
+        return NimbusJwtDecoder.withJwkSetUri(baseUrl() + "/oauth2/jwks")
+                .build()
+                .decode(accessToken);
+    }
+
+    private RestClient noRedirectClient() {
+        return RestClient.builder()
                 .baseUrl(baseUrl())
                 .requestFactory(new JdkClientHttpRequestFactory(HttpClient.newBuilder()
                         .followRedirects(HttpClient.Redirect.NEVER)
                         .build()))
                 .build();
-        var login = client.post()
+    }
+
+    private SignedIn authenticate(String account, String password) {
+        var login = noRedirectClient()
+                .post()
                 .uri("/auth/login")
                 .body(Map.of("account", account, "password", password))
                 .retrieve()
                 .toEntity(Map.class);
-        String cookie = login.getHeaders().getFirst("Set-Cookie").split(";")[0];
+        return new SignedIn(login.getHeaders().getFirst("Set-Cookie").split(";")[0], login.getBody());
+    }
+
+    private String authorize(String account, String password) {
+        return authorize(authenticate(account, password).cookie());
+    }
+
+    private String authorize(String cookie) {
         try {
             String challenge = Base64.getUrlEncoder()
                     .withoutPadding()
                     .encodeToString(
                             MessageDigest.getInstance("SHA-256").digest(VERIFIER.getBytes(StandardCharsets.US_ASCII)));
-            var response = client.get()
+            var response = noRedirectClient()
+                    .get()
                     .uri(builder -> builder.path("/oauth2/authorize")
                             .queryParam("response_type", "code")
                             .queryParam("client_id", "tenant-app")

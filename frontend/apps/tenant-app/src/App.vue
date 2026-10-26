@@ -5,6 +5,7 @@ import { provide, ref, watchEffect } from 'vue'
 import { createTenantClient, tenantClientKey } from '@forge/sdk'
 import { themeTokens } from '@forge/ui'
 import LoginPanel from './LoginPanel.vue'
+import TenantSwitcher from './TenantSwitcher.vue'
 
 provide(tenantClientKey, createTenantClient(sessionStorage))
 
@@ -32,6 +33,9 @@ defineProps<{ sharedChecks?: Record<string, boolean>; loadError?: string }>()
 
 <template>
   <el-container>
+    <el-header class="shell-header">
+      <TenantSwitcher />
+    </el-header>
     <el-main>
       <el-card>
         <h1>{{ t('app.welcome') }}</h1>
@@ -61,6 +65,11 @@ defineProps<{ sharedChecks?: Record<string, boolean>; loadError?: string }>()
 </template>
 
 <style scoped>
+.shell-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
 nav {
   display: flex;
   flex-wrap: wrap;

@@ -8,13 +8,19 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.util.List;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,9 +50,34 @@ class SessionController {
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
         new HttpSessionSecurityContextRepository().saveContext(context, request, response);
+        // 密码校验通过后才返回可进入的租户，由前端决定自动进入、选择租户或展示无租户页。
+        var memberships = toMembershipResponses(UUID.fromString(authentication.getName()));
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(new LoginResponse("tenant-app", redirectUri));
+                .body(new LoginResponse("tenant-app", redirectUri, memberships));
+    }
+
+    @Operation(summary = "列出当前 Access Token 所属身份可进入的有效 Membership")
+    @GetMapping("/auth/memberships")
+    ResponseEntity<List<MembershipResponse>> memberships(@AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(toMembershipResponses(UUID.fromString(jwt.getSubject())));
+    }
+
+    @Operation(summary = "用当前刷新凭证换发绑定目标 Membership 的 Token，旧刷新凭证随之轮换失效")
+    @PostMapping(value = "/auth/switch", consumes = "application/json")
+    ResponseEntity<TokenResponse> switchTenant(@Valid @RequestBody SwitchRequest request) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(tokens.switchTenant(request.refreshToken(), request.membershipId()));
+    }
+
+    private List<MembershipResponse> toMembershipResponses(UUID identityId) {
+        return sessions.memberships(identityId).stream()
+                .map(membership -> new MembershipResponse(
+                        membership.membershipId(), membership.tenantId(), membership.tenantName()))
+                .toList();
     }
 
     @Operation(summary = "退出当前浏览器的 IAM 登录会话，不吊销已签发的 Token")
@@ -63,7 +94,7 @@ class SessionController {
     ResponseEntity<TokenResponse> exchange(@Valid @RequestBody CodeRequest request) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(tokens.code(request.code(), request.codeVerifier()));
+                .body(tokens.code(request.code(), request.codeVerifier(), request.membershipId()));
     }
 
     @Operation(summary = "通过标准 refresh_token grant 轮换刷新凭证")
@@ -72,7 +103,9 @@ class SessionController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(tokens.refresh(request.refreshToken()));
     }
 
-    record LoginResponse(String clientId, String redirectUri) {}
+    record LoginResponse(String clientId, String redirectUri, List<MembershipResponse> memberships) {}
+
+    record MembershipResponse(UUID membershipId, UUID tenantId, String tenantName) {}
 
     record LoginRequest(
             @NotBlank @Size(max = 254) String account,
@@ -85,10 +118,20 @@ class SessionController {
 
     record CodeRequest(
             @NotBlank @Size(max = 512) String code,
-            @NotBlank @Size(min = 43, max = 128) String codeVerifier) {
+            @NotBlank @Size(min = 43, max = 128) String codeVerifier,
+            UUID membershipId) {
         @Override
         public String toString() {
             return "CodeRequest[redacted]";
+        }
+    }
+
+    record SwitchRequest(
+            @NotBlank @Size(max = 512) String refreshToken,
+            @NotNull UUID membershipId) {
+        @Override
+        public String toString() {
+            return "SwitchRequest[membershipId=" + membershipId + "]";
         }
     }
 

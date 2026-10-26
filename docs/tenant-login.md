@@ -1,6 +1,6 @@
 # Tenant Realm 最小登录
 
-工单：[03](../.scratch/saas-forge-mvp/issues/03-tenant-realm-minimal-login.md)。Identity 是全局身份，Membership 绑定 Identity 与 Tenant；首版只自动进入唯一的有效 Membership，多租户选择留给工单 06。
+工单：[03](../.scratch/saas-forge-mvp/issues/03-tenant-realm-minimal-login.md)。Identity 是全局身份，Membership 绑定 Identity 与 Tenant。多租户选择与切换见工单 [06](../.scratch/saas-forge-mvp/issues/06-multi-tenant-membership-switch.md) 与下文「多租户」一节。
 
 ## 本地运行
 
@@ -20,11 +20,13 @@ Vite 将 `/iam` 与 `/demo` 代理到本地网关 `http://localhost:8080`。部�
 
 | 接口（网关路径） | 请求 | 结果 |
 | --- | --- | --- |
-| `POST /iam/auth/login` | JSON `account`、`password` | Redis 登录会话 Cookie、`clientId`、`redirectUri` |
+| `POST /iam/auth/login` | JSON `account`、`password` | Redis 登录会话 Cookie、`clientId`、`redirectUri`、`memberships`（可进入的租户） |
 | `GET /iam/oauth2/authorize` | 标准 authorization_code + S256 PKCE 参数 | 重定向至注册回调，携带一次性 code 和 state |
-| `POST /iam/auth/exchange` | JSON `code`、`codeVerifier` | 服务端经标准 Token 端点交换，返回 `accessToken`、`refreshToken`、`tokenType`、`expiresIn`、`identityName`、`tenantName` |
+| `POST /iam/auth/exchange` | JSON `code`、`codeVerifier`，可选 `membershipId` | 服务端经标准 Token 端点交换，返回 `accessToken`、`refreshToken`、`tokenType`、`expiresIn`、`identityName`、`tenantId`、`tenantName`、`membershipId` |
 | `POST /iam/auth/logout` | 同源 JSON `{}` + IAM 会话 Cookie | 销毁当前浏览器的 Redis 登录会话，返回 204 |
 | `POST /iam/auth/refresh` | JSON `refreshToken` | 新的一对 Token；旧 Refresh Token 重放会撤销同一授权的后续刷新能力 |
+| `POST /iam/auth/switch` | JSON `refreshToken`、`membershipId` | 绑定目标 Membership 的新一对 Token；目标不可进入时 403 `auth.tenantAccessDenied` |
+| `GET /iam/auth/memberships` | `Authorization: Bearer …` | 当前身份的有效 Membership：`membershipId`、`tenantId`、`tenantName` |
 | `GET /iam/oauth2/jwks` | 无 | Spring Authorization Server 发布的公钥 |
 | `GET /demo/context` | `Authorization: Bearer …` | `identityId`、`tenantId`、`membershipId`、`version` |
 
@@ -50,7 +52,19 @@ Token 保存在当前标签页的 sessionStorage。请求遇到 401 时合并刷
 
 账号区分大小写，邮箱按不区分大小写匹配并保持唯一；账号禁止 `@`，邮箱必须包含非空的 `@` 两侧，避免两个登录标识命名空间重叠。V3 迁移只增加约束，不自动改写历史数据；已有非法邮箱或仅大小写不同的重复邮箱会使迁移失败，需要先由维护者处理。
 
-多 Membership 身份只有在密码正确后才返回 `409 / auth.membershipSelectionRequired`，提示当前版本尚不支持租户选择；错误密码和未知账号继续返回同一 401。选择功能仍由工单 06 实现。IAM 认证阶段 Membership 查询的 RLS 例外及边界见 [ADR-0001](adr/0001-shared-schema-tenant-isolation.md)。
+## 多租户
+
+登录只认证全局 Identity，密码正确后响应列出可进入的 Membership；错误密码和未知账号继续返回同一 401。「可进入」指 Identity、Membership 与所在 Tenant 三者都是 `active`，其他状态既不列出，也不能被选择或切换进入。SDK 的 `login` 据此返回三种结果：只有一个时自动进入（`signedIn`）；多个时返回 `selectTenant`，由租户选择页调用 `selectTenant(membershipId)`；没有时返回 `noTenant`，Shell 展示无租户页，不发起授权。
+
+选择租户时 `/auth/exchange` 携带 `membershipId`，适配器把它作为 Token 请求的附加参数 `membership_id` 交给标准端点，Token 定制器只在已认证 Identity 自己的有效 Membership 中查找目标，找不到则以 `access_denied` 拒绝，适配器转换为 403 `auth.tenantAccessDenied`。不带 `membershipId` 时仅当身份恰有一个有效 Membership 才签发。
+
+切换租户（ADR-0002）就是带 `membership_id` 的一次标准 refresh_token grant：沿用同一授权的轮换、重放撤销与互斥，旧 Refresh Token 随之失效，新 Access Token 的 `tenant_id`、`membership_id`、`ver` 来自目标 Membership；之后的普通刷新留在新租户。被拒绝的切换不消费刷新凭证，会话留在原租户。下游只信任 Token，没有「按请求头临时指定租户」的分支。
+
+`GET /auth/memberships` 由 IAM 以自身签名密钥无状态验签 Access Token（issuer、audience），不使用登录会话 Cookie；网关对该路径要求有效 Tenant Token。
+
+前端 SDK 的刷新与切换共用一个轮换队列，切换会等待进行中的刷新后使用新 Refresh Token。切换成功后提升会话代次，切换前发出的请求以 `auth.sessionChanged` 失败，不会把旧租户响应写回界面，也不会在 401 后带新租户 Token 重发；切换只有在刷新凭证被拒绝（401）时清除会话，其他故障保留原会话。`onSessionChange` 通知订阅者。顶部租户切换器切换成功后整页回到 `/`，丢弃 Shell 与 Sub-App 中属于旧租户的内存状态和路由。选择租户依赖 IAM 登录会话（空闲 30 分钟）；在选择页刷新浏览器会回到登录页。
+
+IAM 认证阶段 Membership 查询的 RLS 例外及边界见 [ADR-0001](adr/0001-shared-schema-tenant-isolation.md)。
 
 ## 配置
 

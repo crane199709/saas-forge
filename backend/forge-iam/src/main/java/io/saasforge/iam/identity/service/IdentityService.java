@@ -1,8 +1,10 @@
 package io.saasforge.iam.identity.service;
 
 import io.saasforge.iam.identity.mapper.IdentityMapper;
-import io.saasforge.iam.identity.model.LoginIdentity;
+import io.saasforge.iam.identity.model.ActiveMembership;
+import io.saasforge.iam.identity.model.LoginCredential;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -15,15 +17,22 @@ public class IdentityService {
         this.identities = identities;
     }
 
-    public List<LoginIdentity> findForLogin(String account) {
-        return identities.findForLogin(account);
+    public LoginCredential findCredential(String account) {
+        return identities.findCredential(account);
     }
 
-    public List<LoginIdentity> findForIdentity(UUID identityId) {
-        return identities.findForIdentity(identityId);
+    public List<ActiveMembership> findActiveMemberships(UUID identityId) {
+        return identities.findActiveMemberships(identityId);
     }
 
-    public LoginIdentity findForRefresh(UUID identityId, UUID membershipId, UUID tenantId) {
+    // 目标 Membership 只在已认证身份自己的有效 Membership 中查找，客户端无法借此进入他人或停用的租户。
+    public Optional<ActiveMembership> findActiveMembership(UUID identityId, UUID membershipId) {
+        return identities.findActiveMemberships(identityId).stream()
+                .filter(membership -> membership.membershipId().equals(membershipId))
+                .findFirst();
+    }
+
+    public ActiveMembership findForRefresh(UUID identityId, UUID membershipId, UUID tenantId) {
         return identities.findForRefresh(identityId, membershipId, tenantId);
     }
 }

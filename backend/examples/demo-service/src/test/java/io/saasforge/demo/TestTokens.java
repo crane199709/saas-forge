@@ -55,7 +55,17 @@ final class TestTokens {
         return token(KEY, ISSUER, Instant.now().plusSeconds(900), tenantId);
     }
 
+    /** 同一 Identity 在另一 Membership 下的 Token，对应切换租户后 IAM 换发的结果。 */
+    static String forMembership(UUID tenantId, UUID membershipId) throws Exception {
+        return token(KEY, ISSUER, Instant.now().plusSeconds(900), tenantId, membershipId);
+    }
+
     static String token(RSAKey key, String issuer, Instant expires, UUID tenantId) throws Exception {
+        return token(key, issuer, expires, tenantId, MEMBERSHIP_ID);
+    }
+
+    private static String token(RSAKey key, String issuer, Instant expires, UUID tenantId, UUID membershipId)
+            throws Exception {
         var claims = new JWTClaimsSet.Builder()
                 .issuer(issuer)
                 .subject(IDENTITY_ID.toString())
@@ -63,7 +73,7 @@ final class TestTokens {
                 .issueTime(Date.from(Instant.now().minusSeconds(300)))
                 .expirationTime(Date.from(expires))
                 .claim("tenant_id", tenantId.toString())
-                .claim("membership_id", MEMBERSHIP_ID.toString())
+                .claim("membership_id", membershipId.toString())
                 .claim("ver", 1)
                 .build();
         var jwt = new SignedJWT(

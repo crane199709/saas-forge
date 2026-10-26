@@ -4,7 +4,7 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-import io.saasforge.iam.identity.model.LoginIdentity;
+import io.saasforge.iam.identity.model.ActiveMembership;
 import io.saasforge.iam.identity.service.IdentityService;
 import io.saasforge.iam.security.filter.TokenGrantLockFilter;
 import io.saasforge.iam.security.service.RedisAuthorizationService;
@@ -19,6 +19,9 @@ import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,13 +29,23 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
+import org.springframework.security.oauth2.jwt.JwtClaimNames;
+import org.springframework.security.oauth2.jwt.JwtClaimValidator;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationGrantAuthenticationToken;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
@@ -121,24 +134,57 @@ class IamSecurityConfiguration {
     OAuth2TokenCustomizer<JwtEncodingContext> tenantClaims(IdentityService identities) {
         return context -> {
             UUID identityId = UUID.fromString(context.getPrincipal().getName());
-            LoginIdentity identity;
+            ActiveMembership membership;
+            Object requested =
+                    context.getAuthorizationGrant() instanceof OAuth2AuthorizationGrantAuthenticationToken grant
+                            ? grant.getAdditionalParameters().get(TenantTokenParameters.MEMBERSHIP_ID)
+                            : null;
             var authorization = context.getAuthorization();
-            if (authorization != null && authorization.getAccessToken() != null) {
+            if (requested != null) {
+                // 选择或切换租户：目标只能是该身份自己的有效 Membership（ADR-0002）。
+                membership = parseMembershipId(requested)
+                        .flatMap(membershipId -> identities.findActiveMembership(identityId, membershipId))
+                        .orElseThrow(() ->
+                                new OAuth2AuthenticationException(new OAuth2Error(OAuth2ErrorCodes.ACCESS_DENIED)));
+            } else if (authorization != null && authorization.getAccessToken() != null) {
+                // 普通刷新不能隐式换租户，只重新校验原 Membership。
                 var claims = authorization.getAccessToken().getClaims();
-                identity = identities.findForRefresh(
+                membership = identities.findForRefresh(
                         identityId, UUID.fromString((String) claims.get("membership_id")), UUID.fromString((String)
                                 claims.get("tenant_id")));
             } else {
-                var matches = identities.findForIdentity(identityId);
-                identity = matches.size() == 1 ? matches.get(0) : null;
+                var matches = identities.findActiveMemberships(identityId);
+                membership = matches.size() == 1 ? matches.get(0) : null;
             }
-            if (identity == null) throw new OAuth2AuthenticationException("invalid_grant");
+            if (membership == null) throw new OAuth2AuthenticationException("invalid_grant");
             context.getClaims()
-                    .subject(identity.identityId().toString())
-                    .claim("tenant_id", identity.tenantId().toString())
-                    .claim("membership_id", identity.membershipId().toString())
-                    .claim("ver", identity.version());
+                    .subject(membership.identityId().toString())
+                    .claim("tenant_id", membership.tenantId().toString())
+                    .claim("membership_id", membership.membershipId().toString())
+                    .claim("ver", membership.version());
         };
+    }
+
+    private static Optional<UUID> parseMembershipId(Object value) {
+        try {
+            return Optional.of(UUID.fromString(value.toString()));
+        } catch (IllegalArgumentException error) {
+            return Optional.empty();
+        }
+    }
+
+    @Bean
+    JwtDecoder accessTokenDecoder(
+            JWKSource<SecurityContext> jwkSource,
+            @Value("${forge.security.issuer:http://localhost:8080/iam}") String issuer) {
+        var decoder = NimbusJwtDecoder.withJwkSource(jwkSource).build();
+        // 与下游一致：只接受本 Realm 签发给 tenant-app 的 Access Token。
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(issuer),
+                new JwtClaimValidator<List<String>>(
+                        JwtClaimNames.AUD, audience -> audience != null && audience.contains("tenant-app")),
+                new JwtClaimValidator<String>("membership_id", Objects::nonNull)));
+        return decoder;
     }
 
     @Bean
@@ -154,10 +200,22 @@ class IamSecurityConfiguration {
 
     @Bean
     @Order(2)
+    SecurityFilterChain accessTokenSecurity(HttpSecurity http) throws Exception {
+        // 已持有 Access Token 的身份读取自己的 Membership；无状态、不使用登录会话 Cookie。
+        http.securityMatcher("/auth/memberships")
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                .oauth2ResourceServer(server -> server.jwt(Customizer.withDefaults()));
+        return http.build();
+    }
+
+    @Bean
+    @Order(3)
     SecurityFilterChain applicationSecurity(HttpSecurity http) throws Exception {
         // JSON 凭证入口不开启 CORS，授权端点使用 Redis HTTP 会话；Token 交换仍需授权码和 PKCE。
-        http.csrf(csrf ->
-                        csrf.ignoringRequestMatchers("/auth/login", "/auth/logout", "/auth/exchange", "/auth/refresh"))
+        http.csrf(csrf -> csrf.ignoringRequestMatchers(
+                        "/auth/login", "/auth/logout", "/auth/exchange", "/auth/refresh", "/auth/switch"))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth.dispatcherTypeMatchers(DispatcherType.ERROR)
                         .permitAll()
@@ -166,6 +224,7 @@ class IamSecurityConfiguration {
                                 "/auth/logout",
                                 "/auth/exchange",
                                 "/auth/refresh",
+                                "/auth/switch",
                                 "/actuator/health",
                                 "/v3/api-docs/**")
                         .permitAll()

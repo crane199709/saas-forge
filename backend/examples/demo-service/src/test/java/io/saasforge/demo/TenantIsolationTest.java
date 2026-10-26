@@ -116,6 +116,50 @@ class TenantIsolationTest {
     }
 
     @Test
+    void sameIdentitySeesOnlyTheActiveTenantsOrdersAfterSwitching() throws Exception {
+        UUID membershipA = UUID.fromString("019a0110-0000-7000-8000-0000000000a1");
+        UUID membershipB = UUID.fromString("019a0110-0000-7000-8000-0000000000b1");
+        String tokenA = TestTokens.forMembership(TENANT_A, membershipA);
+        String tokenB = TestTokens.forMembership(TENANT_B, membershipB);
+        Map<?, ?> createdA = client(tokenA)
+                .post()
+                .uri("/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("title", "切换前 A 的订单", "amount", 1))
+                .retrieve()
+                .body(Map.class);
+        Map<?, ?> createdB = client(tokenB)
+                .post()
+                .uri("/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("title", "切换后 B 的订单", "amount", 2))
+                .retrieve()
+                .body(Map.class);
+
+        List<?> seenInA = client(tokenA).get().uri("/orders").retrieve().body(List.class);
+        List<?> seenInB = client(tokenB).get().uri("/orders").retrieve().body(List.class);
+        assertThat(seenInA)
+                .<Object>extracting(order -> ((Map<?, ?>) order).get("id"))
+                .contains(createdA.get("id"))
+                .doesNotContain(createdB.get("id"));
+        assertThat(seenInB)
+                .<Object>extracting(order -> ((Map<?, ?>) order).get("id"))
+                .contains(createdB.get("id"))
+                .doesNotContain(createdA.get("id"));
+        Map<?, ?> contextB = client(tokenB).get().uri("/context").retrieve().body(Map.class);
+        assertThat(contextB.get("identityId")).isEqualTo(TestTokens.IDENTITY_ID.toString());
+        assertThat(contextB.get("tenantId")).isEqualTo(TENANT_B.toString());
+        assertThat(contextB.get("membershipId")).isEqualTo(membershipB.toString());
+    }
+
+    private RestClient client(String token) {
+        return RestClient.builder()
+                .baseUrl("http://localhost:" + port)
+                .defaultHeader("Authorization", "Bearer " + token)
+                .build();
+    }
+
+    @Test
     void rlsBlocksSqlThatBypassesTheInterceptorOnApplicationAccount() throws Exception {
         UUID orderB = createOrder(TENANT_B, "B 的订单");
 

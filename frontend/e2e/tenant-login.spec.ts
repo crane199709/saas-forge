@@ -7,7 +7,15 @@ test('登录页显示统一失败提示，成功后显示上下文并在刷新�
       await route.fulfill({ status: 401, json: { code: 'auth.failed' } })
       return
     }
-    await route.fulfill({ json: { clientId: 'tenant-app', redirectUri: 'http://127.0.0.1:5174/' } })
+    await route.fulfill({
+      json: {
+        clientId: 'tenant-app',
+        redirectUri: 'http://127.0.0.1:5174/',
+        memberships: [
+          { membershipId: 'membership-1', tenantId: 'tenant-1', tenantName: '演示租户' },
+        ],
+      },
+    })
   })
   await page.route('**/iam/oauth2/authorize?*', async (route) => {
     const state = new URL(route.request().url()).searchParams.get('state')
@@ -27,8 +35,15 @@ test('登录页显示统一失败提示，成功后显示上下文并在刷新�
         tokenType: 'Bearer',
         expiresIn: 900,
         identityName: '演示身份',
+        tenantId: 'tenant-1',
         tenantName: '演示租户',
+        membershipId: 'membership-1',
       },
+    })
+  })
+  await page.route('**/iam/auth/memberships', async (route) => {
+    await route.fulfill({
+      json: [{ membershipId: 'membership-1', tenantId: 'tenant-1', tenantName: '演示租户' }],
     })
   })
   await page.route('**/demo/context', async (route) => {
@@ -68,4 +83,73 @@ test('登录页显示统一失败提示，成功后显示上下文并在刷新�
   await expect(page.getByRole('alert')).toHaveCount(0)
   expect(logoutCount).toBe(2)
   expect(await page.evaluate(() => sessionStorage.getItem('forge.tenant.session'))).toBeNull()
+})
+
+test('多租户身份先选择租户，切换后重新加载并只看到新租户的上下文', async ({ page }) => {
+  const memberships = [
+    { membershipId: 'membership-a', tenantId: 'tenant-a', tenantName: '租户 A' },
+    { membershipId: 'membership-b', tenantId: 'tenant-b', tenantName: '租户 B' },
+  ]
+  const sessions: Record<string, object> = {
+    'membership-a': { accessToken: 'access-a', refreshToken: 'refresh-a', ...memberships[0] },
+    'membership-b': { accessToken: 'access-b', refreshToken: 'refresh-b', ...memberships[1] },
+  }
+  await page.route('**/iam/auth/login', (route) =>
+    route.fulfill({
+      json: { clientId: 'tenant-app', redirectUri: 'http://127.0.0.1:5174/', memberships },
+    }),
+  )
+  await page.route('**/iam/oauth2/authorize?*', async (route) => {
+    const state = new URL(route.request().url()).searchParams.get('state')
+    await route.fulfill({ status: 302, headers: { Location: '/?code=c&state=' + state } })
+  })
+  await page.route('**/iam/auth/exchange', (route) =>
+    route.fulfill({
+      json: {
+        tokenType: 'Bearer',
+        expiresIn: 900,
+        identityName: '多成员身份',
+        ...sessions[route.request().postDataJSON().membershipId],
+      },
+    }),
+  )
+  let switchBody: { refreshToken?: string; membershipId?: string } = {}
+  await page.route('**/iam/auth/switch', (route) => {
+    switchBody = route.request().postDataJSON()
+    return route.fulfill({
+      json: {
+        tokenType: 'Bearer',
+        expiresIn: 900,
+        identityName: '多成员身份',
+        ...sessions['membership-b'],
+      },
+    })
+  })
+  await page.route('**/iam/auth/memberships', (route) => route.fulfill({ json: memberships }))
+  await page.route('**/demo/context', (route) => {
+    const tenant = route.request().headers().authorization === 'Bearer access-b' ? 'b' : 'a'
+    return route.fulfill({
+      json: {
+        identityId: 'identity-1',
+        tenantId: 'tenant-' + tenant,
+        membershipId: 'membership-' + tenant,
+        version: 1,
+      },
+    })
+  })
+  await page.goto('/')
+  await page.getByLabel('账号或邮箱').fill('multi')
+  await page.getByLabel('密码', { exact: true }).fill('correct-password')
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '选择租户' })).toBeVisible()
+  await page.getByRole('button', { name: '租户 A' }).click()
+  await expect(page.getByText('当前租户：租户 A')).toBeVisible()
+  await expect(page.getByText('membership-a', { exact: true })).toBeVisible()
+
+  await page.getByTestId('tenant-switcher').click()
+  await page.getByRole('option', { name: '租户 B' }).click()
+  await expect(page.getByText('当前租户：租户 B')).toBeVisible()
+  await expect(page.getByText('membership-b', { exact: true })).toBeVisible()
+  await expect(page.getByText('membership-a', { exact: true })).toHaveCount(0)
+  expect(switchBody).toEqual({ refreshToken: 'refresh-a', membershipId: 'membership-b' })
 })
