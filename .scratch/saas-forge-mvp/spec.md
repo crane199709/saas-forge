@@ -57,7 +57,8 @@ SDK 第一期面向组织内部团队，接口按「将来可能开源」的标�
 backend/                     Maven 多模块，groupId io.saasforge，包名 io.saasforge.*
   forge-dependencies/        BOM
   forge-sdk/
-    forge-sdk-core/          租户上下文、通用模型、i18n
+    forge-sdk-core/          租户上下文、通用模型（响应信封、错误码）、i18n
+    forge-sdk-web/           统一响应信封、全局异常映射、分页参数、traceId（见 unified-api-envelope 规格）
     forge-sdk-security/      JWT 资源服务器、权限上下文、@RequiresPermission
     forge-sdk-tenant/        MyBatis-Plus 租户拦截、RLS 会话变量
     forge-sdk-abac/          策略表达式树、SQL 编译器、内存求值器、数据权限拦截器

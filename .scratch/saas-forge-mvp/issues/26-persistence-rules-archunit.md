@@ -12,5 +12,6 @@
 - [ ] 禁止在 `forge-sdk-*` 以外依赖 `JdbcTemplate`、`NamedParameterJdbcTemplate` 与 `java.sql` 执行类
 - [ ] `io.saasforge.sdk..` 包之间无循环依赖；SDK 不依赖服务模块的包；`forge-sdk-core` 不依赖其他 SDK 模块
 - [ ] 服务模块的类位于 `<模块根包>.<功能包>.<白名单层>`（启动类除外）；功能包之间无循环依赖；`controller` 只依赖本功能包的 `service`；跨功能包不依赖对方的 `mapper`
+- [ ] 服务模块 `controller` 层 `@RestController` 的公开接口方法返回 `ApiResponse`（见 [unified-api-envelope 规格](../../unified-api-envelope/spec.md)）
 - [ ] 规则以可复用方式提供，各服务模块引入后即生效，demo-service 已接入
 - [ ] 每条规则有违规样例测试，证明能拦截
