@@ -4,6 +4,8 @@ import { useI18n } from 'vue-i18n'
 import { tenantClientKey } from '@forge/sdk'
 import type { TenantMembership } from '@forge/sdk'
 import type { TenantContextResponse } from './demo-context'
+import ErrorAlert from './ErrorAlert.vue'
+import { errorTip, type ErrorTip } from './error-tip'
 import TenantSelect from './TenantSelect.vue'
 
 const { t } = useI18n()
@@ -15,7 +17,9 @@ const context = ref<TenantContextResponse | null>(null)
 const account = ref('')
 const password = ref('')
 const busy = ref(false)
-const error = ref('')
+const error = ref<ErrorTip | null>(null)
+// IAM 退出失败时本地凭证已清除，需要单独提供重试入口。
+const logoutFailed = ref(false)
 // 密码已校验、尚未选定租户时的可选 Membership；noTenant 表示没有任何有效 Membership。
 const choices = ref<TenantMembership[] | null>(null)
 const noTenant = ref(false)
@@ -23,9 +27,7 @@ let contextGeneration = 0
 
 async function loadContext() {
   const started = contextGeneration
-  const response = await client.request('/demo/context')
-  if (!response.ok) throw new Error('auth.contextFailed')
-  const value = (await response.json()) as TenantContextResponse
+  const value = await client.api<TenantContextResponse>('/demo/context')
   if (started !== contextGeneration) return
   context.value = value
   session.value = client.session()
@@ -33,7 +35,7 @@ async function loadContext() {
 async function login() {
   contextGeneration += 1
   busy.value = true
-  error.value = ''
+  clearError()
   try {
     const result = await client.login(account.value, password.value)
     password.value = ''
@@ -46,7 +48,7 @@ async function login() {
       await loadContext()
     }
   } catch (cause) {
-    error.value = errorCode(cause)
+    error.value = errorTip(cause, t)
     session.value = client.session()
   } finally {
     busy.value = false
@@ -55,34 +57,33 @@ async function login() {
 async function select(membershipId: string) {
   contextGeneration += 1
   busy.value = true
-  error.value = ''
+  clearError()
   try {
     session.value = await client.selectTenant(membershipId)
     choices.value = null
     await loadContext()
   } catch (cause) {
-    error.value = errorCode(cause)
+    error.value = errorTip(cause, t)
     // 登录会话失效时只能重新输入凭证；租户被拒绝时留在选择页。
-    if (error.value === 'auth.failed') choices.value = null
+    if (cause instanceof Error && cause.message === 'auth.failed') choices.value = null
     session.value = client.session()
   } finally {
     busy.value = false
   }
 }
-function errorCode(cause: unknown) {
-  return cause instanceof Error &&
-    ['auth.contextFailed', 'auth.tenantAccessDenied'].includes(cause.message)
-    ? cause.message
-    : 'auth.failed'
+function clearError() {
+  error.value = null
+  logoutFailed.value = false
 }
 async function reset() {
   contextGeneration += 1
   busy.value = true
-  error.value = ''
+  clearError()
   try {
     await client.logout()
   } catch {
-    error.value = 'auth.logoutFailed'
+    error.value = { message: t('auth.logoutFailed') }
+    logoutFailed.value = true
   } finally {
     session.value = null
     context.value = null
@@ -105,9 +106,9 @@ onMounted(async () => {
   const started = contextGeneration
   try {
     await loadContext()
-  } catch {
+  } catch (cause) {
     if (started !== contextGeneration) return
-    error.value = 'auth.contextFailed'
+    error.value = errorTip(cause, t)
     session.value = client.session()
   }
 })
@@ -116,8 +117,8 @@ onMounted(async () => {
 <template>
   <section class="login-panel" :aria-label="t('auth.title')">
     <h2>{{ t('auth.title') }}</h2>
-    <el-alert v-if="error" :title="t(error)" type="error" :closable="false" role="alert" />
-    <el-button v-if="error === 'auth.logoutFailed'" :loading="busy" @click="reset">{{
+    <ErrorAlert v-if="error" :tip="error" />
+    <el-button v-if="logoutFailed" :loading="busy" @click="reset">{{
       t('auth.retryLogout')
     }}</el-button>
     <TenantSelect v-if="choices" :memberships="choices" :busy="busy" @select="select" />

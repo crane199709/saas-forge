@@ -3,6 +3,8 @@ import { inject, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { tenantClientKey } from '@forge/sdk'
 import type { TenantMembership } from '@forge/sdk'
+import ErrorAlert from './ErrorAlert.vue'
+import { errorTip, type ErrorTip } from './error-tip'
 
 const props = defineProps<{ reload?: () => void }>()
 const { t } = useI18n()
@@ -12,11 +14,11 @@ const client = providedClient
 const session = ref(client.session())
 const memberships = ref<TenantMembership[]>([])
 const busy = ref(false)
-const error = ref('')
+const error = ref<ErrorTip | null>(null)
 let unsubscribe: (() => void) | undefined
 
 async function load() {
-  error.value = ''
+  error.value = null
   if (!session.value) {
     memberships.value = []
     return
@@ -25,7 +27,7 @@ async function load() {
     memberships.value = await client.memberships()
   } catch (cause) {
     if (!(cause instanceof Error && cause.message === 'auth.sessionChanged')) {
-      error.value = 'auth.membershipsFailed'
+      error.value = errorTip(cause, t)
     }
   }
 }
@@ -33,17 +35,13 @@ async function load() {
 async function change(membershipId: string) {
   if (membershipId === session.value?.membershipId) return
   busy.value = true
-  error.value = ''
+  error.value = null
   try {
     await client.switchTenant(membershipId)
     // 整页回到首页，丢弃 Shell 与 Sub-App 中属于旧租户的内存状态和路由，再以新 Token 重新加载。
     ;(props.reload ?? (() => location.assign('/')))()
   } catch (cause) {
-    error.value =
-      cause instanceof Error &&
-      ['auth.tenantAccessDenied', 'auth.switchFailed'].includes(cause.message)
-        ? cause.message
-        : 'auth.failed'
+    error.value = errorTip(cause, t)
     session.value = client.session()
     busy.value = false
   }
@@ -77,7 +75,7 @@ onUnmounted(() => unsubscribe?.())
         :value="membership.membershipId"
       />
     </el-select>
-    <el-alert v-if="error" :title="t(error)" type="error" :closable="false" role="alert" />
+    <ErrorAlert v-if="error" :tip="error" />
   </div>
 </template>
 
