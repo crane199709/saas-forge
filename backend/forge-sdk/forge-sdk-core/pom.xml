@@ -11,4 +11,12 @@
     <artifactId>forge-sdk-core</artifactId>
     <name>Forge SDK Core</name>
     <description>租户上下文、通用模型与 i18n</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 </project>

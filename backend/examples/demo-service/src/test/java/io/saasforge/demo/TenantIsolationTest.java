@@ -1,0 +1,258 @@
+package io.saasforge.demo;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import io.saasforge.demo.order.entity.Order;
+import io.saasforge.demo.order.service.OrderService;
+import io.saasforge.sdk.core.CurrentTenant;
+import io.saasforge.sdk.tenant.TenantRedisTemplate;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
+import javax.sql.DataSource;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.web.client.RestClient;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.utility.MountableFile;
+
+/**
+ * 两道防线分别验证：经 SDK 的业务接口按 Token 中的 Active Tenant 隔离；绕过 SDK 直接执行 SQL 时 RLS 仍然隔离。
+ *
+ * <p>绕过场景必须用原生 JDBC 才能模拟「有人不经 MyBatis-Plus 执行 SQL」，因此这里是编码规范中原生 JDBC 禁令的测试例外。
+ */
+@Testcontainers
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class TenantIsolationTest {
+    static final UUID TENANT_A = UUID.fromString("019a0110-0000-7000-8000-0000000000aa");
+    static final UUID TENANT_B = UUID.fromString("019a0110-0000-7000-8000-0000000000bb");
+
+    @Container
+    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
+            .withDatabaseName("forge")
+            .withCopyFileToContainer(
+                    MountableFile.forHostPath("../../../deploy/postgres/init/01-service-schemas.sql"),
+                    "/docker-entrypoint-initdb.d/01-service-schemas.sql");
+
+    @Container
+    static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+
+    @DynamicPropertySource
+    static void properties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.data.redis.host", redis::getHost);
+        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        TestTokens.register(registry);
+    }
+
+    @LocalServerPort
+    int port;
+
+    @Autowired
+    DataSource dataSource;
+
+    @Autowired
+    OrderService orderService;
+
+    @Autowired
+    @Qualifier("applicationTaskExecutor")
+    AsyncTaskExecutor executor;
+
+    @Autowired
+    TenantRedisTemplate tenantRedis;
+
+    @Autowired
+    StringRedisTemplate globalRedis;
+
+    @Test
+    void tenantTokenCannotReadOrModifyAnotherTenantsOrders() throws Exception {
+        UUID orderA = createOrder(TENANT_A, "A 的订单");
+        UUID orderB = createOrder(TENANT_B, "B 的订单");
+
+        assertThat(orderA.version()).isEqualTo(7);
+        List<?> visibleToA = call(TENANT_A, HttpMethod.GET, "/orders", null).body(List.class);
+        assertThat(visibleToA)
+                .<Object>extracting(order -> ((Map<?, ?>) order).get("id"))
+                .contains(orderA.toString())
+                .doesNotContain(orderB.toString());
+
+        Map<String, Object> change = Map.of("title", "被 A 篡改", "amount", 1);
+        assertThat(status(TENANT_A, HttpMethod.GET, "/orders/" + orderB, null)).isEqualTo(404);
+        assertThat(status(TENANT_A, HttpMethod.PUT, "/orders/" + orderB, change))
+                .isEqualTo(404);
+        assertThat(status(TENANT_A, HttpMethod.DELETE, "/orders/" + orderB, null))
+                .isEqualTo(404);
+
+        Map<?, ?> untouched =
+                call(TENANT_B, HttpMethod.GET, "/orders/" + orderB, null).body(Map.class);
+        assertThat(untouched.get("title")).isEqualTo("B 的订单");
+
+        assertThat(status(TENANT_A, HttpMethod.PUT, "/orders/" + orderA, change))
+                .isEqualTo(200);
+        assertThat(status(TENANT_A, HttpMethod.DELETE, "/orders/" + orderA, null))
+                .isEqualTo(204);
+        assertThat(status(TENANT_A, HttpMethod.GET, "/orders/" + orderA, null)).isEqualTo(404);
+    }
+
+    @Test
+    void rlsBlocksSqlThatBypassesTheInterceptorOnApplicationAccount() throws Exception {
+        UUID orderB = createOrder(TENANT_B, "B 的订单");
+
+        try (Connection connection = connectionFor(TENANT_A)) {
+            assertThat(currentUser(connection)).isEqualTo("demo_app");
+            assertCrossTenantAccessBlocked(connection, orderB);
+        }
+        try (Connection connection = dataSource.getConnection()) {
+            assertThat(count(connection, "SELECT count(*) FROM orders")).isZero();
+        }
+    }
+
+    @Test
+    void rlsAlsoBindsMigratorAccountThatOwnsTheTable() throws Exception {
+        UUID orderB = createOrder(TENANT_B, "B 的订单");
+
+        try (Connection connection =
+                DriverManager.getConnection(postgres.getJdbcUrl(), "demo_migrator", "demo_migrator")) {
+            assertThat(count(connection, "SELECT count(*) FROM orders")).isZero();
+            try (PreparedStatement statement =
+                    connection.prepareStatement("SELECT set_config('app.tenant_id', ?, false)")) {
+                statement.setString(1, TENANT_A.toString());
+                statement.execute();
+            }
+            assertCrossTenantAccessBlocked(connection, orderB);
+        }
+    }
+
+    @Test
+    void asyncWorkCarriesSubmittersTenantAndFailsWithoutOne() throws Exception {
+        UUID orderA = createOrder(TENANT_A, "A 的订单");
+
+        var carried = new AtomicReference<Future<List<UUID>>>();
+        CurrentTenant.run(
+                TENANT_A,
+                () -> carried.set(executor.submit(
+                        () -> orderService.list().stream().map(Order::getId).toList())));
+        assertThat(carried.get().get()).contains(orderA);
+
+        // 定时任务等没有提交方上下文的线程与此相同：未声明租户时显式失败，而不是读到空结果或跨租户数据
+        Future<?> undeclared = executor.submit(() -> orderService.list());
+        assertThatThrownBy(undeclared::get)
+                .isInstanceOf(ExecutionException.class)
+                .hasRootCauseInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void redisKeysArePrefixedWithServiceAndTenant() {
+        CurrentTenant.run(TENANT_A, () -> tenantRedis.opsForValue().set("greeting", "a"));
+        CurrentTenant.run(TENANT_B, () -> tenantRedis.opsForValue().set("greeting", "b"));
+
+        assertThat(globalRedis.opsForValue().get("demo-service:" + TENANT_A + ":greeting"))
+                .isEqualTo("a");
+        assertThat(globalRedis.opsForValue().get("demo-service:" + TENANT_B + ":greeting"))
+                .isEqualTo("b");
+        CurrentTenant.run(TENANT_A, () -> {
+            assertThat(tenantRedis.opsForValue().get("greeting")).isEqualTo("a");
+            assertThat(tenantRedis.keys("greet*")).containsExactly("greeting");
+        });
+        assertThatThrownBy(() -> tenantRedis.opsForValue().get("greeting")).isInstanceOf(IllegalStateException.class);
+    }
+
+    private static void assertCrossTenantAccessBlocked(Connection connection, UUID orderOfB) throws SQLException {
+        try (PreparedStatement select = connection.prepareStatement("SELECT count(*) FROM orders WHERE id = ?")) {
+            select.setObject(1, orderOfB);
+            assertThat(count(select)).isZero();
+        }
+        try (PreparedStatement update = connection.prepareStatement("UPDATE orders SET title = 'x' WHERE id = ?")) {
+            update.setObject(1, orderOfB);
+            assertThat(update.executeUpdate()).isZero();
+        }
+        try (PreparedStatement delete = connection.prepareStatement("DELETE FROM orders WHERE id = ?")) {
+            delete.setObject(1, orderOfB);
+            assertThat(delete.executeUpdate()).isZero();
+        }
+        try (PreparedStatement insert = connection.prepareStatement(
+                "INSERT INTO orders (id, tenant_id, title, amount) VALUES (?, ?, '伪造', 1)")) {
+            insert.setObject(1, UUID.randomUUID());
+            insert.setObject(2, TENANT_B);
+            assertThatThrownBy(insert::executeUpdate)
+                    .isInstanceOf(SQLException.class)
+                    .extracting(error -> ((SQLException) error).getSQLState())
+                    .isEqualTo("42501");
+        }
+    }
+
+    private Connection connectionFor(UUID tenantId) throws SQLException {
+        try (CurrentTenant.Binding ignored = CurrentTenant.bind(tenantId)) {
+            return dataSource.getConnection();
+        }
+    }
+
+    private static String currentUser(Connection connection) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT current_user");
+                ResultSet result = statement.executeQuery()) {
+            result.next();
+            return result.getString(1);
+        }
+    }
+
+    private static long count(Connection connection, String sql) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            return count(statement);
+        }
+    }
+
+    private static long count(PreparedStatement statement) throws SQLException {
+        try (ResultSet result = statement.executeQuery()) {
+            result.next();
+            return result.getLong(1);
+        }
+    }
+
+    private UUID createOrder(UUID tenantId, String title) throws Exception {
+        Map<?, ?> created = call(tenantId, HttpMethod.POST, "/orders", Map.of("title", title, "amount", 100))
+                .body(Map.class);
+        return UUID.fromString((String) created.get("id"));
+    }
+
+    private RestClient.ResponseSpec call(UUID tenantId, HttpMethod method, String uri, Object body) throws Exception {
+        return request(tenantId, method, uri, body).retrieve();
+    }
+
+    private int status(UUID tenantId, HttpMethod method, String uri, Object body) throws Exception {
+        return request(tenantId, method, uri, body)
+                .exchange((req, response) -> response.getStatusCode().value());
+    }
+
+    private RestClient.RequestBodySpec request(UUID tenantId, HttpMethod method, String uri, Object body)
+            throws Exception {
+        var request = RestClient.create("http://localhost:" + port)
+                .method(method)
+                .uri(uri)
+                .header("Authorization", "Bearer " + TestTokens.forTenant(tenantId));
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
+        return request;
+    }
+}

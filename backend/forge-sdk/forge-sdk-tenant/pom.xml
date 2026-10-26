@@ -11,4 +11,30 @@
     <artifactId>forge-sdk-tenant</artifactId>
     <name>Forge SDK Tenant</name>
     <description>MyBatis-Plus 租户拦截与 RLS 会话变量</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+        </dependency>
+        <!-- 只在服务使用 Redis 时提供带租户前缀的模板，不强迫所有服务引入 Redis -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 </project>

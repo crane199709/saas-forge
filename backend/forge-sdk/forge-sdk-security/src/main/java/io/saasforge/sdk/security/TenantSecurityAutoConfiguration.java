@@ -12,6 +12,7 @@ import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 
 /** 业务服务引入 starter 即获得 Tenant Realm 验签和请求上下文。 */
@@ -34,7 +35,7 @@ public final class TenantSecurityAutoConfiguration {
         return decoder;
     }
 
-    /** 健康与 OpenAPI 允许匿名读取，业务接口必须携带 JWT；应用可显式提供自己的过滤链。 */
+    /** 健康与 OpenAPI 允许匿名读取，业务接口必须携带 JWT；应用自定义过滤链时须自行加入 {@link CurrentTenantFilter}。 */
     @Bean
     @ConditionalOnMissingBean(SecurityFilterChain.class)
     public SecurityFilterChain tenantSecurity(HttpSecurity http) throws Exception {
@@ -45,6 +46,7 @@ public final class TenantSecurityAutoConfiguration {
                         .anyRequest()
                         .authenticated())
                 .oauth2ResourceServer(server -> server.jwt(Customizer.withDefaults()))
+                .addFilterAfter(new CurrentTenantFilter(), BearerTokenAuthenticationFilter.class)
                 .build();
     }
 }
