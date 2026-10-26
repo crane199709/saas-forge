@@ -1,3 +1,5 @@
+import type { InjectionKey } from 'vue'
+
 /** Tenant Realm 登录返回的会话；凭证只保存在当前浏览器标签页。 */
 export interface TenantSession {
   accessToken: string
@@ -8,21 +10,13 @@ export interface TenantSession {
   tenantName: string
 }
 
-/** 业务服务从已验签 JWT 返回的当前上下文。 */
-export interface TenantContextResponse {
-  identityId: string
-  tenantId: string
-  membershipId: string
-  version: number
-}
-
 const storageKey = 'forge.tenant.session'
 
 /** Shell 创建并提供的客户端类型，业务组件复用同一刷新队列。 */
 export type TenantClient = ReturnType<typeof createTenantClient>
 
 /** Shell 通过 Vue provide 提供客户端，Sub-App 通过同一个 SDK 单例中的 key 注入。 */
-export const tenantClientKey = Symbol('forge.tenant.client')
+export const tenantClientKey: InjectionKey<TenantClient> = Symbol('forge.tenant.client')
 
 /** 创建同源 Tenant Realm 客户端；Shell 持有一个实例，Sub-App 共享该实例。 */
 export function createTenantClient(storage: Storage) {

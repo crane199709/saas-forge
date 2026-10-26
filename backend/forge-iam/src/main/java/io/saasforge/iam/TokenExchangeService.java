@@ -97,6 +97,8 @@ class TokenExchangeService {
         if (!tokenBaseUri.isBlank()) return tokenBaseUri;
         var address = server.getAddress();
         String host = address == null || address.isAnyLocalAddress() ? "127.0.0.1" : address.getHostAddress();
+        // IPv6 字面量必须用方括号区分地址内的冒号与端口分隔符。
+        if (host.contains(":")) host = "[" + host + "]";
         boolean tls = server.getSsl() != null && server.getSsl().isEnabled();
         return UriComponentsBuilder.newInstance()
                 .scheme(tls ? "https" : "http")

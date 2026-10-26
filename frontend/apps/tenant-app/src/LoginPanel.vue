@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { inject, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { tenantClientKey, type TenantClient, type TenantContextResponse } from '@forge/sdk'
+import { tenantClientKey } from '@forge/sdk'
+import type { TenantContextResponse } from './demo-context'
 
 const { t } = useI18n()
-const client = inject<TenantClient>(tenantClientKey)!
-if (!client) throw new Error('Shell must provide a TenantClient')
+const providedClient = inject(tenantClientKey)
+if (!providedClient) throw new Error('Shell must provide a TenantClient')
+const client = providedClient
 const session = ref(client.session())
 const context = ref<TenantContextResponse | null>(null)
 const account = ref('')

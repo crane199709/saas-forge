@@ -16,6 +16,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.MediaType;
@@ -37,7 +38,8 @@ import org.testcontainers.utility.MountableFile;
 @Testcontainers
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {"server.address=127.0.0.1", "server.servlet.context-path=/iam-test"})
+        properties = {"server.address=${forge.test.iam-bind-address:127.0.0.1}", "server.servlet.context-path=/iam-test"
+        })
 class TenantLoginTest {
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
@@ -62,8 +64,12 @@ class TenantLoginTest {
     @LocalServerPort
     int port;
 
+    @Value("${server.address}")
+    String bindAddress;
+
     private String baseUrl() {
-        return "http://127.0.0.1:" + port + "/iam-test";
+        String host = bindAddress.contains(":") ? "[" + bindAddress + "]" : bindAddress;
+        return "http://" + host + ":" + port + "/iam-test";
     }
 
     @Test

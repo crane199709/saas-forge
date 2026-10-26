@@ -38,7 +38,11 @@ Access Token 有效期 15 分钟，包含 `sub`、`tenant_id`、`membership_id`�
 
 Redis 保存 Spring Session 登录会话和标准 `OAuth2Authorization`，刷新凭证有效期 7 天。授权码/Token 的索引使用 SHA-256；认证前的索引和会话统一使用 `iam:global:` 前缀，因查询前还没有可相信的租户标识。授权状态采用 Spring 的 JDK 序列化器，只连接受信任的 Redis。Token 端点按授权 ID 使用 Redis 互斥，避免同一授权的凭证并发消费。重放撤销不等待这把锁；在途换码或刷新只能原子更新仍然存在的授权，不能重新创建被撤销的授权。标准提供者负责授权码失效和刷新轮换；旧 Refresh Token 的摘要保留至其原始过期时间，检测到重放就删除该授权及当前 Token 索引，使其后续刷新失败。这也意味着丢失刷新响应后重试旧凭证会要求重新登录。刷新时重新查询原会话绑定的身份、租户和 Membership，不能隐式切换租户。Redis 故障时登录或刷新失败。工单 07 的 Access Token 即时吊销尚未接入；刷新失败后前端清除本地凭证。
 
-`@forge/sdk` 的 `createTenantClient(sessionStorage)` 提供登录、退出、刷新、同源请求和会话读取。Shell 的 `App.vue` 创建唯一实例并 `provide(tenantClientKey, client)`；LoginPanel 与后续 Sub-App 使用 `inject<TenantClient>(tenantClientKey)` 获取它，不再自行创建。并发刷新只在这个共享实例内合并；不同标签页不共享刷新队列。
+当前重放检测**没有宽限期**。复制标签页时，若浏览器同时复制了 sessionStorage，两个标签页就会持有相同的 Refresh Token；一个标签页轮换后，另一个使用旧凭证会撤销整条授权的后续刷新能力。两个独立客户端并发刷新时，后到的请求若已被识别为使用旧凭证，即使遇到锁争用，也会触发撤销。两边都需要重新登录，但持有的 Access Token 在过期前仍可能有效，界面不一定立即同步退出。Shell 的共享实例只能合并同一实例内正在进行的刷新，不能协调复制出的标签页。暂不加入宽限期，以保持旧凭证一经识别为重放即撤销的语义。
+
+每次轮换保留一个 `:used-refresh` 摘要键，TTL 截止该旧凭证原来的过期时间，最长约 7 天；撤销授权后历史摘要也按各自 TTL 自然过期。按每 15 分钟刷新一次、连续活跃 7 天估算，一条授权约积累 672 个历史键；主动调用刷新接口会更多，因此这不是数量上限。运维需结合实际刷新频率关注键数、TTL、Redis 内存和淘汰情况，不能通过提前删除摘要来降低内存占用，否则会丢失重放关联。工单 07 评估按授权聚合存储及过期清理；本次保持现有存储结构。
+
+`@forge/sdk` 的 `createTenantClient(sessionStorage)` 提供登录、退出、刷新、同源请求和会话读取。Shell 的 `App.vue` 创建唯一实例并 `provide(tenantClientKey, client)`；LoginPanel 与后续 Sub-App 通过 `inject(tenantClientKey)` 获取同一实例，不再自行创建客户端。注入键携带 `InjectionKey<TenantClient>` 类型信息。并发刷新只在这个共享实例内合并；不同标签页不共享刷新队列。demo-service `/context` 的响应类型由 tenant-app 调用方维护，不由通用 SDK 导出。
 
 Token 保存在当前标签页的 sessionStorage。请求遇到 401 时合并刷新并只重试一次。生产环境必须使用 HTTPS，并防止脚本读取浏览器凭证。
 
@@ -65,3 +69,15 @@ Token 保存在当前标签页的 sessionStorage。请求遇到 401 时合并刷
 ## 验收命令
 
 后端：`cd backend && ./mvnw verify`。IAM 测试使用临时 PostgreSQL、Redis 容器及独立签名文件；网关与 demo-service 测试经真实 HTTP/JWKS 验签，不替换 JwtDecoder。前端：`cd frontend && pnpm test && pnpm typecheck && pnpm build && pnpm format:check`。数据库迁移测试与 IAM 测试需要 Docker。
+
+
+IPv6 回归（运行环境需支持 `::1`）：
+
+```bash
+cd backend
+./mvnw -pl forge-iam -am '-Dtest=TenantLoginTest#emailLoginAndJwksVerifyRequiredClaims+refreshReplayRevokesTheAuthorizationFamily' -Dsurefire.failIfNoSpecifiedTests=false -Dforge.test.iam-bind-address=::1 test
+```
+
+该回归让 IAM 实际绑定 IPv6 回环地址，覆盖非默认 context-path 下的换码、JWKS 验签与刷新，不设置 `forge.iam.token-base-uri` 覆盖值。显式配置 IPv6 基址时同样需要方括号，例如 `http://[::1]:8101`。
+
+若 JVM 配置了 HTTP 代理，还需保证实际内部地址直连。`::1` 经 Java 展开后为 `0:0:0:0:0:0:0:1`，不能只验证压缩形式的代理规则。本机隔离回归在依赖已缓存的情况下，额外传入 `-Dhttp.proxyHost= -Dhttps.proxyHost= -DsocksProxyHost= '-Dhttp.nonProxyHosts=*'` 临时排除代理影响；这些参数只用于当前本地测试，不修改机器配置，也不作为生产配置建议。
