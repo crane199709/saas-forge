@@ -28,7 +28,7 @@
 
 ### Mapper XML 约定
 
-- 文件放在 `src/main/resources/mapper/` 下，文件名与 Mapper 接口同名，`namespace` 为接口全限定名。
+- 文件放在 `src/main/resources/<功能包>/mapper/` 下，如 `identity/mapper/IdentityMapper.xml`，文件名与 Mapper 接口同名，`namespace` 为接口全限定名。MyBatis-Plus 默认只扫描 `classpath*:/mapper/**/*.xml`，服务模块须配置 `mybatis-plus.mapper-locations: classpath*:/*/mapper/**/*.xml`。
 - 参数一律用 `#{}`。`${}` 仅允许用于经白名单校验的排序列名，且必须在旁注释说明白名单出处。
 
 ### 豁免
@@ -64,7 +64,7 @@ SDK 不允许出现循环依赖，模块级与包级都不允许。循环会让�
 | `config` | `@Configuration` 与配置值对象 |
 | `filter` | Servlet / Security 过滤器 |
 
-`entity` 与 `model` 分开，让「实体与接口模型隔离」从包上即可看出。
+`entity` 与 `model` 分开，让「实体与接口模型隔离」从包上即可看出。只被单个 Controller 使用的接口模型作为嵌套 `record` 留在该 Controller 内，与接口定义放在一起；被第二个类引用（另一个 Controller、Service 等）时移到 `model`。
 
 依赖约束：
 

@@ -32,5 +32,6 @@ spring:
       host: ${FORGE_REDIS_HOST:127.0.0.1}
       port: ${FORGE_REDIS_PORT:6379}
 mybatis-plus:
+  mapper-locations: classpath*:/*/mapper/**/*.xml
   configuration:
     arg-name-based-constructor-auto-mapping: true
