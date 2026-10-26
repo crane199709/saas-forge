@@ -46,6 +46,32 @@ SDK 不允许出现循环依赖，模块级与包级都不允许。循环会让�
 - 出现双向需求时，把共用部分下沉到更底层的模块，或由底层模块定义接口（扩展点），上层模块实现，不要直接反向引用。
 - 前端 `@forge/sdk`、`@forge/ui` 同样适用：包内模块之间不循环 import，共享包不依赖 `apps/` 下的应用。
 
+## 服务模块包结构
+
+适用于 `forge-iam`、`forge-platform`、`forge-gateway` 与 `examples/*` 等服务模块。`forge-sdk-*` 按能力一个包组织，包即对外 API，不适用本节。
+
+服务模块的类一律位于 `<模块根包>.<功能包>.<层>`，如 `io.saasforge.iam.session.service`。功能包按领域能力命名（`identity`、`session`、`membership`），从第一个类起就分层，不设类数门槛：门槛靠「再多几个再拆」的判断，最终总是平铺。模块根包只放启动类 `XxxApplication`。
+
+层名只用以下白名单，需要新的层名先修改本节：
+
+| 层 | 内容 |
+|---|---|
+| `controller` | `@RestController` 与 `@RestControllerAdvice` |
+| `service` | 业务服务，以及由服务抛出的异常 |
+| `mapper` | MyBatis-Plus Mapper 接口 |
+| `entity` | MyBatis-Plus 实体 |
+| `model` | 接口模型（`XxxRequest`、`XxxResponse`、`XxxQuery`）与 Mapper 查询投影 |
+| `config` | `@Configuration` 与配置值对象 |
+| `filter` | Servlet / Security 过滤器 |
+
+`entity` 与 `model` 分开，让「实体与接口模型隔离」从包上即可看出。
+
+依赖约束：
+
+- 功能包之间无循环依赖。
+- `controller` 只调用本功能包的 `service`。
+- 功能包的数据只经由本包的 `service` 暴露：其他功能包的任何层都注入对方的 `service`，本包的 `config`、`filter`、`service` 可直接使用本包的 `mapper`。
+
 ## Java 模型
 
 ### 类型引用
