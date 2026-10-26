@@ -27,3 +27,13 @@
 - 隔离 PostgreSQL/Redis + 打包 IAM、网关、demo-service 真链路通过：账号/邮箱登录、统一失败、下游验签、刷新轮换/重放拒绝、IAM 重启后的密钥和会话持续；已清理临时服务和容器。
 - Access Token 即时吊销、多 Membership 选择与 Platform Realm 分别由后续工单处理。
 - 规范与规格双轴审查均已复核通过；已补齐 URL 规范化、旧刷新响应隔离、Token 类型混淆与授权码互斥回归。
+
+2026-10-26 审查修复：
+- 新增 JSON `/auth/logout`，销毁 IAM 登录会话；Shell「重新登录」调用退出接口，失败时明确提示并可重试。退出不撤销已签发 Token，SSO 会话空闲超时、其他标签页与 Access Token 即时吊销边界已写明。
+- 明确匿名交换适配器不认证浏览器客户端；已核对 Spring Security 7.0.8 的默认公开客户端 Refresh Token 策略。网关关闭 `/iam/oauth2/token`，内部地址支持监听地址、TLS、context-path 与显式配置。
+- 保留已轮换 Refresh Token 摘要并检测重放，撤销同一授权的后续刷新能力；正常消费使用授权级互斥；锁争用期间的重放仍撤销授权，原子更新条件防止在途请求复活授权。
+- SDK 明确排在 servlet 与 management 默认安全配置之前；`TenantContext` 与 demo-service 的 HTTP Response 分离。Shell 根组件提供唯一前端客户端供 LoginPanel、Sub-App 共享。
+- 邮箱按大小写不敏感匹配并增加唯一性、基本格式约束；多 Membership 只在密码正确后返回明确提示。ADR-0001 记录 IAM 认证数据的 RLS 例外与适用边界。
+- 后端 21 项测试、前端 12 项测试、8 项 Playwright 回归及类型、构建、格式检查通过。隔离三服务链路、数据库约束、HTTPS + context-path 下的交换/刷新/退出通过；临时服务、容器和私钥已清理。
+- 审查补齐并发重放撤销与迟到初始化响应覆盖退出警告的回归；新增测试数据通过 `@Sql` 加载；未认证的直连 Token 请求不会触发撤销。
+- 最终规范与规格双轴复核均无剩余问题；后端完整 `verify` 再次通过。

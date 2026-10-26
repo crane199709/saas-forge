@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import { ref, watchEffect } from 'vue'
+import { provide, ref, watchEffect } from 'vue'
+import { createTenantClient, tenantClientKey } from '@forge/sdk'
 import { themeTokens } from '@forge/ui'
 import LoginPanel from './LoginPanel.vue'
+
+provide(tenantClientKey, createTenantClient(sessionStorage))
 
 const { t } = useI18n()
 const route = useRoute()

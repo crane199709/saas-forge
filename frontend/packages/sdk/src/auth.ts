@@ -18,6 +18,12 @@ export interface TenantContextResponse {
 
 const storageKey = 'forge.tenant.session'
 
+/** Shell 创建并提供的客户端类型，业务组件复用同一刷新队列。 */
+export type TenantClient = ReturnType<typeof createTenantClient>
+
+/** Shell 通过 Vue provide 提供客户端，Sub-App 通过同一个 SDK 单例中的 key 注入。 */
+export const tenantClientKey = Symbol('forge.tenant.client')
+
 /** 创建同源 Tenant Realm 客户端；Shell 持有一个实例，Sub-App 共享该实例。 */
 export function createTenantClient(storage: Storage) {
   let pendingRefresh: Promise<TenantSession> | undefined
@@ -44,6 +50,21 @@ export function createTenantClient(storage: Storage) {
     generation += 1
     pendingRefresh = undefined
     storage.removeItem(storageKey)
+  }
+
+  async function logout() {
+    clear()
+    try {
+      const response = await fetch('/iam/auth/logout', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      })
+      if (!response.ok) throw new Error('auth.logoutFailed')
+    } catch {
+      throw new Error('auth.logoutFailed')
+    }
   }
 
   async function exchange(path: string, body: object): Promise<TenantSession> {
@@ -77,7 +98,13 @@ export function createTenantClient(storage: Storage) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ account, password }),
     })
-    if (!authenticated.ok) throw new Error('auth.failed')
+    if (!authenticated.ok) {
+      if (authenticated.status === 409) {
+        const error = (await authenticated.json()) as { code?: string }
+        if (error.code === 'auth.membershipSelectionRequired') throw new Error(error.code)
+      }
+      throw new Error('auth.failed')
+    }
     const settings = (await authenticated.json()) as { clientId: string; redirectUri: string }
     // 回调必须与 Shell 同源；fetch 跟随标准授权重定向，不执行回调 HTML。
     if (new URL(settings.redirectUri).origin !== location.origin)
@@ -149,7 +176,7 @@ export function createTenantClient(storage: Storage) {
     return response
   }
 
-  return { login, refresh, request, session, clear }
+  return { login, logout, refresh, request, session, clear }
 }
 
 function base64Url(bytes: Uint8Array): string {

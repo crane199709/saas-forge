@@ -118,6 +118,22 @@ class GatewaySecurityTest {
         assertThat(status(incomplete.serialize())).isEqualTo(401);
     }
 
+    @Test
+    void internalTokenEndpointIsNotExposedByGateway() throws Exception {
+        var client = RestClient.create("http://localhost:" + port);
+        int anonymous = client.post()
+                .uri("/iam/oauth2/token")
+                .exchange((req, response) -> response.getStatusCode().value());
+        assertThat(anonymous).isEqualTo(401);
+        int authenticated = client.post()
+                .uri("/iam/oauth2/token")
+                .header(
+                        "Authorization",
+                        "Bearer " + token(KEY, ISSUER, Instant.now().plusSeconds(900)))
+                .exchange((req, response) -> response.getStatusCode().value());
+        assertThat(authenticated).isEqualTo(403);
+    }
+
     private int status(String token) {
         var request = RestClient.create("http://localhost:" + port).get().uri("/demo/context");
         if (token != null) {

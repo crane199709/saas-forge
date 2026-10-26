@@ -10,6 +10,8 @@ import java.util.HexFormat;
 import java.util.List;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2RefreshToken;
 import org.springframework.security.oauth2.core.OAuth2Token;
 import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationCode;
@@ -42,15 +44,26 @@ class RedisAuthorizationService implements OAuth2AuthorizationService {
         if (previous != null) {
             for (OAuth2Token old : tokens(previous)) {
                 if (tokens.stream().noneMatch(token -> token.getTokenValue().equals(old.getTokenValue()))) {
+                    // 轮换后保留旧刷新凭证的摘要关联，直到其原始过期时间，以识别泄漏后的重放。
+                    if (old instanceof OAuth2RefreshToken) {
+                        Duration remaining = Duration.between(Instant.now(), old.getExpiresAt());
+                        if (!remaining.isNegative() && !remaining.isZero()) {
+                            redis.opsForValue()
+                                    .set(usedRefreshKey(old.getTokenValue()), authorization.getId(), remaining);
+                        }
+                    }
                     redis.delete(tokenKey(old.getTokenValue()));
                 }
             }
         }
-        redis.opsForValue()
-                .set(
-                        authorizationKey(authorization.getId()),
-                        Base64.getEncoder().encodeToString(serializer.serialize(authorization)),
-                        ttl);
+        String key = authorizationKey(authorization.getId());
+        String value = Base64.getEncoder().encodeToString(serializer.serialize(authorization));
+        if (authorization.getAccessToken() == null) {
+            redis.opsForValue().set(key, value, ttl);
+        } else if (!Boolean.TRUE.equals(redis.opsForValue().setIfPresent(key, value, ttl))) {
+            // 换码/刷新只能更新已有授权，原子 XX 防止在途请求复活被重放检测删除的授权。
+            throw new OAuth2AuthenticationException("invalid_grant");
+        }
         for (OAuth2Token token : tokens) {
             Duration tokenTtl = Duration.between(Instant.now(), token.getExpiresAt());
             if (!tokenTtl.isNegative() && !tokenTtl.isZero()) {
@@ -76,6 +89,7 @@ class RedisAuthorizationService implements OAuth2AuthorizationService {
 
     @Override
     public OAuth2Authorization findByToken(String token, OAuth2TokenType type) {
+        if (OAuth2TokenType.REFRESH_TOKEN.equals(type) && revokeUsedRefreshToken(token)) return null;
         String id = redis.opsForValue().get(tokenKey(token));
         OAuth2Authorization authorization = id == null ? null : findById(id);
         if (authorization == null) return null;
@@ -91,6 +105,14 @@ class RedisAuthorizationService implements OAuth2AuthorizationService {
         return matching != null && matching.getToken().getTokenValue().equals(token) ? authorization : null;
     }
 
+    boolean revokeUsedRefreshToken(String token) {
+        String id = redis.opsForValue().get(usedRefreshKey(token));
+        if (id == null) return false;
+        var compromised = findById(id);
+        if (compromised != null) remove(compromised);
+        return true;
+    }
+
     static String tokenKey(String token) {
         try {
             return "iam:global:oauth-token:"
@@ -100,6 +122,10 @@ class RedisAuthorizationService implements OAuth2AuthorizationService {
         } catch (Exception error) {
             throw new IllegalStateException(error);
         }
+    }
+
+    static String usedRefreshKey(String token) {
+        return tokenKey(token) + ":used-refresh";
     }
 
     private String authorizationKey(String id) {

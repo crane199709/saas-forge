@@ -23,6 +23,7 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
@@ -34,7 +35,9 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
 @Testcontainers
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {"server.address=127.0.0.1", "server.servlet.context-path=/iam-test"})
 class TenantLoginTest {
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
@@ -59,11 +62,14 @@ class TenantLoginTest {
     @LocalServerPort
     int port;
 
+    private String baseUrl() {
+        return "http://127.0.0.1:" + port + "/iam-test";
+    }
+
     @Test
     void emailLoginAndJwksVerifyRequiredClaims() {
         Map<?, ?> response = login("demo@example.com", "Demo-password-123!");
-        var decoder = NimbusJwtDecoder.withJwkSetUri("http://localhost:" + port + "/oauth2/jwks")
-                .build();
+        var decoder = NimbusJwtDecoder.withJwkSetUri(baseUrl() + "/oauth2/jwks").build();
         var jwt = decoder.decode((String) response.get("accessToken"));
         assertThat(jwt.getSubject()).isEqualTo("019a0110-0000-7000-8000-000000000002");
         assertThat(jwt.getClaimAsString("tenant_id")).isEqualTo("019a0110-0000-7000-8000-000000000001");
@@ -71,7 +77,7 @@ class TenantLoginTest {
         assertThat(((Number) jwt.getClaim("ver")).longValue()).isEqualTo(1);
         assertThat(jwt.getIssuer().toString()).isEqualTo("http://localhost:8080/iam");
         assertThat(Duration.between(jwt.getIssuedAt(), jwt.getExpiresAt())).isEqualTo(Duration.ofMinutes(15));
-        Map<?, ?> jwks = RestClient.create("http://localhost:" + port)
+        Map<?, ?> jwks = RestClient.create(baseUrl())
                 .get()
                 .uri("/oauth2/jwks")
                 .retrieve()
@@ -90,7 +96,7 @@ class TenantLoginTest {
     }
 
     @Test
-    void refreshRotatesAndRejectsReusedOrUnknownCredentials() {
+    void refreshReplayRevokesTheAuthorizationFamily() {
         Map<?, ?> original = login("demo", "Demo-password-123!");
         String refresh = (String) original.get("refreshToken");
         Map<?, ?> rotated = refresh(refresh);
@@ -98,15 +104,77 @@ class TenantLoginTest {
         assertThat(rotated.get("refreshToken")).isNotEqualTo(refresh);
         assertThatThrownBy(() -> refresh(refresh)).isInstanceOf(HttpClientErrorException.Unauthorized.class);
         assertThatThrownBy(() -> refresh("invalid")).isInstanceOf(HttpClientErrorException.Unauthorized.class);
-        assertThat(refresh((String) rotated.get("refreshToken")).get("accessToken"))
+        assertThatThrownBy(() -> refresh((String) rotated.get("refreshToken")))
+                .isInstanceOf(HttpClientErrorException.Unauthorized.class);
+        assertThat(login("demo", "Demo-password-123!").get("accessToken")).isInstanceOf(String.class);
+    }
+
+    @Test
+    @Sql("/fixtures/multiple_memberships.sql")
+    void emailLookupIgnoresCaseAndMultipleMembershipsRequireSelectionOnlyAfterPasswordCheck() {
+        assertThat(login("DEMO@EXAMPLE.COM", "Demo-password-123!").get("accessToken"))
                 .isInstanceOf(String.class);
+        assertThat(failure("multi", "wrong")).isEqualTo(failure("unknown", "wrong"));
+        assertThatThrownBy(() -> login("multi", "Demo-password-123!"))
+                .isInstanceOf(HttpClientErrorException.Conflict.class)
+                .satisfies(error -> assertThat(((HttpClientErrorException) error).getResponseBodyAsString())
+                        .contains("auth.membershipSelectionRequired"));
+    }
+
+    @Test
+    void replayDuringConcurrentRefreshRevokesAnyDescendantCredential() throws Exception {
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            for (int attempt = 0; attempt < 10; attempt++) {
+                String old = (String) login("demo", "Demo-password-123!").get("refreshToken");
+                String current = (String) refresh(old).get("refreshToken");
+                var ready = new CountDownLatch(1);
+                var rotating = executor.submit(() -> {
+                    ready.await();
+                    try {
+                        return refresh(current);
+                    } catch (HttpClientErrorException.Unauthorized error) {
+                        return Map.of();
+                    }
+                });
+                var replay = executor.submit(() -> {
+                    ready.await();
+                    assertThatThrownBy(() -> refresh(old)).isInstanceOf(HttpClientErrorException.Unauthorized.class);
+                    return true;
+                });
+                ready.countDown();
+                var response = rotating.get();
+                replay.get();
+                String next = response.containsKey("refreshToken") ? (String) response.get("refreshToken") : current;
+                assertThatThrownBy(() -> refresh(next)).isInstanceOf(HttpClientErrorException.Unauthorized.class);
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void unauthenticatedTokenRequestCannotRevokeAnAuthorization() {
+        String old = (String) login("demo", "Demo-password-123!").get("refreshToken");
+        String current = (String) refresh(old).get("refreshToken");
+        var form = new LinkedMultiValueMap<String, String>();
+        form.add("grant_type", "refresh_token");
+        form.add("refresh_token", old);
+        int status = RestClient.create(baseUrl())
+                .post()
+                .uri("/oauth2/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .body(form)
+                .exchange((req, response) -> response.getStatusCode().value());
+        assertThat(status).isIn(400, 401);
+        assertThat(refresh(current).get("accessToken")).isInstanceOf(String.class);
     }
 
     private static final String VERIFIER = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG";
 
     private Map<?, ?> login(String account, String password) {
         String code = authorize(account, password);
-        return RestClient.create("http://localhost:" + port)
+        return RestClient.create(baseUrl())
                 .post()
                 .uri("/auth/exchange")
                 .body(Map.of("code", code, "codeVerifier", VERIFIER))
@@ -116,7 +184,7 @@ class TenantLoginTest {
 
     private String authorize(String account, String password) {
         var client = RestClient.builder()
-                .baseUrl("http://localhost:" + port)
+                .baseUrl(baseUrl())
                 .requestFactory(new JdkClientHttpRequestFactory(HttpClient.newBuilder()
                         .followRedirects(HttpClient.Redirect.NEVER)
                         .build()))
@@ -158,6 +226,42 @@ class TenantLoginTest {
     }
 
     @Test
+    void logoutInvalidatesIamSessionAndRequiresFreshCredentials() {
+        var client = RestClient.builder()
+                .baseUrl(baseUrl())
+                .requestFactory(new JdkClientHttpRequestFactory(HttpClient.newBuilder()
+                        .followRedirects(HttpClient.Redirect.NEVER)
+                        .build()))
+                .build();
+        var login = client.post()
+                .uri("/auth/login")
+                .body(Map.of("account", "demo", "password", "Demo-password-123!"))
+                .retrieve()
+                .toEntity(Map.class);
+        String cookie = login.getHeaders().getFirst("Set-Cookie").split(";")[0];
+        int logoutStatus = client.post()
+                .uri("/auth/logout")
+                .header("Cookie", cookie)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of())
+                .exchange((req, response) -> response.getStatusCode().value());
+        assertThat(logoutStatus).isEqualTo(204);
+        var response = client.get()
+                .uri(builder -> builder.path("/oauth2/authorize")
+                        .queryParam("response_type", "code")
+                        .queryParam("client_id", "tenant-app")
+                        .queryParam("redirect_uri", "http://localhost:5174/")
+                        .queryParam("scope", "tenant")
+                        .queryParam("code_challenge_method", "S256")
+                        .queryParam("code_challenge", "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM")
+                        .build())
+                .header("Cookie", cookie)
+                .exchange((req, res) -> res.getStatusCode().value());
+        assertThat(response).isIn(401, 403);
+        assertThat(login("demo", "Demo-password-123!").get("accessToken")).isInstanceOf(String.class);
+    }
+
+    @Test
     void standardTokenEndpointEnforcesPkceAndRotatesRefreshToken() {
         String code = authorize("demo", "Demo-password-123!");
         var form = new LinkedMultiValueMap<String, String>();
@@ -187,7 +291,7 @@ class TenantLoginTest {
         var ready = new CountDownLatch(1);
         Callable<Integer> request = () -> {
             ready.await();
-            return RestClient.create("http://localhost:" + port)
+            return RestClient.create(baseUrl())
                     .post()
                     .uri("/auth/refresh")
                     .body(Map.of("refreshToken", token))
@@ -206,7 +310,7 @@ class TenantLoginTest {
     @Test
     void consumedAuthorizationCodeAndAccessTokenCannotBeUsedAsRefreshCredentials() {
         String code = authorize("demo", "Demo-password-123!");
-        Map<?, ?> issued = RestClient.create("http://localhost:" + port)
+        Map<?, ?> issued = RestClient.create(baseUrl())
                 .post()
                 .uri("/auth/exchange")
                 .body(Map.of("code", code, "codeVerifier", VERIFIER))
@@ -234,7 +338,7 @@ class TenantLoginTest {
             form.add("redirect_uri", "http://localhost:5174/");
             form.add("code_verifier", VERIFIER);
             form.add("refresh_token", noise);
-            return RestClient.create("http://localhost:" + port)
+            return RestClient.create(baseUrl())
                     .post()
                     .uri("/oauth2/token")
                     .headers(headers -> headers.setBasicAuth("tenant-app", "test-client-secret"))
@@ -253,7 +357,7 @@ class TenantLoginTest {
     }
 
     private Map<?, ?> tokenGrant(LinkedMultiValueMap<String, String> form) {
-        return RestClient.create("http://localhost:" + port)
+        return RestClient.create(baseUrl())
                 .post()
                 .uri("/oauth2/token")
                 .headers(headers -> headers.setBasicAuth("tenant-app", "test-client-secret"))
@@ -264,7 +368,7 @@ class TenantLoginTest {
     }
 
     private Map<?, ?> refresh(String token) {
-        return RestClient.create("http://localhost:" + port)
+        return RestClient.create(baseUrl())
                 .post()
                 .uri("/auth/refresh")
                 .body(Map.of("refreshToken", token))

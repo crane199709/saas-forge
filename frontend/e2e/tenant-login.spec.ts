@@ -42,6 +42,12 @@ test('登录页显示统一失败提示，成功后显示上下文并在刷新�
       },
     })
   })
+  let logoutCount = 0
+  await page.route('**/iam/auth/logout', async (route) => {
+    expect(route.request().method()).toBe('POST')
+    logoutCount += 1
+    await route.fulfill({ status: logoutCount === 1 ? 500 : 204 })
+  })
   await page.goto('/')
   await page.getByLabel('账号或邮箱').fill('demo')
   await page.getByLabel('密码', { exact: true }).fill('incorrect')
@@ -57,4 +63,9 @@ test('登录页显示统一失败提示，成功后显示上下文并在刷新�
   await page.screenshot({ path: '/tmp/forge-03-login.png' })
   await page.getByRole('button', { name: '重新登录' }).click()
   await expect(page.getByLabel('账号或邮箱')).toBeVisible()
+  await expect(page.getByRole('alert')).toContainText('浏览器仍可能保持登录')
+  await page.getByRole('button', { name: '重试退出' }).click()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  expect(logoutCount).toBe(2)
+  expect(await page.evaluate(() => sessionStorage.getItem('forge.tenant.session'))).toBeNull()
 })

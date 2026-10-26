@@ -5,6 +5,7 @@ import java.text.ParseException;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.server.autoconfigure.ServerProperties;
 import org.springframework.boot.web.server.servlet.context.ServletWebServerApplicationContext;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
 class TokenExchangeService {
@@ -19,16 +21,22 @@ class TokenExchangeService {
     private final TenantClientCredentials credentials;
     private final IdentityMapper identities;
     private final String redirectUri;
+    private final ServerProperties server;
+    private final String tokenBaseUri;
 
     TokenExchangeService(
             ServletWebServerApplicationContext application,
             TenantClientCredentials credentials,
             IdentityMapper identities,
-            @Value("${forge.iam.redirect-uri:http://localhost:5174/}") String redirectUri) {
+            @Value("${forge.iam.redirect-uri:http://localhost:5174/}") String redirectUri,
+            ServerProperties server,
+            @Value("${forge.iam.token-base-uri:}") String tokenBaseUri) {
         this.application = application;
         this.credentials = credentials;
         this.identities = identities;
         this.redirectUri = redirectUri;
+        this.server = server;
+        this.tokenBaseUri = tokenBaseUri;
     }
 
     TokenResponse code(String code, String verifier) {
@@ -52,9 +60,8 @@ class TokenExchangeService {
         parameters.forEach(form::add);
         Map<?, ?> result;
         try {
-            // 固定回环地址，不能由请求头或客户端指定 Token 端点；所有 grant 由标准过滤器校验。
-            result = RestClient.create(
-                            "http://127.0.0.1:" + application.getWebServer().getPort())
+            // 地址只来自服务端配置，不能由请求头或客户端指定；所有 grant 仍由标准过滤器校验。
+            result = RestClient.create(tokenBaseUri())
                     .post()
                     .uri("/oauth2/token")
                     .headers(headers -> headers.setBasicAuth("tenant-app", credentials.secret()))
@@ -84,5 +91,19 @@ class TokenExchangeService {
         } catch (ParseException error) {
             throw new IllegalStateException(error);
         }
+    }
+
+    private String tokenBaseUri() {
+        if (!tokenBaseUri.isBlank()) return tokenBaseUri;
+        var address = server.getAddress();
+        String host = address == null || address.isAnyLocalAddress() ? "127.0.0.1" : address.getHostAddress();
+        boolean tls = server.getSsl() != null && server.getSsl().isEnabled();
+        return UriComponentsBuilder.newInstance()
+                .scheme(tls ? "https" : "http")
+                .host(host)
+                .port(application.getWebServer().getPort())
+                .path(server.getServlet().getContextPath())
+                .build()
+                .toUriString();
     }
 }

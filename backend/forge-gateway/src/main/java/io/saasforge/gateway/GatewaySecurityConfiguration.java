@@ -33,9 +33,9 @@ class GatewaySecurityConfiguration {
                 .authorizeExchange(auth -> auth.pathMatchers(
                                 HttpMethod.POST,
                                 "/iam/auth/login",
+                                "/iam/auth/logout",
                                 "/iam/auth/exchange",
-                                "/iam/auth/refresh",
-                                "/iam/oauth2/token")
+                                "/iam/auth/refresh")
                         .permitAll()
                         .pathMatchers(
                                 HttpMethod.GET,

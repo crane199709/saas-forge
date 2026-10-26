@@ -139,9 +139,11 @@ class IamSecurityConfiguration {
 
     @Bean
     @Order(1)
-    SecurityFilterChain authorizationServer(HttpSecurity http, StringRedisTemplate redis) throws Exception {
+    SecurityFilterChain authorizationServer(
+            HttpSecurity http, StringRedisTemplate redis, RedisAuthorizationService authorizations) throws Exception {
         http.oauth2AuthorizationServer(server -> http.securityMatcher(server.getEndpointsMatcher()));
-        http.addFilterBefore(new TokenGrantLockFilter(redis), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(
+                new TokenGrantLockFilter(redis, authorizations), UsernamePasswordAuthenticationFilter.class);
         http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated());
         return http.build();
     }
@@ -150,12 +152,18 @@ class IamSecurityConfiguration {
     @Order(2)
     SecurityFilterChain applicationSecurity(HttpSecurity http) throws Exception {
         // JSON 凭证入口不开启 CORS，授权端点使用 Redis HTTP 会话；Token 交换仍需授权码和 PKCE。
-        http.csrf(csrf -> csrf.ignoringRequestMatchers("/auth/login", "/auth/exchange", "/auth/refresh"))
+        http.csrf(csrf ->
+                        csrf.ignoringRequestMatchers("/auth/login", "/auth/logout", "/auth/exchange", "/auth/refresh"))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth.dispatcherTypeMatchers(DispatcherType.ERROR)
                         .permitAll()
                         .requestMatchers(
-                                "/auth/login", "/auth/exchange", "/auth/refresh", "/actuator/health", "/v3/api-docs/**")
+                                "/auth/login",
+                                "/auth/logout",
+                                "/auth/exchange",
+                                "/auth/refresh",
+                                "/actuator/health",
+                                "/v3/api-docs/**")
                         .permitAll()
                         .anyRequest()
                         .denyAll());

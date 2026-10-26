@@ -1,24 +1,30 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { inject, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { createTenantClient, type TenantContextResponse } from '@forge/sdk'
+import { tenantClientKey, type TenantClient, type TenantContextResponse } from '@forge/sdk'
 
 const { t } = useI18n()
-const client = createTenantClient(sessionStorage)
+const client = inject<TenantClient>(tenantClientKey)!
+if (!client) throw new Error('Shell must provide a TenantClient')
 const session = ref(client.session())
 const context = ref<TenantContextResponse | null>(null)
 const account = ref('')
 const password = ref('')
 const busy = ref(false)
 const error = ref('')
+let contextGeneration = 0
 
 async function loadContext() {
+  const started = contextGeneration
   const response = await client.request('/demo/context')
   if (!response.ok) throw new Error('auth.contextFailed')
-  context.value = (await response.json()) as TenantContextResponse
+  const value = (await response.json()) as TenantContextResponse
+  if (started !== contextGeneration) return
+  context.value = value
   session.value = client.session()
 }
 async function login() {
+  contextGeneration += 1
   busy.value = true
   error.value = ''
   try {
@@ -27,26 +33,37 @@ async function login() {
     await loadContext()
   } catch (cause) {
     error.value =
-      cause instanceof Error && cause.message === 'auth.contextFailed'
-        ? 'auth.contextFailed'
+      cause instanceof Error &&
+      ['auth.contextFailed', 'auth.membershipSelectionRequired'].includes(cause.message)
+        ? cause.message
         : 'auth.failed'
     session.value = client.session()
   } finally {
     busy.value = false
   }
 }
-function reset() {
-  client.clear()
-  session.value = null
-  context.value = null
-  password.value = ''
+async function reset() {
+  contextGeneration += 1
+  busy.value = true
   error.value = ''
+  try {
+    await client.logout()
+  } catch {
+    error.value = 'auth.logoutFailed'
+  } finally {
+    session.value = null
+    context.value = null
+    password.value = ''
+    busy.value = false
+  }
 }
 onMounted(async () => {
   if (!session.value) return
+  const started = contextGeneration
   try {
     await loadContext()
   } catch {
+    if (started !== contextGeneration) return
     error.value = 'auth.contextFailed'
     session.value = client.session()
   }
@@ -57,6 +74,9 @@ onMounted(async () => {
   <section class="login-panel" :aria-label="t('auth.title')">
     <h2>{{ t('auth.title') }}</h2>
     <el-alert v-if="error" :title="t(error)" type="error" :closable="false" role="alert" />
+    <el-button v-if="error === 'auth.logoutFailed'" :loading="busy" @click="reset">{{
+      t('auth.retryLogout')
+    }}</el-button>
     <el-form v-if="!session" label-position="top" @submit.prevent="login">
       <el-form-item :label="t('auth.account')" for="tenant-account">
         <el-input
@@ -93,7 +113,7 @@ onMounted(async () => {
         <dt>{{ t('auth.membershipId') }}</dt>
         <dd>{{ context.membershipId }}</dd>
       </dl>
-      <el-button @click="reset">{{ t('auth.loginAgain') }}</el-button>
+      <el-button :loading="busy" @click="reset">{{ t('auth.loginAgain') }}</el-button>
     </div>
   </section>
 </template>

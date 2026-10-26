@@ -9,7 +9,7 @@
     </sql>
     <select id="findForLogin" resultType="io.saasforge.iam.LoginIdentity">
         <include refid="activeIdentity"/>
-        AND (i.account = #{account} OR i.email = #{account})
+        AND (i.account = #{account} OR lower(i.email) = lower(#{account}))
     </select>
     <select id="findForIdentity" resultType="io.saasforge.iam.LoginIdentity">
         <include refid="activeIdentity"/>

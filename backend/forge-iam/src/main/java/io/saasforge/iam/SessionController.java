@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -45,7 +46,16 @@ class SessionController {
                 .body(new LoginResponse("tenant-app", redirectUri));
     }
 
-    @Operation(summary = "以服务端客户端凭证交换授权码，必须提供 PKCE 校验值")
+    @Operation(summary = "退出当前浏览器的 IAM 登录会话，不吊销已签发的 Token")
+    @PostMapping(value = "/auth/logout", consumes = "application/json")
+    ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        // 仅接受同源 JSON 请求；同时销毁 Redis 会话和当前请求的安全上下文。
+        new SecurityContextLogoutHandler()
+                .logout(request, response, SecurityContextHolder.getContext().getAuthentication());
+        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
+    }
+
+    @Operation(summary = "以授权码和 PKCE 校验值交换 Token，匿名适配器不认证浏览器客户端")
     @PostMapping(value = "/auth/exchange", consumes = "application/json")
     ResponseEntity<TokenResponse> exchange(@Valid @RequestBody CodeRequest request) {
         return ResponseEntity.ok()

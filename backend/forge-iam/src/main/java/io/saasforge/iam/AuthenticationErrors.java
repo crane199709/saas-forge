@@ -25,4 +25,14 @@ class AuthenticationErrors {
     }
 
     record AuthenticationErrorResponse(String code, String message) {}
+
+    @ExceptionHandler(MembershipSelectionRequiredException.class)
+    ResponseEntity<AuthenticationErrorResponse> membershipSelectionRequired() {
+        return ResponseEntity.status(409)
+                .cacheControl(CacheControl.noStore())
+                .body(new AuthenticationErrorResponse(
+                        "auth.membershipSelectionRequired",
+                        messages.getMessage(
+                                "auth.membershipSelectionRequired", null, LocaleContextHolder.getLocale())));
+    }
 }

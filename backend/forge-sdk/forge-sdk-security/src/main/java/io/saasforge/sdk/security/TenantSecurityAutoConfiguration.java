@@ -16,7 +16,10 @@ import org.springframework.security.web.SecurityFilterChain;
 
 /** 业务服务引入 starter 即获得 Tenant Realm 验签和请求上下文。 */
 @AutoConfiguration(
-        beforeName = "org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration")
+        beforeName = {
+            "org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration",
+            "org.springframework.boot.security.autoconfigure.actuate.web.servlet.ManagementWebSecurityAutoConfiguration"
+        })
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public final class TenantSecurityAutoConfiguration {
     /** 使用 JWKS 缓存公钥在本地验签，同时固定可信 issuer，不根据 Token 动态发现服务。 */

@@ -154,3 +154,31 @@ it('授权回调 state 不匹配时不交换授权码', async () => {
   expect(fetcher).toHaveBeenCalledTimes(2)
   expect(client.session()).toBeNull()
 })
+
+it('退出携带 IAM Cookie，立即清除本地凭证，失败不能假装退出成功', async () => {
+  sessionStorage.setItem(
+    'forge.tenant.session',
+    JSON.stringify({ accessToken: 'a', refreshToken: 'r' }),
+  )
+  let finish!: (response: Response) => void
+  const fetcher = vi.fn().mockImplementation(
+    () =>
+      new Promise<Response>((resolve) => {
+        finish = resolve
+      }),
+  )
+  vi.stubGlobal('fetch', fetcher)
+  const client = createTenantClient(sessionStorage)
+  const pending = client.logout()
+  expect(client.session()).toBeNull()
+  expect(fetcher).toHaveBeenCalledWith(
+    '/iam/auth/logout',
+    expect.objectContaining({
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  )
+  finish(new Response(null, { status: 500 }))
+  await expect(pending).rejects.toThrow('auth.logoutFailed')
+})
