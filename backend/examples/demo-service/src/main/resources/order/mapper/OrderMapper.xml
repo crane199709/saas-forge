@@ -2,7 +2,9 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.saasforge.demo.order.mapper.OrderMapper">
     <select id="selectPage" resultType="io.saasforge.demo.order.entity.Order">
-        SELECT id, title, amount, created_at FROM orders
+        <!-- 手写查询不经过 MyBatis-Plus 的逻辑删除条件，须自行排除已删除的行 -->
+        SELECT id, title, amount, created_at, updated_at, created_by, updated_by, deleted FROM orders
+        WHERE NOT deleted
         ORDER BY
         <foreach collection="sorts" item="sort">
             <!-- ${} 白名单：列名由 OrderController 的 @SortableFields 白名单字段经 OrderSort.from 转换，方向取自 PageQuery.Direction 枚举，均不含请求原文 -->

@@ -1,11 +1,12 @@
 package io.saasforge.demo.notification.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import io.saasforge.sdk.tenant.AuditableEntity;
 import java.util.UUID;
 
 /** 不声明 tenant_id：消费端恢复发布方租户后，租户列由 SDK 注入。 */
 @TableName("order_notifications")
-public class OrderNotification {
+public class OrderNotification extends AuditableEntity {
     private UUID id;
     private UUID orderId;
     private String title;

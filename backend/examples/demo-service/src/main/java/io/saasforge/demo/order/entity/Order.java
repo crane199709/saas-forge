@@ -1,17 +1,16 @@
 package io.saasforge.demo.order.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import io.saasforge.sdk.tenant.AuditableEntity;
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /** 不声明 tenant_id：租户列由 SDK 在 SQL 中注入，业务代码无从读写。 */
 @TableName("orders")
-public class Order {
+public class Order extends AuditableEntity {
     private UUID id;
     private String title;
     private BigDecimal amount;
-    private OffsetDateTime createdAt;
 
     public UUID getId() {
         return id;
@@ -35,13 +34,5 @@ public class Order {
 
     public void setAmount(BigDecimal amount) {
         this.amount = amount;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(OffsetDateTime createdAt) {
-        this.createdAt = createdAt;
     }
 }

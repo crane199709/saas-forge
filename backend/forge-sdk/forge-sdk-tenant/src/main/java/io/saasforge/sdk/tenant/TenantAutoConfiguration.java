@@ -1,8 +1,11 @@
 package io.saasforge.sdk.tenant;
 
 import com.baomidou.mybatisplus.autoconfigure.ConfigurationCustomizer;
+import com.baomidou.mybatisplus.autoconfigure.MybatisPlusPropertiesCustomizer;
+import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
+import io.saasforge.sdk.core.CurrentActorProvider;
 import io.saasforge.sdk.core.CurrentTenant;
 import java.util.UUID;
 import javax.sql.DataSource;
@@ -43,6 +46,34 @@ public final class TenantAutoConfiguration {
     @Bean
     public ConfigurationCustomizer uuidTypeHandlerCustomizer() {
         return configuration -> configuration.getTypeHandlerRegistry().register(UUID.class, new UuidTypeHandler());
+    }
+
+    /**
+     * 为继承 {@link AuditableEntity} 的实体填充创建/修改时间与操作人，调用方传入的值一律覆盖。
+     *
+     * <p>操作人取自 {@link CurrentActorProvider}，未引入 forge-sdk-security 或没有认证上下文时记为 NULL（系统）。
+     * MyBatis-Plus 只使用一个 {@link MetaObjectHandler}，服务另行声明时本 Bean 让位，标准列须由服务自行填充。
+     */
+    @Bean
+    @ConditionalOnMissingBean(MetaObjectHandler.class)
+    public MetaObjectHandler auditColumnsMetaObjectHandler(ObjectProvider<CurrentActorProvider> actors) {
+        return new AuditColumnsMetaObjectHandler(actors);
+    }
+
+    /**
+     * 标准表的 {@code deleted} 列全局作为逻辑删除字段：{@code deleteById} 等删除改为 {@code UPDATE ... SET deleted = true}，
+     * MyBatis-Plus 生成的查询自动带 {@code deleted = false}。
+     *
+     * <p>取值写成 {@code true}/{@code false}，因为默认的 {@code 1}/{@code 0} 不能与 PostgreSQL 的 boolean 比较。
+     */
+    @Bean
+    public MybatisPlusPropertiesCustomizer logicDeleteCustomizer() {
+        return properties -> properties
+                .getGlobalConfig()
+                .getDbConfig()
+                .setLogicDeleteField("deleted")
+                .setLogicDeleteValue("true")
+                .setLogicNotDeleteValue("false");
     }
 
     /**

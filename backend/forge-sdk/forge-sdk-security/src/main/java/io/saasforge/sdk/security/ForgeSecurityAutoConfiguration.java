@@ -1,6 +1,7 @@
 package io.saasforge.sdk.security;
 
 import io.micrometer.tracing.Tracer;
+import io.saasforge.sdk.core.CurrentActorProvider;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -54,6 +55,17 @@ public final class ForgeSecurityAutoConfiguration {
                         : new DelegatingOAuth2TokenValidator<>(
                                 JwtValidators.createDefaultWithIssuer(issuer), new TenantJwtValidator()));
         return decoder;
+    }
+
+    /**
+     * 为标准列填充提供操作人。
+     *
+     * @return 读取当前 JWT {@code sub} 的实现，应用自定义同类型 Bean 时让位
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public CurrentActorProvider forgeCurrentActorProvider() {
+        return new JwtCurrentActorProvider();
     }
 
     /**

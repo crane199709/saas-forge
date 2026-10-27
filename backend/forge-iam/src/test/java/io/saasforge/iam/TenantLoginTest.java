@@ -112,6 +112,45 @@ class TenantLoginTest {
     }
 
     @Test
+    @Sql("/fixtures/deleted_identities.sql")
+    void deletedIdentityFailsLikeUnknownAccount() {
+        // 已删除身份的密码正确且仍有 active Membership，登录结果也必须与未知账号一致。
+        assertThat(failure("gone", "Demo-password-123!")).isEqualTo(failure("unknown", "Demo-password-123!"));
+        assertThat(failure("gone@example.com", "Demo-password-123!"))
+                .isEqualTo(failure("unknown", "Demo-password-123!"));
+    }
+
+    @Test
+    @Sql({"/fixtures/multiple_memberships.sql", "/fixtures/deleted_memberships.sql"})
+    void deletedMembershipsAndTenantsAreNotListedSelectedOrSwitchedInto() {
+        var session = authenticate("half", "Demo-password-123!");
+        assertThat((List<?>) session.body().get("memberships"))
+                .<Object>extracting(item -> ((Map<?, ?>) item).get("membershipId"))
+                .containsExactly(HALF_IN_DEMO_TENANT);
+        for (String target : List.of(HALF_DELETED, HALF_IN_DELETED_TENANT)) {
+            String code = authorize(session.cookie());
+            assertThatThrownBy(() -> exchange(code, target)).isInstanceOf(HttpClientErrorException.Forbidden.class);
+        }
+        Map<?, ?> tokens = exchange(authorize(session.cookie()), HALF_IN_DEMO_TENANT);
+        assertThat(memberships((String) tokens.get("accessToken")))
+                .<Object>extracting(item -> ((Map<?, ?>) item).get("tenantId"))
+                .containsExactly(DEMO_TENANT);
+        for (String target : List.of(HALF_DELETED, HALF_IN_DELETED_TENANT)) {
+            assertThatThrownBy(() -> switchTenant((String) tokens.get("refreshToken"), target))
+                    .isInstanceOf(HttpClientErrorException.Forbidden.class);
+        }
+    }
+
+    @Test
+    @Sql("/fixtures/reused_identity.sql")
+    void deletedAccountEmailAndMembershipCanBeCreatedAgain() {
+        // 新身份能用自己的密码登录并选中重新加入的 Membership，说明三处唯一性都不再被已删除行占用。
+        Map<?, ?> tokens = exchange(authorize("REBORN@example.com", "Demo-password-123!"), REBORN_MEMBERSHIP);
+        assertThat(decode((String) tokens.get("accessToken")).getSubject()).isEqualTo(REBORN_IDENTITY);
+        assertThat(failure("reborn", OPERATOR_PASSWORD)).isEqualTo(failure("unknown", OPERATOR_PASSWORD));
+    }
+
+    @Test
     void refreshReplayRevokesTheAuthorizationFamily() {
         Map<?, ?> original = login("demo", "Demo-password-123!");
         String refresh = (String) original.get("refreshToken");
@@ -381,6 +420,12 @@ class TenantLoginTest {
     private static final String MULTI_IN_SECOND_TENANT = "019a0110-0000-7000-8000-000000000007";
     private static final String MULTI_IN_SUSPENDED_TENANT = "019a0110-0000-7000-8000-00000000000a";
     private static final String MULTI_SUSPENDED = "019a0110-0000-7000-8000-00000000000b";
+    private static final String REBORN_IDENTITY = "019a0110-0000-7000-8000-000000000028";
+    private static final String REBORN_MEMBERSHIP = "019a0110-0000-7000-8000-00000000002a";
+    private static final String OPERATOR_PASSWORD = "Operator-password-123!";
+    private static final String HALF_IN_DEMO_TENANT = "019a0110-0000-7000-8000-000000000024";
+    private static final String HALF_DELETED = "019a0110-0000-7000-8000-000000000025";
+    private static final String HALF_IN_DELETED_TENANT = "019a0110-0000-7000-8000-000000000026";
 
     private record SignedIn(String cookie, Map<?, ?> body) {}
 

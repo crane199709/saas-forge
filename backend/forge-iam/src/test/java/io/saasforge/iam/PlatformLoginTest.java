@@ -19,6 +19,7 @@ import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -95,6 +96,22 @@ class PlatformLoginTest {
         assertThat(loginStatus("/platform/auth/login", "demo", "Demo-password-123!"))
                 .isEqualTo(401);
         assertThat(loginStatus("/auth/login", "operator", OPERATOR_PASSWORD)).isEqualTo(401);
+    }
+
+    @Test
+    @Sql("/fixtures/deleted_operators.sql")
+    void deletedOperatorCannotSignIn() {
+        assertThat(loginStatus("/platform/auth/login", "gone-operator", OPERATOR_PASSWORD))
+                .isEqualTo(401);
+    }
+
+    @Test
+    @Sql("/fixtures/reused_operator.sql")
+    void deletedOperatorAccountCanBeCreatedAgain() {
+        assertThat(loginStatus("/platform/auth/login", "reborn-operator", OPERATOR_PASSWORD))
+                .isEqualTo(200);
+        assertThat(loginStatus("/platform/auth/login", "reborn-operator", "Demo-password-123!"))
+                .isEqualTo(401);
     }
 
     @Test

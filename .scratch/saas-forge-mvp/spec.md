@@ -97,7 +97,7 @@ Maven 与 npm 制品发布到私有仓库（具体仓库待定）。starter 拆�
 
 ### 5.3 Tenant Lifecycle
 
-`pending → trial → active → suspended → expired → archived → deleted`（具体合法迁移在实现时以状态机表定义）。删除进入 Cooling-off Period（默认 30 天，可配置）后，经 MQ 通知各服务清理本服务数据。每次状态变更通过 RocketMQ 广播，SDK 订阅并据此拒绝写入（停用/过期）等。
+`pending → trial → active → suspended → expired → archived → deleted`（具体合法迁移在实现时以状态机表定义）。删除进入 Cooling-off Period（默认 30 天，可配置）后，经 MQ 通知各服务将本服务中该租户的数据标记删除（逻辑删除，见 ADR-0016）。每次状态变更通过 RocketMQ 广播，SDK 订阅并据此拒绝写入（停用/过期）等。
 
 ### 5.4 Plan
 

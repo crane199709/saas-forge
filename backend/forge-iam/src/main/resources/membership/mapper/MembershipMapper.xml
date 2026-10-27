@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.saasforge.iam.membership.mapper.MembershipMapper">
-    <!-- RETURNING 在同一语句内取得递增后的版本，避免先改后查之间被并发变更插入。 -->
+    <!-- RETURNING 在同一语句内取得递增后的版本，避免先改后查之间被并发变更插入。
+         目前没有经认证接口发起的调用，都是系统操作，因此 updated_by 写 NULL。 -->
     <select id="deactivate" flushCache="true" resultType="io.saasforge.iam.membership.model.MembershipChange">
-        UPDATE membership SET status = 'suspended', version = version + 1
-        WHERE id = #{membershipId}
+        UPDATE membership SET status = 'suspended', version = version + 1, updated_at = now(), updated_by = NULL
+        WHERE id = #{membershipId} AND NOT deleted
         RETURNING tenant_id, version
     </select>
     <select id="incrementVersion" flushCache="true" resultType="io.saasforge.iam.membership.model.MembershipChange">
-        UPDATE membership SET version = version + 1
-        WHERE id = #{membershipId}
+        UPDATE membership SET version = version + 1, updated_at = now(), updated_by = NULL
+        WHERE id = #{membershipId} AND NOT deleted
         RETURNING tenant_id, version
     </select>
 </mapper>
