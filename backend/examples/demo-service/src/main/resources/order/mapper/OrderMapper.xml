@@ -5,7 +5,7 @@
         SELECT id, title, amount, created_at FROM orders
         ORDER BY
         <foreach collection="sorts" item="sort">
-            <!-- ${} 白名单：列名取自 OrderService.SORT_COLUMNS，方向取自 PageQuery.Direction 枚举，均不含请求原文 -->
+            <!-- ${} 白名单：列名由 OrderController 的 @SortableFields 白名单字段经 OrderSort.from 转换，方向取自 PageQuery.Direction 枚举，均不含请求原文 -->
             ${sort.column} ${sort.direction},
         </foreach>
         id

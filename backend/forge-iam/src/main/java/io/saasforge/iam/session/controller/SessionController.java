@@ -14,8 +14,6 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.CacheControl;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -43,7 +41,7 @@ class SessionController {
 
     @Operation(summary = "认证身份并建立标准授权流程的登录会话")
     @PostMapping(value = "/auth/login", consumes = "application/json")
-    ResponseEntity<ApiResponse<LoginResponse>> login(
+    ApiResponse<LoginResponse> login(
             @Valid @RequestBody LoginRequest body, HttpServletRequest request, HttpServletResponse response) {
         var authentication = sessions.authenticate(body.account(), body.password());
         if (request.getSession(false) != null) request.changeSessionId();
@@ -53,25 +51,19 @@ class SessionController {
         new HttpSessionSecurityContextRepository().saveContext(context, request, response);
         // 密码校验通过后才返回可进入的租户，由前端决定自动进入、选择租户或展示无租户页。
         var memberships = toMembershipResponses(UUID.fromString(authentication.getName()));
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(ApiResponse.ok(new LoginResponse("tenant-app", redirectUri, memberships)));
+        return ApiResponse.ok(new LoginResponse("tenant-app", redirectUri, memberships));
     }
 
     @Operation(summary = "列出当前 Access Token 所属身份可进入的有效 Membership")
     @GetMapping("/auth/memberships")
-    ResponseEntity<ApiResponse<List<MembershipResponse>>> memberships(@AuthenticationPrincipal Jwt jwt) {
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(ApiResponse.ok(toMembershipResponses(UUID.fromString(jwt.getSubject()))));
+    ApiResponse<List<MembershipResponse>> memberships(@AuthenticationPrincipal Jwt jwt) {
+        return ApiResponse.ok(toMembershipResponses(UUID.fromString(jwt.getSubject())));
     }
 
     @Operation(summary = "用当前刷新凭证换发绑定目标 Membership 的 Token，旧刷新凭证随之轮换失效")
     @PostMapping(value = "/auth/switch", consumes = "application/json")
-    ResponseEntity<ApiResponse<TokenResponse>> switchTenant(@Valid @RequestBody SwitchRequest request) {
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(ApiResponse.ok(tokens.switchTenant(request.refreshToken(), request.membershipId())));
+    ApiResponse<TokenResponse> switchTenant(@Valid @RequestBody SwitchRequest request) {
+        return ApiResponse.ok(tokens.switchTenant(request.refreshToken(), request.membershipId()));
     }
 
     private List<MembershipResponse> toMembershipResponses(UUID identityId) {
@@ -83,27 +75,23 @@ class SessionController {
 
     @Operation(summary = "退出当前浏览器的 IAM 登录会话，不吊销已签发的 Token")
     @PostMapping(value = "/auth/logout", consumes = "application/json")
-    ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request, HttpServletResponse response) {
+    ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         // 仅接受同源 JSON 请求；同时销毁 Redis 会话和当前请求的安全上下文。
         new SecurityContextLogoutHandler()
                 .logout(request, response, SecurityContextHolder.getContext().getAuthentication());
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(ApiResponse.ok());
+        return ApiResponse.ok();
     }
 
     @Operation(summary = "以授权码和 PKCE 校验值交换 Token，匿名适配器不认证浏览器客户端")
     @PostMapping(value = "/auth/exchange", consumes = "application/json")
-    ResponseEntity<ApiResponse<TokenResponse>> exchange(@Valid @RequestBody CodeRequest request) {
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(ApiResponse.ok(tokens.code(request.code(), request.codeVerifier(), request.membershipId())));
+    ApiResponse<TokenResponse> exchange(@Valid @RequestBody CodeRequest request) {
+        return ApiResponse.ok(tokens.code(request.code(), request.codeVerifier(), request.membershipId()));
     }
 
     @Operation(summary = "通过标准 refresh_token grant 轮换刷新凭证")
     @PostMapping(value = "/auth/refresh", consumes = "application/json")
-    ResponseEntity<ApiResponse<TokenResponse>> refresh(@Valid @RequestBody RefreshRequest request) {
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .body(ApiResponse.ok(tokens.refresh(request.refreshToken())));
+    ApiResponse<TokenResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        return ApiResponse.ok(tokens.refresh(request.refreshToken()));
     }
 
     record LoginResponse(String clientId, String redirectUri, List<MembershipResponse> memberships) {}

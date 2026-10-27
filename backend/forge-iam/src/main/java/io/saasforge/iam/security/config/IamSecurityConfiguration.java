@@ -4,7 +4,6 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-import io.micrometer.tracing.Tracer;
 import io.saasforge.iam.identity.model.ActiveMembership;
 import io.saasforge.iam.identity.service.IdentityService;
 import io.saasforge.iam.membership.service.MembershipStateService;
@@ -12,7 +11,7 @@ import io.saasforge.iam.security.filter.EnvelopeSecurityErrorHandler;
 import io.saasforge.iam.security.filter.TokenGrantLockFilter;
 import io.saasforge.iam.security.service.RedisAuthorizationService;
 import io.saasforge.iam.tenant.service.TenantStateService;
-import io.saasforge.sdk.web.UserTipResolver;
+import io.saasforge.sdk.web.EnvelopeErrorWriter;
 import jakarta.servlet.DispatcherType;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -29,7 +28,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -209,8 +207,8 @@ class IamSecurityConfiguration {
     }
 
     @Bean
-    EnvelopeSecurityErrorHandler envelopeSecurityErrorHandler(UserTipResolver userTips, ObjectProvider<Tracer> tracer) {
-        return new EnvelopeSecurityErrorHandler(userTips, tracer);
+    EnvelopeSecurityErrorHandler envelopeSecurityErrorHandler(EnvelopeErrorWriter writer) {
+        return new EnvelopeSecurityErrorHandler(writer);
     }
 
     @Bean

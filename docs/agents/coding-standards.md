@@ -62,7 +62,9 @@ SDK 不允许出现循环依赖，模块级与包级都不允许。循环会让�
 | `entity` | MyBatis-Plus 实体 |
 | `model` | 接口模型（`XxxRequest`、`XxxResponse`、`XxxQuery`）与 Mapper 查询投影 |
 | `config` | `@Configuration` 与配置值对象 |
-| `filter` | Servlet / Security 过滤器 |
+| `filter` | Servlet / Security 过滤器；WebFlux 服务（gateway）的 `WebFilter` 与 `ErrorWebExceptionHandler` |
+
+WebFlux 的 `ErrorWebExceptionHandler` 归入 `filter` 而不是 `controller`：它与 `WebFilter` 同处请求处理链、处理过滤链（含安全过滤链与路由）抛出的异常，不是 `@RestControllerAdvice`，放进 `controller` 会误导读者以为它只覆盖 Controller。
 
 `entity` 与 `model` 分开，让「实体与接口模型隔离」从包上即可看出。只被单个 Controller 使用的接口模型作为嵌套 `record` 留在该 Controller 内，与接口定义放在一起；被第二个类引用（另一个 Controller、Service 等）时移到 `model`。
 

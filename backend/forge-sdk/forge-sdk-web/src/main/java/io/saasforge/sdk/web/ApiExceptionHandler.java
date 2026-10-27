@@ -2,6 +2,7 @@ package io.saasforge.sdk.web;
 
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.core.api.ErrorCode;
+import io.saasforge.sdk.core.api.ErrorEnvelopes;
 import io.saasforge.sdk.core.api.FieldError;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
@@ -14,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,7 +40,6 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
-    private static final String INTERNAL_ERROR = "Internal error";
     private static final String VALIDATION_PREFIX = "validation.";
 
     private final UserTipResolver userTips;
@@ -53,7 +54,7 @@ class ApiExceptionHandler {
         String errorMessage = e.errorMessage();
         if (code.httpStatus() >= 500) {
             log.error("Request failed with {}", code.code(), e);
-            errorMessage = INTERNAL_ERROR;
+            errorMessage = ErrorEnvelopes.INTERNAL_ERROR;
         }
         ApiResponse<Void> body = ApiResponse.error(
                 code.httpStatus(), code.code(), errorMessage, userTips.resolve(code.code(), e.args(), locale()), null);
@@ -103,6 +104,17 @@ class ApiExceptionHandler {
     }
 
     /**
+     * 依赖的资源（Redis、数据库连接等）不可用：Spring 把各类连接失败统一为 {@link DataAccessResourceFailureException} 体系（如
+     * {@code RedisConnectionFailureException}），按 503 返回，让前端提示稍后重试而不是当作未知错误；连接地址等细节只写日志。
+     */
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    @ExceptionHandler(DataAccessResourceFailureException.class)
+    ApiResponse<Void> handleUnavailable(DataAccessResourceFailureException e) {
+        log.warn("Dependent resource unavailable", e);
+        return error(FrameworkErrorCode.SYSTEM_UNAVAILABLE, ErrorEnvelopes.INTERNAL_ERROR, null);
+    }
+
+    /**
      * 兜底：其余实现 {@link ErrorResponse} 的框架异常（如 415、406）保留其状态码；未知异常一律 500，不向调用方暴露异常信息。
      */
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -112,7 +124,7 @@ class ApiExceptionHandler {
             int status = response.getStatusCode().value();
             if (status == HttpStatus.SERVICE_UNAVAILABLE.value()) {
                 log.warn("Service unavailable", e);
-                return error(FrameworkErrorCode.SYSTEM_UNAVAILABLE, INTERNAL_ERROR, null);
+                return error(FrameworkErrorCode.SYSTEM_UNAVAILABLE, ErrorEnvelopes.INTERNAL_ERROR, null);
             }
             if (status < 500) {
                 String code = FrameworkErrorCode.REQUEST_MALFORMED.code();
@@ -121,7 +133,7 @@ class ApiExceptionHandler {
             }
         }
         log.error("Unhandled exception", e);
-        return error(FrameworkErrorCode.SYSTEM_ERROR, INTERNAL_ERROR, null);
+        return error(FrameworkErrorCode.SYSTEM_ERROR, ErrorEnvelopes.INTERNAL_ERROR, null);
     }
 
     private ApiResponse<Void> error(FrameworkErrorCode code, String errorMessage, List<FieldError> errors) {

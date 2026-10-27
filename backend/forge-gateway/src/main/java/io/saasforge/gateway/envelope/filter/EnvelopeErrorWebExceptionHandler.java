@@ -1,6 +1,7 @@
 package io.saasforge.gateway.envelope.filter;
 
 import io.saasforge.gateway.envelope.service.ErrorEnvelopeService;
+import io.saasforge.sdk.core.api.ErrorEnvelopes;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import java.net.ConnectException;
 import java.util.concurrent.TimeoutException;
@@ -25,7 +26,6 @@ import reactor.core.publisher.Mono;
 class EnvelopeErrorWebExceptionHandler implements ErrorWebExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(EnvelopeErrorWebExceptionHandler.class);
-    private static final String INTERNAL_ERROR = "Internal error";
 
     private final ErrorEnvelopeService envelopes;
 
@@ -41,12 +41,10 @@ class EnvelopeErrorWebExceptionHandler implements ErrorWebExceptionHandler {
         int status =
                 ex instanceof ErrorResponse response ? response.getStatusCode().value() : 500;
         if (status == HttpStatus.NOT_FOUND.value()) {
-            return envelopes.write(
-                    exchange, FrameworkErrorCode.REQUEST_NOT_FOUND, status, "No route for " + route(exchange));
+            return envelopes.write(exchange, FrameworkErrorCode.REQUEST_NOT_FOUND, "No route for " + route(exchange));
         }
         if (status == HttpStatus.METHOD_NOT_ALLOWED.value()) {
-            return envelopes.write(
-                    exchange, FrameworkErrorCode.REQUEST_METHOD_NOT_ALLOWED, status, "Method not allowed");
+            return envelopes.write(exchange, FrameworkErrorCode.REQUEST_METHOD_NOT_ALLOWED, "Method not allowed");
         }
         if (status >= 400 && status < 500) {
             // 与 forge-sdk-web 一致：未单独定义 code 的框架 4xx 保留实际状态码
@@ -58,12 +56,10 @@ class EnvelopeErrorWebExceptionHandler implements ErrorWebExceptionHandler {
         }
         if (isUnavailable(ex, status)) {
             log.warn("Upstream unavailable for {}", route(exchange), ex);
-            FrameworkErrorCode code = FrameworkErrorCode.SYSTEM_UNAVAILABLE;
-            return envelopes.write(exchange, code, code.httpStatus(), INTERNAL_ERROR);
+            return envelopes.write(exchange, FrameworkErrorCode.SYSTEM_UNAVAILABLE, ErrorEnvelopes.INTERNAL_ERROR);
         }
         log.error("Unhandled gateway error for {}", route(exchange), ex);
-        FrameworkErrorCode code = FrameworkErrorCode.SYSTEM_ERROR;
-        return envelopes.write(exchange, code, code.httpStatus(), INTERNAL_ERROR);
+        return envelopes.write(exchange, FrameworkErrorCode.SYSTEM_ERROR, ErrorEnvelopes.INTERNAL_ERROR);
     }
 
     private static boolean isUnavailable(Throwable ex, int status) {

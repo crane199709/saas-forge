@@ -227,6 +227,7 @@ class GatewaySecurityTest {
         Response response = call(
                 HttpMethod.GET, "/demo/slow", token(KEY, ISSUER, Instant.now().plusSeconds(900)));
         assertEnvelope(response, 503, "system.unavailable");
+        assertThat(response.body().path("userTip").asString()).isEqualTo("服务暂时不可用，请稍后重试");
     }
 
     @Test
@@ -235,6 +236,7 @@ class GatewaySecurityTest {
                 HttpMethod.GET, "/demo/boom", token(KEY, ISSUER, Instant.now().plusSeconds(900)));
         assertEnvelope(response, 500, "system.error");
         assertThat(response.body().path("errorMessage").asString()).isEqualTo("Internal error");
+        assertThat(response.body().path("userTip").asString()).isEqualTo("系统繁忙，请稍后重试");
         assertThat(response.rawBody()).doesNotContain("secret").doesNotContain("IllegalStateException");
     }
 
@@ -244,6 +246,8 @@ class GatewaySecurityTest {
         Response platform = call(HttpMethod.GET, "/platform/anything", token);
         assertEnvelope(platform, 403, "auth.forbidden");
         assertThat(platform.body().path("userTip").asString()).isEqualTo("没有权限执行该操作");
+        // 与 Bearer 默认拒绝处理器一致，保留 RFC 6750 的质询头
+        assertThat(platform.wwwAuthenticate()).startsWith("Bearer").contains("error=\"insufficient_scope\"");
         var original = SignedJWT.parse(token);
         var incomplete = new SignedJWT(
                 original.getHeader(),
@@ -268,7 +272,9 @@ class GatewaySecurityTest {
     @Test
     void tenantSwitchEndpointsAreReachableWithTheirOwnCredentials() throws Exception {
         // 测试未配置 IAM 路由：通过安全规则后得到路由 404，被拦截则为 401/403。
-        assertEnvelope(call(HttpMethod.POST, "/iam/auth/switch", null), 404, "request.notFound");
+        Response notFound = call(HttpMethod.POST, "/iam/auth/switch", null);
+        assertEnvelope(notFound, 404, "request.notFound");
+        assertThat(notFound.body().path("userTip").asString()).isEqualTo("请求的资源不存在");
         assertUnauthenticatedAt("/iam/auth/memberships", null);
         assertEnvelope(
                 call(
@@ -287,6 +293,11 @@ class GatewaySecurityTest {
         Response response = call(HttpMethod.GET, path, token);
         assertEnvelope(response, 401, "auth.unauthenticated");
         assertThat(response.body().path("userTip").asString()).isEqualTo("登录已失效，请重新登录");
+        // 与 Bearer 默认入口一致：无 Token 时只有 Bearer，Token 无效时带 invalid_token
+        assertThat(response.wwwAuthenticate()).startsWith("Bearer");
+        if (token != null) {
+            assertThat(response.wwwAuthenticate()).contains("error=\"invalid_token\"");
+        }
     }
 
     private static void assertEnvelope(Response response, int status, String code) {
@@ -310,11 +321,14 @@ class GatewaySecurityTest {
         return request.exchange((req, response) -> {
             String body = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
             return new Response(
-                    response.getStatusCode().value(), response.getHeaders().getFirst("X-Trace-Id"), body);
+                    response.getStatusCode().value(),
+                    response.getHeaders().getFirst("X-Trace-Id"),
+                    response.getHeaders().getFirst("WWW-Authenticate"),
+                    body);
         });
     }
 
-    record Response(int status, String traceIdHeader, String rawBody) {
+    record Response(int status, String traceIdHeader, String wwwAuthenticate, String rawBody) {
         JsonNode body() {
             return JSON.readTree(rawBody);
         }

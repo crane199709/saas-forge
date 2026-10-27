@@ -215,6 +215,9 @@ class TenantLoginTest {
                 .uri("/auth/memberships")
                 .exchange((req, response) -> {
                     assertThat(response.getStatusCode().value()).isEqualTo(401);
+                    assertThat(response.getHeaders().getCacheControl()).isEqualTo("no-store");
+                    assertThat(response.getHeaders().getFirst("WWW-Authenticate"))
+                            .startsWith("Bearer");
                     return new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
                 });
         assertThat(anonymous).contains("\"code\":\"auth.unauthenticated\"", "\"httpStatus\":401", "\"traceId\":");
@@ -646,6 +649,8 @@ class TenantLoginTest {
                 .body(Map.of("account", account, "password", password))
                 .exchange((req, response) -> {
                     assertThat(response.getStatusCode().value()).isEqualTo(401);
+                    // 错误信封同样不能被缓存
+                    assertThat(response.getHeaders().getCacheControl()).isEqualTo("no-store");
                     return new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
                 });
         assertThat(body).contains("\"traceId\":");

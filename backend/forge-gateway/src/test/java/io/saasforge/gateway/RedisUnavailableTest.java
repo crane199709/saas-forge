@@ -107,6 +107,7 @@ class RedisUnavailableTest {
         assertThat(body.path("code").asString()).isEqualTo("system.unavailable");
         assertThat(body.path("httpStatus").asInt()).isEqualTo(503);
         assertThat(body.path("errorMessage").asString()).isEqualTo("Internal error");
+        assertThat(body.path("userTip").asString()).isEqualTo("服务暂时不可用，请稍后重试");
         assertThat(result[1]).hasSize(32);
         assertThat(body.path("traceId").asString()).isEqualTo(result[1]);
     }

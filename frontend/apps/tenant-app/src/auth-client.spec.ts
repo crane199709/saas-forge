@@ -212,6 +212,37 @@ it('刷新得到代理返回的非信封错误时保留会话', async () => {
   expect(client.session()?.refreshToken).toBe('refresh-a')
 })
 
+it.each([
+  ['其他错误码的信封', () => fail('auth.unauthenticated', 401)],
+  ['非信封响应', () => new Response('Unauthorized', { status: 401 })],
+])('刷新接口返回 401 %s时同样视为刷新凭证被拒绝并清除会话', async (_, refreshed) => {
+  signedIn()
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce(fail('auth.unauthenticated', 401))
+      .mockResolvedValueOnce(refreshed()),
+  )
+  const client = createTenantClient(sessionStorage)
+  await expect(client.request('/demo/context')).rejects.toMatchObject({ httpStatus: 401 })
+  expect(client.session()).toBeNull()
+})
+
+it('刷新遇到网络故障时保留会话', async () => {
+  signedIn()
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce(fail('auth.unauthenticated', 401))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch')),
+  )
+  const client = createTenantClient(sessionStorage)
+  await expect(client.request('/demo/context')).rejects.toThrow('Failed to fetch')
+  expect(client.session()?.refreshToken).toBe('refresh-a')
+})
+
 it('拒绝向外站发送凭证，损坏的本地会话可恢复', async () => {
   sessionStorage.setItem('forge.tenant.session', 'broken')
   const client = createTenantClient(sessionStorage)

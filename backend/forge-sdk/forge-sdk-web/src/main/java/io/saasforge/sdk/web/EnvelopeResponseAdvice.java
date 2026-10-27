@@ -1,8 +1,8 @@
 package io.saasforge.sdk.web;
 
-import io.micrometer.tracing.TraceContext;
 import io.micrometer.tracing.Tracer;
 import io.saasforge.sdk.core.api.ApiResponse;
+import io.saasforge.sdk.core.api.ErrorEnvelopes;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
@@ -10,7 +10,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
+import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.filter.ServerHttpObservationFilter;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
 /**
@@ -42,15 +44,13 @@ class EnvelopeResponseAdvice implements ResponseBodyAdvice<Object> {
             return body;
         }
         response.setStatusCode(HttpStatus.valueOf(envelope.httpStatus()));
-        return envelope.withTraceId(currentTraceId());
-    }
-
-    private String currentTraceId() {
-        Tracer current = tracer.getIfAvailable();
-        if (current == null) {
-            return null;
+        String traceId = ErrorEnvelopes.traceId(tracer.getIfAvailable());
+        if (traceId == null && request instanceof ServletServerHttpRequest servlet) {
+            // 容器转发到 /error 时请求的观测 scope 已关闭，线程上没有当前 span，改从请求属性中的观测上下文取
+            traceId = ServerHttpObservationFilter.findObservationContext(servlet.getServletRequest())
+                    .map(ErrorEnvelopes::traceId)
+                    .orElse(null);
         }
-        TraceContext context = current.currentTraceContext().context();
-        return context == null ? null : context.traceId();
+        return envelope.withTraceId(traceId);
     }
 }

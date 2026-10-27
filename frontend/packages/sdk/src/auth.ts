@@ -234,7 +234,7 @@ export function createTenantClient(storage: Storage) {
   }
 
   /**
-   * 轮换刷新凭证；并发调用共用进行中的一次。凭证被拒绝（如 Membership 或租户已停用）时清除会话，
+   * 轮换刷新凭证；并发调用共用进行中的一次。凭证被拒绝（刷新接口返回 401，或 Membership、租户已停用）时清除会话，
    * 服务端或网络故障以原错误失败并保留会话。
    */
   function refresh(): Promise<TenantSession> {
@@ -244,10 +244,12 @@ export function createTenantClient(storage: Storage) {
     const started = generation
     const operation = exchange('/iam/auth/refresh', { refreshToken: value.refreshToken })
       .catch((error: unknown) => {
-        // 只有刷新凭证被拒绝才登出；服务端或网络故障保留会话，恢复后可继续刷新。
+        // 只有刷新凭证被拒绝才登出：刷新接口的任何 401（不论响应是否为信封）或租户被拒绝；
+        // 5xx、503 与网络故障保留会话，恢复后可继续刷新。
         const rejected =
           error instanceof ApiError &&
-          ['auth.failed', 'auth.tenantAccessDenied'].includes(error.code)
+          (error.httpStatus === 401 ||
+            ['auth.failed', 'auth.tenantAccessDenied'].includes(error.code))
         if (rejected && started === generation) clear()
         throw error
       })

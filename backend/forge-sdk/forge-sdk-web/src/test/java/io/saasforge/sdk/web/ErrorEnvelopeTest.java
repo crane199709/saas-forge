@@ -94,6 +94,17 @@ class ErrorEnvelopeTest {
     }
 
     @Test
+    void unavailableResourceIs503WithoutConnectionDetails() throws Exception {
+        mvc.perform(get("/orders/redis-down"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("system.unavailable"))
+                .andExpect(jsonPath("$.httpStatus").value(503))
+                .andExpect(jsonPath("$.errorMessage").value("Internal error"))
+                .andExpect(jsonPath("$.userTip").value("服务暂时不可用，请稍后重试"))
+                .andExpect(content().string(not(containsString("10.0.0.1"))));
+    }
+
+    @Test
     void beanValidationFailureIs400WithFieldErrors() throws Exception {
         mvc.perform(post("/orders").contentType(MediaType.APPLICATION_JSON).content("{\"title\":\" \",\"amount\":-1}"))
                 .andExpect(status().isBadRequest())

@@ -8,16 +8,21 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.server.reactive.ServerHttpResponseDecorator;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
+import org.springframework.security.oauth2.server.resource.web.access.server.BearerTokenServerAccessDeniedHandler;
+import org.springframework.security.oauth2.server.resource.web.server.BearerTokenServerAuthenticationEntryPoint;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint;
 import org.springframework.security.web.server.authorization.ServerAccessDeniedHandler;
 import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
 
 @Configuration(proxyBeanMethods = false)
 class GatewaySecurityConfiguration {
@@ -29,26 +34,27 @@ class GatewaySecurityConfiguration {
         var decoder = NimbusReactiveJwtDecoder.withJwkSetUri(jwks).build();
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(issuer), new TenantJwtValidator()));
-        // 验签之后再比对即时失效状态：BadJwtException 由资源服务器转换为 401 invalid_token。
+        // 验签之后再比对即时失效状态：BadJwtException 由资源服务器转换为 401 auth.unauthenticated 信封（质询头为 invalid_token）。
         return token -> decoder.decode(token).flatMap(states::verify);
     }
 
     /**
      * 缺失、伪造、issuer 不符、过期 Token 以及 Membership 状态不一致都在这里输出 401 信封。资源服务器与
      * {@code exceptionHandling} 各有入口，两处都要配置，否则 Bearer Token 无效时仍是空响应体。
+     *
+     * <p>先让 Bearer 默认处理器写出 RFC 6750 的 {@code WWW-Authenticate}，再写信封：两者结果一致，只是把空响应体换成信封。
      */
     @Bean
     SecurityWebFilterChain gatewaySecurity(ServerHttpSecurity http, ErrorEnvelopeService envelopes) {
-        ServerAuthenticationEntryPoint entryPoint = (exchange, ex) -> envelopes.write(
-                exchange,
-                FrameworkErrorCode.AUTH_UNAUTHENTICATED,
-                FrameworkErrorCode.AUTH_UNAUTHENTICATED.httpStatus(),
-                ex.getMessage());
-        ServerAccessDeniedHandler accessDeniedHandler = (exchange, ex) -> envelopes.write(
-                exchange,
-                FrameworkErrorCode.AUTH_FORBIDDEN,
-                FrameworkErrorCode.AUTH_FORBIDDEN.httpStatus(),
-                ex.getMessage());
+        var bearerEntryPoint = new BearerTokenServerAuthenticationEntryPoint();
+        var bearerAccessDenied = new BearerTokenServerAccessDeniedHandler();
+        ServerAuthenticationEntryPoint entryPoint = (exchange, ex) -> bearerEntryPoint
+                .commence(headersOnly(exchange), ex)
+                .then(Mono.defer(
+                        () -> envelopes.write(exchange, FrameworkErrorCode.AUTH_UNAUTHENTICATED, ex.getMessage())));
+        ServerAccessDeniedHandler accessDeniedHandler = (exchange, ex) -> bearerAccessDenied
+                .handle(headersOnly(exchange), ex)
+                .then(Mono.defer(() -> envelopes.write(exchange, FrameworkErrorCode.AUTH_FORBIDDEN, ex.getMessage())));
         return http.csrf(csrf -> csrf.disable())
                 .exceptionHandling(exceptions ->
                         exceptions.authenticationEntryPoint(entryPoint).accessDeniedHandler(accessDeniedHandler))
@@ -85,6 +91,18 @@ class GatewaySecurityConfiguration {
                 .oauth2ResourceServer(server -> server.authenticationEntryPoint(entryPoint)
                         .accessDeniedHandler(accessDeniedHandler)
                         .jwt(Customizer.withDefaults()))
+                .build();
+    }
+
+    /** Bearer 默认处理器写完响应头后会直接结束响应；屏蔽结束动作，响应体留给信封。 */
+    private static ServerWebExchange headersOnly(ServerWebExchange exchange) {
+        return exchange.mutate()
+                .response(new ServerHttpResponseDecorator(exchange.getResponse()) {
+                    @Override
+                    public Mono<Void> setComplete() {
+                        return Mono.empty();
+                    }
+                })
                 .build();
     }
 }
