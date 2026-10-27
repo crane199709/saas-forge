@@ -1,6 +1,9 @@
 package io.saasforge.sdk.security;
 
 import io.saasforge.sdk.core.api.ApiResponse;
+import java.util.Map;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -17,6 +20,14 @@ class TestApplication {
         @GetMapping("/context")
         ApiResponse<String> context() {
             return ApiResponse.ok(TenantContext.current().tenantId().toString());
+        }
+
+        @GetMapping("/log-context")
+        ApiResponse<Map<String, String>> logContext() {
+            LoggerFactory.getLogger(ProbeController.class).info("probe log line");
+            return ApiResponse.ok(Map.of(
+                    "tenant_id", String.valueOf(MDC.get("tenant_id")),
+                    "membership_id", String.valueOf(MDC.get("membership_id"))));
         }
 
         @GetMapping("/admin")

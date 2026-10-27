@@ -9,6 +9,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 
 class CurrentTenantTest {
     static final UUID TENANT_A = UUID.fromString("019a0110-0000-7000-8000-00000000000a");
@@ -28,6 +29,16 @@ class CurrentTenantTest {
             assertThat(CurrentTenant.require()).isEqualTo(TENANT_A);
         });
         assertThat(CurrentTenant.find()).isEmpty();
+    }
+
+    // 请求、消息消费与定时任务都经 CurrentTenant 绑定租户，日志因此无需业务代码参与即带上 tenant_id
+    @Test
+    void bindingWritesTenantToLogMdcAndRestoresOuterValue() {
+        CurrentTenant.run(TENANT_A, () -> {
+            CurrentTenant.run(TENANT_B, () -> assertThat(MDC.get("tenant_id")).isEqualTo(TENANT_B.toString()));
+            assertThat(MDC.get("tenant_id")).isEqualTo(TENANT_A.toString());
+        });
+        assertThat(MDC.get("tenant_id")).isNull();
     }
 
     @Test

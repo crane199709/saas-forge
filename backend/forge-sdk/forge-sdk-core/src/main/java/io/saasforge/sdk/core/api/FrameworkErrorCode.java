@@ -10,6 +10,8 @@ public enum FrameworkErrorCode implements ErrorCode {
     REQUEST_NOT_FOUND("request.notFound", 404),
     /** 请求方法不支持。 */
     REQUEST_METHOD_NOT_ALLOWED("request.methodNotAllowed", 405),
+    /** 网关按租户限流，请求超过阈值。 */
+    REQUEST_RATE_LIMITED("request.rateLimited", 429),
     /** 未认证、Token 无效或已失效。 */
     AUTH_UNAUTHENTICATED("auth.unauthenticated", 401),
     /** 已认证但无权限。 */

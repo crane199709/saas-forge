@@ -7,3 +7,9 @@ management:
     web:
       exposure:
         include: health,info
+  # 第一期不搭建采集后端：trace 在设置 management.opentelemetry.tracing.export.otlp.endpoint 后才导出，
+  # 指标在设置 management.otlp.metrics.export.enabled=true 与 url 后才推送（SDK 与网关默认关闭）。
+  # 本地开发全量采样，便于按 traceId 查看完整链路；生产按流量调低。
+  tracing:
+    sampling:
+      probability: 1.0

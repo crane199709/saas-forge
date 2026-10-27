@@ -23,6 +23,11 @@
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
+        <!-- 绑定租户时写入日志 MDC，各种日志实现都经 SLF4J 读取；不是 Spring 依赖 -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
         <!-- 只用 Tracer API 读取当前 traceId；不使用信封写出的模块无需引入 -->
         <dependency>
             <groupId>io.micrometer</groupId>

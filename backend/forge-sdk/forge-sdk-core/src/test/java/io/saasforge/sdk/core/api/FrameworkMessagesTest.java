@@ -24,6 +24,8 @@ class FrameworkMessagesTest {
         assertThat(FrameworkErrorCode.REQUEST_MALFORMED.httpStatus()).isEqualTo(400);
         assertThat(FrameworkErrorCode.REQUEST_NOT_FOUND.httpStatus()).isEqualTo(404);
         assertThat(FrameworkErrorCode.REQUEST_METHOD_NOT_ALLOWED.code()).isEqualTo("request.methodNotAllowed");
+        assertThat(FrameworkErrorCode.REQUEST_RATE_LIMITED.code()).isEqualTo("request.rateLimited");
+        assertThat(FrameworkErrorCode.REQUEST_RATE_LIMITED.httpStatus()).isEqualTo(429);
         assertThat(FrameworkErrorCode.AUTH_UNAUTHENTICATED.httpStatus()).isEqualTo(401);
         assertThat(FrameworkErrorCode.AUTH_FORBIDDEN.httpStatus()).isEqualTo(403);
         assertThat(FrameworkErrorCode.SYSTEM_UNAVAILABLE.httpStatus()).isEqualTo(503);

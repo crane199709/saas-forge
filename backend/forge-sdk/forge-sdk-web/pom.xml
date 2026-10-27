@@ -22,14 +22,10 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-webmvc</artifactId>
         </dependency>
-        <!-- W3C traceparent 传播与 traceId；本期不接 exporter，因此不用会带入 OTLP 的 spring-boot-starter-opentelemetry -->
+        <!-- W3C traceparent 传播与 traceId，以及 trace 与 Micrometer 指标的 OTLP 导出；配置采集端地址后才推送 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-micrometer-tracing-opentelemetry</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-tracing-bridge-otel</artifactId>
+            <artifactId>spring-boot-starter-opentelemetry</artifactId>
         </dependency>
         <!-- Redis、数据库等资源故障统一以 DataAccessResourceFailureException 体系表达，据此映射 503 -->
         <dependency>

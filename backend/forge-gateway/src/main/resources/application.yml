@@ -17,3 +17,10 @@ spring:
     redis:
       host: ${FORGE_REDIS_HOST:127.0.0.1}
       port: ${FORGE_REDIS_PORT:6379}
+
+management:
+  otlp:
+    metrics:
+      export:
+        # 与 forge-sdk-web 的默认一致：Boot 默认每分钟推往 localhost:4318，未部署采集端时只会反复报错，部署时显式开启
+        enabled: false

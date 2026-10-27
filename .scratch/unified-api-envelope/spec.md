@@ -125,6 +125,7 @@ HTTP 状态码如实反映结果类别，业务细分靠 `code`。创建资源�
 | JSON 格式错误、参数类型不匹配 | 400 | `request.malformed` |
 | 路由不存在 | 404 | `request.notFound` |
 | 请求方法不支持 | 405 | `request.methodNotAllowed` |
+| 网关按租户限流，超过阈值（saas-forge-mvp 工单 11） | 429 | `request.rateLimited`（附 `Retry-After`） |
 | 未认证、Token 无效或已失效 | 401 | `auth.unauthenticated` |
 | 已认证但无权限 | 403 | `auth.forbidden` |
 | 网关下游不可用或超时、依赖的 Redis 不可用 | 503 | `system.unavailable` |
