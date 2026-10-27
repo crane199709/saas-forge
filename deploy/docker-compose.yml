@@ -78,21 +78,44 @@ services:
     volumes:
       - ./data/rocketmq/namesrv/logs:/home/rocketmq/logs
 
-  # broker 内嵌 proxy（local 模式）；rocketmq-client-java 只经 proxy 的 gRPC 端口通信（ADR-0012），
-  # 因此只向宿主机暴露 8081，namesrv 与 broker 端口留在容器网络内。
   rocketmq-broker:
     image: apache/rocketmq:5.3.2
-    command: ["sh", "mqbroker", "--enable-proxy", "-n", "rocketmq-namesrv:9876", "-c", "/home/rocketmq/conf/forge-broker.conf"]
+    command: ["sh", "mqbroker", "-n", "rocketmq-namesrv:9876", "-c", "/home/rocketmq/conf/forge-broker.conf"]
     depends_on:
       - rocketmq-namesrv
     environment:
       JAVA_OPT_EXT: "-Xms512m -Xmx512m"
-    ports:
-      - "${FORGE_ROCKETMQ_PROXY_PORT:-8081}:8081"
     volumes:
       - ./rocketmq/broker.conf:/home/rocketmq/conf/forge-broker.conf:ro
       - ./data/rocketmq/broker/logs:/home/rocketmq/logs
       - ./data/rocketmq/broker/store:/home/rocketmq/store
+
+  # rocketmq-client-java 只经 proxy 的 gRPC 端口通信（ADR-0012），因此只向宿主机暴露 8081。
+  # 用独立的 cluster 模式 proxy：broker 内嵌的 local 模式会在路由中返回容器内 IP，宿主机上的服务连不上；
+  # cluster 模式沿用客户端请求中的地址。启动时 broker 尚未注册到 namesrv 会直接退出，靠 restart 重试。
+  rocketmq-proxy:
+    image: apache/rocketmq:5.3.2
+    command: ["sh", "mqproxy", "-n", "rocketmq-namesrv:9876", "-pc", "/home/rocketmq/conf/forge-proxy.json"]
+    depends_on:
+      - rocketmq-broker
+    restart: on-failure
+    environment:
+      JAVA_OPT_EXT: "-Xms256m -Xmx256m"
+    ports:
+      - "${FORGE_ROCKETMQ_PROXY_PORT:-8081}:8081"
+    volumes:
+      - ./rocketmq/proxy.json:/home/rocketmq/conf/forge-proxy.json:ro
+      - ./data/rocketmq/proxy/logs:/home/rocketmq/logs
+
+  # 一次性任务：创建各服务的 Topic。gRPC 客户端拉取不存在的 Topic 路由会直接失败，消费端无法启动。
+  rocketmq-init:
+    image: apache/rocketmq:5.3.2
+    depends_on:
+      - rocketmq-broker
+    volumes:
+      - ./rocketmq/create-topics.sh:/home/rocketmq/create-topics.sh:ro
+    entrypoint: ["sh", "/home/rocketmq/create-topics.sh"]
+    restart: "no"
 
   # S3 兼容存储。MinIO 社区版已停止发布二进制（ADR-0011），本地使用其社区维护分支 silo，
   # 业务代码只依赖 S3 协议，可替换为任意 S3 兼容实现。

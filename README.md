@@ -34,7 +34,7 @@ deploy/                  本地依赖的 docker compose
 docker compose -f deploy/docker-compose.yml up -d
 ```
 
-启动 PostgreSQL 17、Redis、Nacos 3、RocketMQ 5（broker 内嵌 proxy）、S3 兼容存储，`nacos-init` 会把 `deploy/nacos/config/` 下的配置发布到 Nacos。数据卷位于 `deploy/data/`（已忽略），删除该目录即可重置。
+启动 PostgreSQL 17、Redis、Nacos 3、RocketMQ 5（独立的 cluster 模式 proxy，宿主机经 8081 连接）、S3 兼容存储，`nacos-init` 会把 `deploy/nacos/config/` 下的配置发布到 Nacos，`rocketmq-init` 会创建 `deploy/rocketmq/create-topics.sh` 中列出的 Topic。数据卷位于 `deploy/data/`（已忽略），删除该目录即可重置。
 
 | 依赖 | 宿主机端口 | 说明 |
 |---|---|---|
