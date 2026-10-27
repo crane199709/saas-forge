@@ -37,6 +37,57 @@
 - Schema 变更写在 Flyway 迁移 `.sql` 文件中。
 - 测试数据通过 `@Sql` 引用 `.sql` 文件准备，不在测试代码中内联 SQL 字符串。
 
+## 建表与标准列
+
+租户业务表带 `tenant_id` 并启用 RLS（ADR-0001），主键使用应用侧生成的 UUIDv7（ADR-0014）。标准表另须带标准列并使用逻辑删除（ADR-0016），完整定义见 [建表标准列规格](../../.scratch/standard-table-columns/spec.md)。
+
+### 标准表的范围
+
+| 表 | 是否带标准列 |
+|---|---|
+| 租户业务表（带 `tenant_id` + RLS，如 `orders`、`order_notifications`） | 是 |
+| IAM、platform 中有业务语义的实体表（`tenant`、`identity`、`membership`、`operator` 及后续同类表） | 是 |
+| SDK 基础设施表（`forge_outbox`、`forge_consumed_message`） | 否 |
+| 纯关联表、日志表、审计分区表 | 否 |
+
+### 标准列
+
+```sql
+created_at timestamptz NOT NULL DEFAULT now(),
+updated_at timestamptz NOT NULL DEFAULT now(),
+created_by uuid,
+updated_by uuid,
+deleted    boolean     NOT NULL DEFAULT false
+```
+
+- `*_by` 不建外键：操作人可能在其他 schema，或属于 Platform Realm。存当前请求已验证 JWT 的 `sub`，无认证上下文（MQ 消费者、定时任务、Outbox 投递器、登录流程、租户清理）时为 NULL，表示「系统」。
+- 时间列的 `DEFAULT now()` 供迁移回填与 seed SQL 使用；经 MyBatis-Plus 写入时由 SDK 覆盖。
+- 不设 `deleted_by`、`deleted_at`：删除时刷新 `updated_at`、`updated_by`。乐观锁 `version` 不属于标准列，需要的表自行添加。
+- 实体继承 SDK 的 `AuditableEntity`，不自行声明标准列字段，也不手写赋值：SDK 在 INSERT 时填 `created_*` 与 `updated_*`，UPDATE 时填 `updated_*`，调用方传入的值一律被覆盖。`tenant_id` 仍不在实体中声明。
+
+### 唯一约束
+
+标准表禁止使用 `UNIQUE` 列约束或表约束，唯一性一律用 `WHERE NOT deleted` 的部分唯一索引表达，否则已删除的行仍占着唯一值，账号删除后无法重新注册、成员移除后无法再次加入：
+
+```sql
+CREATE UNIQUE INDEX identity_account_key ON identity (account) WHERE NOT deleted;
+```
+
+### 逻辑删除
+
+- 标准表上的删除一律是逻辑删除（`deleted = true`），不物理删除。`status` 继续表达业务状态，`deleted` 只表示该行对常规查询不可见，两者不混用。
+- 租户冷静期结束后的清理同样是逻辑删除：在 `CurrentTenant.run(tenantId, ...)` 中用 mapper XML 批量 `UPDATE ... SET deleted = true, updated_at = now()`，`updated_by` 保持 NULL。
+- 不用 RLS 过滤已删除行，RLS 只负责租户隔离。
+
+### 自动处理覆盖不到的写法
+
+以下写法不触发标准列填充或逻辑删除条件，由开发者负责：
+
+1. mapper XML 中手写的 INSERT/UPDATE：自己维护 `updated_at`、`updated_by`，INSERT 还要维护 `created_at`、`created_by`。
+2. 不带实体的更新，例如 `update(null, wrapper)`：同上。
+3. mapper XML 中手写的查询：每张标准表（包括 JOIN 进来的表）都必须带 `NOT deleted`。
+4. 删除使用能触发更新填充的方法。
+
 ## SDK 依赖
 
 SDK 不允许出现循环依赖，模块级与包级都不允许。循环会让各 starter 无法按能力单独引入，也无法单独测试。
