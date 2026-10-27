@@ -17,9 +17,11 @@ const sections = computed(() => menuSections(access.menus()))
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const signedIn = ref(client.session() !== null)
 // 会话失效后离开 Sub-App 路由，不再展示属于已失效会话的页面。
 onUnmounted(
   client.onSessionChange((value) => {
+    signedIn.value = value !== null
     if (!value) void router.replace('/')
   }),
 )
@@ -54,6 +56,9 @@ defineProps<{ sharedChecks?: Record<string, boolean>; loadError?: string }>()
         <LoginPanel />
         <nav>
           <router-link to="/">{{ t('spike.home') }}</router-link>
+          <router-link v-if="signedIn" to="/org" data-testid="menu-org">{{
+            t('org.nav')
+          }}</router-link>
           <template v-for="section in sections" :key="section.code">
             <span class="menu-section">{{ section.name }}</span>
             <router-link

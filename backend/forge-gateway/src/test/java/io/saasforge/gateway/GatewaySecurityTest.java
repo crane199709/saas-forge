@@ -316,6 +316,21 @@ class GatewaySecurityTest {
     }
 
     @Test
+    void organizationEndpointsNeedATenantRealmToken() throws Exception {
+        // 测试未配置 IAM 路由：通过安全规则后得到路由 404，被拦截则为 401。
+        assertUnauthenticatedAt("/iam/org/departments", null);
+        assertUnauthenticatedAt(
+                "/iam/org/departments", platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "platform-console"));
+        assertEnvelope(
+                call(
+                        HttpMethod.GET,
+                        "/iam/org/departments",
+                        token(KEY, ISSUER, Instant.now().plusSeconds(900))),
+                404,
+                "request.notFound");
+    }
+
+    @Test
     void registrationAndCodeLoginEndpointsAreAnonymous() throws Exception {
         // 测试未配置 IAM 路由：通过安全规则后得到路由 404，被拦截则为 401。
         for (String path : List.of(

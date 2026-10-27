@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- foreach 元素按 UUID 推断类型时找不到 TypeHandler，显式按 Object 交给驱动的 setObject，与单个 UUID 参数一致。 -->
+<mapper namespace="io.saasforge.iam.organization.mapper.AssignmentMapper">
+    <!-- 关联表本身不带标准列；JOIN 进来的部门、岗位须带 NOT deleted。 -->
+    <select id="departmentsOf" resultType="io.saasforge.iam.organization.model.DepartmentAssignmentRow">
+        SELECT md.membership_id, md.department_id, d.path::text AS path, md.is_primary AS "primary"
+        FROM membership_department md JOIN department d ON d.tenant_id = md.tenant_id AND d.id = md.department_id
+        WHERE md.tenant_id = #{tenantId} AND NOT d.deleted
+          AND md.membership_id IN <foreach collection="membershipIds" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+        ORDER BY md.membership_id, md.is_primary DESC, d.path
+    </select>
+    <select id="positionsOf" resultType="io.saasforge.iam.organization.model.PositionAssignmentRow">
+        SELECT mp.membership_id, mp.position_id
+        FROM membership_position mp JOIN position p ON p.tenant_id = mp.tenant_id AND p.id = mp.position_id
+        WHERE mp.tenant_id = #{tenantId} AND NOT p.deleted
+          AND mp.membership_id IN <foreach collection="membershipIds" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+        ORDER BY mp.membership_id, p.name
+    </select>
+    <!-- 单列 UUID 结果按 UUID 类型映射会被当作构造器自动映射而失败；按 Object 取驱动返回的 UUID。 -->
+    <select id="membershipsUnder" resultType="java.lang.Object">
+        SELECT DISTINCT md.membership_id
+        FROM membership_department md JOIN department d ON d.tenant_id = md.tenant_id AND d.id = md.department_id
+        WHERE md.tenant_id = #{tenantId} AND d.path &lt;@ CAST(#{path} AS ltree) AND NOT d.deleted
+    </select>
+    <select id="countByDepartment" resultType="long">
+        SELECT count(*) FROM membership_department WHERE tenant_id = #{tenantId} AND department_id = #{departmentId}
+    </select>
+    <select id="countByPosition" resultType="long">
+        SELECT count(*) FROM membership_position WHERE tenant_id = #{tenantId} AND position_id = #{positionId}
+    </select>
+    <delete id="clearDepartments">
+        DELETE FROM membership_department WHERE tenant_id = #{tenantId} AND membership_id = #{membershipId}
+    </delete>
+    <insert id="insertDepartment">
+        INSERT INTO membership_department (membership_id, tenant_id, department_id, is_primary)
+        VALUES (#{membershipId}, #{tenantId}, #{departmentId}, #{primary})
+    </insert>
+    <delete id="clearPositions">
+        DELETE FROM membership_position WHERE tenant_id = #{tenantId} AND membership_id = #{membershipId}
+    </delete>
+    <insert id="insertPosition">
+        INSERT INTO membership_position (membership_id, tenant_id, position_id)
+        VALUES (#{membershipId}, #{tenantId}, #{positionId})
+    </insert>
+</mapper>

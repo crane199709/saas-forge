@@ -120,6 +120,9 @@ class GatewaySecurityConfiguration {
                         .permitAll()
                         .pathMatchers(HttpMethod.GET, "/iam/auth/memberships")
                         .authenticated()
+                        // 租户组织管理；是否为 Tenant Admin 由 iam 判断
+                        .pathMatchers("/iam/org/**")
+                        .authenticated()
                         .pathMatchers("/demo/**", "/platform/**")
                         .authenticated()
                         .anyExchange()

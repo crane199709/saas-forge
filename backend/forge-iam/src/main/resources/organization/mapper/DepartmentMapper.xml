@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- foreach 元素按 UUID 推断类型时找不到 TypeHandler，显式按 Object 交给驱动的 setObject，与单个 UUID 参数一致。 -->
+<mapper namespace="io.saasforge.iam.organization.mapper.DepartmentMapper">
+    <!-- 行锁挡不住移动子树与新增下级的竞争：移动语句看不到并发事务刚插入的下级，会留下旧路径。按租户串行最简单可靠。 -->
+    <select id="lockTenant" resultType="int">
+        SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtext('organization:' || #{tenantId}))) AS locked
+    </select>
+    <select id="list" resultType="io.saasforge.iam.organization.model.DepartmentRow">
+        SELECT id, parent_id, name, path::text AS path FROM department
+        WHERE tenant_id = #{tenantId} AND NOT deleted
+        ORDER BY path
+    </select>
+    <select id="find" resultType="io.saasforge.iam.organization.model.DepartmentRow">
+        SELECT id, parent_id, name, path::text AS path FROM department
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT deleted
+    </select>
+    <select id="countExisting" resultType="long">
+        SELECT count(*) FROM department
+        WHERE tenant_id = #{tenantId} AND NOT deleted
+          AND id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+    </select>
+    <insert id="insert">
+        INSERT INTO department (id, tenant_id, parent_id, name, path, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{tenantId}, #{parentId}, #{name}, CAST(#{path} AS ltree), now(), now(), #{actor}, #{actor})
+    </insert>
+    <update id="rename">
+        UPDATE department SET name = #{name}, updated_at = now(), updated_by = #{actor}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT deleted
+    </update>
+    <!-- subpath 的偏移等于层数时报错而不是返回空路径，子树根自身单独取 newPath。 -->
+    <update id="move">
+        UPDATE department SET
+            path = CASE WHEN id = #{id} THEN CAST(#{newPath} AS ltree)
+                        ELSE CAST(#{newPath} AS ltree) || subpath(path, nlevel(CAST(#{oldPath} AS ltree))) END,
+            parent_id = CASE WHEN id = #{id} THEN CAST(#{parentId} AS uuid) ELSE parent_id END,
+            updated_at = now(), updated_by = #{actor}
+        WHERE tenant_id = #{tenantId} AND path &lt;@ CAST(#{oldPath} AS ltree) AND NOT deleted
+    </update>
+    <select id="countChildren" resultType="long">
+        SELECT count(*) FROM department WHERE tenant_id = #{tenantId} AND parent_id = #{id} AND NOT deleted
+    </select>
+    <update id="delete">
+        UPDATE department SET deleted = true, updated_at = now(), updated_by = #{actor}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT deleted
+    </update>
+</mapper>

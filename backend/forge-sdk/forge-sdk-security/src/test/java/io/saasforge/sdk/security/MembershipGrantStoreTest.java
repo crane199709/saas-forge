@@ -8,6 +8,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -93,6 +94,37 @@ class MembershipGrantStoreTest {
 
         now.set(now.get().plus(MembershipGrantStore.REFRESH_AFTER));
         assertThat(store.grants(context(5)).permissions()).contains("order:export");
+    }
+
+    @Test
+    void readsSubjectAttributesAsAbacContext() {
+        publish(
+                7,
+                "{\"roles\":[],\"permissions\":[],\"subject\":{"
+                        + "\"departmentPaths\":[\"a1\",\"a1.b2\"],\"primaryDepartmentPath\":\"a1.b2\","
+                        + "\"positionIds\":[\"019a0110-0000-7000-8000-0000000000f1\"],"
+                        + "\"attributes\":{\"level\":3,\"region\":\"east\"}}}");
+        var store = new MembershipGrantStore(template);
+
+        var subject = store.grants(context(7)).subject();
+        assertThat(subject.departmentPaths()).containsExactlyInAnyOrder("a1", "a1.b2");
+        assertThat(subject.toContext(MEMBERSHIP_ID))
+                .containsEntry("subject.membershipId", MEMBERSHIP_ID)
+                .containsEntry("subject.primaryDepartmentPath", "a1.b2")
+                .containsEntry("subject.attributes.level", 3)
+                .containsEntry("subject.attributes.region", "east")
+                .containsEntry("subject.positionIds", List.of(UUID.fromString("019a0110-0000-7000-8000-0000000000f1")));
+    }
+
+    @Test
+    void grantsPublishedWithoutSubjectHaveNoOrganizationAttributes() {
+        // 旧版 iam 发布的明细没有 subject：视为未分配任何部门与岗位，而不是读取失败。
+        publish(8, "{\"roles\":[],\"permissions\":[]}");
+        var subject = new MembershipGrantStore(template).grants(context(8)).subject();
+        assertThat(subject.departmentPaths()).isEmpty();
+        assertThat(subject.toContext(MEMBERSHIP_ID))
+                .containsEntry("subject.departmentPaths", List.of())
+                .doesNotContainKey("subject.primaryDepartmentPath");
     }
 
     @Test

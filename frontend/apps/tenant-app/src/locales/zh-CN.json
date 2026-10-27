@@ -54,5 +54,61 @@
     "noneTitle": "暂无可进入的租户",
     "noneHint": "此身份目前没有有效的成员关系，请联系租户管理员邀请加入。",
     "switcher": "切换租户"
+  },
+  "org": {
+    "nav": "组织管理",
+    "title": "组织管理",
+    "tabs": {
+      "departments": "部门",
+      "positions": "岗位",
+      "attributes": "扩展属性",
+      "members": "成员分配"
+    },
+    "department": {
+      "name": "部门名称",
+      "createRoot": "新建根部门",
+      "createChild": "新建下级部门",
+      "selected": "当前部门",
+      "rename": "改名",
+      "parent": "上级部门",
+      "rootOption": "（无，作为根部门）",
+      "move": "移动",
+      "delete": "删除",
+      "empty": "暂无部门",
+      "path": "路径"
+    },
+    "position": {
+      "name": "岗位名称",
+      "create": "新建岗位",
+      "rename": "改名",
+      "delete": "删除"
+    },
+    "attribute": {
+      "code": "编码（小写字母开头）",
+      "name": "名称",
+      "type": "类型",
+      "required": "必填",
+      "create": "新建扩展属性",
+      "save": "保存",
+      "delete": "删除",
+      "types": {
+        "string": "文本",
+        "number": "数值",
+        "boolean": "是/否"
+      }
+    },
+    "member": {
+      "name": "成员",
+      "account": "账号",
+      "status": "状态",
+      "primary": "主部门",
+      "concurrent": "兼任部门",
+      "positions": "岗位",
+      "attributes": "扩展属性",
+      "edit": "分配",
+      "save": "保存",
+      "cancel": "取消",
+      "dialog": "分配 {name}"
+    }
   }
 }

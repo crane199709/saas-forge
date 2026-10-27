@@ -2,8 +2,9 @@ package io.saasforge.iam.role.service;
 
 import io.saasforge.iam.permission.service.PermissionService;
 import io.saasforge.iam.role.mapper.RoleMapper;
-import io.saasforge.sdk.core.MembershipGrants;
 import io.saasforge.sdk.core.UuidV7;
+import io.saasforge.sdk.core.api.ForgeException;
+import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -38,11 +39,29 @@ public class RoleService {
         roles.insertBuiltin(UuidV7.generate(), tenantId, TENANT_ADMIN, "租户管理员");
     }
 
+    /**
+     * 要求 Membership 持有 Owner 或 Tenant Admin，用于成员与组织等租户管理操作。
+     *
+     * @throws ForgeException 403 {@code auth.forbidden}
+     */
+    // TODO(#16): 自定义角色接入后，改为按 iam 自身的管理类 Permission Code 判断。
+    public void requireTenantAdmin(UUID membershipId) {
+        if (roles.roleCodes(membershipId).stream().noneMatch(ALL_PERMISSIONS::contains)) {
+            throw new ForgeException(FrameworkErrorCode.AUTH_FORBIDDEN);
+        }
+    }
+
     /** Membership 当前的角色与权限：持有预置角色时拥有全部有效权限码。 */
-    public MembershipGrants grantsOf(UUID membershipId) {
+    public Grants grantsOf(UUID membershipId) {
         List<String> codes = roles.roleCodes(membershipId);
         // TODO(#16): 自定义角色接入后，并入其授权的有效权限码。
         boolean all = codes.stream().anyMatch(ALL_PERMISSIONS::contains);
-        return new MembershipGrants(Set.copyOf(codes), all ? Set.copyOf(permissions.activeCodes()) : Set.of());
+        return new Grants(Set.copyOf(codes), all ? Set.copyOf(permissions.activeCodes()) : Set.of());
     }
+
+    /**
+     * @param roles 角色编码
+     * @param permissions 有效的 Permission Code
+     */
+    public record Grants(Set<String> roles, Set<String> permissions) {}
 }

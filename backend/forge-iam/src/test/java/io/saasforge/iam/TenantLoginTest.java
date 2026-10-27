@@ -339,7 +339,8 @@ class TenantLoginTest {
         assertThat(redisTemplate
                         .opsForValue()
                         .get(MembershipStateKeys.grants(REV_VERSION_TENANT, REV_VERSION_MEMBERSHIP, version)))
-                .isEqualTo("{\"roles\":[],\"permissions\":[]}");
+                .isEqualTo("{\"roles\":[],\"permissions\":[],\"subject\":{\"departmentPaths\":[],"
+                        + "\"primaryDepartmentPath\":null,\"positionIds\":[],\"attributes\":{}}}");
 
         membershipStates.incrementVersion(REV_VERSION_MEMBERSHIP);
         // 网关据此拒绝仍携带旧 ver 的 Access Token。

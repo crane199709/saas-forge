@@ -13,4 +13,33 @@
         WHERE id = #{membershipId} AND NOT deleted
         RETURNING tenant_id, version
     </select>
+    <select id="exists" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM membership WHERE tenant_id = #{tenantId} AND id = #{membershipId} AND NOT deleted)
+    </select>
+    <!-- 管理界面展示成员需要 Identity 的账号与昵称；Identity 是全局表，只读取展示字段。 -->
+    <select id="page" resultType="io.saasforge.iam.membership.model.MemberRow">
+        SELECT m.id AS membership_id, i.account, i.display_name, m.status, m.attributes::text AS attributes
+        FROM membership m JOIN identity i ON i.id = m.identity_id
+        WHERE m.tenant_id = #{tenantId} AND NOT m.deleted AND NOT i.deleted
+        ORDER BY m.id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="count" resultType="long">
+        SELECT count(*) FROM membership m JOIN identity i ON i.id = m.identity_id
+        WHERE m.tenant_id = #{tenantId} AND NOT m.deleted AND NOT i.deleted
+    </select>
+    <select id="attributes" resultType="string">
+        SELECT attributes::text FROM membership WHERE tenant_id = #{tenantId} AND id = #{membershipId} AND NOT deleted
+    </select>
+    <update id="updateAttributes">
+        UPDATE membership SET attributes = CAST(#{attributes} AS jsonb), updated_at = now(), updated_by = #{actor}
+        WHERE tenant_id = #{tenantId} AND id = #{membershipId} AND NOT deleted
+    </update>
+    <!-- 单列 UUID 结果按 UUID 类型映射会被当作构造器自动映射而失败；按 Object 取驱动返回的 UUID。 -->
+    <!-- JDBC 把单个 ? 当作参数占位符，jsonb 的「含键」运算符按 pgjdbc 约定写成 ??。 -->
+    <select id="removeAttribute" flushCache="true" resultType="java.lang.Object">
+        UPDATE membership SET attributes = attributes - #{code}, updated_at = now(), updated_by = #{actor}
+        WHERE tenant_id = #{tenantId} AND attributes ?? #{code} AND NOT deleted
+        RETURNING id
+    </select>
 </mapper>

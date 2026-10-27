@@ -2,6 +2,7 @@ package io.saasforge.demo;
 
 import io.saasforge.sdk.core.MembershipGrants;
 import io.saasforge.sdk.core.MembershipStateKeys;
+import io.saasforge.sdk.core.SubjectAttributes;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -21,7 +22,8 @@ final class TestGrants {
         redis.opsForValue()
                 .set(
                         MembershipStateKeys.grants(tenantId, membershipId, 1),
-                        JSON.writeValueAsString(new MembershipGrants(Set.of(), Set.copyOf(permissions))));
+                        JSON.writeValueAsString(
+                                new MembershipGrants(Set.of(), Set.copyOf(permissions), SubjectAttributes.NONE)));
     }
 
     static void publishAll(StringRedisTemplate redis, UUID tenantId, UUID membershipId) {

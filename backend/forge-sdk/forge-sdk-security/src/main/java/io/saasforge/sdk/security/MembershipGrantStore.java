@@ -2,6 +2,7 @@ package io.saasforge.sdk.security;
 
 import io.saasforge.sdk.core.MembershipGrants;
 import io.saasforge.sdk.core.MembershipStateKeys;
+import io.saasforge.sdk.core.SubjectAttributes;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -59,6 +60,18 @@ public final class MembershipGrantStore {
      */
     public MembershipGrants current() {
         return grants(TenantContext.current());
+    }
+
+    /**
+     * 当前请求 Membership 的主体属性，键约定见 {@link SubjectAttributes#toContext(UUID)}，
+     * 供数据权限求值与 SQL 编译使用。
+     *
+     * @return 可变的主体上下文
+     * @throws IllegalStateException 不在已认证请求中，或 iam 未发布该版本的明细
+     */
+    public Map<String, Object> currentSubject() {
+        TenantContext context = TenantContext.current();
+        return grants(context).subject().toContext(context.membershipId());
     }
 
     /**

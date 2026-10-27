@@ -287,8 +287,8 @@ class IamSecurityConfiguration {
     @Bean
     @Order(2)
     SecurityFilterChain accessTokenSecurity(HttpSecurity http, EnvelopeSecurityErrorHandler errors) throws Exception {
-        // 已持有 Access Token 的身份读取自己的 Membership 与权限；无状态、不使用登录会话 Cookie。
-        http.securityMatcher("/auth/memberships", "/auth/access")
+        // 已持有 Access Token 的身份读取自己的 Membership 与权限、管理本租户组织；无状态、不使用登录会话 Cookie。
+        http.securityMatcher("/auth/memberships", "/auth/access", "/org/**")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())

@@ -3,6 +3,7 @@ package io.saasforge.iam.membership.service;
 import io.saasforge.iam.membership.mapper.MembershipMapper;
 import io.saasforge.iam.membership.model.MembershipChange;
 import io.saasforge.iam.role.service.RoleService;
+import io.saasforge.sdk.core.MembershipGrants;
 import io.saasforge.sdk.core.MembershipStateKeys;
 import java.time.Duration;
 import java.util.List;
@@ -13,7 +14,7 @@ import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * 维护 Membership 在 Redis 中的 version 与角色权限明细（ADR-0005）。
+ * 维护 Membership 在 Redis 中的 version 与角色、权限、主体属性明细（ADR-0005）。
  *
  * <p>变更先提交数据库再写 Redis。Redis 写入失败时调用方收到异常，刷新已按数据库状态拒绝，
  * 但已签发的 Access Token 在过期前仍会通过网关，需重试变更以重新发布。
@@ -31,13 +32,19 @@ public class MembershipStateService {
 
     private final MembershipMapper memberships;
     private final RoleService roles;
+    private final SubjectAttributeSource subjects;
     private final StringRedisTemplate redis;
     private final JsonMapper json;
 
     MembershipStateService(
-            MembershipMapper memberships, RoleService roles, StringRedisTemplate redis, JsonMapper json) {
+            MembershipMapper memberships,
+            RoleService roles,
+            SubjectAttributeSource subjects,
+            StringRedisTemplate redis,
+            JsonMapper json) {
         this.memberships = memberships;
         this.roles = roles;
+        this.subjects = subjects;
         this.redis = redis;
         this.json = json;
     }
@@ -45,10 +52,12 @@ public class MembershipStateService {
     /**
      * 签发 Token 时发布数据库中的当前状态，使被淘汰或丢失的 Redis 状态随刷新恢复。
      *
-     * <p>明细按签发时的角色与有效权限码计算：业务服务新上报的权限码在成员下一次刷新 Token 后生效。
+     * <p>明细按签发时的角色、有效权限码与组织分配计算：业务服务新上报的权限码在成员下一次刷新 Token 后生效。
      */
     public void publish(UUID tenantId, UUID membershipId, long version) {
-        var grants = roles.grantsOf(membershipId);
+        var granted = roles.grantsOf(membershipId);
+        var grants = new MembershipGrants(
+                granted.roles(), granted.permissions(), subjects.subjectOf(tenantId, membershipId));
         redis.opsForValue()
                 .set(
                         MembershipStateKeys.grants(tenantId, membershipId, version),
