@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * {@code /auth/*} 的响应携带 Token、Membership 等凭证相关数据，一律禁止缓存，成功与错误信封都一样。
+ * {@code /auth/*} 与 {@code /platform/auth/*} 的响应携带 Token、Membership 等凭证相关数据，一律禁止缓存，成功与错误信封都一样。
  *
  * <p>在安全过滤链之前设置：Spring Security 的默认缓存头只在响应尚无 {@code Cache-Control} 时写入，安全处理器与 {@code /error} 写出的
  * 错误信封也就保留同一个值，Controller 不必逐个设置。
@@ -24,7 +24,8 @@ class AuthNoStoreFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !request.getServletPath().startsWith("/auth/");
+        String path = request.getServletPath();
+        return !path.startsWith("/auth/") && !path.startsWith("/platform/auth/");
     }
 
     @Override

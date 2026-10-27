@@ -1,0 +1,8 @@
+# classpath:/config/application.yml 优先级高于主配置并与之合并：测试不依赖 Nacos，统一在这里关闭
+spring:
+  cloud:
+    nacos:
+      config:
+        enabled: false
+      discovery:
+        enabled: false

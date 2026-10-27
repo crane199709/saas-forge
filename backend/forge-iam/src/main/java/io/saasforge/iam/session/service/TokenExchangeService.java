@@ -2,46 +2,32 @@ package io.saasforge.iam.session.service;
 
 import com.nimbusds.jwt.SignedJWT;
 import io.saasforge.iam.identity.service.IdentityService;
-import io.saasforge.iam.security.config.TenantClientCredentials;
 import io.saasforge.iam.security.config.TenantTokenParameters;
+import io.saasforge.iam.security.service.TokenEndpointClient;
 import io.saasforge.iam.session.model.TokenResponse;
 import io.saasforge.sdk.core.api.ForgeException;
 import java.text.ParseException;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.server.autoconfigure.ServerProperties;
-import org.springframework.boot.web.server.servlet.context.ServletWebServerApplicationContext;
-import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
 public class TokenExchangeService {
-    private final ServletWebServerApplicationContext application;
-    private final TenantClientCredentials credentials;
+    private final TokenEndpointClient tokenEndpoint;
     private final IdentityService identities;
     private final String redirectUri;
-    private final ServerProperties server;
-    private final String tokenBaseUri;
 
     TokenExchangeService(
-            ServletWebServerApplicationContext application,
-            TenantClientCredentials credentials,
+            TokenEndpointClient tokenEndpoint,
             IdentityService identities,
-            @Value("${forge.iam.redirect-uri:http://localhost:5174/}") String redirectUri,
-            ServerProperties server,
-            @Value("${forge.iam.token-base-uri:}") String tokenBaseUri) {
-        this.application = application;
-        this.credentials = credentials;
+            @Value("${forge.iam.redirect-uri:http://localhost:5174/}") String redirectUri) {
+        this.tokenEndpoint = tokenEndpoint;
         this.identities = identities;
         this.redirectUri = redirectUri;
-        this.server = server;
-        this.tokenBaseUri = tokenBaseUri;
     }
 
     /** membershipId 为空时只允许身份恰有一个有效 Membership，否则由 Token 定制器拒绝。 */
@@ -74,15 +60,7 @@ public class TokenExchangeService {
     private TokenResponse exchange(LinkedMultiValueMap<String, String> form) {
         Map<?, ?> result;
         try {
-            // 地址只来自服务端配置，不能由请求头或客户端指定；所有 grant 仍由标准过滤器校验。
-            result = RestClient.create(tokenBaseUri())
-                    .post()
-                    .uri("/oauth2/token")
-                    .headers(headers -> headers.setBasicAuth("tenant-app", credentials.secret()))
-                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                    .body(form)
-                    .retrieve()
-                    .body(Map.class);
+            result = tokenEndpoint.grant("tenant-app", form);
         } catch (HttpClientErrorException error) {
             Map<?, ?> body = error.getResponseBodyAs(Map.class);
             if (body != null && OAuth2ErrorCodes.ACCESS_DENIED.equals(body.get("error"))) {
@@ -114,21 +92,5 @@ public class TokenExchangeService {
         } catch (ParseException error) {
             throw new IllegalStateException(error);
         }
-    }
-
-    private String tokenBaseUri() {
-        if (!tokenBaseUri.isBlank()) return tokenBaseUri;
-        var address = server.getAddress();
-        String host = address == null || address.isAnyLocalAddress() ? "127.0.0.1" : address.getHostAddress();
-        // IPv6 字面量必须用方括号区分地址内的冒号与端口分隔符。
-        if (host.contains(":")) host = "[" + host + "]";
-        boolean tls = server.getSsl() != null && server.getSsl().isEnabled();
-        return UriComponentsBuilder.newInstance()
-                .scheme(tls ? "https" : "http")
-                .host(host)
-                .port(application.getWebServer().getPort())
-                .path(server.getServlet().getContextPath())
-                .build()
-                .toUriString();
     }
 }

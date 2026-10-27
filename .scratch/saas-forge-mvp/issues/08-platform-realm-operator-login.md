@@ -6,10 +6,10 @@
 
 **Status:** ready-for-agent
 
-- [ ] Operator 以 Flyway 迁移独立建表，不与 Identity 共用
-- [ ] iam 同时作为两个 issuer 签发 Token，各自暴露 JWKS 与 OIDC 元数据
-- [ ] 网关按路由配置可接受的 issuer
-- [ ] platform 服务经 SDK 验签并读取当前 Operator
-- [ ] platform-console 有登录页并显示当前 Operator；`@forge/sdk` 支持按应用配置 Realm
-- [ ] MFA 是否强制的配置项存在（MFA 本身不实现）
-- [ ] 测试：Tenant Realm Token 访问平台路由被拒；Platform Realm Token 访问租户路由被拒
+- [x] Operator 以 Flyway 迁移独立建表，不与 Identity 共用
+- [x] iam 同时作为两个 issuer 签发 Token，各自暴露 JWKS 与 OIDC 元数据
+- [x] 网关按路由配置可接受的 issuer
+- [x] platform 服务经 SDK 验签并读取当前 Operator
+- [x] platform-console 有登录页并显示当前 Operator；`@forge/sdk` 支持按应用配置 Realm
+- [x] MFA 是否强制的配置项存在（MFA 本身不实现）
+- [x] 测试：Tenant Realm Token 访问平台路由被拒；Platform Realm Token 访问租户路由被拒

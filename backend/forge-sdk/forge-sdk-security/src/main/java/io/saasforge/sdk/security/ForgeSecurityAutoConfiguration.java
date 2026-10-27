@@ -19,23 +19,40 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 
-/** 业务服务引入 starter 即获得 Tenant Realm 验签和请求上下文。 */
+/**
+ * 业务服务引入 starter 即获得 JWT 验签和请求上下文。服务只接受一个 Realm 的 Token（ADR-0003）：默认 Tenant Realm，
+ * {@code forge.security.realm=platform} 时改为 Platform Realm，此时没有租户上下文，用 {@link OperatorContext} 读取当前 Operator。
+ */
 @AutoConfiguration(
         beforeName = {
             "org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration",
             "org.springframework.boot.security.autoconfigure.actuate.web.servlet.ManagementWebSecurityAutoConfiguration"
         })
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-public final class TenantSecurityAutoConfiguration {
-    /** 使用 JWKS 缓存公钥在本地验签，同时固定可信 issuer，不根据 Token 动态发现服务。 */
+public final class ForgeSecurityAutoConfiguration {
+    /**
+     * 使用 JWKS 缓存公钥在本地验签，同时固定可信 issuer，不根据 Token 动态发现服务。
+     *
+     * <p>{@code forge.security.realm} 决定使用哪个 Realm 的 issuer、JWKS 与 claim 校验，解码器只接受该 Realm 的 Token。
+     */
     @Bean
     @ConditionalOnMissingBean
-    public JwtDecoder tenantJwtDecoder(
+    public JwtDecoder forgeJwtDecoder(
+            @Value("${forge.security.realm:tenant}") String realm,
             @Value("${forge.security.issuer:http://localhost:8080/iam}") String issuer,
-            @Value("${forge.security.jwk-set-uri:http://localhost:8101/oauth2/jwks}") String jwks) {
-        var decoder = NimbusJwtDecoder.withJwkSetUri(jwks).build();
-        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                JwtValidators.createDefaultWithIssuer(issuer), new TenantJwtValidator()));
+            @Value("${forge.security.jwk-set-uri:http://localhost:8101/oauth2/jwks}") String jwks,
+            @Value("${forge.security.platform.issuer:http://localhost:8080/iam/platform}") String platformIssuer,
+            @Value("${forge.security.platform.jwk-set-uri:http://localhost:8101/platform/oauth2/jwks}")
+                    String platformJwks) {
+        boolean platform = isPlatform(realm);
+        var decoder =
+                NimbusJwtDecoder.withJwkSetUri(platform ? platformJwks : jwks).build();
+        decoder.setJwtValidator(
+                platform
+                        ? new DelegatingOAuth2TokenValidator<>(
+                                JwtValidators.createDefaultWithIssuer(platformIssuer), new PlatformJwtValidator())
+                        : new DelegatingOAuth2TokenValidator<>(
+                                JwtValidators.createDefaultWithIssuer(issuer), new TenantJwtValidator()));
         return decoder;
     }
 
@@ -64,17 +81,22 @@ public final class TenantSecurityAutoConfiguration {
     }
 
     /**
-     * 健康与 OpenAPI 允许匿名读取，业务接口必须携带 JWT；应用自定义过滤链时须自行加入 {@link CurrentTenantFilter} 与上面两个信封处理器。
+     * 健康与 OpenAPI 允许匿名读取，业务接口必须携带 JWT；应用自定义过滤链时须自行加入 {@link CurrentTenantFilter}（Tenant Realm）与上面两个信封处理器。
      *
      * <p>资源服务器对 Bearer Token 有自己的入口与拒绝处理器，只配 {@code exceptionHandling} 时无效 Token 仍返回空响应体，所以两处都要配置。
      */
     @Bean
     @ConditionalOnMissingBean(SecurityFilterChain.class)
-    public SecurityFilterChain tenantSecurity(
+    public SecurityFilterChain forgeSecurity(
             HttpSecurity http,
+            @Value("${forge.security.realm:tenant}") String realm,
             EnvelopeAuthenticationEntryPoint entryPoint,
             EnvelopeAccessDeniedHandler accessDeniedHandler)
             throws Exception {
+        // Platform Realm 的 Token 没有租户，不绑定 CurrentTenant。
+        if (!isPlatform(realm)) {
+            http.addFilterAfter(new CurrentTenantFilter(), BearerTokenAuthenticationFilter.class);
+        }
         return http.csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/health", "/v3/api-docs/**")
@@ -86,8 +108,16 @@ public final class TenantSecurityAutoConfiguration {
                 .oauth2ResourceServer(server -> server.authenticationEntryPoint(entryPoint)
                         .accessDeniedHandler(accessDeniedHandler)
                         .jwt(Customizer.withDefaults()))
-                .addFilterAfter(new CurrentTenantFilter(), BearerTokenAuthenticationFilter.class)
                 .build();
+    }
+
+    private static boolean isPlatform(String realm) {
+        return switch (realm) {
+            case "tenant" -> false;
+            case "platform" -> true;
+            // 拼错的取值不能静默退回某个 Realm，否则服务会接受错误 Realm 的 Token。
+            default -> throw new IllegalStateException("forge.security.realm must be tenant or platform: " + realm);
+        };
     }
 
     /** 服务使用 Spring MVC 时，让方法安全的拒绝绕过服务的兜底异常处理。 */

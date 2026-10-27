@@ -2,11 +2,14 @@ package io.saasforge.iam.security.config;
 
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.saasforge.iam.identity.model.ActiveMembership;
 import io.saasforge.iam.identity.service.IdentityService;
 import io.saasforge.iam.membership.service.MembershipStateService;
+import io.saasforge.iam.operator.model.ActiveOperator;
+import io.saasforge.iam.operator.service.OperatorService;
 import io.saasforge.iam.security.filter.EnvelopeSecurityErrorHandler;
 import io.saasforge.iam.security.filter.TokenGrantLockFilter;
 import io.saasforge.iam.security.service.RedisAuthorizationService;
@@ -36,6 +39,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -47,8 +51,10 @@ import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.security.oauth2.jwt.JwtClaimNames;
 import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationGrantAuthenticationToken;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
@@ -63,6 +69,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration(proxyBeanMethods = false)
 class IamSecurityConfiguration {
+    private static final String PLATFORM_CLIENT = "platform-console";
 
     @Bean
     PasswordEncoder passwordEncoder() {
@@ -77,11 +84,20 @@ class IamSecurityConfiguration {
 
     @Bean
     RegisteredClientRepository registeredClients(
-            TenantClientCredentials credentials,
-            @Value("${forge.iam.redirect-uri:http://localhost:5174/}") String redirectUri) {
+            ClientCredentials credentials,
+            @Value("${forge.iam.redirect-uri:http://localhost:5174/}") String redirectUri,
+            @Value("${forge.iam.platform.redirect-uri:http://localhost:5173/}") String platformRedirectUri) {
+        // 每个 Realm 一个客户端：tenant-app 签发 Tenant Realm Token，platform-console 签发 Platform Realm Token。
+        return new InMemoryRegisteredClientRepository(
+                shellClient("tenant-app", "tenant", credentials, redirectUri),
+                shellClient(PLATFORM_CLIENT, "platform", credentials, platformRedirectUri));
+    }
+
+    private static RegisteredClient shellClient(
+            String clientId, String scope, ClientCredentials credentials, String redirectUri) {
         // 凭证仅由同进程的 Token 交换适配器持有；浏览器仍必须提供 PKCE 校验值。
-        return new InMemoryRegisteredClientRepository(RegisteredClient.withId("tenant-app")
-                .clientId("tenant-app")
+        return RegisteredClient.withId(clientId)
+                .clientId(clientId)
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .clientSecret(new BCryptPasswordEncoder().encode(credentials.secret()))
                 .redirectUri(redirectUri)
@@ -91,18 +107,50 @@ class IamSecurityConfiguration {
                         .build())
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .scope("tenant")
+                .scope(scope)
                 .tokenSettings(TokenSettings.builder()
                         .accessTokenTimeToLive(Duration.ofMinutes(15))
                         .refreshTokenTimeToLive(Duration.ofDays(7))
                         .reuseRefreshTokens(false)
                         .build())
-                .build());
+                .build();
     }
 
+    /** Tenant Realm 的签名密钥，由标准 {@code /oauth2/jwks} 发布。 */
     @Bean
     JWKSource<SecurityContext> jwkSource(
             @Value("${forge.iam.signing-key-file:deploy/data/iam/signing.jwk}") String filename) throws Exception {
+        JWKSet set = new JWKSet(loadOrCreateKey(filename));
+        return (selector, context) -> selector.select(set);
+    }
+
+    /** Platform Realm 使用独立密钥，不作为 JWKSource Bean，避免被标准 {@code /oauth2/jwks} 一并发布。 */
+    @Bean
+    PlatformSigningKey platformSigningKey(
+            @Value("${forge.iam.platform.signing-key-file:deploy/data/iam/platform-signing.jwk}") String filename)
+            throws Exception {
+        return new PlatformSigningKey(loadOrCreateKey(filename));
+    }
+
+    /** 按 Token 定制器写入的 issuer 选择签名密钥：一个 Realm 的 Token 无法通过另一个 Realm 的 JWKS 验签。 */
+    @Bean
+    JwtEncoder realmJwtEncoder(
+            JWKSource<SecurityContext> jwkSource,
+            PlatformSigningKey platformKey,
+            @Value("${forge.security.issuer:http://localhost:8080/iam}") String tenantIssuer,
+            @Value("${forge.security.platform.issuer:http://localhost:8080/iam/platform}") String platformIssuer) {
+        // issuer 相同时无法按 issuer 区分 Realm，所有 Token 都会用 Platform 密钥签名，必须拒绝启动。
+        if (platformIssuer.equals(tenantIssuer)) {
+            throw new IllegalStateException("forge.security.platform.issuer must differ from forge.security.issuer");
+        }
+        var tenant = new NimbusJwtEncoder(jwkSource);
+        var platform = new NimbusJwtEncoder(new ImmutableJWKSet<>(new JWKSet(platformKey.key())));
+        return parameters -> platformIssuer.equals(parameters.getClaims().getClaimAsString(JwtClaimNames.ISS))
+                ? platform.encode(parameters)
+                : tenant.encode(parameters);
+    }
+
+    private static RSAKey loadOrCreateKey(String filename) throws Exception {
         Path path = Path.of(filename);
         if (!Files.exists(path)) {
             Files.createDirectories(path.toAbsolutePath().getParent());
@@ -125,19 +173,41 @@ class IamSecurityConfiguration {
         if (!key.isPrivate()) {
             throw new IllegalStateException("Signing key must contain a private key");
         }
-        JWKSet set = new JWKSet(key);
-        return (selector, context) -> selector.select(set);
+        return key;
     }
 
     @Bean
-    TenantClientCredentials clientCredentials(@Value("${forge.iam.client-secret:}") String secret) {
-        return new TenantClientCredentials(secret.isBlank() ? UUID.randomUUID().toString() : secret);
+    ClientCredentials clientCredentials(@Value("${forge.iam.client-secret:}") String secret) {
+        return new ClientCredentials(secret.isBlank() ? UUID.randomUUID().toString() : secret);
     }
 
     @Bean
-    OAuth2TokenCustomizer<JwtEncodingContext> tenantClaims(
-            IdentityService identities, MembershipStateService membershipStates, TenantStateService tenantStates) {
+    OAuth2TokenCustomizer<JwtEncodingContext> realmClaims(
+            IdentityService identities,
+            MembershipStateService membershipStates,
+            TenantStateService tenantStates,
+            OperatorService operators,
+            @Value("${forge.security.platform.issuer:http://localhost:8080/iam/platform}") String platformIssuer,
+            @Value("${forge.iam.platform.mfa-required:false}") boolean mfaRequired) {
         return context -> {
+            // 两个 Realm 共用授权端点与登录会话：客户端决定 Realm，会话主体必须属于同一 Realm，否则拒绝签发。
+            if (PLATFORM_CLIENT.equals(context.getRegisteredClient().getClientId())) {
+                // MFA 尚未实现：开启强制 MFA 后，已有的登录会话与 Refresh Token 也不能再换发 Token。
+                if (mfaRequired || !hasAuthority(context.getPrincipal(), "OPERATOR")) {
+                    throw new OAuth2AuthenticationException("invalid_grant");
+                }
+                // 签发与刷新都重新确认 Operator 仍为 active。
+                ActiveOperator operator = operators.findActive(
+                        UUID.fromString(context.getPrincipal().getName()));
+                if (operator == null) throw new OAuth2AuthenticationException("invalid_grant");
+                context.getClaims()
+                        .issuer(platformIssuer)
+                        .subject(operator.operatorId().toString());
+                return;
+            }
+            if (!hasAuthority(context.getPrincipal(), "TENANT")) {
+                throw new OAuth2AuthenticationException("invalid_grant");
+            }
             UUID identityId = UUID.fromString(context.getPrincipal().getName());
             ActiveMembership membership;
             Object requested =
@@ -171,6 +241,10 @@ class IamSecurityConfiguration {
                     .claim("membership_id", membership.membershipId().toString())
                     .claim("ver", membership.version());
         };
+    }
+
+    private static boolean hasAuthority(Authentication principal, String authority) {
+        return principal.getAuthorities().stream().anyMatch(granted -> authority.equals(granted.getAuthority()));
     }
 
     private static Optional<UUID> parseMembershipId(Object value) {
@@ -233,7 +307,15 @@ class IamSecurityConfiguration {
     SecurityFilterChain applicationSecurity(HttpSecurity http, EnvelopeSecurityErrorHandler errors) throws Exception {
         // JSON 凭证入口不开启 CORS，授权端点使用 Redis HTTP 会话；Token 交换仍需授权码和 PKCE。
         http.csrf(csrf -> csrf.ignoringRequestMatchers(
-                        "/auth/login", "/auth/logout", "/auth/exchange", "/auth/refresh", "/auth/switch"))
+                        "/auth/login",
+                        "/auth/logout",
+                        "/auth/exchange",
+                        "/auth/refresh",
+                        "/auth/switch",
+                        "/platform/auth/login",
+                        "/platform/auth/logout",
+                        "/platform/auth/exchange",
+                        "/platform/auth/refresh"))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth.dispatcherTypeMatchers(DispatcherType.ERROR)
                         .permitAll()
@@ -243,6 +325,13 @@ class IamSecurityConfiguration {
                                 "/auth/exchange",
                                 "/auth/refresh",
                                 "/auth/switch",
+                                "/platform/auth/login",
+                                "/platform/auth/logout",
+                                "/platform/auth/exchange",
+                                "/platform/auth/refresh",
+                                "/.well-known/openid-configuration",
+                                "/platform/.well-known/openid-configuration",
+                                "/platform/oauth2/jwks",
                                 "/actuator/health",
                                 "/v3/api-docs/**")
                         .permitAll()

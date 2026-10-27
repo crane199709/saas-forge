@@ -53,6 +53,7 @@ import tools.jackson.databind.json.JsonMapper;
 @Testcontainers
 class GatewaySecurityTest {
     static final String ISSUER = "http://tenant-realm.test";
+    static final String PLATFORM_ISSUER = "http://platform-realm.test";
     static final UUID TENANT_ID = UUID.fromString("019a0110-0000-7000-8000-000000000001");
     static final UUID MEMBERSHIP_ID = UUID.fromString("019a0110-0000-7000-8000-000000000003");
     static final String DOWNSTREAM_ENVELOPE = "{\"code\":\"order.notFound\",\"httpStatus\":404,"
@@ -64,15 +65,21 @@ class GatewaySecurityTest {
     static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
 
     static final RSAKey KEY;
+    static final RSAKey PLATFORM_KEY;
     // 同时充当 JWKS 端点与下游业务服务
     static final HttpServer JWKS;
 
     static {
         try {
             KEY = new RSAKeyGenerator(2048).keyID("tenant-key").generate();
+            PLATFORM_KEY = new RSAKeyGenerator(2048).keyID("platform-key").generate();
             JWKS = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
             JWKS.setExecutor(Executors.newCachedThreadPool());
             JWKS.createContext("/jwks", exchange -> respond(exchange, 200, new JWKSet(KEY.toPublicJWK()).toString()));
+            JWKS.createContext(
+                    "/platform-jwks",
+                    exchange -> respond(exchange, 200, new JWKSet(PLATFORM_KEY.toPublicJWK()).toString()));
+            JWKS.createContext("/platform/", exchange -> respond(exchange, 200, "{}"));
             JWKS.createContext("/demo/context", exchange -> {
                 RECEIVED_TRACEPARENT.set(exchange.getRequestHeaders().getFirst("traceparent"));
                 respond(exchange, 200, "{}");
@@ -108,10 +115,15 @@ class GatewaySecurityTest {
         registry.add("spring.cloud.gateway.server.webflux.routes[2].uri", () -> downstream);
         registry.add("spring.cloud.gateway.server.webflux.routes[2].order", () -> "-1");
         registry.add("spring.cloud.gateway.server.webflux.routes[2].metadata.response-timeout", () -> "300");
+        registry.add("spring.cloud.gateway.server.webflux.routes[3].id", () -> "platform");
+        registry.add("spring.cloud.gateway.server.webflux.routes[3].predicates[0]", () -> "Path=/platform/**");
+        registry.add("spring.cloud.gateway.server.webflux.routes[3].uri", () -> downstream);
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
         registry.add("forge.security.issuer", () -> ISSUER);
         registry.add("forge.security.jwk-set-uri", () -> downstream + "/jwks");
+        registry.add("forge.security.platform.issuer", () -> PLATFORM_ISSUER);
+        registry.add("forge.security.platform.jwk-set-uri", () -> downstream + "/platform-jwks");
     }
 
     @AfterAll
@@ -241,13 +253,28 @@ class GatewaySecurityTest {
     }
 
     @Test
-    void tenantTokenCannotAccessPlatformAndNeedsCompleteContext() throws Exception {
+    void tenantRealmTokenIsRejectedOnPlatformRoutes() throws Exception {
+        assertUnauthenticatedAt(
+                "/platform/operators/current", token(KEY, ISSUER, Instant.now().plusSeconds(900)));
+    }
+
+    @Test
+    void platformRealmTokenReachesPlatformRoutesOnly() throws Exception {
+        String operator = platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "platform-console");
+        assertThat(call(HttpMethod.GET, "/platform/operators/current", operator).status())
+                .isEqualTo(200);
+        assertUnauthenticatedAt("/demo/context", operator);
+        assertUnauthenticatedAt("/iam/auth/memberships", operator);
+        // issuer 正确但用 Tenant Realm 密钥签名、或不是签发给 platform-console 的 Token 同样被拒。
+        assertUnauthenticatedAt("/platform/operators/current", platformToken(KEY, PLATFORM_ISSUER, "platform-console"));
+        assertUnauthenticatedAt(
+                "/platform/operators/current", platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "tenant-app"));
+        assertUnauthenticatedAt("/platform/operators/current", null);
+    }
+
+    @Test
+    void tenantTokenNeedsCompleteContext() throws Exception {
         String token = token(KEY, ISSUER, Instant.now().plusSeconds(900));
-        Response platform = call(HttpMethod.GET, "/platform/anything", token);
-        assertEnvelope(platform, 403, "auth.forbidden");
-        assertThat(platform.body().path("userTip").asString()).isEqualTo("没有权限执行该操作");
-        // 与 Bearer 默认拒绝处理器一致，保留 RFC 6750 的质询头
-        assertThat(platform.wwwAuthenticate()).startsWith("Bearer").contains("error=\"insufficient_scope\"");
         var original = SignedJWT.parse(token);
         var incomplete = new SignedJWT(
                 original.getHeader(),
@@ -261,12 +288,14 @@ class GatewaySecurityTest {
     @Test
     void internalTokenEndpointIsNotExposedByGateway() throws Exception {
         assertThat(call(HttpMethod.POST, "/iam/oauth2/token", null).status()).isEqualTo(401);
-        assertThat(call(
-                                HttpMethod.POST,
-                                "/iam/oauth2/token",
-                                token(KEY, ISSUER, Instant.now().plusSeconds(900)))
-                        .status())
-                .isEqualTo(403);
+        Response denied = call(
+                HttpMethod.POST,
+                "/iam/oauth2/token",
+                token(KEY, ISSUER, Instant.now().plusSeconds(900)));
+        assertEnvelope(denied, 403, "auth.forbidden");
+        assertThat(denied.body().path("userTip").asString()).isEqualTo("没有权限执行该操作");
+        // 与 Bearer 默认拒绝处理器一致，保留 RFC 6750 的质询头
+        assertThat(denied.wwwAuthenticate()).startsWith("Bearer").contains("error=\"insufficient_scope\"");
     }
 
     @Test
@@ -341,6 +370,20 @@ class GatewaySecurityTest {
         try (var stream = exchange.getResponseBody()) {
             stream.write(bytes);
         }
+    }
+
+    static String platformToken(RSAKey key, String issuer, String audience) throws Exception {
+        var claims = new JWTClaimsSet.Builder()
+                .issuer(issuer)
+                .subject("019a0110-0000-7000-8000-0000000000f1")
+                .audience(audience)
+                .issueTime(Date.from(Instant.now().minusSeconds(300)))
+                .expirationTime(Date.from(Instant.now().plusSeconds(900)))
+                .build();
+        var jwt = new SignedJWT(
+                new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.getKeyID()).build(), claims);
+        jwt.sign(new RSASSASigner(key));
+        return jwt.serialize();
     }
 
     static String token(RSAKey key, String issuer, Instant expires) throws Exception {

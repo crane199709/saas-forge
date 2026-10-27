@@ -42,7 +42,7 @@ Vite 将 `/iam` 与 `/demo` 代理到本地网关 `http://localhost:8080`。部�
 
 **适配器没有认证浏览器客户端。** 任何持有 code + verifier 或 Refresh Token 的调用者都可以通过适配器换取 Token。因此浏览器侧仍按公开客户端管理风险；“浏览器不持有 client secret”只说明密钥存放位置，不能防止浏览器凭证被窃取后使用。这也不是 BFF：Token 仍交给浏览器保存。使用适配器是为了保留框架默认 Refresh Token 签发流程；已核对本机 Spring Security 7.0.8 的 `OAuth2RefreshTokenGenerator`，授权码流程使用 `ClientAuthenticationMethod.NONE` 时默认返回 null。
 
-Access Token 有效期 15 分钟，包含 `sub`、`tenant_id`、`membership_id`、`ver`，audience 为 `tenant-app`。网关和 SDK 都检查签名、issuer、有效期、audience 和必要上下文；客户端租户请求头不能覆盖 JWT。平台业务路由当前拒绝 Tenant Token，Platform Realm 在工单 08 接入。
+Access Token 有效期 15 分钟，包含 `sub`、`tenant_id`、`membership_id`、`ver`，audience 为 `tenant-app`。网关和 SDK 都检查签名、issuer、有效期、audience 和必要上下文；客户端租户请求头不能覆盖 JWT。平台路由 `/platform/**` 只接受 Platform Realm Token，Tenant Token 访问返回 401，见 [Platform Realm 与运营登录](platform-login.md)。
 
 Redis 保存 Spring Session 登录会话和标准 `OAuth2Authorization`，刷新凭证有效期 7 天。授权码/Token 的索引使用 SHA-256；认证前的索引和会话统一使用 `iam:global:` 前缀，因查询前还没有可相信的租户标识。授权状态采用 Spring 的 JDK 序列化器，只连接受信任的 Redis。Token 端点按授权 ID 使用 Redis 互斥，避免同一授权的凭证并发消费。重放撤销不等待这把锁；在途换码或刷新只能原子更新仍然存在的授权，不能重新创建被撤销的授权。标准提供者负责授权码失效和刷新轮换；旧 Refresh Token 的摘要保留至其原始过期时间，检测到重放就删除该授权及当前 Token 索引，使其后续刷新失败。这也意味着丢失刷新响应后重试旧凭证会要求重新登录。刷新时重新查询原会话绑定的身份、租户和 Membership，不能隐式切换租户。Redis 故障时登录或刷新失败，返回 503 `system.unavailable`（包括在过滤器层访问 Redis 失败、经容器转发到 `/error` 的情况），前端据此保留会话。停用 Membership 或租户后 Access Token 的即时失效见下文「即时失效」；刷新凭证被拒绝（401）后前端清除本地凭证。
 

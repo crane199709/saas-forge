@@ -22,3 +22,8 @@ spring:
     default-schema: platform
     # schema 由 compose 初始化脚本创建并归属迁移账号，迁移账号本身没有建 schema 的权限
     create-schemas: false
+
+forge:
+  security:
+    # 平台服务只接受 Platform Realm Token（ADR-0003），issuer 与 JWKS 读取 forge.security.platform.*
+    realm: platform

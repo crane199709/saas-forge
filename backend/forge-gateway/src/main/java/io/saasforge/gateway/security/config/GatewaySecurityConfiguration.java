@@ -3,39 +3,61 @@ package io.saasforge.gateway.security.config;
 import io.saasforge.gateway.envelope.service.ErrorEnvelopeService;
 import io.saasforge.gateway.security.service.MembershipStateVerifier;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
+import io.saasforge.sdk.security.PlatformJwtValidator;
 import io.saasforge.sdk.security.TenantJwtValidator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.server.reactive.ServerHttpResponseDecorator;
-import org.springframework.security.config.Customizer;
+import org.springframework.security.authentication.ReactiveAuthenticationManager;
+import org.springframework.security.authentication.ReactiveAuthenticationManagerResolver;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtReactiveAuthenticationManager;
 import org.springframework.security.oauth2.server.resource.web.access.server.BearerTokenServerAccessDeniedHandler;
 import org.springframework.security.oauth2.server.resource.web.server.BearerTokenServerAuthenticationEntryPoint;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint;
 import org.springframework.security.web.server.authorization.ServerAccessDeniedHandler;
 import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository;
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 @Configuration(proxyBeanMethods = false)
 class GatewaySecurityConfiguration {
+    private static final ServerWebExchangeMatcher PLATFORM_ROUTES =
+            ServerWebExchangeMatchers.pathMatchers("/platform/**");
+
+    /**
+     * 按路由强制 issuer（ADR-0003）：{@code /platform/**} 只接受 Platform Realm Token，其余受保护路由只接受 Tenant Realm Token。
+     * 两个 Realm 的 issuer 与签名密钥都不同，用错 Realm 的 Token 验签失败，得到 401 而不是 403。
+     */
     @Bean
-    ReactiveJwtDecoder tenantDecoder(
+    ReactiveAuthenticationManagerResolver<ServerWebExchange> realmAuthenticationManagers(
             @Value("${forge.security.issuer:http://localhost:8080/iam}") String issuer,
             @Value("${forge.security.jwk-set-uri:http://localhost:8101/oauth2/jwks}") String jwks,
+            @Value("${forge.security.platform.issuer:http://localhost:8080/iam/platform}") String platformIssuer,
+            @Value("${forge.security.platform.jwk-set-uri:http://localhost:8101/platform/oauth2/jwks}")
+                    String platformJwks,
             MembershipStateVerifier states) {
-        var decoder = NimbusReactiveJwtDecoder.withJwkSetUri(jwks).build();
-        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+        var tenantDecoder = NimbusReactiveJwtDecoder.withJwkSetUri(jwks).build();
+        tenantDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(issuer), new TenantJwtValidator()));
         // 验签之后再比对即时失效状态：BadJwtException 由资源服务器转换为 401 auth.unauthenticated 信封（质询头为 invalid_token）。
-        return token -> decoder.decode(token).flatMap(states::verify);
+        ReactiveJwtDecoder tenant = token -> tenantDecoder.decode(token).flatMap(states::verify);
+        var platform = NimbusReactiveJwtDecoder.withJwkSetUri(platformJwks).build();
+        platform.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(platformIssuer), new PlatformJwtValidator()));
+        ReactiveAuthenticationManager tenantManager = new JwtReactiveAuthenticationManager(tenant);
+        ReactiveAuthenticationManager platformManager = new JwtReactiveAuthenticationManager(platform);
+        return exchange ->
+                PLATFORM_ROUTES.matches(exchange).map(match -> match.isMatch() ? platformManager : tenantManager);
     }
 
     /**
@@ -45,7 +67,10 @@ class GatewaySecurityConfiguration {
      * <p>先让 Bearer 默认处理器写出 RFC 6750 的 {@code WWW-Authenticate}，再写信封：两者结果一致，只是把空响应体换成信封。
      */
     @Bean
-    SecurityWebFilterChain gatewaySecurity(ServerHttpSecurity http, ErrorEnvelopeService envelopes) {
+    SecurityWebFilterChain gatewaySecurity(
+            ServerHttpSecurity http,
+            ErrorEnvelopeService envelopes,
+            ReactiveAuthenticationManagerResolver<ServerWebExchange> realmAuthenticationManagers) {
         var bearerEntryPoint = new BearerTokenServerAuthenticationEntryPoint();
         var bearerAccessDenied = new BearerTokenServerAccessDeniedHandler();
         ServerAuthenticationEntryPoint entryPoint = (exchange, ex) -> bearerEntryPoint
@@ -65,13 +90,20 @@ class GatewaySecurityConfiguration {
                                 "/iam/auth/logout",
                                 "/iam/auth/exchange",
                                 "/iam/auth/refresh",
-                                "/iam/auth/switch")
+                                "/iam/auth/switch",
+                                "/iam/platform/auth/login",
+                                "/iam/platform/auth/logout",
+                                "/iam/platform/auth/exchange",
+                                "/iam/platform/auth/refresh")
                         .permitAll()
                         .pathMatchers(
                                 HttpMethod.GET,
                                 "/iam/oauth2/authorize",
                                 "/iam/oauth2/jwks",
                                 "/iam/.well-known/oauth-authorization-server",
+                                "/iam/.well-known/openid-configuration",
+                                "/iam/platform/oauth2/jwks",
+                                "/iam/platform/.well-known/openid-configuration",
                                 "/actuator/health",
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html",
@@ -83,14 +115,13 @@ class GatewaySecurityConfiguration {
                         .permitAll()
                         .pathMatchers(HttpMethod.GET, "/iam/auth/memberships")
                         .authenticated()
-                        .pathMatchers("/demo/**")
+                        .pathMatchers("/demo/**", "/platform/**")
                         .authenticated()
-                        // Platform Realm 由工单 08 接入，Tenant Token 不能访问平台路由。
                         .anyExchange()
                         .denyAll())
                 .oauth2ResourceServer(server -> server.authenticationEntryPoint(entryPoint)
                         .accessDeniedHandler(accessDeniedHandler)
-                        .jwt(Customizer.withDefaults()))
+                        .authenticationManagerResolver(realmAuthenticationManagers))
                 .build();
     }
 

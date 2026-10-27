@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.operator.mapper.OperatorMapper">
+    <select id="findCredential" resultType="io.saasforge.iam.operator.model.OperatorCredential">
+        SELECT id AS operator_id, password_hash FROM operator
+        WHERE status = 'active' AND account = #{account}
+    </select>
+    <select id="findActive" resultType="io.saasforge.iam.operator.model.ActiveOperator">
+        SELECT id AS operator_id, account, display_name FROM operator
+        WHERE status = 'active' AND id = #{operatorId}
+    </select>
+</mapper>

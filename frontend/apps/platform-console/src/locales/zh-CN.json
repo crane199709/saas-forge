@@ -2,5 +2,20 @@
   "app": {
     "title": "SaaS Forge 平台控制台",
     "welcome": "欢迎使用 SaaS Forge 平台控制台"
+  },
+  "auth": {
+    "title": "运营登录",
+    "account": "运营账号",
+    "password": "密码",
+    "login": "登录",
+    "logout": "退出登录",
+    "operator": "当前运营人员",
+    "operatorId": "Operator ID",
+    "logoutFailed": "本地凭证已清除，但 IAM 退出失败，浏览器仍可能保持登录。",
+    "failed": "登录会话已失效，请重新登录"
+  },
+  "error": {
+    "unknown": "请求失败，请稍后重试",
+    "traceId": "追踪 ID"
   }
 }

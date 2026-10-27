@@ -1,2 +1,2 @@
-io.saasforge.sdk.security.TenantSecurityAutoConfiguration
+io.saasforge.sdk.security.ForgeSecurityAutoConfiguration
 io.saasforge.sdk.security.MembershipGrantsAutoConfiguration

@@ -5,3 +5,7 @@ spring:
         enabled: false
       discovery:
         enabled: false
+forge:
+  iam:
+    platform:
+      signing-key-file: target/test-platform-signing.jwk
