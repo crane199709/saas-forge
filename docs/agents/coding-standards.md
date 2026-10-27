@@ -86,7 +86,7 @@ CREATE UNIQUE INDEX identity_account_key ON identity (account) WHERE NOT deleted
 1. mapper XML 中手写的 INSERT/UPDATE：自己维护 `updated_at`、`updated_by`，INSERT 还要维护 `created_at`、`created_by`。
 2. 不带实体的更新，例如 `update(null, wrapper)`：同上。
 3. mapper XML 中手写的查询：每张标准表（包括 JOIN 进来的表）都必须带 `NOT deleted`。
-4. 删除使用能触发更新填充的方法。
+4. 标准表按主键删除用 `deleteById`：实体带逻辑删除与更新填充字段时，它按实体逻辑删除并刷新 `updated_at`、`updated_by`。`delete(wrapper)`、`deleteByMap` 等按条件删除不带实体，不触发填充，标准表上不使用；批量删除写在 mapper XML 中，按第 1 条自行维护标准列。
 
 ## SDK 依赖
 
