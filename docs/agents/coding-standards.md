@@ -86,7 +86,14 @@ CREATE UNIQUE INDEX identity_account_key ON identity (account) WHERE NOT deleted
 1. mapper XML 中手写的 INSERT/UPDATE：自己维护 `updated_at`、`updated_by`，INSERT 还要维护 `created_at`、`created_by`。
 2. 不带实体的更新，例如 `update(null, wrapper)`：同上。
 3. mapper XML 中手写的查询：每张标准表（包括 JOIN 进来的表）都必须带 `NOT deleted`。
-4. 标准表按主键删除用 `deleteById`：实体带逻辑删除与更新填充字段时，它按实体逻辑删除并刷新 `updated_at`、`updated_by`。`delete(wrapper)`、`deleteByMap` 等按条件删除不带实体，不触发填充，标准表上不使用；批量删除写在 mapper XML 中，按第 1 条自行维护标准列。
+4. 标准表按主键删除用 `deleteById`：实体带逻辑删除与更新填充字段时，它按实体逻辑删除并刷新 `updated_at`、`updated_by`。`delete(wrapper)`、`deleteByMap` 等按条件删除不带实体，按 MyBatis-Plus 实现推断不会触发填充（未单独测试），标准表上不使用；批量删除写在 mapper XML 中，按第 1 条自行维护标准列。
+
+### 不让填充配置失效
+
+以下做法会让标准列填充或逻辑删除静默失效，启动与普通查询都不报错：
+
+- 服务不得自行声明 `MetaObjectHandler` Bean。SDK 的填充处理器是 `@ConditionalOnMissingBean(MetaObjectHandler.class)`，服务一旦声明自己的处理器，SDK 的就不再注册，标准列不再填充。
+- SDK 模块不得通过 `ConfigurationCustomizer` 调用 `addMapper` 注册 Mapper：此时 MyBatis-Plus 还没把 GlobalConfig 绑定到 Configuration，`addMapper` 会先绑定一份默认 GlobalConfig，之后 `MetaObjectHandler`、逻辑删除等全局配置都不再生效。做法参照 `MqAutoConfiguration`，在 `SqlSessionFactory` 建好之后注册。
 
 ## SDK 依赖
 

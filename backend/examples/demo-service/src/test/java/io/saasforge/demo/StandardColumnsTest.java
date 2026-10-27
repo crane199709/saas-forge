@@ -3,20 +3,16 @@ package io.saasforge.demo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.saasforge.demo.order.entity.Order;
+import io.saasforge.demo.order.mapper.OrderAuditMapper;
 import io.saasforge.demo.order.mapper.OrderMapper;
 import io.saasforge.demo.order.service.OrderService;
 import io.saasforge.sdk.core.CurrentTenant;
 import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
-import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -39,7 +35,7 @@ import org.testcontainers.utility.MountableFile;
 /**
  * 标准列由 SDK 统一填充、删除为逻辑删除（建表标准列规格第 4、6、8 节）。
  *
- * <p>逻辑删除后的行对 MyBatis-Plus 不可见，只能用原生 JDBC 读出 {@code deleted} 与审计列，因此这里是编码规范中原生 JDBC 禁令的测试例外。
+ * <p>逻辑删除后的行对 MyBatis-Plus 内置方法不可见，经测试专用的 {@link OrderAuditMapper} 手写查询读出 {@code deleted} 与审计列。
  */
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -68,7 +64,7 @@ class StandardColumnsTest {
     int port;
 
     @Autowired
-    DataSource dataSource;
+    OrderAuditMapper orderAuditMapper;
 
     @Autowired
     OrderService orderService;
@@ -188,22 +184,17 @@ class StandardColumnsTest {
 
     record Row(OffsetDateTime createdAt, OffsetDateTime updatedAt, UUID createdBy, UUID updatedBy, boolean deleted) {}
 
-    private Row row(UUID id) throws SQLException {
-        try (CurrentTenant.Binding ignored = CurrentTenant.bind(TENANT);
-                Connection connection = dataSource.getConnection();
-                PreparedStatement statement = connection.prepareStatement(
-                        "SELECT created_at, updated_at, created_by, updated_by, deleted FROM orders WHERE id = ?")) {
-            statement.setObject(1, id);
-            try (ResultSet result = statement.executeQuery()) {
-                assertThat(result.next()).isTrue();
-                return new Row(
-                        result.getObject(1, OffsetDateTime.class),
-                        result.getObject(2, OffsetDateTime.class),
-                        result.getObject(3, UUID.class),
-                        result.getObject(4, UUID.class),
-                        result.getBoolean(5));
-            }
-        }
+    private Row row(UUID id) {
+        var order = new AtomicReference<Order>();
+        CurrentTenant.run(TENANT, () -> order.set(orderAuditMapper.selectIncludingDeleted(id)));
+        Order found = order.get();
+        assertThat(found).isNotNull();
+        return new Row(
+                found.getCreatedAt(),
+                found.getUpdatedAt(),
+                found.getCreatedBy(),
+                found.getUpdatedBy(),
+                found.getDeleted());
     }
 
     private Map<String, Object> exchange(HttpMethod method, String uri, Object body) throws Exception {
