@@ -2,9 +2,13 @@ package io.saasforge.demo.order.controller;
 
 import io.saasforge.demo.order.entity.Order;
 import io.saasforge.demo.order.service.OrderService;
+import io.saasforge.sdk.core.api.ApiResponse;
+import io.saasforge.sdk.web.PageQuery;
+import io.saasforge.sdk.web.SortableFields;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -31,40 +35,42 @@ class OrderController {
     @Operation(summary = "在当前租户下创建订单")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    OrderResponse create(@RequestBody OrderRequest request) {
-        return OrderResponse.from(orderService.create(request.title(), request.amount()));
+    ApiResponse<OrderResponse> create(@RequestBody OrderRequest request) {
+        return ApiResponse.created(OrderResponse.from(orderService.create(request.title(), request.amount())));
     }
 
-    @Operation(summary = "列出当前租户的订单")
+    @Operation(summary = "分页列出当前租户的订单")
     @GetMapping
-    List<OrderResponse> list() {
-        return orderService.list().stream().map(OrderResponse::from).toList();
+    ApiResponse<List<OrderResponse>> list(@SortableFields({"createdAt", "amount"}) PageQuery query) {
+        List<OrderResponse> items =
+                orderService.list(query).stream().map(OrderResponse::from).toList();
+        return ApiResponse.page(items, query.toPageMeta(orderService.count()));
     }
 
     @Operation(summary = "读取当前租户的订单")
     @GetMapping("/{id}")
-    OrderResponse get(@PathVariable UUID id) {
-        return OrderResponse.from(orderService.get(id));
+    ApiResponse<OrderResponse> get(@PathVariable UUID id) {
+        return ApiResponse.ok(OrderResponse.from(orderService.get(id)));
     }
 
     @Operation(summary = "修改当前租户的订单")
     @PutMapping("/{id}")
-    OrderResponse update(@PathVariable UUID id, @RequestBody OrderRequest request) {
-        return OrderResponse.from(orderService.update(id, request.title(), request.amount()));
+    ApiResponse<OrderResponse> update(@PathVariable UUID id, @RequestBody OrderRequest request) {
+        return ApiResponse.ok(OrderResponse.from(orderService.update(id, request.title(), request.amount())));
     }
 
     @Operation(summary = "删除当前租户的订单")
     @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    void delete(@PathVariable UUID id) {
+    ApiResponse<Void> delete(@PathVariable UUID id) {
         orderService.delete(id);
+        return ApiResponse.ok();
     }
 
     record OrderRequest(String title, BigDecimal amount) {}
 
-    record OrderResponse(UUID id, String title, BigDecimal amount) {
+    record OrderResponse(UUID id, String title, BigDecimal amount, OffsetDateTime createdAt) {
         static OrderResponse from(Order order) {
-            return new OrderResponse(order.getId(), order.getTitle(), order.getAmount());
+            return new OrderResponse(order.getId(), order.getTitle(), order.getAmount(), order.getCreatedAt());
         }
     }
 }

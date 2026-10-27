@@ -1,4 +1,5 @@
 import type { InjectionKey } from 'vue'
+import { ApiError, readEnvelope, readPage, type Page } from './api'
 
 /** Tenant Realm 登录返回的会话；凭证只保存在当前浏览器标签页。 */
 export interface TenantSession {
@@ -95,7 +96,7 @@ export function createTenantClient(storage: Storage) {
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
       })
-      if (!response.ok) throw new Error('auth.logoutFailed')
+      await readEnvelope(response)
     } catch {
       throw new Error('auth.logoutFailed')
     }
@@ -109,13 +110,9 @@ export function createTenantClient(storage: Storage) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    if (response.status === 403) throw new Error('auth.tenantAccessDenied')
-    // 服务端故障（如 IAM 依赖的 Redis 不可用）不代表凭证失效，与凭证被拒绝区分开。
-    if (response.status >= 500) throw new Error('auth.unavailable')
-    if (!response.ok) {
-      throw new Error('auth.failed')
-    }
-    const value = (await response.json()) as TenantSession
+    // 失败以服务端错误码抛出：auth.failed、auth.tenantAccessDenied 表示凭证被拒绝，
+    // system.unavailable 等故障码与非信封响应不代表凭证失效，由调用方区分处理。
+    const value = (await readEnvelope<TenantSession>(response)).data as TenantSession
     if (started !== generation) throw new Error('auth.sessionChanged')
     store(value)
     return value
@@ -131,12 +128,13 @@ export function createTenantClient(storage: Storage) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ account, password }),
     })
-    if (!authenticated.ok) throw new Error('auth.failed')
-    const settings = (await authenticated.json()) as {
-      clientId: string
-      redirectUri: string
-      memberships: TenantMembership[]
-    }
+    const settings = (
+      await readEnvelope<{
+        clientId: string
+        redirectUri: string
+        memberships: TenantMembership[]
+      }>(authenticated)
+    ).data!
     // 回调必须与 Shell 同源；fetch 跟随标准授权重定向，不执行回调 HTML。
     if (new URL(settings.redirectUri).origin !== location.origin)
       throw new Error('auth.invalidRedirect')
@@ -192,9 +190,7 @@ export function createTenantClient(storage: Storage) {
 
   /** 列出当前身份可进入的有效 Membership，供租户切换器使用。 */
   async function memberships(): Promise<TenantMembership[]> {
-    const response = await request('/iam/auth/memberships')
-    if (!response.ok) throw new Error('auth.membershipsFailed')
-    return (await response.json()) as TenantMembership[]
+    return api<TenantMembership[]>('/iam/auth/memberships')
   }
 
   /**
@@ -216,14 +212,15 @@ export function createTenantClient(storage: Storage) {
           body: JSON.stringify({ refreshToken: value.refreshToken, membershipId }),
         })
         if (started !== generation) throw new Error('auth.sessionChanged')
-        if (response.status === 403) throw new Error('auth.tenantAccessDenied')
-        // 只有刷新凭证被拒绝才说明会话已失效；网关或服务端故障时保留原会话以便重试。
-        if (response.status === 401) {
-          clear()
-          throw new Error('auth.failed')
+        let next: TenantSession
+        try {
+          next = (await readEnvelope<TenantSession>(response)).data as TenantSession
+        } catch (error) {
+          // 只有刷新凭证被拒绝才说明会话已失效；租户被拒绝、网关或服务端故障时保留原会话以便重试。
+          if (error instanceof ApiError && error.code === 'auth.failed' && started === generation)
+            clear()
+          throw error
         }
-        if (!response.ok) throw new Error('auth.switchFailed')
-        const next = (await response.json()) as TenantSession
         if (started !== generation) throw new Error('auth.sessionChanged')
         generation += 1
         store(next)
@@ -237,7 +234,7 @@ export function createTenantClient(storage: Storage) {
   }
 
   /**
-   * 轮换刷新凭证；并发调用共用进行中的一次。凭证被拒绝（如 Membership 或租户已停用）时清除会话，
+   * 轮换刷新凭证；并发调用共用进行中的一次。凭证被拒绝（刷新接口返回 401，或 Membership、租户已停用）时清除会话，
    * 服务端或网络故障以原错误失败并保留会话。
    */
   function refresh(): Promise<TenantSession> {
@@ -247,10 +244,12 @@ export function createTenantClient(storage: Storage) {
     const started = generation
     const operation = exchange('/iam/auth/refresh', { refreshToken: value.refreshToken })
       .catch((error: unknown) => {
-        // 只有刷新凭证被拒绝才登出；服务端或网络故障保留会话，恢复后可继续刷新。
+        // 只有刷新凭证被拒绝才登出：刷新接口的任何 401（不论响应是否为信封）或租户被拒绝；
+        // 5xx、503 与网络故障保留会话，恢复后可继续刷新。
         const rejected =
-          error instanceof Error &&
-          ['auth.failed', 'auth.tenantAccessDenied'].includes(error.message)
+          error instanceof ApiError &&
+          (error.httpStatus === 401 ||
+            ['auth.failed', 'auth.tenantAccessDenied'].includes(error.code))
         if (rejected && started === generation) clear()
         throw error
       })
@@ -287,7 +286,19 @@ export function createTenantClient(storage: Storage) {
     return response
   }
 
+  /** 经 `request` 调用信封接口，成功返回 `data`，失败抛出 `ApiError`。 */
+  async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+    return (await readEnvelope<T>(await request(path, init))).data as T
+  }
+
+  /** 经 `request` 调用分页接口，返回条目与 `meta.page`，失败抛出 `ApiError`。 */
+  async function page<T>(path: string, init: RequestInit = {}): Promise<Page<T>> {
+    return readPage<T>(await request(path, init))
+  }
+
   return {
+    api,
+    page,
     login,
     selectTenant,
     memberships,

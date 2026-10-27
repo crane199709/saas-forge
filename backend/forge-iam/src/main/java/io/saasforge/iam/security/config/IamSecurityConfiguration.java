@@ -7,9 +7,11 @@ import com.nimbusds.jose.proc.SecurityContext;
 import io.saasforge.iam.identity.model.ActiveMembership;
 import io.saasforge.iam.identity.service.IdentityService;
 import io.saasforge.iam.membership.service.MembershipStateService;
+import io.saasforge.iam.security.filter.EnvelopeSecurityErrorHandler;
 import io.saasforge.iam.security.filter.TokenGrantLockFilter;
 import io.saasforge.iam.security.service.RedisAuthorizationService;
 import io.saasforge.iam.tenant.service.TenantStateService;
+import io.saasforge.sdk.web.EnvelopeErrorWriter;
 import jakarta.servlet.DispatcherType;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -205,20 +207,30 @@ class IamSecurityConfiguration {
     }
 
     @Bean
+    EnvelopeSecurityErrorHandler envelopeSecurityErrorHandler(EnvelopeErrorWriter writer) {
+        return new EnvelopeSecurityErrorHandler(writer);
+    }
+
+    @Bean
     @Order(2)
-    SecurityFilterChain accessTokenSecurity(HttpSecurity http) throws Exception {
+    SecurityFilterChain accessTokenSecurity(HttpSecurity http, EnvelopeSecurityErrorHandler errors) throws Exception {
         // 已持有 Access Token 的身份读取自己的 Membership；无状态、不使用登录会话 Cookie。
         http.securityMatcher("/auth/memberships")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-                .oauth2ResourceServer(server -> server.jwt(Customizer.withDefaults()));
+                // 资源服务器对 Bearer Token 有自己的入口与拒绝处理器，只配 exceptionHandling 时无效 Token 仍返回空响应体
+                .exceptionHandling(exceptions ->
+                        exceptions.authenticationEntryPoint(errors).accessDeniedHandler(errors))
+                .oauth2ResourceServer(server -> server.authenticationEntryPoint(errors)
+                        .accessDeniedHandler(errors)
+                        .jwt(Customizer.withDefaults()));
         return http.build();
     }
 
     @Bean
     @Order(3)
-    SecurityFilterChain applicationSecurity(HttpSecurity http) throws Exception {
+    SecurityFilterChain applicationSecurity(HttpSecurity http, EnvelopeSecurityErrorHandler errors) throws Exception {
         // JSON 凭证入口不开启 CORS，授权端点使用 Redis HTTP 会话；Token 交换仍需授权码和 PKCE。
         http.csrf(csrf -> csrf.ignoringRequestMatchers(
                         "/auth/login", "/auth/logout", "/auth/exchange", "/auth/refresh", "/auth/switch"))
@@ -235,7 +247,9 @@ class IamSecurityConfiguration {
                                 "/v3/api-docs/**")
                         .permitAll()
                         .anyRequest()
-                        .denyAll());
+                        .denyAll())
+                .exceptionHandling(exceptions ->
+                        exceptions.authenticationEntryPoint(errors).accessDeniedHandler(errors));
         return http.build();
     }
 }

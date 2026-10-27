@@ -28,7 +28,17 @@ describe('App', () => {
       JSON.stringify({ accessToken: 'revoked', refreshToken: 'revoked', identityName: '演示身份' }),
     )
     // Membership 已停用：业务请求与刷新都被拒绝。
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((path: string) => {
+        const code = path === '/iam/auth/refresh' ? 'auth.failed' : 'auth.unauthenticated'
+        return Promise.resolve(
+          new Response(JSON.stringify({ code, httpStatus: 401, traceId: 'trace-401' }), {
+            status: 401,
+          }),
+        )
+      }),
+    )
     const router = createRouter({
       history: createMemoryHistory(),
       routes: [{ path: '/:pathMatch(.*)*', component: { render: () => null } }],

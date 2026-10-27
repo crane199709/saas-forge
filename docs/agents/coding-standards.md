@@ -62,7 +62,9 @@ SDK 不允许出现循环依赖，模块级与包级都不允许。循环会让�
 | `entity` | MyBatis-Plus 实体 |
 | `model` | 接口模型（`XxxRequest`、`XxxResponse`、`XxxQuery`）与 Mapper 查询投影 |
 | `config` | `@Configuration` 与配置值对象 |
-| `filter` | Servlet / Security 过滤器 |
+| `filter` | Servlet / Security 过滤器；WebFlux 服务（gateway）的 `WebFilter` 与 `ErrorWebExceptionHandler` |
+
+WebFlux 的 `ErrorWebExceptionHandler` 归入 `filter` 而不是 `controller`：它与 `WebFilter` 同处请求处理链、处理过滤链（含安全过滤链与路由）抛出的异常，不是 `@RestControllerAdvice`，放进 `controller` 会误导读者以为它只覆盖 Controller。
 
 `entity` 与 `model` 分开，让「实体与接口模型隔离」从包上即可看出。只被单个 Controller 使用的接口模型作为嵌套 `record` 留在该 Controller 内，与接口定义放在一起；被第二个类引用（另一个 Controller、Service 等）时移到 `model`。
 
@@ -91,6 +93,64 @@ SDK 不允许出现循环依赖，模块级与包级都不允许。循环会让�
 - 不引入 Lombok。接口模型、消息体与值对象使用 `record`。
 - MyBatis-Plus 实体使用普通类，手写 getter/setter。
 - `record` 自动生成的 `toString` 包含全部字段：含密码哈希、Token、验证码等敏感字段的 `record` 或实体必须覆写 `toString` 排除这些字段，避免写入日志。
+
+## 接口格式
+
+业务接口的成功与失败响应统一使用响应信封（ADR-0015），字段与适用范围见 [统一接口格式规格](../../.scratch/unified-api-envelope/spec.md)。`/oauth2/*`、OIDC 端点、actuator 与静态资源不适用本节。
+
+### 返回值
+
+- Controller 的 public 接口方法返回 `ApiResponse<T>`，用 `ApiResponse.ok(x)`、`ApiResponse.created(x)` 构造，不依赖 Advice 自动包装。这样方法签名就是接口契约，springdoc 的 schema 才能如实反映 `data` 的类型。
+- HTTP 状态码如实反映结果：创建返回 201，删除返回 200 且 `data` 为 null，不使用 204（无法携带 `traceId`）。
+- 请求体是纯业务 `record`，不套信封；JSON 字段用 camelCase。租户从 Token 取得，请求中不出现 `tenantId` 作为隔离依据。
+
+```json
+{
+  "code": "ok",
+  "httpStatus": 201,
+  "data": { "id": "0192f3a1-...", "title": "办公用品", "amount": 128.50 },
+  "traceId": "4bf92f3577b34da6a3ce929d0e0e4736"
+}
+```
+
+### 错误码与业务异常
+
+- 错误码为点分字符串 `<领域>.<原因>`，领域小写、原因 lowerCamelCase，如 `order.notFound`、`auth.tenantAccessDenied`。错误码同时是 i18n key。
+- 每个功能包在 `service` 层定义自己的 `ErrorCode` 枚举，固定 code 与 HTTP 状态码，如 `OrderErrorCode.NOT_FOUND("order.notFound", 404)`。同一 code 只在一个枚举中定义。
+- 业务异常统一抛 `ForgeException(ErrorCode code, Object... args)`，`args` 填充文案占位符；不为业务错误自建异常类型或在 Controller 中手工拼装错误响应。
+- 框架级错误码（`request.*`、`auth.unauthenticated`、`auth.forbidden`、`system.*`）由 SDK 映射与提供文案，服务不重复定义。业务错误码的文案放在本服务的 `messages*.properties`。
+
+```json
+{
+  "code": "order.notFound",
+  "httpStatus": 404,
+  "errorMessage": "Order 0192f3a1-... not found in current tenant",
+  "userTip": "订单不存在或已被删除",
+  "traceId": "4bf92f3577b34da6a3ce929d0e0e4736"
+}
+```
+
+### `errorMessage` 与 `userTip`
+
+- `errorMessage` 面向开发者：英文，可带 id 等排障上下文，不做国际化，前端不展示。
+- `userTip` 面向最终用户：按 `Accept-Language` 以 code 查文案，默认 `zh-CN`，可直接展示；查不到时回退为「操作失败，请稍后重试」，不向用户展示 code。
+- 5xx 与未知异常的 `errorMessage` 固定为 `Internal error`，不输出异常信息与堆栈；完整异常写日志，凭 `traceId` 查询。
+
+### 分页与排序
+
+- 分页参数 `page` 从 1 开始；`size` 默认 20、上限 100，超出上限返回 400 `request.invalid`，不静默截断。分页信息放在 `meta.page`，`data` 为当前页数组。
+- 排序参数 `sort=字段,asc|desc`，可重复。每个接口声明可排序字段白名单，不在白名单内返回 400 `request.invalid`；排序列名进入 SQL 时遵守「Mapper XML 约定」中 `${}` 的白名单规则。
+- 过滤条件用普通 query 参数；复杂到 query 放不下时用 `POST /<资源>/search`，过滤条件放请求体，分页与排序参数仍放 query。
+
+```json
+{
+  "code": "ok",
+  "httpStatus": 200,
+  "data": [ { "id": "...", "title": "...", "amount": 10 } ],
+  "meta": { "page": { "number": 1, "size": 20, "totalElements": 135, "totalPages": 7 } },
+  "traceId": "..."
+}
+```
 
 ## 注释
 

@@ -5,6 +5,7 @@ import io.saasforge.iam.identity.service.IdentityService;
 import io.saasforge.iam.security.config.TenantClientCredentials;
 import io.saasforge.iam.security.config.TenantTokenParameters;
 import io.saasforge.iam.session.model.TokenResponse;
+import io.saasforge.sdk.core.api.ForgeException;
 import java.text.ParseException;
 import java.util.Map;
 import java.util.UUID;
@@ -12,7 +13,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.server.autoconfigure.ServerProperties;
 import org.springframework.boot.web.server.servlet.context.ServletWebServerApplicationContext;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -86,9 +86,10 @@ public class TokenExchangeService {
         } catch (HttpClientErrorException error) {
             Map<?, ?> body = error.getResponseBodyAs(Map.class);
             if (body != null && OAuth2ErrorCodes.ACCESS_DENIED.equals(body.get("error"))) {
-                throw new TenantAccessDeniedException();
+                throw ForgeException.withErrorMessage(
+                        SessionErrorCode.TENANT_ACCESS_DENIED, "Membership is not selectable by this identity");
             }
-            throw new BadCredentialsException("auth.failed");
+            throw ForgeException.withErrorMessage(SessionErrorCode.AUTH_FAILED, "Token grant rejected");
         }
         try {
             String access = (String) result.get("access_token");
@@ -98,7 +99,9 @@ public class TokenExchangeService {
                     UUID.fromString(claims.getSubject()),
                     UUID.fromString(claims.getStringClaim("membership_id")),
                     UUID.fromString(claims.getStringClaim("tenant_id")));
-            if (identity == null) throw new BadCredentialsException("auth.failed");
+            if (identity == null) {
+                throw ForgeException.withErrorMessage(SessionErrorCode.AUTH_FAILED, "Membership no longer active");
+            }
             return new TokenResponse(
                     access,
                     (String) result.get("refresh_token"),

@@ -10,9 +10,25 @@
 
     <artifactId>forge-sdk-core</artifactId>
     <name>Forge SDK Core</name>
-    <description>租户上下文、通用模型与 i18n</description>
+    <description>租户上下文、响应信封与错误模型、框架级错误码文案</description>
 
     <dependencies>
+        <!-- 只用注解声明信封的序列化规则（null 不输出），Servlet 服务与 WebFlux 网关的 Jackson 都能识别；不引入 Spring -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+        <!-- 安全过滤链、Servlet 错误写出器与网关共用同一套信封序列化；Jackson 不是 Spring 依赖 -->
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- 只用 Tracer API 读取当前 traceId；不使用信封写出的模块无需引入 -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing</artifactId>
+            <optional>true</optional>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

@@ -6,12 +6,20 @@
 
 **Status:** ready-for-agent
 
-- [ ] IAM 引入 `forge-sdk-web`；`SessionController` 的 login、memberships、switch、exchange、refresh、logout 返回 `ApiResponse<T>`，保留现有 `Cache-Control: no-store`；logout 由 204 改为 200 且 `data` 为 null
-- [ ] 删除 IAM 的 `AuthenticationErrors`；`auth.failed`（401）与 `auth.tenantAccessDenied`（403）定义在功能包 `service` 层的 `ErrorCode` 枚举中，错误密码与未知账号仍返回完全相同的响应（`traceId` 除外）
-- [ ] IAM 的 `/oauth2/*` 与 OIDC 端点不受影响
-- [ ] demo-service 的 `OrderController`、`ContextController`、`GreetingController` 返回 `ApiResponse<T>`；创建返回 201，删除返回 200
-- [ ] `OrderNotFoundException` 改为 `ForgeException` + `OrderErrorCode.NOT_FOUND`（`order.notFound`，404）；跨租户访问与不存在的订单响应仍然无法区分
-- [ ] 订单列表 `GET /orders` 支持 `page`、`size`、`sort`（白名单至少含 `createdAt`、`amount`），返回 `meta.page`；SQL 遵守编码规范
-- [ ] 业务错误码的 `zh-CN` 文案写入各服务 `messages.properties`
-- [ ] 更新 [登录说明](../../../docs/tenant-login.md) 中的接口表：响应为信封，logout 返回 200
-- [ ] 测试：更新 `TenantLoginTest`、`TenantIsolationTest` 等对响应体的断言；新增分页默认值、上限、非法排序字段与 `meta.page` 的测试；后端 `./mvnw verify` 通过
+- [x] IAM 引入 `forge-sdk-web`；`SessionController` 的 login、memberships、switch、exchange、refresh、logout 返回 `ApiResponse<T>`，保留现有 `Cache-Control: no-store`；logout 由 204 改为 200 且 `data` 为 null
+- [x] 删除 IAM 的 `AuthenticationErrors`；`auth.failed`（401）与 `auth.tenantAccessDenied`（403）定义在功能包 `service` 层的 `ErrorCode` 枚举中，错误密码与未知账号仍返回完全相同的响应（`traceId` 除外）
+- [x] IAM 的 `/oauth2/*` 与 OIDC 端点不受影响
+- [x] demo-service 的 `OrderController`、`ContextController`、`GreetingController` 返回 `ApiResponse<T>`；创建返回 201，删除返回 200
+- [x] `OrderNotFoundException` 改为 `ForgeException` + `OrderErrorCode.NOT_FOUND`（`order.notFound`，404）；跨租户访问与不存在的订单响应仍然无法区分
+- [x] 订单列表 `GET /orders` 支持 `page`、`size`、`sort`（白名单至少含 `createdAt`、`amount`），返回 `meta.page`；SQL 遵守编码规范
+- [x] 业务错误码的 `zh-CN` 文案写入各服务 `messages.properties`
+- [x] 更新 [登录说明](../../../docs/tenant-login.md) 中的接口表：响应为信封，logout 返回 200
+- [x] 测试：更新 `TenantLoginTest`、`TenantIsolationTest` 等对响应体的断言；新增分页默认值、上限、非法排序字段与 `meta.page` 的测试；后端 `./mvnw verify` 通过
+
+## Comments
+
+2026-10-26 实现：IAM 与 demo-service 引入 `forge-sdk-web`。IAM `SessionController` 六个接口返回 `ApiResponse<T>` 并保留 `Cache-Control: no-store`，logout 改为 200 无 `data`；删除 `AuthenticationErrors` 与 `TenantAccessDeniedException`，改由 `session.service.SessionErrorCode`（`auth.failed` 401、`auth.tenantAccessDenied` 403）+ `ForgeException` 表达，登录失败固定 `errorMessage = "Bad credentials"`，错误密码与未知账号响应只有 `traceId` 不同。IAM 不引入 forge-sdk-security（其自动配置会带入资源服务器默认链与 Membership 明细缓存），新增 `security.filter.EnvelopeSecurityErrorHandler`，行为与 SDK 处理器一致（保留 `WWW-Authenticate`，再写信封），配到 `/auth/memberships` 链的 `exceptionHandling` 与 `oauth2ResourceServer`，以及应用链的 `exceptionHandling`；授权服务器链不变。demo-service 三个 Controller 返回信封，创建 201（加 `@ResponseStatus(CREATED)`）、删除 200；`OrderErrorCode.NOT_FOUND`（`order.notFound` 404）替代 `OrderNotFoundException`；`GET /orders` 用 `PageQuery` + `@SortableFields({"createdAt", "amount"})`，分页查询写在 `order/mapper/OrderMapper.xml`，排序列经服务端白名单映射后进入 `${}`，末尾按 `id` 排序保证翻页稳定，总数用单表 `selectCount`。
+- 偏离与约定：订单表原无创建时间，新增迁移 `V3__orders_created_at.sql`（`created_at timestamptz NOT NULL DEFAULT now()`），`OrderResponse` 增加 `createdAt`；创建与修改后重新读取订单，以返回数据库生成的值。无排序参数时按 `id` 升序。IAM 应用链中被 `denyAll` 拒绝的匿名请求由 403 空响应变为 401 `auth.unauthenticated` 信封；`auth.*` 业务错误响应不再带 `Cache-Control: no-store`。
+- 验证：新增 `OrderApiTest` 3 项（CRUD 信封与 201/200、`order.notFound` 文案与 traceId、分页默认值与 `meta.page`、`sort` 升降序、`size=101` 与非法排序字段 400 `request.invalid`）；`TenantIsolationTest` 改为断言信封，并比较跨租户与不存在订单的响应一致；`TenantLoginTest` 20 项改为解析信封，补充 `auth.failed`、`auth.tenantAccessDenied`、`auth.unauthenticated` 信封、logout 200、`no-store` 以及 `/oauth2/token` 错误仍为 RFC 6749 格式的断言。完整 `./mvnw verify` 通过（含 spotless，235 项测试）。
+
+2026-10-26 审查修复：IAM 新增 `session.filter.AuthNoStoreFilter`（最高优先级，先于安全过滤链）为 `/auth/*` 全部响应设置 `Cache-Control: no-store`，含安全拒绝与错误信封；`SessionController` 直接返回 `ApiResponse<T>`，状态码不变。`EnvelopeSecurityErrorHandler` 改用 forge-sdk-web 的 `EnvelopeErrorWriter`。demo-service `OrderSort.direction` 改为 `PageQuery.Direction` 枚举，删除 `OrderService.SORT_COLUMNS`，列名由 `@SortableFields` 白名单字段按 camelCase→snake_case 经 `OrderSort.from` 转换，白名单只有一处。同步 [登录说明](../../../docs/tenant-login.md) 的 503、401 与 `no-store` 描述。验证：`TenantLoginTest` 断言错误信封 `no-store` 与 `WWW-Authenticate`，新增 `OrderSortTest` 2 项；完整 `./mvnw verify` 通过。

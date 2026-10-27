@@ -12,6 +12,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import org.junit.jupiter.api.AfterAll;
@@ -21,6 +22,8 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 /** Redis 故障必须经整条安全过滤链表现为 503：401 会让前端刷新，而刷新同样依赖 Redis，最终把用户登出。 */
 @SpringBootTest(
@@ -90,11 +93,22 @@ class RedisUnavailableTest {
         var jwt = new SignedJWT(
                 new JWSHeader.Builder(JWSAlgorithm.RS256).keyID("tenant-key").build(), claims);
         jwt.sign(new RSASSASigner(KEY));
-        int status = RestClient.create("http://localhost:" + port)
+        String[] result = RestClient.create("http://localhost:" + port)
                 .get()
                 .uri("/demo/context")
                 .header("Authorization", "Bearer " + jwt.serialize())
-                .exchange((req, response) -> response.getStatusCode().value());
-        assertThat(status).isEqualTo(503);
+                .exchange((req, response) -> new String[] {
+                    String.valueOf(response.getStatusCode().value()),
+                    response.getHeaders().getFirst("X-Trace-Id"),
+                    new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8)
+                });
+        assertThat(result[0]).isEqualTo("503");
+        JsonNode body = JsonMapper.builder().build().readTree(result[2]);
+        assertThat(body.path("code").asString()).isEqualTo("system.unavailable");
+        assertThat(body.path("httpStatus").asInt()).isEqualTo(503);
+        assertThat(body.path("errorMessage").asString()).isEqualTo("Internal error");
+        assertThat(body.path("userTip").asString()).isEqualTo("服务暂时不可用，请稍后重试");
+        assertThat(result[1]).hasSize(32);
+        assertThat(body.path("traceId").asString()).isEqualTo(result[1]);
     }
 }

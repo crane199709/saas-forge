@@ -40,12 +40,14 @@ class TenantContextTest {
 
     @Test
     void sdkVerifiesSignatureAndExposesTenantContext() throws Exception {
-        Map<?, ?> body = RestClient.create("http://localhost:" + port)
+        Map<?, ?> envelope = RestClient.create("http://localhost:" + port)
                 .get()
                 .uri("/context")
                 .header("Authorization", "Bearer " + TestTokens.forTenant(TestTokens.TENANT_ID))
                 .retrieve()
                 .body(Map.class);
+        assertThat(envelope.get("code")).isEqualTo("ok");
+        Map<?, ?> body = (Map<?, ?>) envelope.get("data");
         assertThat(body.get("identityId")).isEqualTo(TestTokens.IDENTITY_ID.toString());
         assertThat(body.get("tenantId")).isEqualTo(TestTokens.TENANT_ID.toString());
         assertThat(body.get("membershipId")).isEqualTo(TestTokens.MEMBERSHIP_ID.toString());

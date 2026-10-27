@@ -22,12 +22,14 @@ Vite 将 `/iam` 与 `/demo` 代理到本地网关 `http://localhost:8080`。部�
 
 ## 接口与验证边界
 
+`/auth/*` 与 `/demo/*` 的成功与失败响应均为统一信封（[ADR-0015](adr/0015-unified-api-envelope.md)）：下表「结果」列描述的是 `data` 的内容，错误以 `code` 区分；`/oauth2/*` 保持 RFC 6749 / OIDC 原格式。`/auth/*` 的全部响应（含安全拒绝与错误信封）都带 `Cache-Control: no-store`；401、403 保留 RFC 6750 的 `WWW-Authenticate` 质询头。
+
 | 接口（网关路径） | 请求 | 结果 |
 | --- | --- | --- |
 | `POST /iam/auth/login` | JSON `account`、`password` | Redis 登录会话 Cookie、`clientId`、`redirectUri`、`memberships`（可进入的租户） |
 | `GET /iam/oauth2/authorize` | 标准 authorization_code + S256 PKCE 参数 | 重定向至注册回调，携带一次性 code 和 state |
 | `POST /iam/auth/exchange` | JSON `code`、`codeVerifier`，可选 `membershipId` | 服务端经标准 Token 端点交换，返回 `accessToken`、`refreshToken`、`tokenType`、`expiresIn`、`identityName`、`tenantId`、`tenantName`、`membershipId` |
-| `POST /iam/auth/logout` | 同源 JSON `{}` + IAM 会话 Cookie | 销毁当前浏览器的 Redis 登录会话，返回 204 |
+| `POST /iam/auth/logout` | 同源 JSON `{}` + IAM 会话 Cookie | 销毁当前浏览器的 Redis 登录会话，返回 200，`data` 为空 |
 | `POST /iam/auth/refresh` | JSON `refreshToken` | 新的一对 Token；旧 Refresh Token 重放会撤销同一授权的后续刷新能力 |
 | `POST /iam/auth/switch` | JSON `refreshToken`、`membershipId` | 绑定目标 Membership 的新一对 Token；目标不可进入时 403 `auth.tenantAccessDenied` |
 | `GET /iam/auth/memberships` | `Authorization: Bearer …` | 当前身份的有效 Membership：`membershipId`、`tenantId`、`tenantName` |
@@ -42,13 +44,13 @@ Vite 将 `/iam` 与 `/demo` 代理到本地网关 `http://localhost:8080`。部�
 
 Access Token 有效期 15 分钟，包含 `sub`、`tenant_id`、`membership_id`、`ver`，audience 为 `tenant-app`。网关和 SDK 都检查签名、issuer、有效期、audience 和必要上下文；客户端租户请求头不能覆盖 JWT。平台业务路由当前拒绝 Tenant Token，Platform Realm 在工单 08 接入。
 
-Redis 保存 Spring Session 登录会话和标准 `OAuth2Authorization`，刷新凭证有效期 7 天。授权码/Token 的索引使用 SHA-256；认证前的索引和会话统一使用 `iam:global:` 前缀，因查询前还没有可相信的租户标识。授权状态采用 Spring 的 JDK 序列化器，只连接受信任的 Redis。Token 端点按授权 ID 使用 Redis 互斥，避免同一授权的凭证并发消费。重放撤销不等待这把锁；在途换码或刷新只能原子更新仍然存在的授权，不能重新创建被撤销的授权。标准提供者负责授权码失效和刷新轮换；旧 Refresh Token 的摘要保留至其原始过期时间，检测到重放就删除该授权及当前 Token 索引，使其后续刷新失败。这也意味着丢失刷新响应后重试旧凭证会要求重新登录。刷新时重新查询原会话绑定的身份、租户和 Membership，不能隐式切换租户。Redis 故障时登录或刷新失败。停用 Membership 或租户后 Access Token 的即时失效见下文「即时失效」；刷新失败后前端清除本地凭证。
+Redis 保存 Spring Session 登录会话和标准 `OAuth2Authorization`，刷新凭证有效期 7 天。授权码/Token 的索引使用 SHA-256；认证前的索引和会话统一使用 `iam:global:` 前缀，因查询前还没有可相信的租户标识。授权状态采用 Spring 的 JDK 序列化器，只连接受信任的 Redis。Token 端点按授权 ID 使用 Redis 互斥，避免同一授权的凭证并发消费。重放撤销不等待这把锁；在途换码或刷新只能原子更新仍然存在的授权，不能重新创建被撤销的授权。标准提供者负责授权码失效和刷新轮换；旧 Refresh Token 的摘要保留至其原始过期时间，检测到重放就删除该授权及当前 Token 索引，使其后续刷新失败。这也意味着丢失刷新响应后重试旧凭证会要求重新登录。刷新时重新查询原会话绑定的身份、租户和 Membership，不能隐式切换租户。Redis 故障时登录或刷新失败，返回 503 `system.unavailable`（包括在过滤器层访问 Redis 失败、经容器转发到 `/error` 的情况），前端据此保留会话。停用 Membership 或租户后 Access Token 的即时失效见下文「即时失效」；刷新凭证被拒绝（401）后前端清除本地凭证。
 
 当前重放检测**没有宽限期**。复制标签页时，若浏览器同时复制了 sessionStorage，两个标签页就会持有相同的 Refresh Token；一个标签页轮换后，另一个使用旧凭证会撤销整条授权的后续刷新能力。两个独立客户端并发刷新时，后到的请求若已被识别为使用旧凭证，即使遇到锁争用，也会触发撤销。两边都需要重新登录，但持有的 Access Token 在过期前仍可能有效，界面不一定立即同步退出。Shell 的共享实例只能合并同一实例内正在进行的刷新，不能协调复制出的标签页。暂不加入宽限期，以保持旧凭证一经识别为重放即撤销的语义。
 
 每次轮换保留一个 `:used-refresh` 摘要键，TTL 截止该旧凭证原来的过期时间，最长约 7 天；撤销授权后历史摘要也按各自 TTL 自然过期。按每 15 分钟刷新一次、连续活跃 7 天估算，一条授权约积累 672 个历史键；主动调用刷新接口会更多，因此这不是数量上限。运维需结合实际刷新频率关注键数、TTL、Redis 内存和淘汰情况，不能通过提前删除摘要来降低内存占用，否则会丢失重放关联。工单 07 评估了按授权聚合（每条授权一个以过期时间为分值的有序集合，轮换时顺带清理已过期成员）：重放检测要从被重放的凭证反查授权，而标准 Refresh Token 是不含授权 ID 的随机值，聚合必须改写 Refresh Token 生成器把授权 ID 编入凭证，并兼容已签发的旧格式凭证。键数虽减少，总条目与内存量级不变（摘要仍需逐条保留到原始过期时间），收益有限，因此保持现有存储结构，以上运维关注点不变。
 
-`@forge/sdk` 的 `createTenantClient(sessionStorage)` 提供登录、退出、刷新、同源请求和会话读取。Shell 的 `App.vue` 创建唯一实例并 `provide(tenantClientKey, client)`；LoginPanel 与后续 Sub-App 通过 `inject(tenantClientKey)` 获取同一实例，不再自行创建客户端。注入键携带 `InjectionKey<TenantClient>` 类型信息。并发刷新只在这个共享实例内合并；不同标签页不共享刷新队列。demo-service `/context` 的响应类型由 tenant-app 调用方维护，不由通用 SDK 导出。
+`@forge/sdk` 的 `createTenantClient(sessionStorage)` 提供登录、退出、刷新、同源请求和会话读取。业务调用用 `api<T>()` 直接取信封的 `data`、`page<T>()` 取 `{ items, page }`，失败抛出带 `code`、`httpStatus`、`userTip`、`traceId`、`errors` 的 `ApiError`；响应不是信封（如代理返回的 HTML）时为 `system.error`。`request()` 仍返回原始 `Response`。界面错误提示优先展示 `userTip`，并附可复制的 traceId。Shell 的 `App.vue` 创建唯一实例并 `provide(tenantClientKey, client)`；LoginPanel 与后续 Sub-App 通过 `inject(tenantClientKey)` 获取同一实例，不再自行创建客户端。注入键携带 `InjectionKey<TenantClient>` 类型信息。并发刷新只在这个共享实例内合并；不同标签页不共享刷新队列。demo-service `/context` 的响应类型由 tenant-app 调用方维护，不由通用 SDK 导出。
 
 Token 保存在当前标签页的 sessionStorage。请求遇到 401 时合并刷新并只重试一次。生产环境必须使用 HTTPS，并防止脚本读取浏览器凭证。
 
@@ -66,7 +68,7 @@ Token 保存在当前标签页的 sessionStorage。请求遇到 401 时合并刷
 
 `GET /auth/memberships` 由 IAM 以自身签名密钥无状态验签 Access Token（issuer、audience），不使用登录会话 Cookie；网关对该路径要求有效 Tenant Token。
 
-前端 SDK 的刷新与切换共用一个轮换队列，切换会等待进行中的刷新后使用新 Refresh Token。切换成功后提升会话代次，切换前发出的请求以 `auth.sessionChanged` 失败，不会把旧租户响应写回界面，也不会在 401 后带新租户 Token 重发；切换只有在刷新凭证被拒绝（401）时清除会话，其他故障保留原会话。`onSessionChange` 通知订阅者。顶部租户切换器切换成功后整页回到 `/`，丢弃 Shell 与 Sub-App 中属于旧租户的内存状态和路由。选择租户依赖 IAM 登录会话（空闲 30 分钟）；在选择页刷新浏览器会回到登录页。
+前端 SDK 的刷新与切换共用一个轮换队列，切换会等待进行中的刷新后使用新 Refresh Token。切换成功后提升会话代次，切换前发出的请求以 `auth.sessionChanged` 失败，不会把旧租户响应写回界面，也不会在 401 后带新租户 Token 重发；切换只有在刷新凭证被拒绝（401 `auth.failed`）时清除会话，其他故障保留原会话。`onSessionChange` 通知订阅者。顶部租户切换器切换成功后整页回到 `/`，丢弃 Shell 与 Sub-App 中属于旧租户的内存状态和路由。选择租户依赖 IAM 登录会话（空闲 30 分钟）；在选择页刷新浏览器会回到登录页。
 
 IAM 认证阶段 Membership 查询的 RLS 例外及边界见 [ADR-0001](adr/0001-shared-schema-tenant-isolation.md)。
 
@@ -80,13 +82,13 @@ IAM 认证阶段 Membership 查询的 RLS 例外及边界见 [ADR-0001](adr/0001
 | `iam:{tenant_id}:status` | 租户状态，如 `active`、`suspended` | 签发 Token 时（仅键缺失时补写）；租户状态变更时 |
 | `iam:{tenant_id}:membership:{membership_id}:grants:{version}` | 该版本的角色与权限 JSON，TTL 1 小时 | 签发 Token 时；版本递增时 |
 
-- **网关**：验签后用一次 `MGET` 读取前两项。Token 的 `ver` 与版本不等、租户不是 `active` 或任一键缺失都返回 401 `invalid_token`；Redis 不可用时返回 503，避免 401 触发刷新后把用户登出。业务服务仍只做离线验签，绕过网关直连业务服务的请求不受即时失效保护。
+- **网关**：验签后用一次 `MGET` 读取前两项。Token 的 `ver` 与版本不等、租户不是 `active` 或任一键缺失都返回 401 `auth.unauthenticated` 信封（`WWW-Authenticate` 带 `error="invalid_token"`）；Redis 不可用时返回 503 `system.unavailable`，避免 401 触发刷新后把用户登出。业务服务仍只做离线验签，绕过网关直连业务服务的请求不受即时失效保护。
 - **iam 变更入口**：`MembershipStateService.deactivate`（停用并递增版本）、`MembershipStateService.incrementVersion`（角色变更时调用）、`TenantStateService.changeStatus`。目前只有服务方法，管理接口在工单 15、16、17 接入。变更先提交数据库再写 Redis；Redis 写入失败时调用方收到异常，刷新已按数据库拒绝，但已签发的 Access Token 在过期前仍会通过网关，需重试变更。状态必须经由这些方法修改：直接改库不会更新 Redis。
 - **并发**：签发时读到的旧版本不能覆盖并发变更已发布的新版本（版本只前进，Lua 脚本比较后写入）；租户状态在签发时只补写缺失的键，不会用签发前读到的 `active` 覆盖并发写入的停用状态。重新启用租户后，停用前签发且未过期的 Access Token 会重新可用。
 - **状态丢失**：Redis 淘汰或清空后，请求先得到 401，前端刷新时 iam 按数据库重新发布状态，用户无需重新登录。
 - **刷新**：Membership、租户或身份不再 active 时刷新失败（401）；版本递增后刷新签发携带新 `ver` 的 Token。切换租户不递增版本，切换前所在租户的 Access Token 在过期前仍有效。
 - **角色与权限明细**不进入 JWT。业务服务注入 SDK `MembershipGrantStore`，按 Token 的 `membership_id + ver` 读取并按 Membership 本地缓存（最多 1 万条），版本变化即重新读取；明细未发布时抛出异常而不是视为无权限。角色管理（工单 16）之前发布的明细为空。
-- **前端**：`@forge/sdk` 的请求遇到 401 时合并为一次刷新并重放一次（只合并同时在途的刷新，刷新完成后才收到 401 的旧请求会再刷新一次）。刷新凭证被拒绝时清除会话，Shell 回到 `/`，登录面板回到登录表单；刷新接口 5xx（如 IAM 依赖的 Redis 不可用）或网络故障时保留会话，请求以 `auth.unavailable` 或原错误失败。
+- **前端**：`@forge/sdk` 的请求遇到 401 时合并为一次刷新并重放一次（只合并同时在途的刷新，刷新完成后才收到 401 的旧请求会再刷新一次）。刷新凭证被拒绝（刷新接口返回任何 401，不论是否为信封；或 `auth.tenantAccessDenied`）时清除会话，Shell 回到 `/`，登录面板回到登录表单；刷新接口返回 5xx（如 IAM 依赖的 Redis 不可用时的 503 `system.unavailable`）、其他非 401 的非信封响应或网络故障时保留会话，请求以对应 `ApiError` 或原错误失败。
 
 ## 配置
 
