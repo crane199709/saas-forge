@@ -132,6 +132,13 @@ WebFlux 的 `ErrorWebExceptionHandler` 归入 `filter` 而不是 `controller`：
 - `controller` 只调用本功能包的 `service`。
 - 功能包的数据只经由本包的 `service` 暴露：其他功能包的任何层都注入对方的 `service`，本包的 `config`、`filter`、`service` 可直接使用本包的 `mapper`。
 
+## 配置读取
+
+- 自定义配置（`forge.*`）用 `@ConfigurationProperties` 的 `record` 绑定，不用 `@Value`。服务模块的配置类放在所属功能包的 `config` 层；SDK 的配置类放在自动配置旁，以 `@EnableConfigurationProperties` 注册。
+- 同一个键在一个模块内只由一个配置类绑定，默认值只写在该类的 `@DefaultValue`，使用处注入配置类、不重复默认值。
+- 随环境变化的地址、issuer、密钥或证书文件路径不在代码中设默认值：本地值写在服务的 `application.yml`，漏配必须启动失败。框架对空值不报错时（如授权服务器 issuer 为空会改为按请求推断），在配置类的构造器中检查。
+- Spring 自带的属性（如 `spring.application.name`）沿用框架的绑定方式。设计不变量（分页上限、与列宽绑定的长度、锁时长）保留为常量，出现按环境调整的需求时再改为配置。
+
 ## Java 模型
 
 ### 类型引用
