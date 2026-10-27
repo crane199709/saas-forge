@@ -2,6 +2,7 @@ package io.saasforge.demo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.saasforge.demo.notification.entity.OrderNotification;
 import io.saasforge.demo.notification.service.OrderNotificationService;
 import io.saasforge.demo.order.entity.Order;
 import io.saasforge.demo.order.model.OrderCreated;
@@ -126,6 +127,15 @@ class OutboxMessagingTest {
         CurrentTenant.run(
                 TENANT_B,
                 () -> assertThat(notificationService.findByOrder(orderId)).isEmpty());
+        // 消费线程没有认证上下文：时间照常填充，操作人记为 NULL（系统），不从发布方传递
+        CurrentTenant.run(TENANT_A, () -> {
+            OrderNotification notification =
+                    notificationService.findByOrder(orderId).get(0);
+            assertThat(notification.getCreatedAt()).isNotNull().isEqualTo(notification.getUpdatedAt());
+            assertThat(notification.getCreatedBy()).isNull();
+            assertThat(notification.getUpdatedBy()).isNull();
+            assertThat(notification.getDeleted()).isFalse();
+        });
     }
 
     @Test

@@ -1,6 +1,5 @@
 package io.saasforge.sdk.mq;
 
-import com.baomidou.mybatisplus.autoconfigure.ConfigurationCustomizer;
 import java.util.List;
 import org.apache.rocketmq.client.apis.ClientConfiguration;
 import org.mybatis.spring.SqlSessionTemplate;
@@ -29,19 +28,6 @@ public final class MqAutoConfiguration {
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
     /**
-     * 注册 SDK 的 Mapper；MyBatis 按接口所在包加载同名 XML。
-     *
-     * <p>不用 Mapper 扫描注册：声明 MapperFactoryBean 会让 MyBatis-Plus 跳过服务自身 {@code @Mapper} 的自动扫描。
-     */
-    @Bean
-    public ConfigurationCustomizer mqMapperCustomizer() {
-        return configuration -> {
-            configuration.addMapper(OutboxMapper.class);
-            configuration.addMapper(ConsumedMessageMapper.class);
-        };
-    }
-
-    /**
      * 事件发布入口。
      *
      * @param sqlSession 参与 Spring 事务的 SqlSession，保证 Outbox 写入与业务数据同一事务
@@ -50,7 +36,7 @@ public final class MqAutoConfiguration {
     @Bean
     EventPublisher eventPublisher(SqlSessionTemplate sqlSession, ObjectProvider<OutboxDispatcher> dispatcher) {
         return new EventPublisher(
-                sqlSession.getMapper(OutboxMapper.class), JSON, () -> dispatcher.ifAvailable(OutboxDispatcher::wakeUp));
+                mapper(sqlSession, OutboxMapper.class), JSON, () -> dispatcher.ifAvailable(OutboxDispatcher::wakeUp));
     }
 
     /** 投递器与消费端，可在测试等不连接 MQ 的环境中关闭。 */
@@ -73,7 +59,7 @@ public final class MqAutoConfiguration {
                 ClientConfiguration configuration,
                 MqProperties properties) {
             return new OutboxDispatcher(
-                    sqlSession.getMapper(OutboxMapper.class),
+                    mapper(sqlSession, OutboxMapper.class),
                     new TransactionTemplate(transactionManager),
                     new RocketMqSender(configuration),
                     properties);
@@ -95,9 +81,24 @@ public final class MqAutoConfiguration {
                     configuration,
                     consumerGroup,
                     handlers,
-                    sqlSession.getMapper(ConsumedMessageMapper.class),
+                    mapper(sqlSession, ConsumedMessageMapper.class),
                     new TransactionTemplate(transactionManager),
                     JSON);
         }
+    }
+
+    /**
+     * 在 SqlSessionFactory 建好之后注册 SDK 的 Mapper；MyBatis 按接口所在包加载同名 XML。
+     *
+     * <p>不能在 {@code ConfigurationCustomizer} 中注册：那时 MyBatis-Plus 还没把 GlobalConfig 绑定到 Configuration，
+     * {@code addMapper} 会先绑定一份默认 GlobalConfig，之后服务配置的 MetaObjectHandler、逻辑删除等全局配置都不再生效。
+     * 也不用 Mapper 扫描注册：声明 MapperFactoryBean 会让 MyBatis-Plus 跳过服务自身 {@code @Mapper} 的自动扫描。
+     */
+    static <T> T mapper(SqlSessionTemplate sqlSession, Class<T> type) {
+        var configuration = sqlSession.getConfiguration();
+        if (!configuration.hasMapper(type)) {
+            configuration.addMapper(type);
+        }
+        return sqlSession.getMapper(type);
     }
 }

@@ -84,7 +84,7 @@ CREATE UNIQUE INDEX identity_account_key ON identity (account) WHERE NOT deleted
 1. mapper XML 中手写的 INSERT/UPDATE：自己维护 `updated_at`、`updated_by`，INSERT 还要维护 `created_*`。
 2. 不带实体的更新，例如 `update(null, wrapper)`：同上。
 3. mapper XML 中手写的查询：每张标准表（包括 JOIN 进来的表）都必须带 `NOT deleted`。
-4. 删除必须使用能触发更新填充的方法。`deleteById(id)` 在逻辑删除时是否触发填充，由工单 02 的测试确认，并据此写进规范。
+4. 删除必须使用能触发更新填充的方法。工单 02 已确认（MyBatis-Plus 3.5.16）：实体带逻辑删除字段和更新填充字段时，`deleteById(id)` 会先用主键构造实体，再按实体逻辑删除，因此会触发更新填充，`updated_at`、`updated_by` 随删除刷新；`deleteById(entity)` 走的是同一条路径。规范据此规定：标准表按主键删除用 `deleteById`。`delete(wrapper)`、`deleteByMap` 等按条件删除的方法不带实体，按实现推断不会触发填充（未单独测试），标准表上不要使用。
 
 本期不做启动校验、静态检查或自定义拦截器。
 
