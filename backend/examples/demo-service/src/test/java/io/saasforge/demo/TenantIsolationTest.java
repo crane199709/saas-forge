@@ -21,6 +21,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.sql.DataSource;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -49,6 +50,8 @@ import org.testcontainers.utility.MountableFile;
 class TenantIsolationTest {
     static final UUID TENANT_A = UUID.fromString("019a0110-0000-7000-8000-0000000000aa");
     static final UUID TENANT_B = UUID.fromString("019a0110-0000-7000-8000-0000000000bb");
+    static final UUID MEMBERSHIP_A = UUID.fromString("019a0110-0000-7000-8000-0000000000a1");
+    static final UUID MEMBERSHIP_B = UUID.fromString("019a0110-0000-7000-8000-0000000000b1");
     static final PageQuery FIRST_PAGE = new PageQuery(1, PageQuery.MAX_SIZE, List.of());
 
     @Container
@@ -87,6 +90,15 @@ class TenantIsolationTest {
 
     @Autowired
     StringRedisTemplate globalRedis;
+
+    @BeforeEach
+    void grantOrderPermissions() {
+        for (UUID tenant : List.of(TENANT_A, TENANT_B)) {
+            TestGrants.publishAll(globalRedis, tenant, TestTokens.MEMBERSHIP_ID);
+        }
+        TestGrants.publishAll(globalRedis, TENANT_A, MEMBERSHIP_A);
+        TestGrants.publishAll(globalRedis, TENANT_B, MEMBERSHIP_B);
+    }
 
     @Test
     void tenantTokenCannotReadOrModifyAnotherTenantsOrders() throws Exception {
@@ -127,10 +139,8 @@ class TenantIsolationTest {
 
     @Test
     void sameIdentitySeesOnlyTheActiveTenantsOrdersAfterSwitching() throws Exception {
-        UUID membershipA = UUID.fromString("019a0110-0000-7000-8000-0000000000a1");
-        UUID membershipB = UUID.fromString("019a0110-0000-7000-8000-0000000000b1");
-        String tokenA = TestTokens.forMembership(TENANT_A, membershipA);
-        String tokenB = TestTokens.forMembership(TENANT_B, membershipB);
+        String tokenA = TestTokens.forMembership(TENANT_A, MEMBERSHIP_A);
+        String tokenB = TestTokens.forMembership(TENANT_B, MEMBERSHIP_B);
         Map<?, ?> createdA = (Map<?, ?>) data(client(tokenA)
                 .post()
                 .uri("/orders")
@@ -158,7 +168,7 @@ class TenantIsolationTest {
                 (Map<?, ?>) data(client(tokenB).get().uri("/context").retrieve());
         assertThat(contextB.get("identityId")).isEqualTo(TestTokens.IDENTITY_ID.toString());
         assertThat(contextB.get("tenantId")).isEqualTo(TENANT_B.toString());
-        assertThat(contextB.get("membershipId")).isEqualTo(membershipB.toString());
+        assertThat(contextB.get("membershipId")).isEqualTo(MEMBERSHIP_B.toString());
     }
 
     private RestClient client(String token) {

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.role.mapper.RoleMapper">
+    <!-- 开通由系统发起（工单 14 的 TenantCreated 消费者），没有操作人，*_by 写 NULL。
+         ON CONFLICT 命中 (tenant_id, code) 的部分唯一索引，重复开通不产生重复角色。 -->
+    <insert id="insertBuiltin">
+        INSERT INTO role (id, tenant_id, code, name, builtin, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{tenantId}, #{code}, #{name}, true, now(), now(), NULL, NULL)
+        ON CONFLICT (tenant_id, code) WHERE NOT deleted DO NOTHING
+    </insert>
+    <select id="roleCodes" resultType="string">
+        SELECT r.code FROM membership_role mr JOIN role r ON r.id = mr.role_id
+        WHERE mr.membership_id = #{membershipId} AND NOT r.deleted
+        ORDER BY r.code
+    </select>
+</mapper>

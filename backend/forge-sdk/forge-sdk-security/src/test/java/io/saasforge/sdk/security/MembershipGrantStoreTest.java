@@ -4,8 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.saasforge.sdk.core.MembershipStateKeys;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -57,6 +62,37 @@ class MembershipGrantStoreTest {
         // 版本变化后缓存失效，读取新版本的明细。
         publish(2, "{\"roles\":[],\"permissions\":[\"order:read\",\"order:approve\"]}");
         assertThat(store.grants(context(2)).permissions()).isEqualTo(Set.of("order:read", "order:approve"));
+    }
+
+    @Test
+    void sameVersionIsReReadAfterTheRefreshInterval() {
+        // iam 在业务服务上报新清单后以同一版本覆盖明细，缓存过期后才能读到新增的权限码。
+        publish(5, "{\"roles\":[],\"permissions\":[\"order:read\"]}");
+        var now = new AtomicReference<>(Instant.parse("2026-10-27T00:00:00Z"));
+        var clock = new Clock() {
+            @Override
+            public ZoneId getZone() {
+                return ZoneOffset.UTC;
+            }
+
+            @Override
+            public Clock withZone(ZoneId zone) {
+                return this;
+            }
+
+            @Override
+            public Instant instant() {
+                return now.get();
+            }
+        };
+        var store = new MembershipGrantStore(template, clock);
+        assertThat(store.grants(context(5)).permissions()).containsExactly("order:read");
+
+        publish(5, "{\"roles\":[],\"permissions\":[\"order:read\",\"order:export\"]}");
+        assertThat(store.grants(context(5)).permissions()).containsExactly("order:read");
+
+        now.set(now.get().plus(MembershipGrantStore.REFRESH_AFTER));
+        assertThat(store.grants(context(5)).permissions()).contains("order:export");
     }
 
     @Test

@@ -1,14 +1,18 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { onUnmounted, provide, ref, watchEffect } from 'vue'
-import { createTenantClient, tenantClientKey } from '@forge/sdk'
+import { computed, inject, onUnmounted, ref, watchEffect } from 'vue'
+import { tenantClientKey, useAccessControl } from '@forge/sdk'
 import { themeTokens } from '@forge/ui'
 import LoginPanel from './LoginPanel.vue'
 import TenantSwitcher from './TenantSwitcher.vue'
+import { menuSections } from './menu-routes'
 
-const client = createTenantClient(sessionStorage)
-provide(tenantClientKey, client)
+const providedClient = inject(tenantClientKey)
+if (!providedClient) throw new Error('Shell must provide a TenantClient')
+const client = providedClient
+const access = useAccessControl()
+const sections = computed(() => menuSections(access.menus()))
 
 const { t } = useI18n()
 const route = useRoute()
@@ -50,7 +54,16 @@ defineProps<{ sharedChecks?: Record<string, boolean>; loadError?: string }>()
         <LoginPanel />
         <nav>
           <router-link to="/">{{ t('spike.home') }}</router-link>
-          <router-link to="/apps/demo/overview">{{ t('spike.demo') }}</router-link>
+          <template v-for="section in sections" :key="section.code">
+            <span class="menu-section">{{ section.name }}</span>
+            <router-link
+              v-for="item in section.links"
+              :key="item.code"
+              :to="item.to"
+              :data-testid="`menu-${item.code}`"
+              >{{ item.name }}</router-link
+            >
+          </template>
         </nav>
         <p data-testid="shell-route">{{ route.fullPath }}</p>
         <el-button
@@ -82,6 +95,9 @@ nav {
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
+}
+.menu-section {
+  color: var(--el-text-color-secondary);
 }
 .scope-probe {
   border: 0;

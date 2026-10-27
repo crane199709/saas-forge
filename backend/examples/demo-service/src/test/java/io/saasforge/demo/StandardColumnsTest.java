@@ -13,11 +13,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -71,6 +73,14 @@ class StandardColumnsTest {
 
     @Autowired
     OrderMapper orderMapper;
+
+    @Autowired
+    StringRedisTemplate redisTemplate;
+
+    @BeforeEach
+    void grantOrderPermissions() {
+        TestGrants.publishAll(redisTemplate, TENANT, TestTokens.MEMBERSHIP_ID);
+    }
 
     @Test
     void createFillsCreatedAndUpdatedColumnsAndUpdateRefreshesOnlyUpdatedColumns() throws Exception {

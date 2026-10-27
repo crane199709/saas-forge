@@ -3,6 +3,7 @@ package io.saasforge.demo.order.controller;
 import io.saasforge.demo.order.entity.Order;
 import io.saasforge.demo.order.service.OrderService;
 import io.saasforge.sdk.core.api.ApiResponse;
+import io.saasforge.sdk.security.RequiresPermission;
 import io.saasforge.sdk.web.PageQuery;
 import io.saasforge.sdk.web.SortableFields;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,6 +35,7 @@ class OrderController {
 
     @Operation(summary = "在当前租户下创建订单")
     @PostMapping
+    @RequiresPermission("order:create")
     @ResponseStatus(HttpStatus.CREATED)
     ApiResponse<OrderResponse> create(@RequestBody OrderRequest request) {
         return ApiResponse.created(OrderResponse.from(orderService.create(request.title(), request.amount())));
@@ -41,6 +43,7 @@ class OrderController {
 
     @Operation(summary = "分页列出当前租户的订单")
     @GetMapping
+    @RequiresPermission("order:read")
     ApiResponse<List<OrderResponse>> list(@SortableFields({"createdAt", "amount"}) PageQuery query) {
         List<OrderResponse> items =
                 orderService.list(query).stream().map(OrderResponse::from).toList();
@@ -49,18 +52,21 @@ class OrderController {
 
     @Operation(summary = "读取当前租户的订单")
     @GetMapping("/{id}")
+    @RequiresPermission("order:read")
     ApiResponse<OrderResponse> get(@PathVariable UUID id) {
         return ApiResponse.ok(OrderResponse.from(orderService.get(id)));
     }
 
     @Operation(summary = "修改当前租户的订单")
     @PutMapping("/{id}")
+    @RequiresPermission("order:update")
     ApiResponse<OrderResponse> update(@PathVariable UUID id, @RequestBody OrderRequest request) {
         return ApiResponse.ok(OrderResponse.from(orderService.update(id, request.title(), request.amount())));
     }
 
     @Operation(summary = "删除当前租户的订单")
     @DeleteMapping("/{id}")
+    @RequiresPermission("order:delete")
     ApiResponse<Void> delete(@PathVariable UUID id) {
         orderService.delete(id);
         return ApiResponse.ok();

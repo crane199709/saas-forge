@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "order:read": { "name": "查看订单", "group": "订单" },
+    "order:create": { "name": "创建订单", "group": "订单" },
+    "order:update": { "name": "修改订单", "group": "订单" },
+    "order:delete": { "name": "删除订单", "group": "订单" }
+  },
+  "menus": [
+    {
+      "code": "demo",
+      "name": "示例应用",
+      "icon": "grid",
+      "children": [
+        {
+          "code": "demo.overview",
+          "name": "订单概览",
+          "app": "demo",
+          "path": "overview",
+          "permission": "order:read"
+        }
+      ]
+    }
+  ]
+}

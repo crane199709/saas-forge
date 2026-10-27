@@ -30,10 +30,32 @@ class TestApplication {
                     "membership_id", String.valueOf(MDC.get("membership_id"))));
         }
 
+        @GetMapping("/orders")
+        @RequiresPermission("order:read")
+        ApiResponse<String> orders() {
+            return ApiResponse.ok("orders");
+        }
+
         @GetMapping("/admin")
         @PreAuthorize("hasAuthority('SCOPE_admin')")
         ApiResponse<String> admin() {
             return ApiResponse.ok("admin");
+        }
+    }
+
+    // 类上的声明对全部方法生效，方法上的声明优先。
+    @RestController
+    @RequiresPermission("report:read")
+    static class ReportController {
+        @GetMapping("/reports")
+        ApiResponse<String> reports() {
+            return ApiResponse.ok("reports");
+        }
+
+        @GetMapping("/reports/export")
+        @RequiresPermission("report:export")
+        ApiResponse<String> export() {
+            return ApiResponse.ok("export");
         }
     }
 }

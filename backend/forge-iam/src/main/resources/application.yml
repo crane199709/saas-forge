@@ -42,6 +42,10 @@ forge:
     signing-key-file: deploy/data/iam/signing.jwk
     platform:
       signing-key-file: deploy/data/iam/platform-signing.jwk
+    # 业务服务上报 Resource Manifest 的令牌，按服务名配置；本地开发值，部署时以 Nacos 或环境变量覆盖，须与服务的 forge.manifest.token 一致
+    manifest:
+      tokens:
+        demo-service: ${FORGE_DEMO_MANIFEST_TOKEN:local-demo-manifest-token}
 mybatis-plus:
   mapper-locations: classpath*:/*/mapper/**/*.xml
   configuration:

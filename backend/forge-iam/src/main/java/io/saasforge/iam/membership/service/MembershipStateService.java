@@ -2,11 +2,10 @@ package io.saasforge.iam.membership.service;
 
 import io.saasforge.iam.membership.mapper.MembershipMapper;
 import io.saasforge.iam.membership.model.MembershipChange;
-import io.saasforge.sdk.core.MembershipGrants;
+import io.saasforge.iam.role.service.RoleService;
 import io.saasforge.sdk.core.MembershipStateKeys;
 import java.time.Duration;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -31,19 +30,25 @@ public class MembershipStateService {
             Long.class);
 
     private final MembershipMapper memberships;
+    private final RoleService roles;
     private final StringRedisTemplate redis;
     private final JsonMapper json;
 
-    MembershipStateService(MembershipMapper memberships, StringRedisTemplate redis, JsonMapper json) {
+    MembershipStateService(
+            MembershipMapper memberships, RoleService roles, StringRedisTemplate redis, JsonMapper json) {
         this.memberships = memberships;
+        this.roles = roles;
         this.redis = redis;
         this.json = json;
     }
 
-    /** 签发 Token 时发布数据库中的当前状态，使被淘汰或丢失的 Redis 状态随刷新恢复。 */
+    /**
+     * 签发 Token 时发布数据库中的当前状态，使被淘汰或丢失的 Redis 状态随刷新恢复。
+     *
+     * <p>明细按签发时的角色与有效权限码计算：业务服务新上报的权限码在成员下一次刷新 Token 后生效。
+     */
     public void publish(UUID tenantId, UUID membershipId, long version) {
-        // TODO(#16): 角色管理接入后发布该版本实际的角色与权限明细。
-        var grants = new MembershipGrants(Set.of(), Set.of());
+        var grants = roles.grantsOf(membershipId);
         redis.opsForValue()
                 .set(
                         MembershipStateKeys.grants(tenantId, membershipId, version),

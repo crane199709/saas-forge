@@ -5,9 +5,70 @@ import { resolve } from 'node:path'
 
 const browserErrors = new WeakMap<Page, string[]>()
 
+function ok(data: unknown) {
+  return { json: { code: 'ok', httpStatus: 200, data, traceId: 'trace-ok' } }
+}
+
+// Sub-App 路由按后端下发的菜单注册，未登录时不存在；这里模拟已进入租户的会话与 IAM 下发的菜单。
+async function signIn(page: Page, permissions = ['order:read']) {
+  await page.addInitScript(() => {
+    sessionStorage.setItem(
+      'forge.tenant.session',
+      JSON.stringify({
+        accessToken: 'access-1',
+        refreshToken: 'refresh-1',
+        tokenType: 'Bearer',
+        expiresIn: 900,
+        identityName: '演示身份',
+        tenantId: 'tenant-1',
+        tenantName: '演示租户',
+        membershipId: 'membership-1',
+      }),
+    )
+  })
+  await page.route('**/iam/auth/access', (route) =>
+    route.fulfill(
+      ok({
+        permissions,
+        menus: [
+          {
+            code: 'demo',
+            name: '示例应用',
+            children: [
+              {
+                code: 'demo.overview',
+                name: '示例子应用',
+                app: 'demo',
+                path: 'overview',
+                permission: 'order:read',
+              },
+            ],
+          },
+        ],
+      }),
+    ),
+  )
+  await page.route('**/iam/auth/memberships', (route) =>
+    route.fulfill(
+      ok([{ membershipId: 'membership-1', tenantId: 'tenant-1', tenantName: '演示租户' }]),
+    ),
+  )
+  await page.route('**/demo/context', (route) =>
+    route.fulfill(
+      ok({
+        identityId: 'identity-1',
+        tenantId: 'tenant-1',
+        membershipId: 'membership-1',
+        version: 1,
+      }),
+    ),
+  )
+}
+
 test.beforeEach(async ({ page }) => {
   const errors: string[] = []
   browserErrors.set(page, errors)
+  await signIn(page)
   page.on('pageerror', (error) => errors.push(error.message))
   page.on('console', (message) => {
     if (['error', 'warning'].includes(message.type())) errors.push(message.text())
@@ -145,4 +206,25 @@ test('Sub-App 嵌套路由与 Shell 同步，支持前进、后退及深链接�
   await expect(page.getByRole('heading', { name: '详情 42' })).toBeVisible()
   await page.getByRole('link', { name: 'Shell 首页' }).click()
   await expect(page.getByRole('heading', { name: '示例子应用 v1' })).toHaveCount(0)
+})
+
+test('v-perm 按当前 Membership 的权限显示或隐藏 Sub-App 中的按钮', async ({ page }) => {
+  await page.goto('/apps/demo/overview')
+  await expect(page.getByRole('heading', { name: '概览', exact: true })).toBeVisible()
+  await expect(page.getByTestId('create-order')).toBeHidden()
+
+  await page.unroute('**/iam/auth/access')
+  await signIn(page, ['order:read', 'order:create'])
+  await page.reload()
+  await expect(page.getByTestId('create-order')).toBeVisible()
+})
+
+test('菜单中没有的 Sub-App 不注册路由', async ({ page }) => {
+  await page.unroute('**/iam/auth/access')
+  await page.route('**/iam/auth/access', (route) =>
+    route.fulfill(ok({ permissions: [], menus: [] })),
+  )
+  await page.goto('/apps/demo/overview')
+  await expect(page.getByRole('link', { name: '示例子应用', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: '概览', exact: true })).toHaveCount(0)
 })

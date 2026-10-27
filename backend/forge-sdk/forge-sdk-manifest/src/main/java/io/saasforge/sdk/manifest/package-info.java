@@ -1,6 +1,2 @@
-/**
- * Resource Manifest 收集与上报。
- *
- * <p>第一期工程骨架阶段为空壳，能力在后续工单中实现。
- */
+/** Resource Manifest 的收集与上报：启动时自动上报，CI 中经 {@code ManifestCli} 生成与上报。 */
 package io.saasforge.sdk.manifest;

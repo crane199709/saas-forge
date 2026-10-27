@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.permission.mapper.ResourceManifestMapper">
+    <!-- 同一服务的多个实例会同时启动并上报，事务级咨询锁让「检查版本 → 切换当前版本 → 更新权限码」整体串行。 -->
+    <select id="lockService" resultType="int">
+        SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtext('resource_manifest:' || #{service}))) AS locked
+    </select>
+    <select id="sameContent" resultType="boolean">
+        SELECT content = CAST(#{content} AS jsonb) FROM resource_manifest
+        WHERE service = #{service} AND version = #{version} AND NOT deleted
+    </select>
+    <update id="clearCurrent">
+        UPDATE resource_manifest SET current = false, updated_at = now(), updated_by = NULL
+        WHERE service = #{service} AND current AND NOT deleted
+    </update>
+    <insert id="insertCurrent">
+        INSERT INTO resource_manifest (id, service, version, content, current, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{service}, #{version}, CAST(#{content} AS jsonb), true, now(), now(), NULL, NULL)
+    </insert>
+    <select id="currentContents" resultType="string">
+        SELECT content::text FROM resource_manifest WHERE current AND NOT deleted ORDER BY service
+    </select>
+</mapper>

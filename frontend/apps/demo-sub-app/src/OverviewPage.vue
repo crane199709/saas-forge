@@ -19,6 +19,7 @@ const { t } = useI18n({
       tooltipButton: '提示说明',
       tooltip: '共享样式的提示',
       close: '关闭',
+      createOrder: '新建订单',
     },
   },
 })
@@ -29,6 +30,8 @@ const { t } = useI18n({
   <router-link :to="{ name: 'demo:details', params: { id: '42' } }">{{ t('detail') }}</router-link>
   <p>
     <el-button @click="open = true">{{ t('open') }}</el-button>
+    <!-- 按钮级权限由 Shell 安装的 v-perm 控制；接口仍由 demo-service 按 order:create 校验 -->
+    <el-button v-perm="'order:create'" data-testid="create-order">{{ t('createOrder') }}</el-button>
   </p>
   <el-dialog v-model="open" :title="t('dialog')" width="min(520px, 90vw)" append-to-body>
     <el-select v-model="selected" :aria-label="t('select')" :placeholder="t('select')">

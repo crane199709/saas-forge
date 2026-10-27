@@ -1,5 +1,14 @@
 import { expect, test } from '@playwright/test'
 
+// 进入租户后 Shell 读取权限与菜单；这些用例不涉及菜单，返回空权限。
+test.beforeEach(async ({ page }) => {
+  await page.route('**/iam/auth/access', (route) =>
+    route.fulfill({
+      json: { code: 'ok', httpStatus: 200, data: { permissions: [], menus: [] }, traceId: 'trace' },
+    }),
+  )
+})
+
 function ok(data?: unknown) {
   return { json: { code: 'ok', httpStatus: 200, data, traceId: 'trace-ok' } }
 }

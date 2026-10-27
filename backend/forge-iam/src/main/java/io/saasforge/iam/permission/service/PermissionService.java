@@ -1,0 +1,82 @@
+package io.saasforge.iam.permission.service;
+
+import io.saasforge.iam.permission.mapper.PermissionMapper;
+import io.saasforge.iam.permission.mapper.ResourceManifestMapper;
+import io.saasforge.sdk.core.ResourceManifest;
+import io.saasforge.sdk.core.ResourceManifest.MenuNode;
+import io.saasforge.sdk.core.ResourceManifest.Permission;
+import io.saasforge.sdk.core.UuidV7;
+import io.saasforge.sdk.core.api.ForgeException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.json.JsonMapper;
+
+/** 接收业务服务上报的 Resource Manifest，维护 Permission Code 与菜单的当前版本。 */
+@Service
+public class PermissionService {
+    private final ResourceManifestMapper manifests;
+    private final PermissionMapper permissions;
+    private final JsonMapper json;
+
+    PermissionService(ResourceManifestMapper manifests, PermissionMapper permissions, JsonMapper json) {
+        this.manifests = manifests;
+        this.permissions = permissions;
+        this.json = json;
+    }
+
+    /**
+     * 存储上报的清单。新版本成为该服务的当前版本：其中的权限码新增或恢复为 active，不再出现的标记 inactive。
+     * 同一版本重复上报相同内容不做任何修改，因此旧版本实例重启不会把当前版本切回旧版。
+     *
+     * @param reporter 上报令牌所属的服务
+     * @param manifest 上报的清单
+     * @return 是否存储了新版本
+     */
+    @Transactional
+    public boolean report(String reporter, ResourceManifest manifest) {
+        if (!reporter.equals(manifest.service())) throw new ForgeException(ManifestErrorCode.SERVICE_MISMATCH);
+        validate(manifest);
+        String content = json.writeValueAsString(manifest);
+        manifests.lockService(manifest.service());
+        Boolean same = manifests.sameContent(manifest.service(), manifest.version(), content);
+        if (same != null) {
+            if (!same) throw new ForgeException(ManifestErrorCode.VERSION_CONFLICT, manifest.version());
+            return false;
+        }
+        manifests.clearCurrent(manifest.service());
+        manifests.insertCurrent(UuidV7.generate(), manifest.service(), manifest.version(), content);
+        Set<String> codes = new HashSet<>();
+        for (Permission permission : manifest.permissions()) {
+            codes.add(permission.code());
+            int changed = permissions.upsert(
+                    UuidV7.generate(), permission.code(), manifest.service(), permission.name(), permission.group());
+            if (changed == 0) throw new ForgeException(ManifestErrorCode.PERMISSION_CONFLICT, permission.code());
+        }
+        permissions.deactivateMissing(manifest.service(), codes);
+        return true;
+    }
+
+    /** 全部 active 的 Permission Code。 */
+    public List<String> activeCodes() {
+        return permissions.activeCodes();
+    }
+
+    /** 各服务当前版本的菜单树，按服务名依次拼接，未经权限裁剪。 */
+    public List<MenuNode> currentMenus() {
+        return manifests.currentContents().stream()
+                .flatMap(content -> json.readValue(content, ResourceManifest.class).menus().stream())
+                .toList();
+    }
+
+    private static void validate(ResourceManifest manifest) {
+        // 规则与 SDK 生成清单时相同；接口也可能被 CI 或其他客户端直接调用，iam 仍须自行校验。
+        try {
+            manifest.validate();
+        } catch (IllegalArgumentException error) {
+            throw new ForgeException(ManifestErrorCode.INVALID, error.getMessage());
+        }
+    }
+}

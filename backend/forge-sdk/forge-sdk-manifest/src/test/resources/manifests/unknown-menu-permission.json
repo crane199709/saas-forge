@@ -1,0 +1,5 @@
+{
+  "menus": [
+    { "code": "orders", "name": "订单", "app": "demo", "path": "overview", "permission": "order:typo" }
+  ]
+}

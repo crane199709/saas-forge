@@ -10,6 +10,8 @@ import io.saasforge.iam.identity.service.IdentityService;
 import io.saasforge.iam.membership.service.MembershipStateService;
 import io.saasforge.iam.operator.model.ActiveOperator;
 import io.saasforge.iam.operator.service.OperatorService;
+import io.saasforge.iam.permission.config.ManifestProperties;
+import io.saasforge.iam.permission.filter.ServiceTokenFilter;
 import io.saasforge.iam.security.filter.EnvelopeSecurityErrorHandler;
 import io.saasforge.iam.security.filter.TokenGrantLockFilter;
 import io.saasforge.iam.security.service.RedisAuthorizationService;
@@ -64,6 +66,7 @@ import org.springframework.security.oauth2.server.authorization.settings.TokenSe
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration(proxyBeanMethods = false)
@@ -284,8 +287,8 @@ class IamSecurityConfiguration {
     @Bean
     @Order(2)
     SecurityFilterChain accessTokenSecurity(HttpSecurity http, EnvelopeSecurityErrorHandler errors) throws Exception {
-        // 已持有 Access Token 的身份读取自己的 Membership；无状态、不使用登录会话 Cookie。
-        http.securityMatcher("/auth/memberships")
+        // 已持有 Access Token 的身份读取自己的 Membership 与权限；无状态、不使用登录会话 Cookie。
+        http.securityMatcher("/auth/memberships", "/auth/access")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
@@ -300,6 +303,21 @@ class IamSecurityConfiguration {
 
     @Bean
     @Order(3)
+    SecurityFilterChain manifestSecurity(
+            HttpSecurity http, ManifestProperties manifest, EnvelopeSecurityErrorHandler errors) throws Exception {
+        // 业务服务以上报令牌调用，无状态、不使用 Cookie，因此无需 CSRF 防护。
+        http.securityMatcher("/internal/manifests")
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(csrf -> csrf.disable())
+                .addFilterBefore(new ServiceTokenFilter(manifest), AuthorizationFilter.class)
+                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                .exceptionHandling(exceptions ->
+                        exceptions.authenticationEntryPoint(errors).accessDeniedHandler(errors));
+        return http.build();
+    }
+
+    @Bean
+    @Order(4)
     SecurityFilterChain applicationSecurity(HttpSecurity http, EnvelopeSecurityErrorHandler errors) throws Exception {
         // JSON 凭证入口不开启 CORS，授权端点使用 Redis HTTP 会话；Token 交换仍需授权码和 PKCE。
         http.csrf(csrf -> csrf.ignoringRequestMatchers(
