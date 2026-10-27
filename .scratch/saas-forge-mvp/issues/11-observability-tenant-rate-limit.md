@@ -22,6 +22,6 @@
 
 2026-10-27 实现说明：
 - MDC：`CurrentTenant.bind` 写入 `tenant_id`（HTTP 请求、MQ 消费、`CurrentTenant.run/wrap` 的异步与定时任务都覆盖），`CurrentTenantFilter` 写入 `membership_id`（只有 HTTP 请求有成员身份）。forge-sdk-web 默认日志关联段为 `[traceId-spanId] [tenant_id,membership_id] `，无租户时省略后一段；服务自定义 `logging.pattern.console/file` 时需自行保留 `LOG_CORRELATION_PATTERN`。
-- 网关日志只带 traceId，不带 `tenant_id`/`membership_id`：响应式链路跨线程，需要另做 Reactor context 到 MDC 的传播，留作后续。
+- 网关：`RequestLogContextFilter` 在认证后把 Token 中的 `tenant_id`、`membership_id` 写入 Reactor context，开启 `spring.reactor.context-propagation=auto` 后经 context-propagation 在换线程时恢复到 MDC（traceId 同理）；异常处理在过滤链之外，由 `RequestLogContext.bind` 从请求属性显式绑定。
 - 导出：引入 `spring-boot-starter-opentelemetry`。trace 在配置 `management.opentelemetry.tracing.export.otlp.endpoint` 后导出；Micrometer 指标经 OTLP 推送，SDK 与网关默认关闭，以 `management.otlp.metrics.export.enabled=true` 与 `url` 开启。
 - 限流：网关 `TenantRateLimitFilter` 以 Sentinel 热点参数规则按 `tenant_id` 计数，阈值 `forge.gateway.rate-limit.default-qps`（默认 100），按单实例计数、启动时加载。按套餐阈值的扩展点为 `TenantQpsOverrides`，未实现。匿名接口按 IP 限流不在本工单。

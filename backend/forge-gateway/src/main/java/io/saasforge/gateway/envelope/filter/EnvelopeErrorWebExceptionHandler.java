@@ -1,6 +1,7 @@
 package io.saasforge.gateway.envelope.filter;
 
 import io.saasforge.gateway.envelope.service.ErrorEnvelopeService;
+import io.saasforge.gateway.logcontext.service.RequestLogContext;
 import io.saasforge.sdk.core.api.ErrorEnvelopes;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import java.net.ConnectException;
@@ -28,9 +29,11 @@ class EnvelopeErrorWebExceptionHandler implements ErrorWebExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(EnvelopeErrorWebExceptionHandler.class);
 
     private final ErrorEnvelopeService envelopes;
+    private final RequestLogContext logContext;
 
-    EnvelopeErrorWebExceptionHandler(ErrorEnvelopeService envelopes) {
+    EnvelopeErrorWebExceptionHandler(ErrorEnvelopeService envelopes, RequestLogContext logContext) {
         this.envelopes = envelopes;
+        this.logContext = logContext;
     }
 
     @Override
@@ -55,10 +58,15 @@ class EnvelopeErrorWebExceptionHandler implements ErrorWebExceptionHandler {
                     ex.getClass().getSimpleName());
         }
         if (isUnavailable(ex, status)) {
-            log.warn("Upstream unavailable for {}", route(exchange), ex);
+            // 异常处理在过滤链之外，链内写入 Reactor context 的租户读不到，需显式绑定
+            try (RequestLogContext.Binding ignored = logContext.bind(exchange)) {
+                log.warn("Upstream unavailable for {}", route(exchange), ex);
+            }
             return envelopes.write(exchange, FrameworkErrorCode.SYSTEM_UNAVAILABLE, ErrorEnvelopes.INTERNAL_ERROR);
         }
-        log.error("Unhandled gateway error for {}", route(exchange), ex);
+        try (RequestLogContext.Binding ignored = logContext.bind(exchange)) {
+            log.error("Unhandled gateway error for {}", route(exchange), ex);
+        }
         return envelopes.write(exchange, FrameworkErrorCode.SYSTEM_ERROR, ErrorEnvelopes.INTERNAL_ERROR);
     }
 

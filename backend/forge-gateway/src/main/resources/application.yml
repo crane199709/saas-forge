@@ -13,6 +13,9 @@ spring:
   cloud:
     nacos:
       server-addr: ${FORGE_NACOS_ADDR:127.0.0.1:8848}
+  # 响应式链路换线程时，经 context-propagation 把 trace 与租户日志上下文恢复到 MDC
+  reactor:
+    context-propagation: auto
   data:
     redis:
       host: ${FORGE_REDIS_HOST:127.0.0.1}
@@ -24,3 +27,8 @@ management:
       export:
         # 与 forge-sdk-web 的默认一致：Boot 默认每分钟推往 localhost:4318，未部署采集端时只会反复报错，部署时显式开启
         enabled: false
+
+logging:
+  pattern:
+    # 与 forge-sdk-web 的默认一致：[traceId-spanId] 之后追加租户与 Membership，二者都为空时省略
+    correlation: "%correlationId%replace([%X{tenant_id},%X{membership_id}] ){'^.,. $', ''}"
