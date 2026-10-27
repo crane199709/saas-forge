@@ -18,6 +18,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
@@ -312,6 +313,18 @@ class GatewaySecurityTest {
                         token(KEY, ISSUER, Instant.now().plusSeconds(900))),
                 404,
                 "request.notFound");
+    }
+
+    @Test
+    void registrationAndCodeLoginEndpointsAreAnonymous() throws Exception {
+        // 测试未配置 IAM 路由：通过安全规则后得到路由 404，被拦截则为 401。
+        for (String path : List.of(
+                "/iam/auth/login/send-code",
+                "/iam/auth/code-login",
+                "/iam/auth/register/send-code",
+                "/iam/auth/register")) {
+            assertEnvelope(call(HttpMethod.POST, path, null), 404, "request.notFound");
+        }
     }
 
     private void assertUnauthenticated(String token) {

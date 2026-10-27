@@ -27,6 +27,10 @@ Vite 将 `/iam` 与 `/demo` 代理到本地网关 `http://localhost:8080`。部�
 | 接口（网关路径） | 请求 | 结果 |
 | --- | --- | --- |
 | `POST /iam/auth/login` | JSON `account`、`password` | Redis 登录会话 Cookie、`clientId`、`redirectUri`、`memberships`（可进入的租户） |
+| `POST /iam/auth/login/send-code` | JSON `target`（邮箱或手机号） | `expiresIn`、`resendIn`（秒）；目标未注册时响应相同但不发送 |
+| `POST /iam/auth/code-login` | JSON `target`、`code` | 与 `/auth/login` 相同：登录会话 Cookie、`clientId`、`redirectUri`、`memberships` |
+| `POST /iam/auth/register/send-code` | JSON `target` | `expiresIn`、`resendIn`；已被注册时 409 `registration.contactTaken` |
+| `POST /iam/auth/register` | JSON `account`、`password`、`target`、`code`，可选 `displayName` | 201，`identityId`；不建立登录会话、不加入任何租户 |
 | `GET /iam/oauth2/authorize` | 标准 authorization_code + S256 PKCE 参数 | 重定向至注册回调，携带一次性 code 和 state |
 | `POST /iam/auth/exchange` | JSON `code`、`codeVerifier`，可选 `membershipId` | 服务端经标准 Token 端点交换，返回 `accessToken`、`refreshToken`、`tokenType`、`expiresIn`、`identityName`、`tenantId`、`tenantName`、`membershipId` |
 | `POST /iam/auth/logout` | 同源 JSON `{}` + IAM 会话 Cookie | 销毁当前浏览器的 Redis 登录会话，返回 200，`data` 为空 |
@@ -57,6 +61,24 @@ Token 保存在当前标签页的 sessionStorage。请求遇到 401 时合并刷
 「重新登录」调用 `/auth/logout`，清除本地凭证并等待服务端销毁 IAM 会话；失败时显示“浏览器仍可能保持登录”并允许重试。此接口只接受 JSON，不启用跨域访问。IAM 登录会话的空闲超时为 30 分钟（访问可延长会话）；未退出时，同一浏览器可用新 PKCE 再次授权而不输入密码，这是保留的 SSO 行为。**关闭标签页或单独调用 SDK `clear()` 不会退出 IAM 会话**。退出当前浏览器会话不撤销已签发的 Access/Refresh Token，也不清除其他标签页的凭证；已泄漏 Access Token 在过期前仍可通过网关。即时失效按 Membership 与租户生效，不能单独吊销某一个 Token。
 
 账号区分大小写，邮箱按不区分大小写匹配并保持唯一；账号禁止 `@`，邮箱必须包含非空的 `@` 两侧，避免两个登录标识命名空间重叠。V3 迁移只增加约束，不自动改写历史数据；已有非法邮箱或仅大小写不同的重复邮箱会使迁移失败，需要先由维护者处理。
+
+## 自主注册与验证码登录
+
+工单：[10](../.scratch/saas-forge-mvp/issues/10-self-registration-verification-code.md)。注册只创建全局 Identity，必须验证邮箱或手机之一，另一项留空；账号以字母开头、不含 `@`。账号、邮箱（不区分大小写）、手机号在未删除的身份中全局唯一，冲突返回 409 `registration.accountTaken` / `registration.contactTaken`。注册不加入任何租户，tenant-app 注册后用同一账号密码登录，进入无租户页。手机号只校验 `+` 可选、6–15 位数字的格式，不做国家码归一化，`+8613800000000` 与 `13800000000` 视为不同号码。
+
+验证码登录认证的是同一个全局 Identity，建立与密码登录相同的登录会话，之后的授权码 + PKCE、`/auth/exchange` 与 Token 声明完全一致。密码登录仍只接受账号或邮箱。
+
+验证码规则（默认值可通过 `forge.iam.verification.*` 配置）：
+
+| 规则 | 默认 | 超出时 |
+| --- | --- | --- |
+| 有效期 `code-ttl` | 5 分钟，一次性使用 | 400 `verification.codeExpired` |
+| 发送间隔 `resend-interval` | 60 秒，按目标计算、不区分注册与登录 | 429 `verification.tooFrequent` |
+| 错误次数上限 `max-attempts` | 5 次，达到即作废，需重新获取 | 第 5 次 400 `verification.attemptsExceeded`，之后 `verification.codeExpired` |
+
+重新获取会覆盖同用途的旧码并清零错误次数。验证码状态只在 Redis（`iam:global:verification:` 前缀），明文存放：6 位数字的取值空间很小，哈希不能防住拿到 Redis 数据的人，防猜测依靠错误次数上限。为不暴露账号是否存在，登录验证码对未注册目标同样生成、计入发送间隔，只是不发送，因此响应和猜测时的错误与已注册目标一致；注册时则如实提示邮箱或手机号已被占用（提交注册时同样会提示，提前隐藏没有意义）。当前只按目标限频，按来源 IP 或租户的限流由工单 11 处理。
+
+短信与邮件发送是 SPI：声明 `io.saasforge.iam.verification.service.SmsSender` 或 `EmailSender` 类型的 Bean 即替换对应通道，两者独立。未声明时使用开发用实现，启动时写一条 WARN，并把验证码明文写入 INFO 日志，**生产环境必须提供实现**。
 
 ## 多租户
 

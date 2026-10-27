@@ -12,11 +12,13 @@ export {
   tenantRealm,
 } from './auth'
 export type {
+  CodeDelivery,
   PlatformClient,
   PlatformSession,
   PlatformSessionListener,
   RealmConfig,
   RealmSession,
+  RegistrationInput,
   TenantClient,
   TenantLoginResult,
   TenantMembership,

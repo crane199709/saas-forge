@@ -577,3 +577,63 @@ describe('统一信封', () => {
     await expect(client.page('/demo/orders')).rejects.toMatchObject({ code: 'system.error' })
   })
 })
+
+describe('注册与验证码登录', () => {
+  it('验证码登录与密码登录产出同样的会话', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(ok({ expiresIn: 300, resendIn: 60 }))
+      .mockResolvedValueOnce(loginSettings([membershipA]))
+      .mockImplementationOnce(authorizeRedirect)
+      .mockResolvedValueOnce(tokens('access-code', 'refresh-code'))
+    vi.stubGlobal('fetch', fetcher)
+    const client = createTenantClient(sessionStorage)
+    expect(await client.sendLoginCode('13800000000')).toEqual({ expiresIn: 300, resendIn: 60 })
+    expect(fetcher.mock.calls[0]?.[0]).toBe('/iam/auth/login/send-code')
+    const result = await client.loginWithCode('13800000000', '123456')
+    expect(result).toMatchObject({ status: 'signedIn', session: { accessToken: 'access-code' } })
+    expect(fetcher.mock.calls[1]?.[0]).toBe('/iam/auth/code-login')
+    expect(JSON.parse(fetcher.mock.calls[1]?.[1]?.body)).toEqual({
+      target: '13800000000',
+      code: '123456',
+    })
+    expect(client.session()?.refreshToken).toBe('refresh-code')
+  })
+
+  it('没有 Membership 的验证码登录得到 noTenant，不发起授权', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(loginSettings([]))
+    vi.stubGlobal('fetch', fetcher)
+    const client = createTenantClient(sessionStorage)
+    expect(await client.loginWithCode('new@example.com', '123456')).toEqual({ status: 'noTenant' })
+    expect(fetcher).toHaveBeenCalledTimes(1)
+  })
+
+  it('注册提交验证码，冲突与超频以服务端错误码失败', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(fail('verification.tooFrequent', 429))
+      .mockResolvedValueOnce(
+        envelope({ code: 'ok', httpStatus: 201, data: { identityId: 'identity-new' } }, 201),
+      )
+      .mockResolvedValueOnce(fail('registration.accountTaken', 409))
+    vi.stubGlobal('fetch', fetcher)
+    const client = createTenantClient(sessionStorage)
+    await expect(client.sendRegistrationCode('new@example.com')).rejects.toMatchObject({
+      code: 'verification.tooFrequent',
+    })
+    expect(fetcher.mock.calls[0]?.[0]).toBe('/iam/auth/register/send-code')
+    const input = {
+      account: 'newcomer',
+      password: 'Register-password-123!',
+      target: 'new@example.com',
+      code: '123456',
+    }
+    expect(await client.register(input)).toEqual({ identityId: 'identity-new' })
+    expect(fetcher.mock.calls[1]?.[0]).toBe('/iam/auth/register')
+    expect(JSON.parse(fetcher.mock.calls[1]?.[1]?.body)).toEqual(input)
+    await expect(client.register(input)).rejects.toMatchObject({
+      code: 'registration.accountTaken',
+      httpStatus: 409,
+    })
+  })
+})

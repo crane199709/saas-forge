@@ -21,4 +21,19 @@
         <include refid="activeMembership"/>
         AND i.id = #{identityId} AND m.id = #{membershipId} AND t.id = #{tenantId}
     </select>
+    <!-- 返回文本：开启按参数名构造映射后，MyBatis 无法直接把单列映射为 UUID。 -->
+    <select id="findActiveIdByContact" resultType="string">
+        SELECT id::text FROM identity
+        WHERE NOT deleted AND status = 'active' AND (lower(email) = lower(#{target}) OR phone = #{target})
+    </select>
+    <select id="existsAccount" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM identity WHERE NOT deleted AND account = #{account})
+    </select>
+    <select id="existsContact" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM identity WHERE NOT deleted AND (lower(email) = lower(#{target}) OR phone = #{target}))
+    </select>
+    <insert id="insert">
+        INSERT INTO identity (id, account, email, phone, display_name, password_hash, created_at, updated_at)
+        VALUES (#{id}, #{account}, #{email}, #{phone}, #{displayName}, #{passwordHash}, now(), now())
+    </insert>
 </mapper>

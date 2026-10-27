@@ -67,6 +67,21 @@ export type TenantLoginResult =
   | { status: 'selectTenant'; memberships: TenantMembership[] }
   | { status: 'noTenant' }
 
+/** 验证码已受理：有效期与可再次获取前的等待时间，单位秒。 */
+export interface CodeDelivery {
+  expiresIn: number
+  resendIn: number
+}
+
+/** 自主注册的输入；`target` 为已获取注册验证码的邮箱或手机号，`displayName` 缺省为账号。 */
+export interface RegistrationInput {
+  account: string
+  password: string
+  target: string
+  code: string
+  displayName?: string
+}
+
 /** 会话变化（登录、刷新、切换、清除）时的回调；`null` 表示已无会话。 */
 export type TenantSessionListener = (session: TenantSession | null) => void
 
@@ -90,10 +105,40 @@ export function createTenantClient(storage: Storage) {
   const core = createRealmClient<TenantSession>(tenantRealm, storage)
 
   /** 校验账号密码并建立 IAM 登录会话，按可进入的 Membership 数量决定自动进入、选择租户或无租户。 */
-  async function login(account: string, password: string): Promise<TenantLoginResult> {
+  function login(account: string, password: string): Promise<TenantLoginResult> {
+    return enter('login', { account, password })
+  }
+
+  /**
+   * 向邮箱或手机号发送登录验证码。目标未注册时服务端响应相同但不发送；
+   * 发送间隔内重复请求以 `verification.tooFrequent` 失败。
+   */
+  function sendLoginCode(target: string): Promise<CodeDelivery> {
+    return core.post<CodeDelivery>(`${tenantRealm.authPath}/login/send-code`, { target })
+  }
+
+  /** 以邮箱或手机验证码建立 IAM 登录会话，之后与 `login` 相同：自动进入、选择租户或无租户。 */
+  function loginWithCode(target: string, code: string): Promise<TenantLoginResult> {
+    return enter('code-login', { target, code })
+  }
+
+  /** 向待注册的邮箱或手机号发送注册验证码；已被注册时以 `registration.contactTaken` 失败。 */
+  function sendRegistrationCode(target: string): Promise<CodeDelivery> {
+    return core.post<CodeDelivery>(`${tenantRealm.authPath}/register/send-code`, { target })
+  }
+
+  /**
+   * 注册全局 Identity，不建立登录会话，也不加入任何租户；调用方随后可用同一账号密码 `login`，
+   * 得到 `noTenant`。账号、邮箱或手机号已被占用时以 `registration.*` 失败。
+   */
+  function register(input: RegistrationInput): Promise<{ identityId: string }> {
+    return core.post<{ identityId: string }>(`${tenantRealm.authPath}/register`, input)
+  }
+
+  async function enter(path: string, body: object): Promise<TenantLoginResult> {
     const settings = await core.authenticate<{ memberships?: TenantMembership[] }>(
-      account,
-      password,
+      path,
+      body,
       (value) => (value.memberships ?? []).length > 0,
     )
     const memberships = settings.memberships ?? []
@@ -124,6 +169,10 @@ export function createTenantClient(storage: Storage) {
     api: core.api,
     page: core.page,
     login,
+    sendLoginCode,
+    loginWithCode,
+    sendRegistrationCode,
+    register,
     selectTenant,
     memberships,
     switchTenant,
@@ -142,7 +191,7 @@ export function createPlatformClient(storage: Storage) {
 
   /** 校验 Operator 账号密码后经标准授权码 + PKCE 流程签发 Platform Realm Token。 */
   async function login(account: string, password: string): Promise<PlatformSession> {
-    await core.authenticate(account, password, () => true)
+    await core.authenticate('login', { account, password }, () => true)
     return core.authorize({})
   }
 
@@ -236,21 +285,21 @@ function createRealmClient<S extends RealmSession>(realm: RealmConfig, storage: 
   }
 
   /**
-   * 校验账号密码并建立 IAM 登录会话，返回 IAM 的登录结果。`canAuthorize` 为 false 时不保留授权参数，
-   * 之后的 `authorize` 以 `auth.failed` 失败。
+   * 以 `realm.authPath` 下的 `path` 接口校验凭证（账号密码或验证码）并建立 IAM 登录会话，返回 IAM 的登录结果。
+   * `canAuthorize` 为 false 时不保留授权参数，之后的 `authorize` 以 `auth.failed` 失败。
    */
   async function authenticate<T extends object>(
-    account: string,
-    password: string,
+    path: string,
+    credentials: object,
     canAuthorize: (settings: T) => boolean,
   ): Promise<T> {
     clear()
     const started = generation
-    const authenticated = await fetch(`${realm.authPath}/login`, {
+    const authenticated = await fetch(`${realm.authPath}/${path}`, {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ account, password }),
+      body: JSON.stringify(credentials),
     })
     const settings = (
       await readEnvelope<T & { clientId: string; redirectUri: string }>(authenticated)
@@ -262,6 +311,17 @@ function createRealmClient<S extends RealmSession>(realm: RealmConfig, storage: 
     if (canAuthorize(settings))
       authorization = { clientId: settings.clientId, redirectUri: settings.redirectUri, generation }
     return settings
+  }
+
+  /** 调用不需要凭证与登录会话的匿名信封接口（如发送验证码、注册），失败抛出 `ApiError`。 */
+  async function post<T>(path: string, body: object): Promise<T> {
+    const response = await fetch(path, {
+      method: 'POST',
+      credentials: 'omit',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    return (await readEnvelope<T>(response)).data as T
   }
 
   /** 以 `authenticate` 建立的 IAM 登录会话经授权码 + PKCE 签发 Token；`extra` 随换码请求提交。 */
@@ -415,6 +475,7 @@ function createRealmClient<S extends RealmSession>(realm: RealmConfig, storage: 
     page,
     authenticate,
     authorize,
+    post,
     rebind,
     onSessionChange,
     logout,
