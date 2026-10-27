@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.saasforge.iam.tenant.mapper.TenantMapper">
+    <!-- 目前没有经认证接口修改租户状态的入口，调用方都是系统操作，因此 updated_by 写 NULL。 -->
     <update id="updateStatus">
-        UPDATE tenant SET status = #{status} WHERE id = #{tenantId}
+        UPDATE tenant SET status = #{status}, updated_at = now(), updated_by = NULL
+        WHERE id = #{tenantId} AND NOT deleted
     </update>
 </mapper>

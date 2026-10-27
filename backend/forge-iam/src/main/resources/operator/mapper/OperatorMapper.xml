@@ -3,10 +3,10 @@
 <mapper namespace="io.saasforge.iam.operator.mapper.OperatorMapper">
     <select id="findCredential" resultType="io.saasforge.iam.operator.model.OperatorCredential">
         SELECT id AS operator_id, password_hash FROM operator
-        WHERE status = 'active' AND account = #{account}
+        WHERE NOT deleted AND status = 'active' AND account = #{account}
     </select>
     <select id="findActive" resultType="io.saasforge.iam.operator.model.ActiveOperator">
         SELECT id AS operator_id, account, display_name FROM operator
-        WHERE status = 'active' AND id = #{operatorId}
+        WHERE NOT deleted AND status = 'active' AND id = #{operatorId}
     </select>
 </mapper>
