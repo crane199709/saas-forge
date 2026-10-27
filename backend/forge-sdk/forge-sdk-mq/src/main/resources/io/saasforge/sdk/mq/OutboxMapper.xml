@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.sdk.mq.OutboxMapper">
+    <resultMap id="entry" type="io.saasforge.sdk.mq.OutboxEntry">
+        <constructor>
+            <idArg column="id" javaType="java.util.UUID"/>
+            <arg column="tenant_id" javaType="java.util.UUID"/>
+            <arg column="topic" javaType="string"/>
+            <arg column="tag" javaType="string"/>
+            <arg column="payload" javaType="string"/>
+            <arg column="attempts" javaType="_int"/>
+        </constructor>
+    </resultMap>
+
+    <insert id="insert">
+        INSERT INTO forge_outbox (id, tenant_id, topic, tag, payload)
+        VALUES (#{id}, #{tenantId}, #{topic}, #{tag}, #{payload}::jsonb)
+    </insert>
+
+    <select id="lockDue" resultMap="entry">
+        SELECT id, tenant_id, topic, tag, payload::text AS payload, attempts FROM forge_outbox
+        WHERE sent_at IS NULL AND next_attempt_at &lt;= now()
+        ORDER BY next_attempt_at, id
+        LIMIT #{limit}
+        FOR UPDATE SKIP LOCKED
+    </select>
+
+    <update id="markSent">
+        UPDATE forge_outbox SET sent_at = now(), last_error = NULL WHERE id = #{id}
+    </update>
+
+    <update id="markFailed">
+        UPDATE forge_outbox
+        SET attempts = attempts + 1,
+            next_attempt_at = now() + #{backoffMillis} * interval '1 millisecond',
+            last_error = #{error}
+        WHERE id = #{id}
+    </update>
+</mapper>

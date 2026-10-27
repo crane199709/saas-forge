@@ -26,5 +26,8 @@ spring:
     redis:
       host: ${FORGE_REDIS_HOST:127.0.0.1}
       port: ${FORGE_REDIS_PORT:6379}
+forge:
+  mq:
+    endpoints: ${FORGE_ROCKETMQ_ENDPOINTS:127.0.0.1:8081}
 mybatis-plus:
   mapper-locations: classpath*:/*/mapper/**/*.xml

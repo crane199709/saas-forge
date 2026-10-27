@@ -1,0 +1,146 @@
+package io.saasforge.sdk.mq;
+
+import io.saasforge.sdk.core.CurrentTenant;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import org.apache.rocketmq.client.apis.ClientConfiguration;
+import org.apache.rocketmq.client.apis.ClientException;
+import org.apache.rocketmq.client.apis.ClientServiceProvider;
+import org.apache.rocketmq.client.apis.consumer.ConsumeResult;
+import org.apache.rocketmq.client.apis.consumer.FilterExpression;
+import org.apache.rocketmq.client.apis.consumer.FilterExpressionType;
+import org.apache.rocketmq.client.apis.consumer.PushConsumer;
+import org.apache.rocketmq.client.apis.message.MessageView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.SmartLifecycle;
+import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.json.JsonMapper;
+
+/**
+ * 以服务的消费组订阅全部 {@link EventHandler}，按 Topic 与 Tag 分派，恢复租户上下文并按消息 ID 去重。
+ *
+ * <p>同一消费组的所有实例订阅关系必须一致，因此每个服务只建一个 PushConsumer。启动时拉取 Topic 路由，
+ * MQ 不可用或 Topic 不存在时启动失败，而不是静默地不消费。
+ */
+final class EventConsumer implements SmartLifecycle {
+    private static final Logger log = LoggerFactory.getLogger(EventConsumer.class);
+
+    private final ClientConfiguration configuration;
+    private final String consumerGroup;
+    private final Map<String, EventHandler<?>> handlers = new HashMap<>();
+    private final ConsumedMessageMapper consumed;
+    private final TransactionTemplate transaction;
+    private final JsonMapper json;
+    private volatile PushConsumer consumer;
+
+    EventConsumer(
+            ClientConfiguration configuration,
+            String consumerGroup,
+            List<EventHandler<?>> handlers,
+            ConsumedMessageMapper consumed,
+            TransactionTemplate transaction,
+            JsonMapper json) {
+        this.configuration = configuration;
+        this.consumerGroup = consumerGroup;
+        for (EventHandler<?> handler : handlers) {
+            String key = key(handler.topic(), handler.eventType().getSimpleName());
+            if (this.handlers.putIfAbsent(key, handler) != null) {
+                throw new IllegalStateException("Duplicate EventHandler for " + key);
+            }
+        }
+        this.consumed = consumed;
+        this.transaction = transaction;
+        this.json = json;
+    }
+
+    @Override
+    public void start() {
+        Map<String, FilterExpression> subscriptions = handlers.values().stream()
+                .collect(Collectors.groupingBy(
+                        EventHandler::topic,
+                        Collectors.mapping(
+                                handler -> handler.eventType().getSimpleName(),
+                                Collectors.collectingAndThen(
+                                        Collectors.joining(" || "),
+                                        tags -> new FilterExpression(tags, FilterExpressionType.TAG)))));
+        try {
+            consumer = ClientServiceProvider.loadService()
+                    .newPushConsumerBuilder()
+                    .setClientConfiguration(configuration)
+                    .setConsumerGroup(consumerGroup)
+                    .setSubscriptionExpressions(subscriptions)
+                    .setMessageListener(this::consume)
+                    .build();
+        } catch (ClientException e) {
+            throw new IllegalStateException("Failed to start RocketMQ consumer group " + consumerGroup, e);
+        }
+    }
+
+    @Override
+    public void stop() {
+        PushConsumer current = consumer;
+        consumer = null;
+        try {
+            current.close();
+        } catch (IOException e) {
+            log.warn("Failed to close RocketMQ consumer group {}", consumerGroup, e);
+        }
+    }
+
+    @Override
+    public boolean isRunning() {
+        return consumer != null;
+    }
+
+    private ConsumeResult consume(MessageView message) {
+        String tag = message.getTag().orElse("");
+        EventHandler<?> handler = handlers.get(key(message.getTopic(), tag));
+        if (handler == null) {
+            // 订阅表达式已按 Tag 过滤，到这里说明订阅关系与处理器不一致，重投也无法处理
+            log.warn(
+                    "No EventHandler for topic {} tag {}, message {} skipped",
+                    message.getTopic(),
+                    tag,
+                    message.getMessageId());
+            return ConsumeResult.SUCCESS;
+        }
+        Map<String, String> properties = message.getProperties();
+        // 非 SDK 发布的消息没有事件 ID，退回 RocketMQ 消息 ID，此时同一业务事件多次发送无法识别为重复
+        String messageId = properties.getOrDefault(
+                EventPublisher.EVENT_ID_PROPERTY, message.getMessageId().toString());
+        String tenantId = properties.get(EventPublisher.TENANT_ID_PROPERTY);
+        Runnable work = () -> transaction.executeWithoutResult(status -> {
+            if (consumed.insertIfAbsent(consumerGroup, messageId) == 1) {
+                dispatch(handler, message.getBody());
+            }
+        });
+        try {
+            // 先绑定租户再开启事务：连接在事务开始时取得，RLS 会话变量随之设置
+            if (tenantId == null) {
+                work.run();
+            } else {
+                CurrentTenant.run(UUID.fromString(tenantId), work);
+            }
+            return ConsumeResult.SUCCESS;
+        } catch (RuntimeException e) {
+            log.error("Failed to handle message {} of topic {} tag {}", messageId, message.getTopic(), tag, e);
+            return ConsumeResult.FAILURE;
+        }
+    }
+
+    private <T> void dispatch(EventHandler<T> handler, ByteBuffer body) {
+        byte[] bytes = new byte[body.remaining()];
+        body.get(bytes);
+        handler.handle(json.readValue(bytes, handler.eventType()));
+    }
+
+    private static String key(String topic, String tag) {
+        return topic + "#" + tag;
+    }
+}

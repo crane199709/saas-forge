@@ -11,4 +11,20 @@
     <artifactId>forge-sdk-mq</artifactId>
     <name>Forge SDK MQ</name>
     <description>RocketMQ 封装、Outbox、幂等消费与租户上下文透传</description>
+
+    <dependencies>
+        <!-- 消费端恢复租户后照常经租户拦截与 RLS 访问数据，并沿用其 UUID 类型处理器 -->
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-tenant</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-client-java</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+    </dependencies>
 </project>
