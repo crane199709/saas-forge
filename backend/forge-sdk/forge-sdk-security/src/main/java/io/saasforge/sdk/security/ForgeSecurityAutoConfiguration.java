@@ -3,11 +3,11 @@ package io.saasforge.sdk.security;
 import io.micrometer.tracing.Tracer;
 import io.saasforge.sdk.core.CurrentActorProvider;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -30,6 +30,7 @@ import org.springframework.security.web.SecurityFilterChain;
             "org.springframework.boot.security.autoconfigure.actuate.web.servlet.ManagementWebSecurityAutoConfiguration"
         })
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@EnableConfigurationProperties(ForgeSecurityProperties.class)
 public final class ForgeSecurityAutoConfiguration {
     /**
      * 使用 JWKS 缓存公钥在本地验签，同时固定可信 issuer，不根据 Token 动态发现服务。
@@ -38,22 +39,19 @@ public final class ForgeSecurityAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public JwtDecoder forgeJwtDecoder(
-            @Value("${forge.security.realm:tenant}") String realm,
-            @Value("${forge.security.issuer:http://localhost:8080/iam}") String issuer,
-            @Value("${forge.security.jwk-set-uri:http://localhost:8101/oauth2/jwks}") String jwks,
-            @Value("${forge.security.platform.issuer:http://localhost:8080/iam/platform}") String platformIssuer,
-            @Value("${forge.security.platform.jwk-set-uri:http://localhost:8101/platform/oauth2/jwks}")
-                    String platformJwks) {
-        boolean platform = isPlatform(realm);
-        var decoder =
-                NimbusJwtDecoder.withJwkSetUri(platform ? platformJwks : jwks).build();
+    public JwtDecoder forgeJwtDecoder(ForgeSecurityProperties properties) {
+        boolean platform = isPlatform(properties.realm());
+        var decoder = NimbusJwtDecoder.withJwkSetUri(
+                        platform ? properties.platform().jwkSetUri() : properties.jwkSetUri())
+                .build();
         decoder.setJwtValidator(
                 platform
                         ? new DelegatingOAuth2TokenValidator<>(
-                                JwtValidators.createDefaultWithIssuer(platformIssuer), new PlatformJwtValidator())
+                                JwtValidators.createDefaultWithIssuer(
+                                        properties.platform().issuer()),
+                                new PlatformJwtValidator())
                         : new DelegatingOAuth2TokenValidator<>(
-                                JwtValidators.createDefaultWithIssuer(issuer), new TenantJwtValidator()));
+                                JwtValidators.createDefaultWithIssuer(properties.issuer()), new TenantJwtValidator()));
         return decoder;
     }
 
@@ -101,12 +99,12 @@ public final class ForgeSecurityAutoConfiguration {
     @ConditionalOnMissingBean(SecurityFilterChain.class)
     public SecurityFilterChain forgeSecurity(
             HttpSecurity http,
-            @Value("${forge.security.realm:tenant}") String realm,
+            ForgeSecurityProperties properties,
             EnvelopeAuthenticationEntryPoint entryPoint,
             EnvelopeAccessDeniedHandler accessDeniedHandler)
             throws Exception {
         // Platform Realm 的 Token 没有租户，不绑定 CurrentTenant。
-        if (!isPlatform(realm)) {
+        if (!isPlatform(properties.realm())) {
             http.addFilterAfter(new CurrentTenantFilter(), BearerTokenAuthenticationFilter.class);
         }
         return http.csrf(csrf -> csrf.disable())

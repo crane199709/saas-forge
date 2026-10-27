@@ -2,6 +2,7 @@ package io.saasforge.iam.session.service;
 
 import com.nimbusds.jwt.SignedJWT;
 import io.saasforge.iam.identity.service.IdentityService;
+import io.saasforge.iam.security.config.IamProperties;
 import io.saasforge.iam.security.config.TenantTokenParameters;
 import io.saasforge.iam.security.service.TokenEndpointClient;
 import io.saasforge.iam.session.model.TokenResponse;
@@ -9,7 +10,6 @@ import io.saasforge.sdk.core.api.ForgeException;
 import java.text.ParseException;
 import java.util.Map;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -21,13 +21,10 @@ public class TokenExchangeService {
     private final IdentityService identities;
     private final String redirectUri;
 
-    TokenExchangeService(
-            TokenEndpointClient tokenEndpoint,
-            IdentityService identities,
-            @Value("${forge.iam.redirect-uri:http://localhost:5174/}") String redirectUri) {
+    TokenExchangeService(TokenEndpointClient tokenEndpoint, IdentityService identities, IamProperties properties) {
         this.tokenEndpoint = tokenEndpoint;
         this.identities = identities;
-        this.redirectUri = redirectUri;
+        this.redirectUri = properties.redirectUri();
     }
 
     /** membershipId 为空时只允许身份恰有一个有效 Membership，否则由 Token 定制器拒绝。 */

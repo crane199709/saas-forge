@@ -27,3 +27,7 @@ forge:
   security:
     # 平台服务只接受 Platform Realm Token（ADR-0003），issuer 与 JWKS 读取 forge.security.platform.*
     realm: platform
+    # 本地开发地址；代码中不设默认值，部署时以 Nacos 或环境变量覆盖，漏配则启动失败
+    platform:
+      issuer: http://localhost:8080/iam/platform
+      jwk-set-uri: http://localhost:8101/platform/oauth2/jwks

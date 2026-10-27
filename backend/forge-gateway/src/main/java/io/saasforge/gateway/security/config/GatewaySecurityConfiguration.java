@@ -3,9 +3,10 @@ package io.saasforge.gateway.security.config;
 import io.saasforge.gateway.envelope.service.ErrorEnvelopeService;
 import io.saasforge.gateway.security.service.MembershipStateVerifier;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
+import io.saasforge.sdk.security.ForgeSecurityProperties;
 import io.saasforge.sdk.security.PlatformJwtValidator;
 import io.saasforge.sdk.security.TenantJwtValidator;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -29,7 +30,9 @@ import org.springframework.security.web.server.util.matcher.ServerWebExchangeMat
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+// SDK 的自动配置只在 Servlet 应用生效，WebFlux 网关自行注册同一份配置。
 @Configuration(proxyBeanMethods = false)
+@EnableConfigurationProperties(ForgeSecurityProperties.class)
 class GatewaySecurityConfiguration {
     private static final ServerWebExchangeMatcher PLATFORM_ROUTES =
             ServerWebExchangeMatchers.pathMatchers("/platform/**");
@@ -40,20 +43,18 @@ class GatewaySecurityConfiguration {
      */
     @Bean
     ReactiveAuthenticationManagerResolver<ServerWebExchange> realmAuthenticationManagers(
-            @Value("${forge.security.issuer:http://localhost:8080/iam}") String issuer,
-            @Value("${forge.security.jwk-set-uri:http://localhost:8101/oauth2/jwks}") String jwks,
-            @Value("${forge.security.platform.issuer:http://localhost:8080/iam/platform}") String platformIssuer,
-            @Value("${forge.security.platform.jwk-set-uri:http://localhost:8101/platform/oauth2/jwks}")
-                    String platformJwks,
-            MembershipStateVerifier states) {
-        var tenantDecoder = NimbusReactiveJwtDecoder.withJwkSetUri(jwks).build();
+            ForgeSecurityProperties properties, MembershipStateVerifier states) {
+        var tenantDecoder =
+                NimbusReactiveJwtDecoder.withJwkSetUri(properties.jwkSetUri()).build();
         tenantDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                JwtValidators.createDefaultWithIssuer(issuer), new TenantJwtValidator()));
+                JwtValidators.createDefaultWithIssuer(properties.issuer()), new TenantJwtValidator()));
         // 验签之后再比对即时失效状态：BadJwtException 由资源服务器转换为 401 auth.unauthenticated 信封（质询头为 invalid_token）。
         ReactiveJwtDecoder tenant = token -> tenantDecoder.decode(token).flatMap(states::verify);
-        var platform = NimbusReactiveJwtDecoder.withJwkSetUri(platformJwks).build();
+        var platform = NimbusReactiveJwtDecoder.withJwkSetUri(
+                        properties.platform().jwkSetUri())
+                .build();
         platform.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                JwtValidators.createDefaultWithIssuer(platformIssuer), new PlatformJwtValidator()));
+                JwtValidators.createDefaultWithIssuer(properties.platform().issuer()), new PlatformJwtValidator()));
         ReactiveAuthenticationManager tenantManager = new JwtReactiveAuthenticationManager(tenant);
         ReactiveAuthenticationManager platformManager = new JwtReactiveAuthenticationManager(platform);
         return exchange ->

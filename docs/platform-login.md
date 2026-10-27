@@ -53,11 +53,11 @@
 
 | 配置 | 默认值 | 说明 |
 | --- | --- | --- |
-| `forge.security.platform.issuer` | `http://localhost:8080/iam/platform` | IAM、网关、forge-platform 必须相同；不能与 `forge.security.issuer` 相同，否则 IAM 拒绝启动 |
-| `forge.security.platform.jwk-set-uri` | `http://localhost:8101/platform/oauth2/jwks` | 网关和 forge-platform 访问 IAM 的内部地址 |
+| `forge.security.platform.issuer` | 无，本地值 `http://localhost:8080/iam/platform` 写在各服务 `application.yml` | IAM、网关、forge-platform 必须相同，漏配则启动失败；不能与 `forge.security.issuer` 相同，否则 IAM 拒绝启动 |
+| `forge.security.platform.jwk-set-uri` | 无，本地值 `http://localhost:8101/platform/oauth2/jwks` | 网关和 forge-platform 访问 IAM 的内部地址 |
 | `forge.security.realm` | `tenant` | 业务服务接受哪个 Realm 的 Token；forge-platform 为 `platform` |
 | `forge.iam.platform.redirect-uri` | `http://localhost:5173/` | platform-console 回调，必须与之同源 |
-| `forge.iam.platform.signing-key-file` | `deploy/data/iam/platform-signing.jwk` | 首次启动生成，权限 0600，禁止提交；多实例须共用同一密钥 |
+| `forge.iam.platform.signing-key-file` | 无，本地值 `deploy/data/iam/platform-signing.jwk` 写在 IAM `application.yml` | 首次启动生成，权限 0600，禁止提交；多实例须共用同一密钥，漏配则启动失败 |
 | `forge.iam.platform.mfa-required` | `false` | 是否强制 Operator 使用 MFA。第一期未实现 MFA，设为 `true` 时所有 Operator 登录在校验密码前以 403 `auth.mfaRequired` 拒绝；已有的 IAM 会话授权与 Refresh Token 刷新也被拒绝（401 `auth.failed`），不会退化为仅凭密码登录。已签发的 Access Token 在过期前仍有效 |
 
 `forge.iam.client-secret` 由两个注册客户端共用。

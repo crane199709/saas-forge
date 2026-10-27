@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import io.saasforge.iam.operator.model.OperatorCredential;
 import io.saasforge.iam.operator.service.OperatorService;
+import io.saasforge.iam.security.config.IamProperties;
 import io.saasforge.iam.security.service.TokenEndpointClient;
 import io.saasforge.sdk.core.api.ForgeException;
 import java.util.UUID;
@@ -39,7 +40,12 @@ class OperatorSessionServiceTest {
     }
 
     private OperatorSessionService service(boolean mfaRequired) {
-        return new OperatorSessionService(
-                operators, passwords, mock(TokenEndpointClient.class), "http://localhost:5173/", mfaRequired);
+        var properties = new IamProperties(
+                "http://localhost:5174/",
+                "signing.jwk",
+                null,
+                null,
+                new IamProperties.Platform("http://localhost:5173/", "platform-signing.jwk", mfaRequired));
+        return new OperatorSessionService(operators, passwords, mock(TokenEndpointClient.class), properties);
     }
 }

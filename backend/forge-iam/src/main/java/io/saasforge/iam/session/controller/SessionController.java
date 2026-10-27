@@ -1,5 +1,6 @@
 package io.saasforge.iam.session.controller;
 
+import io.saasforge.iam.security.config.IamProperties;
 import io.saasforge.iam.session.model.TokenResponse;
 import io.saasforge.iam.session.service.TenantSessionService;
 import io.saasforge.iam.session.service.TokenExchangeService;
@@ -16,7 +17,6 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -34,13 +34,10 @@ class SessionController {
     private final TokenExchangeService tokens;
     private final String redirectUri;
 
-    SessionController(
-            TenantSessionService sessions,
-            TokenExchangeService tokens,
-            @Value("${forge.iam.redirect-uri:http://localhost:5174/}") String redirectUri) {
+    SessionController(TenantSessionService sessions, TokenExchangeService tokens, IamProperties properties) {
         this.sessions = sessions;
         this.tokens = tokens;
-        this.redirectUri = redirectUri;
+        this.redirectUri = properties.redirectUri();
     }
 
     @Operation(summary = "认证身份并建立标准授权流程的登录会话")

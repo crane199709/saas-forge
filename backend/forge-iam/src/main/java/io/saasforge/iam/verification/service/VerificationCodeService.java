@@ -1,5 +1,6 @@
 package io.saasforge.iam.verification.service;
 
+import io.saasforge.iam.verification.config.VerificationProperties;
 import io.saasforge.iam.verification.model.CodeDelivery;
 import io.saasforge.sdk.core.api.ForgeException;
 import java.security.SecureRandom;
@@ -7,7 +8,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -52,16 +52,14 @@ public class VerificationCodeService {
             StringRedisTemplate redis,
             ObjectProvider<SmsSender> sms,
             ObjectProvider<EmailSender> email,
-            @Value("${forge.iam.verification.code-ttl:5m}") Duration ttl,
-            @Value("${forge.iam.verification.resend-interval:60s}") Duration resendInterval,
-            @Value("${forge.iam.verification.max-attempts:5}") int maxAttempts) {
+            VerificationProperties properties) {
         this.redis = redis;
         // 用 ObjectProvider 而不是条件 Bean：普通配置类中的 @ConditionalOnMissingBean 受注册顺序影响，可能与部署方的实现并存。
         this.sms = sms.getIfUnique(() -> new LoggingCodeSender("sms"));
         this.email = email.getIfUnique(() -> new LoggingCodeSender("email"));
-        this.ttl = ttl;
-        this.resendInterval = resendInterval;
-        this.maxAttempts = maxAttempts;
+        this.ttl = properties.codeTtl();
+        this.resendInterval = properties.resendInterval();
+        this.maxAttempts = properties.maxAttempts();
     }
 
     /**

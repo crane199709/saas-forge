@@ -1,8 +1,8 @@
 package io.saasforge.iam.security.service;
 
 import io.saasforge.iam.security.config.ClientCredentials;
+import io.saasforge.iam.security.config.IamProperties;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.server.autoconfigure.ServerProperties;
 import org.springframework.boot.web.server.servlet.context.ServletWebServerApplicationContext;
 import org.springframework.http.MediaType;
@@ -24,11 +24,11 @@ public class TokenEndpointClient {
             ServletWebServerApplicationContext application,
             ClientCredentials credentials,
             ServerProperties server,
-            @Value("${forge.iam.token-base-uri:}") String tokenBaseUri) {
+            IamProperties properties) {
         this.application = application;
         this.credentials = credentials;
         this.server = server;
-        this.tokenBaseUri = tokenBaseUri;
+        this.tokenBaseUri = properties.tokenBaseUri();
     }
 
     /**

@@ -1,8 +1,8 @@
 package io.saasforge.iam.security.service;
 
 import io.saasforge.iam.security.config.PlatformSigningKey;
+import io.saasforge.iam.security.config.RealmIssuerProperties;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.server.authorization.oidc.OidcProviderConfiguration;
 import org.springframework.stereotype.Service;
 
@@ -17,12 +17,9 @@ public class RealmMetadataService {
     private final String platformIssuer;
     private final PlatformSigningKey platformKey;
 
-    RealmMetadataService(
-            @Value("${forge.security.issuer:http://localhost:8080/iam}") String tenantIssuer,
-            @Value("${forge.security.platform.issuer:http://localhost:8080/iam/platform}") String platformIssuer,
-            PlatformSigningKey platformKey) {
-        this.tenantIssuer = tenantIssuer;
-        this.platformIssuer = platformIssuer;
+    RealmMetadataService(RealmIssuerProperties issuers, PlatformSigningKey platformKey) {
+        this.tenantIssuer = issuers.issuer();
+        this.platformIssuer = issuers.platform().issuer();
         this.platformKey = platformKey;
     }
 

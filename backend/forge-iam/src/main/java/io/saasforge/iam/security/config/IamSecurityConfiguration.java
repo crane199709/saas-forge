@@ -31,7 +31,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -77,20 +76,20 @@ class IamSecurityConfiguration {
     }
 
     @Bean
-    AuthorizationServerSettings authorizationServerSettings(
-            @Value("${forge.security.issuer:http://localhost:8080/iam}") String issuer) {
-        return AuthorizationServerSettings.builder().issuer(issuer).build();
+    AuthorizationServerSettings authorizationServerSettings(RealmIssuerProperties issuers) {
+        return AuthorizationServerSettings.builder().issuer(issuers.issuer()).build();
     }
 
     @Bean
-    RegisteredClientRepository registeredClients(
-            ClientCredentials credentials,
-            @Value("${forge.iam.redirect-uri:http://localhost:5174/}") String redirectUri,
-            @Value("${forge.iam.platform.redirect-uri:http://localhost:5173/}") String platformRedirectUri) {
+    RegisteredClientRepository registeredClients(ClientCredentials credentials, IamProperties properties) {
         // 每个 Realm 一个客户端：tenant-app 签发 Tenant Realm Token，platform-console 签发 Platform Realm Token。
         return new InMemoryRegisteredClientRepository(
-                shellClient("tenant-app", "tenant", credentials, redirectUri),
-                shellClient(PLATFORM_CLIENT, "platform", credentials, platformRedirectUri));
+                shellClient("tenant-app", "tenant", credentials, properties.redirectUri()),
+                shellClient(
+                        PLATFORM_CLIENT,
+                        "platform",
+                        credentials,
+                        properties.platform().redirectUri()));
     }
 
     private static RegisteredClient shellClient(
@@ -118,27 +117,23 @@ class IamSecurityConfiguration {
 
     /** Tenant Realm 的签名密钥，由标准 {@code /oauth2/jwks} 发布。 */
     @Bean
-    JWKSource<SecurityContext> jwkSource(
-            @Value("${forge.iam.signing-key-file:deploy/data/iam/signing.jwk}") String filename) throws Exception {
-        JWKSet set = new JWKSet(loadOrCreateKey(filename));
+    JWKSource<SecurityContext> jwkSource(IamProperties properties) throws Exception {
+        JWKSet set = new JWKSet(loadOrCreateKey(properties.signingKeyFile()));
         return (selector, context) -> selector.select(set);
     }
 
     /** Platform Realm 使用独立密钥，不作为 JWKSource Bean，避免被标准 {@code /oauth2/jwks} 一并发布。 */
     @Bean
-    PlatformSigningKey platformSigningKey(
-            @Value("${forge.iam.platform.signing-key-file:deploy/data/iam/platform-signing.jwk}") String filename)
-            throws Exception {
-        return new PlatformSigningKey(loadOrCreateKey(filename));
+    PlatformSigningKey platformSigningKey(IamProperties properties) throws Exception {
+        return new PlatformSigningKey(loadOrCreateKey(properties.platform().signingKeyFile()));
     }
 
     /** 按 Token 定制器写入的 issuer 选择签名密钥：一个 Realm 的 Token 无法通过另一个 Realm 的 JWKS 验签。 */
     @Bean
     JwtEncoder realmJwtEncoder(
-            JWKSource<SecurityContext> jwkSource,
-            PlatformSigningKey platformKey,
-            @Value("${forge.security.issuer:http://localhost:8080/iam}") String tenantIssuer,
-            @Value("${forge.security.platform.issuer:http://localhost:8080/iam/platform}") String platformIssuer) {
+            JWKSource<SecurityContext> jwkSource, PlatformSigningKey platformKey, RealmIssuerProperties issuers) {
+        String tenantIssuer = issuers.issuer();
+        String platformIssuer = issuers.platform().issuer();
         // issuer 相同时无法按 issuer 区分 Realm，所有 Token 都会用 Platform 密钥签名，必须拒绝启动。
         if (platformIssuer.equals(tenantIssuer)) {
             throw new IllegalStateException("forge.security.platform.issuer must differ from forge.security.issuer");
@@ -177,7 +172,8 @@ class IamSecurityConfiguration {
     }
 
     @Bean
-    ClientCredentials clientCredentials(@Value("${forge.iam.client-secret:}") String secret) {
+    ClientCredentials clientCredentials(IamProperties properties) {
+        String secret = properties.clientSecret();
         return new ClientCredentials(secret.isBlank() ? UUID.randomUUID().toString() : secret);
     }
 
@@ -187,8 +183,10 @@ class IamSecurityConfiguration {
             MembershipStateService membershipStates,
             TenantStateService tenantStates,
             OperatorService operators,
-            @Value("${forge.security.platform.issuer:http://localhost:8080/iam/platform}") String platformIssuer,
-            @Value("${forge.iam.platform.mfa-required:false}") boolean mfaRequired) {
+            RealmIssuerProperties issuers,
+            IamProperties properties) {
+        String platformIssuer = issuers.platform().issuer();
+        boolean mfaRequired = properties.platform().mfaRequired();
         return context -> {
             // 两个 Realm 共用授权端点与登录会话：客户端决定 Realm，会话主体必须属于同一 Realm，否则拒绝签发。
             if (PLATFORM_CLIENT.equals(context.getRegisteredClient().getClientId())) {
@@ -256,13 +254,11 @@ class IamSecurityConfiguration {
     }
 
     @Bean
-    JwtDecoder accessTokenDecoder(
-            JWKSource<SecurityContext> jwkSource,
-            @Value("${forge.security.issuer:http://localhost:8080/iam}") String issuer) {
+    JwtDecoder accessTokenDecoder(JWKSource<SecurityContext> jwkSource, RealmIssuerProperties issuers) {
         var decoder = NimbusJwtDecoder.withJwkSource(jwkSource).build();
         // 与下游一致：只接受本 Realm 签发给 tenant-app 的 Access Token。
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                JwtValidators.createDefaultWithIssuer(issuer),
+                JwtValidators.createDefaultWithIssuer(issuers.issuer()),
                 new JwtClaimValidator<List<String>>(
                         JwtClaimNames.AUD, audience -> audience != null && audience.contains("tenant-app")),
                 new JwtClaimValidator<String>("membership_id", Objects::nonNull)));

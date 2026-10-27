@@ -116,12 +116,12 @@ IAM 认证阶段 Membership 查询的 RLS 例外及边界见 [ADR-0001](adr/0001
 
 | 配置 | 默认值 | 说明 |
 | --- | --- | --- |
-| `forge.security.issuer` | `http://localhost:8080/iam` | IAM、网关、业务服务必须相同 |
-| `forge.security.jwk-set-uri` | `http://localhost:8101/oauth2/jwks` | 网关和业务服务的 IAM 内部地址，公钥缓存后本地验签 |
+| `forge.security.issuer` | 无，本地值 `http://localhost:8080/iam` 写在各服务 `application.yml` | IAM、网关、业务服务必须相同；漏配则启动失败 |
+| `forge.security.jwk-set-uri` | 无，本地值 `http://localhost:8101/oauth2/jwks` | 网关和业务服务的 IAM 内部地址，公钥缓存后本地验签 |
 | `forge.iam.redirect-uri` | `http://localhost:5174/` | 必须与 Shell 同源；改为 127.0.0.1 访问时同步调整 |
 | `forge.iam.client-secret` | 每次启动随机生成 | 服务端适配器持有；多实例需一致；不构成浏览器客户端认证 |
 | `forge.iam.token-base-uri` | 按 IAM 实际监听地址、端口、TLS 和 context-path 推导 | 可显式配置内部基址（含 context-path、不含 `/oauth2/token`）；HTTPS 须通过 JVM 信任链和主机名验证 |
-| `forge.iam.signing-key-file` | `deploy/data/iam/signing.jwk` | IAM 首次启动生成 RSA 私钥文件，权限 0600；后续启动复用，禁止提交 |
+| `forge.iam.signing-key-file` | 无，本地值 `deploy/data/iam/signing.jwk` 写在 IAM `application.yml` | IAM 首次启动生成 RSA 私钥文件，权限 0600；后续启动复用，禁止提交；部署时指向持久化存储，多实例共用，漏配则启动失败 |
 | `FORGE_REDIS_HOST` / `FORGE_REDIS_PORT` | `127.0.0.1` / `6379` | IAM 会话与即时失效状态的 Redis；网关与使用 `MembershipGrantStore` 的业务服务必须连接同一实例 |
 
 变更端口或域名时同步调整 issuer、JWKS、注册回调 URI 和代理目标。多实例 IAM 应提供同一受保护密钥；本工单不提供密钥轮换管理。

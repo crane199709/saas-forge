@@ -4,13 +4,13 @@ import com.nimbusds.jwt.SignedJWT;
 import io.saasforge.iam.operator.model.ActiveOperator;
 import io.saasforge.iam.operator.model.OperatorCredential;
 import io.saasforge.iam.operator.service.OperatorService;
+import io.saasforge.iam.security.config.IamProperties;
 import io.saasforge.iam.security.service.TokenEndpointClient;
 import io.saasforge.iam.session.model.OperatorTokenResponse;
 import io.saasforge.sdk.core.api.ForgeException;
 import java.text.ParseException;
 import java.util.Map;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.User;
@@ -33,13 +33,12 @@ public class OperatorSessionService {
             OperatorService operators,
             PasswordEncoder passwords,
             TokenEndpointClient tokenEndpoint,
-            @Value("${forge.iam.platform.redirect-uri:http://localhost:5173/}") String redirectUri,
-            @Value("${forge.iam.platform.mfa-required:false}") boolean mfaRequired) {
+            IamProperties properties) {
         this.operators = operators;
         this.passwords = passwords;
         this.tokenEndpoint = tokenEndpoint;
-        this.redirectUri = redirectUri;
-        this.mfaRequired = mfaRequired;
+        this.redirectUri = properties.platform().redirectUri();
+        this.mfaRequired = properties.platform().mfaRequired();
         dummyHash = passwords.encode(UUID.randomUUID().toString());
     }
 

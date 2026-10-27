@@ -1,0 +1,5 @@
+# 验签地址不设默认值；这里的测试用 MockMvc 的 jwt() 注入认证，不会访问 JWKS
+forge:
+  security:
+    issuer: http://localhost:8080/iam
+    jwk-set-uri: http://localhost:8101/oauth2/jwks
