@@ -217,6 +217,15 @@ WebFlux 的 `ErrorWebExceptionHandler` 归入 `filter` 而不是 `controller`：
 }
 ```
 
+### 经网关暴露
+
+网关只做粗粒度判断：要求哪个 Realm 的 Token、能否匿名、是否暴露；功能权限由服务判断（`@RequiresPermission`，iam 自行校验管理角色）。规则在 `GatewaySecurityConfiguration` 中按服务前缀书写，不逐个列出需认证的接口：
+
+- 业务服务与 iam 的接口默认要求 Tenant Realm Token，`/platform/**` 要求 Platform Realm Token，新增接口不改网关；新接入的服务才需要加前缀与路由。
+- 匿名接口必须在网关显式列出，同时在服务的安全链中放行，不靠推断。
+- 只供同进程或服务间直连调用的接口放在 `/internal/` 下，网关显式拒绝；iam 的 OAuth2 端点除授权端点与 JWKS 外同样拒绝。
+- iam 中供 Operator 使用、需认证的接口须同时让网关按 Platform Realm 校验 `/iam/platform/**`，否则会被当作 Tenant 接口拒绝（工单 22 处理）。
+
 ## 注释
 
 不设注释占比指标，按以下规则写。

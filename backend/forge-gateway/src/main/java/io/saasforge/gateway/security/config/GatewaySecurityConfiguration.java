@@ -118,12 +118,12 @@ class GatewaySecurityConfiguration {
                                 "/demo/v3/api-docs/**",
                                 "/platform/v3/api-docs/**")
                         .permitAll()
-                        .pathMatchers(HttpMethod.GET, "/iam/auth/memberships")
-                        .authenticated()
-                        // 租户组织管理；是否为 Tenant Admin 由 iam 判断
-                        .pathMatchers("/iam/org/**")
-                        .authenticated()
-                        .pathMatchers("/demo/**", "/platform/**")
+                        // 只供服务内部或服务间直连调用的 iam 端点，带有效 Token 也不经网关暴露；
+                        // 匿名的授权端点与 JWKS 已在上面放行，其余 OAuth2 端点（token、introspect、revoke 等）一律拒绝。
+                        .pathMatchers("/iam/oauth2/**", "/iam/internal/**")
+                        .denyAll()
+                        // 其余 iam 接口默认要求 Tenant Realm Token，新增接口不必再改网关；细粒度权限由 iam 判断。
+                        .pathMatchers("/iam/**", "/demo/**", "/platform/**")
                         .authenticated()
                         .anyExchange()
                         .denyAll())

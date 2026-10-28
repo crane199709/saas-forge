@@ -316,18 +316,23 @@ class GatewaySecurityTest {
     }
 
     @Test
-    void organizationEndpointsNeedATenantRealmToken() throws Exception {
-        // 测试未配置 IAM 路由：通过安全规则后得到路由 404，被拦截则为 401。
-        assertUnauthenticatedAt("/iam/org/departments", null);
-        assertUnauthenticatedAt(
-                "/iam/org/departments", platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "platform-console"));
-        assertEnvelope(
-                call(
-                        HttpMethod.GET,
-                        "/iam/org/departments",
-                        token(KEY, ISSUER, Instant.now().plusSeconds(900))),
-                404,
-                "request.notFound");
+    void iamEndpointsNeedATenantRealmTokenByDefault() throws Exception {
+        // 测试未配置 IAM 路由：通过安全规则后得到路由 404，被拦截则为 401/403。
+        // 网关没有逐个列出的 iam 接口（如 /auth/access 与以后新增的接口）默认要求 Tenant Realm Token。
+        String tenant = token(KEY, ISSUER, Instant.now().plusSeconds(900));
+        for (String path : List.of("/iam/auth/access", "/iam/org/departments", "/iam/roles")) {
+            assertUnauthenticatedAt(path, null);
+            assertUnauthenticatedAt(path, platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "platform-console"));
+            assertEnvelope(call(HttpMethod.GET, path, tenant), 404, "request.notFound");
+        }
+    }
+
+    @Test
+    void iamInternalEndpointsAreNotExposedEvenWithATenantToken() throws Exception {
+        String tenant = token(KEY, ISSUER, Instant.now().plusSeconds(900));
+        for (String path : List.of("/iam/internal/manifests", "/iam/oauth2/introspect", "/iam/oauth2/revoke")) {
+            assertEnvelope(call(HttpMethod.POST, path, tenant), 403, "auth.forbidden");
+        }
     }
 
     @Test
