@@ -7,7 +7,6 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -41,22 +40,15 @@ public class VerificationCodeService {
             Long.class);
 
     private final StringRedisTemplate redis;
-    private final SmsSender sms;
-    private final EmailSender email;
+    private final ContactSender sender;
     private final Duration ttl;
     private final Duration resendInterval;
     private final int maxAttempts;
     private final SecureRandom random = new SecureRandom();
 
-    VerificationCodeService(
-            StringRedisTemplate redis,
-            ObjectProvider<SmsSender> sms,
-            ObjectProvider<EmailSender> email,
-            VerificationProperties properties) {
+    VerificationCodeService(StringRedisTemplate redis, ContactSender sender, VerificationProperties properties) {
         this.redis = redis;
-        // 用 ObjectProvider 而不是条件 Bean：普通配置类中的 @ConditionalOnMissingBean 受注册顺序影响，可能与部署方的实现并存。
-        this.sms = sms.getIfUnique(() -> new LoggingCodeSender("sms"));
-        this.email = email.getIfUnique(() -> new LoggingCodeSender("email"));
+        this.sender = sender;
         this.ttl = properties.codeTtl();
         this.resendInterval = properties.resendInterval();
         this.maxAttempts = properties.maxAttempts();
@@ -78,10 +70,8 @@ public class VerificationCodeService {
                     VerificationErrorCode.TOO_FREQUENT, "Verification code requested too frequently", remaining);
         }
         if (deliver) {
-            var message = new VerificationMessage(purpose, code, ttl);
             try {
-                if (isEmail(target)) email.send(target, message);
-                else sms.send(target, message);
+                sender.send(target, new VerificationMessage(purpose, code, ttl));
             } catch (RuntimeException error) {
                 // 没发出去的码不应占用发送间隔，否则用户要等满间隔才能重试。
                 redis.delete(keys);

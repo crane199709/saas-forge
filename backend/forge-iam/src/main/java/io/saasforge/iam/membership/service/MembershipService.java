@@ -1,9 +1,13 @@
 package io.saasforge.iam.membership.service;
 
 import io.saasforge.iam.membership.mapper.MembershipMapper;
+import io.saasforge.iam.membership.model.Invitation;
 import io.saasforge.iam.membership.model.Member;
+import io.saasforge.iam.membership.model.MembershipStatus;
+import io.saasforge.sdk.core.UuidV7;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.type.TypeReference;
@@ -20,6 +24,22 @@ public class MembershipService {
     MembershipService(MembershipMapper memberships, JsonMapper json) {
         this.memberships = memberships;
         this.json = json;
+    }
+
+    /** 邀请身份加入租户，返回其 Membership；已有 Membership 时原样返回，不改变状态。 */
+    public MembershipStatus invite(UUID tenantId, UUID identityId) {
+        memberships.insertInvited(UuidV7.generate(), identityId, tenantId);
+        return memberships.findStatus(identityId, tenantId);
+    }
+
+    /** 邀请令牌指向的 Membership；已删除时为空。 */
+    public Optional<Invitation> findInvitation(UUID membershipId) {
+        return Optional.ofNullable(memberships.findInvitation(membershipId));
+    }
+
+    /** 接受邀请；已接受或不存在时返回 false。 */
+    public boolean activateInvited(UUID membershipId) {
+        return memberships.activateInvited(membershipId) > 0;
     }
 
     /** 租户内是否存在未删除的该 Membership。 */

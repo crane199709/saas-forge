@@ -8,6 +8,13 @@
         VALUES (#{id}, #{tenantId}, #{code}, #{name}, true, now(), now(), NULL, NULL)
         ON CONFLICT (tenant_id, code) WHERE NOT deleted DO NOTHING
     </insert>
+    <!-- owner 列取自角色本身以满足复合外键；ON CONFLICT 覆盖主键与「每个租户一个 Owner」的部分唯一索引，重复开通不报错。 -->
+    <insert id="grantOwner">
+        INSERT INTO membership_role (membership_id, role_id, owner)
+        SELECT #{membershipId}, id, owner FROM role
+        WHERE tenant_id = #{tenantId} AND code = 'owner' AND NOT deleted
+        ON CONFLICT DO NOTHING
+    </insert>
     <select id="roleCodes" resultType="string">
         SELECT r.code FROM membership_role mr JOIN role r ON r.id = mr.role_id
         WHERE mr.membership_id = #{membershipId} AND NOT r.deleted

@@ -20,6 +20,7 @@
         <module>forge-sdk-tenant</module>
         <module>forge-sdk-abac</module>
         <module>forge-sdk-mq</module>
+        <module>forge-sdk-provisioning</module>
         <module>forge-sdk-audit</module>
         <module>forge-sdk-storage</module>
         <module>forge-sdk-openapi</module>

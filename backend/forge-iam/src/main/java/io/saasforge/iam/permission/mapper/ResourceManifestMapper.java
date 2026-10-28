@@ -1,10 +1,13 @@
 package io.saasforge.iam.permission.mapper;
 
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import java.util.List;
 import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+// iam 的表不按租户行拦截隔离（ADR-0001），租户条件由 SQL 显式书写；消费事件时 SDK 恢复的租户上下文不能改写这些 SQL。
+@InterceptorIgnore(tenantLine = "true")
 @Mapper
 public interface ResourceManifestMapper {
     /** 在当前事务内串行化同一服务的上报，事务结束时自动释放。清单是全局表，不受 Data Policy 过滤。 */

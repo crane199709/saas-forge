@@ -13,6 +13,26 @@
         WHERE id = #{membershipId} AND NOT deleted
         RETURNING tenant_id, version
     </select>
+    <!-- ON CONFLICT 命中 (identity_id, tenant_id) 的部分唯一索引：重复开通不产生第二个 Membership，也不改写已接受的状态。 -->
+    <insert id="insertInvited">
+        INSERT INTO membership (id, identity_id, tenant_id, status, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{identityId}, #{tenantId}, 'invited', now(), now(), NULL, NULL)
+        ON CONFLICT (identity_id, tenant_id) WHERE NOT deleted DO NOTHING
+    </insert>
+    <select id="findStatus" resultType="io.saasforge.iam.membership.model.MembershipStatus">
+        SELECT id AS membership_id, status FROM membership
+        WHERE identity_id = #{identityId} AND tenant_id = #{tenantId} AND NOT deleted
+    </select>
+    <select id="findInvitation" resultType="io.saasforge.iam.membership.model.Invitation">
+        SELECT m.id AS membership_id, m.status AS membership_status, t.id AS tenant_id, t.name AS tenant_name,
+               i.id AS identity_id, i.status AS identity_status
+        FROM membership m JOIN identity i ON i.id = m.identity_id JOIN tenant t ON t.id = m.tenant_id
+        WHERE m.id = #{membershipId} AND NOT m.deleted AND NOT i.deleted AND NOT t.deleted
+    </select>
+    <update id="activateInvited">
+        UPDATE membership SET status = 'active', updated_at = now(), updated_by = NULL
+        WHERE id = #{membershipId} AND status = 'invited' AND NOT deleted
+    </update>
     <select id="exists" resultType="boolean">
         SELECT EXISTS (SELECT 1 FROM membership WHERE tenant_id = #{tenantId} AND id = #{membershipId} AND NOT deleted)
     </select>

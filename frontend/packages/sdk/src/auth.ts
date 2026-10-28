@@ -82,6 +82,20 @@ export interface RegistrationInput {
   displayName?: string
 }
 
+/** 接受邀请前展示的信息；`requiresCredentials` 为 true 时被邀请人尚无可登录的 Identity，接受时须设置账号与密码。 */
+export interface InvitationPreview {
+  tenantName: string
+  requiresCredentials: boolean
+}
+
+/** 接受邀请的输入；`token` 取自邀请链接，账号、密码与昵称只在需要设置凭证时填写，昵称缺省为账号。 */
+export interface InvitationAcceptance {
+  token: string
+  account?: string
+  password?: string
+  displayName?: string
+}
+
 /** 会话变化（登录、刷新、切换、清除）时的回调；`null` 表示已无会话。 */
 export type TenantSessionListener = (session: TenantSession | null) => void
 
@@ -135,6 +149,21 @@ export function createTenantClient(storage: Storage) {
     return core.post<{ identityId: string }>(`${tenantRealm.authPath}/register`, input)
   }
 
+  /** 查看邀请；令牌不存在、已过期或已被接受时以 `invitation.invalid` 失败。 */
+  function previewInvitation(token: string): Promise<InvitationPreview> {
+    return core.post<InvitationPreview>(`${tenantRealm.authPath}/invitations/preview`, { token })
+  }
+
+  /**
+   * 接受邀请，不建立登录会话；之后用账号密码 `login` 即可进入该租户。需要设置凭证却未填写时以
+   * `invitation.credentialsRequired` 失败，账号已被占用时以 `registration.accountTaken` 失败。
+   */
+  function acceptInvitation(
+    input: InvitationAcceptance,
+  ): Promise<{ tenantId: string; tenantName: string }> {
+    return core.post(`${tenantRealm.authPath}/invitations/accept`, input)
+  }
+
   async function enter(path: string, body: object): Promise<TenantLoginResult> {
     const settings = await core.authenticate<{ memberships?: TenantMembership[] }>(
       path,
@@ -173,6 +202,8 @@ export function createTenantClient(storage: Storage) {
     loginWithCode,
     sendRegistrationCode,
     register,
+    previewInvitation,
+    acceptInvitation,
     selectTenant,
     memberships,
     switchTenant,

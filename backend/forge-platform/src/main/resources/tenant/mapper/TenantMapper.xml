@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.platform.tenant.mapper.TenantMapper">
+    <select id="page" resultType="io.saasforge.platform.tenant.entity.Tenant">
+        SELECT id, name, status, admin_contact, created_at, updated_at, created_by, updated_by, deleted
+        FROM tenant
+        WHERE NOT deleted
+        ORDER BY id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+</mapper>

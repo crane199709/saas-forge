@@ -9,6 +9,7 @@ import io.saasforge.demo.order.model.OrderCreated;
 import io.saasforge.demo.order.service.OrderService;
 import io.saasforge.sdk.core.CurrentTenant;
 import io.saasforge.sdk.mq.EventPublisher;
+import io.saasforge.sdk.provisioning.TenantCreated;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -81,25 +82,28 @@ class OutboxMessagingTest {
             .withStartupTimeout(Duration.ofMinutes(3));
 
     /**
-     * 消费端启动时就要拉取 Topic 路由，因此在创建 Spring 上下文的这一步先建好 Topic，并等到路由可查。
+     * 消费端启动时就要拉取所订阅 Topic 的路由，因此在创建 Spring 上下文的这一步先建好 Topic，并等到路由可查。
      *
      * <p>mqadmin 失败时退出码仍为 0，只能检查输出。
      */
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
-        Awaitility.await()
-                .atMost(Duration.ofMinutes(2))
-                .pollInterval(Duration.ofSeconds(2))
-                .until(() -> rocketmq.execInContainer(
-                                        "sh",
-                                        "-c",
-                                        ROCKETMQ_HOME
-                                                + "/bin/mqadmin updateTopic -n localhost:9876 -c DefaultCluster -t "
-                                                + OrderCreated.TOPIC + " -a +message.type=NORMAL; " + ROCKETMQ_HOME
-                                                + "/bin/mqadmin topicRoute -n localhost:9876 -t " + OrderCreated.TOPIC
-                                                + " | grep -q brokerName")
-                                .getExitCode()
-                        == 0);
+        // 服务订阅的全部 Topic：订单事件，以及 SDK 为租户初始化订阅的 Provisioning 事件
+        for (String topic : List.of(OrderCreated.TOPIC, TenantCreated.TOPIC)) {
+            Awaitility.await()
+                    .atMost(Duration.ofMinutes(2))
+                    .pollInterval(Duration.ofSeconds(2))
+                    .until(() -> rocketmq.execInContainer(
+                                            "sh",
+                                            "-c",
+                                            ROCKETMQ_HOME
+                                                    + "/bin/mqadmin updateTopic -n localhost:9876 -c DefaultCluster -t "
+                                                    + topic + " -a +message.type=NORMAL; " + ROCKETMQ_HOME
+                                                    + "/bin/mqadmin topicRoute -n localhost:9876 -t " + topic
+                                                    + " | grep -q brokerName")
+                                    .getExitCode()
+                            == 0);
+        }
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("forge.mq.enabled", () -> true);
         registry.add("forge.mq.endpoints", OutboxMessagingTest::endpoints);

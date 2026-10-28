@@ -39,6 +39,11 @@ public class RoleService {
         roles.insertBuiltin(UuidV7.generate(), tenantId, TENANT_ADMIN, "租户管理员");
     }
 
+    /** 授予租户的 Owner 角色，可重复调用。须先预置角色。 */
+    public void grantOwner(UUID tenantId, UUID membershipId) {
+        roles.grantOwner(tenantId, membershipId);
+    }
+
     /**
      * 要求 Membership 持有 Owner 或 Tenant Admin，用于成员与组织等租户管理操作。
      *

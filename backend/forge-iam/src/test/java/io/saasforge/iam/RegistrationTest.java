@@ -2,6 +2,7 @@ package io.saasforge.iam;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.saasforge.iam.verification.service.ContactMessage;
 import io.saasforge.iam.verification.service.EmailSender;
 import io.saasforge.iam.verification.service.SmsSender;
 import io.saasforge.iam.verification.service.VerificationMessage;
@@ -88,9 +89,9 @@ class RegistrationTest {
         // 模拟发送通道故障：该目标的第一次发送失败。
         private final Map<String, Boolean> failOnce = new ConcurrentHashMap<>(Map.of("broken@example.com", true));
 
-        void deliver(String target, VerificationMessage message) {
+        void deliver(String target, ContactMessage message) {
             if (failOnce.remove(target) != null) throw new IllegalStateException("channel down");
-            latest.put(target, message.code());
+            latest.put(target, ((VerificationMessage) message).code());
             count.incrementAndGet();
         }
 

@@ -2,7 +2,10 @@ package io.saasforge.iam.identity.service;
 
 import io.saasforge.iam.identity.mapper.IdentityMapper;
 import io.saasforge.iam.identity.model.ActiveMembership;
+import io.saasforge.iam.identity.model.ContactIdentity;
+import io.saasforge.iam.identity.model.IdentityStatus;
 import io.saasforge.iam.identity.model.LoginCredential;
+import io.saasforge.iam.verification.service.VerificationCodeService;
 import io.saasforge.sdk.core.UuidV7;
 import java.util.List;
 import java.util.Optional;
@@ -50,6 +53,25 @@ public class IdentityService {
         UUID id = UuidV7.generate();
         identities.insert(id, account, email, phone, displayName, passwordHash);
         return id;
+    }
+
+    /**
+     * 按邮箱或手机号找到邀请对象的身份，不存在时建立待激活身份。
+     *
+     * <p>并发开通同一联系方式时后写入者违反唯一索引而失败，由开通重试解决。
+     */
+    public ContactIdentity findOrCreatePending(String contact) {
+        ContactIdentity existing = identities.findByContact(contact);
+        if (existing != null) return existing;
+        UUID id = UuidV7.generate();
+        boolean email = VerificationCodeService.isEmail(contact);
+        identities.insertPending(id, email ? contact : null, email ? null : contact, contact);
+        return new ContactIdentity(id, IdentityStatus.PENDING);
+    }
+
+    /** 为待激活身份设置凭证并激活；身份已激活时返回 false。账号重复时抛出 Spring 的 {@code DuplicateKeyException}。 */
+    public boolean activatePending(UUID identityId, String account, String displayName, String passwordHash) {
+        return identities.activatePending(identityId, account, displayName, passwordHash) > 0;
     }
 
     public ActiveMembership findForRefresh(UUID identityId, UUID membershipId, UUID tenantId) {

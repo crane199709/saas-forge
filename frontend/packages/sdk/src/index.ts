@@ -15,6 +15,8 @@ export {
 } from './auth'
 export type {
   CodeDelivery,
+  InvitationAcceptance,
+  InvitationPreview,
   PlatformClient,
   PlatformSession,
   PlatformSessionListener,

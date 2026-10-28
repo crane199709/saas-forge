@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.saasforge</groupId>
+        <artifactId>forge-sdk</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>forge-sdk-provisioning</artifactId>
+    <name>Forge SDK Provisioning</name>
+    <description>Provisioning 事件契约与租户初始化扩展点</description>
+
+    <dependencies>
+        <!-- 订阅 TenantCreated 与回报初始化结果都经 Outbox 与幂等消费 -->
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-mq</artifactId>
+        </dependency>
+    </dependencies>
+</project>

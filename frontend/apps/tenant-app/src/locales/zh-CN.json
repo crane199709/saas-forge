@@ -110,5 +110,11 @@
       "cancel": "取消",
       "dialog": "分配 {name}"
     }
+  },
+  "invitation": {
+    "title": "接受邀请",
+    "prompt": "你受邀加入租户「{tenant}」。",
+    "accept": "接受邀请",
+    "accepted": "已加入租户「{tenant}」，请登录后进入。"
   }
 }

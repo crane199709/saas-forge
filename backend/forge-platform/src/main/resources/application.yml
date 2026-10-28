@@ -31,3 +31,19 @@ forge:
     platform:
       issuer: http://localhost:8080/iam/platform
       jwk-set-uri: http://localhost:8101/platform/oauth2/jwks
+  mq:
+    endpoints: ${FORGE_ROCKETMQ_ENDPOINTS:127.0.0.1:8081}
+  # 平台数据不属于任何租户。消费各服务的初始化回报时 SDK 会恢复该租户的上下文，这些表也不能被注入租户条件
+  tenant:
+    ignore-tables:
+      - tenant
+      - tenant_initialization
+  platform:
+    provisioning:
+      # 创建租户时预建 pending 初始化状态的服务，名称为各服务的 spring.application.name。
+      # 未列出的服务回报时照常记录，只是在回报前平台不知道它需要初始化
+      services:
+        - forge-iam
+        - demo-service
+mybatis-plus:
+  mapper-locations: classpath*:/*/mapper/**/*.xml

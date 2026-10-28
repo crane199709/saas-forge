@@ -10,6 +10,7 @@ import App from './App.vue'
 import { i18n } from './i18n'
 import { loadSubApp } from './load-sub-app'
 import { applyMenuRoutes } from './menu-routes'
+import AcceptInvitationPage from './invitation/AcceptInvitationPage.vue'
 import OrganizationPage from './organization/OrganizationPage.vue'
 
 document.title = i18n.global.t('app.title')
@@ -22,6 +23,8 @@ const router = createRouter({
     { path: '/', component: { render: () => null } },
     // Shell 自带的租户管理页，不来自 Sub-App 菜单；是否为 Tenant Admin 由 IAM 判断。
     { path: '/org', component: OrganizationPage },
+    // 邀请链接的落地页，iam 的 forge.iam.invitation.accept-url 指向这里；无需登录。
+    { path: '/invitations/accept', component: AcceptInvitationPage },
     // 菜单中没有的 Sub-App 路由不存在，深链接落到这里而不是空白报错。
     { path: '/:pathMatch(.*)*', component: { render: () => null } },
   ],

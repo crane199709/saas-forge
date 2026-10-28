@@ -6,4 +6,10 @@
         UPDATE tenant SET status = #{status}, updated_at = now(), updated_by = NULL
         WHERE id = #{tenantId} AND NOT deleted
     </update>
+    <!-- Tenant 主数据属于 platform，iam 在开通时登记副本供登录与签发使用；由 TenantCreated 消费者写入，没有操作人。 -->
+    <insert id="insertIfAbsent">
+        INSERT INTO tenant (id, name, status, created_at, updated_at, created_by, updated_by)
+        VALUES (#{tenantId}, #{name}, #{status}, now(), now(), NULL, NULL)
+        ON CONFLICT (id) DO NOTHING
+    </insert>
 </mapper>

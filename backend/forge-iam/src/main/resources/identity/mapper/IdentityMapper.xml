@@ -32,6 +32,20 @@
     <select id="existsContact" resultType="boolean">
         SELECT EXISTS (SELECT 1 FROM identity WHERE NOT deleted AND (lower(email) = lower(#{target}) OR phone = #{target}))
     </select>
+    <select id="findByContact" resultType="io.saasforge.iam.identity.model.ContactIdentity">
+        SELECT id AS identity_id, status FROM identity
+        WHERE NOT deleted AND (lower(email) = lower(#{target}) OR phone = #{target})
+    </select>
+    <insert id="insertPending">
+        INSERT INTO identity (id, email, phone, display_name, status, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{email}, #{phone}, #{displayName}, 'pending', now(), now(), NULL, NULL)
+    </insert>
+    <update id="activatePending">
+        UPDATE identity
+        SET account = #{account}, display_name = #{displayName}, password_hash = #{passwordHash}, status = 'active',
+            updated_at = now(), updated_by = NULL
+        WHERE id = #{id} AND status = 'pending' AND NOT deleted
+    </update>
     <insert id="insert">
         INSERT INTO identity (id, account, email, phone, display_name, password_hash, created_at, updated_at)
         VALUES (#{id}, #{account}, #{email}, #{phone}, #{displayName}, #{passwordHash}, now(), now())

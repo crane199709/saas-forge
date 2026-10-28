@@ -1,12 +1,17 @@
 package io.saasforge.iam.membership.mapper;
 
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
+import io.saasforge.iam.membership.model.Invitation;
 import io.saasforge.iam.membership.model.MemberRow;
 import io.saasforge.iam.membership.model.MembershipChange;
+import io.saasforge.iam.membership.model.MembershipStatus;
 import java.util.List;
 import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+// iam 的表不按租户行拦截隔离（ADR-0001），租户条件由 SQL 显式书写；消费事件时 SDK 恢复的租户上下文不能改写这些 SQL。
+@InterceptorIgnore(tenantLine = "true")
 @Mapper
 public interface MembershipMapper {
     /** 停用 Membership 并递增版本号，返回新版本；不存在或已删除时返回 null。管理操作按主键定位，不受 Data Policy 过滤。 */
@@ -14,6 +19,18 @@ public interface MembershipMapper {
 
     /** 递增版本号（如角色变更），返回新版本；不存在或已删除时返回 null。不受 Data Policy 过滤。 */
     MembershipChange incrementVersion(@Param("membershipId") UUID membershipId);
+
+    /** 为身份建立 invited 的 Membership，已有未删除的 Membership（不论状态）时不做修改。由消费者写入，不受 Data Policy 过滤。 */
+    void insertInvited(@Param("id") UUID id, @Param("identityId") UUID identityId, @Param("tenantId") UUID tenantId);
+
+    /** 身份在租户内未删除的 Membership；不存在时为 null。不受 Data Policy 过滤。 */
+    MembershipStatus findStatus(@Param("identityId") UUID identityId, @Param("tenantId") UUID tenantId);
+
+    /** 邀请涉及的 Membership、身份与租户，三者均未删除；不存在时为 null。按邀请令牌定位，不受 Data Policy 过滤。 */
+    Invitation findInvitation(@Param("membershipId") UUID membershipId);
+
+    /** 接受邀请：invited 改为 active，返回受影响行数；已接受或不存在时为 0。没有认证上下文，不受 Data Policy 过滤。 */
+    int activateInvited(@Param("membershipId") UUID membershipId);
 
     /** 租户内未删除的 Membership 是否存在。按 Token 租户限定，不受 Data Policy 过滤。 */
     boolean exists(@Param("tenantId") UUID tenantId, @Param("membershipId") UUID membershipId);

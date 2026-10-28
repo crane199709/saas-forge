@@ -96,6 +96,8 @@ class GatewaySecurityConfiguration {
                                 "/iam/auth/code-login",
                                 "/iam/auth/register/send-code",
                                 "/iam/auth/register",
+                                "/iam/auth/invitations/preview",
+                                "/iam/auth/invitations/accept",
                                 "/iam/platform/auth/login",
                                 "/iam/platform/auth/logout",
                                 "/iam/platform/auth/exchange",

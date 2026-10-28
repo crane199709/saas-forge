@@ -36,6 +36,10 @@
         </dependency>
         <dependency>
             <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-provisioning</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.saasforge</groupId>
             <artifactId>forge-sdk-audit</artifactId>
         </dependency>
         <dependency>

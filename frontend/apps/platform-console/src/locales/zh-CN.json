@@ -17,5 +17,37 @@
   "error": {
     "unknown": "请求失败，请稍后重试",
     "traceId": "追踪 ID"
+  },
+  "tenant": {
+    "title": "租户",
+    "create": "创建租户",
+    "submit": "创建",
+    "empty": "暂无租户",
+    "name": "租户名称",
+    "adminContact": "初始管理员",
+    "adminContactHint": "邮箱或手机号，将收到加入租户的邀请",
+    "status": "状态",
+    "statuses": {
+      "active": "正常",
+      "trial": "试用",
+      "pending": "待开通",
+      "suspended": "已停用",
+      "expired": "已过期",
+      "archived": "已归档",
+      "deleted": "已删除"
+    },
+    "actions": "操作",
+    "detail": "详情",
+    "refresh": "刷新",
+    "provisioningHint": "租户创建后即可使用，各服务在后台初始化本服务数据。",
+    "noInitializations": "暂无服务初始化记录",
+    "service": "服务",
+    "initialization": "初始化状态",
+    "initializationStatuses": {
+      "pending": "进行中",
+      "succeeded": "成功",
+      "failed": "失败"
+    },
+    "retry": "重试"
   }
 }

@@ -22,6 +22,11 @@
             <groupId>io.saasforge</groupId>
             <artifactId>forge-sdk-core</artifactId>
         </dependency>
+        <!-- 订阅 TenantCreated 开通初始管理员，并经 SDK 回报初始化结果 -->
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-provisioning</artifactId>
+        </dependency>
         <!-- /auth/* 业务接口的响应信封、异常映射与 traceId -->
         <dependency>
             <groupId>io.saasforge</groupId>
