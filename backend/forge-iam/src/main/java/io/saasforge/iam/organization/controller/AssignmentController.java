@@ -1,7 +1,7 @@
 package io.saasforge.iam.organization.controller;
 
+import io.saasforge.iam.membership.model.TenantActor;
 import io.saasforge.iam.organization.model.MemberAssignment;
-import io.saasforge.iam.organization.model.TenantActor;
 import io.saasforge.iam.organization.service.AssignmentService;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.web.PageQuery;

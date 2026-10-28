@@ -15,10 +15,20 @@ import java.util.regex.Pattern;
  * @param version 清单版本
  * @param permissions 本服务的全部 Permission Code，按编码排序
  * @param menus 本服务的菜单树，按申报顺序展示
+ * @param roles 本服务的角色模板，iam 开通新租户时据此预置角色，可为 null（视为没有）
  */
-public record ResourceManifest(String service, String version, List<Permission> permissions, List<MenuNode> menus) {
+public record ResourceManifest(
+        String service,
+        String version,
+        List<Permission> permissions,
+        List<MenuNode> menus,
+        // 没有角色模板时不输出该字段：iam 按 JSON 内容判断同一版本是否重复上报，加入本字段前存储的清单才能与之相同。
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<RoleTemplate> roles) {
     // 长度上限与 iam 表的列宽一致。
     private static final Pattern CODE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9:._-]{0,127}");
+    private static final Pattern ROLE_CODE = Pattern.compile("[a-z0-9][a-z0-9-]{0,63}");
+    // 与 iam 预置角色的保留编码一致，模板不能占用。
+    private static final Set<String> RESERVED_ROLE_CODES = Set.of("owner", "tenant-admin");
     private static final int MAX_KEY = 64;
     private static final int MAX_NAME = 120;
 
@@ -26,13 +36,27 @@ public record ResourceManifest(String service, String version, List<Permission> 
     public ResourceManifest {
         permissions = List.copyOf(permissions);
         menus = List.copyOf(menus);
+        roles = roles == null ? List.of() : List.copyOf(roles);
+    }
+
+    /**
+     * 没有角色模板的清单。
+     *
+     * @param service 服务名
+     * @param version 清单版本
+     * @param permissions 全部 Permission Code
+     * @param menus 菜单树
+     */
+    public ResourceManifest(String service, String version, List<Permission> permissions, List<MenuNode> menus) {
+        this(service, version, permissions, menus, List.of());
     }
 
     /**
      * 检查清单是否完整、自洽。SDK 生成清单时与 iam 接收上报时执行同一套规则，CI 或其他客户端直接上报也不例外。
      *
      * <p>规则：服务名与版本非空；权限码格式合法且不重复，名称非空；菜单编码不重复；菜单引用的权限码必须在本清单中声明；
-     * 叶子节点必须同时有 {@code app} 与 {@code path}，分组节点不能带路由，Shell 才能据此生成导航与路由。
+     * 叶子节点必须同时有 {@code app} 与 {@code path}，分组节点不能带路由，Shell 才能据此生成导航与路由；
+     * 角色模板编码为小写字母、数字与连字符且不重复、不占用预置角色编码，名称非空，引用的权限码必须在本清单中声明。
      *
      * @throws IllegalArgumentException 违反任一规则，消息说明具体位置
      */
@@ -53,6 +77,28 @@ public record ResourceManifest(String service, String version, List<Permission> 
             }
         }
         validateMenus(menus, codes, new HashSet<>());
+        validateRoles(codes);
+    }
+
+    private void validateRoles(Set<String> codes) {
+        Set<String> roleCodes = new HashSet<>();
+        for (RoleTemplate role : roles) {
+            if (role.code() == null
+                    || !ROLE_CODE.matcher(role.code()).matches()
+                    || RESERVED_ROLE_CODES.contains(role.code())) {
+                throw new IllegalArgumentException("Invalid role template code: " + role.code());
+            }
+            if (!roleCodes.add(role.code())) {
+                throw new IllegalArgumentException("Duplicate role template code: " + role.code());
+            }
+            requireText(role.name(), MAX_NAME, "name of role template " + role.code());
+            for (String permission : role.permissions()) {
+                if (!codes.contains(permission)) {
+                    throw new IllegalArgumentException(
+                            "Role template " + role.code() + " grants undeclared Permission Code: " + permission);
+                }
+            }
+        }
     }
 
     private static void validateMenus(List<MenuNode> nodes, Set<String> codes, Set<String> menuCodes) {
@@ -88,6 +134,20 @@ public record ResourceManifest(String service, String version, List<Permission> 
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Permission(String code, String name, String group) {}
+
+    /**
+     * 角色模板：业务服务建议的角色及其授权。iam 在新租户开通时据此建立普通的自定义角色，之后由 Tenant Admin 自由编辑或删除。
+     *
+     * @param code 角色编码，租户内唯一
+     * @param name 展示名称
+     * @param permissions 授予的 Permission Code，须在同一清单中声明
+     */
+    public record RoleTemplate(String code, String name, List<String> permissions) {
+        /** 授权缺省为空列表。 */
+        public RoleTemplate {
+            permissions = permissions == null ? List.of() : List.copyOf(permissions);
+        }
+    }
 
     /**
      * 菜单节点。叶子节点指向某个 Sub-App 的路由，分组节点只有子节点。

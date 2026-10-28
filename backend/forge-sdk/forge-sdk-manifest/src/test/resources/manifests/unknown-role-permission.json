@@ -1,0 +1,3 @@
+{
+  "roles": [{ "code": "order-viewer", "name": "订单查看员", "permissions": ["order:typo"] }]
+}

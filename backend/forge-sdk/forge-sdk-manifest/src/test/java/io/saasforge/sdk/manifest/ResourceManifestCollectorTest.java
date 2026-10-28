@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.saasforge.sdk.core.ResourceManifest;
 import io.saasforge.sdk.core.ResourceManifest.MenuNode;
 import io.saasforge.sdk.core.ResourceManifest.Permission;
+import io.saasforge.sdk.core.ResourceManifest.RoleTemplate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -34,6 +35,7 @@ class ResourceManifestCollectorTest {
                         null,
                         List.of(new MenuNode(
                                 "orders.overview", "订单概览", null, "demo", "overview", "order:read", null))));
+        assertThat(manifest.roles()).containsExactly(new RoleTemplate("order-viewer", "订单查看员", List.of("order:read")));
     }
 
     @Test
@@ -49,6 +51,16 @@ class ResourceManifestCollectorTest {
         assertThatThrownBy(() -> collect("manifests/unknown-menu-permission.json"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("order:typo");
+    }
+
+    @Test
+    void roleTemplatesMustGrantDeclaredCodesAndCannotTakeBuiltinRoleCodes() {
+        assertThatThrownBy(() -> collect("manifests/unknown-role-permission.json"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("order:typo");
+        assertThatThrownBy(() -> collect("manifests/reserved-role-code.json"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("tenant-admin");
     }
 
     private static ResourceManifest collect(String location) {

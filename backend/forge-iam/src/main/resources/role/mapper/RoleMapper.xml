@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- foreach 元素按 UUID 推断类型时找不到 TypeHandler，显式按 Object 交给驱动的 setObject，与单个 UUID 参数一致。 -->
 <mapper namespace="io.saasforge.iam.role.mapper.RoleMapper">
     <!-- 开通由系统发起（工单 14 的 TenantCreated 消费者），没有操作人，*_by 写 NULL。
          ON CONFLICT 命中 (tenant_id, code) 的部分唯一索引，重复开通不产生重复角色。 -->
@@ -27,4 +28,66 @@
         WHERE mr.membership_id = #{membershipId} AND NOT r.deleted
         ORDER BY r.code
     </select>
+    <select id="lockTenant" resultType="int">
+        SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtext('role:' || #{tenantId}))) AS locked
+    </select>
+    <sql id="roleColumns">
+        r.id, r.code, r.name, r.builtin, r.owner,
+        (SELECT count(*) FROM membership_role mr JOIN membership m ON m.id = mr.membership_id
+         WHERE mr.role_id = r.id AND NOT m.deleted) AS member_count
+    </sql>
+    <select id="list" resultType="io.saasforge.iam.role.model.RoleRow">
+        SELECT <include refid="roleColumns"/> FROM role r
+        WHERE r.tenant_id = #{tenantId} AND NOT r.deleted
+        ORDER BY r.owner DESC, r.builtin DESC, r.code
+    </select>
+    <select id="find" resultType="io.saasforge.iam.role.model.RoleRow">
+        SELECT <include refid="roleColumns"/> FROM role r
+        WHERE r.tenant_id = #{tenantId} AND r.id = #{id} AND NOT r.deleted
+    </select>
+    <!-- ON CONFLICT 命中 (tenant_id, code) 的部分唯一索引：编码被占用时返回 0，由调用方报告冲突；按模板重复开通也不产生重复角色。 -->
+    <insert id="insertCustom">
+        INSERT INTO role (id, tenant_id, code, name, builtin, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{tenantId}, #{code}, #{name}, false, now(), now(), #{actor}, #{actor})
+        ON CONFLICT (tenant_id, code) WHERE NOT deleted DO NOTHING
+    </insert>
+    <update id="rename">
+        UPDATE role SET name = #{name}, updated_at = now(), updated_by = #{actor}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT builtin AND NOT deleted
+    </update>
+    <update id="delete">
+        UPDATE role SET deleted = true, updated_at = now(), updated_by = #{actor}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT builtin AND NOT deleted
+    </update>
+    <!-- 单列 UUID 结果按 UUID 类型映射会被当作构造器自动映射而失败；按 Object 取驱动返回的 UUID。 -->
+    <select id="holders" resultType="java.lang.Object">
+        SELECT mr.membership_id FROM membership_role mr JOIN membership m ON m.id = mr.membership_id
+        WHERE mr.role_id = #{roleId} AND NOT m.deleted
+        ORDER BY mr.membership_id
+    </select>
+    <select id="rolesOf" resultType="io.saasforge.iam.role.model.MembershipRoleRow">
+        SELECT mr.membership_id, mr.role_id FROM membership_role mr JOIN role r ON r.id = mr.role_id
+        WHERE r.tenant_id = #{tenantId} AND NOT r.deleted
+          AND mr.membership_id IN <foreach collection="membershipIds" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+        ORDER BY r.owner DESC, r.builtin DESC, r.code
+    </select>
+    <select id="countAssignable" resultType="long">
+        SELECT count(*) FROM role
+        WHERE tenant_id = #{tenantId} AND NOT owner AND NOT deleted
+          AND id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+    </select>
+    <delete id="revokeExcept">
+        DELETE FROM membership_role WHERE membership_id = #{membershipId} AND NOT owner
+        <if test="!keep.isEmpty()">
+            AND role_id NOT IN <foreach collection="keep" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+        </if>
+    </delete>
+    <!-- owner 列取自角色本身以满足复合外键。 -->
+    <insert id="grant">
+        INSERT INTO membership_role (membership_id, role_id, owner)
+        SELECT #{membershipId}, id, owner FROM role
+        WHERE tenant_id = #{tenantId} AND NOT owner AND NOT deleted
+          AND id IN <foreach collection="roleIds" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+        ON CONFLICT DO NOTHING
+    </insert>
 </mapper>

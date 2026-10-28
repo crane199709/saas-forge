@@ -2,9 +2,11 @@ package io.saasforge.iam.permission.service;
 
 import io.saasforge.iam.permission.mapper.PermissionMapper;
 import io.saasforge.iam.permission.mapper.ResourceManifestMapper;
+import io.saasforge.iam.permission.model.PermissionRow;
 import io.saasforge.sdk.core.ResourceManifest;
 import io.saasforge.sdk.core.ResourceManifest.MenuNode;
 import io.saasforge.sdk.core.ResourceManifest.Permission;
+import io.saasforge.sdk.core.ResourceManifest.RoleTemplate;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
 import java.util.HashSet;
@@ -64,10 +66,28 @@ public class PermissionService {
         return permissions.activeCodes();
     }
 
+    /** 全部 active 的 Permission Code 及其展示信息，按服务、分组、编码排序，供角色授权界面选择。 */
+    public List<PermissionRow> activePermissions() {
+        return permissions.activePermissions();
+    }
+
     /** 各服务当前版本的菜单树，按服务名依次拼接，未经权限裁剪。 */
     public List<MenuNode> currentMenus() {
+        return currentManifests().stream()
+                .flatMap(manifest -> manifest.menus().stream())
+                .toList();
+    }
+
+    /** 各服务当前版本的角色模板，按服务名依次拼接。 */
+    public List<RoleTemplate> currentRoleTemplates() {
+        return currentManifests().stream()
+                .flatMap(manifest -> manifest.roles().stream())
+                .toList();
+    }
+
+    private List<ResourceManifest> currentManifests() {
         return manifests.currentContents().stream()
-                .flatMap(content -> json.readValue(content, ResourceManifest.class).menus().stream())
+                .map(content -> json.readValue(content, ResourceManifest.class))
                 .toList();
     }
 

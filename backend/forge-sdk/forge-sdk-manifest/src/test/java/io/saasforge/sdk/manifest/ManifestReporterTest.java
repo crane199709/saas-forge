@@ -39,6 +39,8 @@ class ManifestReporterTest {
         assertThat(json.get("service").asString()).isEqualTo("demo-service");
         assertThat(json.get("version").asString()).isEqualTo("1.0.0");
         assertThat(json.get("permissions").get(0).get("name").asString()).isEqualTo("查看订单");
+        // 没有角色模板时不输出该字段，与加入角色模板前上报并存储的清单内容相同。
+        assertThat(json.has("roles")).isFalse();
     }
 
     @Test

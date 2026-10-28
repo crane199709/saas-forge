@@ -2,7 +2,6 @@ package io.saasforge.iam.membership.service;
 
 import io.saasforge.iam.membership.mapper.MembershipMapper;
 import io.saasforge.iam.membership.model.MembershipChange;
-import io.saasforge.iam.role.service.RoleService;
 import io.saasforge.sdk.core.MembershipGrants;
 import io.saasforge.sdk.core.MembershipStateKeys;
 import java.time.Duration;
@@ -31,14 +30,14 @@ public class MembershipStateService {
             Long.class);
 
     private final MembershipMapper memberships;
-    private final RoleService roles;
+    private final RoleGrantSource roles;
     private final SubjectAttributeSource subjects;
     private final StringRedisTemplate redis;
     private final JsonMapper json;
 
     MembershipStateService(
             MembershipMapper memberships,
-            RoleService roles,
+            RoleGrantSource roles,
             SubjectAttributeSource subjects,
             StringRedisTemplate redis,
             JsonMapper json) {

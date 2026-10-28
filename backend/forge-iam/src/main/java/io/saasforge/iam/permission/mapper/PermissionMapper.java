@@ -1,6 +1,7 @@
 package io.saasforge.iam.permission.mapper;
 
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
+import io.saasforge.iam.permission.model.PermissionRow;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -27,4 +28,7 @@ public interface PermissionMapper {
 
     /** 全部 active 权限码，按编码排序。不受 Data Policy 过滤。 */
     List<String> activeCodes();
+
+    /** 全部 active 权限码及其展示信息，按服务、分组、编码排序。不受 Data Policy 过滤。 */
+    List<PermissionRow> activePermissions();
 }

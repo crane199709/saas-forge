@@ -1,9 +1,10 @@
 package io.saasforge.iam.organization.service;
 
+import io.saasforge.iam.membership.model.TenantActor;
 import io.saasforge.iam.organization.mapper.AssignmentMapper;
 import io.saasforge.iam.organization.mapper.DepartmentMapper;
 import io.saasforge.iam.organization.model.DepartmentRow;
-import io.saasforge.iam.organization.model.TenantActor;
+import io.saasforge.iam.permission.service.IamPermissions;
 import io.saasforge.iam.role.service.RoleService;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
@@ -37,13 +38,13 @@ public class DepartmentService {
 
     /** 全部部门，按路径排序，上级总在下级之前。 */
     public List<DepartmentRow> list(TenantActor actor) {
-        roles.requireTenantAdmin(actor.membershipId());
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         return departments.list(actor.tenantId());
     }
 
     /** 在上级之下新建部门；{@code parentId} 为 null 时为根部门。 */
     public DepartmentRow create(TenantActor actor, String name, UUID parentId) {
-        roles.requireTenantAdmin(actor.membershipId());
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         return transactions.execute(status -> {
             departments.lockTenant(actor.tenantId());
             UUID id = UuidV7.generate();
@@ -55,7 +56,7 @@ public class DepartmentService {
 
     /** 改名不改变路径，成员的主体属性不受影响。 */
     public DepartmentRow rename(TenantActor actor, UUID id, String name) {
-        roles.requireTenantAdmin(actor.membershipId());
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         if (departments.rename(actor.tenantId(), id, name, actor.identityId()) == 0) {
             throw new ForgeException(OrganizationErrorCode.DEPARTMENT_NOT_FOUND);
         }
@@ -67,7 +68,7 @@ public class DepartmentService {
      * 提交后递增他们的 version。
      */
     public DepartmentRow move(TenantActor actor, UUID id, UUID parentId) {
-        roles.requireTenantAdmin(actor.membershipId());
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         Moved moved = transactions.execute(status -> {
             departments.lockTenant(actor.tenantId());
             DepartmentRow department = require(actor, id);
@@ -88,7 +89,7 @@ public class DepartmentService {
 
     /** 有未删除的子部门或成员时拒绝删除，不级联。 */
     public void delete(TenantActor actor, UUID id) {
-        roles.requireTenantAdmin(actor.membershipId());
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         transactions.executeWithoutResult(status -> {
             departments.lockTenant(actor.tenantId());
             require(actor, id);

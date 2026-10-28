@@ -1,10 +1,11 @@
 package io.saasforge.iam.organization.service;
 
+import io.saasforge.iam.membership.model.TenantActor;
 import io.saasforge.iam.membership.service.MembershipService;
 import io.saasforge.iam.organization.mapper.DepartmentMapper;
 import io.saasforge.iam.organization.mapper.ExtendedAttributeMapper;
 import io.saasforge.iam.organization.model.ExtendedAttributeRow;
-import io.saasforge.iam.organization.model.TenantActor;
+import io.saasforge.iam.permission.service.IamPermissions;
 import io.saasforge.iam.role.service.RoleService;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
@@ -44,12 +45,12 @@ public class ExtendedAttributeService {
     }
 
     public List<ExtendedAttributeRow> list(TenantActor actor) {
-        roles.requireTenantAdmin(actor.membershipId());
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         return attributes.list(actor.tenantId());
     }
 
     public ExtendedAttributeRow create(TenantActor actor, String code, String name, String type, boolean required) {
-        roles.requireTenantAdmin(actor.membershipId());
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         UUID id = UuidV7.generate();
         // 与成员分配同锁：否则并发保存的分配可能在新的必填属性生效前完成校验。
         transactions.executeWithoutResult(status -> {
@@ -66,7 +67,7 @@ public class ExtendedAttributeService {
      * 一次性补齐全部成员不现实，而缺失的值在数据权限中按缺失处理，不会放宽可见范围以外的数据。
      */
     public ExtendedAttributeRow update(TenantActor actor, UUID id, String name, boolean required) {
-        roles.requireTenantAdmin(actor.membershipId());
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         if (attributes.update(actor.tenantId(), id, name, required, actor.identityId()) == 0) {
             throw new ForgeException(OrganizationErrorCode.ATTRIBUTE_NOT_FOUND);
         }
@@ -75,7 +76,7 @@ public class ExtendedAttributeService {
 
     /** 删除定义并移除各成员的该属性值；之后以同一编码新建的属性不会继承旧值。 */
     public void delete(TenantActor actor, UUID id) {
-        roles.requireTenantAdmin(actor.membershipId());
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         List<UUID> affected = transactions.execute(status -> {
             departments.lockTenant(actor.tenantId());
             ExtendedAttributeRow attribute = attributes.find(actor.tenantId(), id);

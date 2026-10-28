@@ -1,8 +1,12 @@
 package io.saasforge.iam.role.service;
 
+import io.saasforge.iam.membership.model.RoleGrants;
+import io.saasforge.iam.membership.service.RoleGrantSource;
 import io.saasforge.iam.permission.service.PermissionService;
 import io.saasforge.iam.role.mapper.RoleMapper;
+import io.saasforge.iam.role.mapper.RolePermissionMapper;
 import io.saasforge.iam.role.model.OwnerContact;
+import io.saasforge.sdk.core.ResourceManifest.RoleTemplate;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
@@ -14,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /** 租户角色与 Membership 的权限明细。 */
 @Service
-public class RoleService {
+public class RoleService implements RoleGrantSource {
     /** Owner：对租户负最终责任，每个租户唯一的持有者，不可删除。 */
     public static final String OWNER = "owner";
 
@@ -23,13 +27,15 @@ public class RoleService {
 
     // 预置角色的权限不落授权记录而在发布时取全部有效权限码，业务服务新增权限码后无需为每个租户补授权。
     // TODO(#20): 套餐接入后，取值改为 Plan 范围内的有效权限码。
-    private static final Set<String> ALL_PERMISSIONS = Set.of(OWNER, TENANT_ADMIN);
+    static final Set<String> ALL_PERMISSIONS = Set.of(OWNER, TENANT_ADMIN);
 
     private final RoleMapper roles;
+    private final RolePermissionMapper grants;
     private final PermissionService permissions;
 
-    RoleService(RoleMapper roles, PermissionService permissions) {
+    RoleService(RoleMapper roles, RolePermissionMapper grants, PermissionService permissions) {
         this.roles = roles;
+        this.grants = grants;
         this.permissions = permissions;
     }
 
@@ -38,6 +44,21 @@ public class RoleService {
     public void provisionBuiltinRoles(UUID tenantId) {
         roles.insertBuiltin(UuidV7.generate(), tenantId, OWNER, "所有者");
         roles.insertBuiltin(UuidV7.generate(), tenantId, TENANT_ADMIN, "租户管理员");
+    }
+
+    /**
+     * 按各业务服务当前清单中的角色模板为租户预置自定义角色，可重复调用：已有同编码角色时跳过，不覆盖租户的修改。
+     * 只在开通时调用，之后新增的模板不会补到已有租户。
+     */
+    @Transactional
+    public void provisionTemplateRoles(UUID tenantId) {
+        for (RoleTemplate template : permissions.currentRoleTemplates()) {
+            UUID id = UuidV7.generate();
+            if (roles.insertCustom(tenantId, id, template.code(), template.name(), null) == 1
+                    && !template.permissions().isEmpty()) {
+                grants.grant(id, template.permissions());
+            }
+        }
     }
 
     /** 授予租户的 Owner 角色，可重复调用。须先预置角色。 */
@@ -51,28 +72,23 @@ public class RoleService {
     }
 
     /**
-     * 要求 Membership 持有 Owner 或 Tenant Admin，用于成员与组织等租户管理操作。
+     * 要求 Membership 当前拥有 Permission Code，用于 iam 自身的租户管理操作。按数据库中的当前角色判断，
+     * 与 {@code @RequiresPermission} 读取的 Redis 明细在授权变更后的下一次请求起一致。
      *
      * @throws ForgeException 403 {@code auth.forbidden}
      */
-    // TODO(#16): 自定义角色接入后，改为按 iam 自身的管理类 Permission Code 判断。
-    public void requireTenantAdmin(UUID membershipId) {
-        if (roles.roleCodes(membershipId).stream().noneMatch(ALL_PERMISSIONS::contains)) {
+    public void requirePermission(UUID membershipId, String code) {
+        if (!grantsOf(membershipId).permissions().contains(code)) {
             throw new ForgeException(FrameworkErrorCode.AUTH_FORBIDDEN);
         }
     }
 
-    /** Membership 当前的角色与权限：持有预置角色时拥有全部有效权限码。 */
-    public Grants grantsOf(UUID membershipId) {
+    /** Membership 当前的角色与权限：持有预置角色时拥有全部有效权限码，否则为各角色有效授权的并集。 */
+    @Override
+    public RoleGrants grantsOf(UUID membershipId) {
         List<String> codes = roles.roleCodes(membershipId);
-        // TODO(#16): 自定义角色接入后，并入其授权的有效权限码。
         boolean all = codes.stream().anyMatch(ALL_PERMISSIONS::contains);
-        return new Grants(Set.copyOf(codes), all ? Set.copyOf(permissions.activeCodes()) : Set.of());
+        return new RoleGrants(
+                Set.copyOf(codes), Set.copyOf(all ? permissions.activeCodes() : grants.grantedCodes(membershipId)));
     }
-
-    /**
-     * @param roles 角色编码
-     * @param permissions 有效的 Permission Code
-     */
-    public record Grants(Set<String> roles, Set<String> permissions) {}
 }

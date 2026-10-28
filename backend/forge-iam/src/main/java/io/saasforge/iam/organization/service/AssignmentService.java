@@ -1,6 +1,7 @@
 package io.saasforge.iam.organization.service;
 
 import io.saasforge.iam.membership.model.Member;
+import io.saasforge.iam.membership.model.TenantActor;
 import io.saasforge.iam.membership.service.MembershipService;
 import io.saasforge.iam.organization.mapper.AssignmentMapper;
 import io.saasforge.iam.organization.mapper.DepartmentMapper;
@@ -8,7 +9,7 @@ import io.saasforge.iam.organization.mapper.PositionMapper;
 import io.saasforge.iam.organization.model.DepartmentAssignmentRow;
 import io.saasforge.iam.organization.model.MemberAssignment;
 import io.saasforge.iam.organization.model.PositionAssignmentRow;
-import io.saasforge.iam.organization.model.TenantActor;
+import io.saasforge.iam.permission.service.IamPermissions;
 import io.saasforge.iam.role.service.RoleService;
 import io.saasforge.sdk.core.api.ForgeException;
 import java.util.ArrayList;
@@ -54,7 +55,7 @@ public class AssignmentService {
 
     /** 一页成员及其分配。 */
     public List<MemberAssignment> page(TenantActor actor, long offset, int limit) {
-        roles.requireTenantAdmin(actor.membershipId());
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         List<Member> members = memberships.page(actor.tenantId(), offset, limit);
         if (members.isEmpty()) return List.of();
         List<UUID> ids = members.stream().map(Member::membershipId).toList();
@@ -94,7 +95,7 @@ public class AssignmentService {
     }
 
     public long count(TenantActor actor) {
-        roles.requireTenantAdmin(actor.membershipId());
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         return memberships.count(actor.tenantId());
     }
 
@@ -111,7 +112,7 @@ public class AssignmentService {
             List<UUID> departmentIds,
             List<UUID> positionIds,
             Map<String, Object> values) {
-        roles.requireTenantAdmin(actor.membershipId());
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         Set<UUID> concurrent = new LinkedHashSet<>(departmentIds);
         if ((primaryDepartmentId == null && !concurrent.isEmpty()) || concurrent.contains(primaryDepartmentId)) {
             throw new ForgeException(OrganizationErrorCode.INVALID_ASSIGNMENT);

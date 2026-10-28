@@ -1,10 +1,10 @@
-package io.saasforge.iam.organization.model;
+package io.saasforge.iam.membership.model;
 
 import java.util.UUID;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 /**
- * 发起组织管理操作的 Membership，取自已验签的 Access Token，不接受请求中的租户。
+ * 发起租户管理操作（组织、角色等）的 Membership，取自已验签的 Access Token，不接受请求中的租户。
  *
  * @param tenantId 操作所在租户，所有读写都限定在该租户内
  * @param membershipId 操作者的 Membership，用于校验管理权限

@@ -1,10 +1,11 @@
 package io.saasforge.iam.organization.service;
 
+import io.saasforge.iam.membership.model.TenantActor;
 import io.saasforge.iam.organization.mapper.AssignmentMapper;
 import io.saasforge.iam.organization.mapper.DepartmentMapper;
 import io.saasforge.iam.organization.mapper.PositionMapper;
 import io.saasforge.iam.organization.model.PositionRow;
-import io.saasforge.iam.organization.model.TenantActor;
+import io.saasforge.iam.permission.service.IamPermissions;
 import io.saasforge.iam.role.service.RoleService;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
@@ -36,19 +37,19 @@ public class PositionService {
     }
 
     public List<PositionRow> list(TenantActor actor) {
-        roles.requireTenantAdmin(actor.membershipId());
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         return positions.list(actor.tenantId());
     }
 
     public PositionRow create(TenantActor actor, String name) {
-        roles.requireTenantAdmin(actor.membershipId());
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         UUID id = UuidV7.generate();
         positions.insert(actor.tenantId(), id, name, actor.identityId());
         return new PositionRow(id, name);
     }
 
     public PositionRow rename(TenantActor actor, UUID id, String name) {
-        roles.requireTenantAdmin(actor.membershipId());
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         if (positions.rename(actor.tenantId(), id, name, actor.identityId()) == 0) {
             throw new ForgeException(OrganizationErrorCode.POSITION_NOT_FOUND);
         }
@@ -57,7 +58,7 @@ public class PositionService {
 
     /** 仍有成员担任时拒绝删除；与成员分配在同一把租户锁下判断，避免删除的同时被分配。 */
     public void delete(TenantActor actor, UUID id) {
-        roles.requireTenantAdmin(actor.membershipId());
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         transactions.executeWithoutResult(status -> {
             departments.lockTenant(actor.tenantId());
             if (assignments.countByPosition(actor.tenantId(), id) > 0) {

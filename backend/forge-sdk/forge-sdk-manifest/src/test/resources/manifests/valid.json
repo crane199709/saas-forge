@@ -12,5 +12,6 @@
         { "code": "orders.overview", "name": "订单概览", "app": "demo", "path": "overview", "permission": "order:read" }
       ]
     }
-  ]
+  ],
+  "roles": [{ "code": "order-viewer", "name": "订单查看员", "permissions": ["order:read"] }]
 }

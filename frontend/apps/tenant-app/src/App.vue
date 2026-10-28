@@ -56,9 +56,17 @@ defineProps<{ sharedChecks?: Record<string, boolean>; loadError?: string }>()
         <LoginPanel />
         <nav>
           <router-link to="/">{{ t('spike.home') }}</router-link>
-          <router-link v-if="signedIn" to="/org" data-testid="menu-org">{{
+          <!-- 租户管理页按 iam 的管理权限码显示，授权被撤销后随权限刷新隐藏。 -->
+          <router-link v-if="signedIn" v-perm="'iam:org:manage'" to="/org" data-testid="menu-org">{{
             t('org.nav')
           }}</router-link>
+          <router-link
+            v-if="signedIn"
+            v-perm="'iam:role:manage'"
+            to="/roles"
+            data-testid="menu-roles"
+            >{{ t('role.nav') }}</router-link
+          >
           <template v-for="section in sections" :key="section.code">
             <span class="menu-section">{{ section.name }}</span>
             <router-link

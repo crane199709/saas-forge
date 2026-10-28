@@ -116,5 +116,42 @@
     "prompt": "你受邀加入租户「{tenant}」。",
     "accept": "接受邀请",
     "accepted": "已加入租户「{tenant}」，请登录后进入。"
+  },
+  "role": {
+    "nav": "角色管理",
+    "title": "角色管理",
+    "tabs": {
+      "roles": "角色",
+      "members": "成员分配"
+    },
+    "list": {
+      "create": "新建角色",
+      "name": "名称",
+      "code": "编码",
+      "members": "成员数",
+      "permissions": "权限",
+      "builtin": "预置",
+      "allPermissions": "全部权限",
+      "edit": "编辑",
+      "delete": "删除"
+    },
+    "dialog": {
+      "create": "新建角色",
+      "edit": "编辑 {name}",
+      "codeHint": "小写字母、数字与连字符，创建后不可修改",
+      "ungrouped": "未分组",
+      "save": "保存",
+      "cancel": "取消"
+    },
+    "member": {
+      "name": "成员",
+      "account": "账号",
+      "status": "状态",
+      "roles": "角色",
+      "edit": "分配角色",
+      "dialog": "为 {name} 分配角色",
+      "save": "保存",
+      "cancel": "取消"
+    }
   }
 }

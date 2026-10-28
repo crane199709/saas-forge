@@ -20,4 +20,9 @@
     <select id="activeCodes" resultType="string">
         SELECT code FROM permission WHERE status = 'active' AND NOT deleted ORDER BY code
     </select>
+    <select id="activePermissions" resultType="io.saasforge.iam.permission.model.PermissionRow">
+        SELECT code, name, service, group_name AS "group" FROM permission
+        WHERE status = 'active' AND NOT deleted
+        ORDER BY service, group_name NULLS LAST, code
+    </select>
 </mapper>

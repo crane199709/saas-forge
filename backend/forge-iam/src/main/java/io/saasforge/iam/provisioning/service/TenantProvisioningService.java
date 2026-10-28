@@ -12,7 +12,7 @@ import io.saasforge.sdk.provisioning.TenantInitializer;
 import org.springframework.stereotype.Service;
 
 /**
- * iam 的租户初始化：登记租户、预置 Owner 与 Tenant Admin、把初始管理员加为 invited 的 Owner 并发出邀请。
+ * iam 的租户初始化：登记租户、预置 Owner 与 Tenant Admin 及业务服务的角色模板、把初始管理员加为 invited 的 Owner 并发出邀请。
  *
  * <p>每一步都可重复执行：重试时已建立的数据保持不变；Membership 已被接受时不再发邀请。
  */
@@ -41,6 +41,7 @@ class TenantProvisioningService implements TenantInitializer {
     public void initialize(TenantCreated tenant) {
         tenants.register(tenant.tenantId(), tenant.name(), tenant.status());
         roles.provisionBuiltinRoles(tenant.tenantId());
+        roles.provisionTemplateRoles(tenant.tenantId());
         ContactIdentity admin = identities.findOrCreatePending(tenant.adminContact());
         MembershipStatus membership = memberships.invite(tenant.tenantId(), admin.identityId());
         roles.grantOwner(tenant.tenantId(), membership.membershipId());

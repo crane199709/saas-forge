@@ -3,6 +3,7 @@ package io.saasforge.sdk.manifest;
 import io.saasforge.sdk.core.ResourceManifest;
 import io.saasforge.sdk.core.ResourceManifest.MenuNode;
 import io.saasforge.sdk.core.ResourceManifest.Permission;
+import io.saasforge.sdk.core.ResourceManifest.RoleTemplate;
 import io.saasforge.sdk.security.RequiresPermission;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,14 +23,15 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 生成服务的 Resource Manifest：扫描 {@link RequiresPermission} 得到 Permission Code，再合并清单文件
- * {@value #MANIFEST_LOCATION} 中的名称、分组与菜单树。服务启动时与 CI 中的 {@link ManifestCli} 共用。
+ * {@value #MANIFEST_LOCATION} 中的名称、分组、菜单树与角色模板。服务启动时与 CI 中的 {@link ManifestCli} 共用。
  *
  * <p>清单文件格式：
  *
  * <pre>{@code
  * {
  *   "permissions": { "order:read": { "name": "查看订单", "group": "订单" } },
- *   "menus": [ { "code": "orders", "name": "订单", "app": "demo", "path": "overview", "permission": "order:read" } ]
+ *   "menus": [ { "code": "orders", "name": "订单", "app": "demo", "path": "overview", "permission": "order:read" } ],
+ *   "roles": [ { "code": "order-viewer", "name": "订单查看员", "permissions": ["order:read"] } ]
  * }
  * }</pre>
  *
@@ -72,7 +74,7 @@ public final class ResourceManifestCollector {
             String name = info == null || info.name() == null || info.name().isBlank() ? code : info.name();
             permissions.add(new Permission(code, name, info == null ? null : info.group()));
         }
-        var manifest = new ResourceManifest(service, version, permissions, file.menus());
+        var manifest = new ResourceManifest(service, version, permissions, file.menus(), file.roles());
         try {
             manifest.validate();
         } catch (IllegalArgumentException error) {
@@ -109,7 +111,7 @@ public final class ResourceManifestCollector {
 
     private static ManifestFile read(ClassLoader classLoader, String location) {
         try (InputStream stream = classLoader.getResourceAsStream(location)) {
-            if (stream == null) return new ManifestFile(null, null);
+            if (stream == null) return new ManifestFile(null, null, null);
             return JSON.readValue(stream, ManifestFile.class);
         } catch (IOException | RuntimeException error) {
             throw new IllegalStateException("Invalid manifest file " + location, error);
@@ -118,10 +120,12 @@ public final class ResourceManifestCollector {
 
     private record PermissionInfo(String name, String group) {}
 
-    private record ManifestFile(Map<String, PermissionInfo> permissions, List<MenuNode> menus) {
+    private record ManifestFile(
+            Map<String, PermissionInfo> permissions, List<MenuNode> menus, List<RoleTemplate> roles) {
         ManifestFile {
             permissions = permissions == null ? Map.of() : permissions;
             menus = menus == null ? List.of() : menus;
+            roles = roles == null ? List.of() : roles;
         }
     }
 }

@@ -12,6 +12,7 @@ import { loadSubApp } from './load-sub-app'
 import { applyMenuRoutes } from './menu-routes'
 import AcceptInvitationPage from './invitation/AcceptInvitationPage.vue'
 import OrganizationPage from './organization/OrganizationPage.vue'
+import RolePage from './role/RolePage.vue'
 
 document.title = i18n.global.t('app.title')
 
@@ -21,8 +22,9 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', component: { render: () => null } },
-    // Shell 自带的租户管理页，不来自 Sub-App 菜单；是否为 Tenant Admin 由 IAM 判断。
+    // Shell 自带的租户管理页，不来自 Sub-App 菜单；是否拥有 iam 的管理权限码由 IAM 判断。
     { path: '/org', component: OrganizationPage },
+    { path: '/roles', component: RolePage },
     // 邀请链接的落地页，iam 的 forge.iam.invitation.accept-url 指向这里；无需登录。
     { path: '/invitations/accept', component: AcceptInvitationPage },
     // 菜单中没有的 Sub-App 路由不存在，深链接落到这里而不是空白报错。
@@ -65,11 +67,12 @@ async function refreshAccess() {
 }
 // 首次导航前完成注册，刷新页面时 Sub-App 深链接可直接进入。
 await refreshAccess()
-let membershipId = client.session()?.membershipId
-// Token 刷新也会触发会话变化，只在 Membership 变化（登录、选择租户、退出）时重新读取。
+let accessToken = client.session()?.accessToken
+// 除 Membership 变化（登录、选择租户、退出）外，Token 刷新也要重新读取：角色或授权变更使旧 Token 失效，
+// 刷新换到新 Token 后菜单与按钮随之按新权限变化。
 client.onSessionChange((session) => {
-  if (session?.membershipId === membershipId) return
-  membershipId = session?.membershipId
+  if (session?.accessToken === accessToken) return
+  accessToken = session?.accessToken
   void refreshAccess()
 })
 

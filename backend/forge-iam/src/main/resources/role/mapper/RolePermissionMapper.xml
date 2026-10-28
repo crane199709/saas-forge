@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.role.mapper.RolePermissionMapper">
+    <select id="listByTenant" resultType="io.saasforge.iam.role.model.RolePermissionRow">
+        SELECT rp.role_id, p.code
+        FROM role r JOIN role_permission rp ON rp.role_id = r.id JOIN permission p ON p.id = rp.permission_id
+        WHERE r.tenant_id = #{tenantId} AND NOT r.deleted AND p.status = 'active' AND NOT p.deleted
+        ORDER BY p.code
+    </select>
+    <select id="grantedCodes" resultType="string">
+        SELECT DISTINCT p.code
+        FROM membership_role mr JOIN role r ON r.id = mr.role_id
+            JOIN role_permission rp ON rp.role_id = r.id JOIN permission p ON p.id = rp.permission_id
+        WHERE mr.membership_id = #{membershipId} AND NOT r.deleted AND p.status = 'active' AND NOT p.deleted
+        ORDER BY p.code
+    </select>
+    <insert id="grant">
+        INSERT INTO role_permission (role_id, permission_id)
+        SELECT #{roleId}, id FROM permission
+        WHERE status = 'active' AND NOT deleted
+          AND code IN <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
+        ON CONFLICT DO NOTHING
+    </insert>
+    <delete id="revokeActiveExcept">
+        DELETE FROM role_permission rp USING permission p
+        WHERE rp.role_id = #{roleId} AND p.id = rp.permission_id AND p.status = 'active' AND NOT p.deleted
+        <if test="!keep.isEmpty()">
+            AND p.code NOT IN <foreach collection="keep" item="code" open="(" separator="," close=")">#{code}</foreach>
+        </if>
+    </delete>
+    <delete id="deleteByRole">
+        DELETE FROM role_permission WHERE role_id = #{roleId}
+    </delete>
+</mapper>
