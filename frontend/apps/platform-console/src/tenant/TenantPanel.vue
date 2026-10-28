@@ -1,8 +1,15 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@forge/sdk'
-import type { InitializationStatus, Tenant, TenantApi, TenantDetail } from './tenant-api'
+import type {
+  CreateTenant,
+  InitializationStatus,
+  Tenant,
+  TenantApi,
+  TenantDetail,
+  TenantStatus,
+} from './tenant-api'
 
 const props = defineProps<{ api: TenantApi }>()
 const { t } = useI18n()
@@ -12,7 +19,15 @@ const page = ref(1)
 const total = ref(0)
 const detail = ref<TenantDetail | null>(null)
 const creating = ref(false)
-const draft = ref({ name: '', adminContact: '' })
+const emptyDraft = () => ({
+  name: '',
+  adminContact: '',
+  status: 'active' as CreateTenant['status'],
+  expiresAt: '',
+})
+const draft = ref(emptyDraft())
+const emptyTransition = () => ({ status: '' as TenantStatus | '', reason: '', expiresAt: '' })
+const transitionDraft = ref(emptyTransition())
 const busy = ref(false)
 const error = ref<{ message: string; traceId?: string } | null>(null)
 
@@ -21,6 +36,15 @@ const statusType: Record<InitializationStatus, 'info' | 'success' | 'danger'> = 
   succeeded: 'success',
   failed: 'danger',
 }
+
+// 到期时间只随迁移到试用或正常设置
+const expiryApplies = (status: string) => status === 'trial' || status === 'active'
+// 冷静期内唯一可选的迁移是回到删除前的状态，即撤回删除
+const withdrawing = computed(() => detail.value?.tenant.status === 'deleted')
+
+// datetime-local 输入是本地时间，提交时转为带时区的 ISO 时间
+const toInstant = (local: string) => (local ? new Date(local).toISOString() : undefined)
+const formatTime = (value: string | null) => (value ? new Date(value).toLocaleString() : '')
 
 // 优先展示服务端已翻译的 userTip，其余故障显示通用提示。
 function showError(cause: unknown) {
@@ -55,15 +79,35 @@ const load = (number = page.value) => run(() => fetchPage(number))
 const open = (id: string) =>
   run(async () => {
     detail.value = await props.api.get(id)
+    transitionDraft.value = emptyTransition()
   })
 
 // 新租户排在第一页最前，创建后回到第一页并打开详情查看各服务初始化状态。
 const create = () =>
   run(async () => {
-    detail.value = await props.api.create(draft.value.name, draft.value.adminContact)
+    const { name, adminContact, status, expiresAt } = draft.value
+    detail.value = await props.api.create({
+      name,
+      adminContact,
+      status,
+      expiresAt: toInstant(expiresAt),
+    })
     creating.value = false
-    draft.value = { name: '', adminContact: '' }
+    draft.value = emptyDraft()
     await fetchPage(1)
+  })
+
+const transition = () =>
+  run(async () => {
+    if (!detail.value || !transitionDraft.value.status) return
+    const { status, reason, expiresAt } = transitionDraft.value
+    detail.value = await props.api.transition(detail.value.tenant.id, {
+      status,
+      reason: reason || undefined,
+      expiresAt: expiryApplies(status) ? toInstant(expiresAt) : undefined,
+    })
+    transitionDraft.value = emptyTransition()
+    await fetchPage(page.value)
   })
 
 // 重试后状态回到 pending，服务回报前需手动刷新查看结果。
@@ -129,6 +173,21 @@ onMounted(() => load(1))
             required
           />
         </el-form-item>
+        <el-form-item :label="t('tenant.initialStatus')">
+          <el-radio-group v-model="draft.status">
+            <el-radio-button value="active">{{ t('tenant.statuses.active') }}</el-radio-button>
+            <el-radio-button value="trial">{{ t('tenant.statuses.trial') }}</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item :label="t('tenant.expiresAt')" for="tenant-expires-at">
+          <input
+            id="tenant-expires-at"
+            v-model="draft.expiresAt"
+            class="native-input"
+            name="expiresAt"
+            type="datetime-local"
+          />
+        </el-form-item>
         <el-button native-type="submit" type="primary" :loading="busy">{{
           t('tenant.submit')
         }}</el-button>
@@ -137,6 +196,82 @@ onMounted(() => load(1))
 
     <el-drawer :model-value="detail !== null" :title="detail?.tenant.name" @close="detail = null">
       <template v-if="detail">
+        <el-descriptions :column="1" border>
+          <el-descriptions-item :label="t('tenant.status')">{{
+            t(`tenant.statuses.${detail.tenant.status}`)
+          }}</el-descriptions-item>
+          <el-descriptions-item v-if="detail.tenant.expiresAt" :label="t('tenant.expiresAt')">{{
+            formatTime(detail.tenant.expiresAt)
+          }}</el-descriptions-item>
+          <el-descriptions-item v-if="detail.tenant.purgedAt" :label="t('tenant.purgedAt')">{{
+            formatTime(detail.tenant.purgedAt)
+          }}</el-descriptions-item>
+          <el-descriptions-item v-else-if="detail.tenant.purgeAt" :label="t('tenant.purgeAt')">{{
+            formatTime(detail.tenant.purgeAt)
+          }}</el-descriptions-item>
+        </el-descriptions>
+
+        <h3>{{ t('tenant.lifecycle') }}</h3>
+        <p v-if="detail.allowedTransitions.length === 0">{{ t('tenant.noTransitions') }}</p>
+        <el-form v-else class="transition" label-position="top" @submit.prevent="transition">
+          <el-form-item :label="withdrawing ? t('tenant.withdrawTo') : t('tenant.targetStatus')">
+            <el-radio-group v-model="transitionDraft.status">
+              <el-radio-button
+                v-for="target in detail.allowedTransitions"
+                :key="target"
+                :value="target"
+                >{{ t(`tenant.statuses.${target}`) }}</el-radio-button
+              >
+            </el-radio-group>
+          </el-form-item>
+          <p v-if="transitionDraft.status === 'deleted'" class="warning">
+            {{ t('tenant.deletionHint') }}
+          </p>
+          <el-form-item
+            v-if="expiryApplies(transitionDraft.status)"
+            :label="t('tenant.expiresAt')"
+            for="transition-expires-at"
+          >
+            <input
+              id="transition-expires-at"
+              v-model="transitionDraft.expiresAt"
+              class="native-input"
+              name="expiresAt"
+              type="datetime-local"
+            />
+          </el-form-item>
+          <el-form-item :label="t('tenant.reason')" for="transition-reason">
+            <el-input
+              id="transition-reason"
+              v-model="transitionDraft.reason"
+              name="reason"
+              maxlength="500"
+            />
+          </el-form-item>
+          <el-button
+            native-type="submit"
+            type="primary"
+            :disabled="!transitionDraft.status"
+            :loading="busy"
+            >{{ withdrawing ? t('tenant.withdraw') : t('tenant.transition') }}</el-button
+          >
+        </el-form>
+
+        <h3>{{ t('tenant.history') }}</h3>
+        <el-table class="history" :data="detail.statusChanges" :empty-text="t('tenant.noHistory')">
+          <el-table-column :label="t('tenant.change')">
+            <template #default="{ row }">
+              {{ row.fromStatus ? t(`tenant.statuses.${row.fromStatus}`) : t('tenant.created') }}
+              → {{ t(`tenant.statuses.${row.toStatus}`) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="reason" :label="t('tenant.reason')" />
+          <el-table-column :label="t('tenant.changedAt')">
+            <template #default="{ row }">{{ formatTime(row.changedAt) }}</template>
+          </el-table-column>
+        </el-table>
+
+        <h3>{{ t('tenant.initialization') }}</h3>
         <p>{{ t('tenant.provisioningHint') }}</p>
         <el-button :loading="busy" @click="open(detail.tenant.id)">{{
           t('tenant.refresh')
@@ -178,6 +313,16 @@ header {
 .trace {
   margin: 4px 0 0;
   overflow-wrap: anywhere;
+}
+.warning {
+  color: var(--el-color-warning);
+}
+.native-input {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--el-border-color);
+  border-radius: var(--el-border-radius-base);
+  font: inherit;
 }
 .failure {
   margin: 4px 0 0;

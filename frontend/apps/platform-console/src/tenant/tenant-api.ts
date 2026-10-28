@@ -1,12 +1,31 @@
 import type { Page, PlatformClient } from '@forge/sdk'
 
 /** forge-platform 租户接口的模型，由 platform-console 维护，不属于通用 SDK。 */
+/** Tenant Lifecycle 状态，合法迁移由服务端的迁移表决定。 */
+export type TenantStatus =
+  'pending' | 'trial' | 'active' | 'suspended' | 'expired' | 'archived' | 'deleted'
+
 export interface Tenant {
   id: string
   name: string
-  status: string
+  status: TenantStatus
   adminContact: string
+  /** 试用或订购的到期时间。 */
+  expiresAt: string | null
+  /** 删除状态下冷静期的结束时间，期内可撤回。 */
+  purgeAt: string | null
+  /** 冷静期已结束、各服务开始清理数据的时间。 */
+  purgedAt: string | null
   createdAt: string
+}
+
+/** 一次状态变更，fromStatus 为 null 表示创建。 */
+export interface StatusChange {
+  fromStatus: TenantStatus | null
+  toStatus: TenantStatus
+  reason: string | null
+  changedBy: string | null
+  changedAt: string
 }
 
 export type InitializationStatus = 'pending' | 'succeeded' | 'failed'
@@ -22,6 +41,24 @@ export interface Initialization {
 export interface TenantDetail {
   tenant: Tenant
   initializations: Initialization[]
+  /** 当前可迁移到的状态；冷静期内只有删除前的状态，即撤回删除。 */
+  allowedTransitions: TenantStatus[]
+  /** 状态变更历史，最近的在前。 */
+  statusChanges: StatusChange[]
+}
+
+export interface CreateTenant {
+  name: string
+  adminContact: string
+  status: 'trial' | 'active'
+  expiresAt?: string
+}
+
+export interface Transition {
+  status: TenantStatus
+  reason?: string
+  /** 只在迁移到试用或正常时可填。 */
+  expiresAt?: string
 }
 
 export function createTenantApi(client: Pick<PlatformClient, 'api' | 'page'>) {
@@ -38,7 +75,9 @@ export function createTenantApi(client: Pick<PlatformClient, 'api' | 'page'>) {
     list: (page: number, size: number): Promise<Page<Tenant>> =>
       client.page<Tenant>(`${base}?page=${page}&size=${size}`),
     get: (id: string) => client.api<TenantDetail>(`${base}/${id}`),
-    create: (name: string, adminContact: string) => post<TenantDetail>('', { name, adminContact }),
+    create: (request: CreateTenant) => post<TenantDetail>('', request),
+    transition: (id: string, request: Transition) =>
+      post<TenantDetail>(`/${id}/transitions`, request),
     retry: (id: string, service: string) =>
       post<Initialization>(`/${id}/initializations/${encodeURIComponent(service)}/retry`),
   }

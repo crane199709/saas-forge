@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.demo.notification.mapper.OrderNotificationMapper">
+    <!-- 租户清理（ADR-0016）：在 TenantDeleted 的消费事务中执行，没有操作人，updated_by 写 NULL；手写 SQL 自行维护标准列。 -->
+    <update id="markTenantDeleted">
+        UPDATE order_notifications SET deleted = true, updated_at = now(), updated_by = NULL WHERE NOT deleted
+    </update>
+</mapper>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.platform.tenant.mapper.CoolingOffMapper">
+    <update id="endCoolingOff">
+        UPDATE tenant SET purge_at = now() - interval '1 second' WHERE id = #{tenantId} AND status = 'deleted'
+    </update>
+</mapper>

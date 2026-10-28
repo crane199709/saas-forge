@@ -20,4 +20,9 @@ public interface OrderMapper extends BaseMapper<Order> {
      */
     List<Order> selectPage(
             @Param("sorts") List<OrderSort> sorts, @Param("limit") int limit, @Param("offset") long offset);
+
+    /**
+     * 冷静期结束后把当前租户的订单全部标记删除，返回受影响行数。租户条件由 SDK 注入，不受 Data Policy 过滤。
+     */
+    int markTenantDeleted();
 }

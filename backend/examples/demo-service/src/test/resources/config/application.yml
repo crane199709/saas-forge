@@ -13,3 +13,7 @@ forge:
   # 测试不连接 iam；清单内容由 ResourceManifestTest 直接生成校验
   manifest:
     enabled: false
+  # 多数测试不启动 Redis 或不发布租户状态；写入保护由 TenantLifecycleTest 单独开启验证
+  tenant:
+    write-guard:
+      enabled: false

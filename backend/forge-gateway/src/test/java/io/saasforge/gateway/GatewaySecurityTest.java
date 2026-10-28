@@ -175,6 +175,18 @@ class GatewaySecurityTest {
         assertUnauthenticated(token(KEY, ISSUER, Instant.now().plusSeconds(900)));
     }
 
+    // Tenant Lifecycle（工单 15）：试用与正常可访问，其余状态的成员请求在下一次请求即被拒绝。
+    @Test
+    void onlyTrialAndActiveTenantsAreAccessible() throws Exception {
+        String token = token(KEY, ISSUER, Instant.now().plusSeconds(900));
+        redisTemplate.opsForValue().set(MembershipStateKeys.tenantStatus(TENANT_ID), "trial");
+        assertThat(status(token)).isEqualTo(200);
+        for (String status : List.of("pending", "expired", "archived", "deleted")) {
+            redisTemplate.opsForValue().set(MembershipStateKeys.tenantStatus(TENANT_ID), status);
+            assertUnauthenticated(token);
+        }
+    }
+
     @Test
     void missingPublishedStateRejectsUntilRefreshRepublishesIt() throws Exception {
         redisTemplate.delete(MembershipStateKeys.version(TENANT_ID, MEMBERSHIP_ID));

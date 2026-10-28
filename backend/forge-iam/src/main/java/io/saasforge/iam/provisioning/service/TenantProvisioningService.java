@@ -39,7 +39,7 @@ class TenantProvisioningService implements TenantInitializer {
 
     @Override
     public void initialize(TenantCreated tenant) {
-        tenants.register(tenant.tenantId(), tenant.name());
+        tenants.register(tenant.tenantId(), tenant.name(), tenant.status());
         roles.provisionBuiltinRoles(tenant.tenantId());
         ContactIdentity admin = identities.findOrCreatePending(tenant.adminContact());
         MembershipStatus membership = memberships.invite(tenant.tenantId(), admin.identityId());

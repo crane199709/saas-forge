@@ -10,8 +10,9 @@ import java.util.UUID;
  * @param tenantId 新租户 ID
  * @param name 租户名称
  * @param adminContact 初始管理员的邮箱或手机号，含 {@code @} 的是邮箱
+ * @param status 发布时的 Tenant Lifecycle 状态；创建时为 {@code trial} 或 {@code active}，重试初始化时为租户当前状态
  */
-public record TenantCreated(UUID tenantId, String name, String adminContact) {
-    /** Provisioning 相关事件所在的 Topic。 */
+public record TenantCreated(UUID tenantId, String name, String adminContact, String status) {
+    /** Provisioning 与 Tenant Lifecycle 相关事件所在的 Topic。 */
     public static final String TOPIC = "forge-tenant";
 }

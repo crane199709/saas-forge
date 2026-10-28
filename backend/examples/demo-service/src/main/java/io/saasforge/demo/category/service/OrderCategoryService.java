@@ -4,15 +4,17 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.saasforge.demo.category.entity.OrderCategory;
 import io.saasforge.demo.category.mapper.OrderCategoryMapper;
 import io.saasforge.sdk.provisioning.TenantCreated;
+import io.saasforge.sdk.provisioning.TenantDataCleaner;
+import io.saasforge.sdk.provisioning.TenantDeleted;
 import io.saasforge.sdk.provisioning.TenantInitializer;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 
-/** 演示租户初始化：新租户开通时预置默认订单分类。与普通业务代码一样不含租户条件，租户由 SDK 恢复。 */
+/** 演示租户初始化与清理：新租户开通时预置默认订单分类，冷静期结束后标记删除。与普通业务代码一样不含租户条件，租户由 SDK 恢复。 */
 @Service
-public class OrderCategoryService implements TenantInitializer {
+public class OrderCategoryService implements TenantInitializer, TenantDataCleaner {
     private static final Map<String, String> DEFAULTS = new LinkedHashMap<>();
 
     static {
@@ -43,5 +45,11 @@ public class OrderCategoryService implements TenantInitializer {
 
     public List<OrderCategory> list() {
         return categoryMapper.selectList(new LambdaQueryWrapper<OrderCategory>().orderByAsc(OrderCategory::getCode));
+    }
+
+    /** 冷静期结束后把本租户的订单分类标记删除。 */
+    @Override
+    public void clean(TenantDeleted event) {
+        categoryMapper.markTenantDeleted();
     }
 }

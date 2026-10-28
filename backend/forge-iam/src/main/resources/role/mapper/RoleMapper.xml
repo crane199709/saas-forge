@@ -15,6 +15,13 @@
         WHERE tenant_id = #{tenantId} AND code = 'owner' AND NOT deleted
         ON CONFLICT DO NOTHING
     </insert>
+    <select id="ownerContacts" resultType="io.saasforge.iam.role.model.OwnerContact">
+        SELECT i.email, i.phone
+        FROM role r JOIN membership_role mr ON mr.role_id = r.id
+            JOIN membership m ON m.id = mr.membership_id JOIN identity i ON i.id = m.identity_id
+        WHERE r.tenant_id = #{tenantId} AND r.code = 'owner' AND NOT r.deleted AND NOT m.deleted AND NOT i.deleted
+          AND m.status IN ('active', 'invited')
+    </select>
     <select id="roleCodes" resultType="string">
         SELECT r.code FROM membership_role mr JOIN role r ON r.id = mr.role_id
         WHERE mr.membership_id = #{membershipId} AND NOT r.deleted

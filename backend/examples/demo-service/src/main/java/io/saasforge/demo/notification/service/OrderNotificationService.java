@@ -5,13 +5,15 @@ import io.saasforge.demo.notification.entity.OrderNotification;
 import io.saasforge.demo.notification.mapper.OrderNotificationMapper;
 import io.saasforge.demo.order.model.OrderCreated;
 import io.saasforge.sdk.mq.EventHandler;
+import io.saasforge.sdk.provisioning.TenantDataCleaner;
+import io.saasforge.sdk.provisioning.TenantDeleted;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /** 演示订阅「订单已创建」：处理逻辑与普通业务代码一样不含租户条件，租户由 SDK 从消息头恢复。 */
 @Service
-public class OrderNotificationService implements EventHandler<OrderCreated> {
+public class OrderNotificationService implements EventHandler<OrderCreated>, TenantDataCleaner {
     private final OrderNotificationMapper notificationMapper;
 
     public OrderNotificationService(OrderNotificationMapper notificationMapper) {
@@ -39,5 +41,11 @@ public class OrderNotificationService implements EventHandler<OrderCreated> {
     public List<OrderNotification> findByOrder(UUID orderId) {
         return notificationMapper.selectList(
                 new LambdaQueryWrapper<OrderNotification>().eq(OrderNotification::getOrderId, orderId));
+    }
+
+    /** 冷静期结束后把本租户的订单通知标记删除。 */
+    @Override
+    public void clean(TenantDeleted event) {
+        notificationMapper.markTenantDeleted();
     }
 }

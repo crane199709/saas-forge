@@ -2,6 +2,7 @@ package io.saasforge.iam.role.service;
 
 import io.saasforge.iam.permission.service.PermissionService;
 import io.saasforge.iam.role.mapper.RoleMapper;
+import io.saasforge.iam.role.model.OwnerContact;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
@@ -42,6 +43,11 @@ public class RoleService {
     /** 授予租户的 Owner 角色，可重复调用。须先预置角色。 */
     public void grantOwner(UUID tenantId, UUID membershipId) {
         roles.grantOwner(tenantId, membershipId);
+    }
+
+    /** 租户 Owner 的联系目标（邮箱优先，否则手机号），用于到期提醒等发给 Owner 的通知。 */
+    public List<String> ownerContacts(UUID tenantId) {
+        return roles.ownerContacts(tenantId).stream().map(OwnerContact::target).toList();
     }
 
     /**

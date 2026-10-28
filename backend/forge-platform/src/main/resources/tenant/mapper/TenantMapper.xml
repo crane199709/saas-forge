@@ -2,7 +2,8 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.saasforge.platform.tenant.mapper.TenantMapper">
     <select id="page" resultType="io.saasforge.platform.tenant.entity.Tenant">
-        SELECT id, name, status, admin_contact, created_at, updated_at, created_by, updated_by, deleted
+        SELECT id, name, status, admin_contact, status_version, expires_at, expiry_reminded_at,
+               status_before_deletion, purge_at, purged_at, created_at, updated_at, created_by, updated_by, deleted
         FROM tenant
         WHERE NOT deleted
         ORDER BY id DESC

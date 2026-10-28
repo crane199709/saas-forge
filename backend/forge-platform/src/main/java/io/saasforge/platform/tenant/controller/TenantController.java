@@ -2,12 +2,15 @@ package io.saasforge.platform.tenant.controller;
 
 import io.saasforge.platform.tenant.entity.Tenant;
 import io.saasforge.platform.tenant.entity.TenantInitialization;
+import io.saasforge.platform.tenant.entity.TenantStatusChange;
+import io.saasforge.platform.tenant.service.TenantLifecycleService;
 import io.saasforge.platform.tenant.service.TenantService;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.web.PageQuery;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -29,18 +32,32 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/tenants")
 class TenantController {
     private final TenantService tenants;
+    private final TenantLifecycleService lifecycle;
 
-    TenantController(TenantService tenants) {
+    TenantController(TenantService tenants, TenantLifecycleService lifecycle) {
         this.tenants = tenants;
+        this.lifecycle = lifecycle;
     }
 
     @Operation(summary = "创建租户并开始 Provisioning：iam 邀请初始管理员，各服务初始化本服务数据")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     ApiResponse<TenantDetailResponse> create(@Valid @RequestBody CreateTenantRequest request) {
-        Tenant tenant =
-                tenants.create(request.name().strip(), request.adminContact().strip());
+        Tenant tenant = tenants.create(
+                request.name().strip(),
+                request.adminContact().strip(),
+                request.status() == null ? TenantLifecycleService.ACTIVE : request.status(),
+                request.expiresAt());
         return ApiResponse.created(detail(tenant));
+    }
+
+    @Operation(summary = "变更租户状态：按合法迁移表迁移并广播；迁移到 deleted 进入冷静期，冷静期内迁移回删除前的状态即撤回删除")
+    @PostMapping("/{id}/transitions")
+    ApiResponse<TenantDetailResponse> transition(@PathVariable UUID id, @Valid @RequestBody TransitionRequest request) {
+        String reason = request.reason() == null || request.reason().isBlank()
+                ? null
+                : request.reason().strip();
+        return ApiResponse.ok(detail(lifecycle.transition(id, request.status(), request.expiresAt(), reason)));
     }
 
     @Operation(summary = "分页列出租户，最近创建的在前")
@@ -52,7 +69,7 @@ class TenantController {
         return ApiResponse.page(items, query.toPageMeta(tenants.count()));
     }
 
-    @Operation(summary = "读取租户及各服务的初始化状态")
+    @Operation(summary = "读取租户、各服务的初始化状态、可迁移的状态与状态变更历史")
     @GetMapping("/{id}")
     ApiResponse<TenantDetailResponse> get(@PathVariable UUID id) {
         return ApiResponse.ok(detail(tenants.get(id)));
@@ -69,6 +86,10 @@ class TenantController {
                 TenantResponse.from(tenant),
                 tenants.initializations(tenant.getId()).stream()
                         .map(InitializationResponse::from)
+                        .toList(),
+                lifecycle.allowedTargets(tenant),
+                lifecycle.history(tenant.getId()).stream()
+                        .map(StatusChangeResponse::from)
                         .toList());
     }
 
@@ -77,16 +98,53 @@ class TenantController {
             @NotBlank @Size(max = 120) String name,
 
             @NotBlank @Size(max = 254) @Pattern(regexp = "^\\s*(?:[^@\\s]+@[^@\\s]+\\.[^@\\s]+|\\+?[0-9]{6,15})\\s*$")
-            String adminContact) {}
+            String adminContact,
 
-    record TenantResponse(UUID id, String name, String status, String adminContact, OffsetDateTime createdAt) {
+            // 不填为 active
+            @Pattern(regexp = "trial|active") String status,
+
+            @Future OffsetDateTime expiresAt) {}
+
+    record TransitionRequest(
+            @NotBlank String status, @Size(max = 500) String reason, OffsetDateTime expiresAt) {}
+
+    /**
+     * @param expiresAt 试用或订购的到期时间
+     * @param purgeAt 删除状态下冷静期的结束时间
+     * @param purgedAt 冷静期已结束、各服务开始清理数据的时间
+     */
+    record TenantResponse(
+            UUID id,
+            String name,
+            String status,
+            String adminContact,
+            OffsetDateTime expiresAt,
+            OffsetDateTime purgeAt,
+            OffsetDateTime purgedAt,
+            OffsetDateTime createdAt) {
         static TenantResponse from(Tenant tenant) {
             return new TenantResponse(
                     tenant.getId(),
                     tenant.getName(),
                     tenant.getStatus(),
                     tenant.getAdminContact(),
+                    tenant.getExpiresAt(),
+                    tenant.getPurgeAt(),
+                    tenant.getPurgedAt(),
                     tenant.getCreatedAt());
+        }
+    }
+
+    /** @param fromStatus 变更前的状态，创建租户时为 null */
+    record StatusChangeResponse(
+            String fromStatus, String toStatus, String reason, UUID changedBy, OffsetDateTime changedAt) {
+        static StatusChangeResponse from(TenantStatusChange change) {
+            return new StatusChangeResponse(
+                    change.getFromStatus(),
+                    change.getToStatus(),
+                    change.getReason(),
+                    change.getChangedBy(),
+                    change.getChangedAt());
         }
     }
 
@@ -100,5 +158,10 @@ class TenantController {
         }
     }
 
-    record TenantDetailResponse(TenantResponse tenant, List<InitializationResponse> initializations) {}
+    /** @param allowedTransitions 当前可迁移到的状态，冷静期内只有删除前的状态（撤回删除） */
+    record TenantDetailResponse(
+            TenantResponse tenant,
+            List<InitializationResponse> initializations,
+            List<String> allowedTransitions,
+            List<StatusChangeResponse> statusChanges) {}
 }

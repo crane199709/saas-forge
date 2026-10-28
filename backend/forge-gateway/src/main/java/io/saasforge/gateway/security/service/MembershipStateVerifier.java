@@ -14,7 +14,7 @@ import reactor.core.publisher.Mono;
 /**
  * 比对已验签 Token 的 {@code ver} 与 iam 在 Redis 发布的 Membership 版本和租户状态（ADR-0005）。
  *
- * <p>状态缺失按失效处理：前端收到 401 后刷新，iam 签发时会补齐状态。
+ * <p>只有试用与正常的租户可访问，停用、过期等状态即时生效。状态缺失按失效处理：前端收到 401 后刷新，iam 签发时会补齐状态。
  */
 @Service
 public class MembershipStateVerifier {
@@ -37,7 +37,7 @@ public class MembershipStateVerifier {
                 // Redis 故障不能表现为 401：那会触发刷新，而刷新同样依赖 Redis，最终把用户登出。
                 .onErrorMap(error -> new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, null, error))
                 .flatMap(state ->
-                        String.valueOf(version).equals(state.get(0)) && MembershipStateKeys.ACTIVE.equals(state.get(1))
+                        String.valueOf(version).equals(state.get(0)) && MembershipStateKeys.accessible(state.get(1))
                                 ? Mono.just(jwt)
                                 : Mono.error(new BadJwtException("Membership version or tenant status changed")));
     }

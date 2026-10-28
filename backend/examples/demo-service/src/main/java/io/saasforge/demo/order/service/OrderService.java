@@ -7,6 +7,8 @@ import io.saasforge.demo.order.model.OrderCreated;
 import io.saasforge.demo.order.model.OrderSort;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.mq.EventPublisher;
+import io.saasforge.sdk.provisioning.TenantDataCleaner;
+import io.saasforge.sdk.provisioning.TenantDeleted;
 import io.saasforge.sdk.web.PageQuery;
 import java.math.BigDecimal;
 import java.util.List;
@@ -16,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /** 演示业务代码不含任何租户条件，隔离完全由 SDK 完成。 */
 @Service
-public class OrderService {
+public class OrderService implements TenantDataCleaner {
     private final OrderMapper orderMapper;
     private final EventPublisher eventPublisher;
 
@@ -74,5 +76,11 @@ public class OrderService {
     private static ForgeException notFound(UUID id) {
         return ForgeException.withErrorMessage(
                 OrderErrorCode.NOT_FOUND, "Order " + id + " not found in current tenant");
+    }
+
+    /** 冷静期结束后把本租户的订单标记删除。 */
+    @Override
+    public void clean(TenantDeleted event) {
+        orderMapper.markTenantDeleted();
     }
 }

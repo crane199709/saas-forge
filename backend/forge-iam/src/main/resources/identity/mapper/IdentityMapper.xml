@@ -3,10 +3,10 @@
 <mapper namespace="io.saasforge.iam.identity.mapper.IdentityMapper">
     <sql id="activeMembership">
         SELECT i.id AS identity_id, i.display_name AS identity_name,
-               t.id AS tenant_id, t.name AS tenant_name, m.id AS membership_id, m.version
+               t.id AS tenant_id, t.name AS tenant_name, t.status AS tenant_status, m.id AS membership_id, m.version
         FROM identity i JOIN membership m ON m.identity_id = i.id JOIN tenant t ON t.id = m.tenant_id
         WHERE NOT i.deleted AND NOT m.deleted AND NOT t.deleted
-          AND i.status = 'active' AND m.status = 'active' AND t.status = 'active'
+          AND i.status = 'active' AND m.status = 'active' AND t.status IN ('trial', 'active')
     </sql>
     <select id="findCredential" resultType="io.saasforge.iam.identity.model.LoginCredential">
         SELECT id AS identity_id, password_hash FROM identity

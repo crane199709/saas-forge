@@ -76,7 +76,7 @@ CREATE UNIQUE INDEX identity_account_key ON identity (account) WHERE NOT deleted
 ### 逻辑删除
 
 - 标准表上的删除一律是逻辑删除（`deleted = true`），不物理删除。`status` 继续表达业务状态，`deleted` 只表示该行对常规查询不可见，两者不混用。
-- 租户冷静期结束后的清理同样是逻辑删除：在 `CurrentTenant.run(tenantId, ...)` 中用 mapper XML 批量 `UPDATE ... SET deleted = true, updated_at = now()`，`updated_by` 保持 NULL。
+- 租户冷静期结束后的清理同样是逻辑删除：服务实现 SDK 的 `TenantDataCleaner`，由 SDK 在 `CurrentTenant.run(tenantId, ...)` 中调用，用 mapper XML 批量 `UPDATE ... SET deleted = true, updated_at = now(), updated_by = NULL`。
 - 不用 RLS 过滤已删除行，RLS 只负责租户隔离。
 
 ### 自动处理覆盖不到的写法
@@ -183,7 +183,7 @@ WebFlux 的 `ErrorWebExceptionHandler` 归入 `filter` 而不是 `controller`：
 - 错误码为点分字符串 `<领域>.<原因>`，领域小写、原因 lowerCamelCase，如 `order.notFound`、`auth.tenantAccessDenied`。错误码同时是 i18n key。
 - 每个功能包在 `service` 层定义自己的 `ErrorCode` 枚举，固定 code 与 HTTP 状态码，如 `OrderErrorCode.NOT_FOUND("order.notFound", 404)`。同一 code 只在一个枚举中定义。
 - 业务异常统一抛 `ForgeException(ErrorCode code, Object... args)`，`args` 填充文案占位符；不为业务错误自建异常类型或在 Controller 中手工拼装错误响应。
-- 框架级错误码（`request.*`、`auth.unauthenticated`、`auth.forbidden`、`system.*`）由 SDK 映射与提供文案，服务不重复定义。业务错误码的文案放在本服务的 `messages*.properties`。
+- 框架级错误码（`request.*`、`auth.unauthenticated`、`auth.forbidden`、`tenant.writeBlocked`、`system.*`）由 SDK 映射与提供文案，服务不重复定义。业务错误码的文案放在本服务的 `messages*.properties`。
 
 ```json
 {

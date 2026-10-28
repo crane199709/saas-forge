@@ -1,7 +1,6 @@
 package io.saasforge.iam.tenant.service;
 
 import io.saasforge.iam.tenant.mapper.TenantMapper;
-import io.saasforge.sdk.core.MembershipStateKeys;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -14,9 +13,12 @@ public class TenantService {
         this.tenants = tenants;
     }
 
-    // TODO(#15): 生命周期接入后同步 platform 的初始状态；在此之前新租户与 platform 一样直接为 active。
-    /** 登记新创建的租户，可重复调用。 */
-    public void register(UUID tenantId, String name) {
-        tenants.insertIfAbsent(tenantId, name, MembershipStateKeys.ACTIVE);
+    /**
+     * 登记新创建的租户，可重复调用；已登记时不做修改，之后的状态以 {@code TenantStatusChanged} 为准。
+     *
+     * @param status platform 发布 TenantCreated 时的状态
+     */
+    public void register(UUID tenantId, String name, String status) {
+        tenants.insertIfAbsent(tenantId, name, status);
     }
 }

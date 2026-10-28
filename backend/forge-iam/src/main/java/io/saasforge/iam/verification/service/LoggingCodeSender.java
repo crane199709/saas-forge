@@ -32,6 +32,14 @@ class LoggingCodeSender implements SmsSender, EmailSender {
                     target,
                     invitation.acceptUrl(),
                     invitation.ttl().toSeconds());
+        } else if (message instanceof ExpiryReminderMessage reminder) {
+            log.info(
+                    "[dev {}] {} of tenant {} expires at {}, reminding {}",
+                    channel,
+                    reminder.trial() ? "trial" : "subscription",
+                    reminder.tenantName(),
+                    reminder.expiresAt(),
+                    target);
         }
     }
 }

@@ -379,7 +379,7 @@ class TenantLoginTest {
     void suspendedTenantIsPublishedAndCannotRefresh() {
         Map<?, ?> issued = login("rev-suspend", "Demo-password-123!");
 
-        tenantStates.changeStatus(REV_SUSPEND_TENANT, "suspended");
+        tenantStates.apply(REV_SUSPEND_TENANT, "rev-suspend", "suspended", 1);
 
         assertThat(redisTemplate.opsForValue().get(MembershipStateKeys.tenantStatus(REV_SUSPEND_TENANT)))
                 .isEqualTo("suspended");

@@ -114,7 +114,7 @@ class TenantInitializationTest {
     }
 
     private static TenantCreated tenant() {
-        return new TenantCreated(UUID.randomUUID(), "测试租户", "admin@example.com");
+        return new TenantCreated(UUID.randomUUID(), "测试租户", "admin@example.com", "active");
     }
 
     /** 与 SDK 消费端一致：先恢复发布方的租户，再在事务中调用处理器。 */

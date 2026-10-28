@@ -1,6 +1,7 @@
 package io.saasforge.iam.role.mapper;
 
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
+import io.saasforge.iam.role.model.OwnerContact;
 import java.util.List;
 import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;
@@ -23,6 +24,12 @@ public interface RoleMapper {
      * @return 新授予为 1；已持有或租户的 Owner 已由其他 Membership 持有时为 0
      */
     int grantOwner(@Param("tenantId") UUID tenantId, @Param("membershipId") UUID membershipId);
+
+    /**
+     * 租户 Owner 的联系方式，Owner 的 Membership 须为 active 或 invited（尚未接受邀请的初始管理员也要收到提醒）。
+     * 按租户定位，不受 Data Policy 过滤。
+     */
+    List<OwnerContact> ownerContacts(@Param("tenantId") UUID tenantId);
 
     /** Membership 拥有的未删除角色编码，按编码排序。用于发布权限明细，不受 Data Policy 过滤。 */
     List<String> roleCodes(@Param("membershipId") UUID membershipId);

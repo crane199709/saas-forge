@@ -16,6 +16,7 @@ import org.springframework.beans.TypeMismatchException;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.UncategorizedDataAccessException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -112,6 +113,21 @@ class ApiExceptionHandler {
     ApiResponse<Void> handleUnavailable(DataAccessResourceFailureException e) {
         log.warn("Dependent resource unavailable", e);
         return error(FrameworkErrorCode.SYSTEM_UNAVAILABLE, ErrorEnvelopes.INTERNAL_ERROR, null);
+    }
+
+    /**
+     * MyBatis 把 SQL 拦截器中抛出的异常（如 forge-sdk-tenant 按租户状态拒绝写入的 {@link ForgeException}、读取租户状态时的 Redis
+     * 连接失败）包装为 {@link UncategorizedDataAccessException}，按包装内的原因映射，其余仍按未知异常处理。
+     */
+    @ExceptionHandler(UncategorizedDataAccessException.class)
+    ResponseEntity<ApiResponse<Void>> handleUncategorized(UncategorizedDataAccessException e) {
+        for (Throwable cause = e.getCause(); cause != null; cause = cause.getCause()) {
+            if (cause instanceof ForgeException forge) return handleForge(forge);
+            if (cause instanceof DataAccessResourceFailureException failure) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(handleUnavailable(failure));
+            }
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(handleUnknown(e));
     }
 
     /**

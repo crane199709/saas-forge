@@ -48,6 +48,23 @@
       "succeeded": "成功",
       "failed": "失败"
     },
-    "retry": "重试"
+    "retry": "重试",
+    "initialStatus": "初始状态",
+    "expiresAt": "到期时间",
+    "purgeAt": "冷静期结束",
+    "purgedAt": "数据清理开始",
+    "lifecycle": "状态变更",
+    "targetStatus": "变更为",
+    "withdrawTo": "撤回删除，恢复为",
+    "transition": "变更状态",
+    "withdraw": "撤回删除",
+    "noTransitions": "冷静期已结束，租户数据正在清理，不能再变更状态",
+    "deletionHint": "删除后进入冷静期，期内可撤回；期满后各服务将标记删除该租户的数据",
+    "reason": "原因",
+    "history": "变更历史",
+    "noHistory": "暂无变更记录",
+    "change": "变更",
+    "created": "创建",
+    "changedAt": "时间"
   }
 }

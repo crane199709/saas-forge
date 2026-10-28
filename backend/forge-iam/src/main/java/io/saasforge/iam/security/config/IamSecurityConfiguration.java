@@ -235,7 +235,7 @@ class IamSecurityConfiguration {
             if (membership == null) throw new OAuth2AuthenticationException("invalid_grant");
             // 网关只认 Redis 中的状态，缺失即拒绝；每次签发都按数据库补齐，被淘汰的状态随刷新恢复（ADR-0005）。
             membershipStates.publish(membership.tenantId(), membership.membershipId(), membership.version());
-            tenantStates.publishActive(membership.tenantId());
+            tenantStates.publish(membership.tenantId(), membership.tenantStatus());
             context.getClaims()
                     .subject(membership.identityId().toString())
                     .claim("tenant_id", membership.tenantId().toString())

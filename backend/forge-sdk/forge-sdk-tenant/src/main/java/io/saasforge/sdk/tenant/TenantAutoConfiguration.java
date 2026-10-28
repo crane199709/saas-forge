@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
 import io.saasforge.sdk.core.CurrentActorProvider;
 import io.saasforge.sdk.core.CurrentTenant;
+import io.saasforge.sdk.core.MembershipStateKeys;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.ObjectProvider;
@@ -21,6 +22,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.core.task.TaskDecorator;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 /** 业务服务引入 starter 即获得租户隔离，业务代码不需要写任何租户条件。 */
 @AutoConfiguration(
@@ -31,14 +33,21 @@ public final class TenantAutoConfiguration {
     /**
      * 为查询、插入、更新、删除注入 {@code tenant_id} 条件，并为 UUID 主键生成 UUIDv7。
      *
+     * <p>服务使用 Redis 且未关闭 {@code forge.tenant.write-guard.enabled} 时，写入前按租户状态拒绝（{@link TenantWriteGuard}）。
+     *
      * <p>MyBatis-Plus 自动配置会收集所有 {@code Interceptor} Bean，业务服务另行声明的拦截器不会替换本拦截器。
      */
     @Bean
-    public MybatisPlusInterceptor tenantMybatisPlusInterceptor(TenantProperties properties) {
+    public MybatisPlusInterceptor tenantMybatisPlusInterceptor(
+            TenantProperties properties, ObjectProvider<TenantStatusLookup> statuses) {
+        var tables = new CurrentTenantLineHandler(properties.ignoreTables());
         var interceptor = new MybatisPlusInterceptor();
+        TenantStatusLookup lookup = statuses.getIfAvailable();
+        if (lookup != null && properties.writeGuard().enabled()) {
+            interceptor.addInnerInterceptor(new TenantWriteGuardInnerInterceptor(tables, lookup));
+        }
         interceptor.addInnerInterceptor(new UuidV7KeyInnerInterceptor());
-        interceptor.addInnerInterceptor(
-                new TenantLineInnerInterceptor(new CurrentTenantLineHandler(properties.ignoreTables())));
+        interceptor.addInnerInterceptor(new TenantLineInnerInterceptor(tables));
         return interceptor;
     }
 
@@ -114,6 +123,13 @@ public final class TenantAutoConfiguration {
         TenantRedisTemplate tenantRedisTemplate(RedisConnectionFactory connectionFactory, Environment environment) {
             return new TenantRedisTemplate(
                     connectionFactory, environment.getRequiredProperty("spring.application.name"));
+        }
+
+        /** 租户状态是 iam 发布的全局键，不使用租户前缀模板。 */
+        @Bean
+        TenantStatusLookup tenantStatusLookup(RedisConnectionFactory connectionFactory) {
+            var redis = new StringRedisTemplate(connectionFactory);
+            return tenantId -> redis.opsForValue().get(MembershipStateKeys.tenantStatus(tenantId));
         }
     }
 }

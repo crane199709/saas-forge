@@ -141,7 +141,7 @@ class TenantProvisioningTest {
 
     @Test
     void existingIdentityIsInvitedAsOwnerAndJoinsAfterAccepting() {
-        var tenant = new TenantCreated(UUID.randomUUID(), "邀请已有身份", "Demo@Example.com");
+        var tenant = new TenantCreated(UUID.randomUUID(), "邀请已有身份", "Demo@Example.com", "active");
 
         deliver(tenant.tenantId(), tenant);
         // 同一租户重复初始化（如重试）：不产生第二个 Membership 或预置角色
@@ -179,7 +179,7 @@ class TenantProvisioningTest {
 
     @Test
     void newContactGetsPendingIdentityThatSetsCredentialsWhenAccepting() {
-        var tenant = new TenantCreated(UUID.randomUUID(), "邀请新身份", "13700000001");
+        var tenant = new TenantCreated(UUID.randomUUID(), "邀请新身份", "13700000001", "active");
 
         deliver(tenant.tenantId(), tenant);
 
@@ -207,7 +207,7 @@ class TenantProvisioningTest {
 
     @Test
     void failedInvitationIsRolledBackAndReportedThenRetrySucceeds() {
-        var tenant = new TenantCreated(UUID.randomUUID(), "发送失败", "broken-admin@example.com");
+        var tenant = new TenantCreated(UUID.randomUUID(), "发送失败", "broken-admin@example.com", "active");
         inbox.broken.add("broken-admin@example.com");
 
         deliver(tenant.tenantId(), tenant);

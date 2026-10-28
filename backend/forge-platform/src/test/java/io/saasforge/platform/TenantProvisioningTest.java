@@ -79,7 +79,7 @@ class TenantProvisioningTest {
         assertThat(tenants.get(tenantId).getCreatedBy()).hasToString(PlatformTokens.OPERATOR_ID);
         // 事件带新租户的上下文发布，订阅方据此恢复租户
         assertThat(payloads(tenantId, TenantCreated.class, TenantCreated.class))
-                .containsExactly(new TenantCreated(tenantId, "示例租户", "Owner@Example.com"));
+                .containsExactly(new TenantCreated(tenantId, "示例租户", "Owner@Example.com", "active"));
 
         Response list = call("GET", "/tenants?page=1&size=100", null);
         assertThat(list.status()).isEqualTo(200);
@@ -92,7 +92,8 @@ class TenantProvisioningTest {
     void rolledBackCreationLeavesNoTenantAndNoEvent() {
         var tenantId = new AtomicReference<UUID>();
         transaction.executeWithoutResult(status -> {
-            tenantId.set(tenants.create("回滚的租户", "rollback@example.com").getId());
+            tenantId.set(tenants.create("回滚的租户", "rollback@example.com", "active", null)
+                    .getId());
             status.setRollbackOnly();
         });
 
@@ -135,7 +136,7 @@ class TenantProvisioningTest {
         assertThat(retried.data()).containsEntry("status", "pending").containsEntry("error", null);
         assertThat(payloads(tenantId, TenantInitializationRequested.class, TenantInitializationRequested.class))
                 .containsExactly(new TenantInitializationRequested(
-                        "demo-service", new TenantCreated(tenantId, "重试租户", "13800000000")));
+                        "demo-service", new TenantCreated(tenantId, "重试租户", "13800000000", "active")));
         // 重试进行中不能再次重试；成功回报后状态更新
         assertThat(call("POST", "/tenants/" + tenantId + "/initializations/demo-service/retry", null)
                         .status())
