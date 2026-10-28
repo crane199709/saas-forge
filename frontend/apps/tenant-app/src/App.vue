@@ -57,6 +57,13 @@ defineProps<{ sharedChecks?: Record<string, boolean>; loadError?: string }>()
         <nav>
           <router-link to="/">{{ t('spike.home') }}</router-link>
           <!-- 租户管理页按 iam 的管理权限码显示，授权被撤销后随权限刷新隐藏。 -->
+          <router-link
+            v-if="signedIn"
+            v-perm="'iam:member:manage'"
+            to="/members"
+            data-testid="menu-members"
+            >{{ t('member.nav') }}</router-link
+          >
           <router-link v-if="signedIn" v-perm="'iam:org:manage'" to="/org" data-testid="menu-org">{{
             t('org.nav')
           }}</router-link>

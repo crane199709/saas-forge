@@ -22,4 +22,7 @@ public interface TenantMapper {
 
     /** 登记 platform 创建的租户，已存在时不做修改。租户表是全局表，不受 Data Policy 过滤。 */
     void insertIfAbsent(@Param("tenantId") UUID tenantId, @Param("name") String name, @Param("status") String status);
+
+    /** 租户名称；未登记或已删除时为 null。租户表是全局表，不受 Data Policy 过滤。 */
+    String findName(@Param("tenantId") UUID tenantId);
 }

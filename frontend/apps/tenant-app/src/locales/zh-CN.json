@@ -53,7 +53,10 @@
     "selectHint": "此身份加入了多个租户，请选择要进入的租户。",
     "noneTitle": "暂无可进入的租户",
     "noneHint": "此身份目前没有有效的成员关系，请联系租户管理员邀请加入。",
-    "switcher": "切换租户"
+    "switcher": "切换租户",
+    "leave": "退出当前租户",
+    "leaveConfirm": "退出后将无法再进入「{tenant}」，除非被重新邀请。确定退出吗？",
+    "cancel": "取消"
   },
   "org": {
     "nav": "组织管理",
@@ -153,5 +156,42 @@
       "save": "保存",
       "cancel": "取消"
     }
+  },
+  "member": {
+    "nav": "成员管理",
+    "title": "成员管理",
+    "keyword": "搜索账号、昵称、邮箱或手机号",
+    "allStatuses": "全部状态",
+    "search": "搜索",
+    "invite": "邀请成员",
+    "name": "成员",
+    "account": "账号",
+    "contact": "邮箱/手机号",
+    "statusLabel": "状态",
+    "owner": "所有者",
+    "status": {
+      "invited": "邀请中",
+      "active": "正常",
+      "suspended": "停用",
+      "left": "已离开"
+    },
+    "actions": {
+      "suspend": "停用",
+      "resume": "恢复",
+      "remove": "移除",
+      "transferOwner": "转让所有者"
+    },
+    "confirm": {
+      "suspend": "停用后 {name} 将立即无法访问本租户，可随时恢复。",
+      "resume": "恢复 {name} 的成员身份，其重新登录后即可进入本租户。",
+      "remove": "移除 {name}：成员变为已离开，其角色与部门分配一并清除；邀请中的成员将撤回邀请。",
+      "transferOwner": "把所有者身份转让给 {name}，你将降为租户管理员。"
+    },
+    "inviteContact": "邮箱或手机号",
+    "inviteRoles": "预设角色",
+    "inviteDepartment": "预设主部门",
+    "inviteSubmit": "发送邀请",
+    "ok": "确定",
+    "cancel": "取消"
   }
 }

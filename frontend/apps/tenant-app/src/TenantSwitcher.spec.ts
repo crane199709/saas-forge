@@ -8,6 +8,7 @@ import { i18n } from './i18n'
 afterEach(() => {
   sessionStorage.clear()
   vi.unstubAllGlobals()
+  document.body.innerHTML = ''
 })
 
 const memberships = [
@@ -43,6 +44,8 @@ function mountSwitcher(reload = vi.fn()) {
       plugins: [i18n, ElementPlus],
       provide: { [tenantClientKey]: createTenantClient(sessionStorage) },
     },
+    // 退出确认对话框传送到 body
+    attachTo: document.body,
   })
   return { wrapper, reload }
 }
@@ -110,4 +113,34 @@ it('读取可切换租户失败时展示 userTip', async () => {
   const { wrapper } = mountSwitcher()
   await flushPromises()
   expect(wrapper.get('[role="alert"]').text()).toContain('服务暂时不可用，请稍后重试')
+})
+
+it('退出当前租户后结束会话并重新加载；Owner 被拒绝时展示原因', async () => {
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(ok(memberships))
+    .mockResolvedValueOnce(
+      fail('member.ownerProtected', 409, '所有者不能退出租户，请先转让', 'trace-owner'),
+    )
+    .mockResolvedValueOnce(ok(null))
+    .mockResolvedValueOnce(ok(null))
+  vi.stubGlobal('fetch', fetcher)
+  const { wrapper, reload } = mountSwitcher()
+  await flushPromises()
+
+  for (const expected of ['rejected', 'left']) {
+    await wrapper.get('[data-testid="tenant-leave"]').trigger('click')
+    await flushPromises()
+    ;(document.querySelector('[data-testid="tenant-leave-confirm"]') as HTMLElement).click()
+    await flushPromises()
+    if (expected === 'rejected') {
+      expect(wrapper.get('[role="alert"]').text()).toContain('所有者不能退出租户')
+      expect(reload).not.toHaveBeenCalled()
+    }
+  }
+
+  expect(fetcher.mock.calls[2]![0]).toBe(`${location.origin}/iam/members/me/leave`)
+  expect(fetcher.mock.calls[3]![0]).toBe('/iam/auth/logout')
+  expect(sessionStorage.getItem('forge.tenant.session')).toBeNull()
+  expect(reload).toHaveBeenCalledOnce()
 })

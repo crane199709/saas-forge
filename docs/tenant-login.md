@@ -105,7 +105,7 @@ IAM 认证阶段 Membership 查询的 RLS 例外及边界见 [ADR-0001](adr/0001
 | `iam:{tenant_id}:membership:{membership_id}:grants:{version}` | 该版本的角色与权限 JSON，TTL 1 小时 | 签发 Token 时；版本递增时 |
 
 - **网关**：验签后用一次 `MGET` 读取前两项。Token 的 `ver` 与版本不等、租户不是 `trial` 或 `active` 或任一键缺失都返回 401 `auth.unauthenticated` 信封（`WWW-Authenticate` 带 `error="invalid_token"`）；Redis 不可用时返回 503 `system.unavailable`，避免 401 触发刷新后把用户登出。业务服务仍只做离线验签，绕过网关直连业务服务的请求不受即时失效保护；但 SDK 的写入保护会读取同一租户状态，拒绝停用、过期、归档、删除租户的写入（工单 15）。
-- **iam 变更入口**：`MembershipStateService.deactivate`（停用并递增版本）、`MembershipStateService.incrementVersion`（角色变更时调用）、`TenantStateService.apply`（消费 `TenantStatusChanged`，只应用比已应用版本更新的状态，在消费事务内先改库再写 Redis，Redis 失败则消息重投）。租户状态由 Operator 在 platform 变更（工单 15），成员与角色的管理接口在工单 16、17 接入。变更先提交数据库再写 Redis；Redis 写入失败时调用方收到异常，刷新已按数据库拒绝，但已签发的 Access Token 在过期前仍会通过网关，需重试变更。状态必须经由这些方法修改：直接改库不会更新 Redis。
+- **iam 变更入口**：`MembershipStateService.deactivate`（停用并递增版本）、`MembershipStateService.incrementVersion`（角色变更时调用）、`TenantStateService.apply`（消费 `TenantStatusChanged`，只应用比已应用版本更新的状态，在消费事务内先改库再写 Redis，Redis 失败则消息重投）。租户状态由 Operator 在 platform 变更（工单 15）；角色管理（工单 16）与成员管理（工单 17：停用、恢复、移除、主动退出、Owner 转让）在事务提交后经 `MembershipStateService.publish` / `incrementVersion` 发布新版本。变更先提交数据库再写 Redis；Redis 写入失败时调用方收到异常，刷新已按数据库拒绝，但已签发的 Access Token 在过期前仍会通过网关，需重试变更。状态必须经由这些方法修改：直接改库不会更新 Redis。
 - **并发**：签发时读到的旧版本不能覆盖并发变更已发布的新版本（版本只前进，Lua 脚本比较后写入）；租户状态在签发时只补写缺失的键，不会用签发前读到的状态覆盖并发写入的停用状态。重新启用租户后，停用前签发且未过期的 Access Token 会重新可用。
 - **状态丢失**：Redis 淘汰或清空后，请求先得到 401，前端刷新时 iam 按数据库重新发布状态，用户无需重新登录。
 - **刷新**：Membership 或身份不再 active、租户不再是试用或正常时刷新失败（401）；版本递增后刷新签发携带新 `ver` 的 Token。切换租户不递增版本，切换前所在租户的 Access Token 在过期前仍有效。

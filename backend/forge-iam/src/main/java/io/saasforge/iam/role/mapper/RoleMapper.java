@@ -28,6 +28,15 @@ public interface RoleMapper {
      */
     int grantOwner(@Param("tenantId") UUID tenantId, @Param("membershipId") UUID membershipId);
 
+    /** 撤销 Membership 持有的租户 Owner 角色，返回撤销行数；不是 Owner 时为 0。不受 Data Policy 过滤。 */
+    int revokeOwner(@Param("tenantId") UUID tenantId, @Param("membershipId") UUID membershipId);
+
+    /** 授予租户的 Tenant Admin 角色，已持有时不做修改。按租户定位，不受 Data Policy 过滤。 */
+    int grantTenantAdmin(@Param("tenantId") UUID tenantId, @Param("membershipId") UUID membershipId);
+
+    /** 租户当前的 Owner Membership；尚未授予时为 null。按 Token 租户限定，不受 Data Policy 过滤。 */
+    UUID ownerOf(@Param("tenantId") UUID tenantId);
+
     /**
      * 租户 Owner 的联系方式，Owner 的 Membership 须为 active 或 invited（尚未接受邀请的初始管理员也要收到提醒）。
      * 按租户定位，不受 Data Policy 过滤。

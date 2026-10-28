@@ -25,7 +25,7 @@ class SubjectChangePublisher {
             try {
                 membershipStates.incrementVersion(membershipId);
             } catch (MembershipNotFoundException ignored) {
-                // TODO(#17): 移除成员时一并清除其组织分配；在此之前已删除成员的残留分配不需要发布。
+                // 成员在组织变更提交后被删除，不再需要发布。
             }
         }
     }

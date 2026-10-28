@@ -16,6 +16,22 @@
         WHERE tenant_id = #{tenantId} AND code = 'owner' AND NOT deleted
         ON CONFLICT DO NOTHING
     </insert>
+    <delete id="revokeOwner">
+        DELETE FROM membership_role mr USING role r
+        WHERE mr.role_id = r.id AND mr.membership_id = #{membershipId} AND mr.owner
+          AND r.tenant_id = #{tenantId} AND NOT r.deleted
+    </delete>
+    <insert id="grantTenantAdmin">
+        INSERT INTO membership_role (membership_id, role_id, owner)
+        SELECT #{membershipId}, id, owner FROM role
+        WHERE tenant_id = #{tenantId} AND code = 'tenant-admin' AND NOT deleted
+        ON CONFLICT DO NOTHING
+    </insert>
+    <!-- 单列 UUID 结果按 UUID 类型映射会被当作构造器自动映射而失败；按 Object 取驱动返回的 UUID。 -->
+    <select id="ownerOf" resultType="java.lang.Object">
+        SELECT mr.membership_id FROM membership_role mr JOIN role r ON r.id = mr.role_id
+        WHERE r.tenant_id = #{tenantId} AND mr.owner AND NOT r.deleted
+    </select>
     <select id="ownerContacts" resultType="io.saasforge.iam.role.model.OwnerContact">
         SELECT i.email, i.phone
         FROM role r JOIN membership_role mr ON mr.role_id = r.id

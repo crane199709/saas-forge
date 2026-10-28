@@ -16,4 +16,7 @@
         VALUES (#{tenantId}, #{name}, #{status}, now(), now(), NULL, NULL)
         ON CONFLICT (id) DO NOTHING
     </insert>
+    <select id="findName" resultType="string">
+        SELECT name FROM tenant WHERE id = #{tenantId} AND NOT deleted
+    </select>
 </mapper>

@@ -11,6 +11,7 @@ import { i18n } from './i18n'
 import { loadSubApp } from './load-sub-app'
 import { applyMenuRoutes } from './menu-routes'
 import AcceptInvitationPage from './invitation/AcceptInvitationPage.vue'
+import MemberPage from './member/MemberPage.vue'
 import OrganizationPage from './organization/OrganizationPage.vue'
 import RolePage from './role/RolePage.vue'
 
@@ -25,6 +26,7 @@ const router = createRouter({
     // Shell 自带的租户管理页，不来自 Sub-App 菜单；是否拥有 iam 的管理权限码由 IAM 判断。
     { path: '/org', component: OrganizationPage },
     { path: '/roles', component: RolePage },
+    { path: '/members', component: MemberPage },
     // 邀请链接的落地页，iam 的 forge.iam.invitation.accept-url 指向这里；无需登录。
     { path: '/invitations/accept', component: AcceptInvitationPage },
     // 菜单中没有的 Sub-App 路由不存在，深链接落到这里而不是空白报错。

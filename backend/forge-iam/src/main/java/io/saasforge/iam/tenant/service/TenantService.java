@@ -21,4 +21,9 @@ public class TenantService {
     public void register(UUID tenantId, String name, String status) {
         tenants.insertIfAbsent(tenantId, name, status);
     }
+
+    /** 租户名称，用于邀请等发给成员的通知；租户须已登记。 */
+    public String name(UUID tenantId) {
+        return tenants.findName(tenantId);
+    }
 }

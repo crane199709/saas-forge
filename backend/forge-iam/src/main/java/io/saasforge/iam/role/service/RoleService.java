@@ -11,6 +11,7 @@ import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -64,6 +65,38 @@ public class RoleService implements RoleGrantSource {
     /** 授予租户的 Owner 角色，可重复调用。须先预置角色。 */
     public void grantOwner(UUID tenantId, UUID membershipId) {
         roles.grantOwner(tenantId, membershipId);
+    }
+
+    /**
+     * 在事务内取得租户的角色写锁，至事务结束。成员管理在改变成员状态、转让 Owner 前调用，与角色分配串行；
+     * 须先于任何 Membership 行锁取得，与角色分配的加锁顺序一致，避免死锁。
+     */
+    public void lockTenant(UUID tenantId) {
+        roles.lockTenant(tenantId);
+    }
+
+    /** 租户当前的 Owner Membership；尚未开通完成时为空。 */
+    public Optional<UUID> ownerOf(UUID tenantId) {
+        return Optional.ofNullable(roles.ownerOf(tenantId));
+    }
+
+    /** 撤销 Membership 的全部角色（Owner 除外，Owner 只能经转让变更）。成员离开租户时在其事务内调用。 */
+    public void revokeAll(UUID membershipId) {
+        roles.revokeExcept(membershipId, List.of());
+    }
+
+    /**
+     * 把 Owner 从 {@code from} 转给 {@code to}，原 Owner 降为 Tenant Admin。须在持有 {@link #lockTenant} 的事务内调用：
+     * 撤销与授予之间不会有其他转让插入，租户始终恰有一个 Owner。
+     *
+     * @return {@code from} 不是 Owner 时为 false，不做任何修改
+     */
+    public boolean transferOwner(UUID tenantId, UUID from, UUID to) {
+        if (roles.revokeOwner(tenantId, from) == 0) return false;
+        // 唯一索引保证至多一个持有者；刚撤销了唯一的持有者，这里一定插入成功。
+        roles.grantOwner(tenantId, to);
+        roles.grantTenantAdmin(tenantId, from);
+        return true;
     }
 
     /** 租户 Owner 的联系目标（邮箱优先，否则手机号），用于到期提醒等发给 Owner 的通知。 */

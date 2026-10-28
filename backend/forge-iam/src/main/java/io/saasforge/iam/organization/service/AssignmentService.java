@@ -147,4 +147,32 @@ public class AssignmentService {
         });
         subjects.changed(List.of(membershipId));
     }
+
+    /**
+     * 只替换成员的部门为一个主部门，岗位与扩展属性值不变。用于邀请成员时预设部门：此时还不能要求填写必填的扩展属性。
+     */
+    public void assignPrimaryDepartment(TenantActor actor, UUID membershipId, UUID departmentId) {
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
+        UUID tenantId = actor.tenantId();
+        transactions.executeWithoutResult(status -> {
+            departments.lockTenant(tenantId);
+            if (!memberships.exists(tenantId, membershipId)) {
+                throw new ForgeException(OrganizationErrorCode.MEMBERSHIP_NOT_FOUND);
+            }
+            if (departments.countExisting(tenantId, List.of(departmentId)) != 1) {
+                throw new ForgeException(OrganizationErrorCode.DEPARTMENT_NOT_FOUND);
+            }
+            assignments.clearDepartments(tenantId, membershipId);
+            assignments.insertDepartment(tenantId, membershipId, departmentId, true);
+        });
+        subjects.changed(List.of(membershipId));
+    }
+
+    /**
+     * 清除成员的部门与岗位。成员离开租户时在其事务内调用，由调用方负责递增版本；扩展属性值随 Membership 一起清空。
+     */
+    public void clear(UUID tenantId, UUID membershipId) {
+        assignments.clearDepartments(tenantId, membershipId);
+        assignments.clearPositions(tenantId, membershipId);
+    }
 }
