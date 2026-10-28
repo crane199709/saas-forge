@@ -41,7 +41,7 @@ class OrderController {
         return ApiResponse.created(OrderResponse.from(orderService.create(request.title(), request.amount())));
     }
 
-    @Operation(summary = "分页列出当前租户的订单")
+    @Operation(summary = "分页列出当前租户中当前成员数据范围内的订单")
     @GetMapping
     @RequiresPermission("order:read")
     ApiResponse<List<OrderResponse>> list(@SortableFields({"createdAt", "amount"}) PageQuery query) {
@@ -74,9 +74,20 @@ class OrderController {
 
     record OrderRequest(String title, BigDecimal amount) {}
 
-    record OrderResponse(UUID id, String title, BigDecimal amount, OffsetDateTime createdAt) {
+    /**
+     * @param ownerId 数据归属的 Membership，系统创建的订单为 null
+     * @param departmentPath 数据归属部门的路径，归属成员未分配部门时为 null
+     */
+    record OrderResponse(
+            UUID id, String title, BigDecimal amount, UUID ownerId, String departmentPath, OffsetDateTime createdAt) {
         static OrderResponse from(Order order) {
-            return new OrderResponse(order.getId(), order.getTitle(), order.getAmount(), order.getCreatedAt());
+            return new OrderResponse(
+                    order.getId(),
+                    order.getTitle(),
+                    order.getAmount(),
+                    order.getOwnerId(),
+                    order.getDepartmentPath(),
+                    order.getCreatedAt());
         }
     }
 }

@@ -8,6 +8,6 @@ import java.util.UUID;
  * 本包只依赖这个接口，两个功能包之间不形成循环。
  */
 public interface RoleGrantSource {
-    /** Membership 当前的角色编码与有效 Permission Code。 */
+    /** Membership 当前的角色编码、有效 Permission Code 与 Data Policy。 */
     RoleGrants grantsOf(UUID membershipId);
 }

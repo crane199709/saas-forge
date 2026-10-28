@@ -16,7 +16,9 @@ public enum RoleErrorCode implements ErrorCode {
     /** 分配的角色不存在、属于其他租户，或是只能经转让变更的 Owner。 */
     INVALID_ASSIGNMENT("role.invalidAssignment", 400),
     /** 成员不存在或不属于当前租户。 */
-    MEMBERSHIP_NOT_FOUND("role.membershipNotFound", 404);
+    MEMBERSHIP_NOT_FOUND("role.membershipNotFound", 404),
+    /** Data Resource 不存在、重复，或不支持所选的 Data Scope（如未声明归属部门却选「本部门」）。 */
+    INVALID_DATA_POLICY("role.invalidDataPolicy", 400);
 
     private final String code;
     private final int httpStatus;

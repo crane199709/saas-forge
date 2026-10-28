@@ -2,6 +2,8 @@ package io.saasforge.iam.role.controller;
 
 import io.saasforge.iam.membership.model.TenantActor;
 import io.saasforge.iam.permission.model.PermissionRow;
+import io.saasforge.iam.role.model.DataPolicy;
+import io.saasforge.iam.role.model.DataResourceOption;
 import io.saasforge.iam.role.model.MemberRoles;
 import io.saasforge.iam.role.model.RoleDetail;
 import io.saasforge.iam.role.service.RoleManagementService;
@@ -53,6 +55,14 @@ class RoleController {
                 .toList());
     }
 
+    @Operation(summary = "可配置 Data Policy 的 Data Resource 及其可用的 Data Scope 预设")
+    @GetMapping("/data-resources")
+    ApiResponse<List<DataResourceResponse>> dataResources(@AuthenticationPrincipal Jwt jwt) {
+        return ApiResponse.ok(roles.dataResources(TenantActor.of(jwt)).stream()
+                .map(DataResourceResponse::from)
+                .toList());
+    }
+
     @Operation(summary = "新建自定义角色并授予权限码")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -74,6 +84,19 @@ class RoleController {
     ApiResponse<Void> replacePermissions(
             @AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @RequestBody PermissionsRequest request) {
         roles.replacePermissions(TenantActor.of(jwt), id, request.permissions());
+        return ApiResponse.ok();
+    }
+
+    @Operation(summary = "整体替换自定义角色上的 Data Policy（每个 Data Resource 选一个 Data Scope）；未配置的资源默认不可见")
+    @PutMapping("/{id}/data-policies")
+    ApiResponse<Void> replaceDataPolicies(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @RequestBody DataPoliciesRequest request) {
+        roles.replaceDataPolicies(
+                TenantActor.of(jwt),
+                id,
+                request.policies().stream()
+                        .map(policy -> new DataPolicy(policy.resource(), policy.scope()))
+                        .toList());
         return ApiResponse.ok();
     }
 
@@ -123,6 +146,19 @@ class RoleController {
         }
     }
 
+    record DataPoliciesRequest(List<DataPolicyBody> policies) {
+        DataPoliciesRequest {
+            policies = policies == null ? List.of() : policies;
+        }
+    }
+
+    /** @param scope {@code self department department_and_below all} */
+    record DataPolicyBody(String resource, String scope) {
+        static DataPolicyBody from(DataPolicy value) {
+            return new DataPolicyBody(value.resource(), value.scope());
+        }
+    }
+
     record AssignRequest(List<UUID> roleIds) {
         AssignRequest {
             roleIds = roleIds == null ? List.of() : roleIds;
@@ -130,7 +166,7 @@ class RoleController {
     }
 
     /**
-     * @param builtin 预置角色不可修改或删除，其权限为全部有效权限码，{@code permissions} 为空
+     * @param builtin 预置角色不可修改或删除，其权限为全部有效权限码、数据范围为全部，{@code permissions} 与 {@code dataPolicies} 为空
      * @param owner Owner 角色不经角色分配授予
      */
     record RoleResponse(
@@ -140,7 +176,8 @@ class RoleController {
             boolean builtin,
             boolean owner,
             long memberCount,
-            List<String> permissions) {
+            List<String> permissions,
+            List<DataPolicyBody> dataPolicies) {
         static RoleResponse from(RoleDetail value) {
             return new RoleResponse(
                     value.id(),
@@ -149,7 +186,14 @@ class RoleController {
                     value.builtin(),
                     value.owner(),
                     value.memberCount(),
-                    value.permissions());
+                    value.permissions(),
+                    value.dataPolicies().stream().map(DataPolicyBody::from).toList());
+        }
+    }
+
+    record DataResourceResponse(String code, String name, String service, List<String> scopes) {
+        static DataResourceResponse from(DataResourceOption value) {
+            return new DataResourceResponse(value.code(), value.name(), value.service(), value.scopes());
         }
     }
 

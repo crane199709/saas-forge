@@ -20,6 +20,7 @@ const role = (id: string, code: string, name: string, owner = false): Role => ({
   owner,
   memberCount: 0,
   permissions: [],
+  dataPolicies: [],
 })
 
 function ok(data: unknown, meta?: unknown) {

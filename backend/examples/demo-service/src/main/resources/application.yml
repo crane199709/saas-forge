@@ -33,10 +33,10 @@ forge:
     jwk-set-uri: http://localhost:8101/oauth2/jwks
   mq:
     endpoints: ${FORGE_ROCKETMQ_ENDPOINTS:127.0.0.1:8081}
-  # 启动时向 iam 上报 Resource Manifest；改动权限码、名称、菜单或角色模板时升级 version。iam-uri 是直连 iam 的内部地址，
+  # 启动时向 iam 上报 Resource Manifest；改动权限码、名称、菜单、角色模板或 Data Resource 时升级 version。iam-uri 是直连 iam 的内部地址，
   # token 须与 iam forge.iam.manifest.tokens.demo-service 一致
   manifest:
-    version: 2
+    version: 3
     iam-uri: http://localhost:8101
     token: ${FORGE_DEMO_MANIFEST_TOKEN:local-demo-manifest-token}
 mybatis-plus:

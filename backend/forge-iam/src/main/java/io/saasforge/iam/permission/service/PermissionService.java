@@ -3,7 +3,9 @@ package io.saasforge.iam.permission.service;
 import io.saasforge.iam.permission.mapper.PermissionMapper;
 import io.saasforge.iam.permission.mapper.ResourceManifestMapper;
 import io.saasforge.iam.permission.model.PermissionRow;
+import io.saasforge.iam.permission.model.ServiceDataResource;
 import io.saasforge.sdk.core.ResourceManifest;
+import io.saasforge.sdk.core.ResourceManifest.DataResource;
 import io.saasforge.sdk.core.ResourceManifest.MenuNode;
 import io.saasforge.sdk.core.ResourceManifest.Permission;
 import io.saasforge.sdk.core.ResourceManifest.RoleTemplate;
@@ -16,7 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
-/** 接收业务服务上报的 Resource Manifest，维护 Permission Code 与菜单的当前版本。 */
+/** 接收业务服务上报的 Resource Manifest，维护 Permission Code、菜单、角色模板与 Data Resource 的当前版本。 */
 @Service
 public class PermissionService {
     private final ResourceManifestMapper manifests;
@@ -48,6 +50,7 @@ public class PermissionService {
             if (!same) throw new ForgeException(ManifestErrorCode.VERSION_CONFLICT, manifest.version());
             return false;
         }
+        requireOwnDataResources(manifest);
         manifests.clearCurrent(manifest.service());
         manifests.insertCurrent(UuidV7.generate(), manifest.service(), manifest.version(), content);
         Set<String> codes = new HashSet<>();
@@ -83,6 +86,26 @@ public class PermissionService {
         return currentManifests().stream()
                 .flatMap(manifest -> manifest.roles().stream())
                 .toList();
+    }
+
+    /** 各服务当前版本声明的 Data Resource，按服务名、声明顺序排列；下线的资源不再出现，其上的策略不发布。 */
+    public List<ServiceDataResource> currentDataResources() {
+        return currentManifests().stream()
+                .flatMap(manifest -> manifest.dataResources().stream()
+                        .map(resource -> new ServiceDataResource(manifest.service(), resource)))
+                .toList();
+    }
+
+    // 与权限码一样以先声明者为准；在同一把服务锁之外判断，两个服务同时首次声明同一编码的竞争可以接受（上报只来自部署）。
+    private void requireOwnDataResources(ResourceManifest manifest) {
+        for (ServiceDataResource current : currentDataResources()) {
+            if (current.service().equals(manifest.service())) continue;
+            for (DataResource resource : manifest.dataResources()) {
+                if (resource.code().equals(current.resource().code())) {
+                    throw new ForgeException(ManifestErrorCode.DATA_RESOURCE_CONFLICT, resource.code());
+                }
+            }
+        }
     }
 
     private List<ResourceManifest> currentManifests() {

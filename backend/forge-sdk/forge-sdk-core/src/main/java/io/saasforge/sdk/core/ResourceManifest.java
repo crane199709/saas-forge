@@ -3,6 +3,7 @@ package io.saasforge.sdk.core;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -16,6 +17,7 @@ import java.util.regex.Pattern;
  * @param permissions 本服务的全部 Permission Code，按编码排序
  * @param menus 本服务的菜单树，按申报顺序展示
  * @param roles 本服务的角色模板，iam 开通新租户时据此预置角色，可为 null（视为没有）
+ * @param dataResources 本服务受数据权限保护的 Data Resource，可为 null（视为没有）
  */
 public record ResourceManifest(
         String service,
@@ -23,12 +25,19 @@ public record ResourceManifest(
         List<Permission> permissions,
         List<MenuNode> menus,
         // 没有角色模板时不输出该字段：iam 按 JSON 内容判断同一版本是否重复上报，加入本字段前存储的清单才能与之相同。
-        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<RoleTemplate> roles) {
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<RoleTemplate> roles,
+        // 同 roles：没有数据资源时不输出，已存储的旧清单与之按内容比较仍然相同。
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<DataResource> dataResources) {
     // 长度上限与 iam 表的列宽一致。
     private static final Pattern CODE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9:._-]{0,127}");
     private static final Pattern ROLE_CODE = Pattern.compile("[a-z0-9][a-z0-9-]{0,63}");
     // 与 iam 预置角色的保留编码一致，模板不能占用。
     private static final Set<String> RESERVED_ROLE_CODES = Set.of("owner", "tenant-admin");
+    private static final Pattern DATA_RESOURCE_CODE = Pattern.compile("[a-z][a-z0-9_.-]{0,63}");
+    // 表名、列名与属性编码会进入 SQL 或属性全名，只允许普通标识符。
+    private static final Pattern IDENTIFIER = Pattern.compile("[A-Za-z_][A-Za-z0-9_]{0,62}");
+    // 与 forge-sdk-abac 的 AttributeType 一一对应；core 不依赖 abac，这里按名称约定。
+    private static final Set<String> DATA_TYPES = Set.of("string", "number", "boolean", "uuid", "ltree");
     private static final int MAX_KEY = 64;
     private static final int MAX_NAME = 120;
 
@@ -37,6 +46,25 @@ public record ResourceManifest(
         permissions = List.copyOf(permissions);
         menus = List.copyOf(menus);
         roles = roles == null ? List.of() : List.copyOf(roles);
+        dataResources = dataResources == null ? List.of() : List.copyOf(dataResources);
+    }
+
+    /**
+     * 没有 Data Resource 的清单。
+     *
+     * @param service 服务名
+     * @param version 清单版本
+     * @param permissions 全部 Permission Code
+     * @param menus 菜单树
+     * @param roles 角色模板
+     */
+    public ResourceManifest(
+            String service,
+            String version,
+            List<Permission> permissions,
+            List<MenuNode> menus,
+            List<RoleTemplate> roles) {
+        this(service, version, permissions, menus, roles, List.of());
     }
 
     /**
@@ -48,7 +76,7 @@ public record ResourceManifest(
      * @param menus 菜单树
      */
     public ResourceManifest(String service, String version, List<Permission> permissions, List<MenuNode> menus) {
-        this(service, version, permissions, menus, List.of());
+        this(service, version, permissions, menus, List.of(), List.of());
     }
 
     /**
@@ -56,7 +84,8 @@ public record ResourceManifest(
      *
      * <p>规则：服务名与版本非空；权限码格式合法且不重复，名称非空；菜单编码不重复；菜单引用的权限码必须在本清单中声明；
      * 叶子节点必须同时有 {@code app} 与 {@code path}，分组节点不能带路由，Shell 才能据此生成导航与路由；
-     * 角色模板编码为小写字母、数字与连字符且不重复、不占用预置角色编码，名称非空，引用的权限码必须在本清单中声明。
+     * 角色模板编码为小写字母、数字与连字符且不重复、不占用预置角色编码，名称非空，引用的权限码必须在本清单中声明；
+     * Data Resource 的规则见 {@link #validateDataResources(List)}。
      *
      * @throws IllegalArgumentException 违反任一规则，消息说明具体位置
      */
@@ -78,6 +107,50 @@ public record ResourceManifest(
         }
         validateMenus(menus, codes, new HashSet<>());
         validateRoles(codes);
+        validateDataResources(dataResources);
+    }
+
+    /**
+     * 检查 Data Resource 声明：编码为小写字母开头的小写字母、数字、{@code _ . -} 且不重复，名称非空；表名不重复；
+     * 至少一个属性，属性编码与列名为普通标识符且在资源内不重复，类型为 {@code string number boolean uuid ltree} 之一。
+     * 数据权限拦截器只读取清单文件中的数据资源，不生成整份清单，因此单独提供。
+     *
+     * @param resources 待检查的数据资源
+     * @throws IllegalArgumentException 违反任一规则，消息说明具体位置
+     */
+    public static void validateDataResources(List<DataResource> resources) {
+        Set<String> resourceCodes = new HashSet<>();
+        Set<String> tables = new HashSet<>();
+        for (DataResource resource : resources) {
+            if (resource.code() == null
+                    || !DATA_RESOURCE_CODE.matcher(resource.code()).matches()) {
+                throw new IllegalArgumentException("Invalid Data Resource code: " + resource.code());
+            }
+            if (!resourceCodes.add(resource.code())) {
+                throw new IllegalArgumentException("Duplicate Data Resource code: " + resource.code());
+            }
+            requireText(resource.name(), MAX_NAME, "name of Data Resource " + resource.code());
+            requireIdentifier(resource.table(), "table of Data Resource " + resource.code());
+            if (!tables.add(resource.table().toLowerCase(Locale.ROOT))) {
+                throw new IllegalArgumentException("Table " + resource.table() + " is declared by two Data Resources");
+            }
+            if (resource.attributes().isEmpty()) {
+                throw new IllegalArgumentException("Data Resource " + resource.code() + " declares no attributes");
+            }
+            Set<String> attributeCodes = new HashSet<>();
+            for (DataAttribute attribute : resource.attributes()) {
+                String where = resource.code() + "." + attribute.code();
+                requireIdentifier(attribute.code(), "attribute code of Data Resource " + resource.code());
+                if (!attributeCodes.add(attribute.code())) {
+                    throw new IllegalArgumentException("Duplicate Data Resource attribute: " + where);
+                }
+                requireText(attribute.name(), MAX_NAME, "name of attribute " + where);
+                if (!DATA_TYPES.contains(attribute.type())) {
+                    throw new IllegalArgumentException("Unknown type of attribute " + where + ": " + attribute.type());
+                }
+                requireIdentifier(attribute.column(), "column of attribute " + where);
+            }
+        }
     }
 
     private void validateRoles(Set<String> codes) {
@@ -119,6 +192,12 @@ public record ResourceManifest(
         }
     }
 
+    private static void requireIdentifier(String value, String name) {
+        if (value == null || !IDENTIFIER.matcher(value).matches()) {
+            throw new IllegalArgumentException("Manifest " + name + " is not a plain identifier: " + value);
+        }
+    }
+
     private static void requireText(String value, int maxLength, String name) {
         if (value == null || value.isBlank() || value.length() > maxLength) {
             throw new IllegalArgumentException("Manifest " + name + " must be 1-" + maxLength + " characters");
@@ -148,6 +227,34 @@ public record ResourceManifest(
             permissions = permissions == null ? List.of() : List.copyOf(permissions);
         }
     }
+
+    /**
+     * Data Resource：一类受数据权限保护的业务数据，对应一张表；Data Policy 只能引用这里声明的属性。
+     *
+     * <p>使用 Data Scope 预设须声明相应属性：「本人」需要 {@code uuid} 类型的 {@code ownerId}（数据归属的 Membership），
+     * 「本部门」「本部门及下级」需要 {@code ltree} 类型的 {@code departmentPath}（数据归属部门的路径）。
+     *
+     * @param code 资源编码，全平台唯一，如 {@code order}
+     * @param name 展示名称
+     * @param table 资源所在的表，SDK 对该表的查询、更新与删除注入数据权限条件
+     * @param attributes 可用于策略判断的资源属性
+     */
+    public record DataResource(String code, String name, String table, List<DataAttribute> attributes) {
+        /** 属性缺省为空列表。 */
+        public DataResource {
+            attributes = attributes == null ? List.of() : List.copyOf(attributes);
+        }
+    }
+
+    /**
+     * Data Resource 的一个属性，在策略中写作 {@code resource.<code>}。
+     *
+     * @param code 属性编码，如 {@code ownerId}
+     * @param name 展示名称
+     * @param type 值类型：{@code string number boolean uuid ltree}
+     * @param column 对应的表列
+     */
+    public record DataAttribute(String code, String name, String type, String column) {}
 
     /**
      * 菜单节点。叶子节点指向某个 Sub-App 的路由，分组节点只有子节点。

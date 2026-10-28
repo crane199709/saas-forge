@@ -13,10 +13,40 @@
     <description>ABAC 策略表达式树、SQL 编译器、内存求值器与数据权限拦截器</description>
 
     <dependencies>
-        <!-- 引擎本身不依赖 Spring 与数据库，只需要解析 JSON 表达式树 -->
+        <!-- 引擎（io.saasforge.sdk.abac 包）不依赖 Spring 与数据库，只需要解析 JSON 表达式树与清单中的 Data Resource -->
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-core</artifactId>
+        </dependency>
         <dependency>
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- 数据权限拦截器（data 包）所需，均为 optional：iam 只用引擎校验策略，不能因此引入资源服务器安全链等自动配置 -->
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-security</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-manifest</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

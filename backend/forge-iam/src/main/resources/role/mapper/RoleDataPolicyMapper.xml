@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.role.mapper.RoleDataPolicyMapper">
+    <select id="listByTenant" resultType="io.saasforge.iam.role.model.RoleDataPolicyRow">
+        SELECT p.role_id, p.resource, p.scope
+        FROM role r JOIN role_data_policy p ON p.role_id = r.id
+        WHERE r.tenant_id = #{tenantId} AND NOT r.deleted
+        ORDER BY p.resource
+    </select>
+    <select id="byRole" resultType="io.saasforge.iam.role.model.DataPolicy">
+        SELECT resource, scope FROM role_data_policy WHERE role_id = #{roleId} ORDER BY resource
+    </select>
+    <select id="policiesOf" resultType="io.saasforge.iam.role.model.DataPolicy">
+        SELECT DISTINCT p.resource, p.scope
+        FROM membership_role mr JOIN role r ON r.id = mr.role_id JOIN role_data_policy p ON p.role_id = r.id
+        WHERE mr.membership_id = #{membershipId} AND NOT r.deleted
+        ORDER BY p.resource, p.scope
+    </select>
+    <insert id="insert">
+        INSERT INTO role_data_policy (role_id, resource, scope) VALUES
+        <foreach collection="policies" item="policy" separator=",">(#{roleId}, #{policy.resource}, #{policy.scope})</foreach>
+    </insert>
+    <delete id="deleteResources">
+        DELETE FROM role_data_policy WHERE role_id = #{roleId}
+          AND resource IN <foreach collection="resources" item="resource" open="(" separator="," close=")">#{resource}</foreach>
+    </delete>
+    <delete id="deleteByRole">
+        DELETE FROM role_data_policy WHERE role_id = #{roleId}
+    </delete>
+</mapper>

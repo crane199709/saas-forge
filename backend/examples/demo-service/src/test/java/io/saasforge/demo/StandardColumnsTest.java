@@ -177,6 +177,9 @@ class StandardColumnsTest {
         Jwt jwt = Jwt.withTokenValue("token")
                 .header("alg", "RS256")
                 .subject(TestTokens.IDENTITY_ID.toString())
+                .claim("tenant_id", TENANT.toString())
+                .claim("membership_id", TestTokens.MEMBERSHIP_ID.toString())
+                .claim("ver", 1)
                 .build();
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt, List.of()));
         try {

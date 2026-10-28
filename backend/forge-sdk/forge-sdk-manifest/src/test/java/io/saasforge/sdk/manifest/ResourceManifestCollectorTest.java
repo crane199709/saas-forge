@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.saasforge.sdk.core.ResourceManifest;
+import io.saasforge.sdk.core.ResourceManifest.DataAttribute;
+import io.saasforge.sdk.core.ResourceManifest.DataResource;
 import io.saasforge.sdk.core.ResourceManifest.MenuNode;
 import io.saasforge.sdk.core.ResourceManifest.Permission;
 import io.saasforge.sdk.core.ResourceManifest.RoleTemplate;
@@ -36,6 +38,18 @@ class ResourceManifestCollectorTest {
                         List.of(new MenuNode(
                                 "orders.overview", "订单概览", null, "demo", "overview", "order:read", null))));
         assertThat(manifest.roles()).containsExactly(new RoleTemplate("order-viewer", "订单查看员", List.of("order:read")));
+        assertThat(manifest.dataResources())
+                .containsExactly(new DataResource(
+                        "order",
+                        "订单",
+                        "orders",
+                        List.of(
+                                new DataAttribute("ownerId", "归属成员", "uuid", "owner_id"),
+                                new DataAttribute("departmentPath", "归属部门", "ltree", "department_path"))));
+        // 数据权限拦截器只需要数据资源，不必扫描权限码
+        assertThat(ResourceManifestCollector.dataResources(
+                        ResourceManifestCollectorTest.class.getClassLoader(), "manifests/valid.json"))
+                .isEqualTo(manifest.dataResources());
     }
 
     @Test
@@ -61,6 +75,20 @@ class ResourceManifestCollectorTest {
         assertThatThrownBy(() -> collect("manifests/reserved-role-code.json"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("tenant-admin");
+    }
+
+    @Test
+    void dataAttributesMustHaveAKnownTypeAndAPlainColumnName() {
+        assertThatThrownBy(() -> collect("manifests/invalid-data-attribute-type.json"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("date");
+        // 列名会进入 SQL，不能借清单注入
+        assertThatThrownBy(() -> collect("manifests/invalid-data-column.json"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("DROP TABLE");
+        assertThatThrownBy(() -> ResourceManifestCollector.dataResources(
+                        ResourceManifestCollectorTest.class.getClassLoader(), "manifests/invalid-data-column.json"))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     private static ResourceManifest collect(String location) {

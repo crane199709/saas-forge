@@ -6,15 +6,22 @@ import io.saasforge.iam.membership.service.MembershipNotFoundException;
 import io.saasforge.iam.membership.service.MembershipService;
 import io.saasforge.iam.membership.service.MembershipStateService;
 import io.saasforge.iam.permission.model.PermissionRow;
+import io.saasforge.iam.permission.model.ServiceDataResource;
 import io.saasforge.iam.permission.service.IamPermissions;
 import io.saasforge.iam.permission.service.PermissionService;
+import io.saasforge.iam.role.mapper.RoleDataPolicyMapper;
 import io.saasforge.iam.role.mapper.RoleMapper;
 import io.saasforge.iam.role.mapper.RolePermissionMapper;
+import io.saasforge.iam.role.model.DataPolicy;
+import io.saasforge.iam.role.model.DataResourceOption;
 import io.saasforge.iam.role.model.MemberRoles;
 import io.saasforge.iam.role.model.MembershipRoleRow;
+import io.saasforge.iam.role.model.RoleDataPolicyRow;
 import io.saasforge.iam.role.model.RoleDetail;
 import io.saasforge.iam.role.model.RolePermissionRow;
 import io.saasforge.iam.role.model.RoleRow;
+import io.saasforge.sdk.abac.DataResourceDefinition;
+import io.saasforge.sdk.abac.DataScope;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
 import java.util.ArrayList;
@@ -25,12 +32,13 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Tenant Admin 维护自定义角色、角色授权与成员的角色分配。变更影响到的成员在事务提交后递增 version，
+ * Tenant Admin 维护自定义角色、角色授权、角色上的 Data Policy 与成员的角色分配。变更影响到的成员在事务提交后递增 version，
  * 旧 Token 立即失效，刷新后按新权限签发。
  *
  * <p>与 {@link RoleService} 分开：发布明细的 {@link MembershipStateService} 经 {@link RoleService} 读取授权，
@@ -40,6 +48,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class RoleManagementService {
     private final RoleMapper roles;
     private final RolePermissionMapper grants;
+    private final RoleDataPolicyMapper dataPolicies;
     private final RoleService roleService;
     private final PermissionService permissions;
     private final MembershipService memberships;
@@ -49,6 +58,7 @@ public class RoleManagementService {
     RoleManagementService(
             RoleMapper roles,
             RolePermissionMapper grants,
+            RoleDataPolicyMapper dataPolicies,
             RoleService roleService,
             PermissionService permissions,
             MembershipService memberships,
@@ -56,6 +66,7 @@ public class RoleManagementService {
             TransactionTemplate transactions) {
         this.roles = roles;
         this.grants = grants;
+        this.dataPolicies = dataPolicies;
         this.roleService = roleService;
         this.permissions = permissions;
         this.memberships = memberships;
@@ -63,16 +74,59 @@ public class RoleManagementService {
         this.transactions = transactions;
     }
 
-    /** 租户的全部角色及其有效授权，含开通时按业务服务模板预置的角色。 */
+    /** 租户的全部角色及其有效授权与 Data Policy，含开通时按业务服务模板预置的角色。 */
     public List<RoleDetail> list(TenantActor actor) {
         requireManager(actor);
         Map<UUID, List<String>> codesOf = new HashMap<>();
         for (RolePermissionRow row : grants.listByTenant(actor.tenantId())) {
             codesOf.computeIfAbsent(row.roleId(), key -> new ArrayList<>()).add(row.code());
         }
+        Map<UUID, List<DataPolicy>> policiesOf = new HashMap<>();
+        for (RoleDataPolicyRow row : dataPolicies.listByTenant(actor.tenantId())) {
+            policiesOf
+                    .computeIfAbsent(row.roleId(), key -> new ArrayList<>())
+                    .add(new DataPolicy(row.resource(), row.scope()));
+        }
         return roles.list(actor.tenantId()).stream()
-                .map(row -> RoleDetail.of(row, codesOf.getOrDefault(row.id(), List.of())))
+                .map(row -> RoleDetail.of(
+                        row, codesOf.getOrDefault(row.id(), List.of()), policiesOf.getOrDefault(row.id(), List.of())))
                 .toList();
+    }
+
+    /** 各业务服务当前声明的 Data Resource 及其可用的 Data Scope 预设，供角色编辑选择。 */
+    public List<DataResourceOption> dataResources(TenantActor actor) {
+        requireManager(actor);
+        return permissions.currentDataResources().stream()
+                .map(current -> new DataResourceOption(
+                        current.resource().code(),
+                        current.resource().name(),
+                        current.service(),
+                        DataResourceDefinition.of(current.resource()).availableScopes().stream()
+                                .map(RoleService::scopeName)
+                                .toList()))
+                .toList();
+    }
+
+    /**
+     * 整体替换自定义角色在当前声明的 Data Resource 上的 Data Policy，每个资源至多一条；未配置的资源对持有者默认不可见。
+     * 已从清单下线的资源上的策略保留不动。持有该角色的成员随即按新范围处理。
+     */
+    public void replaceDataPolicies(TenantActor actor, UUID id, Collection<DataPolicy> policies) {
+        requireManager(actor);
+        Map<String, DataResourceDefinition> definitions = currentDefinitions();
+        List<DataPolicy> requested = requireValid(definitions, policies);
+        List<UUID> affected = transactions.execute(status -> {
+            roles.lockTenant(actor.tenantId());
+            requireCustom(actor, id);
+            List<DataPolicy> current = dataPolicies.byRole(id).stream()
+                    .filter(policy -> definitions.containsKey(policy.resource()))
+                    .toList();
+            if (current.equals(requested)) return List.<UUID>of();
+            if (!definitions.isEmpty()) dataPolicies.deleteResources(id, definitions.keySet());
+            if (!requested.isEmpty()) dataPolicies.insert(id, requested);
+            return roles.holders(id);
+        });
+        publish(affected);
     }
 
     /** 可授予的 Permission Code：只含有效的，已下线的不再出现。 */
@@ -93,7 +147,7 @@ public class RoleManagementService {
             }
             if (!granted.isEmpty()) grants.grant(id, granted);
         });
-        return RoleDetail.of(new RoleRow(id, code, name, false, false, 0), sorted(granted));
+        return RoleDetail.of(new RoleRow(id, code, name, false, false, 0), sorted(granted), List.of());
     }
 
     public void rename(TenantActor actor, UUID id, String name) {
@@ -125,6 +179,7 @@ public class RoleManagementService {
             roles.lockTenant(actor.tenantId());
             if (requireCustom(actor, id).memberCount() > 0) throw new ForgeException(RoleErrorCode.IN_USE);
             grants.deleteByRole(id);
+            dataPolicies.deleteByRole(id);
             roles.delete(actor.tenantId(), id, actor.identityId());
         });
     }
@@ -195,6 +250,40 @@ public class RoleManagementService {
             if (!active.contains(code)) throw new ForgeException(RoleErrorCode.INVALID_PERMISSION, code);
         }
         return requested;
+    }
+
+    // 策略须落在当前清单声明的资源上，且资源声明了预设引用的属性；按资源编码排序，便于与已存储的策略比较。
+    private Map<String, DataResourceDefinition> currentDefinitions() {
+        Map<String, DataResourceDefinition> definitions = new HashMap<>();
+        for (ServiceDataResource current : permissions.currentDataResources()) {
+            definitions.put(current.resource().code(), DataResourceDefinition.of(current.resource()));
+        }
+        return definitions;
+    }
+
+    private static List<DataPolicy> requireValid(
+            Map<String, DataResourceDefinition> definitions, Collection<DataPolicy> policies) {
+        Map<String, DataPolicy> byResource = new TreeMap<>();
+        for (DataPolicy policy : policies) {
+            DataScope scope = scopeOrNull(policy.scope());
+            DataResourceDefinition definition = definitions.get(policy.resource());
+            if (definition == null
+                    || scope == null
+                    || byResource.containsKey(policy.resource())
+                    || !definition.availableScopes().contains(scope)) {
+                throw new ForgeException(RoleErrorCode.INVALID_DATA_POLICY, policy.resource());
+            }
+            byResource.put(policy.resource(), new DataPolicy(policy.resource(), RoleService.scopeName(scope)));
+        }
+        return List.copyOf(byResource.values());
+    }
+
+    private static DataScope scopeOrNull(String scope) {
+        try {
+            return scope == null ? null : RoleService.scopeOf(scope);
+        } catch (IllegalArgumentException unknown) {
+            return null;
+        }
     }
 
     private static List<String> sorted(Set<String> codes) {

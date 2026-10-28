@@ -1,6 +1,7 @@
 package io.saasforge.iam;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
@@ -10,12 +11,16 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import io.saasforge.iam.permission.service.PermissionService;
 import io.saasforge.iam.role.service.RoleService;
+import io.saasforge.sdk.abac.DataScope;
 import io.saasforge.sdk.core.MembershipGrants;
 import io.saasforge.sdk.core.MembershipStateKeys;
 import io.saasforge.sdk.core.ResourceManifest;
+import io.saasforge.sdk.core.ResourceManifest.DataAttribute;
+import io.saasforge.sdk.core.ResourceManifest.DataResource;
 import io.saasforge.sdk.core.ResourceManifest.MenuNode;
 import io.saasforge.sdk.core.ResourceManifest.Permission;
 import io.saasforge.sdk.core.ResourceManifest.RoleTemplate;
+import io.saasforge.sdk.core.api.ForgeException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -47,7 +52,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 import tools.jackson.databind.json.JsonMapper;
 
-/** 自定义角色、权限码授权、成员的角色分配与按业务服务模板预置的角色（工单 16）。 */
+/** 自定义角色、权限码授权、成员的角色分配与按业务服务模板预置的角色（工单 16），以及角色上的 Data Policy（工单 18）。 */
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Sql("/fixtures/roles.sql")
@@ -225,6 +230,87 @@ class RoleManagementTest {
     }
 
     @Test
+    void dataScopesOnRolesArePublishedPerDataResourceAndUnionedAcrossRoles() throws Exception {
+        permissions.report("ledger-service", ledgerManifest("ledger-service", "1"));
+        var resources = (List<Object>) call(ADMIN, HttpMethod.GET, "/roles/data-resources", null)
+                .getBody()
+                .get("data");
+        assertThat(resources)
+                .contains(
+                        Map.of(
+                                "code", "ledger",
+                                "name", "台账",
+                                "service", "ledger-service",
+                                "scopes", List.of("self", "department", "department_and_below", "all")),
+                        // 只声明了归属成员的资源不能使用按部门的预设
+                        Map.of(
+                                "code",
+                                "memo",
+                                "name",
+                                "备忘",
+                                "service",
+                                "ledger-service",
+                                "scopes",
+                                List.of("self", "all")));
+
+        String own = createRole("ledger-own", "本人台账", List.of());
+        String department = createRole("ledger-department", "本部门台账", List.of());
+        assertThat(dataPolicies(own, List.of(Map.of("resource", "ledger", "scope", "self")))
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(200);
+        dataPolicies(department, List.of(Map.of("resource", "ledger", "scope", "department")));
+        assign(ADMIN, MEMBER, List.of(own, department));
+
+        // 多个角色在同一资源上的策略都发布出去，由业务服务取并集；没有策略的资源（memo）不出现，即默认拒绝。
+        assertThat(grants(MEMBER).dataPolicies())
+                .isEqualTo(Map.of("ledger", List.of(DataScope.DEPARTMENT.template(), DataScope.SELF.template())));
+        assertThat(roleById(ADMIN, department).get("dataPolicies"))
+                .isEqualTo(List.of(Map.of("resource", "ledger", "scope", "department")));
+
+        // 策略变更即时生效：持有者版本递增，新版本明细只剩另一个角色的策略。
+        long before = version(MEMBER);
+        dataPolicies(own, List.of());
+        assertThat(version(MEMBER)).isGreaterThan(before);
+        assertThat(grants(MEMBER).dataPolicies()).isEqualTo(Map.of("ledger", List.of(DataScope.DEPARTMENT.template())));
+
+        // 预置角色对全部数据资源拥有「全部」范围。
+        assertThat(roles.grantsOf(ADMIN).dataPolicies())
+                .containsEntry("ledger", List.of(DataScope.ALL.template()))
+                .containsEntry("memo", List.of(DataScope.ALL.template()));
+
+        // 资源不支持的预设、未声明的资源、未知的范围与预置角色都被拒绝。
+        assertThat(code(dataPolicies(own, List.of(Map.of("resource", "memo", "scope", "department")))))
+                .isEqualTo("role.invalidDataPolicy");
+        assertThat(code(dataPolicies(own, List.of(Map.of("resource", "missing", "scope", "all")))))
+                .isEqualTo("role.invalidDataPolicy");
+        assertThat(code(dataPolicies(own, List.of(Map.of("resource", "ledger", "scope", "everything")))))
+                .isEqualTo("role.invalidDataPolicy");
+        assertThat(code(dataPolicies(roleIds(ADMIN).get("tenant-admin"), List.of())))
+                .isEqualTo("role.builtin");
+
+        // 下线的资源不在替换范围内：其上的策略保留，资源重新声明后随之恢复。
+        dataPolicies(own, List.of(Map.of("resource", "memo", "scope", "self")));
+        permissions.report("ledger-service", ledgerManifest("ledger-service", "2", false));
+        assertThat(dataPolicies(own, List.of(Map.of("resource", "ledger", "scope", "all")))
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(200);
+        permissions.report("ledger-service", ledgerManifest("ledger-service", "3", true));
+        assertThat(roleById(ADMIN, own).get("dataPolicies"))
+                .isEqualTo(List.of(
+                        Map.of("resource", "ledger", "scope", "all"), Map.of("resource", "memo", "scope", "self")));
+        dataPolicies(own, List.of());
+
+        // Data Resource 编码全平台唯一。
+        assertThatThrownBy(() -> permissions.report("other-service", ledgerManifest("other-service", "1")))
+                .isInstanceOfSatisfying(
+                        ForgeException.class,
+                        error -> assertThat(error.errorCode().code()).isEqualTo("manifest.dataResourceConflict"));
+        assign(ADMIN, MEMBER, List.of());
+    }
+
+    @Test
     void rolesAreIsolatedPerTenantAndManagedOnlyWithThePermission() throws Exception {
         String local = createRole("local", "仅租户 A", List.of());
 
@@ -275,6 +361,47 @@ class RoleManagementTest {
                                                 null))
                                 .filter(node -> codes.contains(node.permission()))
                                 .toList())));
+    }
+
+    private static ResourceManifest ledgerManifest(String service, String version) {
+        return ledgerManifest(service, version, true);
+    }
+
+    private static ResourceManifest ledgerManifest(String service, String version, boolean withMemo) {
+        return new ResourceManifest(
+                service,
+                version,
+                List.of(),
+                List.of(),
+                List.of(),
+                Stream.of(
+                                new DataResource(
+                                        "ledger",
+                                        "台账",
+                                        "ledgers",
+                                        List.of(
+                                                new DataAttribute("ownerId", "归属成员", "uuid", "owner_id"),
+                                                new DataAttribute(
+                                                        "departmentPath", "归属部门", "ltree", "department_path"))),
+                                new DataResource(
+                                        "memo",
+                                        "备忘",
+                                        "memos",
+                                        List.of(new DataAttribute("ownerId", "归属成员", "uuid", "owner_id"))))
+                        .filter(resource -> withMemo || !resource.code().equals("memo"))
+                        .toList());
+    }
+
+    private ResponseEntity<Map> dataPolicies(String roleId, List<Map<String, String>> policies) throws Exception {
+        return call(ADMIN, HttpMethod.PUT, "/roles/" + roleId + "/data-policies", Map.of("policies", policies));
+    }
+
+    private Map<?, ?> roleById(UUID admin, String id) throws Exception {
+        for (Object item :
+                (List<?>) call(admin, HttpMethod.GET, "/roles", null).getBody().get("data")) {
+            if (id.equals(((Map<?, ?>) item).get("id"))) return (Map<?, ?>) item;
+        }
+        throw new AssertionError("Role not found: " + id);
     }
 
     private String createRole(String code, String name, List<String> codes) throws Exception {

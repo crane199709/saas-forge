@@ -22,6 +22,11 @@
             <groupId>io.saasforge</groupId>
             <artifactId>forge-sdk-core</artifactId>
         </dependency>
+        <!-- 只用策略引擎：校验角色上的 Data Scope 与数据资源声明是否相容，并发布对应的表达式树 -->
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-abac</artifactId>
+        </dependency>
         <!-- 订阅 TenantCreated 开通初始管理员，并经 SDK 回报初始化结果 -->
         <dependency>
             <groupId>io.saasforge</groupId>

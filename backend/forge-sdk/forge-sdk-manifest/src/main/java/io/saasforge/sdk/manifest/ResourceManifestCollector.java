@@ -1,6 +1,7 @@
 package io.saasforge.sdk.manifest;
 
 import io.saasforge.sdk.core.ResourceManifest;
+import io.saasforge.sdk.core.ResourceManifest.DataResource;
 import io.saasforge.sdk.core.ResourceManifest.MenuNode;
 import io.saasforge.sdk.core.ResourceManifest.Permission;
 import io.saasforge.sdk.core.ResourceManifest.RoleTemplate;
@@ -23,7 +24,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 生成服务的 Resource Manifest：扫描 {@link RequiresPermission} 得到 Permission Code，再合并清单文件
- * {@value #MANIFEST_LOCATION} 中的名称、分组、菜单树与角色模板。服务启动时与 CI 中的 {@link ManifestCli} 共用。
+ * {@value #MANIFEST_LOCATION} 中的名称、分组、菜单树、角色模板与 Data Resource。服务启动时与 CI 中的 {@link ManifestCli} 共用。
  *
  * <p>清单文件格式：
  *
@@ -31,7 +32,9 @@ import tools.jackson.databind.json.JsonMapper;
  * {
  *   "permissions": { "order:read": { "name": "查看订单", "group": "订单" } },
  *   "menus": [ { "code": "orders", "name": "订单", "app": "demo", "path": "overview", "permission": "order:read" } ],
- *   "roles": [ { "code": "order-viewer", "name": "订单查看员", "permissions": ["order:read"] } ]
+ *   "roles": [ { "code": "order-viewer", "name": "订单查看员", "permissions": ["order:read"] } ],
+ *   "dataResources": [ { "code": "order", "name": "订单", "table": "orders", "attributes": [
+ *     { "code": "ownerId", "name": "归属成员", "type": "uuid", "column": "owner_id" } ] } ]
  * }
  * }</pre>
  *
@@ -74,13 +77,35 @@ public final class ResourceManifestCollector {
             String name = info == null || info.name() == null || info.name().isBlank() ? code : info.name();
             permissions.add(new Permission(code, name, info == null ? null : info.group()));
         }
-        var manifest = new ResourceManifest(service, version, permissions, file.menus(), file.roles());
+        var manifest =
+                new ResourceManifest(service, version, permissions, file.menus(), file.roles(), file.dataResources());
         try {
             manifest.validate();
         } catch (IllegalArgumentException error) {
             throw new IllegalStateException(error.getMessage(), error);
         }
         return manifest;
+    }
+
+    /**
+     * 只读取 classpath 清单文件中的 Data Resource，供数据权限拦截器在启动时建立表与属性的映射。
+     *
+     * @param classLoader 加载清单文件的类加载器
+     * @return 已校验的数据资源；没有清单文件时为空
+     * @throws IllegalStateException 清单文件无法解析，或数据资源违反 {@link ResourceManifest#validateDataResources} 的规则
+     */
+    public static List<DataResource> dataResources(ClassLoader classLoader) {
+        return dataResources(classLoader, MANIFEST_LOCATION);
+    }
+
+    static List<DataResource> dataResources(ClassLoader classLoader, String location) {
+        List<DataResource> resources = read(classLoader, location).dataResources();
+        try {
+            ResourceManifest.validateDataResources(resources);
+        } catch (IllegalArgumentException error) {
+            throw new IllegalStateException(error.getMessage(), error);
+        }
+        return resources;
     }
 
     private static Set<String> scan(String basePackage, ClassLoader classLoader) {
@@ -111,7 +136,7 @@ public final class ResourceManifestCollector {
 
     private static ManifestFile read(ClassLoader classLoader, String location) {
         try (InputStream stream = classLoader.getResourceAsStream(location)) {
-            if (stream == null) return new ManifestFile(null, null, null);
+            if (stream == null) return new ManifestFile(null, null, null, null);
             return JSON.readValue(stream, ManifestFile.class);
         } catch (IOException | RuntimeException error) {
             throw new IllegalStateException("Invalid manifest file " + location, error);
@@ -121,11 +146,15 @@ public final class ResourceManifestCollector {
     private record PermissionInfo(String name, String group) {}
 
     private record ManifestFile(
-            Map<String, PermissionInfo> permissions, List<MenuNode> menus, List<RoleTemplate> roles) {
+            Map<String, PermissionInfo> permissions,
+            List<MenuNode> menus,
+            List<RoleTemplate> roles,
+            List<DataResource> dataResources) {
         ManifestFile {
             permissions = permissions == null ? Map.of() : permissions;
             menus = menus == null ? List.of() : menus;
             roles = roles == null ? List.of() : roles;
+            dataResources = dataResources == null ? List.of() : dataResources;
         }
     }
 }

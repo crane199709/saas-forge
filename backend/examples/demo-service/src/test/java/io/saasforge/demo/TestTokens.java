@@ -57,14 +57,20 @@ final class TestTokens {
 
     /** 同一 Identity 在另一 Membership 下的 Token，对应切换租户后 IAM 换发的结果。 */
     static String forMembership(UUID tenantId, UUID membershipId) throws Exception {
-        return token(KEY, ISSUER, Instant.now().plusSeconds(900), tenantId, membershipId);
+        return forMembership(tenantId, membershipId, 1);
+    }
+
+    /** 角色或组织分配变化后 iam 按新版本换发的 Token。 */
+    static String forMembership(UUID tenantId, UUID membershipId, long version) throws Exception {
+        return token(KEY, ISSUER, Instant.now().plusSeconds(900), tenantId, membershipId, version);
     }
 
     static String token(RSAKey key, String issuer, Instant expires, UUID tenantId) throws Exception {
-        return token(key, issuer, expires, tenantId, MEMBERSHIP_ID);
+        return token(key, issuer, expires, tenantId, MEMBERSHIP_ID, 1);
     }
 
-    private static String token(RSAKey key, String issuer, Instant expires, UUID tenantId, UUID membershipId)
+    private static String token(
+            RSAKey key, String issuer, Instant expires, UUID tenantId, UUID membershipId, long version)
             throws Exception {
         var claims = new JWTClaimsSet.Builder()
                 .issuer(issuer)
@@ -74,7 +80,7 @@ final class TestTokens {
                 .expirationTime(Date.from(expires))
                 .claim("tenant_id", tenantId.toString())
                 .claim("membership_id", membershipId.toString())
-                .claim("ver", 1)
+                .claim("ver", version)
                 .build();
         var jwt = new SignedJWT(
                 new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(KEY.getKeyID()).build(), claims);

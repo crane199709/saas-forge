@@ -1,9 +1,21 @@
 {
   "permissions": {
-    "order:read": { "name": "查看订单", "group": "订单" },
-    "order:create": { "name": "创建订单", "group": "订单" },
-    "order:update": { "name": "修改订单", "group": "订单" },
-    "order:delete": { "name": "删除订单", "group": "订单" }
+    "order:read": {
+      "name": "查看订单",
+      "group": "订单"
+    },
+    "order:create": {
+      "name": "创建订单",
+      "group": "订单"
+    },
+    "order:update": {
+      "name": "修改订单",
+      "group": "订单"
+    },
+    "order:delete": {
+      "name": "删除订单",
+      "group": "订单"
+    }
   },
   "menus": [
     {
@@ -21,5 +33,40 @@
       ]
     }
   ],
-  "roles": [{ "code": "order-viewer", "name": "订单查看员", "permissions": ["order:read"] }]
+  "roles": [
+    {
+      "code": "order-viewer",
+      "name": "订单查看员",
+      "permissions": [
+        "order:read"
+      ]
+    }
+  ],
+  "dataResources": [
+    {
+      "code": "order",
+      "name": "订单",
+      "table": "orders",
+      "attributes": [
+        {
+          "code": "ownerId",
+          "name": "归属成员",
+          "type": "uuid",
+          "column": "owner_id"
+        },
+        {
+          "code": "departmentPath",
+          "name": "归属部门",
+          "type": "ltree",
+          "column": "department_path"
+        },
+        {
+          "code": "amount",
+          "name": "金额",
+          "type": "number",
+          "column": "amount"
+        }
+      ]
+    }
+  ]
 }

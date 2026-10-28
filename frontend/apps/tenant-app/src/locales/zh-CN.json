@@ -136,7 +136,9 @@
       "builtin": "预置",
       "allPermissions": "全部权限",
       "edit": "编辑",
-      "delete": "删除"
+      "delete": "删除",
+      "dataScopes": "数据范围",
+      "allData": "全部数据"
     },
     "dialog": {
       "create": "新建角色",
@@ -144,7 +146,10 @@
       "codeHint": "小写字母、数字与连字符，创建后不可修改",
       "ungrouped": "未分组",
       "save": "保存",
-      "cancel": "取消"
+      "cancel": "取消",
+      "dataScopes": "数据范围",
+      "noScope": "未配置（不可见）",
+      "dataScopeHint": "未配置数据范围的数据，持有该角色的成员看不到"
     },
     "member": {
       "name": "成员",
@@ -155,6 +160,12 @@
       "dialog": "为 {name} 分配角色",
       "save": "保存",
       "cancel": "取消"
+    },
+    "scope": {
+      "self": "本人",
+      "department": "本部门",
+      "department_and_below": "本部门及下级",
+      "all": "全部"
     }
   },
   "member": {

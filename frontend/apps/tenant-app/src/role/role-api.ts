@@ -12,6 +12,24 @@ export interface Role {
   memberCount: number
   /** 授予的有效权限码；预置角色为空列表。 */
   permissions: string[]
+  /** 各数据资源上的数据范围；预置角色对全部数据为「全部」，为空列表。 */
+  dataPolicies: DataPolicy[]
+}
+
+/** Data Scope 预设；未配置的数据资源对持有者不可见。 */
+export type DataScopeName = 'self' | 'department' | 'department_and_below' | 'all'
+
+export interface DataPolicy {
+  resource: string
+  scope: DataScopeName
+}
+
+/** 业务服务在资源清单中声明的数据资源，`scopes` 是它支持的预设。 */
+export interface DataResource {
+  code: string
+  name: string
+  service: string
+  scopes: DataScopeName[]
 }
 
 export interface GrantablePermission {
@@ -68,11 +86,14 @@ export function createRoleApi(client: Pick<TenantClient, 'api' | 'page'>) {
   return {
     roles: () => send<Role[]>('GET', ''),
     permissions: () => send<GrantablePermission[]>('GET', '/permissions'),
+    dataResources: () => send<DataResource[]>('GET', '/data-resources'),
     createRole: (code: string, name: string, permissions: string[]) =>
       send<Role>('POST', '', { code, name, permissions }),
     renameRole: (id: string, name: string) => send<null>('PUT', `/${id}`, { name }),
     replacePermissions: (id: string, permissions: string[]) =>
       send<null>('PUT', `/${id}/permissions`, { permissions }),
+    replaceDataPolicies: (id: string, policies: DataPolicy[]) =>
+      send<null>('PUT', `/${id}/data-policies`, { policies }),
     deleteRole: (id: string) => send<null>('DELETE', `/${id}`),
     members: (page: number, size: number): Promise<Page<MemberRoles>> =>
       client.page<MemberRoles>(`${base}/memberships?page=${page}&size=${size}`),

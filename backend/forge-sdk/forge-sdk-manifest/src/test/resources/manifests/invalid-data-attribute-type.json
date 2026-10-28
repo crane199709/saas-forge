@@ -1,0 +1,10 @@
+{
+  "dataResources": [
+    {
+      "code": "order",
+      "name": "订单",
+      "table": "orders",
+      "attributes": [{ "code": "ownerId", "name": "归属成员", "type": "date", "column": "owner_id" }]
+    }
+  ]
+}

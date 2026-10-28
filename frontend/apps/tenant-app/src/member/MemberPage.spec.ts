@@ -102,6 +102,7 @@ it('邀请时按权限展示预设角色，提交联系方式与所选角色', a
       owner: true,
       memberCount: 1,
       permissions: [],
+      dataPolicies: [],
     },
     {
       id: 'r-viewer',
@@ -111,6 +112,7 @@ it('邀请时按权限展示预设角色，提交联系方式与所选角色', a
       owner: false,
       memberCount: 0,
       permissions: [],
+      dataPolicies: [],
     },
   ]
   const fetcher = vi

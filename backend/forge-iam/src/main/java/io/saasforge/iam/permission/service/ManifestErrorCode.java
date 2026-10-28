@@ -10,7 +10,9 @@ public enum ManifestErrorCode implements ErrorCode {
     /** 同一版本已上报过不同内容；清单版本不可变，改动须升级版本。 */
     VERSION_CONFLICT("manifest.versionConflict", 409),
     /** 权限码已归属其他服务；权限码全平台唯一。 */
-    PERMISSION_CONFLICT("manifest.permissionConflict", 409);
+    PERMISSION_CONFLICT("manifest.permissionConflict", 409),
+    /** Data Resource 编码已由其他服务声明；资源编码全平台唯一，是 Data Policy 与权限明细的键。 */
+    DATA_RESOURCE_CONFLICT("manifest.dataResourceConflict", 409);
 
     private final String code;
     private final int httpStatus;

@@ -3,17 +3,25 @@ package io.saasforge.iam.role.service;
 import io.saasforge.iam.membership.model.RoleGrants;
 import io.saasforge.iam.membership.service.RoleGrantSource;
 import io.saasforge.iam.permission.service.PermissionService;
+import io.saasforge.iam.role.mapper.RoleDataPolicyMapper;
 import io.saasforge.iam.role.mapper.RoleMapper;
 import io.saasforge.iam.role.mapper.RolePermissionMapper;
+import io.saasforge.iam.role.model.DataPolicy;
 import io.saasforge.iam.role.model.OwnerContact;
+import io.saasforge.sdk.abac.DataScope;
 import io.saasforge.sdk.core.ResourceManifest.RoleTemplate;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,11 +40,17 @@ public class RoleService implements RoleGrantSource {
 
     private final RoleMapper roles;
     private final RolePermissionMapper grants;
+    private final RoleDataPolicyMapper dataPolicies;
     private final PermissionService permissions;
 
-    RoleService(RoleMapper roles, RolePermissionMapper grants, PermissionService permissions) {
+    RoleService(
+            RoleMapper roles,
+            RolePermissionMapper grants,
+            RoleDataPolicyMapper dataPolicies,
+            PermissionService permissions) {
         this.roles = roles;
         this.grants = grants;
+        this.dataPolicies = dataPolicies;
         this.permissions = permissions;
     }
 
@@ -116,12 +130,40 @@ public class RoleService implements RoleGrantSource {
         }
     }
 
-    /** Membership 当前的角色与权限：持有预置角色时拥有全部有效权限码，否则为各角色有效授权的并集。 */
+    /**
+     * Membership 当前的角色、权限与 Data Policy：持有预置角色时拥有全部有效权限码，在全部 Data Resource 上为「全部」；
+     * 否则为各角色有效授权的并集与各角色的策略。只发布当前清单中仍声明的资源上的策略。
+     */
     @Override
     public RoleGrants grantsOf(UUID membershipId) {
         List<String> codes = roles.roleCodes(membershipId);
         boolean all = codes.stream().anyMatch(ALL_PERMISSIONS::contains);
+        Set<String> resources = permissions.currentDataResources().stream()
+                .map(current -> current.resource().code())
+                .collect(Collectors.toSet());
+        Map<String, List<String>> policies = new TreeMap<>();
+        if (all) {
+            resources.forEach(resource -> policies.put(resource, List.of(DataScope.ALL.template())));
+        } else {
+            for (DataPolicy policy : dataPolicies.policiesOf(membershipId)) {
+                if (!resources.contains(policy.resource())) continue;
+                policies.computeIfAbsent(policy.resource(), key -> new ArrayList<>())
+                        .add(scopeOf(policy.scope()).template());
+            }
+        }
         return new RoleGrants(
-                Set.copyOf(codes), Set.copyOf(all ? permissions.activeCodes() : grants.grantedCodes(membershipId)));
+                Set.copyOf(codes),
+                Set.copyOf(all ? permissions.activeCodes() : grants.grantedCodes(membershipId)),
+                policies);
+    }
+
+    /** 存储与接口中的范围名到预设，如 {@code department_and_below}；未知名称抛出 {@link IllegalArgumentException}。 */
+    static DataScope scopeOf(String scope) {
+        return DataScope.valueOf(scope.toUpperCase(Locale.ROOT));
+    }
+
+    /** 预设在存储与接口中的名称。 */
+    static String scopeName(DataScope scope) {
+        return scope.name().toLowerCase(Locale.ROOT);
     }
 }
