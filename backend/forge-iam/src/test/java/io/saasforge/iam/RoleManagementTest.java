@@ -11,6 +11,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import io.saasforge.iam.permission.service.PermissionService;
 import io.saasforge.iam.role.service.RoleService;
+import io.saasforge.sdk.abac.DataResourceDefinition;
 import io.saasforge.sdk.abac.DataScope;
 import io.saasforge.sdk.core.MembershipGrants;
 import io.saasforge.sdk.core.MembershipStateKeys;
@@ -52,7 +53,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 import tools.jackson.databind.json.JsonMapper;
 
-/** 自定义角色、权限码授权、成员的角色分配与按业务服务模板预置的角色（工单 16），以及角色上的 Data Policy（工单 18）。 */
+/** 自定义角色、权限码授权、成员的角色分配与按业务服务模板预置的角色（工单 16），以及角色上的 Data Policy（工单 18、19）。 */
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Sql("/fixtures/roles.sql")
@@ -86,6 +87,13 @@ class RoleManagementTest {
         registry.add("spring.flyway.locations", () -> "classpath:db/migration,classpath:db/demo");
         registry.add("forge.iam.signing-key-file", () -> KEY_FILE);
     }
+
+    static final Map<String, Object> OWNER_ATTRIBUTE =
+            Map.of("name", "resource.ownerId", "label", "归属成员", "type", "uuid", "multiValued", false);
+    static final Map<String, Object> DEPARTMENT_ATTRIBUTE =
+            Map.of("name", "resource.departmentPath", "label", "归属部门", "type", "ltree", "multiValued", false);
+    static final Map<String, Object> AMOUNT_ATTRIBUTE =
+            Map.of("name", "resource.amount", "label", "金额", "type", "number", "multiValued", false);
 
     @LocalServerPort
     int port;
@@ -241,7 +249,8 @@ class RoleManagementTest {
                                 "code", "ledger",
                                 "name", "台账",
                                 "service", "ledger-service",
-                                "scopes", List.of("self", "department", "department_and_below", "all")),
+                                "scopes", List.of("self", "department", "department_and_below", "all"),
+                                "attributes", List.of(OWNER_ATTRIBUTE, DEPARTMENT_ATTRIBUTE, AMOUNT_ATTRIBUTE)),
                         // 只声明了归属成员的资源不能使用按部门的预设
                         Map.of(
                                 "code",
@@ -251,7 +260,9 @@ class RoleManagementTest {
                                 "service",
                                 "ledger-service",
                                 "scopes",
-                                List.of("self", "all")));
+                                List.of("self", "all"),
+                                "attributes",
+                                List.of(OWNER_ATTRIBUTE)));
 
         String own = createRole("ledger-own", "本人台账", List.of());
         // 新建角色时一并设置数据范围，与授权在同一事务写入；非法的范围让整个新建失败，不留下没有范围的角色。
@@ -338,6 +349,168 @@ class RoleManagementTest {
     }
 
     @Test
+    void customConditionsAreValidatedAgainstTheTenantCatalogPublishedAndPreviewed() throws Exception {
+        permissions.report("ledger-service", ledgerManifest("ledger-service", "1"));
+        String sales = (String) data(call(ADMIN, HttpMethod.POST, "/org/departments", Map.of("name", "销售")))
+                .get("id");
+        String east =
+                (String) data(call(ADMIN, HttpMethod.POST, "/org/departments", Map.of("name", "华东", "parentId", sales)))
+                        .get("id");
+        assertThat(call(
+                                ADMIN,
+                                HttpMethod.POST,
+                                "/org/extended-attributes",
+                                Map.of("code", "vip", "name", "VIP", "type", "boolean", "required", false))
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(201);
+        var assignment = new HashMap<String, Object>();
+        assignment.put("primaryDepartmentId", sales);
+        assignment.put("departmentIds", List.of());
+        assignment.put("positionIds", List.of());
+        assignment.put("attributes", Map.of("vip", true));
+        call(ADMIN, HttpMethod.PUT, "/org/memberships/" + MEMBER + "/assignment", assignment);
+
+        // 编辑器的可选项：平台主体属性、本租户的扩展属性、环境属性与部门取值（完整名称）。
+        var options = data(call(ADMIN, HttpMethod.GET, "/roles/condition-options", null));
+        assertThat((List<Object>) options.get("subject"))
+                .contains(
+                        attribute("subject.departmentPaths", null, "ltree", true),
+                        attribute("subject.attributes.vip", "VIP", "boolean", false));
+        assertThat((List<Object>) options.get("environment"))
+                .containsExactly(attribute("env.now", null, "number", false));
+        String salesPath = label(sales);
+        String eastPath = salesPath + "." + label(east);
+        assertThat((List<Object>) options.get("departments"))
+                .contains(Map.of("value", salesPath, "label", "销售"), Map.of("value", eastPath, "label", "销售 / 华东"));
+
+        // 「金额大于 1000 且属于本部门及下级」，或 VIP 成员可见全部。
+        Map<String, Object> condition = Map.of(
+                "or",
+                List.of(
+                        Map.of(
+                                "and",
+                                List.of(
+                                        Map.of("attr", "resource.amount", "op", "gt", "value", 1000),
+                                        Map.of(
+                                                "attr",
+                                                "resource.departmentPath",
+                                                "op",
+                                                "under",
+                                                "value",
+                                                Map.of("ref", "subject.departmentPaths")))),
+                        Map.of("attr", "subject.attributes.vip", "op", "eq", "value", true)));
+        Map<String, Object> custom = Map.of("resource", "ledger", "scope", "custom", "condition", condition);
+
+        // 预览：成员当前的主体属性对样例数据逐条求值，未给出的属性视为空。
+        var preview = data(call(
+                ADMIN,
+                HttpMethod.POST,
+                "/roles/data-policies/preview",
+                Map.of(
+                        "policy",
+                        Map.of(
+                                "resource",
+                                "ledger",
+                                "scope",
+                                "custom",
+                                "condition",
+                                ((List<?>) condition.get("or")).get(0)),
+                        "membershipId",
+                        MEMBER,
+                        "samples",
+                        List.of(
+                                Map.of("amount", 1500, "departmentPath", eastPath),
+                                Map.of("amount", 500, "departmentPath", eastPath),
+                                Map.of("amount", 1500, "departmentPath", "other"),
+                                Map.of("departmentPath", salesPath)))));
+        assertThat(preview.get("matches")).isEqualTo(List.of(true, false, false, false));
+        assertThat((Map<String, Object>) preview.get("context"))
+                .containsEntry("subject.membershipId", MEMBER.toString())
+                .containsEntry("subject.departmentPaths", List.of(salesPath))
+                .containsEntry("subject.attributes.vip", true)
+                .containsKey("env.now");
+        var badSample = call(
+                ADMIN,
+                HttpMethod.POST,
+                "/roles/data-policies/preview",
+                Map.of(
+                        "policy", custom,
+                        "membershipId", MEMBER,
+                        "samples", List.of(Map.of("amount", "很多"))));
+        assertThat(code(badSample)).isEqualTo("role.invalidPreviewSample");
+        assertThat((String) badSample.getBody().get("userTip")).contains("第 1 条");
+
+        // 保存并发布：条件原样随明细发布，SDK 按发布的扩展属性类型加载。
+        String role = createRole("ledger-custom", "大额台账", List.of());
+        assign(ADMIN, MEMBER, List.of(role));
+        long before = version(MEMBER);
+        assertThat(dataPolicies(role, List.of(custom)).getStatusCode().value()).isEqualTo(200);
+        assertThat(version(MEMBER)).isGreaterThan(before);
+        MembershipGrants published = grants(MEMBER);
+        String json = published.dataPolicies().get("ledger").get(0);
+        assertThat(JsonMapper.builder().build().readTree(json))
+                .isEqualTo(JsonMapper.builder().build().valueToTree(condition));
+        assertThat(published.subject().attributeTypes()).containsEntry("vip", "boolean");
+        assertThat(DataResourceDefinition.of(ledgerManifest("ledger-service", "1")
+                                .dataResources()
+                                .get(0))
+                        .parse(json, published.subject().attributeTypes()))
+                .isNotNull();
+        assertThat(roleById(ADMIN, role).get("dataPolicies")).isEqualTo(List.of(custom));
+
+        // 重新提交键序不同的同一条件不算改动，持有者的 Token 不失效。
+        before = version(MEMBER);
+        dataPolicies(role, List.of(Map.of("resource", "ledger", "condition", condition, "scope", "custom")));
+        assertThat(version(MEMBER)).isEqualTo(before);
+
+        // 非法表达式在保存前被拒绝，错误指出位置与原因；已保存的条件不变。
+        for (var invalid : List.of(
+                Map.of("attr", "resource.amount", "op", "under", "value", 1),
+                Map.of("attr", "resource.amount", "op", "gt", "value", "很多"),
+                Map.of("attr", "subject.attributes.missing", "op", "eq", "value", true),
+                Map.of("attr", "resource.amount", "op", "between", "value", 1),
+                Map.of("and", List.of(Map.of("attr", "resource.amount"))),
+                // 删光条件的「全部满足」恒为真，会放开全部数据
+                Map.of("and", List.of()),
+                Map.of("or", List.of(condition, Map.of("or", List.of()))))) {
+            var rejected =
+                    dataPolicies(role, List.of(Map.of("resource", "ledger", "scope", "custom", "condition", invalid)));
+            assertThat(code(rejected)).as("%s", invalid).isEqualTo("role.invalidDataCondition");
+            assertThat((String) rejected.getBody().get("userTip")).startsWith("数据资源 ledger 的自定义条件不合法：");
+            assertThat((String) rejected.getBody().get("errorMessage")).startsWith("Data Resource ledger: ");
+        }
+        assertThat(code(dataPolicies(role, List.of(Map.of("resource", "ledger", "scope", "custom")))))
+                .isEqualTo("role.invalidDataCondition");
+        assertThat(code(dataPolicies(
+                        role, List.of(Map.of("resource", "ledger", "scope", "self", "condition", condition)))))
+                .isEqualTo("role.invalidDataPolicy");
+        assertThat(roleById(ADMIN, role).get("dataPolicies")).isEqualTo(List.of(custom));
+
+        // 改回预设：条件随之清除。
+        dataPolicies(role, List.of(Map.of("resource", "ledger", "scope", "all")));
+        assertThat(grants(MEMBER).dataPolicies()).isEqualTo(Map.of("ledger", List.of(DataScope.ALL.template())));
+        assign(ADMIN, MEMBER, List.of());
+    }
+
+    private static Map<String, Object> attribute(String name, String label, String type, boolean multiValued) {
+        var attribute = new HashMap<String, Object>();
+        attribute.put("name", name);
+        attribute.put("label", label);
+        attribute.put("type", type);
+        attribute.put("multiValued", multiValued);
+        return attribute;
+    }
+
+    private static Map<?, ?> data(ResponseEntity<Map> response) {
+        return (Map<?, ?>) response.getBody().get("data");
+    }
+
+    private static String label(String id) {
+        return id.replace("-", "");
+    }
+
+    @Test
     void rolesAreIsolatedPerTenantAndManagedOnlyWithThePermission() throws Exception {
         String local = createRole("local", "仅租户 A", List.of());
 
@@ -408,8 +581,8 @@ class RoleManagementTest {
                                         "ledgers",
                                         List.of(
                                                 new DataAttribute("ownerId", "归属成员", "uuid", "owner_id"),
-                                                new DataAttribute(
-                                                        "departmentPath", "归属部门", "ltree", "department_path"))),
+                                                new DataAttribute("departmentPath", "归属部门", "ltree", "department_path"),
+                                                new DataAttribute("amount", "金额", "number", "amount"))),
                                 new DataResource(
                                         "memo",
                                         "备忘",
@@ -419,7 +592,7 @@ class RoleManagementTest {
                         .toList());
     }
 
-    private ResponseEntity<Map> dataPolicies(String roleId, List<Map<String, String>> policies) throws Exception {
+    private ResponseEntity<Map> dataPolicies(String roleId, List<? extends Map<String, ?>> policies) throws Exception {
         return call(ADMIN, HttpMethod.PUT, "/roles/" + roleId + "/data-policies", Map.of("policies", policies));
     }
 

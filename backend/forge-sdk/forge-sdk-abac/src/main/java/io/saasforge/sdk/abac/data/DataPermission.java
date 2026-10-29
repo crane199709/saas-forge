@@ -4,19 +4,20 @@ import io.saasforge.sdk.abac.DataResourceDefinition;
 import io.saasforge.sdk.abac.Expression;
 import io.saasforge.sdk.abac.PolicyEvaluator;
 import io.saasforge.sdk.abac.PolicySqlCompiler;
-import io.saasforge.sdk.abac.PolicyValidationException;
 import io.saasforge.sdk.abac.SqlPredicate;
 import io.saasforge.sdk.core.MembershipGrants;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import io.saasforge.sdk.security.MembershipGrantStore;
 import io.saasforge.sdk.security.TenantContext;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -95,9 +96,9 @@ public final class DataPermission {
     }
 
     /**
-     * 当前成员的主体属性，如创建对象时以当前成员与其主部门作为数据归属。
+     * 当前成员的主体属性与环境属性，如创建对象时以当前成员与其主部门作为数据归属。
      *
-     * @return 键为全名的主体上下文（如 {@code subject.membershipId}）；不是成员请求时为空
+     * @return 键为全名的上下文（如 {@code subject.membershipId}、{@code env.now}）；不是成员请求时为空
      */
     public Optional<Map<String, Object>> currentSubject() {
         Subject subject = currentSubjectOf();
@@ -123,7 +124,9 @@ public final class DataPermission {
         if (grants == null) throw new IllegalStateException("Data permissions require Redis for Membership grants");
         TenantContext context = TenantContext.current();
         MembershipGrants current = grants.grants(context);
-        return new Subject(current.subject().toContext(context.membershipId()), current);
+        Map<String, Object> values = current.subject().toContext(context.membershipId());
+        values.putAll(DataResourceDefinition.environment(Instant.now()));
+        return new Subject(values, current);
     }
 
     private DataResourceDefinition definition(String resource) {
@@ -132,11 +135,12 @@ public final class DataPermission {
         return definition;
     }
 
-    private Expression parse(DataResourceDefinition definition, String json) {
-        String key = definition.code() + '\u0000' + json;
+    private Expression parse(DataResourceDefinition definition, String json, Map<String, String> extendedTypes) {
+        // 同一条策略在扩展属性类型不同的租户中结论不同，类型要进缓存键
+        String key = definition.code() + '\u0000' + json + '\u0000' + new TreeMap<>(extendedTypes);
         Expression cached = parsed.get(key);
         if (cached != null) return cached;
-        Expression expression = definition.parse(json);
+        Expression expression = definition.parse(json, extendedTypes);
         if (parsed.size() >= MAX_CACHED_POLICIES) parsed.clear();
         parsed.put(key, expression);
         return expression;
@@ -145,7 +149,7 @@ public final class DataPermission {
     /**
      * 一次请求中的主体。
      *
-     * @param context 主体上下文
+     * @param context 主体与环境上下文，同一请求内的求值与编译取同一份
      * @param grants 明细；非成员请求为 null
      */
     record Subject(Map<String, Object> context, MembershipGrants grants) {
@@ -160,9 +164,10 @@ public final class DataPermission {
         var policies = new ArrayList<Expression>();
         for (String json : subject.grants().dataPolicies().getOrDefault(definition.code(), List.of())) {
             try {
-                policies.add(parse(definition, json));
-            } catch (PolicyValidationException error) {
-                // 资源在新版本中删除了策略引用的属性等情况：该条策略按拒绝处理并记录，不放行，也不让整个请求失败。
+                policies.add(parse(definition, json, subject.grants().subject().attributeTypes()));
+            } catch (IllegalArgumentException error) {
+                // 资源在新版本中删除了策略引用的属性、扩展属性定义已删除等情况：该条策略按拒绝处理并记录，
+                // 不放行，也不让整个请求失败。
                 log.error("Ignored invalid Data Policy on {}: {}", definition.code(), error.getMessage());
             }
         }

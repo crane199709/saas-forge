@@ -37,9 +37,26 @@ final class TestGrants {
             List<String> permissions,
             SubjectAttributes subject,
             List<DataScope> orderScopes) {
-        Map<String, List<String>> policies = orderScopes.isEmpty()
-                ? Map.of()
-                : Map.of("order", orderScopes.stream().map(DataScope::template).toList());
+        publishPolicies(
+                redis,
+                tenantId,
+                membershipId,
+                version,
+                permissions,
+                subject,
+                orderScopes.stream().map(DataScope::template).toList());
+    }
+
+    /** 以给定版本发布明细；每条订单策略（JSON 表达式树）相当于一个持有该策略的 Role，如编辑器保存的自定义条件。 */
+    static void publishPolicies(
+            StringRedisTemplate redis,
+            UUID tenantId,
+            UUID membershipId,
+            long version,
+            List<String> permissions,
+            SubjectAttributes subject,
+            List<String> orderPolicies) {
+        Map<String, List<String>> policies = orderPolicies.isEmpty() ? Map.of() : Map.of("order", orderPolicies);
         redis.opsForValue()
                 .set(
                         MembershipStateKeys.grants(tenantId, membershipId, version),

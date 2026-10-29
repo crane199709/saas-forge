@@ -49,6 +49,11 @@ public class ExtendedAttributeService {
         return attributes.list(actor.tenantId());
     }
 
+    /** 租户的全部定义，不校验权限；供角色编辑中的条件编辑器列出可用的主体属性。 */
+    public List<ExtendedAttributeRow> definitions(UUID tenantId) {
+        return attributes.list(tenantId);
+    }
+
     public ExtendedAttributeRow create(TenantActor actor, String code, String name, String type, boolean required) {
         roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         UUID id = UuidV7.generate();

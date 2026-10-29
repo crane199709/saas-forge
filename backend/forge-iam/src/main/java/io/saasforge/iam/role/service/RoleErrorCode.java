@@ -18,7 +18,11 @@ public enum RoleErrorCode implements ErrorCode {
     /** 成员不存在或不属于当前租户。 */
     MEMBERSHIP_NOT_FOUND("role.membershipNotFound", 404),
     /** Data Resource 不存在、重复，或不支持所选的 Data Scope（如未声明归属部门却选「本部门」）。 */
-    INVALID_DATA_POLICY("role.invalidDataPolicy", 400);
+    INVALID_DATA_POLICY("role.invalidDataPolicy", 400),
+    /** 自定义条件不是合法的表达式树：结构错误、属性未声明、操作符不适用于属性类型或取值类型不符。 */
+    INVALID_DATA_CONDITION("role.invalidDataCondition", 400),
+    /** 预览的样例数据含未声明的属性、取值与属性类型不符，或条数超出上限。 */
+    INVALID_PREVIEW_SAMPLE("role.invalidPreviewSample", 400);
 
     private final String code;
     private final int httpStatus;

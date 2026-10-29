@@ -132,7 +132,7 @@ public class RoleService implements RoleGrantSource {
 
     /**
      * Membership 当前的角色、权限与 Data Policy：持有预置角色时拥有全部有效权限码，在全部 Data Resource 上为「全部」；
-     * 否则为各角色有效授权的并集与各角色的策略。只发布当前清单中仍声明的资源上的策略。
+     * 否则为各角色有效授权的并集与各角色的策略（预设展开为模板，自定义条件原样发布）。只发布当前清单中仍声明的资源上的策略。
      */
     @Override
     public RoleGrants grantsOf(UUID membershipId) {
@@ -148,7 +148,10 @@ public class RoleService implements RoleGrantSource {
             for (DataPolicy policy : dataPolicies.policiesOf(membershipId)) {
                 if (!resources.contains(policy.resource())) continue;
                 policies.computeIfAbsent(policy.resource(), key -> new ArrayList<>())
-                        .add(scopeOf(policy.scope()).template());
+                        .add(
+                                DataPolicy.CUSTOM.equals(policy.scope())
+                                        ? policy.condition()
+                                        : scopeOf(policy.scope()).template());
             }
         }
         return new RoleGrants(

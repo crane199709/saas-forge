@@ -165,7 +165,63 @@
       "self": "本人",
       "department": "本部门",
       "department_and_below": "本部门及下级",
-      "all": "全部"
+      "all": "全部",
+      "custom": "自定义条件"
+    },
+    "condition": {
+      "and": "全部满足",
+      "or": "任一满足",
+      "negate": "取反",
+      "addRule": "添加条件",
+      "addGroup": "添加条件组",
+      "removeGroup": "删除条件组",
+      "remove": "删除",
+      "attribute": "属性",
+      "operator": "操作符",
+      "literal": "固定值",
+      "reference": "引用属性",
+      "listHint": "输入后回车，可填多个",
+      "true": "是",
+      "false": "否",
+      "incomplete": "请填完每条条件的属性、操作符与取值，条件组不能为空",
+      "groups": {
+        "resource": "数据属性",
+        "subject": "成员属性",
+        "environment": "环境"
+      },
+      "op": {
+        "eq": "等于",
+        "ne": "不等于",
+        "in": "属于",
+        "nin": "不属于",
+        "gt": "大于",
+        "gte": "大于等于",
+        "lt": "小于",
+        "lte": "小于等于",
+        "contains": "包含",
+        "is_null": "为空",
+        "under": "在部门及下级中"
+      },
+      "attr": {
+        "subject": {
+          "membershipId": "当前成员",
+          "departmentPaths": "所在部门",
+          "primaryDepartmentPath": "主部门",
+          "positionIds": "担任岗位"
+        },
+        "env": {
+          "now": "当前时间（Unix 秒）"
+        }
+      }
+    },
+    "preview": {
+      "toggle": "预览命中情况",
+      "member": "成员",
+      "addSample": "添加样例",
+      "run": "预览",
+      "result": "结果",
+      "hit": "命中",
+      "miss": "未命中"
     }
   },
   "member": {

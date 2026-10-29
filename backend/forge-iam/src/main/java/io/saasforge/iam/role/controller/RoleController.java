@@ -1,10 +1,14 @@
 package io.saasforge.iam.role.controller;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.saasforge.iam.membership.model.TenantActor;
 import io.saasforge.iam.permission.model.PermissionRow;
+import io.saasforge.iam.role.model.ConditionAttribute;
+import io.saasforge.iam.role.model.ConditionOptions;
 import io.saasforge.iam.role.model.DataPolicy;
 import io.saasforge.iam.role.model.DataResourceOption;
 import io.saasforge.iam.role.model.MemberRoles;
+import io.saasforge.iam.role.model.PolicyPreview;
 import io.saasforge.iam.role.model.RoleDetail;
 import io.saasforge.iam.role.service.RoleManagementService;
 import io.saasforge.sdk.core.api.ApiResponse;
@@ -13,10 +17,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -29,22 +36,27 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 @Tag(name = "角色")
 @RestController
 @RequestMapping("/roles")
 class RoleController {
     private final RoleManagementService roles;
+    private final JsonMapper json;
 
-    RoleController(RoleManagementService roles) {
+    RoleController(RoleManagementService roles, JsonMapper json) {
         this.roles = roles;
+        this.json = json;
     }
 
     @Operation(summary = "列出当前租户的角色及其授权")
     @GetMapping
     ApiResponse<List<RoleResponse>> list(@AuthenticationPrincipal Jwt jwt) {
-        return ApiResponse.ok(
-                roles.list(TenantActor.of(jwt)).stream().map(RoleResponse::from).toList());
+        return ApiResponse.ok(roles.list(TenantActor.of(jwt)).stream()
+                .map(role -> RoleResponse.from(role, this::toBody))
+                .toList());
     }
 
     @Operation(summary = "可授予的有效 Permission Code，按服务与分组排序")
@@ -55,7 +67,7 @@ class RoleController {
                 .toList());
     }
 
-    @Operation(summary = "可配置 Data Policy 的 Data Resource 及其可用的 Data Scope 预设")
+    @Operation(summary = "可配置 Data Policy 的 Data Resource，及其可用的 Data Scope 预设与自定义条件可引用的资源属性")
     @GetMapping("/data-resources")
     ApiResponse<List<DataResourceResponse>> dataResources(@AuthenticationPrincipal Jwt jwt) {
         return ApiResponse.ok(roles.dataResources(TenantActor.of(jwt)).stream()
@@ -63,16 +75,31 @@ class RoleController {
                 .toList());
     }
 
+    @Operation(summary = "自定义条件可引用的主体属性（含扩展属性）与环境属性，以及部门、岗位取值")
+    @GetMapping("/condition-options")
+    ApiResponse<ConditionOptions> conditionOptions(@AuthenticationPrincipal Jwt jwt) {
+        return ApiResponse.ok(roles.conditionOptions(TenantActor.of(jwt)));
+    }
+
+    @Operation(summary = "预览 Data Policy 对指定成员在样例数据上的命中情况，不保存")
+    @PostMapping("/data-policies/preview")
+    ApiResponse<PolicyPreview> preview(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PreviewRequest request) {
+        return ApiResponse.ok(roles.preview(
+                TenantActor.of(jwt), toPolicy(request.policy()), request.membershipId(), request.samples()));
+    }
+
     @Operation(summary = "新建自定义角色，同时授予权限码并设置 Data Policy")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     ApiResponse<RoleResponse> create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CreateRoleRequest request) {
-        return ApiResponse.created(RoleResponse.from(roles.create(
-                TenantActor.of(jwt),
-                request.code(),
-                request.name().strip(),
-                request.permissions(),
-                toPolicies(request.dataPolicies()))));
+        return ApiResponse.created(RoleResponse.from(
+                roles.create(
+                        TenantActor.of(jwt),
+                        request.code(),
+                        request.name().strip(),
+                        request.permissions(),
+                        toPolicies(request.dataPolicies())),
+                this::toBody));
     }
 
     @Operation(summary = "自定义角色改名；预置角色不可修改")
@@ -139,10 +166,23 @@ class RoleController {
         }
     }
 
-    private static List<DataPolicy> toPolicies(List<DataPolicyBody> bodies) {
-        return bodies.stream()
-                .map(policy -> new DataPolicy(policy.resource(), policy.scope()))
-                .toList();
+    private List<DataPolicy> toPolicies(List<DataPolicyBody> bodies) {
+        return bodies.stream().map(this::toPolicy).toList();
+    }
+
+    private DataPolicy toPolicy(DataPolicyBody body) {
+        JsonNode condition = body.condition();
+        return new DataPolicy(
+                body.resource(),
+                body.scope(),
+                condition == null || condition.isNull() ? null : json.writeValueAsString(condition));
+    }
+
+    private DataPolicyBody toBody(DataPolicy policy) {
+        return new DataPolicyBody(
+                policy.resource(),
+                policy.scope(),
+                policy.condition() == null ? null : json.readTree(policy.condition()));
     }
 
     record RenameRoleRequest(@NotBlank @Size(max = 120) String name) {}
@@ -159,10 +199,25 @@ class RoleController {
         }
     }
 
-    /** @param scope {@code self department department_and_below all} */
-    record DataPolicyBody(String resource, String scope) {
-        static DataPolicyBody from(DataPolicy value) {
-            return new DataPolicyBody(value.resource(), value.scope());
+    /**
+     * @param scope {@code self department department_and_below all}，或自定义条件 {@code custom}
+     * @param condition {@code custom} 时为 JSON 表达式树，如
+     *     {@code {"and":[{"attr":"resource.amount","op":"gt","value":1000}]}}；预设时省略
+     */
+    record DataPolicyBody(
+            String resource,
+            String scope,
+            @JsonInclude(JsonInclude.Include.NON_NULL) JsonNode condition) {}
+
+    /**
+     * @param policy 待预览的策略，可以是尚未保存的自定义条件
+     * @param membershipId 以该成员当前的主体属性求值
+     * @param samples 样例数据，每条为资源属性编码到值；未给出的属性视为空
+     */
+    record PreviewRequest(
+            @NotNull DataPolicyBody policy, @NotNull UUID membershipId, List<Map<String, Object>> samples) {
+        PreviewRequest {
+            samples = samples == null ? List.of() : samples;
         }
     }
 
@@ -185,7 +240,7 @@ class RoleController {
             long memberCount,
             List<String> permissions,
             List<DataPolicyBody> dataPolicies) {
-        static RoleResponse from(RoleDetail value) {
+        static RoleResponse from(RoleDetail value, Function<DataPolicy, DataPolicyBody> body) {
             return new RoleResponse(
                     value.id(),
                     value.code(),
@@ -194,13 +249,15 @@ class RoleController {
                     value.owner(),
                     value.memberCount(),
                     value.permissions(),
-                    value.dataPolicies().stream().map(DataPolicyBody::from).toList());
+                    value.dataPolicies().stream().map(body).toList());
         }
     }
 
-    record DataResourceResponse(String code, String name, String service, List<String> scopes) {
+    record DataResourceResponse(
+            String code, String name, String service, List<String> scopes, List<ConditionAttribute> attributes) {
         static DataResourceResponse from(DataResourceOption value) {
-            return new DataResourceResponse(value.code(), value.name(), value.service(), value.scopes());
+            return new DataResourceResponse(
+                    value.code(), value.name(), value.service(), value.scopes(), value.attributes());
         }
     }
 

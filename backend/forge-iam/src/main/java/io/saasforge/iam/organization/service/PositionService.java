@@ -41,6 +41,11 @@ public class PositionService {
         return positions.list(actor.tenantId());
     }
 
+    /** 全部岗位，不校验权限；供角色编辑中的条件编辑器选择岗位。 */
+    public List<PositionRow> all(UUID tenantId) {
+        return positions.list(tenantId);
+    }
+
     public PositionRow create(TenantActor actor, String name) {
         roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         UUID id = UuidV7.generate();

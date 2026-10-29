@@ -42,6 +42,11 @@ public class DepartmentService {
         return departments.list(actor.tenantId());
     }
 
+    /** 全部部门，按路径排序，不校验权限；供角色编辑中的条件编辑器选择部门。 */
+    public List<DepartmentRow> all(UUID tenantId) {
+        return departments.list(tenantId);
+    }
+
     /** 在上级之下新建部门；{@code parentId} 为 null 时为根部门。 */
     public DepartmentRow create(TenantActor actor, String name, UUID parentId) {
         roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);

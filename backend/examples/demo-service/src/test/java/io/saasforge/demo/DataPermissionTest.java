@@ -35,7 +35,7 @@ import org.testcontainers.utility.MountableFile;
 
 /**
  * 订单按当前成员的 Data Scope 过滤（工单 18）：不同部门、不同角色组合的成员看到的订单集合，越权更新与删除，
- * 以及单对象校验与 SQL 过滤结论一致。
+ * 以及单对象校验与 SQL 过滤结论一致；编辑器保存的自定义条件同样生效（工单 19）。
  *
  * <p>部门树：{@code a}、其下级 {@code a.b} 与另一个顶级部门 {@code c}。每个成员先以「全部」范围、按自己的主部门创建一张订单，
  * 之后以新版本的明细（等同于 iam 调整角色或组织分配后换发 Token）按不同范围查询。
@@ -51,6 +51,16 @@ class DataPermissionTest {
     private static final UUID ERIN = UUID.fromString("019a0110-0000-7000-8000-0000000000f5");
     private static final Map<UUID, String> NAMES =
             Map.of(ALICE, "alice", BOB, "bob", CAROL, "carol", DAVE, "dave", ERIN, "erin");
+    // 金额各不相同，供自定义条件按金额过滤
+    private static final Map<UUID, Integer> AMOUNTS = Map.of(ALICE, 1, BOB, 2000, CAROL, 500, DAVE, 3000, ERIN, 1);
+    // 编辑器保存的「金额大于 1000 且属于本部门及下级」
+    private static final String LARGE_IN_MY_DEPARTMENTS = """
+            {"and": [
+              {"attr": "resource.amount", "op": "gt", "value": 1000},
+              {"attr": "resource.departmentPath", "op": "under", "value": {"ref": "subject.departmentPaths"}}
+            ]}""";
+    private static final String VIP_SEES_ALL = """
+            {"attr": "subject.attributes.vip", "op": "eq", "value": true}""";
     private static final Map<UUID, SubjectAttributes> DEPARTMENTS = Map.of(
             ALICE, inDepartments("a"),
             BOB, inDepartments("a.b"),
@@ -96,7 +106,11 @@ class DataPermissionTest {
         seeded = true;
         for (UUID member : NAMES.keySet()) {
             String token = publish(member, DEPARTMENTS.get(member), List.of(DataScope.ALL));
-            assertThat(status(token, HttpMethod.POST, "/orders", Map.of("title", NAMES.get(member), "amount", 1)))
+            assertThat(status(
+                            token,
+                            HttpMethod.POST,
+                            "/orders",
+                            Map.of("title", NAMES.get(member), "amount", AMOUNTS.get(member))))
                     .isEqualTo(201);
         }
     }
@@ -133,7 +147,7 @@ class DataPermissionTest {
         }
         Map<?, ?> untouched = order(ids.get("bob"));
         assertThat(untouched.get("title")).isEqualTo("bob");
-        assertThat(((Number) untouched.get("amount")).intValue()).isEqualTo(1);
+        assertThat(((Number) untouched.get("amount")).intValue()).isEqualTo(2000);
 
         // 范围内照常修改。
         assertThat(status(alice, HttpMethod.PUT, "/orders/" + ids.get("alice"), Map.of("title", "alice", "amount", 2)))
@@ -183,13 +197,58 @@ class DataPermissionTest {
         }
     }
 
+    @Test
+    void customConditionsSavedByTheEditorFilterTheListAndAgreeWithTheSingleObjectCheck() throws Exception {
+        // 「金额大于 1000 且属于本部门及下级」：Alice 在 a，下级 a.b 中只有 Bob 的订单超过 1000；Dave 的大额订单在 c。
+        assertVisiblePolicies(ALICE, DEPARTMENTS.get(ALICE), List.of(LARGE_IN_MY_DEPARTMENTS), "bob");
+        assertVisiblePolicies(DAVE, DEPARTMENTS.get(DAVE), List.of(LARGE_IN_MY_DEPARTMENTS), "dave");
+        assertVisiblePolicies(ERIN, SubjectAttributes.NONE, List.of(LARGE_IN_MY_DEPARTMENTS));
+
+        // 引用扩展属性的条件按发布的属性类型加载：VIP 看到全部，非 VIP 只剩另一个角色的条件。
+        SubjectAttributes vip = withAttributes(DEPARTMENTS.get(ALICE), Map.of("vip", true));
+        SubjectAttributes regular = withAttributes(DEPARTMENTS.get(ALICE), Map.of("vip", false));
+        assertVisiblePolicies(
+                ALICE, vip, List.of(LARGE_IN_MY_DEPARTMENTS, VIP_SEES_ALL), "alice", "bob", "carol", "dave", "erin");
+        assertVisiblePolicies(ALICE, regular, List.of(LARGE_IN_MY_DEPARTMENTS, VIP_SEES_ALL), "bob");
+        // 扩展属性定义已删除（明细中没有其类型）：该条策略按拒绝处理，不放行也不报错。
+        var untyped = new SubjectAttributes(Set.of("a"), "a", Set.of(), Map.of("vip", true), Map.of());
+        assertVisiblePolicies(ALICE, untyped, List.of(LARGE_IN_MY_DEPARTMENTS, VIP_SEES_ALL), "bob");
+
+        List<Map<?, ?>> all = list(publish(CAROL, DEPARTMENTS.get(CAROL), List.of(DataScope.ALL)));
+        for (SubjectAttributes subject : List.of(DEPARTMENTS.get(ALICE), vip, regular, inDepartments("c", "a.b"))) {
+            long version = nextVersion;
+            String token = publishPolicies(ALICE, subject, List.of(LARGE_IN_MY_DEPARTMENTS, VIP_SEES_ALL));
+            Set<Object> bySql =
+                    list(token).stream().map(order -> order.get("id")).collect(Collectors.toSet());
+            Set<Object> inMemory = new HashSet<>();
+            asMember(ALICE, version, () -> {
+                for (Map<?, ?> order : all) {
+                    var attributes = new HashMap<String, Object>();
+                    attributes.put("ownerId", UUID.fromString((String) order.get("ownerId")));
+                    attributes.put("departmentPath", order.get("departmentPath"));
+                    attributes.put("amount", order.get("amount"));
+                    if (dataPermission.permits("order", attributes)) inMemory.add(order.get("id"));
+                }
+            });
+            assertThat(inMemory).as("%s", subject).isEqualTo(bySql);
+        }
+    }
+
     private void assertVisible(UUID member, SubjectAttributes subject, List<DataScope> scopes, String... titles)
             throws Exception {
-        String token = publish(member, subject, scopes);
+        assertVisibleWith(publish(member, subject, scopes), NAMES.get(member) + " " + scopes, titles);
+    }
+
+    private void assertVisiblePolicies(UUID member, SubjectAttributes subject, List<String> policies, String... titles)
+            throws Exception {
+        assertVisibleWith(publishPolicies(member, subject, policies), NAMES.get(member) + " " + subject, titles);
+    }
+
+    private void assertVisibleWith(String token, String description, String... titles) throws Exception {
         var envelope = exchange(token, HttpMethod.GET, "/orders?size=100", null);
         List<Object> visible = ((List<?>) envelope.get("data"))
                 .stream().<Object>map(order -> ((Map<?, ?>) order).get("title")).toList();
-        assertThat(visible).as("%s %s", NAMES.get(member), scopes).containsExactlyInAnyOrder((Object[]) titles);
+        assertThat(visible).as(description).containsExactlyInAnyOrder((Object[]) titles);
         // 总数与列表经同一过滤，分页信息不泄露范围外的数据量。
         assertThat(((Map<?, ?>) ((Map<?, ?>) envelope.get("meta")).get("page")).get("totalElements"))
                 .isEqualTo(titles.length);
@@ -221,6 +280,14 @@ class DataPermissionTest {
         return TestTokens.forMembership(TENANT, member, version);
     }
 
+    /** 以新版本发布成员明细（全部订单权限码与给定的订单策略 JSON），返回该版本的 Token。 */
+    private String publishPolicies(UUID member, SubjectAttributes subject, List<String> policies) throws Exception {
+        long version = nextVersion++;
+        TestGrants.publishPolicies(
+                redisTemplate, TENANT, member, version, TestGrants.ALL_ORDER_PERMISSIONS, subject, policies);
+        return TestTokens.forMembership(TENANT, member, version);
+    }
+
     /** 模拟已认证的成员请求线程，供直接调用单对象校验。 */
     private static void asMember(UUID member, long version, Runnable task) {
         Jwt jwt = Jwt.withTokenValue("token")
@@ -241,7 +308,16 @@ class DataPermissionTest {
     private static SubjectAttributes inDepartments(String primary, String... others) {
         var paths = new HashSet<>(List.of(others));
         paths.add(primary);
-        return new SubjectAttributes(paths, primary, Set.of(), Map.of());
+        return new SubjectAttributes(paths, primary, Set.of(), Map.of(), Map.of());
+    }
+
+    private static SubjectAttributes withAttributes(SubjectAttributes subject, Map<String, Object> attributes) {
+        return new SubjectAttributes(
+                subject.departmentPaths(),
+                subject.primaryDepartmentPath(),
+                subject.positionIds(),
+                attributes,
+                Map.of("vip", "boolean"));
     }
 
     private int status(String token, HttpMethod method, String uri, Object body) throws Exception {

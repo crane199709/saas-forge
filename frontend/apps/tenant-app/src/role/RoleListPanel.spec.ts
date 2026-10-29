@@ -7,6 +7,8 @@ import RoleListPanel from './RoleListPanel.vue'
 import {
   createRoleApi,
   groupPermissions,
+  type ConditionJson,
+  type ConditionOptions,
   type DataResource,
   type GrantablePermission,
   type Role,
@@ -31,8 +33,32 @@ const dataResources: DataResource[] = [
     name: '订单',
     service: 'demo-service',
     scopes: ['self', 'department', 'department_and_below', 'all'],
+    attributes: [
+      { name: 'resource.ownerId', label: '归属成员', type: 'uuid', multiValued: false },
+      { name: 'resource.departmentPath', label: '归属部门', type: 'ltree', multiValued: false },
+      { name: 'resource.amount', label: '金额', type: 'number', multiValued: false },
+    ],
   },
 ]
+
+const conditionOptions: ConditionOptions = {
+  subject: [
+    { name: 'subject.membershipId', label: null, type: 'uuid', multiValued: false },
+    { name: 'subject.departmentPaths', label: null, type: 'ltree', multiValued: true },
+    { name: 'subject.attributes.vip', label: 'VIP', type: 'boolean', multiValued: false },
+  ],
+  environment: [{ name: 'env.now', label: null, type: 'number', multiValued: false }],
+  departments: [{ value: 'a', label: '总部' }],
+  positions: [],
+}
+
+// 编辑器保存的「金额大于 1000 且属于本部门及下级」
+const largeInMyDepartments: ConditionJson = {
+  and: [
+    { attr: 'resource.amount', op: 'gt', value: 1000 },
+    { attr: 'resource.departmentPath', op: 'under', value: { ref: 'subject.departmentPaths' } },
+  ],
+}
 
 const roles: Role[] = [
   {
@@ -59,6 +85,16 @@ const roles: Role[] = [
       { resource: 'retired', scope: 'all' },
     ],
   },
+  {
+    id: 'r-large',
+    code: 'large-orders',
+    name: '大额订单',
+    builtin: false,
+    owner: false,
+    memberCount: 1,
+    permissions: ['order:read'],
+    dataPolicies: [{ resource: 'order', scope: 'custom', condition: largeInMyDepartments }],
+  },
 ]
 
 function ok(data: unknown) {
@@ -77,6 +113,7 @@ function mountPanel(fetcher: ReturnType<typeof vi.fn>) {
       roles,
       permissions,
       dataResources,
+      conditionOptions,
     },
     global: { plugins: [i18n, ElementPlus] },
     attachTo: document.body,
@@ -189,4 +226,134 @@ it('新建角色时授权与数据范围一次提交', async () => {
     permissions: ['order:read'],
     dataPolicies: [{ resource: 'order', scope: 'department_and_below' }],
   })
+})
+
+it('自定义条件读回编辑器，修改取值后整体提交表达式树', async () => {
+  const fetcher = vi.fn().mockImplementation(() => Promise.resolve(ok(null)))
+  const wrapper = mountPanel(fetcher)
+  expect(wrapper.get('[data-testid="role-scopes-large-orders"]').text()).toBe('订单：自定义条件')
+
+  await wrapper.get('[data-testid="role-edit-large-orders"]').trigger('click')
+  await flushPromises()
+  const editor = document.querySelector('[data-testid="condition-order"]')!
+  expect(editor.querySelectorAll('[data-testid="condition-rule"]')).toHaveLength(2)
+  // 未改动时不提交数据范围，持有者的 Token 不失效
+  ;(document.querySelector('[data-testid="role-save"]') as HTMLElement).click()
+  await flushPromises()
+  expect(fetcher.mock.calls.map(([url]) => url)).not.toContain(
+    `${location.origin}/iam/roles/r-large/data-policies`,
+  )
+
+  await wrapper.get('[data-testid="role-edit-large-orders"]').trigger('click')
+  await flushPromises()
+  const amount = document.querySelector(
+    '[data-testid="condition-order"] [data-testid="condition-value"] input',
+  ) as HTMLInputElement
+  amount.value = '5000'
+  amount.dispatchEvent(new Event('input'))
+  amount.dispatchEvent(new Event('change'))
+  await flushPromises()
+  // 外层改为「任一满足」
+  ;(document.querySelector('[data-testid="condition-logic-or"] input') as HTMLElement).click()
+  await flushPromises()
+  ;(document.querySelector('[data-testid="role-save"]') as HTMLElement).click()
+  await flushPromises()
+
+  const [url, init] = fetcher.mock.calls.at(-1)!
+  expect(url).toBe(`${location.origin}/iam/roles/r-large/data-policies`)
+  expect(JSON.parse(init.body)).toEqual({
+    policies: [
+      {
+        resource: 'order',
+        scope: 'custom',
+        condition: {
+          or: [
+            { attr: 'resource.amount', op: 'gt', value: 5000 },
+            {
+              attr: 'resource.departmentPath',
+              op: 'under',
+              value: { ref: 'subject.departmentPaths' },
+            },
+          ],
+        },
+      },
+    ],
+  })
+})
+
+it('新选自定义条件时先填完条件才能保存', async () => {
+  const wrapper = mountPanel(vi.fn())
+
+  await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
+  await flushPromises()
+  ;(document.querySelector('[data-testid="scope-order-custom"] input') as HTMLElement).click()
+  await flushPromises()
+
+  expect(
+    document.querySelectorAll('[data-testid="condition-order"] [data-testid="condition-rule"]'),
+  ).toHaveLength(1)
+  expect(document.querySelector('[data-testid="condition-order"]')!.textContent).toContain('请填完')
+  expect((document.querySelector('[data-testid="role-save"]') as HTMLButtonElement).disabled).toBe(
+    true,
+  )
+  ;(document.querySelector('[data-testid="condition-add-group"]') as HTMLElement).click()
+  await flushPromises()
+  expect(
+    document.querySelectorAll('[data-testid="condition-order"] [data-testid="condition-group"]'),
+  ).toHaveLength(2)
+})
+
+it('预览以所选成员对样例数据求值并展示命中情况', async () => {
+  const fetcher = vi.fn().mockImplementation((url: string) => {
+    if (url.includes('/memberships'))
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            code: 'ok',
+            httpStatus: 200,
+            data: [
+              {
+                membershipId: 'm-1',
+                account: 'alice',
+                displayName: 'Alice',
+                status: 'active',
+                roleIds: [],
+              },
+            ],
+            meta: { page: { number: 1, size: 100, totalElements: 1, totalPages: 1 } },
+            traceId: 't',
+          }),
+        ),
+      )
+    return Promise.resolve(
+      ok({ context: { 'subject.departmentPaths': ['a'], 'env.now': 1 }, matches: [true] }),
+    )
+  })
+  const wrapper = mountPanel(fetcher)
+
+  await wrapper.get('[data-testid="role-edit-large-orders"]').trigger('click')
+  await flushPromises()
+  ;(document.querySelector('[data-testid="preview-order"]') as HTMLElement).click()
+  await flushPromises()
+  const amount = document.querySelector(
+    '[data-testid="preview-amount-0"] input',
+  ) as HTMLInputElement
+  amount.value = '2000'
+  amount.dispatchEvent(new Event('input'))
+  amount.dispatchEvent(new Event('change'))
+  await flushPromises()
+  ;(document.querySelector('[data-testid="preview-run"]') as HTMLElement).click()
+  await flushPromises()
+
+  const [url, init] = fetcher.mock.calls.at(-1)!
+  expect(url).toBe(`${location.origin}/iam/roles/data-policies/preview`)
+  expect(JSON.parse(init.body)).toEqual({
+    policy: { resource: 'order', scope: 'custom', condition: largeInMyDepartments },
+    membershipId: 'm-1',
+    samples: [{ amount: 2000 }],
+  })
+  expect(document.querySelector('[data-testid="preview-result-0"]')!.textContent).toContain('命中')
+  expect(document.querySelector('[data-testid="preview-context"]')!.textContent).toContain(
+    '所在部门',
+  )
 })

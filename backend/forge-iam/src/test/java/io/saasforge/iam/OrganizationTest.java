@@ -138,6 +138,8 @@ class OrganizationTest {
         assertThat(subject.primaryDepartmentPath()).isEqualTo(eastPath);
         assertThat(subject.positionIds()).containsExactly(UUID.fromString(manager));
         assertThat(subject.attributes()).containsEntry("level", 3);
+        // 定义的类型随主体属性发布，业务服务据此加载引用扩展属性的 Data Policy。
+        assertThat(subject.attributeTypes()).containsEntry("level", "number");
 
         // 移动上级部门改变了成员所在部门的路径：版本递增，主体属性随之更新。
         before = version(MEMBER);

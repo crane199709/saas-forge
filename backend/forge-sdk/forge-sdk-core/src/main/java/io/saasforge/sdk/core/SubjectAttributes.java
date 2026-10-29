@@ -1,5 +1,6 @@
 package io.saasforge.sdk.core;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -12,21 +13,25 @@ import java.util.UUID;
  * @param primaryDepartmentPath 主部门路径；未分配部门时为 null
  * @param positionIds 担任的 Position
  * @param attributes Extended Attribute 值，按属性编码；值为 {@link String}、{@link Number} 或 {@link Boolean}
+ * @param attributeTypes 租户全部 Extended Attribute 定义的类型（{@code string number boolean}），按属性编码；
+ *     业务服务据此校验引用扩展属性的 Data Policy，未填写的属性也要有类型
  */
 public record SubjectAttributes(
         Set<String> departmentPaths,
         String primaryDepartmentPath,
         Set<UUID> positionIds,
-        Map<String, Object> attributes) {
+        Map<String, Object> attributes,
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) Map<String, String> attributeTypes) {
 
     /** 未分配任何部门、岗位与扩展属性。 */
-    public static final SubjectAttributes NONE = new SubjectAttributes(Set.of(), null, Set.of(), Map.of());
+    public static final SubjectAttributes NONE = new SubjectAttributes(Set.of(), null, Set.of(), Map.of(), Map.of());
 
     /** 复制为不可变集合；缺失的集合视为空，兼容不带主体属性的旧明细。 */
     public SubjectAttributes {
         departmentPaths = departmentPaths == null ? Set.of() : Set.copyOf(departmentPaths);
         positionIds = positionIds == null ? Set.of() : Set.copyOf(positionIds);
         attributes = attributes == null ? Map.of() : Map.copyOf(attributes);
+        attributeTypes = attributeTypes == null ? Map.of() : Map.copyOf(attributeTypes);
     }
 
     /**

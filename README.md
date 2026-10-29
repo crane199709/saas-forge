@@ -107,7 +107,7 @@ pnpm dev:tenant
 
 platform-console 运行在 <http://localhost:5173>，tenant-app 运行在 <http://localhost:5174>。
 
-租户登录的演示账号、IAM `demo` profile、签名密钥和接口说明见 [Tenant Realm 最小登录](docs/tenant-login.md)。演示数据需显式启用，默认迁移不插入已知密码的身份。运营登录（Platform Realm）的演示账号与差异见 [Platform Realm 与运营登录](docs/platform-login.md)。业务服务声明 Data Resource、角色上的 Data Scope 与默认拒绝规则见 [数据权限](docs/data-permission.md)。
+租户登录的演示账号、IAM `demo` profile、签名密钥和接口说明见 [Tenant Realm 最小登录](docs/tenant-login.md)。演示数据需显式启用，默认迁移不插入已知密码的身份。运营登录（Platform Realm）的演示账号与差异见 [Platform Realm 与运营登录](docs/platform-login.md)。业务服务声明 Data Resource、角色上的 Data Scope 与自定义条件、默认拒绝规则见 [数据权限](docs/data-permission.md)。
 
 ## 构建与测试
 

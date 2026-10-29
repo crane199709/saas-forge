@@ -6,12 +6,14 @@ import java.util.regex.Pattern;
 /**
  * 一个可在 Data Policy 中引用的属性。
  *
- * @param name 带命名空间的全名，如 {@code subject.departmentPaths}、{@code resource.ownerId}
+ * @param name 带命名空间的全名，如 {@code subject.departmentPaths}、{@code subject.attributes.level}、{@code resource.ownerId}
  * @param type 值类型
  * @param multiValued 是否为集合值；资源侧对应 PostgreSQL 数组列
  */
 public record AttributeDefinition(String name, AttributeType type, boolean multiValued) {
-    private static final Pattern NAME = Pattern.compile("(subject|resource|env)\\.[A-Za-z_][A-Za-z0-9_]*");
+    // Extended Attribute 多一级：subject.attributes.<编码>
+    private static final Pattern NAME =
+            Pattern.compile("(subject|resource|env)\\.[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)?");
 
     /** 校验命名空间，属性名不合法时抛出 {@link IllegalArgumentException}。 */
     public AttributeDefinition {

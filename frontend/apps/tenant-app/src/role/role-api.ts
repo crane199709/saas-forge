@@ -19,17 +19,54 @@ export interface Role {
 /** Data Scope 预设；未配置的数据资源对持有者不可见。 */
 export type DataScopeName = 'self' | 'department' | 'department_and_below' | 'all'
 
-export interface DataPolicy {
-  resource: string
-  scope: DataScopeName
+/** 预设与自定义条件二选一；`custom` 时 `condition` 为 JSON 表达式树。 */
+export type DataPolicy =
+  | { resource: string; scope: DataScopeName }
+  | { resource: string; scope: 'custom'; condition: ConditionJson }
+
+/** 后端 ABAC 表达式树（ADR-0006）：逻辑节点或比较节点。 */
+export type ConditionJson =
+  | { and: ConditionJson[] }
+  | { or: ConditionJson[] }
+  | { not: ConditionJson }
+  | { attr: string; op: string; value?: unknown }
+
+export type ConditionAttributeType = 'string' | 'number' | 'boolean' | 'uuid' | 'ltree'
+
+/** 条件可引用的属性；平台提供的主体与环境属性没有 `label`，按全名翻译。 */
+export interface ConditionAttribute {
+  name: string
+  label: string | null
+  type: ConditionAttributeType
+  multiValued: boolean
 }
 
-/** 业务服务在资源清单中声明的数据资源，`scopes` 是它支持的预设。 */
+/** 业务服务在资源清单中声明的数据资源，`scopes` 是它支持的预设，`attributes` 是自定义条件可引用的资源属性。 */
 export interface DataResource {
   code: string
   name: string
   service: string
   scopes: DataScopeName[]
+  attributes: ConditionAttribute[]
+}
+
+export interface ValueOption {
+  value: string
+  label: string
+}
+
+/** 与数据资源无关的条件编辑选项：主体属性（含扩展属性）、环境属性与部门、岗位取值。 */
+export interface ConditionOptions {
+  subject: ConditionAttribute[]
+  environment: ConditionAttribute[]
+  departments: ValueOption[]
+  positions: ValueOption[]
+}
+
+/** 预览结果：`matches` 与样例数据逐条对应，`context` 是求值时该成员的主体与环境属性。 */
+export interface PolicyPreview {
+  context: Record<string, unknown>
+  matches: boolean[]
 }
 
 export interface GrantablePermission {
@@ -87,6 +124,9 @@ export function createRoleApi(client: Pick<TenantClient, 'api' | 'page'>) {
     roles: () => send<Role[]>('GET', ''),
     permissions: () => send<GrantablePermission[]>('GET', '/permissions'),
     dataResources: () => send<DataResource[]>('GET', '/data-resources'),
+    conditionOptions: () => send<ConditionOptions>('GET', '/condition-options'),
+    preview: (policy: DataPolicy, membershipId: string, samples: Record<string, unknown>[]) =>
+      send<PolicyPreview>('POST', '/data-policies/preview', { policy, membershipId, samples }),
     createRole: (code: string, name: string, permissions: string[], dataPolicies: DataPolicy[]) =>
       send<Role>('POST', '', { code, name, permissions, dataPolicies }),
     renameRole: (id: string, name: string) => send<null>('PUT', `/${id}`, { name }),

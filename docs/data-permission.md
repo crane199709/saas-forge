@@ -1,6 +1,6 @@
-# 数据权限（Data Scope）
+# 数据权限（Data Scope 与自定义条件）
 
-工单：[18](../.scratch/saas-forge-mvp/issues/18-data-permission-end-to-end.md)。设计见 [ADR-0006](adr/0006-rbac-functional-abac-data-permissions.md)。功能权限（Permission Code）决定能否调用接口，数据权限决定能看到、改动哪些行。
+工单：[18](../.scratch/saas-forge-mvp/issues/18-data-permission-end-to-end.md)、[19](../.scratch/saas-forge-mvp/issues/19-custom-condition-editor.md)。设计见 [ADR-0006](adr/0006-rbac-functional-abac-data-permissions.md)。功能权限（Permission Code）决定能否调用接口，数据权限决定能看到、改动哪些行。
 
 ## 业务服务：声明 Data Resource
 
@@ -48,9 +48,39 @@ tenant-app「角色管理」中编辑自定义角色，为每个数据资源选�
 
 | 接口（网关路径） | 说明 |
 | --- | --- |
-| `GET /iam/roles/data-resources` | 各服务声明的数据资源及其可用预设 `scopes` |
-| `POST /iam/roles` | 新建角色时可带 `dataPolicies: [{resource, scope}]`，与权限码授权同一事务写入；范围不合法时整个新建失败 |
-| `PUT /iam/roles/{id}/data-policies` | JSON `policies: [{resource, scope}]`，整体替换；`scope` 取 `self department department_and_below all`。资源未声明、重复或不支持该预设时 400 `role.invalidDataPolicy`，预置角色 409 `role.builtin` |
-| `GET /iam/roles` | 每个角色带 `dataPolicies` |
+| `GET /iam/roles/data-resources` | 各服务声明的数据资源，及其可用预设 `scopes` 与自定义条件可引用的资源属性 `attributes` |
+| `GET /iam/roles/condition-options` | 自定义条件可引用的主体属性 `subject`（含本租户扩展属性）、环境属性 `environment`，以及部门、岗位取值 |
+| `POST /iam/roles` | 新建角色时可带 `dataPolicies: [{resource, scope, condition?}]`，与权限码授权同一事务写入；范围不合法时整个新建失败 |
+| `PUT /iam/roles/{id}/data-policies` | JSON `policies: [{resource, scope, condition?}]`，整体替换；`scope` 取 `self department department_and_below all`，或 `custom` 并带 `condition`。资源未声明、重复或不支持该预设时 400 `role.invalidDataPolicy`，条件不合法时 400 `role.invalidDataCondition`，预置角色 409 `role.builtin` |
+| `POST /iam/roles/data-policies/preview` | JSON `{policy, membershipId, samples}`，以该成员当前的主体属性对样例数据逐条求值，返回 `matches` 与求值用的 `context`，不保存 |
+| `GET /iam/roles` | 每个角色带 `dataPolicies`，自定义条件带 `condition` |
 
 范围变更后，持有该角色的成员 version 递增，旧 Token 立即失效，刷新后按新范围生效；成员的部门分配变化同样即时生效（工单 13）。业务服务新声明或移除的数据资源在成员下一次刷新 Token 后生效，移除的资源上的策略保留但不再发布。
+
+## 自定义条件
+
+除预设外，可以为数据资源选择「自定义条件」，在可视化编辑器中用「全部满足 / 任一满足」的条件组嵌套组合条件，条件组可取反。每个角色在每个资源上仍只有一条策略，预设与自定义条件二选一；「本部门及下级」等预设也能在编辑器中表达，便于与其他条件组合，如「金额大于 1000 且属于本部门及下级」：
+
+```json
+{"and": [
+  {"attr": "resource.amount", "op": "gt", "value": 1000},
+  {"attr": "resource.departmentPath", "op": "under", "value": {"ref": "subject.departmentPaths"}}
+]}
+```
+
+可引用的属性：
+
+| 命名空间 | 来源 |
+| --- | --- |
+| `resource.<编码>` | 业务服务在 Resource Manifest 中声明的资源属性 |
+| `subject.membershipId` `subject.departmentPaths` `subject.primaryDepartmentPath` `subject.positionIds` | 组织模型：当前成员、所在部门（主部门与兼任部门）、主部门、担任岗位 |
+| `subject.attributes.<编码>` | 本租户定义的 Extended Attribute，类型 `string number boolean` |
+| `env.now` | 请求时刻的 Unix 时间戳（秒） |
+
+编辑器按属性类型限制操作符与取值控件：大小比较只用于数值，「在部门及下级中」只用于部门路径，集合属性（所在部门、担任岗位）只能判断包含或为空；取值可以是固定值，也可以引用类型相符的成员或环境属性。
+
+保存前 iam 按与业务服务 SDK 相同的属性目录校验条件，结构错误、属性未声明、操作符不适用或取值类型不符时返回 400 `role.invalidDataCondition`，提示出错节点的位置（JSON Pointer）与原因。条件 JSON 不超过 8192 个字符。
+
+「预览命中情况」选择一个成员并填写样例数据，iam 以该成员当前的组织属性、扩展属性与此刻的环境属性逐条求值，与业务服务的单对象校验使用同一个求值器。属性为空的比较按 SQL 三值逻辑视为不命中。
+
+扩展属性的定义类型随成员的主体属性一起发布。删除被条件引用的扩展属性后，该条件在成员的明细重新发布后加载失败，业务服务按拒绝处理并记录错误日志，不会放宽可见范围；之后保存该角色的数据范围也会被拒绝，需要在角色上改掉该条件。
