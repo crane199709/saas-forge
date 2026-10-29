@@ -94,12 +94,8 @@ async function save() {
   const policies = policiesOf(draft.value.scopes)
   const done = await run(async () => {
     if (!role) {
-      const created = await props.api.createRole(
-        draft.value.code.trim(),
-        name,
-        draft.value.permissions,
-      )
-      if (policies.length > 0) await props.api.replaceDataPolicies(created.id, policies)
+      // 授权与数据范围随新建一次提交，后端同一事务写入
+      await props.api.createRole(draft.value.code.trim(), name, draft.value.permissions, policies)
       return
     }
     if (name !== role.name) await props.api.renameRole(role.id, name)

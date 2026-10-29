@@ -26,6 +26,8 @@
 
 引入 `forge-sdk-abac` 后，SDK 对该表的查询、更新与删除（含 `BaseMapper` 方法、`LambdaQueryWrapper` 与 mapper XML，JOIN 与子查询中的表也算）自动追加当前成员的数据权限条件，值一律参数绑定。INSERT 不过滤：创建对象时由业务代码设置归属，并用 `DataPermission.check(resource, attributes)` 校验新对象在自己的数据范围内（内存求值，与 SQL 过滤结论一致），否则 403 `auth.forbidden`。`ltree` 列写入时在实体字段上使用 `@TableField(typeHandler = LtreeTypeHandler.class)`。
 
+数据资源表上的 SQL 不要使用 jsonb 的 `?`、`?|`、`?&` 运算符：JDBC 把 `?` 当作占位符，转义写法 `??` 又无法被 SQL 解析器（租户与数据权限拦截器共用）识别，语句会直接报错。改用 `jsonb_exists(col, 'key')`、`jsonb_exists_any`/`jsonb_exists_all` 或 `col @> '["key"]'`。
+
 不应受数据权限过滤的 Mapper 方法（如按租户的批量清理）标注 `@InterceptorIgnore(dataPermission = "true")`。
 
 ## 默认行为
@@ -47,6 +49,7 @@ tenant-app「角色管理」中编辑自定义角色，为每个数据资源选�
 | 接口（网关路径） | 说明 |
 | --- | --- |
 | `GET /iam/roles/data-resources` | 各服务声明的数据资源及其可用预设 `scopes` |
+| `POST /iam/roles` | 新建角色时可带 `dataPolicies: [{resource, scope}]`，与权限码授权同一事务写入；范围不合法时整个新建失败 |
 | `PUT /iam/roles/{id}/data-policies` | JSON `policies: [{resource, scope}]`，整体替换；`scope` 取 `self department department_and_below all`。资源未声明、重复或不支持该预设时 400 `role.invalidDataPolicy`，预置角色 409 `role.builtin` |
 | `GET /iam/roles` | 每个角色带 `dataPolicies` |
 

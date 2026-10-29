@@ -63,12 +63,16 @@ class RoleController {
                 .toList());
     }
 
-    @Operation(summary = "新建自定义角色并授予权限码")
+    @Operation(summary = "新建自定义角色，同时授予权限码并设置 Data Policy")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     ApiResponse<RoleResponse> create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CreateRoleRequest request) {
-        return ApiResponse.created(RoleResponse.from(
-                roles.create(TenantActor.of(jwt), request.code(), request.name().strip(), request.permissions())));
+        return ApiResponse.created(RoleResponse.from(roles.create(
+                TenantActor.of(jwt),
+                request.code(),
+                request.name().strip(),
+                request.permissions(),
+                toPolicies(request.dataPolicies()))));
     }
 
     @Operation(summary = "自定义角色改名；预置角色不可修改")
@@ -91,12 +95,7 @@ class RoleController {
     @PutMapping("/{id}/data-policies")
     ApiResponse<Void> replaceDataPolicies(
             @AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @RequestBody DataPoliciesRequest request) {
-        roles.replaceDataPolicies(
-                TenantActor.of(jwt),
-                id,
-                request.policies().stream()
-                        .map(policy -> new DataPolicy(policy.resource(), policy.scope()))
-                        .toList());
+        roles.replaceDataPolicies(TenantActor.of(jwt), id, toPolicies(request.policies()));
         return ApiResponse.ok();
     }
 
@@ -132,10 +131,18 @@ class RoleController {
             String code,
 
             @NotBlank @Size(max = 120) String name,
-            List<String> permissions) {
+            List<String> permissions,
+            List<DataPolicyBody> dataPolicies) {
         CreateRoleRequest {
             permissions = permissions == null ? List.of() : permissions;
+            dataPolicies = dataPolicies == null ? List.of() : dataPolicies;
         }
+    }
+
+    private static List<DataPolicy> toPolicies(List<DataPolicyBody> bodies) {
+        return bodies.stream()
+                .map(policy -> new DataPolicy(policy.resource(), policy.scope()))
+                .toList();
     }
 
     record RenameRoleRequest(@NotBlank @Size(max = 120) String name) {}

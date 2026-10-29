@@ -164,6 +164,11 @@ final class DataPermissionInnerInterceptor extends BaseMultiTableInnerIntercepto
             } else if (c == '\'' || c == '"') {
                 quote = c;
                 out.append(c);
+            } else if (c == '$' && dollarQuoteEnd(sql, i) > i) {
+                // PostgreSQL 的 $tag$...$tag$ 字符串原样保留，其中的 ? 不是占位符
+                int end = dollarQuoteEnd(sql, i);
+                out.append(sql, i, end);
+                i = end - 1;
             } else if (c == '?') {
                 if (originalIndex >= original.size()) throw mismatch(sql);
                 mappings.add(original.get(originalIndex++));
@@ -184,6 +189,24 @@ final class DataPermissionInnerInterceptor extends BaseMultiTableInnerIntercepto
         if (originalIndex != original.size()) throw mismatch(sql);
         mpBs.sql(out.toString());
         mpBs.parameterMappings(mappings);
+    }
+
+    /**
+     * 从 {@code start} 处的 {@code $} 开始的 dollar 引号字符串的结束位置（不含）；不是 dollar 引号或没有闭合时返回 -1。
+     * 标签为空或标识符（不以数字开头），与 PostgreSQL 一致。
+     */
+    private static int dollarQuoteEnd(String sql, int start) {
+        int tagEnd = start + 1;
+        while (tagEnd < sql.length()
+                && (Character.isLetter(sql.charAt(tagEnd))
+                        || sql.charAt(tagEnd) == '_'
+                        || (tagEnd > start + 1 && Character.isDigit(sql.charAt(tagEnd))))) {
+            tagEnd++;
+        }
+        if (tagEnd >= sql.length() || sql.charAt(tagEnd) != '$') return -1;
+        String tag = sql.substring(start, tagEnd + 1);
+        int close = sql.indexOf(tag, tagEnd + 1);
+        return close < 0 ? -1 : close + tag.length();
     }
 
     private static IllegalStateException mismatch(String sql) {

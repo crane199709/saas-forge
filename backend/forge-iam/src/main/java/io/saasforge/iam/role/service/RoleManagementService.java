@@ -135,9 +135,12 @@ public class RoleManagementService {
         return permissions.activePermissions();
     }
 
-    public RoleDetail create(TenantActor actor, String code, String name, Collection<String> codes) {
+    /** 新建自定义角色，权限码授权与 Data Policy 同一事务写入；新角色还没有持有者，不需要递增版本。 */
+    public RoleDetail create(
+            TenantActor actor, String code, String name, Collection<String> codes, Collection<DataPolicy> policies) {
         requireManager(actor);
         Set<String> granted = requireActive(codes);
+        List<DataPolicy> scoped = requireValid(currentDefinitions(), policies);
         // 保留编码由数据库 CHECK 兜底，这里先拒绝，避免以 500 暴露约束错误。
         if (RoleService.ALL_PERMISSIONS.contains(code)) throw new ForgeException(RoleErrorCode.CODE_TAKEN, code);
         UUID id = UuidV7.generate();
@@ -146,8 +149,9 @@ public class RoleManagementService {
                 throw new ForgeException(RoleErrorCode.CODE_TAKEN, code);
             }
             if (!granted.isEmpty()) grants.grant(id, granted);
+            if (!scoped.isEmpty()) dataPolicies.insert(id, scoped);
         });
-        return RoleDetail.of(new RoleRow(id, code, name, false, false, 0), sorted(granted), List.of());
+        return RoleDetail.of(new RoleRow(id, code, name, false, false, 0), sorted(granted), scoped);
     }
 
     public void rename(TenantActor actor, UUID id, String name) {

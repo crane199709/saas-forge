@@ -87,8 +87,8 @@ export function createRoleApi(client: Pick<TenantClient, 'api' | 'page'>) {
     roles: () => send<Role[]>('GET', ''),
     permissions: () => send<GrantablePermission[]>('GET', '/permissions'),
     dataResources: () => send<DataResource[]>('GET', '/data-resources'),
-    createRole: (code: string, name: string, permissions: string[]) =>
-      send<Role>('POST', '', { code, name, permissions }),
+    createRole: (code: string, name: string, permissions: string[], dataPolicies: DataPolicy[]) =>
+      send<Role>('POST', '', { code, name, permissions, dataPolicies }),
     renameRole: (id: string, name: string) => send<null>('PUT', `/${id}`, { name }),
     replacePermissions: (id: string, permissions: string[]) =>
       send<null>('PUT', `/${id}/permissions`, { permissions }),

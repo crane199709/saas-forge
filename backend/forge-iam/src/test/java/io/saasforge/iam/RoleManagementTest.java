@@ -254,12 +254,39 @@ class RoleManagementTest {
                                 List.of("self", "all")));
 
         String own = createRole("ledger-own", "本人台账", List.of());
-        String department = createRole("ledger-department", "本部门台账", List.of());
+        // 新建角色时一并设置数据范围，与授权在同一事务写入；非法的范围让整个新建失败，不留下没有范围的角色。
+        assertThat(code(call(
+                        ADMIN,
+                        HttpMethod.POST,
+                        "/roles",
+                        Map.of(
+                                "code",
+                                "ledger-department",
+                                "name",
+                                "本部门台账",
+                                "dataPolicies",
+                                List.of(Map.of("resource", "memo", "scope", "department"))))))
+                .isEqualTo("role.invalidDataPolicy");
+        assertThat(roleIds(ADMIN)).doesNotContainKey("ledger-department");
+        var created = call(
+                ADMIN,
+                HttpMethod.POST,
+                "/roles",
+                Map.of(
+                        "code",
+                        "ledger-department",
+                        "name",
+                        "本部门台账",
+                        "dataPolicies",
+                        List.of(Map.of("resource", "ledger", "scope", "department"))));
+        assertThat(created.getStatusCode().value()).isEqualTo(201);
+        assertThat(((Map<?, ?>) created.getBody().get("data")).get("dataPolicies"))
+                .isEqualTo(List.of(Map.of("resource", "ledger", "scope", "department")));
+        String department = (String) ((Map<?, ?>) created.getBody().get("data")).get("id");
         assertThat(dataPolicies(own, List.of(Map.of("resource", "ledger", "scope", "self")))
                         .getStatusCode()
                         .value())
                 .isEqualTo(200);
-        dataPolicies(department, List.of(Map.of("resource", "ledger", "scope", "department")));
         assign(ADMIN, MEMBER, List.of(own, department));
 
         // 多个角色在同一资源上的策略都发布出去，由业务服务取并集；没有策略的资源（memo）不出现，即默认拒绝。

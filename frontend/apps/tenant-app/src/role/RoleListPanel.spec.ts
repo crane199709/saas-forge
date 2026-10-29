@@ -154,3 +154,39 @@ it('编辑角色时提交改动后的数据范围，未配置的数据资源不�
   await flushPromises()
   expect(JSON.parse(fetcher.mock.calls.at(-1)![1].body)).toEqual({ policies: [] })
 })
+
+it('新建角色时授权与数据范围一次提交', async () => {
+  const fetcher = vi.fn().mockImplementation(() => Promise.resolve(ok(roles[1])))
+  const wrapper = mountPanel(fetcher)
+
+  await wrapper.get('[data-testid="role-create"]').trigger('click')
+  await flushPromises()
+  // 对话框渲染在 body 上；el-input 把 data-testid 透传到原生 input
+  for (const [testid, value] of [
+    ['role-code', 'order-auditor'],
+    ['role-name', '订单审计'],
+  ]) {
+    const input = document.querySelector(`input[data-testid="${testid}"]`) as HTMLInputElement
+    input.value = value!
+    input.dispatchEvent(new Event('input'))
+  }
+  await flushPromises()
+  ;(document.querySelector('[data-testid="perm-order:read"] input') as HTMLElement).click()
+  await flushPromises()
+  ;(
+    document.querySelector('[data-testid="scope-order-department_and_below"] input') as HTMLElement
+  ).click()
+  await flushPromises()
+  ;(document.querySelector('[data-testid="role-save"]') as HTMLElement).click()
+  await flushPromises()
+
+  expect(fetcher).toHaveBeenCalledTimes(1)
+  const [url, init] = fetcher.mock.calls[0]!
+  expect(url).toBe(`${location.origin}/iam/roles`)
+  expect(JSON.parse(init.body)).toEqual({
+    code: 'order-auditor',
+    name: '订单审计',
+    permissions: ['order:read'],
+    dataPolicies: [{ resource: 'order', scope: 'department_and_below' }],
+  })
+})

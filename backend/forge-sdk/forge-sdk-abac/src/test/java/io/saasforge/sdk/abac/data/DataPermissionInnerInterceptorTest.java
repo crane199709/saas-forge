@@ -41,6 +41,27 @@ class DataPermissionInnerInterceptorTest {
     }
 
     @Test
+    void questionMarksInsideDollarQuotedStringsAreNotPlaceholders() {
+        var policy = new SqlParameter(AttributeType.UUID, false, UUID.randomUUID());
+        BoundSql boundSql = boundSql("SELECT ...", "id");
+
+        DataPermissionInnerInterceptor.bind(
+                "SELECT * FROM orders WHERE note = $$why?$$ AND tag = $t$a?b$t$ AND id = ? "
+                        + "AND (orders.owner_id = CAST(:forge_dp_0 AS uuid))",
+                List.of(policy),
+                PluginUtils.mpBoundSql(boundSql),
+                boundSql,
+                configuration);
+
+        assertThat(boundSql.getSql())
+                .isEqualTo("SELECT * FROM orders WHERE note = $$why?$$ AND tag = $t$a?b$t$ AND id = ? "
+                        + "AND (orders.owner_id = CAST(? AS uuid))");
+        assertThat(boundSql.getParameterMappings())
+                .extracting(ParameterMapping::getProperty)
+                .containsExactly("id", "__forge_dp_0");
+    }
+
+    @Test
     void placeholderCountThatDoesNotMatchTheMappingsIsRejected() {
         BoundSql boundSql = boundSql("SELECT ...", "id");
 
