@@ -5,7 +5,6 @@
   },
   "spike": {
     "home": "Shell 首页",
-    "loadError": "子应用加载失败，请检查入口配置后刷新。",
     "theme": "切换主题",
     "scope": "Shell 局部样式",
     "singleton": "{name}: singleton",
@@ -260,5 +259,11 @@
     "inviteSubmit": "发送邀请",
     "ok": "确定",
     "cancel": "取消"
+  },
+  "subApp": {
+    "loading": "正在加载子应用 {app}…",
+    "timeout": "子应用 {app} 加载超时，请稍后刷新重试。",
+    "loadError": "子应用 {app} 加载失败，请稍后刷新重试；仍失败请联系管理员检查应用注册表中的入口地址。",
+    "versionTooLow": "子应用 {app} 需要更高版本的共享依赖（{detail}），已拒绝加载，请联系管理员。"
   }
 }

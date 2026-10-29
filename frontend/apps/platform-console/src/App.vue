@@ -5,6 +5,8 @@ import { createPlatformClient, platformClientKey } from '@forge/sdk'
 import LoginPanel from './LoginPanel.vue'
 import PlanPanel from './plan/PlanPanel.vue'
 import { createPlanApi, type Plan } from './plan/plan-api'
+import SubAppPanel from './subapp/SubAppPanel.vue'
+import { createSubAppApi, type SubApp } from './subapp/sub-app-api'
 import TenantPanel from './tenant/TenantPanel.vue'
 import { createTenantApi } from './tenant/tenant-api'
 
@@ -14,8 +16,11 @@ const client = createPlatformClient(sessionStorage)
 provide(platformClientKey, client)
 const tenantApi = createTenantApi(client)
 const planApi = createPlanApi(client)
+const subAppApi = createSubAppApi(client)
 // 套餐面板加载或修改套餐后更新，租户面板据此选择与展示套餐
 const plans = ref<Plan[]>([])
+// 注册表加载或修改后更新，套餐面板据此提供可选的 Sub-App 编码
+const subApps = ref<SubApp[]>([])
 // 登录后才展示租户管理；会话失效时随之隐藏。
 const signedIn = ref(client.session() !== null)
 onUnmounted(client.onSessionChange((value) => (signedIn.value = value !== null)))
@@ -29,7 +34,14 @@ onUnmounted(client.onSessionChange((value) => (signedIn.value = value !== null))
         <LoginPanel />
       </el-card>
       <el-card v-if="signedIn" class="panel">
-        <PlanPanel :api="planApi" @loaded="(value) => (plans = value)" />
+        <SubAppPanel :api="subAppApi" @loaded="(value) => (subApps = value)" />
+      </el-card>
+      <el-card v-if="signedIn" class="panel">
+        <PlanPanel
+          :api="planApi"
+          :sub-apps="subApps.map((app) => app.code)"
+          @loaded="(value) => (plans = value)"
+        />
       </el-card>
       <el-card v-if="signedIn" class="panel">
         <TenantPanel :api="tenantApi" :plans="plans" />

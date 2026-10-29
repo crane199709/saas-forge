@@ -4,7 +4,8 @@ import { useI18n } from 'vue-i18n'
 import { ApiError } from '@forge/sdk'
 import type { CatalogPermission, Plan, PlanApi } from './plan-api'
 
-const props = defineProps<{ api: PlanApi }>()
+// subApps：App Registry 中已登记的编码，作为 Feature Pack 的选项；仍可输入尚未登记的编码，登记后随之生效
+const props = defineProps<{ api: PlanApi; subApps?: string[] }>()
 // 套餐列表变化时通知 Shell，租户面板据此选择与展示套餐
 const emit = defineEmits<{ loaded: [plans: Plan[]] }>()
 const { t } = useI18n()
@@ -243,7 +244,14 @@ onMounted(() => run(fetchPlans))
             :reserve-keyword="false"
             :placeholder="t('plan.subAppsHint')"
             data-testid="plan-sub-apps"
-          />
+          >
+            <el-option
+              v-for="code in props.subApps ?? []"
+              :key="code"
+              :label="code"
+              :value="code"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item :label="t('plan.memberQuota')">
           <el-input-number

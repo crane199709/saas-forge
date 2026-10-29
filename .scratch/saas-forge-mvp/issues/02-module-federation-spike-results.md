@@ -46,7 +46,7 @@ pnpm --filter @forge/demo-sub-app preview --host 127.0.0.1 --port 5175
 pnpm --filter @forge/demo-sub-app preview --outDir dist-v2 --host 127.0.0.1 --port 5176
 ```
 
-修改 `frontend/apps/tenant-app/dist/sub-apps.json` 的 `remoteEntry` 为 v2 地址，再刷新 Shell 即可切换；改回 5175 后刷新恢复 v1。不要重新构建 Shell，否则 public 中的默认配置会覆盖该文件。自动测试实际修改此文件，并在 finally 中恢复，不使用网络 mock。上述三个命令默认用于验收 production build；纯 Sub-App 页面不能独立挂载，因为它只消费 Shell 提供的依赖。生产 CDN 与完整开发 HMR 未作为本次验收对象。
+（工单 21 起 `sub-apps.json` 已删除，入口改由 App Registry 经 iam 下发，见 [docs/sub-app.md](../../../docs/sub-app.md)；以下为本工单当时的做法。）修改 `frontend/apps/tenant-app/dist/sub-apps.json` 的 `remoteEntry` 为 v2 地址，再刷新 Shell 即可切换；改回 5175 后刷新恢复 v1。不要重新构建 Shell，否则 public 中的默认配置会覆盖该文件。自动测试实际修改此文件，并在 finally 中恢复，不使用网络 mock。上述三个命令默认用于验收 production build；纯 Sub-App 页面不能独立挂载，因为它只消费 Shell 提供的依赖。生产 CDN 与完整开发 HMR 未作为本次验收对象。
 
 ## 浏览器证据
 

@@ -186,7 +186,7 @@ SDK 产出三类 Audit Event，经 RocketMQ 异步写入 PostgreSQL（按月分�
 - `@forge/sdk`：登录、Token 刷新、租户切换、请求拦截、`v-perm`、当前上下文读取。`@forge/ui`：共享组件与主题 token。
 - 路由由后端下发的菜单动态生成。
 - Sub-App 接入契约（ADR-0009）：
-  - 通过 `@module-federation/vite` 暴露 ESM `remoteEntry.js`，容器名保持稳定；Shell 从运行时配置读取入口地址，以 `registerRemotes([{ name, entry, type: 'module' }])` 注册后 `loadRemote`。入口不得编译进 Shell；工单 02 用外置 `sub-apps.json` 验证，工单 21 再替换为 App Registry。
+  - 通过 `@module-federation/vite` 暴露 ESM `remoteEntry.js`，容器名保持稳定；Shell 从运行时配置读取入口地址，以 `registerRemotes([{ name, entry, type: 'module' }])` 注册后 `loadRemote`。入口不得编译进 Shell；工单 02 用外置 `sub-apps.json` 验证，工单 21 起由 iam `GET /auth/access` 下发 App Registry 中当前环境的入口。容器名由应用编码得出：`forge_app_<编码，连字符换为下划线>`（`@forge/sdk` 的 `subAppContainerName`）。
   - Vue、Vue Router、Pinia、Element Plus、`@forge/ui`、`@forge/sdk` 以 singleton 共享；使用 Shell 的 i18n 时，`vue-i18n` 也须共享。两端声明 `requiredVersion`；当前验证使用相同精确版本，尚未验证混合版本兼容。Shell 提供依赖，Sub-App 设置 `import: false`，不自带回退副本；使用 `loaded-first` 共享策略。
   - Sub-App 暴露 `./sub-app`，导出 `routes: RouteRecordRaw[]`（相对路径、应用编码前缀的唯一路由名）；Shell 将其挂到 `/apps/<appCode>`，并在首次导航前完成注册。Sub-App 导出组件，不自行 `createApp`、`createRouter`、`createPinia` 或创建全局 i18n；通过 Shell 的 RouterView 渲染，可使用 RouterLink/useRouter 在本应用路由内导航，不得增删全局路由或改写 history。`sharedReferences` 仅为工单 02 的运行时引用检查接口，不是业务接入必需字段。
   - Sub-App 静态资源随入口部署，使用相对 `base`；跨源入口及 JS/CSS 资源须允许 Shell 源的 CORS。Shell 服务需提供 history fallback，使嵌套路由可直接刷新。Sub-App 本身无需提供独立挂载页。
@@ -195,7 +195,7 @@ SDK 产出三类 Audit Event，经 RocketMQ 异步写入 PostgreSQL（按月分�
   - 登录、Token 刷新与租户切换只由 Shell App 负责；Sub-App 经共享的 `@forge/sdk` 获取 Token 与租户上下文。
   - 切换租户时 Shell App 卸载全部 Sub-App、清空共享 Pinia 状态后重载。
   - 在 App Registry 注册：应用编码、各环境 `remoteEntry` 地址、版本、所需最低共享依赖版本。Shell App 按菜单与 Plan 允许的 Sub-App 决定加载。
-  - 隔离约定：scoped CSS 或 CSS Modules、使用主题 token、禁止修改全局样式、禁止注册/删除全局路由；写入脚手架与 lint。它是内部可信团队的协作约定，不是 JS/CSS 安全沙箱；脚手架与 lint 自动约束仍由后续工单落实。
+  - 隔离约定：scoped CSS 或 CSS Modules、使用主题 token、禁止修改全局样式、禁止注册/删除全局路由；由 `@forge/sub-app-kit` 的脚手架与 `forge-sub-app-lint` 落实（工单 21，见 docs/sub-app.md）。它是内部可信团队的协作约定，不是 JS/CSS 安全沙箱。
 - 第一期只支持简体中文，但文案一律走 i18n key。
 
 ## 13. 可观测性

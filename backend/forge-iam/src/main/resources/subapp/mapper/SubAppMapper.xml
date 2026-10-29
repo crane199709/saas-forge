@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.subapp.mapper.SubAppMapper">
+    <!-- 由 SubAppChanged 消费者写入，没有操作人。ON CONFLICT 的 WHERE 不成立时不更新，受影响行数为 0。 -->
+    <insert id="apply">
+        INSERT INTO sub_app (code, name, version, revision, created_at, updated_at, created_by, updated_by, deleted)
+        VALUES (#{code}, #{name}, #{version}, #{revision}, now(), now(), NULL, NULL, #{deleted})
+        ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, version = EXCLUDED.version,
+            revision = EXCLUDED.revision, deleted = EXCLUDED.deleted, updated_at = now(), updated_by = NULL
+        WHERE sub_app.revision &lt; EXCLUDED.revision
+    </insert>
+    <delete id="clearEntries">
+        DELETE FROM sub_app_entry WHERE code = #{code}
+    </delete>
+    <delete id="clearRequirements">
+        DELETE FROM sub_app_requirement WHERE code = #{code}
+    </delete>
+    <insert id="insertEntries">
+        INSERT INTO sub_app_entry (code, environment, remote_entry) VALUES
+        <foreach collection="rows" item="row" separator=",">(#{code}, #{row.key}, #{row.value})</foreach>
+    </insert>
+    <insert id="insertRequirements">
+        INSERT INTO sub_app_requirement (code, dependency, min_version) VALUES
+        <foreach collection="rows" item="row" separator=",">(#{code}, #{row.key}, #{row.value})</foreach>
+    </insert>
+    <select id="loadable" resultType="io.saasforge.iam.subapp.model.SubAppEntryRow">
+        SELECT a.code, a.name, a.version, e.remote_entry
+        FROM sub_app a JOIN sub_app_entry e ON e.code = a.code AND e.environment = #{environment}
+        WHERE NOT a.deleted AND a.code IN
+        <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
+        ORDER BY a.code
+    </select>
+    <select id="requirements" resultType="io.saasforge.iam.subapp.model.SubAppRequirementRow">
+        SELECT code, dependency, min_version FROM sub_app_requirement
+        WHERE code IN
+        <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
+        ORDER BY code, dependency
+    </select>
+</mapper>

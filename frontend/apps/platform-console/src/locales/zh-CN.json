@@ -96,5 +96,30 @@
     "edit": "编辑",
     "delete": "删除",
     "save": "保存"
+  },
+  "subApp": {
+    "title": "应用注册表",
+    "create": "登记 Sub-App",
+    "editTitle": "编辑 Sub-App：{name}",
+    "empty": "尚未登记 Sub-App",
+    "name": "名称",
+    "code": "编码",
+    "codeHint": "小写字母开头，如 billing；Shell 将其挂在 /apps/<编码> 下",
+    "version": "版本",
+    "entries": "各环境入口地址",
+    "environment": "环境",
+    "remoteEntry": "remoteEntry 地址",
+    "entriesHint": "修改地址即可切换版本，租户端刷新后生效，无需重新发布 Shell App",
+    "addEntry": "添加环境",
+    "requirements": "最低共享依赖版本",
+    "dependency": "包名",
+    "minVersion": "最低版本",
+    "requirementsHint": "Shell App 提供的版本低于此处时拒绝加载该 Sub-App",
+    "addRequirement": "添加依赖",
+    "removeRow": "移除",
+    "actions": "操作",
+    "edit": "编辑",
+    "delete": "删除",
+    "save": "保存"
   }
 }

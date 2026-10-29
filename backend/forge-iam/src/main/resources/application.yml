@@ -51,6 +51,9 @@ forge:
     # 邀请链接指向 tenant-app 的外部地址，邀请令牌以 invitation 参数附在其后
     invitation:
       accept-url: http://localhost:5174/invitations/accept
+    # 当前部署的环境名：从 App Registry 各环境的 remoteEntry 地址中选取这一个下发给 Shell App；部署时以 Nacos 或环境变量覆盖
+    sub-app:
+      environment: ${FORGE_ENVIRONMENT:local}
   mq:
     endpoints: ${FORGE_ROCKETMQ_ENDPOINTS:127.0.0.1:8081}
 mybatis-plus:

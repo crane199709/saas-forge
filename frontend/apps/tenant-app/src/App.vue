@@ -7,12 +7,15 @@ import { themeTokens } from '@forge/ui'
 import LoginPanel from './LoginPanel.vue'
 import TenantSwitcher from './TenantSwitcher.vue'
 import { menuSections } from './menu-routes'
+import { subAppHostKey } from './shell'
 
 const providedClient = inject(tenantClientKey)
 if (!providedClient) throw new Error('Shell must provide a TenantClient')
 const client = providedClient
 const access = useAccessControl()
-const sections = computed(() => menuSections(access.menus()))
+const host = inject(subAppHostKey)
+// 导航只列出已注册的 Sub-App：菜单可见、套餐允许且在当前环境登记了入口地址
+const sections = computed(() => menuSections(access.menus(), host?.codes() ?? new Set()))
 
 const { t } = useI18n()
 const route = useRoute()
@@ -42,7 +45,6 @@ watchEffect(() => {
     `color-mix(in srgb, ${color}, black 20%)`,
   )
 })
-defineProps<{ sharedChecks?: Record<string, boolean>; loadError?: string }>()
 </script>
 
 <template>
@@ -93,9 +95,9 @@ defineProps<{ sharedChecks?: Record<string, boolean>; loadError?: string }>()
           >{{ t('spike.theme') }}</el-button
         >
         <p class="scope-probe" data-testid="shell-scope">{{ t('spike.scope') }}</p>
-        <el-alert v-if="loadError" :title="loadError" type="error" :closable="false" />
-        <ul>
-          <li v-for="(same, name) in sharedChecks" :key="name" :data-testid="`shared-${name}`">
+        <!-- 工单 02 的诊断：Sub-App 导出 sharedReferences 时展示共享依赖是否为同一运行时实例 -->
+        <ul v-for="(checks, app) in host?.checks" :key="app">
+          <li v-for="(same, name) in checks" :key="name" :data-testid="`shared-${app}-${name}`">
             {{ t(same ? 'spike.singleton' : 'spike.duplicate', { name }) }}
           </li>
         </ul>

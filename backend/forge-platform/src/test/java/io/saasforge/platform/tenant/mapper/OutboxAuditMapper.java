@@ -18,4 +18,12 @@ public interface OutboxAuditMapper {
      * @return JSON 消息体
      */
     List<String> payloads(@Param("tenantId") UUID tenantId, @Param("tag") String tag);
+
+    /**
+     * 无租户上下文发布的某类事件的消息体，按写入顺序排列。不受 Data Policy 过滤。
+     *
+     * @param tag 事件类型名
+     * @return JSON 消息体
+     */
+    List<String> globalPayloads(@Param("tag") String tag);
 }

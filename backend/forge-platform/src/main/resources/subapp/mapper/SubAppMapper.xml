@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.platform.subapp.mapper.SubAppMapper">
+    <select id="nextRevision" resultType="long">
+        SELECT nextval('sub_app_revision')
+    </select>
+    <select id="lockExclusive" resultType="io.saasforge.platform.subapp.entity.SubApp">
+        SELECT * FROM sub_app WHERE id = #{id} AND NOT deleted FOR UPDATE
+    </select>
+    <select id="entries" resultType="io.saasforge.platform.subapp.model.SubAppRow">
+        SELECT environment AS key, remote_entry AS value FROM sub_app_entry
+        WHERE sub_app_id = #{subAppId} ORDER BY environment
+    </select>
+    <select id="requirements" resultType="io.saasforge.platform.subapp.model.SubAppRow">
+        SELECT dependency AS key, min_version AS value FROM sub_app_requirement
+        WHERE sub_app_id = #{subAppId} ORDER BY dependency
+    </select>
+    <delete id="clearEntries">
+        DELETE FROM sub_app_entry WHERE sub_app_id = #{subAppId}
+    </delete>
+    <delete id="clearRequirements">
+        DELETE FROM sub_app_requirement WHERE sub_app_id = #{subAppId}
+    </delete>
+    <insert id="insertEntries">
+        INSERT INTO sub_app_entry (sub_app_id, environment, remote_entry) VALUES
+        <foreach collection="rows" item="row" separator=",">(#{subAppId}, #{row.key}, #{row.value})</foreach>
+    </insert>
+    <insert id="insertRequirements">
+        INSERT INTO sub_app_requirement (sub_app_id, dependency, min_version) VALUES
+        <foreach collection="rows" item="row" separator=",">(#{subAppId}, #{row.key}, #{row.value})</foreach>
+    </insert>
+</mapper>

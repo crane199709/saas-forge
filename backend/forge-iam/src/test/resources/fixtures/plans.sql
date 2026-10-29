@@ -35,3 +35,17 @@ ON CONFLICT DO NOTHING;
 INSERT INTO membership_role (membership_id, role_id)
 VALUES ('019a0120-0000-7000-8000-0000000000a8', '019a0120-0000-7000-8000-0000000000a9')
 ON CONFLICT DO NOTHING;
+-- Sub-App 加载用例使用另一个租户：其 Plan 不影响上面租户「未登记 Plan 时不受限」的断言。
+INSERT INTO tenant (id, name) VALUES ('019a0120-0000-7000-8000-0000000000c0', 'Sub-App 测试租户') ON CONFLICT DO NOTHING;
+INSERT INTO identity (id, account, email, display_name, password_hash)
+SELECT '019a0120-0000-7000-8000-0000000000c1'::uuid, 'appadmin', 'appadmin@example.com', 'Sub-App 测试管理员', password_hash
+FROM identity WHERE account = 'demo' ON CONFLICT DO NOTHING;
+INSERT INTO membership (id, identity_id, tenant_id)
+VALUES ('019a0120-0000-7000-8000-0000000000c2', '019a0120-0000-7000-8000-0000000000c1', '019a0120-0000-7000-8000-0000000000c0')
+ON CONFLICT DO NOTHING;
+INSERT INTO role (id, tenant_id, code, name, builtin) VALUES
+('019a0120-0000-7000-8000-0000000000c3', '019a0120-0000-7000-8000-0000000000c0', 'tenant-admin', '租户管理员', true)
+ON CONFLICT DO NOTHING;
+INSERT INTO membership_role (membership_id, role_id)
+VALUES ('019a0120-0000-7000-8000-0000000000c2', '019a0120-0000-7000-8000-0000000000c3')
+ON CONFLICT DO NOTHING;

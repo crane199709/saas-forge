@@ -1,17 +1,6 @@
 import type { MenuNode } from '@forge/sdk'
 import { describe, expect, it } from 'vitest'
-import { createMemoryHistory, createRouter } from 'vue-router'
-import { applyMenuRoutes, menuSections } from './menu-routes'
-
-const page = { render: () => null }
-const subApps = {
-  demo: [{ path: 'overview', name: 'demo:overview', component: page }],
-  report: [{ path: 'monthly', name: 'report:monthly', component: page }],
-}
-
-function router() {
-  return createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: page }] })
-}
+import { menuSections } from './menu-routes'
 
 const demoMenu: MenuNode[] = [
   {
@@ -21,32 +10,17 @@ const demoMenu: MenuNode[] = [
   },
 ]
 
-describe('applyMenuRoutes', () => {
-  it('只注册菜单中可见的 Sub-App 路由', () => {
-    const shell = router()
-    applyMenuRoutes(shell, demoMenu, subApps)
-
-    expect(shell.resolve('/apps/demo/overview').name).toBe('demo:overview')
-    expect(shell.resolve('/apps/report/monthly').matched).toHaveLength(0)
-  })
-
-  it('菜单变化后移除不再可见的 Sub-App 路由', () => {
-    const shell = router()
-    applyMenuRoutes(shell, demoMenu, subApps)
-    applyMenuRoutes(shell, [], subApps)
-
-    expect(shell.resolve('/apps/demo/overview').matched).toHaveLength(0)
-  })
-})
-
 describe('menuSections', () => {
   it('分组列出叶子入口，顶层叶子自成一组，没有入口的分组不展示', () => {
     expect(
-      menuSections([
-        ...demoMenu,
-        { code: 'home', name: '首页', app: 'demo', path: 'home' },
-        { code: 'empty', name: '空分组', children: [] },
-      ]),
+      menuSections(
+        [
+          ...demoMenu,
+          { code: 'home', name: '首页', app: 'demo', path: 'home' },
+          { code: 'empty', name: '空分组', children: [] },
+        ],
+        new Set(['demo']),
+      ),
     ).toEqual([
       {
         code: 'demo',
@@ -57,6 +31,21 @@ describe('menuSections', () => {
         code: 'home',
         name: '首页',
         links: [{ code: 'home', name: '首页', to: '/apps/demo/home' }],
+      },
+    ])
+  })
+
+  it('不展示指向未注册 Sub-App 的入口', () => {
+    expect(
+      menuSections(
+        [...demoMenu, { code: 'report', name: '报表', app: 'report', path: 'monthly' }],
+        new Set(['report']),
+      ),
+    ).toEqual([
+      {
+        code: 'report',
+        name: '报表',
+        links: [{ code: 'report', name: '报表', to: '/apps/report/monthly' }],
       },
     ])
   })

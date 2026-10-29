@@ -4,7 +4,7 @@
 set -u
 
 NAMESRV="${NAMESRV:-rocketmq-namesrv:9876}"
-TOPICS="demo-order forge-tenant"
+TOPICS="demo-order forge-tenant forge-app"
 MQADMIN="$ROCKETMQ_HOME/bin/mqadmin"
 
 for topic in $TOPICS; do

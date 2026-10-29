@@ -17,7 +17,7 @@ const Buttons = {
 
 describe('createAccessControl', () => {
   it('从 IAM 读取当前 Membership 的权限并按权限码查询', async () => {
-    const { access, api } = control({ permissions: ['order:read'], menus: [] })
+    const { access, api } = control({ permissions: ['order:read'], menus: [], subApps: [] })
     await access.load()
 
     expect(api).toHaveBeenCalledWith('/iam/auth/access')
@@ -27,7 +27,7 @@ describe('createAccessControl', () => {
   })
 
   it('v-perm 按权限显示或隐藏元素，权限变化后随之更新', async () => {
-    const { access } = control({ permissions: ['order:read'], menus: [] })
+    const { access } = control({ permissions: ['order:read'], menus: [], subApps: [] })
     await access.load()
     const wrapper = mount(Buttons, { global: { plugins: [access] }, attachTo: document.body })
 

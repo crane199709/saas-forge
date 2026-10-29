@@ -6,6 +6,8 @@ import { createAccessControl, createTenantClient, tenantClientKey } from '@forge
 import { createMemoryHistory, createRouter } from 'vue-router'
 import App from './App.vue'
 import { i18n } from './i18n'
+import { subAppHostKey } from './shell'
+import { createSubAppHost } from './sub-app-host'
 
 // 与 main.ts 相同：Shell 在应用级提供客户端与权限上下文。
 function shell() {
@@ -65,7 +67,7 @@ describe('App', () => {
 })
 
 describe('App 导航', () => {
-  it('按后端下发的菜单生成导航入口', async () => {
+  it('按后端下发的菜单生成导航入口，只列出可加载的 Sub-App', async () => {
     const client = createTenantClient(sessionStorage)
     const access = createAccessControl({
       api: vi.fn().mockResolvedValue({
@@ -74,7 +76,20 @@ describe('App 导航', () => {
           {
             code: 'demo',
             name: '示例应用',
-            children: [{ code: 'demo.overview', name: '订单概览', app: 'demo', path: 'overview' }],
+            children: [
+              { code: 'demo.overview', name: '订单概览', app: 'demo', path: 'overview' },
+              // 未在当前环境登记入口地址的 Sub-App 不在可加载列表中
+              { code: 'report.monthly', name: '月报', app: 'report', path: 'monthly' },
+            ],
+          },
+        ],
+        subApps: [
+          {
+            code: 'demo',
+            name: '示例',
+            version: '1',
+            remoteEntry: 'http://127.0.0.1:5175/remoteEntry.js',
+            sharedRequirements: {},
           },
         ],
       }),
@@ -85,16 +100,24 @@ describe('App 导航', () => {
       routes: [{ path: '/:pathMatch(.*)*', component: { render: () => null } }],
     })
     await router.push('/')
+    const host = createSubAppHost({
+      router,
+      sharedVersions: {},
+      loadModule: () => new Promise(() => {}),
+      timeoutMs: 1000,
+    })
+    host.apply(access.menus(), access.subApps())
     const wrapper = mount(App, {
       global: {
         plugins: [i18n, ElementPlus, access, router],
-        provide: { [tenantClientKey]: client },
+        provide: { [tenantClientKey]: client, [subAppHostKey]: host },
       },
     })
 
     const link = wrapper.get('[data-testid="menu-demo.overview"]')
     expect(link.text()).toBe('订单概览')
     expect(link.attributes('href')).toBe('/apps/demo/overview')
+    expect(wrapper.find('[data-testid="menu-report.monthly"]').exists()).toBe(false)
   })
 
   it('租户管理入口按 iam 管理权限码显示，权限收回后随之隐藏', async () => {

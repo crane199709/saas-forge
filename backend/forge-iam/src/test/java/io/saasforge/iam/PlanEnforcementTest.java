@@ -16,6 +16,7 @@ import io.saasforge.sdk.core.ResourceManifest;
 import io.saasforge.sdk.core.ResourceManifest.MenuNode;
 import io.saasforge.sdk.core.ResourceManifest.Permission;
 import io.saasforge.sdk.mq.EventHandler;
+import io.saasforge.sdk.provisioning.SubAppChanged;
 import io.saasforge.sdk.provisioning.TenantPlanChanged;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -58,10 +59,14 @@ class PlanEnforcementTest {
     static final UUID MEMBER = UUID.fromString("019a0120-0000-7000-8000-0000000000a4");
     static final UUID QUOTA_TENANT = UUID.fromString("019a0120-0000-7000-8000-0000000000a6");
     static final UUID QUOTA_ADMIN = UUID.fromString("019a0120-0000-7000-8000-0000000000a8");
+    static final UUID APP_TENANT = UUID.fromString("019a0120-0000-7000-8000-0000000000c0");
+    static final UUID APP_ADMIN = UUID.fromString("019a0120-0000-7000-8000-0000000000c2");
     static final Map<UUID, UUID> IDENTITIES = Map.of(
             ADMIN, UUID.fromString("019a0120-0000-7000-8000-0000000000a1"),
             MEMBER, UUID.fromString("019a0120-0000-7000-8000-0000000000a3"),
-            QUOTA_ADMIN, UUID.fromString("019a0120-0000-7000-8000-0000000000a7"));
+            QUOTA_ADMIN, UUID.fromString("019a0120-0000-7000-8000-0000000000a7"),
+            APP_ADMIN, UUID.fromString("019a0120-0000-7000-8000-0000000000c1"));
+    static final Map<UUID, UUID> TENANTS = Map.of(QUOTA_ADMIN, QUOTA_TENANT, APP_ADMIN, APP_TENANT);
     static final UUID BASIC = UUID.fromString("019a0120-0000-7000-8000-0000000000b1");
     static final UUID PRO = UUID.fromString("019a0120-0000-7000-8000-0000000000b2");
 
@@ -228,6 +233,61 @@ class PlanEnforcementTest {
     }
 
     @Test
+    void shellLoadsOnlyRegisteredSubAppsInThePlanAndVisibleInTheMenu() throws Exception {
+        String v1 = "http://127.0.0.1:5175/remoteEntry.js";
+        String v2 = "http://127.0.0.1:5176/remoteEntry.js";
+        deliverSubApp(new SubAppChanged(
+                "demo",
+                "示例",
+                "1.0.0",
+                Map.of("local", v1, "prod", "https://cdn/demo/1/remoteEntry.js"),
+                Map.of("vue", "3.5.0"),
+                false,
+                10));
+        // 不被任何菜单引用的 Sub-App 不下发
+        deliverSubApp(new SubAppChanged("report", "报表", "1.0.0", Map.of("local", v1), Map.of(), false, 11));
+
+        // 未登记 Plan 的租户不限 Sub-App；只下发当前环境（local）的入口地址
+        assertThat(subApps(APP_ADMIN))
+                .containsExactly(Map.of(
+                        "code", "demo",
+                        "name", "示例",
+                        "version", "1.0.0",
+                        "remoteEntry", v1,
+                        "sharedRequirements", Map.of("vue", "3.5.0")));
+
+        // 套餐中没有该 Sub-App：菜单不再指向它，也不下发
+        deliver(new TenantPlanChanged(
+                APP_TENANT, BASIC, "basic", List.of("order:read"), List.of("report"), null, null, 1));
+        assertThat(menuCodes(APP_ADMIN)).doesNotContain("orders", "orders.list");
+        assertThat(subApps(APP_ADMIN)).isEmpty();
+
+        deliver(new TenantPlanChanged(APP_TENANT, PRO, "pro", List.of("order:read"), List.of("demo"), null, null, 2));
+        assertThat(menuCodes(APP_ADMIN)).contains("orders.list");
+        assertThat(subApps(APP_ADMIN)).extracting(app -> app.get("remoteEntry")).containsExactly(v1);
+
+        // 修改注册表中的地址即切换版本；乱序送达的旧变更被忽略
+        deliverSubApp(new SubAppChanged("demo", "示例", "2.0.0", Map.of("local", v2), Map.of(), false, 12));
+        deliverSubApp(new SubAppChanged("demo", "示例", "1.0.0", Map.of("local", v1), Map.of(), false, 10));
+        assertThat(subApps(APP_ADMIN))
+                .singleElement()
+                .satisfies(app -> assertThat(app)
+                        .containsEntry("remoteEntry", v2)
+                        .containsEntry("version", "2.0.0")
+                        .containsEntry("sharedRequirements", Map.of()));
+
+        // 没有当前环境的入口地址或已删除时不下发，菜单仍按权限与套餐展示
+        deliverSubApp(new SubAppChanged("demo", "示例", "3.0.0", Map.of("prod", v2), Map.of(), false, 13));
+        assertThat(subApps(APP_ADMIN)).isEmpty();
+        deliverSubApp(new SubAppChanged("demo", "示例", "3.0.0", Map.of("local", v2), Map.of(), true, 14));
+        assertThat(subApps(APP_ADMIN)).isEmpty();
+        assertThat(menuCodes(APP_ADMIN)).contains("orders.list");
+        // 重新登记后恢复
+        deliverSubApp(new SubAppChanged("demo", "示例", "4.0.0", Map.of("local", v1), Map.of(), false, 15));
+        assertThat(subApps(APP_ADMIN)).extracting(app -> app.get("version")).containsExactly("4.0.0");
+    }
+
+    @Test
     void platformReadsThePermissionCatalogWithItsServiceToken() {
         var catalog = RestClient.create("http://127.0.0.1:" + port)
                 .get()
@@ -253,7 +313,14 @@ class PlanEnforcementTest {
 
     private static TenantPlanChanged planChanged(UUID planId, List<String> codes, Integer memberQuota, long version) {
         return new TenantPlanChanged(
-                TENANT, planId, planId.equals(BASIC) ? "basic" : "pro", codes, List.of(), memberQuota, null, version);
+                TENANT,
+                planId,
+                planId.equals(BASIC) ? "basic" : "pro",
+                codes,
+                List.of("demo"),
+                memberQuota,
+                null,
+                version);
     }
 
     /** 与 SDK 消费端一致：先恢复发布方的租户，再在事务中调用处理器。 */
@@ -264,6 +331,23 @@ class PlanEnforcementTest {
                 .findFirst()
                 .orElseThrow();
         CurrentTenant.run(event.tenantId(), () -> transaction.executeWithoutResult(status -> handler.handle(event)));
+    }
+
+    /** App Registry 的变更不带租户上下文发布。 */
+    @SuppressWarnings("unchecked")
+    private void deliverSubApp(SubAppChanged event) {
+        var handler = (EventHandler<SubAppChanged>) handlers.stream()
+                .filter(candidate -> candidate.eventType() == SubAppChanged.class)
+                .findFirst()
+                .orElseThrow();
+        transaction.executeWithoutResult(status -> handler.handle(event));
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> subApps(UUID membership) throws Exception {
+        var access = (Map<?, ?>)
+                call(membership, HttpMethod.GET, "/auth/access", null).getBody().get("data");
+        return (List<Map<String, Object>>) access.get("subApps");
     }
 
     private long version(UUID membership) {
@@ -339,7 +423,7 @@ class PlanEnforcementTest {
                 .audience("tenant-app")
                 .issueTime(new Date())
                 .expirationTime(Date.from(Instant.now().plusSeconds(900)))
-                .claim("tenant_id", (membership.equals(QUOTA_ADMIN) ? QUOTA_TENANT : TENANT).toString())
+                .claim("tenant_id", TENANTS.getOrDefault(membership, TENANT).toString())
                 .claim("membership_id", membership.toString())
                 .claim("ver", 1)
                 .build();

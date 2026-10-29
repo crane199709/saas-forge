@@ -40,6 +40,9 @@ forge:
       - tenant_initialization
       - tenant_status_change
       - plan
+      - sub_app
+      - sub_app_entry
+      - sub_app_requirement
   platform:
     provisioning:
       # 创建租户时预建 pending 初始化状态的服务，名称为各服务的 spring.application.name。

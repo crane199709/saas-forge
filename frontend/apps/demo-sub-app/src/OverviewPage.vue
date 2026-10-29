@@ -2,6 +2,10 @@
 import { useI18n } from 'vue-i18n'
 import { ref } from 'vue'
 import { ElButton, ElDialog, ElOption, ElSelect, ElTooltip } from 'element-plus'
+import { useTenantClient } from '@forge/sdk'
+
+// Token 与租户上下文经共享的 @forge/sdk 获取，Sub-App 自身不处理登录
+const client = useTenantClient()
 
 const open = ref(false)
 const selected = ref('')
@@ -20,6 +24,7 @@ const { t } = useI18n({
       tooltip: '共享样式的提示',
       close: '关闭',
       createOrder: '新建订单',
+      tenant: '当前租户：{name}',
     },
   },
 })
@@ -27,6 +32,9 @@ const { t } = useI18n({
 
 <template>
   <h3>{{ t('overview') }}</h3>
+  <p data-testid="remote-tenant">
+    {{ t('tenant', { name: client.session()?.tenantName ?? '-' }) }}
+  </p>
   <router-link :to="{ name: 'demo:details', params: { id: '42' } }">{{ t('detail') }}</router-link>
   <p>
     <el-button @click="open = true">{{ t('open') }}</el-button>

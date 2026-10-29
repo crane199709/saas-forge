@@ -4,7 +4,12 @@ import { expect, test } from '@playwright/test'
 test.beforeEach(async ({ page }) => {
   await page.route('**/iam/auth/access', (route) =>
     route.fulfill({
-      json: { code: 'ok', httpStatus: 200, data: { permissions: [], menus: [] }, traceId: 'trace' },
+      json: {
+        code: 'ok',
+        httpStatus: 200,
+        data: { permissions: [], menus: [], subApps: [] },
+        traceId: 'trace',
+      },
     }),
   )
 })

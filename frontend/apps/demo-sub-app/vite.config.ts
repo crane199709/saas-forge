@@ -1,25 +1,7 @@
-import vue from '@vitejs/plugin-vue'
-import { federation } from '@module-federation/vite'
-import { defineConfig } from 'vite'
-import { sharedDependencies } from '../../federation.shared.ts'
+import { defineSubAppConfig } from '@forge/sub-app-kit/vite'
 
-export default defineConfig(({ mode }) => ({
-  base: './',
-  plugins: [
-    vue(),
-    federation({
-      name: 'demo_sub_app',
-      filename: 'remoteEntry.js',
-      exposes: { './sub-app': './src/sub-app.ts' },
-      shared: sharedDependencies(false),
-      shareStrategy: 'loaded-first',
-      dts: false,
-    }),
-  ],
-  define: { __DEMO_VERSION__: JSON.stringify(mode === 'v2' ? 'v2' : 'v1') },
-  preview: {
-    port: 5175,
-    strictPort: true,
-    cors: { origin: ['http://127.0.0.1:5174', 'http://localhost:5174'] },
-  },
-}))
+// 开发模式经 index.html 运行独立宿主；构建产物暴露 ./sub-app 的 remoteEntry.js。v2 模式只用于验证修改注册表地址即切换版本。
+export default defineSubAppConfig(
+  { appCode: 'demo', port: 5175, apiPrefixes: ['/demo'] },
+  ({ mode }) => ({ define: { __DEMO_VERSION__: JSON.stringify(mode === 'v2' ? 'v2' : 'v1') } }),
+)

@@ -6,4 +6,9 @@
         WHERE tenant_id = #{tenantId} AND tag = #{tag}
         ORDER BY created_at, id
     </select>
+    <select id="globalPayloads" resultType="string">
+        SELECT payload::text FROM forge_outbox
+        WHERE tenant_id IS NULL AND tag = #{tag}
+        ORDER BY created_at, id
+    </select>
 </mapper>

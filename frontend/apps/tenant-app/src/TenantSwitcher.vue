@@ -6,8 +6,12 @@ import type { TenantMembership } from '@forge/sdk'
 import ErrorAlert from './ErrorAlert.vue'
 import { errorTip, type ErrorTip } from './error-tip'
 import { createMemberApi } from './member/member-api'
+import { reloadShellKey } from './shell'
 
 const props = defineProps<{ reload?: () => void }>()
+// Shell 提供的重载：卸载全部 Sub-App、清空共享 Pinia 状态后整页回到首页
+const reloadShell = inject(reloadShellKey, () => location.assign('/'))
+const reload = () => (props.reload ?? reloadShell)()
 const { t } = useI18n()
 const providedClient = inject(tenantClientKey)
 if (!providedClient) throw new Error('Shell must provide a TenantClient')
@@ -45,8 +49,8 @@ async function change(membershipId: string) {
   error.value = null
   try {
     await client.switchTenant(membershipId)
-    // 整页回到首页，丢弃 Shell 与 Sub-App 中属于旧租户的内存状态和路由，再以新 Token 重新加载。
-    ;(props.reload ?? (() => location.assign('/')))()
+    // 丢弃 Shell 与 Sub-App 中属于旧租户的内存状态和路由，再以新 Token 重新加载。
+    void reload()
   } catch (cause) {
     error.value = errorTip(cause, t)
     session.value = client.session()
@@ -71,7 +75,7 @@ async function leave() {
   } catch {
     // 本地凭证已清除；IAM 会话退出失败不影响已完成的退出租户。
   }
-  ;(props.reload ?? (() => location.assign('/')))()
+  void reload()
 }
 
 onMounted(() => {

@@ -16,6 +16,16 @@
         INSERT INTO tenant_plan_permission (tenant_id, code) VALUES
         <foreach collection="codes" item="code" separator=",">(#{tenantId}, #{code})</foreach>
     </insert>
+    <delete id="clearSubApps">
+        DELETE FROM tenant_plan_sub_app WHERE tenant_id = #{tenantId}
+    </delete>
+    <insert id="insertSubApps">
+        INSERT INTO tenant_plan_sub_app (tenant_id, code) VALUES
+        <foreach collection="codes" item="code" separator=",">(#{tenantId}, #{code})</foreach>
+    </insert>
+    <select id="subApps" resultType="string">
+        SELECT code FROM tenant_plan_sub_app WHERE tenant_id = #{tenantId} ORDER BY code
+    </select>
     <select id="exists" resultType="boolean">
         SELECT EXISTS (SELECT 1 FROM tenant_plan WHERE tenant_id = #{tenantId} AND NOT deleted)
     </select>

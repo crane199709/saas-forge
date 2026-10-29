@@ -1,7 +1,7 @@
 import vue from '@vitejs/plugin-vue'
 import { federation } from '@module-federation/vite'
 import { defineConfig } from 'vitest/config'
-import { sharedDependencies } from '../../federation.shared.ts'
+import { sharedDependencies, sharedVersions } from '../../federation.shared.ts'
 
 export default defineConfig({
   plugins: [
@@ -18,6 +18,7 @@ export default defineConfig({
         ]
       : []),
   ],
+  define: { __SHARED_VERSIONS__: JSON.stringify(sharedVersions()) },
   server: {
     port: 5174,
     strictPort: true,

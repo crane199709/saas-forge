@@ -2,9 +2,9 @@ import tenantPackage from './apps/tenant-app/package.json' with { type: 'json' }
 import sdkPackage from './packages/sdk/package.json' with { type: 'json' }
 import uiPackage from './packages/ui/package.json' with { type: 'json' }
 
-// 两端按同一组精确版本验收；Sub-App 只消费 Shell 提供的实例，避免回退为第二份依赖。
-export function sharedDependencies(host: boolean) {
-  const versions = {
+/** Shell 提供的共享依赖版本，键为包名；Shell 据此判断 Sub-App 在 App Registry 中声明的最低版本是否满足。 */
+export function sharedVersions(): Record<string, string> {
+  return {
     vue: tenantPackage.dependencies.vue,
     'vue-router': tenantPackage.dependencies['vue-router'],
     pinia: tenantPackage.dependencies.pinia,
@@ -13,8 +13,12 @@ export function sharedDependencies(host: boolean) {
     '@forge/ui': uiPackage.version,
     '@forge/sdk': sdkPackage.version,
   }
+}
+
+// 两端按同一组精确版本验收；Sub-App 只消费 Shell 提供的实例，避免回退为第二份依赖。
+export function sharedDependencies(host: boolean) {
   return Object.fromEntries(
-    Object.entries(versions).map(([name, version]) => [
+    Object.entries(sharedVersions()).map(([name, version]) => [
       name,
       {
         singleton: true,

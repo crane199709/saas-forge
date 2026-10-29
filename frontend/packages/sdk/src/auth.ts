@@ -1,4 +1,4 @@
-import type { InjectionKey } from 'vue'
+import { inject, type InjectionKey } from 'vue'
 import { ApiError, readEnvelope, readPage, type Page } from './api'
 
 /**
@@ -110,6 +110,16 @@ export type PlatformClient = ReturnType<typeof createPlatformClient>
 
 /** Shell 通过 Vue provide 提供客户端，Sub-App 通过同一个 SDK 单例中的 key 注入。 */
 export const tenantClientKey: InjectionKey<TenantClient> = Symbol('forge.tenant.client')
+
+/**
+ * 在组件中读取 Shell 提供的 Tenant Realm 客户端。Sub-App 经它取得当前 Token 所属租户（`session()`）并调用接口（`api()`，
+ * 自动携带 Token 并在过期时刷新），自身不处理登录、Token 刷新与租户切换。
+ */
+export function useTenantClient(): TenantClient {
+  const client = inject(tenantClientKey)
+  if (!client) throw new Error('Shell must provide a TenantClient')
+  return client
+}
 
 /** platform-console 通过 Vue provide 提供 Platform Realm 客户端。 */
 export const platformClientKey: InjectionKey<PlatformClient> = Symbol('forge.platform.client')

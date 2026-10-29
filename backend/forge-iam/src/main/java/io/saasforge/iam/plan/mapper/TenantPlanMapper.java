@@ -29,6 +29,14 @@ public interface TenantPlanMapper {
 
     void insertPermissions(@Param("tenantId") UUID tenantId, @Param("codes") Collection<String> codes);
 
+    /** 删除租户 Feature Pack 中的全部 Sub-App 编码，随后整体写入新的。 */
+    void clearSubApps(@Param("tenantId") UUID tenantId);
+
+    void insertSubApps(@Param("tenantId") UUID tenantId, @Param("codes") Collection<String> codes);
+
+    /** 租户 Feature Pack 中的 Sub-App 编码，按编码排序。 */
+    List<String> subApps(@Param("tenantId") UUID tenantId);
+
     /** 租户是否已登记 Plan。 */
     boolean exists(@Param("tenantId") UUID tenantId);
 
