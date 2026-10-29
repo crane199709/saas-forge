@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import ElementPlus from 'element-plus'
+import ElementPlus, { ElSelect } from 'element-plus'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createPlatformClient } from '@forge/sdk'
 import { i18n } from '../i18n'
@@ -17,6 +17,7 @@ const tenant = {
   name: '示例租户',
   status: 'active',
   adminContact: 'owner@example.com',
+  planId: 'p1',
   expiresAt: null,
   purgeAt: null,
   purgedAt: null,
@@ -46,13 +47,36 @@ function ok(data: unknown, meta?: unknown) {
   return new Response(JSON.stringify({ code: 'ok', httpStatus: 200, data, meta, traceId: 't' }))
 }
 
+const plans = [
+  {
+    id: 'p1',
+    code: 'basic',
+    name: '基础版',
+    permissions: ['order:read'],
+    subApps: [],
+    memberQuota: 5,
+    storageQuotaMb: null,
+    updatedAt: 'x',
+  },
+  {
+    id: 'p2',
+    code: 'pro',
+    name: '专业版',
+    permissions: ['order:read', 'order:approve'],
+    subApps: ['demo'],
+    memberQuota: null,
+    storageQuotaMb: 1024,
+    updatedAt: 'x',
+  },
+]
+
 function mountPanel() {
   sessionStorage.setItem(
     'forge.platform.session',
     JSON.stringify({ accessToken: 'access', refreshToken: 'r', operatorName: '运营' }),
   )
   return mount(TenantPanel, {
-    props: { api: createTenantApi(createPlatformClient(sessionStorage)) },
+    props: { api: createTenantApi(createPlatformClient(sessionStorage)), plans },
     global: { plugins: [i18n, ElementPlus] },
     attachTo: document.body,
   })
@@ -135,6 +159,8 @@ it('创建租户后打开其详情并刷新列表', async () => {
   name.dispatchEvent(new Event('input'))
   contact.value = 'owner@example.com'
   contact.dispatchEvent(new Event('input'))
+  wrapper.findComponent(ElSelect).vm.$emit('update:modelValue', 'p1')
+  await flushPromises()
   form.dispatchEvent(new Event('submit'))
   await flushPromises()
 
@@ -143,8 +169,10 @@ it('创建租户后打开其详情并刷新列表', async () => {
     name: '示例租户',
     adminContact: 'owner@example.com',
     status: 'active',
+    planId: 'p1',
   })
   expect(wrapper.text()).toContain('示例租户')
+  expect(wrapper.text()).toContain('基础版')
   expect((document.body.querySelector('.el-drawer') as HTMLElement).textContent).toContain('进行中')
 })
 
@@ -207,6 +235,38 @@ it('在详情中按可迁移状态变更，展示变更历史；冷静期内可�
   expect(drawer.textContent).toContain('撤回删除，恢复为')
   expect(button(drawer, '撤回删除')).toBeDefined()
   expect(wrapper.text()).toContain('已删除')
+})
+
+it('在详情中更换套餐', async () => {
+  const detail = { tenant, initializations: [], ...lifecycle }
+  const upgraded = { ...detail, tenant: { ...tenant, planId: 'p2' } }
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(ok([tenant], page))
+    .mockResolvedValueOnce(ok(detail))
+    .mockResolvedValueOnce(ok(upgraded))
+    .mockResolvedValueOnce(ok([upgraded.tenant], page))
+  vi.stubGlobal('fetch', fetcher)
+  const wrapper = mountPanel()
+  await flushPromises()
+  await wrapper.get('tbody button').trigger('click')
+  await flushPromises()
+  const drawer = document.body.querySelector('.el-drawer') as HTMLElement
+  expect(drawer.textContent).toContain('基础版')
+
+  const select = wrapper
+    .findAllComponents(ElSelect)
+    .find((item) => item.attributes('data-testid') === 'tenant-change-plan')!
+  select.vm.$emit('update:modelValue', 'p2')
+  await flushPromises()
+  drawer.querySelector('form.change-plan')!.dispatchEvent(new Event('submit'))
+  await flushPromises()
+
+  expect(path(fetcher.mock.calls[2][0])).toBe('/platform/tenants/t1/plan')
+  expect(fetcher.mock.calls[2][1].method).toBe('PUT')
+  expect(JSON.parse(fetcher.mock.calls[2][1].body)).toEqual({ planId: 'p2' })
+  expect(drawer.textContent).toContain('专业版')
+  expect(wrapper.text()).toContain('专业版')
 })
 
 it('冷静期结束后不能再变更状态', async () => {

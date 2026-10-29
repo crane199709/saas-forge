@@ -4,7 +4,9 @@ import io.saasforge.iam.permission.service.PermissionService;
 import io.saasforge.sdk.core.ResourceManifest;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import java.util.List;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,5 +29,16 @@ class ManifestController {
                 : ApiResponse.ok(response);
     }
 
+    // 服务间接口，网关拒绝 /internal/**。forge-platform 据此为套餐的 Feature Pack 提供可选的权限码。
+    @Operation(summary = "可纳入套餐 Feature Pack 的权限码：业务服务申报的有效权限码，不含 iam 自身的管理权限码")
+    @GetMapping("/internal/permissions")
+    ApiResponse<List<PermissionResponse>> permissions() {
+        return ApiResponse.ok(permissions.planScopedPermissions().stream()
+                .map(row -> new PermissionResponse(row.code(), row.name(), row.service(), row.group()))
+                .toList());
+    }
+
     record ManifestReportResponse(String service, String version) {}
+
+    record PermissionResponse(String code, String name, String service, String group) {}
 }

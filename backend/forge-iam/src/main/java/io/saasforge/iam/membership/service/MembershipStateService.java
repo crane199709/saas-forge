@@ -2,6 +2,7 @@ package io.saasforge.iam.membership.service;
 
 import io.saasforge.iam.membership.mapper.MembershipMapper;
 import io.saasforge.iam.membership.model.MembershipChange;
+import io.saasforge.iam.membership.model.MembershipVersion;
 import io.saasforge.sdk.core.MembershipGrants;
 import io.saasforge.sdk.core.MembershipStateKeys;
 import java.time.Duration;
@@ -77,6 +78,16 @@ public class MembershipStateService {
     /** 角色或权限变更后调用：旧版本 Token 立即失效，刷新后按新版本签发。 */
     public void incrementVersion(UUID membershipId) {
         publishChange(membershipId, memberships.incrementVersion(membershipId));
+    }
+
+    /**
+     * 租户范围的变更（如 Plan 变更）后调用：递增租户内全部正常成员的版本并发布。其余状态的成员没有可用的 Token，
+     * 下次进入时按签发时的状态发布。
+     */
+    public void incrementActiveVersions(UUID tenantId) {
+        for (MembershipVersion change : memberships.incrementActiveVersions(tenantId)) {
+            publish(tenantId, change.membershipId(), change.version());
+        }
     }
 
     private void publishChange(UUID membershipId, MembershipChange change) {

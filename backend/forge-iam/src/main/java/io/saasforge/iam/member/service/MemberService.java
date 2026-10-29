@@ -11,6 +11,7 @@ import io.saasforge.iam.membership.service.MembershipService;
 import io.saasforge.iam.membership.service.MembershipStateService;
 import io.saasforge.iam.organization.service.AssignmentService;
 import io.saasforge.iam.permission.service.IamPermissions;
+import io.saasforge.iam.plan.service.PlanService;
 import io.saasforge.iam.role.service.RoleManagementService;
 import io.saasforge.iam.role.service.RoleService;
 import io.saasforge.iam.tenant.service.TenantService;
@@ -41,6 +42,7 @@ public class MemberService {
     private final RoleManagementService roleManagement;
     private final AssignmentService assignments;
     private final TenantService tenants;
+    private final PlanService plans;
     private final TransactionTemplate transactions;
 
     MemberService(
@@ -52,6 +54,7 @@ public class MemberService {
             RoleManagementService roleManagement,
             AssignmentService assignments,
             TenantService tenants,
+            PlanService plans,
             TransactionTemplate transactions) {
         this.memberships = memberships;
         this.membershipStates = membershipStates;
@@ -61,6 +64,7 @@ public class MemberService {
         this.roleManagement = roleManagement;
         this.assignments = assignments;
         this.tenants = tenants;
+        this.plans = plans;
         this.transactions = transactions;
     }
 
@@ -82,6 +86,9 @@ public class MemberService {
      * 按邮箱或手机号邀请成员，复用开通的邀请机制：已有 Identity 收到加入邀请，没有的建立待激活 Identity 并收到注册邀请。
      * 已离开的成员回到 invited；仍为 invited 的再发一封邀请。
      *
+     * <p>成员数配额按未离开的成员（邀请中、正常、停用）计：邀请会让人数超出 Plan 的上限时拒绝，重发已有的邀请不受影响。
+     * 人数的判断与邀请在同一把租户锁下，并发邀请不会一起越过上限。
+     *
      * <p>预设角色与部门分别要求 {@code iam:role:manage}、{@code iam:org:manage}，在建立 Membership 之后按各自的规则写入，
      * 最后才发出邀请。预设失败时 Membership 已是 invited 但邀请未发出，修正后再次邀请即可补齐。
      *
@@ -96,8 +103,14 @@ public class MemberService {
         ContactIdentity identity = identities.findOrCreatePending(contact);
         MembershipStatus membership = transactions.execute(status -> {
             roles.lockTenant(actor.tenantId());
+            long before = memberships.count(actor.tenantId());
             MembershipStatus invited = memberships.invite(actor.tenantId(), identity.identityId(), actor.identityId());
             if (!invited.invited()) throw new ForgeException(MemberErrorCode.ALREADY_MEMBER);
+            Optional<Integer> quota = plans.memberQuotaOf(actor.tenantId());
+            long after = memberships.count(actor.tenantId());
+            if (quota.isPresent() && after > before && after > quota.get()) {
+                throw new ForgeException(MemberErrorCode.QUOTA_EXCEEDED, quota.get());
+            }
             return invited;
         });
         if (!roleIds.isEmpty()) roleManagement.assign(actor, membership.membershipId(), roleIds);

@@ -108,6 +108,11 @@ public class MembershipService {
                 .toList();
     }
 
+    /** Membership 所属的租户；不存在或已删除时为空。 */
+    public Optional<UUID> tenantOf(UUID membershipId) {
+        return Optional.ofNullable((UUID) memberships.tenantOf(membershipId));
+    }
+
     /** 租户内未离开的成员数。 */
     public long count(UUID tenantId) {
         return memberships.count(tenantId);

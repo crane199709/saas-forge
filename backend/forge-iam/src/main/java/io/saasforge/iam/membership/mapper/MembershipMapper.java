@@ -6,6 +6,7 @@ import io.saasforge.iam.membership.model.MemberContactRow;
 import io.saasforge.iam.membership.model.MemberRow;
 import io.saasforge.iam.membership.model.MembershipChange;
 import io.saasforge.iam.membership.model.MembershipStatus;
+import io.saasforge.iam.membership.model.MembershipVersion;
 import java.util.List;
 import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;
@@ -20,6 +21,12 @@ public interface MembershipMapper {
 
     /** 递增版本号（如角色变更），返回新版本；不存在或已删除时返回 null。不受 Data Policy 过滤。 */
     MembershipChange incrementVersion(@Param("membershipId") UUID membershipId);
+
+    /** 递增租户内全部 active Membership 的版本号（如租户 Plan 变更），返回各自的新版本。按参数中的租户限定，不受 Data Policy 过滤。 */
+    List<MembershipVersion> incrementActiveVersions(@Param("tenantId") UUID tenantId);
+
+    /** 未删除的 Membership 所属的租户；不存在时为 null。不受 Data Policy 过滤。 */
+    Object tenantOf(@Param("membershipId") UUID membershipId);
 
     /**
      * 为身份建立 invited 的 Membership，已有未删除的 Membership（不论状态）时不做修改。{@code actor} 为 null 表示系统（开通）。

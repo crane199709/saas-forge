@@ -18,7 +18,8 @@ public final class IamPermissions {
     /** 邀请成员，停用、恢复与移除成员。 */
     public static final String MEMBER_MANAGE = "iam:member:manage";
 
-    static final String SERVICE = "forge-iam";
+    /** iam 登记清单使用的服务名。这些管理权限码不受套餐限制：Tenant Admin 始终能管理成员与角色。 */
+    public static final String SERVICE = "forge-iam";
     // 同一版本的清单内容不可变：改动权限码、名称或分组时必须升级版本，否则启动时登记失败。
     private static final String VERSION = "2";
     private static final String GROUP = "租户管理";

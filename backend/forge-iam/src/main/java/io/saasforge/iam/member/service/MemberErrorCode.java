@@ -7,6 +7,8 @@ public enum MemberErrorCode implements ErrorCode {
     NOT_FOUND("member.notFound", 404),
     /** 被邀请人已是本租户正常或停用的成员。 */
     ALREADY_MEMBER("member.alreadyMember", 409),
+    /** 未离开的成员数已达租户 Plan 的成员数上限，不能再邀请新成员。 */
+    QUOTA_EXCEEDED("member.quotaExceeded", 409),
     /** 成员当前状态不允许该操作，如恢复一个未停用的成员。 */
     ILLEGAL_STATUS("member.illegalStatus", 409),
     /** Owner 不能被停用、移除，也不能主动退出，须先转让。 */

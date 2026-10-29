@@ -13,6 +13,8 @@ public enum RoleErrorCode implements ErrorCode {
     IN_USE("role.inUse", 409),
     /** 权限码不存在或已失效，不能授予。 */
     INVALID_PERMISSION("role.invalidPermission", 400),
+    /** 权限码有效但不在租户 Plan 的 Feature Pack 中，不能授予。 */
+    NOT_IN_PLAN("role.permissionNotInPlan", 400),
     /** 分配的角色不存在、属于其他租户，或是只能经转让变更的 Owner。 */
     INVALID_ASSIGNMENT("role.invalidAssignment", 400),
     /** 成员不存在或不属于当前租户。 */

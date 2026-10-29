@@ -13,17 +13,17 @@ import org.apache.ibatis.annotations.Param;
 @InterceptorIgnore(tenantLine = "true")
 @Mapper
 public interface RolePermissionMapper {
-    /** 租户各未删除角色授予的有效权限码，按编码排序；已下线的授权不返回。 */
+    /** 租户各未删除角色授予的有效权限码，按编码排序；已下线的授权不返回，超出 Plan 的由调用方过滤。 */
     List<RolePermissionRow> listByTenant(@Param("tenantId") UUID tenantId);
 
-    /** Membership 经未删除角色获得的有效权限码，多个角色取并集，按编码排序。 */
+    /** Membership 经未删除角色获得的有效权限码，多个角色取并集，按编码排序；超出 Plan 的由调用方过滤。 */
     List<String> grantedCodes(@Param("membershipId") UUID membershipId);
 
     /** 授予给定编码中 active 的权限码，已授予的不变，返回新增行数。 */
     int grant(@Param("roleId") UUID roleId, @Param("codes") Collection<String> codes);
 
-    /** 撤销不在 {@code keep} 中的 active 授权，返回撤销行数；已下线的授权保留，权限码恢复后随之恢复。 */
-    int revokeActiveExcept(@Param("roleId") UUID roleId, @Param("keep") Collection<String> keep);
+    /** 撤销给定编码的授权，返回撤销行数；{@code codes} 不能为空。 */
+    int revoke(@Param("roleId") UUID roleId, @Param("codes") Collection<String> codes);
 
     /** 删除角色的全部授权（含已下线的），删除角色时调用。 */
     int deleteByRole(@Param("roleId") UUID roleId);

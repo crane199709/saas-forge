@@ -17,6 +17,8 @@ public class Tenant extends AuditableEntity {
     private String statusBeforeDeletion;
     private OffsetDateTime purgeAt;
     private OffsetDateTime purgedAt;
+    private UUID planId;
+    private Long planVersion;
 
     public UUID getId() {
         return id;
@@ -96,5 +98,21 @@ public class Tenant extends AuditableEntity {
 
     public void setPurgedAt(OffsetDateTime purgedAt) {
         this.purgedAt = purgedAt;
+    }
+
+    public UUID getPlanId() {
+        return planId;
+    }
+
+    public void setPlanId(UUID planId) {
+        this.planId = planId;
+    }
+
+    public Long getPlanVersion() {
+        return planVersion;
+    }
+
+    public void setPlanVersion(Long planVersion) {
+        this.planVersion = planVersion;
     }
 }

@@ -10,6 +10,8 @@ export interface Tenant {
   name: string
   status: TenantStatus
   adminContact: string
+  /** 适用的套餐；套餐上线前创建的租户为 null，不受套餐限制。 */
+  planId: string | null
   /** 试用或订购的到期时间。 */
   expiresAt: string | null
   /** 删除状态下冷静期的结束时间，期内可撤回。 */
@@ -52,6 +54,7 @@ export interface CreateTenant {
   adminContact: string
   status: 'trial' | 'active'
   expiresAt?: string
+  planId: string
 }
 
 export interface Transition {
@@ -78,6 +81,13 @@ export function createTenantApi(client: Pick<PlatformClient, 'api' | 'page'>) {
     create: (request: CreateTenant) => post<TenantDetail>('', request),
     transition: (id: string, request: Transition) =>
       post<TenantDetail>(`/${id}/transitions`, request),
+    /** 更换套餐；降级后超出新套餐的授权随即失效但保留记录，升级后恢复。 */
+    changePlan: (id: string, planId: string) =>
+      client.api<TenantDetail>(`${base}/${id}/plan`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId }),
+      }),
     retry: (id: string, service: string) =>
       post<Initialization>(`/${id}/initializations/${encodeURIComponent(service)}/retry`),
   }

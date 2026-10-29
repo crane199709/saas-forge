@@ -65,6 +65,36 @@
     "noHistory": "暂无变更记录",
     "change": "变更",
     "created": "创建",
-    "changedAt": "时间"
+    "changedAt": "时间",
+    "plan": "套餐",
+    "choosePlan": "选择套餐",
+    "noPlan": "未分配（不受套餐限制）",
+    "unknownPlan": "已删除的套餐",
+    "changePlan": "更换套餐",
+    "changePlanHint": "降级后超出新套餐的角色授权随即失效但保留记录，升级后恢复；成员数超出上限时不能再邀请新成员。"
+  },
+  "plan": {
+    "title": "套餐",
+    "create": "新建套餐",
+    "editTitle": "编辑套餐：{name}",
+    "editHint": "修改将立即应用到使用该套餐的全部租户。",
+    "empty": "暂无套餐",
+    "code": "编码",
+    "codeHint": "小写字母开头，可含数字与连字符，创建后不可修改",
+    "name": "名称",
+    "permissions": "可用权限码",
+    "permissionCount": "{count} 项",
+    "permissionsHint": "租户管理员只能在所选范围内为角色授权；租户自身的成员、组织与角色管理权限不受套餐限制。",
+    "ungrouped": "未分组",
+    "retired": "已从清单下线（保留）",
+    "subApps": "可用子应用",
+    "subAppsHint": "输入子应用编码后回车",
+    "memberQuota": "成员数上限",
+    "storageQuota": "存储容量上限",
+    "unlimited": "不限",
+    "actions": "操作",
+    "edit": "编辑",
+    "delete": "删除",
+    "save": "保存"
   }
 }

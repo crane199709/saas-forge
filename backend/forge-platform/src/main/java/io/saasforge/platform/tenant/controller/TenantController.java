@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
@@ -21,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -47,7 +49,8 @@ class TenantController {
                 request.name().strip(),
                 request.adminContact().strip(),
                 request.status() == null ? TenantLifecycleService.ACTIVE : request.status(),
-                request.expiresAt());
+                request.expiresAt(),
+                request.planId());
         return ApiResponse.created(detail(tenant));
     }
 
@@ -58,6 +61,12 @@ class TenantController {
                 ? null
                 : request.reason().strip();
         return ApiResponse.ok(detail(lifecycle.transition(id, request.status(), request.expiresAt(), reason)));
+    }
+
+    @Operation(summary = "为租户更换套餐并广播；降级后超出新套餐的授权随即失效但保留记录，升级后恢复")
+    @PutMapping("/{id}/plan")
+    ApiResponse<TenantDetailResponse> changePlan(@PathVariable UUID id, @Valid @RequestBody ChangePlanRequest request) {
+        return ApiResponse.ok(detail(tenants.changePlan(id, request.planId())));
     }
 
     @Operation(summary = "分页列出租户，最近创建的在前")
@@ -103,12 +112,17 @@ class TenantController {
             // 不填为 active
             @Pattern(regexp = "trial|active") String status,
 
-            @Future OffsetDateTime expiresAt) {}
+            @Future OffsetDateTime expiresAt,
+
+            @NotNull UUID planId) {}
+
+    record ChangePlanRequest(@NotNull UUID planId) {}
 
     record TransitionRequest(
             @NotBlank String status, @Size(max = 500) String reason, OffsetDateTime expiresAt) {}
 
     /**
+     * @param planId 适用的套餐；套餐上线前创建的租户为 null，不受套餐限制
      * @param expiresAt 试用或订购的到期时间
      * @param purgeAt 删除状态下冷静期的结束时间
      * @param purgedAt 冷静期已结束、各服务开始清理数据的时间
@@ -118,6 +132,7 @@ class TenantController {
             String name,
             String status,
             String adminContact,
+            UUID planId,
             OffsetDateTime expiresAt,
             OffsetDateTime purgeAt,
             OffsetDateTime purgedAt,
@@ -128,6 +143,7 @@ class TenantController {
                     tenant.getName(),
                     tenant.getStatus(),
                     tenant.getAdminContact(),
+                    tenant.getPlanId(),
                     tenant.getExpiresAt(),
                     tenant.getPurgeAt(),
                     tenant.getPurgedAt(),

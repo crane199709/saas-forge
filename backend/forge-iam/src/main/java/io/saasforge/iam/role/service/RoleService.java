@@ -1,8 +1,12 @@
 package io.saasforge.iam.role.service;
 
 import io.saasforge.iam.membership.model.RoleGrants;
+import io.saasforge.iam.membership.service.MembershipService;
 import io.saasforge.iam.membership.service.RoleGrantSource;
+import io.saasforge.iam.permission.model.PermissionRow;
+import io.saasforge.iam.permission.service.IamPermissions;
 import io.saasforge.iam.permission.service.PermissionService;
+import io.saasforge.iam.plan.service.PlanService;
 import io.saasforge.iam.role.mapper.RoleDataPolicyMapper;
 import io.saasforge.iam.role.mapper.RoleMapper;
 import io.saasforge.iam.role.mapper.RolePermissionMapper;
@@ -31,27 +35,32 @@ public class RoleService implements RoleGrantSource {
     /** Owner：对租户负最终责任，每个租户唯一的持有者，不可删除。 */
     public static final String OWNER = "owner";
 
-    /** Tenant Admin：拥有全部有效 Permission Code，不可删除。 */
+    /** Tenant Admin：拥有 Plan 范围内的全部有效 Permission Code，不可删除。 */
     public static final String TENANT_ADMIN = "tenant-admin";
 
-    // 预置角色的权限不落授权记录而在发布时取全部有效权限码，业务服务新增权限码后无需为每个租户补授权。
-    // TODO(#20): 套餐接入后，取值改为 Plan 范围内的有效权限码。
+    // 预置角色的权限不落授权记录而在发布时取 Plan 范围内的全部有效权限码，业务服务新增权限码或租户升级后无需为每个租户补授权。
     static final Set<String> ALL_PERMISSIONS = Set.of(OWNER, TENANT_ADMIN);
 
     private final RoleMapper roles;
     private final RolePermissionMapper grants;
     private final RoleDataPolicyMapper dataPolicies;
     private final PermissionService permissions;
+    private final PlanService plans;
+    private final MembershipService memberships;
 
     RoleService(
             RoleMapper roles,
             RolePermissionMapper grants,
             RoleDataPolicyMapper dataPolicies,
-            PermissionService permissions) {
+            PermissionService permissions,
+            PlanService plans,
+            MembershipService memberships) {
         this.roles = roles;
         this.grants = grants;
         this.dataPolicies = dataPolicies;
         this.permissions = permissions;
+        this.plans = plans;
+        this.memberships = memberships;
     }
 
     /** 为租户预置 Owner 与 Tenant Admin，可重复调用。新租户开通时调用（工单 14）；已有租户由迁移补齐。 */
@@ -131,8 +140,22 @@ public class RoleService implements RoleGrantSource {
     }
 
     /**
-     * Membership 当前的角色、权限与 Data Policy：持有预置角色时拥有全部有效权限码，在全部 Data Resource 上为「全部」；
-     * 否则为各角色有效授权的并集与各角色的策略（预设展开为模板，自定义条件原样发布）。只发布当前清单中仍声明的资源上的策略。
+     * 租户可授予、可生效的 Permission Code：当前有效的权限码中，iam 自身的管理权限码不受套餐限制，其余须在租户 Plan 的
+     * Feature Pack 中；未登记 Plan 的租户不受限。按服务、分组、编码排序。
+     */
+    public List<PermissionRow> grantablePermissions(UUID tenantId) {
+        Optional<Set<String>> plan = plans.permissionsOf(tenantId);
+        return permissions.activePermissions().stream()
+                .filter(permission -> plan.isEmpty()
+                        || IamPermissions.SERVICE.equals(permission.service())
+                        || plan.get().contains(permission.code()))
+                .toList();
+    }
+
+    /**
+     * Membership 当前的角色、权限与 Data Policy：持有预置角色时拥有 Plan 范围内的全部有效权限码，在全部 Data Resource 上为「全部」；
+     * 否则为各角色有效授权的并集与各角色的策略（预设展开为模板，自定义条件原样发布）。超出 Plan 的授权记录保留但不生效，
+     * 升级后随之恢复。只发布当前清单中仍声明的资源上的策略。
      */
     @Override
     public RoleGrants grantsOf(UUID membershipId) {
@@ -154,10 +177,18 @@ public class RoleService implements RoleGrantSource {
                                         : scopeOf(policy.scope()).template());
             }
         }
-        return new RoleGrants(
-                Set.copyOf(codes),
-                Set.copyOf(all ? permissions.activeCodes() : grants.grantedCodes(membershipId)),
-                policies);
+        Set<String> grantable = memberships
+                .tenantOf(membershipId)
+                .map(tenantId -> grantablePermissions(tenantId).stream()
+                        .map(PermissionRow::code)
+                        .collect(Collectors.toSet()))
+                .orElse(Set.of());
+        Set<String> effective = all
+                ? grantable
+                : grants.grantedCodes(membershipId).stream()
+                        .filter(grantable::contains)
+                        .collect(Collectors.toSet());
+        return new RoleGrants(Set.copyOf(codes), Set.copyOf(effective), policies);
     }
 
     /** 存储与接口中的范围名到预设，如 {@code department_and_below}；未知名称抛出 {@link IllegalArgumentException}。 */

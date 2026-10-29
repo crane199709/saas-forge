@@ -21,12 +21,10 @@
           AND code IN <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
         ON CONFLICT DO NOTHING
     </insert>
-    <delete id="revokeActiveExcept">
+    <delete id="revoke">
         DELETE FROM role_permission rp USING permission p
-        WHERE rp.role_id = #{roleId} AND p.id = rp.permission_id AND p.status = 'active' AND NOT p.deleted
-        <if test="!keep.isEmpty()">
-            AND p.code NOT IN <foreach collection="keep" item="code" open="(" separator="," close=")">#{code}</foreach>
-        </if>
+        WHERE rp.role_id = #{roleId} AND p.id = rp.permission_id
+          AND p.code IN <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
     </delete>
     <delete id="deleteByRole">
         DELETE FROM role_permission WHERE role_id = #{roleId}

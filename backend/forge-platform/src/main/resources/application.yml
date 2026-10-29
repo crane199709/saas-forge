@@ -39,6 +39,7 @@ forge:
       - tenant
       - tenant_initialization
       - tenant_status_change
+      - plan
   platform:
     provisioning:
       # 创建租户时预建 pending 初始化状态的服务，名称为各服务的 spring.application.name。
@@ -46,5 +47,10 @@ forge:
       services:
         - forge-iam
         - demo-service
+    # Feature Pack 从 iam 的权限码目录中选择。本地开发值，部署时以 Nacos 或环境变量覆盖，漏配则启动失败；
+    # 令牌须与 iam forge.iam.manifest.tokens.forge-platform 一致
+    iam:
+      uri: http://localhost:8101
+      token: ${FORGE_PLATFORM_MANIFEST_TOKEN:local-platform-manifest-token}
 mybatis-plus:
   mapper-locations: classpath*:/*/mapper/**/*.xml

@@ -22,6 +22,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 import org.testcontainers.junit.jupiter.Container;
@@ -33,6 +34,7 @@ import tools.jackson.databind.json.JsonMapper;
 /** Operator 创建租户与 TenantCreated 同一事务提交，平台按各服务回报展示初始化状态，失败项可重试（工单 14）。 */
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Sql("/fixtures/plan.sql")
 class TenantProvisioningTest {
     static final JsonMapper JSON = JsonMapper.builder().build();
     static final ParameterizedTypeReference<Map<String, Object>> ENVELOPE = new ParameterizedTypeReference<>() {};
@@ -67,7 +69,16 @@ class TenantProvisioningTest {
 
     @Test
     void createdTenantIsUsableAtOnceAndPublishesTenantCreated() throws Exception {
-        Response created = call("POST", "/tenants", Map.of("name", " 示例租户 ", "adminContact", "Owner@Example.com"));
+        Response created = call(
+                "POST",
+                "/tenants",
+                Map.of(
+                        "name",
+                        " 示例租户 ",
+                        "adminContact",
+                        "Owner@Example.com",
+                        "planId",
+                        PlatformTokens.DEFAULT_PLAN_ID));
 
         assertThat(created.status()).isEqualTo(201);
         Map<?, ?> tenant = (Map<?, ?>) created.data().get("tenant");
@@ -92,7 +103,12 @@ class TenantProvisioningTest {
     void rolledBackCreationLeavesNoTenantAndNoEvent() {
         var tenantId = new AtomicReference<UUID>();
         transaction.executeWithoutResult(status -> {
-            tenantId.set(tenants.create("回滚的租户", "rollback@example.com", "active", null)
+            tenantId.set(tenants.create(
+                            "回滚的租户",
+                            "rollback@example.com",
+                            "active",
+                            null,
+                            UUID.fromString(PlatformTokens.DEFAULT_PLAN_ID))
                     .getId());
             status.setRollbackOnly();
         });
@@ -104,11 +120,19 @@ class TenantProvisioningTest {
 
     @Test
     void reportsUpdateStatusAndOnlyFailedInitializationCanBeRetried() throws Exception {
-        UUID tenantId = UUID.fromString((String)
-                ((Map<?, ?>) call("POST", "/tenants", Map.of("name", "重试租户", "adminContact", "13800000000"))
-                                .data()
-                                .get("tenant"))
-                        .get("id"));
+        UUID tenantId = UUID.fromString((String) ((Map<?, ?>) call(
+                                "POST",
+                                "/tenants",
+                                Map.of(
+                                        "name",
+                                        "重试租户",
+                                        "adminContact",
+                                        "13800000000",
+                                        "planId",
+                                        PlatformTokens.DEFAULT_PLAN_ID))
+                        .data()
+                        .get("tenant"))
+                .get("id"));
 
         deliver(tenantId, new TenantInitializationReported(tenantId, "forge-iam", true, null));
         deliver(tenantId, new TenantInitializationReported(tenantId, "demo-service", false, "boom"));

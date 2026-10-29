@@ -1,6 +1,8 @@
 package io.saasforge.platform.tenant.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import io.saasforge.platform.plan.entity.Plan;
+import io.saasforge.platform.plan.service.PlanService;
 import io.saasforge.platform.tenant.config.ProvisioningProperties;
 import io.saasforge.platform.tenant.entity.Tenant;
 import io.saasforge.platform.tenant.entity.TenantInitialization;
@@ -15,6 +17,7 @@ import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.mq.EventPublisher;
 import io.saasforge.sdk.provisioning.TenantCreated;
 import io.saasforge.sdk.provisioning.TenantInitializationRequested;
+import io.saasforge.sdk.provisioning.TenantPlanChanged;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -35,6 +38,8 @@ public class TenantService {
     private final ProvisioningProperties provisioning;
     private final TenantStatusChangeMapper statusChanges;
     private final CurrentActorProvider actors;
+    private final PlanService plans;
+    private final TenantPlanService tenantPlans;
 
     TenantService(
             TenantMapper tenants,
@@ -42,25 +47,33 @@ public class TenantService {
             EventPublisher events,
             ProvisioningProperties provisioning,
             TenantStatusChangeMapper statusChanges,
-            CurrentActorProvider actors) {
+            CurrentActorProvider actors,
+            PlanService plans,
+            TenantPlanService tenantPlans) {
         this.tenants = tenants;
         this.initializations = initializations;
         this.events = events;
         this.provisioning = provisioning;
         this.statusChanges = statusChanges;
         this.actors = actors;
+        this.plans = plans;
+        this.tenantPlans = tenantPlans;
     }
 
     /**
-     * 创建租户并发布 {@link TenantCreated}，二者同一事务提交。租户立即可用，不等待各服务初始化完成。
+     * 创建租户并发布 {@link TenantCreated} 与初始的 {@link TenantPlanChanged}，三者同一事务提交。租户立即可用，不等待各服务初始化完成。
+     *
+     * <p>初始状态与到期时间由 Operator 创建时选择：不做计费，Plan 只规定能力上限，不规定试用期。
      *
      * @param adminContact 初始管理员的邮箱或手机号，由 iam 据此邀请
      * @param status 初始状态，{@code trial} 或 {@code active}
      * @param expiresAt 试用或订购的到期时间，可为 null
+     * @param planId 租户适用的 Plan
+     * @throws ForgeException 404 {@code plan.notFound}
      */
-    // TODO(#20): 套餐接入后按 Plan 决定默认进入 trial 或 active 及到期时间；在此之前由 Operator 创建时选择。
     @Transactional
-    public Tenant create(String name, String adminContact, String status, OffsetDateTime expiresAt) {
+    public Tenant create(String name, String adminContact, String status, OffsetDateTime expiresAt, UUID planId) {
+        Plan plan = plans.lockForAssignment(planId);
         var tenant = new Tenant();
         tenant.setId(UuidV7.generate());
         tenant.setName(name);
@@ -68,6 +81,8 @@ public class TenantService {
         tenant.setStatusVersion(0L);
         tenant.setExpiresAt(expiresAt);
         tenant.setAdminContact(adminContact);
+        tenant.setPlanId(plan.getId());
+        tenant.setPlanVersion(1L);
         tenants.insert(tenant);
         recordStatusChange(tenant.getId(), null, status, null);
         for (String service : provisioning.services()) {
@@ -78,7 +93,22 @@ public class TenantService {
             initializations.insert(initialization);
         }
         publish(tenant.getId(), createdEvent(tenant));
+        tenantPlans.publish(tenant.getId(), plan, tenant.getPlanVersion());
         return get(tenant.getId());
+    }
+
+    /**
+     * 为租户更换 Plan 并广播 {@link TenantPlanChanged}，二者同一事务提交。降级后超出新 Plan 的授权在各服务中随即失效（记录保留），
+     * 升级后恢复；Plan 不变时不做任何事。
+     *
+     * @throws ForgeException 404 {@code tenant.notFound} 或 {@code plan.notFound}
+     */
+    @Transactional
+    public Tenant changePlan(UUID tenantId, UUID planId) {
+        Tenant tenant = get(tenantId);
+        if (planId.equals(tenant.getPlanId())) return tenant;
+        tenantPlans.assign(tenantId, plans.lockForAssignment(planId));
+        return get(tenantId);
     }
 
     public List<Tenant> page(long offset, int limit) {

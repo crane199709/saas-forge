@@ -74,6 +74,16 @@ public class PermissionService {
         return permissions.activePermissions();
     }
 
+    /**
+     * 可纳入套餐 Feature Pack 的权限码：业务服务申报的有效权限码，不含 iam 自身的管理权限码（它们不受套餐限制）。
+     * 排序同 {@link #activePermissions()}。
+     */
+    public List<PermissionRow> planScopedPermissions() {
+        return permissions.activePermissions().stream()
+                .filter(permission -> !IamPermissions.SERVICE.equals(permission.service()))
+                .toList();
+    }
+
     /** 各服务当前版本的菜单树，按服务名依次拼接，未经权限裁剪。 */
     public List<MenuNode> currentMenus() {
         return currentManifests().stream()

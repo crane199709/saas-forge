@@ -134,7 +134,7 @@
       "members": "成员数",
       "permissions": "权限",
       "builtin": "预置",
-      "allPermissions": "全部权限",
+      "allPermissions": "套餐内全部权限",
       "edit": "编辑",
       "delete": "删除",
       "dataScopes": "数据范围",

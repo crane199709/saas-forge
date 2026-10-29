@@ -24,6 +24,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.web.client.RestClient;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -34,6 +35,7 @@ import tools.jackson.databind.json.JsonMapper;
 /** Operator 按合法迁移表推进 Tenant Lifecycle，每次变更广播；删除进入冷静期，期内可撤回，期满广播 TenantDeleted（工单 15）。 */
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Sql("/fixtures/plan.sql")
 class TenantLifecycleTest {
     static final JsonMapper JSON = JsonMapper.builder().build();
     static final ParameterizedTypeReference<Map<String, Object>> ENVELOPE = new ParameterizedTypeReference<>() {};
@@ -167,7 +169,9 @@ class TenantLifecycleTest {
     }
 
     private UUID create(Map<String, Object> request) {
-        Response created = call("POST", "/tenants", request);
+        var body = new HashMap<>(request);
+        body.put("planId", PlatformTokens.DEFAULT_PLAN_ID);
+        Response created = call("POST", "/tenants", body);
         assertThat(created.status()).isEqualTo(201);
         return UUID.fromString((String) tenant(created).get("id"));
     }

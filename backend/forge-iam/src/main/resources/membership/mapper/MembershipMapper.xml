@@ -13,6 +13,15 @@
         WHERE id = #{membershipId} AND NOT deleted
         RETURNING tenant_id, version
     </select>
+    <select id="incrementActiveVersions" flushCache="true" resultType="io.saasforge.iam.membership.model.MembershipVersion">
+        UPDATE membership SET version = version + 1, updated_at = now(), updated_by = NULL
+        WHERE tenant_id = #{tenantId} AND status = 'active' AND NOT deleted
+        RETURNING id AS membership_id, version
+    </select>
+    <!-- 单列 UUID 结果按 UUID 类型映射会被当作构造器自动映射而失败；按 Object 取驱动返回的 UUID。 -->
+    <select id="tenantOf" resultType="java.lang.Object">
+        SELECT tenant_id FROM membership WHERE id = #{membershipId} AND NOT deleted
+    </select>
     <!-- ON CONFLICT 命中 (identity_id, tenant_id) 的部分唯一索引：重复开通不产生第二个 Membership，也不改写已接受的状态。 -->
     <insert id="insertInvited">
         INSERT INTO membership (id, identity_id, tenant_id, status, created_at, updated_at, created_by, updated_by)

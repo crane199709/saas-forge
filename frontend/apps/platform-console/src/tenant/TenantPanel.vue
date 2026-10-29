@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@forge/sdk'
+import type { Plan } from '../plan/plan-api'
 import type {
   CreateTenant,
   InitializationStatus,
@@ -11,7 +12,8 @@ import type {
   TenantStatus,
 } from './tenant-api'
 
-const props = defineProps<{ api: TenantApi }>()
+// plans 由 Shell 从套餐面板取得，用于创建时选择、列表与详情中展示及更换套餐
+const props = withDefaults(defineProps<{ api: TenantApi; plans?: Plan[] }>(), { plans: () => [] })
 const { t } = useI18n()
 const size = 20
 const tenants = ref<Tenant[]>([])
@@ -24,10 +26,12 @@ const emptyDraft = () => ({
   adminContact: '',
   status: 'active' as CreateTenant['status'],
   expiresAt: '',
+  planId: '',
 })
 const draft = ref(emptyDraft())
 const emptyTransition = () => ({ status: '' as TenantStatus | '', reason: '', expiresAt: '' })
 const transitionDraft = ref(emptyTransition())
+const planDraft = ref('')
 const busy = ref(false)
 const error = ref<{ message: string; traceId?: string } | null>(null)
 
@@ -45,6 +49,10 @@ const withdrawing = computed(() => detail.value?.tenant.status === 'deleted')
 // datetime-local 输入是本地时间，提交时转为带时区的 ISO 时间
 const toInstant = (local: string) => (local ? new Date(local).toISOString() : undefined)
 const formatTime = (value: string | null) => (value ? new Date(value).toLocaleString() : '')
+const planName = (id: string | null) =>
+  id === null
+    ? t('tenant.noPlan')
+    : (props.plans.find((plan) => plan.id === id)?.name ?? t('tenant.unknownPlan'))
 
 // 优先展示服务端已翻译的 userTip，其余故障显示通用提示。
 function showError(cause: unknown) {
@@ -80,17 +88,19 @@ const open = (id: string) =>
   run(async () => {
     detail.value = await props.api.get(id)
     transitionDraft.value = emptyTransition()
+    planDraft.value = ''
   })
 
 // 新租户排在第一页最前，创建后回到第一页并打开详情查看各服务初始化状态。
 const create = () =>
   run(async () => {
-    const { name, adminContact, status, expiresAt } = draft.value
+    const { name, adminContact, status, expiresAt, planId } = draft.value
     detail.value = await props.api.create({
       name,
       adminContact,
       status,
       expiresAt: toInstant(expiresAt),
+      planId,
     })
     creating.value = false
     draft.value = emptyDraft()
@@ -107,6 +117,14 @@ const transition = () =>
       expiresAt: expiryApplies(status) ? toInstant(expiresAt) : undefined,
     })
     transitionDraft.value = emptyTransition()
+    await fetchPage(page.value)
+  })
+
+const changePlan = () =>
+  run(async () => {
+    if (!detail.value || !planDraft.value) return
+    detail.value = await props.api.changePlan(detail.value.tenant.id, planDraft.value)
+    planDraft.value = ''
     await fetchPage(page.value)
   })
 
@@ -141,6 +159,9 @@ onMounted(() => load(1))
     <el-table :data="tenants" :empty-text="t('tenant.empty')">
       <el-table-column prop="name" :label="t('tenant.name')" />
       <el-table-column prop="adminContact" :label="t('tenant.adminContact')" />
+      <el-table-column :label="t('tenant.plan')">
+        <template #default="{ row }">{{ planName(row.planId) }}</template>
+      </el-table-column>
       <el-table-column :label="t('tenant.status')">
         <template #default="{ row }">{{ t(`tenant.statuses.${row.status}`) }}</template>
       </el-table-column>
@@ -173,6 +194,15 @@ onMounted(() => load(1))
             required
           />
         </el-form-item>
+        <el-form-item :label="t('tenant.plan')">
+          <el-select
+            v-model="draft.planId"
+            :placeholder="t('tenant.choosePlan')"
+            data-testid="tenant-plan"
+          >
+            <el-option v-for="plan in plans" :key="plan.id" :label="plan.name" :value="plan.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item :label="t('tenant.initialStatus')">
           <el-radio-group v-model="draft.status">
             <el-radio-button value="active">{{ t('tenant.statuses.active') }}</el-radio-button>
@@ -188,7 +218,7 @@ onMounted(() => load(1))
             type="datetime-local"
           />
         </el-form-item>
-        <el-button native-type="submit" type="primary" :loading="busy">{{
+        <el-button native-type="submit" type="primary" :disabled="!draft.planId" :loading="busy">{{
           t('tenant.submit')
         }}</el-button>
       </el-form>
@@ -200,6 +230,9 @@ onMounted(() => load(1))
           <el-descriptions-item :label="t('tenant.status')">{{
             t(`tenant.statuses.${detail.tenant.status}`)
           }}</el-descriptions-item>
+          <el-descriptions-item :label="t('tenant.plan')">{{
+            planName(detail.tenant.planId)
+          }}</el-descriptions-item>
           <el-descriptions-item v-if="detail.tenant.expiresAt" :label="t('tenant.expiresAt')">{{
             formatTime(detail.tenant.expiresAt)
           }}</el-descriptions-item>
@@ -210,6 +243,26 @@ onMounted(() => load(1))
             formatTime(detail.tenant.purgeAt)
           }}</el-descriptions-item>
         </el-descriptions>
+
+        <h3>{{ t('tenant.changePlan') }}</h3>
+        <p>{{ t('tenant.changePlanHint') }}</p>
+        <el-form class="change-plan" inline @submit.prevent="changePlan">
+          <el-select
+            v-model="planDraft"
+            :placeholder="t('tenant.choosePlan')"
+            data-testid="tenant-change-plan"
+          >
+            <el-option
+              v-for="plan in plans.filter((item) => item.id !== detail?.tenant.planId)"
+              :key="plan.id"
+              :label="plan.name"
+              :value="plan.id"
+            />
+          </el-select>
+          <el-button native-type="submit" type="primary" :disabled="!planDraft" :loading="busy">{{
+            t('tenant.changePlan')
+          }}</el-button>
+        </el-form>
 
         <h3>{{ t('tenant.lifecycle') }}</h3>
         <p v-if="detail.allowedTransitions.length === 0">{{ t('tenant.noTransitions') }}</p>

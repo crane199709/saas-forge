@@ -84,8 +84,11 @@ public class RoleManagementService {
     /** 租户的全部角色及其有效授权与 Data Policy，含开通时按业务服务模板预置的角色。 */
     public List<RoleDetail> list(TenantActor actor) {
         requireManager(actor);
+        // 超出 Plan 的授权保留但不展示：授权界面只能在 Plan 内选择，整体替换时也不会撤销它们。
+        Set<String> grantable = grantableCodes(actor.tenantId());
         Map<UUID, List<String>> codesOf = new HashMap<>();
         for (RolePermissionRow row : grants.listByTenant(actor.tenantId())) {
+            if (!grantable.contains(row.code())) continue;
             codesOf.computeIfAbsent(row.roleId(), key -> new ArrayList<>()).add(row.code());
         }
         Map<UUID, List<DataPolicy>> policiesOf = new HashMap<>();
@@ -141,17 +144,17 @@ public class RoleManagementService {
         publish(affected);
     }
 
-    /** 可授予的 Permission Code：只含有效的，已下线的不再出现。 */
+    /** 可授予的 Permission Code：只含有效且在租户 Plan 范围内的，已下线或超出 Plan 的不出现。 */
     public List<PermissionRow> grantable(TenantActor actor) {
         requireManager(actor);
-        return permissions.activePermissions();
+        return roleService.grantablePermissions(actor.tenantId());
     }
 
     /** 新建自定义角色，权限码授权与 Data Policy 同一事务写入；新角色还没有持有者，不需要递增版本。 */
     public RoleDetail create(
             TenantActor actor, String code, String name, Collection<String> codes, Collection<DataPolicy> policies) {
         requireManager(actor);
-        Set<String> granted = requireActive(codes);
+        Set<String> granted = requireGrantable(actor.tenantId(), codes);
         List<DataPolicy> scoped = conditions.requireValid(actor.tenantId(), policies);
         // 保留编码由数据库 CHECK 兜底，这里先拒绝，避免以 500 暴露约束错误。
         if (RoleService.ALL_PERMISSIONS.contains(code)) throw new ForgeException(RoleErrorCode.CODE_TAKEN, code);
@@ -174,14 +177,19 @@ public class RoleManagementService {
         }
     }
 
-    /** 整体替换角色的有效授权；已下线权限码上的授权保留，权限码恢复后随之恢复。持有该角色的成员随即失去或获得权限。 */
+    /**
+     * 整体替换角色在可授予范围内的授权；已下线或超出 Plan 的权限码上的授权保留，权限码恢复或租户升级后随之恢复。
+     * 持有该角色的成员随即失去或获得权限。
+     */
     public void replacePermissions(TenantActor actor, UUID id, Collection<String> codes) {
         requireManager(actor);
-        Set<String> granted = requireActive(codes);
+        Set<String> granted = requireGrantable(actor.tenantId(), codes);
+        Set<String> revoked = new HashSet<>(grantableCodes(actor.tenantId()));
+        revoked.removeAll(granted);
         List<UUID> affected = transactions.execute(status -> {
             roles.lockTenant(actor.tenantId());
             requireCustom(actor, id);
-            int changed = grants.revokeActiveExcept(id, granted);
+            int changed = revoked.isEmpty() ? 0 : grants.revoke(id, revoked);
             if (!granted.isEmpty()) changed += grants.grant(id, granted);
             return changed == 0 ? List.<UUID>of() : roles.holders(id);
         });
@@ -258,14 +266,22 @@ public class RoleManagementService {
         return role;
     }
 
-    // 只能授予当前有效的权限码：已下线的编码不在授权界面中，直接调用接口也被拒绝。
-    private Set<String> requireActive(Collection<String> codes) {
+    // 只能授予当前有效且在 Plan 内的权限码：已下线或超出 Plan 的编码不在授权界面中，直接调用接口也被拒绝。
+    private Set<String> requireGrantable(UUID tenantId, Collection<String> codes) {
         Set<String> requested = new LinkedHashSet<>(codes);
         Set<String> active = new HashSet<>(permissions.activeCodes());
+        Set<String> grantable = grantableCodes(tenantId);
         for (String code : requested) {
             if (!active.contains(code)) throw new ForgeException(RoleErrorCode.INVALID_PERMISSION, code);
+            if (!grantable.contains(code)) throw new ForgeException(RoleErrorCode.NOT_IN_PLAN, code);
         }
         return requested;
+    }
+
+    private Set<String> grantableCodes(UUID tenantId) {
+        Set<String> codes = new HashSet<>();
+        for (PermissionRow row : roleService.grantablePermissions(tenantId)) codes.add(row.code());
+        return codes;
     }
 
     private Set<String> declaredResources() {

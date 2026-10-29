@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.plan.mapper.TenantPlanMapper">
+    <!-- 由 TenantPlanChanged 消费者写入，没有操作人。ON CONFLICT 的 WHERE 不成立时不更新，受影响行数为 0。 -->
+    <insert id="apply">
+        INSERT INTO tenant_plan (tenant_id, plan_id, plan_version, member_quota, created_at, updated_at, created_by, updated_by)
+        VALUES (#{tenantId}, #{planId}, #{version}, #{memberQuota}, now(), now(), NULL, NULL)
+        ON CONFLICT (tenant_id) DO UPDATE SET plan_id = EXCLUDED.plan_id, plan_version = EXCLUDED.plan_version,
+            member_quota = EXCLUDED.member_quota, updated_at = now(), updated_by = NULL
+        WHERE tenant_plan.plan_version &lt; EXCLUDED.plan_version AND NOT tenant_plan.deleted
+    </insert>
+    <delete id="clearPermissions">
+        DELETE FROM tenant_plan_permission WHERE tenant_id = #{tenantId}
+    </delete>
+    <insert id="insertPermissions">
+        INSERT INTO tenant_plan_permission (tenant_id, code) VALUES
+        <foreach collection="codes" item="code" separator=",">(#{tenantId}, #{code})</foreach>
+    </insert>
+    <select id="exists" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM tenant_plan WHERE tenant_id = #{tenantId} AND NOT deleted)
+    </select>
+    <select id="permissions" resultType="string">
+        SELECT code FROM tenant_plan_permission WHERE tenant_id = #{tenantId} ORDER BY code
+    </select>
+    <select id="memberQuota" resultType="java.lang.Integer">
+        SELECT member_quota FROM tenant_plan WHERE tenant_id = #{tenantId} AND NOT deleted
+    </select>
+</mapper>
