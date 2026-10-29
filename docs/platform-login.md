@@ -17,8 +17,8 @@
 | 签名密钥 | `forge.iam.signing-key-file` | `forge.iam.platform.signing-key-file`（`deploy/data/iam/platform-signing.jwk`） |
 | JWKS | `/iam/oauth2/jwks` | `/iam/platform/oauth2/jwks` |
 | OIDC 元数据 | `/iam/.well-known/openid-configuration` | `/iam/platform/.well-known/openid-configuration` |
-| Access Token claim | `sub`（Identity）、`tenant_id`、`membership_id`、`ver`，`aud=tenant-app` | `sub`（Operator），`aud=platform-console` |
-| 网关路由 | `/demo/**`、`/iam/auth/memberships` 等 | `/platform/**` |
+| Access Token claim | `sub`（Identity）、`tenant_id`、`membership_id`、`ver`，`aud=tenant-app` | `sub`（Operator）、`ver`，`aud=platform-console` |
+| 网关路由 | `/demo/**`、`/iam/auth/memberships` 等 | `/platform/**`、`/iam/platform/**`（登录相关接口匿名） |
 
 两个 Realm 共用 IAM 的 `/oauth2/authorize` 与内部 `/oauth2/token`，元数据中的 `authorization_endpoint`、`token_endpoint` 因此相同；以 issuer、JWKS 与 scope 区分。首版不签发 ID Token，元数据的 `scopes_supported` 不含 `openid`；`id_token_signing_alg_values_supported` 等字段是 OIDC 发现文档的必填项，只说明将来签发 ID Token 时的算法。`token_endpoint` 指向的 `/iam/oauth2/token` 不经网关开放，浏览器经 `exchange`/`refresh` 适配器换发 Token。
 
@@ -39,15 +39,14 @@
 
 - **签发**：Token 定制器按客户端决定 Realm，并要求登录会话的主体属于同一 Realm（`TENANT` / `OPERATOR` 权限），否则以 `invalid_grant` 拒绝。同一浏览器的 IAM 登录会话可以向任一客户端申请授权码，但换码时被拒（401 `auth.failed`）。
 - **密钥**：`JwtEncoder` 按 issuer 选择签名密钥。Platform 公钥只由 `/platform/oauth2/jwks` 发布，不出现在标准 `/oauth2/jwks` 中，所以即使某个验签方漏查 issuer，也无法用对方 JWKS 验过。
-- **网关**：`/platform/**` 用 Platform 解码器（issuer、`aud=platform-console`、`sub` 为 UUID），其余受保护路由用 Tenant 解码器加即时失效校验。用错 Realm 的 Token 一律 401 `auth.unauthenticated`（`invalid_token`），不是 403。
+- **网关**：`/platform/**` 与 `/iam/platform/**` 用 Platform 解码器（issuer、`aud=platform-console`、`sub` 为 UUID、`ver` 为数字）加 Operator 版本校验，其余受保护路由用 Tenant 解码器加即时失效校验。用错 Realm 的 Token 一律 401 `auth.unauthenticated`（`invalid_token`），不是 403。
 - **业务服务 SDK**：`forge.security.realm` 取 `tenant`（默认）或 `platform`，其他取值启动失败。`platform` 时用 `forge.security.platform.issuer` 与 `forge.security.platform.jwk-set-uri` 验签，不绑定 `CurrentTenant`，以 `OperatorContext.current()` 读取当前 Operator。forge-platform 已配置为 `platform`。
 - **前端 SDK**：`createTenantClient(storage)` 与 `createPlatformClient(storage)` 分别使用 `tenantRealm`、`platformRealm` 配置（接口前缀、scope、存储键 `forge.tenant.session` / `forge.platform.session`）。platform-console 通过 `platformClientKey` 提供唯一实例。
 
 ## 已知限制
 
 - 两个 Realm 共用一个 IAM 登录会话 Cookie。同一浏览器先登录一个 Realm、再登录另一个时，后者替换 IAM 会话：已签发的 Token 不受影响，但前者失去免密重新授权（SSO）。
-- Operator 没有即时失效：网关对 Platform Token 只验签，不查 Redis 状态。停用 Operator（直接改库，暂无管理接口）后刷新失败，已签发的 Access Token 在 15 分钟内仍然有效。
-- Operator 的角色与「超级管理员」在工单 22 实现，本工单只区分是否为已认证的 Operator。
+- Operator 的平台角色、超级管理员、账号管理与即时失效见 [平台侧权限](platform-permission.md)（工单 22）。
 
 ## 配置
 

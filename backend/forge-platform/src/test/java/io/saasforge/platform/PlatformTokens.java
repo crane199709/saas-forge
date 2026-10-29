@@ -9,15 +9,32 @@ import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.sun.net.httpserver.HttpServer;
+import io.saasforge.sdk.abac.DataScope;
+import io.saasforge.sdk.core.MembershipGrants;
+import io.saasforge.sdk.core.OperatorStateKeys;
+import io.saasforge.sdk.core.SubjectAttributes;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
+import org.testcontainers.containers.GenericContainer;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 测试用 Platform Realm：本地 JWKS 端点与签发 Operator Token，供各测试类共享（进程内只启动一次）。
  * 同一端点还模拟 iam 的 {@code GET /internal/permissions}，供套餐选择权限码。
+ *
+ * <p>Redis 容器同样只启动一次，模拟 iam 按 Token 版本发布的 Operator 明细：{@link #operator()} 的 Operator 为超级管理员，
+ * 拥有全部平台权限码，租户数据范围为「全部」；不关心平台权限的测试因此照常访问全部接口与数据。
  */
 final class PlatformTokens {
     static final String PLATFORM_ISSUER = "http://platform-realm.test";
@@ -32,8 +49,15 @@ final class PlatformTokens {
               {"code":"order:approve","name":"审批订单","service":"demo-service","group":"订单"},
               {"code":"report:export","name":"导出报表","service":"demo-service","group":null}]}
             """;
+    /** 清单中声明的全部平台权限码，即超级管理员的权限。 */
+    static final List<String> ALL_PERMISSIONS = List.of(
+            "platform:tenant:read", "platform:tenant:manage", "platform:plan:manage", "platform:sub-app:manage");
+
+    private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final RSAKey KEY;
     private static final HttpServer JWKS;
+    private static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+    private static final StringRedisTemplate GRANTS;
 
     static {
         try {
@@ -58,6 +82,11 @@ final class PlatformTokens {
                 }
             });
             JWKS.start();
+            REDIS.start();
+            var factory = new LettuceConnectionFactory(
+                    new RedisStandaloneConfiguration(REDIS.getHost(), REDIS.getMappedPort(6379)));
+            factory.afterPropertiesSet();
+            GRANTS = new StringRedisTemplate(factory);
         } catch (Exception error) {
             throw new ExceptionInInitializerError(error);
         }
@@ -74,20 +103,57 @@ final class PlatformTokens {
                 "forge.platform.iam.uri",
                 () -> "http://127.0.0.1:" + JWKS.getAddress().getPort());
         registry.add("forge.platform.iam.token", () -> IAM_TOKEN);
+        registry.add("spring.data.redis.host", REDIS::getHost);
+        registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
     }
 
+    /** 超级管理员 Operator 的 Token，版本 1。 */
     static String operator() throws Exception {
+        publish(UUID.fromString(OPERATOR_ID), 1, ALL_PERMISSIONS, null, List.of(DataScope.ALL.template()));
         return token(PLATFORM_ISSUER, "platform-console", null);
     }
 
+    /**
+     * 以给定的平台权限码、负责区域与租户 Data Policy 发布 Operator 的明细，并签发其版本 1 的 Token。
+     *
+     * @param tenantPolicies 每条相当于一个持有该策略的平台角色，为空表示租户上没有任何策略
+     */
+    static String operator(UUID operatorId, Collection<String> permissions, String region, List<String> tenantPolicies)
+            throws Exception {
+        publish(operatorId, 1, permissions, region, tenantPolicies);
+        return token(PLATFORM_ISSUER, "platform-console", null, operatorId.toString(), 1);
+    }
+
+    private static void publish(
+            UUID operatorId, long version, Collection<String> permissions, String region, List<String> tenantPolicies) {
+        var subject = new SubjectAttributes(
+                Set.of(),
+                null,
+                Set.of(),
+                region == null ? Map.of() : Map.of("region", region),
+                Map.of("region", "string"));
+        var grants = new MembershipGrants(
+                Set.of(),
+                Set.copyOf(permissions),
+                subject,
+                tenantPolicies.isEmpty() ? Map.of() : Map.of("tenant", tenantPolicies));
+        GRANTS.opsForValue().set(OperatorStateKeys.grants(operatorId, version), JSON.writeValueAsString(grants));
+    }
+
     static String token(String issuer, String audience, String tenantId) throws Exception {
+        return token(issuer, audience, tenantId, OPERATOR_ID, 1);
+    }
+
+    static String token(String issuer, String audience, String tenantId, String subject, Integer version)
+            throws Exception {
         var claims = new JWTClaimsSet.Builder()
                 .issuer(issuer)
-                .subject(OPERATOR_ID)
+                .subject(subject)
                 .audience(audience)
                 .issueTime(Date.from(Instant.now().minusSeconds(300)))
                 .expirationTime(Date.from(Instant.now().plusSeconds(900)))
                 .claim("tenant_id", tenantId)
+                .claim("ver", version)
                 .build();
         var jwt = new SignedJWT(
                 new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(KEY.getKeyID()).build(), claims);

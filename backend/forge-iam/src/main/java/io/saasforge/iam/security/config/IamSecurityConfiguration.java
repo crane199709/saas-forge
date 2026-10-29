@@ -10,6 +10,7 @@ import io.saasforge.iam.identity.service.IdentityService;
 import io.saasforge.iam.membership.service.MembershipStateService;
 import io.saasforge.iam.operator.model.ActiveOperator;
 import io.saasforge.iam.operator.service.OperatorService;
+import io.saasforge.iam.operator.service.OperatorStateService;
 import io.saasforge.iam.permission.config.ManifestProperties;
 import io.saasforge.iam.permission.filter.ServiceTokenFilter;
 import io.saasforge.iam.security.filter.EnvelopeSecurityErrorHandler;
@@ -186,6 +187,7 @@ class IamSecurityConfiguration {
             MembershipStateService membershipStates,
             TenantStateService tenantStates,
             OperatorService operators,
+            OperatorStateService operatorStates,
             RealmIssuerProperties issuers,
             IamProperties properties) {
         String platformIssuer = issuers.platform().issuer();
@@ -201,9 +203,12 @@ class IamSecurityConfiguration {
                 ActiveOperator operator = operators.findActive(
                         UUID.fromString(context.getPrincipal().getName()));
                 if (operator == null) throw new OAuth2AuthenticationException("invalid_grant");
+                // 与 Tenant Realm 一样：网关只认 Redis 中的版本，每次签发都按数据库补齐版本与平台角色明细。
+                operatorStates.publish(operator);
                 context.getClaims()
                         .issuer(platformIssuer)
-                        .subject(operator.operatorId().toString());
+                        .subject(operator.operatorId().toString())
+                        .claim("ver", operator.version());
                 return;
             }
             if (!hasAuthority(context.getPrincipal(), "TENANT")) {
@@ -303,6 +308,36 @@ class IamSecurityConfiguration {
 
     @Bean
     @Order(3)
+    SecurityFilterChain platformAccessTokenSecurity(
+            HttpSecurity http,
+            EnvelopeSecurityErrorHandler errors,
+            PlatformSigningKey platformKey,
+            RealmIssuerProperties issuers)
+            throws Exception {
+        // Operator 管理 Operator 账号与平台角色、读取自己的平台权限；只接受 Platform Realm 的 Access Token，不使用登录会话 Cookie。
+        // 解码器不注册为 Bean：标准资源服务器配置按类型取唯一的 JwtDecoder，那是 Tenant Realm 的 accessTokenDecoder。
+        var decoder = NimbusJwtDecoder.withPublicKey(platformKey.key().toRSAPublicKey())
+                .build();
+        // 与网关和 Platform Realm 服务一致：只接受签发给 platform-console、带版本的 Token；sub 由签发方保证为 Operator 标识。
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(issuers.platform().issuer()),
+                new JwtClaimValidator<List<String>>(
+                        JwtClaimNames.AUD, audience -> audience != null && audience.contains(PLATFORM_CLIENT)),
+                new JwtClaimValidator<Object>("ver", Number.class::isInstance)));
+        http.securityMatcher("/platform/operators/**", "/platform/roles/**", "/platform/access")
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                .exceptionHandling(exceptions ->
+                        exceptions.authenticationEntryPoint(errors).accessDeniedHandler(errors))
+                .oauth2ResourceServer(server -> server.authenticationEntryPoint(errors)
+                        .accessDeniedHandler(errors)
+                        .jwt(jwt -> jwt.decoder(decoder)));
+        return http.build();
+    }
+
+    @Bean
+    @Order(4)
     SecurityFilterChain manifestSecurity(
             HttpSecurity http, ManifestProperties manifest, EnvelopeSecurityErrorHandler errors) throws Exception {
         // 业务服务以上报令牌调用（上报清单、读取权限码目录），无状态、不使用 Cookie，因此无需 CSRF 防护。
@@ -317,7 +352,7 @@ class IamSecurityConfiguration {
     }
 
     @Bean
-    @Order(4)
+    @Order(5)
     SecurityFilterChain applicationSecurity(HttpSecurity http, EnvelopeSecurityErrorHandler errors) throws Exception {
         // JSON 凭证入口不开启 CORS，授权端点使用 Redis HTTP 会话；Token 交换仍需授权码和 PKCE。
         http.csrf(csrf -> csrf.ignoringRequestMatchers(

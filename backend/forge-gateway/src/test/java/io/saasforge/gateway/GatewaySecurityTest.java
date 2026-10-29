@@ -13,6 +13,7 @@ import com.nimbusds.jwt.SignedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import io.saasforge.sdk.core.MembershipStateKeys;
+import io.saasforge.sdk.core.OperatorStateKeys;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -57,6 +58,7 @@ class GatewaySecurityTest {
     static final String PLATFORM_ISSUER = "http://platform-realm.test";
     static final UUID TENANT_ID = UUID.fromString("019a0110-0000-7000-8000-000000000001");
     static final UUID MEMBERSHIP_ID = UUID.fromString("019a0110-0000-7000-8000-000000000003");
+    static final UUID OPERATOR_ID = UUID.fromString("019a0110-0000-7000-8000-0000000000f1");
     static final String DOWNSTREAM_ENVELOPE = "{\"code\":\"order.notFound\",\"httpStatus\":404,"
             + "\"errorMessage\":\"Order o-1 not found\",\"userTip\":\"订单不存在\",\"traceId\":\"from-service\"}";
     static final JsonMapper JSON = JsonMapper.builder().build();
@@ -156,6 +158,7 @@ class GatewaySecurityTest {
     void publishActiveState() {
         redisTemplate.opsForValue().set(MembershipStateKeys.version(TENANT_ID, MEMBERSHIP_ID), "1");
         redisTemplate.opsForValue().set(MembershipStateKeys.tenantStatus(TENANT_ID), "active");
+        redisTemplate.opsForValue().set(OperatorStateKeys.version(OPERATOR_ID), "1");
     }
 
     @Test
@@ -283,6 +286,40 @@ class GatewaySecurityTest {
         assertUnauthenticatedAt(
                 "/platform/operators/current", platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "tenant-app"));
         assertUnauthenticatedAt("/platform/operators/current", null);
+    }
+
+    @Test
+    void changedOrMissingOperatorVersionRejectsOldPlatformToken() throws Exception {
+        String operator = platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "platform-console");
+        // 停用或角色变更后 iam 递增版本，旧 Token 立即失效；刷新后按新版本签发
+        redisTemplate.opsForValue().set(OperatorStateKeys.version(OPERATOR_ID), "2");
+        assertUnauthenticatedAt("/platform/operators/current", operator);
+        assertThat(call(
+                                HttpMethod.GET,
+                                "/platform/operators/current",
+                                platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "platform-console", 2))
+                        .status())
+                .isEqualTo(200);
+        redisTemplate.delete(OperatorStateKeys.version(OPERATOR_ID));
+        assertUnauthenticatedAt("/platform/operators/current", operator);
+        // 没有 ver 的 Token（工单 22 之前签发）同样被拒，前端刷新后换发
+        assertUnauthenticatedAt(
+                "/platform/operators/current", platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "platform-console", null));
+    }
+
+    @Test
+    void iamPlatformEndpointsNeedAPlatformRealmToken() throws Exception {
+        // 测试未配置 IAM 路由：通过安全规则后得到路由 404，被拦截则为 401/403。
+        String operator = platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "platform-console");
+        for (String path : List.of("/iam/platform/operators", "/iam/platform/roles", "/iam/platform/access")) {
+            assertUnauthenticatedAt(path, null);
+            assertUnauthenticatedAt(path, token(KEY, ISSUER, Instant.now().plusSeconds(900)));
+            assertEnvelope(call(HttpMethod.GET, path, operator), 404, "request.notFound");
+        }
+        // Platform Realm 的 JWKS 之外的 OAuth2 端点同样不经网关暴露
+        assertEnvelope(call(HttpMethod.POST, "/iam/platform/oauth2/token", operator), 403, "auth.forbidden");
+        // 登录相关接口仍是匿名的
+        assertEnvelope(call(HttpMethod.POST, "/iam/platform/auth/login", null), 404, "request.notFound");
     }
 
     @Test
@@ -418,12 +455,17 @@ class GatewaySecurityTest {
     }
 
     static String platformToken(RSAKey key, String issuer, String audience) throws Exception {
+        return platformToken(key, issuer, audience, 1);
+    }
+
+    static String platformToken(RSAKey key, String issuer, String audience, Integer version) throws Exception {
         var claims = new JWTClaimsSet.Builder()
                 .issuer(issuer)
-                .subject("019a0110-0000-7000-8000-0000000000f1")
+                .subject(OPERATOR_ID.toString())
                 .audience(audience)
                 .issueTime(Date.from(Instant.now().minusSeconds(300)))
                 .expirationTime(Date.from(Instant.now().plusSeconds(900)))
+                .claim("ver", version)
                 .build();
         var jwt = new SignedJWT(
                 new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.getKeyID()).build(), claims);

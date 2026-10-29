@@ -57,6 +57,10 @@ class OperatorContextTest {
                 .isEqualTo(401);
         assertThat(status(PlatformTokens.token("http://other-realm.test", "platform-console", null)))
                 .isEqualTo(401);
+        // 没有版本的 Token 无法定位平台角色明细
+        assertThat(status(PlatformTokens.token(
+                        PlatformTokens.PLATFORM_ISSUER, "platform-console", null, PlatformTokens.OPERATOR_ID, null)))
+                .isEqualTo(401);
     }
 
     private int status(String token) {

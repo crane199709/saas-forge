@@ -11,6 +11,9 @@ import java.util.Set;
  *
  * <p>主体属性与权限随同一版本发布：部门、岗位或扩展属性分配变化时 iam 递增版本，业务服务随即读到新的主体属性。
  *
+ * <p>Operator 的平台角色明细使用同一结构（键见 {@link OperatorStateKeys}），平台侧与租户侧共用同一套权限引擎：
+ * {@code roles} 为平台角色编码，主体属性中没有部门与岗位，Operator 负责的区域以扩展属性 {@code region} 提供。
+ *
  * @param roles 角色编码
  * @param permissions Permission Code
  * @param subject 主体属性；缺失时为 {@link SubjectAttributes#NONE}

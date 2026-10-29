@@ -10,6 +10,8 @@ export interface Tenant {
   name: string
   status: TenantStatus
   adminContact: string
+  /** 所在区域，平台角色的数据范围可据此限定可见的租户；未分配时为 null。 */
+  region: string | null
   /** 适用的套餐；套餐上线前创建的租户为 null，不受套餐限制。 */
   planId: string | null
   /** 试用或订购的到期时间。 */
@@ -52,6 +54,7 @@ export interface TenantDetail {
 export interface CreateTenant {
   name: string
   adminContact: string
+  region?: string
   status: 'trial' | 'active'
   expiresAt?: string
   planId: string

@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- foreach 元素按 UUID 推断类型时找不到 TypeHandler，显式按 Object 交给驱动的 setObject，与单个 UUID 参数一致。
+     只有 realm = 'platform' 的权限码能授予平台角色：租户权限码即使编码相同也不会被授予或发布。 -->
+<mapper namespace="io.saasforge.iam.platformrole.mapper.PlatformRoleMapper">
+    <select id="lock" resultType="int">
+        SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtext('platform_role'))) AS locked
+    </select>
+    <sql id="roleColumns">
+        r.id, r.code, r.name, r.builtin,
+        (SELECT count(*) FROM operator_role orl JOIN operator o ON o.id = orl.operator_id
+         WHERE orl.role_id = r.id AND NOT o.deleted) AS operator_count
+    </sql>
+    <select id="list" resultType="io.saasforge.iam.platformrole.model.PlatformRoleRow">
+        SELECT <include refid="roleColumns"/> FROM platform_role r
+        WHERE NOT r.deleted ORDER BY r.builtin DESC, r.code
+    </select>
+    <select id="find" resultType="io.saasforge.iam.platformrole.model.PlatformRoleRow">
+        SELECT <include refid="roleColumns"/> FROM platform_role r
+        WHERE r.id = #{id} AND NOT r.deleted
+    </select>
+    <!-- ON CONFLICT 命中编码的部分唯一索引：编码被占用时返回 0，由调用方报告冲突。 -->
+    <insert id="insert">
+        INSERT INTO platform_role (id, code, name, builtin, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{code}, #{name}, false, now(), now(), #{actor}, #{actor})
+        ON CONFLICT (code) WHERE NOT deleted DO NOTHING
+    </insert>
+    <update id="rename">
+        UPDATE platform_role SET name = #{name}, updated_at = now(), updated_by = #{actor}
+        WHERE id = #{id} AND NOT builtin AND NOT deleted
+    </update>
+    <update id="delete">
+        UPDATE platform_role SET deleted = true, updated_at = now(), updated_by = #{actor}
+        WHERE id = #{id} AND NOT builtin AND NOT deleted
+    </update>
+    <select id="roleCodes" resultType="string">
+        SELECT r.code FROM operator_role orl JOIN platform_role r ON r.id = orl.role_id
+        WHERE orl.operator_id = #{operatorId} AND NOT r.deleted
+        ORDER BY r.code
+    </select>
+    <select id="permissionsByRole" resultType="io.saasforge.iam.role.model.RolePermissionRow">
+        SELECT rp.role_id, p.code
+        FROM platform_role r JOIN platform_role_permission rp ON rp.role_id = r.id JOIN permission p ON p.id = rp.permission_id
+        WHERE NOT r.deleted AND p.realm = 'platform' AND p.status = 'active' AND NOT p.deleted
+        ORDER BY p.code
+    </select>
+    <select id="grantedCodes" resultType="string">
+        SELECT DISTINCT p.code
+        FROM operator_role orl JOIN platform_role r ON r.id = orl.role_id
+            JOIN platform_role_permission rp ON rp.role_id = r.id JOIN permission p ON p.id = rp.permission_id
+        WHERE orl.operator_id = #{operatorId} AND NOT r.deleted
+          AND p.realm = 'platform' AND p.status = 'active' AND NOT p.deleted
+        ORDER BY p.code
+    </select>
+    <insert id="grant">
+        INSERT INTO platform_role_permission (role_id, permission_id)
+        SELECT #{roleId}, id FROM permission
+        WHERE realm = 'platform' AND status = 'active' AND NOT deleted
+          AND code IN <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
+        ON CONFLICT DO NOTHING
+    </insert>
+    <delete id="revoke">
+        DELETE FROM platform_role_permission rp USING permission p
+        WHERE rp.role_id = #{roleId} AND p.id = rp.permission_id
+          AND p.code IN <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
+    </delete>
+    <delete id="deletePermissions">
+        DELETE FROM platform_role_permission WHERE role_id = #{roleId}
+    </delete>
+    <select id="policiesByRole" resultType="io.saasforge.iam.role.model.RoleDataPolicyRow">
+        SELECT p.role_id, p.resource, p.scope, p.condition::text AS condition
+        FROM platform_role r JOIN platform_role_data_policy p ON p.role_id = r.id
+        WHERE NOT r.deleted
+        ORDER BY p.resource
+    </select>
+    <select id="policiesOfRole" resultType="io.saasforge.iam.role.model.DataPolicy">
+        SELECT resource, scope, condition::text AS condition
+        FROM platform_role_data_policy WHERE role_id = #{roleId} ORDER BY resource
+    </select>
+    <select id="policiesOf" resultType="io.saasforge.iam.role.model.DataPolicy">
+        SELECT DISTINCT p.resource, p.scope, p.condition::text AS condition
+        FROM operator_role orl JOIN platform_role r ON r.id = orl.role_id JOIN platform_role_data_policy p ON p.role_id = r.id
+        WHERE orl.operator_id = #{operatorId} AND NOT r.deleted
+        ORDER BY p.resource, p.scope, condition
+    </select>
+    <insert id="insertPolicies">
+        INSERT INTO platform_role_data_policy (role_id, resource, scope, condition) VALUES
+        <foreach collection="policies" item="policy" separator=",">
+            (#{roleId}, #{policy.resource}, #{policy.scope}, CAST(#{policy.condition,jdbcType=VARCHAR} AS jsonb))
+        </foreach>
+    </insert>
+    <delete id="deletePolicies">
+        DELETE FROM platform_role_data_policy WHERE role_id = #{roleId}
+          AND resource IN <foreach collection="resources" item="resource" open="(" separator="," close=")">#{resource}</foreach>
+    </delete>
+    <delete id="deleteAllPolicies">
+        DELETE FROM platform_role_data_policy WHERE role_id = #{roleId}
+    </delete>
+    <select id="assignments" resultType="io.saasforge.iam.platformrole.model.OperatorRoleRow">
+        SELECT orl.operator_id, orl.role_id
+        FROM operator_role orl JOIN platform_role r ON r.id = orl.role_id JOIN operator o ON o.id = orl.operator_id
+        WHERE NOT r.deleted AND NOT o.deleted
+        ORDER BY r.builtin DESC, r.code
+    </select>
+    <!-- 单列 UUID 结果按 UUID 类型映射会被当作构造器自动映射而失败；按 Object 取驱动返回的 UUID。 -->
+    <select id="holders" resultType="java.lang.Object">
+        SELECT orl.operator_id FROM operator_role orl JOIN operator o ON o.id = orl.operator_id
+        WHERE orl.role_id = #{roleId} AND NOT o.deleted
+        ORDER BY orl.operator_id
+    </select>
+    <select id="countRoles" resultType="long">
+        SELECT count(*) FROM platform_role WHERE NOT deleted
+          AND id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+    </select>
+    <delete id="revokeExcept">
+        DELETE FROM operator_role WHERE operator_id = #{operatorId}
+        <if test="!keep.isEmpty()">
+            AND role_id NOT IN <foreach collection="keep" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+        </if>
+    </delete>
+    <insert id="assign">
+        INSERT INTO operator_role (operator_id, role_id)
+        SELECT #{operatorId}, id FROM platform_role WHERE NOT deleted
+          AND id IN <foreach collection="roleIds" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+        ON CONFLICT DO NOTHING
+    </insert>
+    <select id="countActiveSuperAdmins" resultType="long">
+        SELECT count(DISTINCT o.id)
+        FROM operator o JOIN operator_role orl ON orl.operator_id = o.id JOIN platform_role r ON r.id = orl.role_id
+        WHERE r.code = 'super-admin' AND NOT r.deleted AND NOT o.deleted AND o.status = 'active'
+    </select>
+</mapper>

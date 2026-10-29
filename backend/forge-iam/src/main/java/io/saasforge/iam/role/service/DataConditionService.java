@@ -70,7 +70,12 @@ public class DataConditionService {
 
     /** 各业务服务当前声明的 Data Resource，带可用的预设与可引用的资源属性。 */
     public List<DataResourceOption> dataResources() {
-        return permissions.currentDataResources().stream()
+        return optionsOf(permissions.currentDataResources());
+    }
+
+    /** 数据资源的编辑选项：可用的预设与可引用的资源属性。租户角色与平台角色共用。 */
+    public static List<DataResourceOption> optionsOf(List<ServiceDataResource> resources) {
+        return resources.stream()
                 .map(current -> new DataResourceOption(
                         current.resource().code(),
                         current.resource().name(),
@@ -109,8 +114,20 @@ public class DataConditionService {
      * @throws ForgeException 400 {@code role.invalidDataPolicy} 或 {@code role.invalidDataCondition}
      */
     public List<DataPolicy> requireValid(UUID tenantId, Collection<DataPolicy> policies) {
-        Map<String, DataResourceDefinition> definitions = currentDefinitions();
-        Map<String, String> types = extendedTypes(tenantId);
+        return requireValid(permissions.currentDataResources(), extendedTypes(tenantId), policies);
+    }
+
+    /**
+     * 按给定的数据资源与扩展属性类型校验策略并按资源编码排序，规则同 {@link #requireValid(UUID, Collection)}。平台角色以平台数据资源与
+     * Operator 的属性调用，两侧共用同一套规则与错误码。
+     *
+     * @param resources 可配置策略的数据资源
+     * @param types 可引用的扩展属性编码到类型
+     * @throws ForgeException 400 {@code role.invalidDataPolicy} 或 {@code role.invalidDataCondition}
+     */
+    public static List<DataPolicy> requireValid(
+            List<ServiceDataResource> resources, Map<String, String> types, Collection<DataPolicy> policies) {
+        Map<String, DataResourceDefinition> definitions = definitionsOf(resources);
         Map<String, DataPolicy> byResource = new TreeMap<>();
         for (DataPolicy policy : policies) {
             DataResourceDefinition definition = definitions.get(policy.resource());
@@ -135,7 +152,8 @@ public class DataConditionService {
      */
     public PolicyPreview preview(
             UUID tenantId, DataPolicy policy, UUID membershipId, List<Map<String, Object>> samples) {
-        DataResourceDefinition definition = currentDefinitions().get(policy.resource());
+        DataResourceDefinition definition =
+                definitionsOf(permissions.currentDataResources()).get(policy.resource());
         if (definition == null) throw new ForgeException(RoleErrorCode.INVALID_DATA_POLICY, policy.resource());
         Expression expression = parse(definition, extendedTypes(tenantId), policy);
         if (!memberships.exists(tenantId, membershipId)) throw new ForgeException(RoleErrorCode.MEMBERSHIP_NOT_FOUND);
@@ -223,9 +241,9 @@ public class DataConditionService {
         throw new ForgeException(RoleErrorCode.INVALID_DATA_POLICY, policy.resource());
     }
 
-    private Map<String, DataResourceDefinition> currentDefinitions() {
+    private static Map<String, DataResourceDefinition> definitionsOf(List<ServiceDataResource> resources) {
         Map<String, DataResourceDefinition> definitions = new HashMap<>();
-        for (ServiceDataResource current : permissions.currentDataResources()) {
+        for (ServiceDataResource current : resources) {
             definitions.put(current.resource().code(), DataResourceDefinition.of(current.resource()));
         }
         return definitions;

@@ -2,6 +2,7 @@ package io.saasforge.sdk.security;
 
 import io.saasforge.sdk.core.MembershipGrants;
 import io.saasforge.sdk.core.MembershipStateKeys;
+import io.saasforge.sdk.core.OperatorStateKeys;
 import io.saasforge.sdk.core.SubjectAttributes;
 import java.time.Clock;
 import java.time.Duration;
@@ -20,6 +21,8 @@ import tools.jackson.databind.json.JsonMapper;
  *
  * <p>同一版本的明细也会变：业务服务新上报或下线 Permission Code 后，iam 在下一次签发 Token 时以相同版本覆盖明细，
  * 不递增版本。因此本地缓存最多保留 {@link #REFRESH_AFTER}，之后重新读取。
+ *
+ * <p>Platform Realm 服务以同样方式按 {@code operator_id + version} 读取 Operator 的平台角色明细，见 {@link #grants(OperatorContext)}。
  */
 public final class MembershipGrantStore {
     /** 本地缓存的明细超过该时长后重新从 Redis 读取。 */
@@ -82,22 +85,43 @@ public final class MembershipGrantStore {
      * @throws IllegalStateException iam 未发布该版本的明细
      */
     public MembershipGrants grants(TenantContext context) {
+        return load(
+                context.membershipId(),
+                context.version(),
+                MembershipStateKeys.grants(context.tenantId(), context.membershipId(), context.version()));
+    }
+
+    /**
+     * 指定 Operator 的平台角色明细，缓存规则同 {@link #grants(TenantContext)}。
+     *
+     * @param context 已验签 Platform Realm Token 的上下文
+     * @return 该版本下的平台角色、权限、Data Policy 与主体属性
+     * @throws IllegalStateException iam 未发布该版本的明细
+     */
+    public MembershipGrants grants(OperatorContext context) {
+        // Operator 与 Membership 的标识都是 UUIDv7，共用一份缓存不会冲突。
+        return load(
+                context.operatorId(),
+                context.version(),
+                OperatorStateKeys.grants(context.operatorId(), context.version()));
+    }
+
+    private MembershipGrants load(UUID id, long version, String key) {
         Instant now = clock.instant();
         synchronized (cache) {
-            Cached cached = cache.get(context.membershipId());
+            Cached cached = cache.get(id);
             if (cached != null
-                    && cached.version() == context.version()
+                    && cached.version() == version
                     && now.isBefore(cached.loadedAt().plus(REFRESH_AFTER))) {
                 return cached.grants();
             }
         }
-        String value = redis.opsForValue()
-                .get(MembershipStateKeys.grants(context.tenantId(), context.membershipId(), context.version()));
+        String value = redis.opsForValue().get(key);
         // 缺失时不能当作“没有任何权限”缓存下来：那会把发布延迟变成该版本整个生命周期内的拒绝。
-        if (value == null) throw new IllegalStateException("Membership grants are not published");
+        if (value == null) throw new IllegalStateException("Grants are not published");
         MembershipGrants grants = json.readValue(value, MembershipGrants.class);
         synchronized (cache) {
-            cache.put(context.membershipId(), new Cached(context.version(), grants, now));
+            cache.put(id, new Cached(version, grants, now));
         }
         return grants;
     }

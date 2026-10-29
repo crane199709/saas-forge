@@ -38,6 +38,8 @@ import tools.jackson.databind.json.JsonMapper;
  * }
  * }</pre>
  *
+ * <p>Platform Realm 服务（如 forge-platform）在文件中另写 {@code "realm": "platform"}：其权限码与数据资源只出现在平台角色中。
+ *
  * <p>清单文件可额外声明只用于前端按钮、没有后端接口的 Permission Code；未在文件中命名的编码以编码本身作名称。
  */
 public final class ResourceManifestCollector {
@@ -77,8 +79,8 @@ public final class ResourceManifestCollector {
             String name = info == null || info.name() == null || info.name().isBlank() ? code : info.name();
             permissions.add(new Permission(code, name, info == null ? null : info.group()));
         }
-        var manifest =
-                new ResourceManifest(service, version, permissions, file.menus(), file.roles(), file.dataResources());
+        var manifest = new ResourceManifest(
+                service, version, permissions, file.menus(), file.roles(), file.dataResources(), file.realm());
         try {
             manifest.validate();
         } catch (IllegalArgumentException error) {
@@ -136,7 +138,7 @@ public final class ResourceManifestCollector {
 
     private static ManifestFile read(ClassLoader classLoader, String location) {
         try (InputStream stream = classLoader.getResourceAsStream(location)) {
-            if (stream == null) return new ManifestFile(null, null, null, null);
+            if (stream == null) return new ManifestFile(null, null, null, null, null);
             return JSON.readValue(stream, ManifestFile.class);
         } catch (IOException | RuntimeException error) {
             throw new IllegalStateException("Invalid manifest file " + location, error);
@@ -149,7 +151,8 @@ public final class ResourceManifestCollector {
             Map<String, PermissionInfo> permissions,
             List<MenuNode> menus,
             List<RoleTemplate> roles,
-            List<DataResource> dataResources) {
+            List<DataResource> dataResources,
+            String realm) {
         ManifestFile {
             permissions = permissions == null ? Map.of() : permissions;
             menus = menus == null ? List.of() : menus;

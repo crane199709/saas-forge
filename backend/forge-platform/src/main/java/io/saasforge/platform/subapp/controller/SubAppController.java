@@ -3,6 +3,7 @@ package io.saasforge.platform.subapp.controller;
 import io.saasforge.platform.subapp.model.SubAppDetails;
 import io.saasforge.platform.subapp.service.SubAppService;
 import io.saasforge.sdk.core.api.ApiResponse;
+import io.saasforge.sdk.security.RequiresPermission;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,11 +27,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-// TODO(#22): 平台侧权限接入后按 Operator 的功能权限校验；在此之前任一 Operator 均可维护 App Registry。
+// 注册表列表也供套餐面板选择 Sub-App，只要求已认证；维护要求管理权限。
 @Tag(name = "App Registry")
 @RestController
 @RequestMapping("/sub-apps")
 class SubAppController {
+    static final String MANAGE = "platform:sub-app:manage";
+
     // 与 Plan Feature Pack 中的 Sub-App 编码规则一致
     private static final String CODE = "[a-z][a-z0-9-]{0,63}";
     private static final String ENVIRONMENT = "[a-z][a-z0-9-]{0,31}";
@@ -53,6 +56,7 @@ class SubAppController {
 
     @Operation(summary = "登记 Sub-App")
     @PostMapping
+    @RequiresPermission(MANAGE)
     @ResponseStatus(HttpStatus.CREATED)
     ApiResponse<SubAppResponse> create(@Valid @RequestBody CreateSubAppRequest request) {
         return ApiResponse.created(SubAppResponse.from(apps.create(
@@ -65,6 +69,7 @@ class SubAppController {
 
     @Operation(summary = "整体替换 Sub-App 的名称、版本、各环境入口地址与最低共享依赖版本；Shell App 刷新后按新地址加载，无需重新发布")
     @PutMapping("/{id}")
+    @RequiresPermission(MANAGE)
     ApiResponse<SubAppResponse> update(@PathVariable UUID id, @Valid @RequestBody UpdateSubAppRequest request) {
         return ApiResponse.ok(SubAppResponse.from(apps.update(
                 id,
@@ -76,6 +81,7 @@ class SubAppController {
 
     @Operation(summary = "删除 Sub-App；Shell App 随即不再加载它")
     @DeleteMapping("/{id}")
+    @RequiresPermission(MANAGE)
     ApiResponse<Void> delete(@PathVariable UUID id) {
         apps.delete(id);
         return ApiResponse.ok();

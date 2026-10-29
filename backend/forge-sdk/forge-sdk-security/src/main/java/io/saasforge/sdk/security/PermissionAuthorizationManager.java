@@ -1,5 +1,7 @@
 package io.saasforge.sdk.security;
 
+import io.saasforge.sdk.core.MembershipGrants;
+import io.saasforge.sdk.core.ResourceManifest;
 import java.lang.reflect.Method;
 import java.util.function.Supplier;
 import org.aopalliance.intercept.MethodInvocation;
@@ -15,6 +17,7 @@ import org.springframework.util.ClassUtils;
 
 /**
  * 按 {@link RequiresPermission} 校验当前 Membership 的 Permission Code，明细取自 {@link MembershipGrantStore}（ADR-0005）。
+ * Platform Realm 服务（{@code forge.security.realm=platform}）改为校验当前 Operator 的平台角色明细，两者共用同一套判断。
  *
  * <p>拒绝时由方法安全抛出 {@code AccessDeniedException}，经 {@link EnvelopeAccessDeniedHandler} 输出 403 信封。
  */
@@ -35,23 +38,24 @@ public final class PermissionAuthorizationManager implements AuthorizationManage
     }
 
     /**
-     * 当前 Membership 拥有方法（或其所在类）声明的 Permission Code 时放行。
+     * 当前 Membership（Platform Realm 服务中为当前 Operator）拥有方法（或其所在类）声明的 Permission Code 时放行。
      *
      * @throws IllegalStateException 服务未配置 Redis，无法读取权限明细
      */
     @Override
     public AuthorizationResult authorize(
             Supplier<? extends Authentication> authentication, MethodInvocation invocation) {
-        // TODO(#22): 平台侧权限接入前，Platform Realm 服务上的声明一律拒绝，不能静默放行。
-        if ("platform".equals(properties.getObject().realm())
-                || !(authentication.get() instanceof JwtAuthenticationToken)) {
-            return new AuthorizationDecision(false);
-        }
+        if (!(authentication.get() instanceof JwtAuthenticationToken)) return new AuthorizationDecision(false);
         MembershipGrantStore store = grants.getIfAvailable();
         // 缺少明细来源是配置错误，以 500 暴露，而不是让所有受保护接口看似正常地返回 403。
-        if (store == null) throw new IllegalStateException("@RequiresPermission requires Redis for Membership grants");
+        if (store == null) throw new IllegalStateException("@RequiresPermission requires Redis for grants");
         String code = requiredPermission(invocation);
-        return new AuthorizationDecision(store.current().permissions().contains(code));
+        // 解码器只接受本服务 Realm 的 Token，Token 的 claim 与这里选择的明细来源一致。
+        MembershipGrants current =
+                ResourceManifest.PLATFORM_REALM.equals(properties.getObject().realm())
+                        ? store.grants(OperatorContext.current())
+                        : store.current();
+        return new AuthorizationDecision(current.permissions().contains(code));
     }
 
     private static String requiredPermission(MethodInvocation invocation) {

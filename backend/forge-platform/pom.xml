@@ -25,6 +25,19 @@
             <groupId>io.saasforge</groupId>
             <artifactId>forge-sdk-openapi</artifactId>
         </dependency>
+        <!-- 作为 Platform Realm 服务上报 Resource Manifest，接口按 Operator 的平台角色校验功能权限与数据权限（工单 22） -->
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-manifest</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-abac</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
         <!-- 创建 Tenant 时经 Outbox 发布 TenantCreated，并订阅各服务的初始化回报 -->
         <dependency>
             <groupId>io.saasforge</groupId>

@@ -1,5 +1,6 @@
 package io.saasforge.platform.tenant.mapper;
 
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import io.saasforge.platform.tenant.entity.Tenant;
 import java.util.List;
@@ -9,11 +10,14 @@ import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface TenantMapper extends BaseMapper<Tenant> {
-    /** 一页未删除的租户，按标识（UUIDv7）倒序即最近创建的在前。平台全局表，不受 Data Policy 过滤。 */
+    /**
+     * 一页未删除的租户，按标识（UUIDv7）倒序即最近创建的在前。受 Data Policy 过滤：Operator 请求只返回其数据范围内的租户。
+     * BaseMapper 的 {@code selectById}、{@code selectCount}、{@code update} 等同样受过滤，范围外的租户视为不存在。
+     */
     List<Tenant> page(@Param("offset") long offset, @Param("limit") int limit);
 
     /**
-     * 为租户分配 Plan 并递增 Plan 版本，返回新版本；租户不存在时为 null。平台全局表，不受 Data Policy 过滤。
+     * 为租户分配 Plan 并递增 Plan 版本，返回新版本；租户不存在时为 null。受 Data Policy 过滤，范围外的租户视为不存在。
      *
      * @param actor 操作的 Operator，系统发起时为 null
      */
@@ -21,7 +25,14 @@ public interface TenantMapper extends BaseMapper<Tenant> {
 
     /**
      * 递增使用该 Plan 的全部租户的 Plan 版本，返回这些租户的标识与新版本（只填充 {@code id}、{@code planVersion}）。
-     * 平台全局表，不受 Data Policy 过滤。
+     * 不受 Data Policy 过滤：修改 Plan 必须广播给使用它的每个租户，不论操作的 Operator 能否看到这些租户。
      */
+    @InterceptorIgnore(dataPermission = "true")
     List<Tenant> touchPlan(@Param("planId") UUID planId, @Param("actor") UUID actor);
+
+    /**
+     * 使用该 Plan 且尚未清理（冷静期未结束）的租户数。不受 Data Policy 过滤：Plan 是否仍被使用与操作的 Operator 能否看到这些租户无关。
+     */
+    @InterceptorIgnore(dataPermission = "true")
+    long countUsingPlan(@Param("planId") UUID planId);
 }

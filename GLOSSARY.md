@@ -76,6 +76,10 @@ Tenant 为 Membership 自定义的附加属性，可作为数据权限的主体�
 **Role（角色）**:
 一组 Permission Code 与 Data Policy 的命名集合，授予 Membership 或 Operator。
 
+**Super Admin（超级管理员）**:
+Platform Realm 中唯一的预置 Role，拥有全部平台 Permission Code，在全部平台数据上为「全部」，不可修改或删除；系统始终保留至少一位状态正常的持有者。
+_Avoid_: 超级用户、root、平台管理员
+
 **Permission Code（权限码）**:
 标识一项功能权限（菜单、按钮或接口操作）的唯一编码，如 `order:approve`。
 _Avoid_: 权限点、权限标识

@@ -12,8 +12,12 @@ import type {
   TenantStatus,
 } from './tenant-api'
 
-// plans 由 Shell 从套餐面板取得，用于创建时选择、列表与详情中展示及更换套餐
-const props = withDefaults(defineProps<{ api: TenantApi; plans?: Plan[] }>(), { plans: () => [] })
+// plans 由 Shell 取得，用于创建时选择、列表与详情中展示及更换套餐；
+// canManage 为 false 时只读（缺少 platform:tenant:manage），隐藏创建、更换套餐、变更状态与重试
+const props = withDefaults(defineProps<{ api: TenantApi; plans?: Plan[]; canManage?: boolean }>(), {
+  plans: () => [],
+  canManage: true,
+})
 const { t } = useI18n()
 const size = 20
 const tenants = ref<Tenant[]>([])
@@ -24,6 +28,7 @@ const creating = ref(false)
 const emptyDraft = () => ({
   name: '',
   adminContact: '',
+  region: '',
   status: 'active' as CreateTenant['status'],
   expiresAt: '',
   planId: '',
@@ -94,10 +99,11 @@ const open = (id: string) =>
 // 新租户排在第一页最前，创建后回到第一页并打开详情查看各服务初始化状态。
 const create = () =>
   run(async () => {
-    const { name, adminContact, status, expiresAt, planId } = draft.value
+    const { name, adminContact, region, status, expiresAt, planId } = draft.value
     detail.value = await props.api.create({
       name,
       adminContact,
+      region: region.trim() || undefined,
       status,
       expiresAt: toInstant(expiresAt),
       planId,
@@ -148,7 +154,9 @@ onMounted(() => load(1))
   <section class="tenant-panel" :aria-label="t('tenant.title')">
     <header>
       <h2>{{ t('tenant.title') }}</h2>
-      <el-button type="primary" @click="creating = true">{{ t('tenant.create') }}</el-button>
+      <el-button v-if="canManage" type="primary" @click="creating = true">{{
+        t('tenant.create')
+      }}</el-button>
     </header>
     <el-alert v-if="error" :title="error.message" type="error" :closable="false" role="alert">
       <p v-if="error.traceId" class="trace">
@@ -159,6 +167,9 @@ onMounted(() => load(1))
     <el-table :data="tenants" :empty-text="t('tenant.empty')">
       <el-table-column prop="name" :label="t('tenant.name')" />
       <el-table-column prop="adminContact" :label="t('tenant.adminContact')" />
+      <el-table-column :label="t('tenant.region')">
+        <template #default="{ row }">{{ row.region ?? t('tenant.noRegion') }}</template>
+      </el-table-column>
       <el-table-column :label="t('tenant.plan')">
         <template #default="{ row }">{{ planName(row.planId) }}</template>
       </el-table-column>
@@ -192,6 +203,15 @@ onMounted(() => load(1))
             :placeholder="t('tenant.adminContactHint')"
             maxlength="254"
             required
+          />
+        </el-form-item>
+        <el-form-item :label="t('tenant.region')" for="tenant-region">
+          <el-input
+            id="tenant-region"
+            v-model="draft.region"
+            name="region"
+            :placeholder="t('tenant.regionHint')"
+            maxlength="64"
           />
         </el-form-item>
         <el-form-item :label="t('tenant.plan')">
@@ -230,6 +250,9 @@ onMounted(() => load(1))
           <el-descriptions-item :label="t('tenant.status')">{{
             t(`tenant.statuses.${detail.tenant.status}`)
           }}</el-descriptions-item>
+          <el-descriptions-item :label="t('tenant.region')">{{
+            detail.tenant.region ?? t('tenant.noRegion')
+          }}</el-descriptions-item>
           <el-descriptions-item :label="t('tenant.plan')">{{
             planName(detail.tenant.planId)
           }}</el-descriptions-item>
@@ -244,71 +267,73 @@ onMounted(() => load(1))
           }}</el-descriptions-item>
         </el-descriptions>
 
-        <h3>{{ t('tenant.changePlan') }}</h3>
-        <p>{{ t('tenant.changePlanHint') }}</p>
-        <el-form class="change-plan" inline @submit.prevent="changePlan">
-          <el-select
-            v-model="planDraft"
-            :placeholder="t('tenant.choosePlan')"
-            data-testid="tenant-change-plan"
-          >
-            <el-option
-              v-for="plan in plans.filter((item) => item.id !== detail?.tenant.planId)"
-              :key="plan.id"
-              :label="plan.name"
-              :value="plan.id"
-            />
-          </el-select>
-          <el-button native-type="submit" type="primary" :disabled="!planDraft" :loading="busy">{{
-            t('tenant.changePlan')
-          }}</el-button>
-        </el-form>
+        <template v-if="canManage">
+          <h3>{{ t('tenant.changePlan') }}</h3>
+          <p>{{ t('tenant.changePlanHint') }}</p>
+          <el-form class="change-plan" inline @submit.prevent="changePlan">
+            <el-select
+              v-model="planDraft"
+              :placeholder="t('tenant.choosePlan')"
+              data-testid="tenant-change-plan"
+            >
+              <el-option
+                v-for="plan in plans.filter((item) => item.id !== detail?.tenant.planId)"
+                :key="plan.id"
+                :label="plan.name"
+                :value="plan.id"
+              />
+            </el-select>
+            <el-button native-type="submit" type="primary" :disabled="!planDraft" :loading="busy">{{
+              t('tenant.changePlan')
+            }}</el-button>
+          </el-form>
 
-        <h3>{{ t('tenant.lifecycle') }}</h3>
-        <p v-if="detail.allowedTransitions.length === 0">{{ t('tenant.noTransitions') }}</p>
-        <el-form v-else class="transition" label-position="top" @submit.prevent="transition">
-          <el-form-item :label="withdrawing ? t('tenant.withdrawTo') : t('tenant.targetStatus')">
-            <el-radio-group v-model="transitionDraft.status">
-              <el-radio-button
-                v-for="target in detail.allowedTransitions"
-                :key="target"
-                :value="target"
-                >{{ t(`tenant.statuses.${target}`) }}</el-radio-button
-              >
-            </el-radio-group>
-          </el-form-item>
-          <p v-if="transitionDraft.status === 'deleted'" class="warning">
-            {{ t('tenant.deletionHint') }}
-          </p>
-          <el-form-item
-            v-if="expiryApplies(transitionDraft.status)"
-            :label="t('tenant.expiresAt')"
-            for="transition-expires-at"
-          >
-            <input
-              id="transition-expires-at"
-              v-model="transitionDraft.expiresAt"
-              class="native-input"
-              name="expiresAt"
-              type="datetime-local"
-            />
-          </el-form-item>
-          <el-form-item :label="t('tenant.reason')" for="transition-reason">
-            <el-input
-              id="transition-reason"
-              v-model="transitionDraft.reason"
-              name="reason"
-              maxlength="500"
-            />
-          </el-form-item>
-          <el-button
-            native-type="submit"
-            type="primary"
-            :disabled="!transitionDraft.status"
-            :loading="busy"
-            >{{ withdrawing ? t('tenant.withdraw') : t('tenant.transition') }}</el-button
-          >
-        </el-form>
+          <h3>{{ t('tenant.lifecycle') }}</h3>
+          <p v-if="detail.allowedTransitions.length === 0">{{ t('tenant.noTransitions') }}</p>
+          <el-form v-else class="transition" label-position="top" @submit.prevent="transition">
+            <el-form-item :label="withdrawing ? t('tenant.withdrawTo') : t('tenant.targetStatus')">
+              <el-radio-group v-model="transitionDraft.status">
+                <el-radio-button
+                  v-for="target in detail.allowedTransitions"
+                  :key="target"
+                  :value="target"
+                  >{{ t(`tenant.statuses.${target}`) }}</el-radio-button
+                >
+              </el-radio-group>
+            </el-form-item>
+            <p v-if="transitionDraft.status === 'deleted'" class="warning">
+              {{ t('tenant.deletionHint') }}
+            </p>
+            <el-form-item
+              v-if="expiryApplies(transitionDraft.status)"
+              :label="t('tenant.expiresAt')"
+              for="transition-expires-at"
+            >
+              <input
+                id="transition-expires-at"
+                v-model="transitionDraft.expiresAt"
+                class="native-input"
+                name="expiresAt"
+                type="datetime-local"
+              />
+            </el-form-item>
+            <el-form-item :label="t('tenant.reason')" for="transition-reason">
+              <el-input
+                id="transition-reason"
+                v-model="transitionDraft.reason"
+                name="reason"
+                maxlength="500"
+              />
+            </el-form-item>
+            <el-button
+              native-type="submit"
+              type="primary"
+              :disabled="!transitionDraft.status"
+              :loading="busy"
+              >{{ withdrawing ? t('tenant.withdraw') : t('tenant.transition') }}</el-button
+            >
+          </el-form>
+        </template>
 
         <h3>{{ t('tenant.history') }}</h3>
         <el-table class="history" :data="detail.statusChanges" :empty-text="t('tenant.noHistory')">
@@ -342,7 +367,7 @@ onMounted(() => load(1))
           <el-table-column :label="t('tenant.actions')">
             <template #default="{ row }">
               <el-button
-                v-if="row.status === 'failed'"
+                v-if="canManage && row.status === 'failed'"
                 link
                 type="primary"
                 :loading="busy"

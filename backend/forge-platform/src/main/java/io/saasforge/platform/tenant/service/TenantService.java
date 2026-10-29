@@ -10,6 +10,7 @@ import io.saasforge.platform.tenant.entity.TenantStatusChange;
 import io.saasforge.platform.tenant.mapper.TenantInitializationMapper;
 import io.saasforge.platform.tenant.mapper.TenantMapper;
 import io.saasforge.platform.tenant.mapper.TenantStatusChangeMapper;
+import io.saasforge.sdk.abac.data.DataPermission;
 import io.saasforge.sdk.core.CurrentActorProvider;
 import io.saasforge.sdk.core.CurrentTenant;
 import io.saasforge.sdk.core.UuidV7;
@@ -19,6 +20,7 @@ import io.saasforge.sdk.provisioning.TenantCreated;
 import io.saasforge.sdk.provisioning.TenantInitializationRequested;
 import io.saasforge.sdk.provisioning.TenantPlanChanged;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,8 @@ public class TenantService {
     static final String PENDING = "pending";
     static final String SUCCEEDED = "succeeded";
     static final String FAILED = "failed";
+    // 清单中声明的 Data Resource 编码，见 META-INF/forge/manifest.json
+    static final String DATA_RESOURCE = "tenant";
 
     private final TenantMapper tenants;
     private final TenantInitializationMapper initializations;
@@ -40,6 +44,7 @@ public class TenantService {
     private final CurrentActorProvider actors;
     private final PlanService plans;
     private final TenantPlanService tenantPlans;
+    private final DataPermission dataPermission;
 
     TenantService(
             TenantMapper tenants,
@@ -49,7 +54,8 @@ public class TenantService {
             TenantStatusChangeMapper statusChanges,
             CurrentActorProvider actors,
             PlanService plans,
-            TenantPlanService tenantPlans) {
+            TenantPlanService tenantPlans,
+            DataPermission dataPermission) {
         this.tenants = tenants;
         this.initializations = initializations;
         this.events = events;
@@ -58,6 +64,7 @@ public class TenantService {
         this.actors = actors;
         this.plans = plans;
         this.tenantPlans = tenantPlans;
+        this.dataPermission = dataPermission;
     }
 
     /**
@@ -65,14 +72,23 @@ public class TenantService {
      *
      * <p>初始状态与到期时间由 Operator 创建时选择：不做计费，Plan 只规定能力上限，不规定试用期。
      *
+     * <p>新租户须在创建者自己的数据范围内（创建人即当前 Operator），否则创建出自己看不到的租户，以 403 拒绝。
+     *
      * @param adminContact 初始管理员的邮箱或手机号，由 iam 据此邀请
+     * @param region 租户所在区域，可为 null
      * @param status 初始状态，{@code trial} 或 {@code active}
      * @param expiresAt 试用或订购的到期时间，可为 null
      * @param planId 租户适用的 Plan
-     * @throws ForgeException 404 {@code plan.notFound}
+     * @throws ForgeException 404 {@code plan.notFound}；403 {@code auth.forbidden}
      */
     @Transactional
-    public Tenant create(String name, String adminContact, String status, OffsetDateTime expiresAt, UUID planId) {
+    public Tenant create(
+            String name, String adminContact, String region, String status, OffsetDateTime expiresAt, UUID planId) {
+        var attributes = new HashMap<String, Object>();
+        attributes.put("ownerId", actors.currentActor().orElse(null));
+        attributes.put("region", region);
+        attributes.put("status", status);
+        dataPermission.check(DATA_RESOURCE, attributes);
         Plan plan = plans.lockForAssignment(planId);
         var tenant = new Tenant();
         tenant.setId(UuidV7.generate());
@@ -81,6 +97,7 @@ public class TenantService {
         tenant.setStatusVersion(0L);
         tenant.setExpiresAt(expiresAt);
         tenant.setAdminContact(adminContact);
+        tenant.setRegion(region);
         tenant.setPlanId(plan.getId());
         tenant.setPlanVersion(1L);
         tenants.insert(tenant);

@@ -18,7 +18,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
-/** 接收业务服务上报的 Resource Manifest，维护 Permission Code、菜单、角色模板与 Data Resource 的当前版本。 */
+/**
+ * 接收业务服务上报的 Resource Manifest，维护 Permission Code、菜单、角色模板与 Data Resource 的当前版本。
+ *
+ * <p>Tenant Realm 与 Platform Realm 服务的清单存储方式相同，读取时按 Realm 分开：不带 {@code platform} 前缀的方法只返回
+ * Tenant Realm 服务申报的内容，供租户角色、套餐与菜单使用；{@code platform*} 方法只返回 Platform Realm 服务申报的内容，供平台角色使用。
+ * 两边互不可见，平台权限码不能授予租户角色，反之亦然。
+ */
 @Service
 public class PermissionService {
     private final ResourceManifestMapper manifests;
@@ -57,21 +63,31 @@ public class PermissionService {
         for (Permission permission : manifest.permissions()) {
             codes.add(permission.code());
             int changed = permissions.upsert(
-                    UuidV7.generate(), permission.code(), manifest.service(), permission.name(), permission.group());
+                    UuidV7.generate(),
+                    permission.code(),
+                    manifest.service(),
+                    permission.name(),
+                    permission.group(),
+                    realmOf(manifest));
             if (changed == 0) throw new ForgeException(ManifestErrorCode.PERMISSION_CONFLICT, permission.code());
         }
         permissions.deactivateMissing(manifest.service(), codes);
         return true;
     }
 
-    /** 全部 active 的 Permission Code。 */
+    /** Tenant Realm 全部 active 的 Permission Code。 */
     public List<String> activeCodes() {
-        return permissions.activeCodes();
+        return permissions.activeCodes(ResourceManifest.TENANT_REALM);
     }
 
-    /** 全部 active 的 Permission Code 及其展示信息，按服务、分组、编码排序，供角色授权界面选择。 */
+    /** Tenant Realm 全部 active 的 Permission Code 及其展示信息，按服务、分组、编码排序，供角色授权界面选择。 */
     public List<PermissionRow> activePermissions() {
-        return permissions.activePermissions();
+        return permissions.activePermissions(ResourceManifest.TENANT_REALM);
+    }
+
+    /** Platform Realm 全部 active 的 Permission Code 及其展示信息，按服务、分组、编码排序，供平台角色授权界面选择。 */
+    public List<PermissionRow> activePlatformPermissions() {
+        return permissions.activePermissions(ResourceManifest.PLATFORM_REALM);
     }
 
     /**
@@ -79,36 +95,46 @@ public class PermissionService {
      * 排序同 {@link #activePermissions()}。
      */
     public List<PermissionRow> planScopedPermissions() {
-        return permissions.activePermissions().stream()
+        return activePermissions().stream()
                 .filter(permission -> !IamPermissions.SERVICE.equals(permission.service()))
                 .toList();
     }
 
     /** 各服务当前版本的菜单树，按服务名依次拼接，未经权限裁剪。 */
     public List<MenuNode> currentMenus() {
-        return currentManifests().stream()
+        return currentManifests(false).stream()
                 .flatMap(manifest -> manifest.menus().stream())
                 .toList();
     }
 
     /** 各服务当前版本的角色模板，按服务名依次拼接。 */
     public List<RoleTemplate> currentRoleTemplates() {
-        return currentManifests().stream()
+        return currentManifests(false).stream()
                 .flatMap(manifest -> manifest.roles().stream())
                 .toList();
     }
 
-    /** 各服务当前版本声明的 Data Resource，按服务名、声明顺序排列；下线的资源不再出现，其上的策略不发布。 */
+    /** Tenant Realm 各服务当前版本声明的 Data Resource，按服务名、声明顺序排列；下线的资源不再出现，其上的策略不发布。 */
     public List<ServiceDataResource> currentDataResources() {
-        return currentManifests().stream()
+        return dataResourcesOf(currentManifests(false));
+    }
+
+    /** Platform Realm 各服务当前版本声明的 Data Resource，排序与下线规则同 {@link #currentDataResources()}。 */
+    public List<ServiceDataResource> currentPlatformDataResources() {
+        return dataResourcesOf(currentManifests(true));
+    }
+
+    private static List<ServiceDataResource> dataResourcesOf(List<ResourceManifest> manifests) {
+        return manifests.stream()
                 .flatMap(manifest -> manifest.dataResources().stream()
                         .map(resource -> new ServiceDataResource(manifest.service(), resource)))
                 .toList();
     }
 
-    // 与权限码一样以先声明者为准；在同一把服务锁之外判断，两个服务同时首次声明同一编码的竞争可以接受（上报只来自部署）。
+    // 与权限码一样以先声明者为准，两个 Realm 之间也不能重复；在同一把服务锁之外判断，两个服务同时首次声明同一编码的竞争可以接受
+    // （上报只来自部署）。
     private void requireOwnDataResources(ResourceManifest manifest) {
-        for (ServiceDataResource current : currentDataResources()) {
+        for (ServiceDataResource current : dataResourcesOf(currentManifests())) {
             if (current.service().equals(manifest.service())) continue;
             for (DataResource resource : manifest.dataResources()) {
                 if (resource.code().equals(current.resource().code())) {
@@ -122,6 +148,16 @@ public class PermissionService {
         return manifests.currentContents().stream()
                 .map(content -> json.readValue(content, ResourceManifest.class))
                 .toList();
+    }
+
+    private List<ResourceManifest> currentManifests(boolean platform) {
+        return currentManifests().stream()
+                .filter(manifest -> manifest.platform() == platform)
+                .toList();
+    }
+
+    private static String realmOf(ResourceManifest manifest) {
+        return manifest.platform() ? ResourceManifest.PLATFORM_REALM : ResourceManifest.TENANT_REALM;
     }
 
     private static void validate(ResourceManifest manifest) {

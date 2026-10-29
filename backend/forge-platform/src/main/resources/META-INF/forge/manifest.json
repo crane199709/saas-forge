@@ -1,0 +1,48 @@
+{
+  "realm": "platform",
+  "permissions": {
+    "platform:tenant:read": {
+      "name": "查看租户",
+      "group": "租户"
+    },
+    "platform:tenant:manage": {
+      "name": "管理租户",
+      "group": "租户"
+    },
+    "platform:plan:manage": {
+      "name": "管理套餐",
+      "group": "套餐与应用"
+    },
+    "platform:sub-app:manage": {
+      "name": "管理应用注册表",
+      "group": "套餐与应用"
+    }
+  },
+  "dataResources": [
+    {
+      "code": "tenant",
+      "name": "租户",
+      "table": "tenant",
+      "attributes": [
+        {
+          "code": "ownerId",
+          "name": "创建人",
+          "type": "uuid",
+          "column": "created_by"
+        },
+        {
+          "code": "region",
+          "name": "区域",
+          "type": "string",
+          "column": "region"
+        },
+        {
+          "code": "status",
+          "name": "状态",
+          "type": "string",
+          "column": "status"
+        }
+      ]
+    }
+  ]
+}

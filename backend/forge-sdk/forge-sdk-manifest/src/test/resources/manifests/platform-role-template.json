@@ -1,0 +1,4 @@
+{
+  "realm": "platform",
+  "roles": [{ "code": "viewer", "name": "查看", "permissions": ["order:read"] }]
+}

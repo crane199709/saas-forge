@@ -1,6 +1,5 @@
 package io.saasforge.platform.tenant.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.saasforge.platform.plan.entity.Plan;
 import io.saasforge.platform.plan.service.PlanUsage;
 import io.saasforge.platform.tenant.entity.Tenant;
@@ -61,10 +60,7 @@ class TenantPlanService implements PlanUsage {
     // 冷静期结束、数据已清理的租户不再需要 Plan，不阻止删除。
     @Override
     public boolean inUse(UUID planId) {
-        return tenants.selectCount(new LambdaQueryWrapper<Tenant>()
-                        .eq(Tenant::getPlanId, planId)
-                        .isNull(Tenant::getPurgedAt))
-                > 0;
+        return tenants.countUsingPlan(planId) > 0;
     }
 
     @Override

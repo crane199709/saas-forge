@@ -11,6 +11,7 @@ public class Tenant extends AuditableEntity {
     private String name;
     private String status;
     private String adminContact;
+    private String region;
     private Long statusVersion;
     private OffsetDateTime expiresAt;
     private OffsetDateTime expiryRemindedAt;
@@ -50,6 +51,14 @@ public class Tenant extends AuditableEntity {
 
     public void setAdminContact(String adminContact) {
         this.adminContact = adminContact;
+    }
+
+    public String getRegion() {
+        return region;
+    }
+
+    public void setRegion(String region) {
+        this.region = region;
     }
 
     public Long getStatusVersion() {

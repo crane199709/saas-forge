@@ -2,6 +2,7 @@ package io.saasforge.gateway.security.config;
 
 import io.saasforge.gateway.envelope.service.ErrorEnvelopeService;
 import io.saasforge.gateway.security.service.MembershipStateVerifier;
+import io.saasforge.gateway.security.service.OperatorStateVerifier;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import io.saasforge.sdk.security.ForgeSecurityProperties;
 import io.saasforge.sdk.security.PlatformJwtValidator;
@@ -34,27 +35,30 @@ import reactor.core.publisher.Mono;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(ForgeSecurityProperties.class)
 class GatewaySecurityConfiguration {
+    // iam 中供 Operator 使用的接口（Operator 与平台角色管理）位于 /iam/platform/** 下，与 forge-platform 一样只接受 Platform Realm Token。
     private static final ServerWebExchangeMatcher PLATFORM_ROUTES =
-            ServerWebExchangeMatchers.pathMatchers("/platform/**");
+            ServerWebExchangeMatchers.pathMatchers("/platform/**", "/iam/platform/**");
 
     /**
-     * 按路由强制 issuer（ADR-0003）：{@code /platform/**} 只接受 Platform Realm Token，其余受保护路由只接受 Tenant Realm Token。
-     * 两个 Realm 的 issuer 与签名密钥都不同，用错 Realm 的 Token 验签失败，得到 401 而不是 403。
+     * 按路由强制 issuer（ADR-0003）：{@code /platform/**} 与 {@code /iam/platform/**} 只接受 Platform Realm Token，其余受保护路由只接受
+     * Tenant Realm Token。两个 Realm 的 issuer 与签名密钥都不同，用错 Realm 的 Token 验签失败，得到 401 而不是 403。
+     * 两个 Realm 都在验签后比对 Redis 中的版本，停用与授权变更即时生效。
      */
     @Bean
     ReactiveAuthenticationManagerResolver<ServerWebExchange> realmAuthenticationManagers(
-            ForgeSecurityProperties properties, MembershipStateVerifier states) {
+            ForgeSecurityProperties properties, MembershipStateVerifier states, OperatorStateVerifier operators) {
         var tenantDecoder =
                 NimbusReactiveJwtDecoder.withJwkSetUri(properties.jwkSetUri()).build();
         tenantDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(properties.issuer()), new TenantJwtValidator()));
         // 验签之后再比对即时失效状态：BadJwtException 由资源服务器转换为 401 auth.unauthenticated 信封（质询头为 invalid_token）。
         ReactiveJwtDecoder tenant = token -> tenantDecoder.decode(token).flatMap(states::verify);
-        var platform = NimbusReactiveJwtDecoder.withJwkSetUri(
+        var platformDecoder = NimbusReactiveJwtDecoder.withJwkSetUri(
                         properties.platform().jwkSetUri())
                 .build();
-        platform.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+        platformDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(properties.platform().issuer()), new PlatformJwtValidator()));
+        ReactiveJwtDecoder platform = token -> platformDecoder.decode(token).flatMap(operators::verify);
         ReactiveAuthenticationManager tenantManager = new JwtReactiveAuthenticationManager(tenant);
         ReactiveAuthenticationManager platformManager = new JwtReactiveAuthenticationManager(platform);
         return exchange ->
@@ -122,9 +126,10 @@ class GatewaySecurityConfiguration {
                         .permitAll()
                         // 只供服务内部或服务间直连调用的 iam 端点，带有效 Token 也不经网关暴露；
                         // 匿名的授权端点与 JWKS 已在上面放行，其余 OAuth2 端点（token、introspect、revoke 等）一律拒绝。
-                        .pathMatchers("/iam/oauth2/**", "/iam/internal/**")
+                        .pathMatchers("/iam/oauth2/**", "/iam/platform/oauth2/**", "/iam/internal/**")
                         .denyAll()
-                        // 其余 iam 接口默认要求 Tenant Realm Token，新增接口不必再改网关；细粒度权限由 iam 判断。
+                        // 其余 iam 接口默认要求 Tenant Realm Token（/iam/platform/** 为 Platform Realm Token），新增接口不必再改网关；
+                        // 细粒度权限由 iam 判断。
                         .pathMatchers("/iam/**", "/demo/**", "/platform/**")
                         .authenticated()
                         .anyExchange()

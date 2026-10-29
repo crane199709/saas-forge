@@ -1,0 +1,6 @@
+{
+  "realm": "platform",
+  "permissions": {
+    "order:read": { "name": "查看订单" }
+  }
+}

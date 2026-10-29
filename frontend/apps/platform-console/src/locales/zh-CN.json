@@ -71,7 +71,10 @@
     "noPlan": "未分配（不受套餐限制）",
     "unknownPlan": "已删除的套餐",
     "changePlan": "更换套餐",
-    "changePlanHint": "降级后超出新套餐的角色授权随即失效但保留记录，升级后恢复；成员数超出上限时不能再邀请新成员。"
+    "changePlanHint": "降级后超出新套餐的角色授权随即失效但保留记录，升级后恢复；成员数超出上限时不能再邀请新成员。",
+    "region": "区域",
+    "regionHint": "如 east；平台角色可按区域限定运营人员可见的租户",
+    "noRegion": "未分配"
   },
   "plan": {
     "title": "套餐",
@@ -121,5 +124,72 @@
     "edit": "编辑",
     "delete": "删除",
     "save": "保存"
+  },
+  "access": {
+    "failed": "读取平台权限失败，请刷新页面重试",
+    "none": "当前账号没有任何平台权限，请联系超级管理员分配角色"
+  },
+  "operator": {
+    "title": "运营账号",
+    "create": "创建运营账号",
+    "editTitle": "编辑运营账号：{name}",
+    "empty": "暂无运营账号",
+    "account": "账号",
+    "displayName": "显示名",
+    "password": "初始密码",
+    "region": "负责区域",
+    "noRegion": "未分配",
+    "regionHint": "如 east；平台角色的「负责区域」数据范围据此限定可见的租户",
+    "roles": "平台角色",
+    "rolesHint": "可多选，权限取并集；变更后该运营人员下一次请求起按新权限处理",
+    "status": "状态",
+    "statuses": {
+      "active": "正常",
+      "disabled": "已停用"
+    },
+    "actions": "操作",
+    "edit": "编辑",
+    "disable": "停用",
+    "enable": "恢复",
+    "resetPassword": "重置密码",
+    "resetPasswordTitle": "重置密码：{name}",
+    "resetPasswordHint": "重置后该运营人员需用新密码登录；需要立即踢出时请停用账号。",
+    "newPassword": "新密码",
+    "save": "保存"
+  },
+  "platformRole": {
+    "title": "平台角色",
+    "create": "新建平台角色",
+    "editTitle": "编辑平台角色：{name}",
+    "empty": "暂无平台角色",
+    "code": "编码",
+    "codeHint": "小写字母、数字与连字符，创建后不可修改",
+    "name": "名称",
+    "permissions": "平台权限",
+    "permissionCount": "{count} 项",
+    "allPermissions": "全部平台权限",
+    "ungrouped": "未分组",
+    "dataScope": "数据范围",
+    "dataScopeOf": "数据范围：{name}",
+    "allData": "全部数据",
+    "noData": "未配置（不可见）",
+    "scopes": {
+      "none": "未配置（不可见）",
+      "self": "本人创建",
+      "department": "本部门",
+      "department_and_below": "本部门及下级",
+      "all": "全部",
+      "region": "负责区域",
+      "custom": "自定义条件"
+    },
+    "condition": "自定义条件",
+    "conditionHint": "JSON 表达式树，可引用资源属性（如 resource.region、resource.status）、Operator 的负责区域 subject.attributes.region 与 env.now。",
+    "invalidJson": "自定义条件不是合法的 JSON",
+    "operatorCount": "持有人数",
+    "actions": "操作",
+    "edit": "编辑",
+    "delete": "删除",
+    "save": "保存",
+    "builtinHint": "预置角色，不可修改"
   }
 }

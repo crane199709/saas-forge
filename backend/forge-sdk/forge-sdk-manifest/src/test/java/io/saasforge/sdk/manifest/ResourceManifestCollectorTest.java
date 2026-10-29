@@ -11,9 +11,11 @@ import io.saasforge.sdk.core.ResourceManifest.Permission;
 import io.saasforge.sdk.core.ResourceManifest.RoleTemplate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.json.JsonMapper;
 
 class ResourceManifestCollectorTest {
     static final String FIXTURES = "io.saasforge.sdk.manifest.fixture";
+    static final JsonMapper JSON = JsonMapper.builder().build();
 
     @Test
     void scannedCodesAreMergedWithNamesGroupsAndMenusFromTheManifestFile() {
@@ -58,6 +60,28 @@ class ResourceManifestCollectorTest {
 
         assertThat(manifest.permissions()).extracting(Permission::code).containsExactly("order:approve", "order:read");
         assertThat(manifest.menus()).isEmpty();
+    }
+
+    @Test
+    void platformRealmIsReadFromTheManifestFileAndOmittedForTenantRealmServices() {
+        ResourceManifest platform = collect("manifests/platform.json");
+        assertThat(platform.realm()).isEqualTo(ResourceManifest.PLATFORM_REALM);
+        assertThat(platform.platform()).isTrue();
+        assertThat(JSON.writeValueAsString(platform)).contains("\"realm\":\"platform\"");
+
+        // 已存储的 Tenant Realm 清单不带 realm，新生成的清单按内容比较仍与之相同
+        ResourceManifest tenant = collect("manifests/valid.json");
+        assertThat(tenant.realm()).isNull();
+        assertThat(JSON.writeValueAsString(tenant)).doesNotContain("realm").doesNotContain("platform");
+        assertThat(new ResourceManifest("s", "1", List.of(), List.of(), List.of(), List.of(), "tenant").realm())
+                .isNull();
+
+        assertThatThrownBy(() -> collect("manifests/unknown-realm.json"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("realm");
+        assertThatThrownBy(() -> collect("manifests/platform-role-template.json"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("role templates");
     }
 
     @Test

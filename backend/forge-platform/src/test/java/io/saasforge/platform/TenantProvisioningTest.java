@@ -106,6 +106,7 @@ class TenantProvisioningTest {
             tenantId.set(tenants.create(
                             "回滚的租户",
                             "rollback@example.com",
+                            null,
                             "active",
                             null,
                             UUID.fromString(PlatformTokens.DEFAULT_PLAN_ID))

@@ -4,6 +4,7 @@ import io.saasforge.platform.plan.entity.Plan;
 import io.saasforge.platform.plan.model.CatalogPermission;
 import io.saasforge.platform.plan.service.PlanService;
 import io.saasforge.sdk.core.api.ApiResponse;
+import io.saasforge.sdk.security.RequiresPermission;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,11 +27,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-// TODO(#22): 平台侧权限接入后按 Operator 的功能权限校验；在此之前任一 Operator 均可管理套餐。
+// 套餐列表也供租户面板选择套餐，只要求已认证；修改与 Feature Pack 目录要求管理权限。
 @Tag(name = "套餐")
 @RestController
 @RequestMapping("/plans")
 class PlanController {
+    static final String MANAGE = "platform:plan:manage";
+
     private final PlanService plans;
 
     PlanController(PlanService plans) {
@@ -45,12 +48,14 @@ class PlanController {
 
     @Operation(summary = "Feature Pack 可选的权限码：各业务服务 Resource Manifest 中当前有效的权限码，iam 自身的管理权限码不受套餐限制、不在其中")
     @GetMapping("/permissions")
+    @RequiresPermission(MANAGE)
     ApiResponse<List<CatalogPermission>> permissions() {
         return ApiResponse.ok(plans.catalog());
     }
 
     @Operation(summary = "新建套餐")
     @PostMapping
+    @RequiresPermission(MANAGE)
     @ResponseStatus(HttpStatus.CREATED)
     ApiResponse<PlanResponse> create(@Valid @RequestBody CreatePlanRequest request) {
         return ApiResponse.created(PlanResponse.from(plans.create(
@@ -64,6 +69,7 @@ class PlanController {
 
     @Operation(summary = "整体替换套餐的名称、Feature Pack 与 Quota，并向使用它的租户广播；降级后超出的授权随即失效，升级后恢复")
     @PutMapping("/{id}")
+    @RequiresPermission(MANAGE)
     ApiResponse<PlanResponse> update(@PathVariable UUID id, @Valid @RequestBody UpdatePlanRequest request) {
         return ApiResponse.ok(PlanResponse.from(plans.update(
                 id,
@@ -76,6 +82,7 @@ class PlanController {
 
     @Operation(summary = "删除套餐；仍有租户使用时拒绝")
     @DeleteMapping("/{id}")
+    @RequiresPermission(MANAGE)
     ApiResponse<Void> delete(@PathVariable UUID id) {
         plans.delete(id);
         return ApiResponse.ok();

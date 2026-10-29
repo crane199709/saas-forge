@@ -6,14 +6,19 @@ import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.Jwt;
 
-/** 拒绝虽有合法签名但不是签发给 platform-console 的 Operator 凭证。 */
+/**
+ * 拒绝虽有合法签名但不是签发给 platform-console 的 Operator 凭证。{@code ver} 必须存在：网关据此即时失效，服务据此读取平台角色明细；
+ * 工单 22 之前签发、没有 {@code ver} 的 Token 被拒绝后由前端刷新换发。
+ */
 public final class PlatformJwtValidator implements OAuth2TokenValidator<Jwt> {
-    /** 验证 Operator 标识与目标客户端，issuer 和时间由标准校验器负责。 */
+    /** 验证 Operator 标识、版本与目标客户端，issuer 和时间由标准校验器负责。 */
     @Override
     public OAuth2TokenValidatorResult validate(Jwt jwt) {
         try {
             UUID.fromString(jwt.getSubject());
-            if (jwt.getAudience().contains("platform-console") && jwt.getExpiresAt() != null) {
+            if (jwt.getAudience().contains("platform-console")
+                    && jwt.getExpiresAt() != null
+                    && jwt.getClaim("ver") instanceof Number) {
                 return OAuth2TokenValidatorResult.success();
             }
         } catch (RuntimeException ignored) {

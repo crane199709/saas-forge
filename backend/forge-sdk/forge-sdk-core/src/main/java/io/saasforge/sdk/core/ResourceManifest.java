@@ -1,5 +1,6 @@
 package io.saasforge.sdk.core;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.HashSet;
 import java.util.List;
@@ -18,6 +19,8 @@ import java.util.regex.Pattern;
  * @param menus 本服务的菜单树，按申报顺序展示
  * @param roles 本服务的角色模板，iam 开通新租户时据此预置角色，可为 null（视为没有）
  * @param dataResources 本服务受数据权限保护的 Data Resource，可为 null（视为没有）
+ * @param realm 服务所属的 Realm：{@value #PLATFORM_REALM} 表示 Platform Realm 服务（如 forge-platform），其权限码与数据资源
+ *     只能授予平台角色；Tenant Realm 服务为 null（{@value #TENANT_REALM} 也规范化为 null）
  */
 public record ResourceManifest(
         String service,
@@ -27,7 +30,15 @@ public record ResourceManifest(
         // 没有角色模板时不输出该字段：iam 按 JSON 内容判断同一版本是否重复上报，加入本字段前存储的清单才能与之相同。
         @JsonInclude(JsonInclude.Include.NON_EMPTY) List<RoleTemplate> roles,
         // 同 roles：没有数据资源时不输出，已存储的旧清单与之按内容比较仍然相同。
-        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<DataResource> dataResources) {
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<DataResource> dataResources,
+        // 同 roles：Tenant Realm 服务不输出该字段，加入本字段前存储的清单按内容比较仍然相同。
+        @JsonInclude(JsonInclude.Include.NON_NULL) String realm) {
+    /** Tenant Realm 服务的 Realm 名，与 {@code forge.security.realm} 的取值一致。 */
+    public static final String TENANT_REALM = "tenant";
+
+    /** Platform Realm 服务的 Realm 名，与 {@code forge.security.realm} 的取值一致。 */
+    public static final String PLATFORM_REALM = "platform";
+
     // 长度上限与 iam 表的列宽一致。
     private static final Pattern CODE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9:._-]{0,127}");
     private static final Pattern ROLE_CODE = Pattern.compile("[a-z0-9][a-z0-9-]{0,63}");
@@ -47,6 +58,27 @@ public record ResourceManifest(
         menus = List.copyOf(menus);
         roles = roles == null ? List.of() : List.copyOf(roles);
         dataResources = dataResources == null ? List.of() : List.copyOf(dataResources);
+        realm = TENANT_REALM.equals(realm) ? null : realm;
+    }
+
+    /**
+     * Tenant Realm 服务的清单。
+     *
+     * @param service 服务名
+     * @param version 清单版本
+     * @param permissions 全部 Permission Code
+     * @param menus 菜单树
+     * @param roles 角色模板
+     * @param dataResources 数据资源
+     */
+    public ResourceManifest(
+            String service,
+            String version,
+            List<Permission> permissions,
+            List<MenuNode> menus,
+            List<RoleTemplate> roles,
+            List<DataResource> dataResources) {
+        this(service, version, permissions, menus, roles, dataResources, null);
     }
 
     /**
@@ -64,7 +96,7 @@ public record ResourceManifest(
             List<Permission> permissions,
             List<MenuNode> menus,
             List<RoleTemplate> roles) {
-        this(service, version, permissions, menus, roles, List.of());
+        this(service, version, permissions, menus, roles, List.of(), null);
     }
 
     /**
@@ -76,7 +108,17 @@ public record ResourceManifest(
      * @param menus 菜单树
      */
     public ResourceManifest(String service, String version, List<Permission> permissions, List<MenuNode> menus) {
-        this(service, version, permissions, menus, List.of(), List.of());
+        this(service, version, permissions, menus, List.of(), List.of(), null);
+    }
+
+    /**
+     * 是否为 Platform Realm 服务的清单。
+     *
+     * @return {@link #realm()} 为 {@value #PLATFORM_REALM} 时为 true
+     */
+    @JsonIgnore
+    public boolean platform() {
+        return PLATFORM_REALM.equals(realm);
     }
 
     /**
@@ -85,13 +127,18 @@ public record ResourceManifest(
      * <p>规则：服务名与版本非空；权限码格式合法且不重复，名称非空；菜单编码不重复；菜单引用的权限码必须在本清单中声明；
      * 叶子节点必须同时有 {@code app} 与 {@code path}，分组节点不能带路由，Shell 才能据此生成导航与路由；
      * 角色模板编码为小写字母、数字与连字符且不重复、不占用预置角色编码，名称非空，引用的权限码必须在本清单中声明；
-     * Data Resource 的规则见 {@link #validateDataResources(List)}。
+     * Data Resource 的规则见 {@link #validateDataResources(List)}；Realm 只能是 Tenant 或 Platform，Platform Realm 服务不声明角色模板
+     * （模板只用于开通租户）。
      *
      * @throws IllegalArgumentException 违反任一规则，消息说明具体位置
      */
     public void validate() {
         requireText(service, MAX_KEY, "service");
         requireText(version, MAX_KEY, "version");
+        if (realm != null && !platform()) throw new IllegalArgumentException("Unknown realm: " + realm);
+        if (platform() && !roles.isEmpty()) {
+            throw new IllegalArgumentException("Platform Realm manifest cannot declare role templates");
+        }
         Set<String> codes = new HashSet<>();
         for (Permission permission : permissions) {
             if (permission.code() == null || !CODE.matcher(permission.code()).matches()) {

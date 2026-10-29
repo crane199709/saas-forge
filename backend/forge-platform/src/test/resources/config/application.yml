@@ -10,3 +10,6 @@ spring:
 forge:
   mq:
     enabled: false
+  # 测试不连接 iam；清单内容由 PlatformPermissionTest 直接生成校验
+  manifest:
+    enabled: false

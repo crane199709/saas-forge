@@ -22,6 +22,11 @@ spring:
     default-schema: platform
     # schema 由 compose 初始化脚本创建并归属迁移账号，迁移账号本身没有建 schema 的权限
     create-schemas: false
+  # 与 iam 共用：读取 Operator 的平台角色明细（ADR-0005）
+  data:
+    redis:
+      host: ${FORGE_REDIS_HOST:127.0.0.1}
+      port: ${FORGE_REDIS_PORT:6379}
 
 forge:
   security:
@@ -33,6 +38,12 @@ forge:
       jwk-set-uri: http://localhost:8101/platform/oauth2/jwks
   mq:
     endpoints: ${FORGE_ROCKETMQ_ENDPOINTS:127.0.0.1:8081}
+  # 启动时向 iam 上报 Platform Realm 的 Resource Manifest（realm 写在清单文件中）；改动权限码、名称或 Data Resource 时升级 version。
+  # token 与读取权限码目录的 forge.platform.iam.token 相同，须与 iam forge.iam.manifest.tokens.forge-platform 一致
+  manifest:
+    version: 1
+    iam-uri: http://localhost:8101
+    token: ${FORGE_PLATFORM_MANIFEST_TOKEN:local-platform-manifest-token}
   # 平台数据不属于任何租户。消费各服务的初始化回报时 SDK 会恢复该租户的上下文，这些表也不能被注入租户条件
   tenant:
     ignore-tables:

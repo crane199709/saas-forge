@@ -6,6 +6,7 @@ import io.saasforge.platform.tenant.entity.TenantStatusChange;
 import io.saasforge.platform.tenant.service.TenantLifecycleService;
 import io.saasforge.platform.tenant.service.TenantService;
 import io.saasforge.sdk.core.api.ApiResponse;
+import io.saasforge.sdk.security.RequiresPermission;
 import io.saasforge.sdk.web.PageQuery;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,11 +29,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-// TODO(#22): 平台侧权限接入后按 Operator 的功能权限校验；在此之前任一 Operator 均可管理租户。
+// 列表、读取与修改都只作用于当前 Operator 数据范围内的租户：范围外的租户与不存在的一样返回 404（ADR-0006）。
 @Tag(name = "租户")
 @RestController
 @RequestMapping("/tenants")
 class TenantController {
+    static final String READ = "platform:tenant:read";
+    static final String MANAGE = "platform:tenant:manage";
+
     private final TenantService tenants;
     private final TenantLifecycleService lifecycle;
 
@@ -44,10 +48,14 @@ class TenantController {
     @Operation(summary = "创建租户并开始 Provisioning：iam 邀请初始管理员，各服务初始化本服务数据")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @RequiresPermission(MANAGE)
     ApiResponse<TenantDetailResponse> create(@Valid @RequestBody CreateTenantRequest request) {
         Tenant tenant = tenants.create(
                 request.name().strip(),
                 request.adminContact().strip(),
+                request.region() == null || request.region().isBlank()
+                        ? null
+                        : request.region().strip(),
                 request.status() == null ? TenantLifecycleService.ACTIVE : request.status(),
                 request.expiresAt(),
                 request.planId());
@@ -56,6 +64,7 @@ class TenantController {
 
     @Operation(summary = "变更租户状态：按合法迁移表迁移并广播；迁移到 deleted 进入冷静期，冷静期内迁移回删除前的状态即撤回删除")
     @PostMapping("/{id}/transitions")
+    @RequiresPermission(MANAGE)
     ApiResponse<TenantDetailResponse> transition(@PathVariable UUID id, @Valid @RequestBody TransitionRequest request) {
         String reason = request.reason() == null || request.reason().isBlank()
                 ? null
@@ -65,12 +74,14 @@ class TenantController {
 
     @Operation(summary = "为租户更换套餐并广播；降级后超出新套餐的授权随即失效但保留记录，升级后恢复")
     @PutMapping("/{id}/plan")
+    @RequiresPermission(MANAGE)
     ApiResponse<TenantDetailResponse> changePlan(@PathVariable UUID id, @Valid @RequestBody ChangePlanRequest request) {
         return ApiResponse.ok(detail(tenants.changePlan(id, request.planId())));
     }
 
     @Operation(summary = "分页列出租户，最近创建的在前")
     @GetMapping
+    @RequiresPermission(READ)
     ApiResponse<List<TenantResponse>> list(PageQuery query) {
         List<TenantResponse> items = tenants.page(query.offset(), query.size()).stream()
                 .map(TenantResponse::from)
@@ -80,12 +91,14 @@ class TenantController {
 
     @Operation(summary = "读取租户、各服务的初始化状态、可迁移的状态与状态变更历史")
     @GetMapping("/{id}")
+    @RequiresPermission(READ)
     ApiResponse<TenantDetailResponse> get(@PathVariable UUID id) {
         return ApiResponse.ok(detail(tenants.get(id)));
     }
 
     @Operation(summary = "重试某个服务失败的初始化")
     @PostMapping("/{id}/initializations/{service}/retry")
+    @RequiresPermission(MANAGE)
     ApiResponse<InitializationResponse> retry(@PathVariable UUID id, @PathVariable String service) {
         return ApiResponse.ok(InitializationResponse.from(tenants.retry(id, service)));
     }
@@ -109,6 +122,9 @@ class TenantController {
             @NotBlank @Size(max = 254) @Pattern(regexp = "^\\s*(?:[^@\\s]+@[^@\\s]+\\.[^@\\s]+|\\+?[0-9]{6,15})\\s*$")
             String adminContact,
 
+            // 所在区域，平台 Data Policy 可按区域限定 Operator 可见的租户；不填为未分配
+            @Size(max = 64) String region,
+
             // 不填为 active
             @Pattern(regexp = "trial|active") String status,
 
@@ -122,6 +138,7 @@ class TenantController {
             @NotBlank String status, @Size(max = 500) String reason, OffsetDateTime expiresAt) {}
 
     /**
+     * @param region 所在区域，未分配时为 null
      * @param planId 适用的套餐；套餐上线前创建的租户为 null，不受套餐限制
      * @param expiresAt 试用或订购的到期时间
      * @param purgeAt 删除状态下冷静期的结束时间
@@ -132,6 +149,7 @@ class TenantController {
             String name,
             String status,
             String adminContact,
+            String region,
             UUID planId,
             OffsetDateTime expiresAt,
             OffsetDateTime purgeAt,
@@ -143,6 +161,7 @@ class TenantController {
                     tenant.getName(),
                     tenant.getStatus(),
                     tenant.getAdminContact(),
+                    tenant.getRegion(),
                     tenant.getPlanId(),
                     tenant.getExpiresAt(),
                     tenant.getPurgeAt(),

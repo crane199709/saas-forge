@@ -6,7 +6,36 @@
         WHERE NOT deleted AND status = 'active' AND account = #{account}
     </select>
     <select id="findActive" resultType="io.saasforge.iam.operator.model.ActiveOperator">
-        SELECT id AS operator_id, account, display_name FROM operator
+        SELECT id AS operator_id, account, display_name, region, version FROM operator
         WHERE NOT deleted AND status = 'active' AND id = #{operatorId}
+    </select>
+    <select id="list" resultType="io.saasforge.iam.operator.model.OperatorRow">
+        SELECT id, account, display_name, region, status, created_at FROM operator
+        WHERE NOT deleted ORDER BY account
+    </select>
+    <select id="find" resultType="io.saasforge.iam.operator.model.OperatorRow">
+        SELECT id, account, display_name, region, status, created_at FROM operator
+        WHERE NOT deleted AND id = #{id}
+    </select>
+    <!-- ON CONFLICT 命中账号的部分唯一索引：账号被占用时返回 0，由调用方报告冲突。 -->
+    <insert id="insert">
+        INSERT INTO operator (id, account, display_name, password_hash, region, status, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{account}, #{displayName}, #{passwordHash}, #{region}, 'active', now(), now(), #{actor}, #{actor})
+        ON CONFLICT (account) WHERE NOT deleted DO NOTHING
+    </insert>
+    <update id="update">
+        UPDATE operator SET display_name = #{displayName}, region = #{region}, updated_at = now(), updated_by = #{actor}
+        WHERE id = #{id} AND NOT deleted
+    </update>
+    <update id="changeStatus">
+        UPDATE operator SET status = #{status}, updated_at = now(), updated_by = #{actor}
+        WHERE id = #{id} AND status &lt;&gt; #{status} AND NOT deleted
+    </update>
+    <update id="changePassword">
+        UPDATE operator SET password_hash = #{passwordHash}, updated_at = now(), updated_by = #{actor}
+        WHERE id = #{id} AND NOT deleted
+    </update>
+    <select id="incrementVersion" flushCache="true" resultType="long">
+        UPDATE operator SET version = version + 1 WHERE id = #{id} AND NOT deleted RETURNING version
     </select>
 </mapper>

@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.saasforge.platform.tenant.mapper.TenantMapper">
     <select id="page" resultType="io.saasforge.platform.tenant.entity.Tenant">
-        SELECT id, name, status, admin_contact, status_version, expires_at, expiry_reminded_at,
+        SELECT id, name, status, admin_contact, region, status_version, expires_at, expiry_reminded_at,
                status_before_deletion, purge_at, purged_at, plan_id, plan_version, created_at, updated_at, created_by, updated_by, deleted
         FROM tenant
         WHERE NOT deleted
@@ -20,5 +20,8 @@
         UPDATE tenant SET plan_version = plan_version + 1, updated_at = now(), updated_by = #{actor}
         WHERE plan_id = #{planId} AND NOT deleted
         RETURNING id, plan_version
+    </select>
+    <select id="countUsingPlan" resultType="long">
+        SELECT count(*) FROM tenant WHERE plan_id = #{planId} AND purged_at IS NULL AND NOT deleted
     </select>
 </mapper>
