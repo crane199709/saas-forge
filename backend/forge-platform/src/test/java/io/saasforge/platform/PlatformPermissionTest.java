@@ -142,6 +142,31 @@ class PlatformPermissionTest {
     }
 
     @Test
+    void transitionCannotMoveATenantOutOfTheOperatorsScope() throws Exception {
+        String admin = PlatformTokens.operator();
+        UUID first = create(admin, "状态范围一", null).id();
+        UUID second = create(admin, "状态范围二", null).id();
+        // 只管理正常或已停用的租户
+        String policy = "{\"or\":[{\"attr\":\"resource.status\",\"op\":\"eq\",\"value\":\"active\"},"
+                + "{\"attr\":\"resource.status\",\"op\":\"eq\",\"value\":\"suspended\"}]}";
+        String manager = PlatformTokens.operator(UUID.randomUUID(), List.of(READ, MANAGE), null, List.of(policy));
+
+        // 迁移后仍在范围内：允许
+        assertThat(call(manager, "POST", "/tenants/" + first + "/transitions", Map.of("status", "suspended"))
+                        .status())
+                .isEqualTo(200);
+        // 迁移后超出范围：拒绝，状态不变
+        assertThat(call(manager, "POST", "/tenants/" + second + "/transitions", Map.of("status", "expired"))
+                        .code())
+                .isEqualTo("auth.forbidden");
+        assertThat(call(admin, "GET", "/tenants/" + second, null).tenant()).containsEntry("status", "active");
+        // 范围为「全部」的 Operator 不受影响
+        assertThat(call(admin, "POST", "/tenants/" + second + "/transitions", Map.of("status", "expired"))
+                        .status())
+                .isEqualTo(200);
+    }
+
+    @Test
     void selfScopeShowsOnlyTenantsTheOperatorCreatedAndNoPolicyShowsNothing() throws Exception {
         String admin = PlatformTokens.operator();
         UUID others = create(admin, "他人创建", null).id();

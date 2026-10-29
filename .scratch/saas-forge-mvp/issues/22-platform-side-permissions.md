@@ -26,4 +26,5 @@
 - 前端：platform-console 读取 `/iam/platform/access`，按权限码显示套餐、注册表、租户、运营账号、平台角色面板，Token 变化时重读；租户面板支持区域与只读模式；新增运营账号面板与平台角色面板（权限勾选、数据范围预设/负责区域/JSON 自定义条件）。
 - 审查后修复：只有超级管理员能分配超级管理员、操作超级管理员的账号（否则 `platform:operator:manage` 即可提权）；网关拒绝 `/iam/platform/oauth2/**`（JWKS 除外）；`/platform/access` 对已停用 Operator 返回空权限；Mapper 方法逐个注明是否受 Data Policy 过滤。
 - 验证：后端 `./mvnw verify` 全部通过（新增 iam `PlatformRoleTest` 3 项、forge-platform `PlatformPermissionTest` 5 项、网关 2 项、forge-sdk-security `PlatformRequiresPermissionTest` 2 项、清单 Realm 1 项；审查修复后 iam 与网关再次全量通过）。前端 typecheck、format:check 与全部单测通过（platform-console 20 项，新增 App 权限显示 1 项、运营账号 2 项、平台角色 3 项）。未以真实服务经网关在浏览器中手动操作，未运行 Playwright（没有平台侧用例）。
-- 已知限制：按 `status` 限定范围时，可把租户迁移出自己的范围；重置密码不终止已有 Refresh Token（需踢出时停用）；平台角色无条件可视化编辑器与预览；负责区域单值；请求体校验先于权限校验，越权但请求体非法时返回 400。
+- 追加：状态迁移按迁移后的状态再做一次数据范围校验，超出范围 403（与新建租户共用 `TenantService.requireInScope`），forge-platform `PlatformPermissionTest` 新增 1 项，forge-platform 全量 17 项通过。
+- 已知限制：重置密码不终止已有 Refresh Token（需踢出时停用）；平台角色无条件可视化编辑器与预览；负责区域单值；请求体校验先于权限校验，越权但请求体非法时返回 400。

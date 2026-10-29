@@ -45,7 +45,7 @@ Operator 的主体属性：`subject.membershipId` 为 Operator 标识（「本�
 {"attr":"resource.region","op":"eq","value":{"ref":"subject.attributes.region"}}
 ```
 
-自定义条件的校验规则与租户角色相同（错误码沿用 `role.invalidDataPolicy`、`role.invalidDataCondition`）。默认行为同 [数据权限](data-permission.md)：没有任何策略的 Operator 看不到任何租户；范围外的租户与不存在的一样返回 404；新建租户须在自己的范围内，否则 403。Operator 未分配区域时，「负责区域」条件不命中任何租户；区域上线前的存量租户没有区域，只有「全部」或「本人创建」可能命中。
+自定义条件的校验规则与租户角色相同（错误码沿用 `role.invalidDataPolicy`、`role.invalidDataCondition`）。默认行为同 [数据权限](data-permission.md)：没有任何策略的 Operator 看不到任何租户；范围外的租户与不存在的一样返回 404；新建租户与状态迁移按变更后的属性再判断一次，须仍在自己的范围内，否则 403（如范围限定为「正常或已停用」时不能把租户改为已过期）。Operator 未分配区域时，「负责区域」条件不命中任何租户；区域上线前的存量租户没有区域，只有「全部」或「本人创建」可能命中。
 
 套餐是否被使用、修改套餐后向租户广播不受操作人的数据范围影响（Mapper 方法标注 `@InterceptorIgnore(dataPermission = "true")`）。
 
@@ -78,11 +78,10 @@ iam 自身的平台管理接口按数据库中的当前状态判断权限与 Ope
 
 ## 已知限制
 
-- 数据范围只在读取、修改时按变更前的状态判断：若策略按 `status` 限定，持有管理权限的 Operator 可以把范围内的租户迁移到范围外（之后看不到它），与租户侧一致。
 - 重置密码不终止已有的登录会话：Refresh Token 仍可换发新 Token，需要立即踢出时应停用账号。
 - 平台角色没有自定义条件的可视化编辑器与命中预览，platform-console 以 JSON 输入自定义条件，由服务端校验。
 - Operator 的负责区域只有一个值；业务服务新增或下线平台权限码、数据资源时不递增版本，Operator 下一次刷新 Token 后生效，与租户侧一致。
 
 ## 验收
 
-后端：iam `PlatformRoleTest`（超级管理员与两侧权限码分离、受限 Operator 的明细、授权/区域/角色/停用/重置密码递增版本、最后一位超级管理员保护）、forge-platform `PlatformPermissionTest`（清单、按区域与本人范围过滤租户、无权限 403、范围外 404、范围外创建 403、套餐用量不受范围影响）、网关 `GatewaySecurityTest`（Operator 版本变化或缺失时 401、`/iam/platform/**` 只接受 Platform Realm Token）、forge-sdk-security `PlatformRequiresPermissionTest`。前端：platform-console 的 `App.spec.ts`、`OperatorPanel.spec.ts`、`PlatformRolePanel.spec.ts`。
+后端：iam `PlatformRoleTest`（超级管理员与两侧权限码分离、受限 Operator 的明细、授权/区域/角色/停用/重置密码递增版本、最后一位超级管理员保护）、forge-platform `PlatformPermissionTest`（清单、按区域与本人范围过滤租户、无权限 403、范围外 404、范围外创建 403、不能把租户迁移出范围、套餐用量不受范围影响）、网关 `GatewaySecurityTest`（Operator 版本变化或缺失时 401、`/iam/platform/**` 只接受 Platform Realm Token）、forge-sdk-security `PlatformRequiresPermissionTest`。前端：platform-console 的 `App.spec.ts`、`OperatorPanel.spec.ts`、`PlatformRolePanel.spec.ts`。

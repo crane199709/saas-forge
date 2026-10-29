@@ -90,7 +90,8 @@ public class TenantLifecycleService {
      * @param expiresAt 新的试用或订购到期时间，只在迁移到 trial 或 active 时可填，为 null 时保留原值
      * @param reason 变更原因，记入历史
      * @throws ForgeException 409 {@code tenant.illegalTransition} 不在合法迁移表中；409 {@code tenant.statusConflict}
-     *     与并发的变更冲突；400 {@code tenant.invalidExpiry} 到期时间不适用或已过去
+     *     与并发的变更冲突；400 {@code tenant.invalidExpiry} 到期时间不适用或已过去；403 {@code auth.forbidden} 迁移后的租户
+     *     不在当前 Operator 的数据范围内
      */
     @Transactional
     public Tenant transition(UUID tenantId, String target, OffsetDateTime expiresAt, String reason) {
@@ -106,6 +107,8 @@ public class TenantLifecycleService {
             throw ForgeException.withErrorMessage(
                     TenantErrorCode.INVALID_EXPIRY, "Expiry " + expiresAt + " does not apply to " + target);
         }
+        // 读取时已按迁移前的状态过滤；再按迁移后的状态判断，否则按状态限定范围的 Operator 能把租户改到自己的范围外
+        tenantService.requireInScope(tenant.getCreatedBy(), tenant.getRegion(), target);
         long version = tenant.getStatusVersion() + 1;
         var update = new LambdaUpdateWrapper<Tenant>()
                 .eq(Tenant::getId, tenantId)

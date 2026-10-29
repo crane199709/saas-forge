@@ -72,7 +72,7 @@ public class TenantService {
      *
      * <p>初始状态与到期时间由 Operator 创建时选择：不做计费，Plan 只规定能力上限，不规定试用期。
      *
-     * <p>新租户须在创建者自己的数据范围内（创建人即当前 Operator），否则创建出自己看不到的租户，以 403 拒绝。
+     * <p>新租户须在创建者自己的数据范围内（创建人即当前 Operator），否则创建出自己看不到的租户，以 403 拒绝，见 {@link #requireInScope}。
      *
      * @param adminContact 初始管理员的邮箱或手机号，由 iam 据此邀请
      * @param region 租户所在区域，可为 null
@@ -84,11 +84,7 @@ public class TenantService {
     @Transactional
     public Tenant create(
             String name, String adminContact, String region, String status, OffsetDateTime expiresAt, UUID planId) {
-        var attributes = new HashMap<String, Object>();
-        attributes.put("ownerId", actors.currentActor().orElse(null));
-        attributes.put("region", region);
-        attributes.put("status", status);
-        dataPermission.check(DATA_RESOURCE, attributes);
+        requireInScope(actors.currentActor().orElse(null), region, status);
         Plan plan = plans.lockForAssignment(planId);
         var tenant = new Tenant();
         tenant.setId(UuidV7.generate());
@@ -175,6 +171,21 @@ public class TenantService {
         initializations.updateById(initialization);
         publish(tenantId, new TenantInitializationRequested(service, createdEvent(tenant)));
         return initializations.selectById(initialization.getId());
+    }
+
+    /**
+     * 要求具有给定属性的租户在当前 Operator 的数据范围内：新建租户与迁移状态时按变更后的属性判断，避免把租户建在或改到自己的范围外。
+     * 系统操作不受限制。
+     *
+     * @param ownerId 创建人
+     * @throws ForgeException 403 {@code auth.forbidden}
+     */
+    void requireInScope(UUID ownerId, String region, String status) {
+        var attributes = new HashMap<String, Object>();
+        attributes.put("ownerId", ownerId);
+        attributes.put("region", region);
+        attributes.put("status", status);
+        dataPermission.check(DATA_RESOURCE, attributes);
     }
 
     /** 记录一次状态变更，{@code from} 为 null 表示创建。操作人取自当前请求，系统发起时为 NULL。 */
