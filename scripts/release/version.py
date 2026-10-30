@@ -39,7 +39,7 @@ def main():
             group = node.find('m:groupId', NS)
             value = node.find('m:version', NS)
             if group is not None and group.text == 'io.saasforge' and value is not None:
-                if value.text == '${project.version}':
+                if value.text in ('${project.version}', '${forge.version}'):
                     continue
                 if args.action == 'set':
                     source = re.sub(
@@ -49,6 +49,12 @@ def main():
                     )
                 elif value.text != version:
                     errors.append(f'{path.relative_to(ROOT)}: {value.text} != {version}')
+        sdk_version = tree.find('m:properties/m:forge.version', NS)
+        if sdk_version is not None:
+            if args.action == 'set':
+                source = re.sub(r'<forge.version>[^<]+</forge.version>', f'<forge.version>{version}</forge.version>', source)
+            elif sdk_version.text != version:
+                errors.append(f'{path.relative_to(ROOT)}: forge.version {sdk_version.text} != {version}')
         if args.action == 'set':
             path.write_text(source)
     packages = [ROOT / 'frontend/package.json', *sorted((ROOT / 'frontend/packages').glob('*/package.json')), *sorted((ROOT / 'frontend/apps').glob('*/package.json'))]

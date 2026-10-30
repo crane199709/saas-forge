@@ -1,0 +1,37 @@
+#set( $dollar = '$' )
+#set( $hash = '#' )
+${hash} classpath:/config/application.yml 优先级高于主配置并与之合并：测试不依赖 Nacos，统一在这里关闭
+spring:
+  datasource:
+    username: demo_app
+    password: demo_app
+  flyway:
+    user: demo_migrator
+    password: demo_migrator
+    schemas: demo
+    default-schema: demo
+    placeholders:
+      serviceSchema: demo
+  cloud:
+    nacos:
+      config:
+        enabled: false
+      discovery:
+        enabled: false
+${hash} 不连接 MQ 的测试关闭投递器与消费端；发布的事件照常写入 Outbox。Outbox 链路测试单独开启并连接测试容器
+forge:
+  mq:
+    endpoints: localhost:1
+    enabled: false
+  ${hash} 测试不连接 iam；清单内容由 ResourceManifestTest 直接生成校验
+  manifest:
+    iam-uri: http://localhost:1
+    token: test-only
+    enabled: false
+  ${hash} 多数测试不启动 Redis 或不发布租户状态；写入保护由 TenantLifecycleTest 单独开启验证
+  tenant:
+    write-guard:
+      enabled: false
+
+server:
+  port: 0

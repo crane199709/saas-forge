@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>io.saasforge</groupId>
+        <artifactId>forge-parent</artifactId>
+        <version>0.1.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <artifactId>forge-service-archetype</artifactId>
+    <packaging>maven-archetype</packaging>
+    <!-- 生成工程通过独立 Maven 消费制品，无法看见外层 verify 的 reactor。
+         显式 profile 配合 install，先安装 SDK 再运行模板测试；普通 verify 仍可在冷缓存执行。 -->
+    <properties>
+        <archetype.test.skip>true</archetype.test.skip>
+    </properties>
+    <build>
+        <resources>
+            <resource>
+                <filtering>true</filtering>
+                <directory>src/main/resources</directory>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <configuration>
+                    <useDefaultDelimiters>false</useDefaultDelimiters>
+                    <delimiters>
+                        <delimiter>@</delimiter>
+                    </delimiters>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-archetype-plugin</artifactId>
+                <version>3.4.1</version>
+            </plugin>
+        </plugins>
+        <extensions>
+            <extension>
+                <groupId>org.apache.maven.archetype</groupId>
+                <artifactId>archetype-packaging</artifactId>
+                <version>3.4.1</version>
+            </extension>
+        </extensions>
+    </build>
+    <profiles>
+        <profile>
+            <id>archetype-it</id>
+            <properties>
+                <archetype.test.skip>false</archetype.test.skip>
+            </properties>
+        </profile>
+    </profiles>
+</project>

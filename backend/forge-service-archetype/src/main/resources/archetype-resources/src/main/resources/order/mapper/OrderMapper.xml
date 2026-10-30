@@ -1,0 +1,23 @@
+#set( $dollar = '$' )
+#set( $hash = '#' )
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="${package}.order.mapper.OrderMapper">
+    <select id="selectPage" resultType="${package}.order.entity.Order">
+        <!-- 手写查询不经过 MyBatis-Plus 的逻辑删除条件，须自行排除已删除的行 -->
+        SELECT id, title, amount, owner_id, department_path, created_at, updated_at, created_by, updated_by, deleted
+        FROM orders
+        WHERE NOT deleted
+        ORDER BY
+        <foreach collection="sorts" item="sort">
+            <!-- ${dollar}{} 白名单：列名由 OrderController 的 @SortableFields 白名单字段经 OrderSort.from 转换，方向取自 PageQuery.Direction 枚举，均不含请求原文 -->
+            ${dollar}{sort.column} ${dollar}{sort.direction},
+        </foreach>
+        id
+        LIMIT ${hash}{limit} OFFSET ${hash}{offset}
+    </select>
+    <!-- 租户清理（ADR-0016）：在 TenantDeleted 的消费事务中执行，没有操作人，updated_by 写 NULL；手写 SQL 自行维护标准列。 -->
+    <update id="markTenantDeleted">
+        UPDATE orders SET deleted = true, updated_at = now(), updated_by = NULL WHERE NOT deleted
+    </update>
+</mapper>
