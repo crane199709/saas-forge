@@ -1,27 +1,58 @@
 #!/usr/bin/env node
-// 生成新的 Sub-App 工程：pnpm create:sub-app <应用编码> <端口>，生成到 frontend/apps/<应用编码>-sub-app。
+// 发布命令默认生成到当前目录；仓库脚本通过 --workspace 保留 apps 目录约定。
 // 生成的工程已带隔离约定：只导出相对路由与组件、scoped 样式、从共享依赖根入口导入，并带 lint 与独立开发宿主。
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, lstat, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const [code, portText] = process.argv.slice(2)
-if (!code || !/^[a-z][a-z0-9-]{0,63}$/.test(code) || !/^\d{4,5}$/.test(portText ?? '')) {
+const args = process.argv.slice(2)
+const workspace = args[0] === '--workspace'
+const [code, portText, directory, ...extra] = workspace ? args.slice(1) : args
+if (
+  !code ||
+  !/^[a-z][a-z0-9-]{0,63}$/.test(code) ||
+  !/^\d{4,5}$/.test(portText ?? '') ||
+  Number(portText) > 65535 ||
+  extra.length > 0
+) {
   console.error(
-    '用法：pnpm create:sub-app <应用编码> <端口>，编码为小写字母开头的小写字母、数字与连字符',
+    '用法：forge-create-sub-app <应用编码> <端口> [目标目录]，编码为小写字母开头的小写字母、数字与连字符',
   )
   process.exit(1)
 }
 const port = Number(portText)
 const frontend = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
-const target = join(frontend, 'apps', `${code}-sub-app`)
-if (await stat(target).catch(() => null)) {
+const target = directory
+  ? resolve(directory)
+  : workspace
+    ? join(frontend, 'apps', `${code}-sub-app`)
+    : resolve(`${code}-sub-app`)
+if (await lstat(target).catch(() => null)) {
   console.error(`${target} 已存在`)
   process.exit(1)
 }
-// 依赖版本与 Shell 保持一致：共享依赖由 Shell 提供，两端版本相同才经过验证（工单 02）
-const shell = JSON.parse(await readFile(join(frontend, 'apps/tenant-app/package.json'), 'utf8'))
-const version = (name: string) => shell.dependencies[name] ?? shell.devDependencies[name]
+// 发布包只读取随包快照；源码模式使用同一发布版本与 Shell 依赖。
+const versions: Record<string, string> = workspace
+  ? await (async () => {
+      const shell = JSON.parse(
+        await readFile(join(frontend, 'apps/tenant-app/package.json'), 'utf8'),
+      )
+      const kit = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
+      return {
+        ...shell.dependencies,
+        ...shell.devDependencies,
+        ...Object.fromEntries(
+          ['@forge/sdk', '@forge/ui', '@forge/sub-app-kit'].map((name) => [name, kit.version]),
+        ),
+        '@module-federation/vite': kit.devDependencies['@module-federation/vite'],
+      }
+    })()
+  : JSON.parse(await readFile(new URL('../versions.json', import.meta.url), 'utf8'))
+const version = (name: string) => {
+  const value = versions[name]
+  if (!value || value.startsWith('workspace:')) throw new Error(`缺少发布依赖版本：${name}`)
+  return value
+}
 const routeName = (page: string) => `${code}:${page}`
 
 const files: Record<string, string> = {
@@ -44,12 +75,11 @@ const files: Record<string, string> = {
         ),
       ),
       devDependencies: {
-        '@forge/sub-app-kit': 'workspace:*',
+        '@forge/sub-app-kit': version('@forge/sub-app-kit'),
         ...Object.fromEntries(
-          ['@vitejs/plugin-vue', 'typescript', 'vite', 'vue-tsc'].map((name) => [
-            name,
-            version(name),
-          ]),
+          ['@module-federation/vite', '@vitejs/plugin-vue', 'typescript', 'vite', 'vue-tsc'].map(
+            (name) => [name, version(name)],
+          ),
         ),
       },
     },
@@ -57,8 +87,14 @@ const files: Record<string, string> = {
     2,
   )}\n`,
   'tsconfig.json': `{
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
     "types": ["vite/client", "element-plus/global"]
   },
   "include": ["src/**/*.ts", "src/**/*.vue"]
@@ -67,7 +103,7 @@ const files: Record<string, string> = {
   'vite.config.ts': `import { defineSubAppConfig } from '@forge/sub-app-kit/vite'
 
 // 开发模式经 index.html 运行独立宿主；构建产物暴露 ./sub-app 的 remoteEntry.js，入口地址登记到 App Registry。
-export default defineSubAppConfig({ appCode: '${code}', port: ${port} })
+export default defineSubAppConfig({ appCode: '${code}', port: ${port}, apiPrefixes: ['/${code}'] })
 `,
   'index.html': `<!doctype html>
 <html lang="zh-CN">
@@ -97,30 +133,73 @@ export const routes: RouteRecordRaw[] = [
 ]
 `,
   'src/HomePage.vue': `<script setup lang="ts">
+import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useTenantClient } from '@forge/sdk'
+import { ElButton, ElTableColumn } from 'element-plus'
+import { ApiError, useTenantClient, type Page } from '@forge/sdk'
+import { ErrorAlert, ListPage, type ErrorTip } from '@forge/ui'
 
-// Token 与租户上下文经共享的 @forge/sdk 获取，Sub-App 自身不处理登录；文案放在 local scope，不覆盖 Shell 文案。
+interface Order {
+  id: string
+  title: string
+  amount: number
+}
+
 const client = useTenantClient()
+const orders = ref<Page<Order> | null>(null)
+const busy = ref(false)
+const error = ref<ErrorTip | null>(null)
 const { t } = useI18n({
   useScope: 'local',
-  messages: { 'zh-CN': { title: '${code}', tenant: '当前租户：{name}' } },
+  messages: {
+    'zh-CN': {
+      title: '订单',
+      refresh: '刷新订单',
+      name: '标题',
+      amount: '金额',
+      empty: '暂无订单',
+      failed: '订单加载失败，请稍后重试',
+    },
+  },
 })
+
+async function load(page = orders.value?.page.number ?? 1) {
+  busy.value = true
+  error.value = null
+  try {
+    // 数据范围由服务端裁剪；通过 Shell 的共享客户端，让 401 走统一刷新与登出流程。
+    orders.value = await client.page<Order>(\`/${code}/orders?page=\${page}&size=20&sort=createdAt,asc\`)
+  } catch (cause) {
+    orders.value = null
+    error.value = {
+      message: cause instanceof ApiError && cause.userTip ? cause.userTip : t('failed'),
+      traceId: cause instanceof ApiError ? cause.traceId : undefined,
+    }
+  } finally {
+    busy.value = false
+  }
+}
+
+onMounted(() => load())
 </script>
 
 <template>
-  <section class="page">
-    <h2>{{ t('title') }}</h2>
-    <p>{{ t('tenant', { name: client.session()?.tenantName ?? '-' }) }}</p>
+  <section :aria-label="t('title')">
+    <h3>{{ t('title') }}</h3>
+    <ErrorAlert v-if="error" :tip="error" />
+    <ListPage :page="orders" :loading="busy" :empty-text="t('empty')" @page-change="load">
+      <template #search>
+        <el-button :disabled="busy" @click="load()">{{ t('refresh') }}</el-button>
+      </template>
+      <el-table-column :label="t('name')">
+        <template #default="{ row }">
+          <span data-testid="order-title">{{ row.title }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="amount" :label="t('amount')" />
+    </ListPage>
   </section>
 </template>
-
-<style scoped>
-.page {
-  border-left: 4px solid var(--forge-color-primary, var(--el-color-primary));
-  padding-left: 12px;
-}
-</style>
 `,
 }
 
@@ -131,6 +210,7 @@ for (const [file, content] of Object.entries(files)) {
 }
 console.log(`已生成 ${target}
 下一步：
+  cd ${JSON.stringify(target)}
   pnpm install
   pnpm --filter @forge/${code}-sub-app dev       # 独立开发宿主 http://localhost:${port}
   pnpm --filter @forge/${code}-sub-app build     # 产物 dist/remoteEntry.js，入口地址登记到 App Registry

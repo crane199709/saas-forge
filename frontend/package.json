@@ -19,7 +19,7 @@
     "test:e2e": "playwright test",
     "test:e2e:main": "../deploy/e2e/run.sh",
     "typecheck:tools": "tsc --noEmit -p tsconfig.tools.json",
-    "create:sub-app": "node packages/sub-app-kit/bin/create.ts"
+    "create:sub-app": "node packages/sub-app-kit/bin/create.ts --workspace"
   },
   "devDependencies": {
     "@module-federation/vite": "1.23.5",
