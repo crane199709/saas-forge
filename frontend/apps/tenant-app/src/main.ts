@@ -1,3 +1,5 @@
+// 全量引入 Element Plus，不按需引入：Sub-App 以 import: false 共享 Shell 的 Element Plus，自身不打包组件与样式，
+// Shell 少带任何组件都会让用到它的 Sub-App 运行时报错。
 import ElementPlus, { ElDialog } from 'element-plus'
 import 'element-plus/dist/index.css'
 // Element Plus 内置文案默认是英文，与第一期只支持简体中文保持一致

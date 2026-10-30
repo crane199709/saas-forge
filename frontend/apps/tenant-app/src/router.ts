@@ -6,16 +6,6 @@ import {
   type RouterHistory,
 } from 'vue-router'
 import { loginFlow } from './login-flow'
-import AuditPage from './audit/AuditPage.vue'
-import AcceptInvitationPage from './invitation/AcceptInvitationPage.vue'
-import HomePage from './HomePage.vue'
-import LoginPage from './LoginPage.vue'
-import MemberPage from './member/MemberPage.vue'
-import NoTenantPage from './NoTenantPage.vue'
-import OrganizationPage from './organization/OrganizationPage.vue'
-import RolePage from './role/RolePage.vue'
-import SelectTenantPage from './SelectTenantPage.vue'
-import StatusPage from './StatusPage.vue'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -36,41 +26,65 @@ export function createShellRouter(history: RouterHistory) {
   return createRouter({
     history,
     routes: [
-      { path: '/', component: HomePage },
-      { path: '/login', component: LoginPage, meta: { public: true, standalone: true } },
+      { path: '/', component: () => import('./HomePage.vue') },
+      {
+        path: '/login',
+        component: () => import('./LoginPage.vue'),
+        meta: { public: true, standalone: true },
+      },
       {
         path: '/select-tenant',
-        component: SelectTenantPage,
+        component: () => import('./SelectTenantPage.vue'),
         meta: { public: true, standalone: true },
         // 可选租户只在登录后的内存中，页面刷新后无从选择，须重新登录。
         beforeEnter: (to) => (loginFlow.memberships ? true : { path: '/login', query: to.query }),
       },
-      { path: '/no-tenant', component: NoTenantPage, meta: { public: true, standalone: true } },
+      {
+        path: '/no-tenant',
+        component: () => import('./NoTenantPage.vue'),
+        meta: { public: true, standalone: true },
+      },
       // 邀请链接的落地页，iam 的 forge.iam.invitation.accept-url 指向这里。
       {
         path: '/invitations/accept',
-        component: AcceptInvitationPage,
+        component: () => import('./invitation/AcceptInvitationPage.vue'),
         meta: { public: true, standalone: true },
       },
       // Shell 自带的租户管理页，不来自 Sub-App 菜单。
-      { path: '/members', component: MemberPage, meta: { permission: 'iam:member:manage' } },
-      { path: '/org', component: OrganizationPage, meta: { permission: 'iam:org:manage' } },
-      { path: '/roles', component: RolePage, meta: { permission: 'iam:role:manage' } },
-      { path: '/audit', component: AuditPage, meta: { permission: 'iam:audit:read' } },
+      {
+        path: '/members',
+        component: () => import('./member/MemberPage.vue'),
+        meta: { permission: 'iam:member:manage' },
+      },
+      {
+        path: '/org',
+        component: () => import('./organization/OrganizationPage.vue'),
+        meta: { permission: 'iam:org:manage' },
+      },
+      {
+        path: '/roles',
+        component: () => import('./role/RolePage.vue'),
+        meta: { permission: 'iam:role:manage' },
+      },
+      {
+        path: '/audit',
+        component: () => import('./audit/AuditPage.vue'),
+        meta: { permission: 'iam:audit:read' },
+      },
       // 技术验证诊断只在开发与 E2E 构建中注册，正式构建不打包诊断页。
       ...(import.meta.env.DEV || import.meta.env.VITE_FORGE_DIAGNOSTICS === 'true'
         ? [{ path: '/__diagnostics', component: () => import('./diagnostics/DiagnosticsPage.vue') }]
         : []),
       {
         path: '/403',
-        component: StatusPage,
+        component: () => import('./StatusPage.vue'),
         props: { status: '403' },
         meta: { standalone: true },
       },
       {
         path: '/:pathMatch(.*)*',
         name: notFoundRoute,
-        component: StatusPage,
+        component: () => import('./StatusPage.vue'),
         props: { status: '404' },
         meta: { standalone: true },
       },

@@ -6,17 +6,8 @@ import {
   type RouterHistory,
 } from 'vue-router'
 import { permissions } from './access'
-import AuditPage from './audit/AuditPage.vue'
-import HomePage from './HomePage.vue'
-import LoginPage from './LoginPage.vue'
 import { safeRedirect } from './login-flow'
-import OperatorPage from './operator/OperatorPage.vue'
-import PlanPage from './plan/PlanPage.vue'
-import PlatformRolePage from './role/PlatformRolePage.vue'
 import type { ConsoleAccess } from './shell'
-import StatusPage from './StatusPage.vue'
-import SubAppPage from './subapp/SubAppPage.vue'
-import TenantPage from './tenant/TenantPage.vue'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -35,28 +26,38 @@ export const consolePages = [
     path: '/tenants',
     title: 'tenant.title',
     permission: permissions.tenantRead,
-    component: TenantPage,
+    component: () => import('./tenant/TenantPage.vue'),
   },
-  { path: '/plans', title: 'plan.title', permission: permissions.planManage, component: PlanPage },
+  {
+    path: '/plans',
+    title: 'plan.title',
+    permission: permissions.planManage,
+    component: () => import('./plan/PlanPage.vue'),
+  },
   {
     path: '/sub-apps',
     title: 'subApp.title',
     permission: permissions.subAppManage,
-    component: SubAppPage,
+    component: () => import('./subapp/SubAppPage.vue'),
   },
   {
     path: '/operators',
     title: 'operator.title',
     permission: permissions.operatorManage,
-    component: OperatorPage,
+    component: () => import('./operator/OperatorPage.vue'),
   },
   {
     path: '/roles',
     title: 'platformRole.title',
     permission: permissions.roleManage,
-    component: PlatformRolePage,
+    component: () => import('./role/PlatformRolePage.vue'),
   },
-  { path: '/audit', title: 'audit.title', permission: permissions.auditRead, component: AuditPage },
+  {
+    path: '/audit',
+    title: 'audit.title',
+    permission: permissions.auditRead,
+    component: () => import('./audit/AuditPage.vue'),
+  },
 ] as const
 
 /** 兜底路由名：不存在的路径。 */
@@ -66,18 +67,27 @@ export function createConsoleRouter(history: RouterHistory) {
   return createRouter({
     history,
     routes: [
-      { path: '/', component: HomePage },
-      { path: '/login', component: LoginPage, meta: { public: true, standalone: true } },
+      { path: '/', component: () => import('./HomePage.vue') },
+      {
+        path: '/login',
+        component: () => import('./LoginPage.vue'),
+        meta: { public: true, standalone: true },
+      },
       ...consolePages.map((page) => ({
         path: page.path,
         component: page.component,
         meta: { permission: page.permission },
       })),
-      { path: '/403', component: StatusPage, props: { status: '403' }, meta: { standalone: true } },
+      {
+        path: '/403',
+        component: () => import('./StatusPage.vue'),
+        props: { status: '403' },
+        meta: { standalone: true },
+      },
       {
         path: '/:pathMatch(.*)*',
         name: notFoundRoute,
-        component: StatusPage,
+        component: () => import('./StatusPage.vue'),
         props: { status: '404' },
         meta: { public: true, standalone: true },
       },

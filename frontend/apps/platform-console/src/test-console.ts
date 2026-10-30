@@ -1,5 +1,4 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import ElementPlus from 'element-plus'
 import { createPlatformClient, platformClientKey } from '@forge/sdk'
 import { createMemoryHistory } from 'vue-router'
 import App from './App.vue'
@@ -64,7 +63,7 @@ export async function mountConsole(path: string) {
   await router.push(path)
   const wrapper = mount(App, {
     global: {
-      plugins: [i18n, ElementPlus, router],
+      plugins: [i18n, router],
       provide: { [platformClientKey]: client, [consoleAccessKey]: access },
     },
   })

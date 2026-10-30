@@ -1,7 +1,5 @@
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
-// Element Plus 内置文案默认是英文，与第一期只支持简体中文保持一致
-import zhCn from 'element-plus/es/locale/lang/zh-cn'
+// Element Plus 组件与样式由构建插件按需引入；@forge/ui 列表页以 vLoading 指令具名导入，插件不为指令补样式。
+import 'element-plus/es/components/loading/style/css'
 import { createPlatformClient, platformClientKey } from '@forge/sdk'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
@@ -28,5 +26,4 @@ createApp(App)
   .use(createPinia())
   .use(i18n)
   .use(router)
-  .use(ElementPlus, { locale: zhCn })
   .mount('#app')
