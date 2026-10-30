@@ -1,0 +1,24 @@
+# 独立容器、无宿主数据挂载；脚本每次使用新的 Compose project。
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: forge
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports: ['127.0.0.1:15432:5432']
+    volumes:
+      - ../postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d forge']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  redis:
+    image: redis:8.8.1
+    ports: ['127.0.0.1:16379:6379']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 3s
+      retries: 30

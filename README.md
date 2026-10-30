@@ -144,3 +144,5 @@ cd frontend && pnpm format:check
 - 版本组合锁定见 [ADR-0013](docs/adr/0013-pin-spring-boot-4-0.md)，全部由 `forge-dependencies` 管理。
 - 前端 TypeScript 锁定 5.9：TypeScript 7 是原生重写版本，vue-tsc 依赖的编译器 JS API 尚未就绪。
 - 本地 S3 使用 MinIO 的社区分支 silo（MinIO 社区版已停止发布二进制，见 ADR-0011），代码只依赖 S3 协议。
+
+真实主链路浏览器验收（双租户、权限、数据范围、即时失效、Realm 隔离）：见 [主链路 E2E](docs/main-flow-e2e.md)，一键执行 `deploy/e2e/run.sh`。

@@ -1,0 +1,26 @@
+-- 只向 run.sh 本次创建的临时容器写入；不支持对开发或共享数据库运行。
+BEGIN;
+SET search_path = iam, extensions;
+INSERT INTO tenant (id,name) VALUES ('019a2525-0000-7000-8000-000000000001','E2E 租户 A'), ('019a2525-0000-7000-8000-000000000002','E2E 租户 B');
+INSERT INTO identity (id,account,email,display_name,password_hash) VALUES ('019a2525-0000-7000-8000-000000000011','e2e-member','e2e-member@example.com','e2e-member','$2a$10$IbZhtjdYzxJ0Z19dRQf3je8E29VAX2jP2KlXz1r1Um1uaF042/jJ.');
+INSERT INTO identity (id,account,email,display_name,password_hash) VALUES ('019a2525-0000-7000-8000-000000000012','e2e-admin','e2e-admin@example.com','e2e-admin','$2a$10$IbZhtjdYzxJ0Z19dRQf3je8E29VAX2jP2KlXz1r1Um1uaF042/jJ.');
+INSERT INTO membership (id,identity_id,tenant_id) VALUES ('019a2525-0000-7000-8000-000000000031','019a2525-0000-7000-8000-000000000011','019a2525-0000-7000-8000-000000000001');
+INSERT INTO membership (id,identity_id,tenant_id) VALUES ('019a2525-0000-7000-8000-000000000032','019a2525-0000-7000-8000-000000000011','019a2525-0000-7000-8000-000000000002');
+INSERT INTO membership (id,identity_id,tenant_id) VALUES ('019a2525-0000-7000-8000-000000000033','019a2525-0000-7000-8000-000000000012','019a2525-0000-7000-8000-000000000001');
+INSERT INTO role (id,tenant_id,code,name,builtin) VALUES ('019a2525-0000-7000-8000-000000000041','019a2525-0000-7000-8000-000000000001','e2e-self','e2e-self',false);
+INSERT INTO role (id,tenant_id,code,name,builtin) VALUES ('019a2525-0000-7000-8000-000000000042','019a2525-0000-7000-8000-000000000002','e2e-all','e2e-all',false);
+INSERT INTO role (id,tenant_id,code,name,builtin) VALUES ('019a2525-0000-7000-8000-000000000043','019a2525-0000-7000-8000-000000000001','tenant-admin','tenant-admin',true);
+INSERT INTO membership_role (membership_id,role_id) VALUES ('019a2525-0000-7000-8000-000000000031','019a2525-0000-7000-8000-000000000041');
+INSERT INTO membership_role (membership_id,role_id) VALUES ('019a2525-0000-7000-8000-000000000032','019a2525-0000-7000-8000-000000000042');
+INSERT INTO membership_role (membership_id,role_id) VALUES ('019a2525-0000-7000-8000-000000000033','019a2525-0000-7000-8000-000000000043');
+INSERT INTO role_permission (role_id,permission_id) SELECT '019a2525-0000-7000-8000-000000000041',id FROM permission WHERE code IN ('order:read','order:create','iam:audit:read') AND NOT deleted;
+INSERT INTO role_permission (role_id,permission_id) SELECT '019a2525-0000-7000-8000-000000000042',id FROM permission WHERE code IN ('order:read') AND NOT deleted;
+INSERT INTO role_data_policy (role_id,resource,scope) VALUES ('019a2525-0000-7000-8000-000000000041','order','self'), ('019a2525-0000-7000-8000-000000000042','order','all');
+INSERT INTO sub_app (code,name,version,revision) VALUES ('demo','E2E 示例','e2e',0);
+INSERT INTO sub_app_entry (code,environment,remote_entry) VALUES ('demo','e2e','http://127.0.0.1:15175/remoteEntry.js');
+SET search_path = demo, extensions;
+INSERT INTO orders (id,tenant_id,owner_id,title,amount,created_at) VALUES ('019a2525-0000-7000-8000-000000000051','019a2525-0000-7000-8000-000000000001','019a2525-0000-7000-8000-000000000031','A 本人订单',10,'2026-01-01T00:00:00Z');
+INSERT INTO orders (id,tenant_id,owner_id,title,amount,created_at) VALUES ('019a2525-0000-7000-8000-000000000052','019a2525-0000-7000-8000-000000000001','019a2525-0000-7000-8000-000000000033','A 他人订单',10,'2026-01-02T00:00:00Z');
+INSERT INTO orders (id,tenant_id,owner_id,title,amount,created_at) VALUES ('019a2525-0000-7000-8000-000000000053','019a2525-0000-7000-8000-000000000002','019a2525-0000-7000-8000-000000000032','B 本人订单',10,'2026-01-03T00:00:00Z');
+INSERT INTO orders (id,tenant_id,owner_id,title,amount,created_at) VALUES ('019a2525-0000-7000-8000-000000000054','019a2525-0000-7000-8000-000000000002','019a2525-0000-7000-8000-000000000034','B 他人订单',10,'2026-01-04T00:00:00Z');
+COMMIT;

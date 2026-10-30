@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { ref } from 'vue'
 import { ElButton, ElDialog, ElOption, ElSelect, ElTooltip } from 'element-plus'
 import { useTenantClient } from '@forge/sdk'
+import OrdersList from './OrdersList.vue'
 
 // Token 与租户上下文经共享的 @forge/sdk 获取，Sub-App 自身不处理登录
 const client = useTenantClient()
@@ -41,6 +42,7 @@ const { t } = useI18n({
     <!-- 按钮级权限由 Shell 安装的 v-perm 控制；接口仍由 demo-service 按 order:create 校验 -->
     <el-button v-perm="'order:create'" data-testid="create-order">{{ t('createOrder') }}</el-button>
   </p>
+  <OrdersList />
   <el-dialog v-model="open" :title="t('dialog')" width="min(520px, 90vw)" append-to-body>
     <el-select v-model="selected" :aria-label="t('select')" :placeholder="t('select')">
       <el-option :label="t('blue')" value="blue" />

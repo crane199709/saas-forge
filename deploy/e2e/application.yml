@@ -1,0 +1,43 @@
+# 主链路只依赖 DB、Redis 和 HTTP。MQ/发现另有集成测试；认证、权限、RLS 均保持开启。
+spring:
+  cloud:
+    nacos:
+      config:
+        enabled: false
+      discovery:
+        enabled: false
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: iam
+              uri: http://127.0.0.1:18101
+              predicates: [Path=/iam/**]
+              filters: [StripPrefix=1]
+            - id: platform
+              uri: http://127.0.0.1:18102
+              predicates: [Path=/platform/**]
+              filters: [StripPrefix=1]
+            - id: demo
+              uri: http://127.0.0.1:18201
+              predicates: [Path=/demo/**]
+              filters: [StripPrefix=1]
+server:
+  address: 127.0.0.1
+  forward-headers-strategy: framework
+forge:
+  mq:
+    enabled: false
+  security:
+    issuer: http://127.0.0.1:18000/iam
+    jwk-set-uri: http://127.0.0.1:18101/oauth2/jwks
+    platform:
+      issuer: http://127.0.0.1:18000/iam/platform
+      jwk-set-uri: http://127.0.0.1:18101/platform/oauth2/jwks
+  iam:
+    redirect-uri: http://127.0.0.1:15174/
+  manifest:
+    iam-uri: http://127.0.0.1:18101
+  platform:
+    iam:
+      uri: http://127.0.0.1:18101

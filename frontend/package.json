@@ -17,6 +17,7 @@
     "format:check": "prettier --check .",
     "build:spike": "pnpm --filter @forge/tenant-app build && pnpm --filter @forge/demo-sub-app build && pnpm --filter @forge/demo-sub-app build:v2",
     "test:e2e": "playwright test",
+    "test:e2e:main": "../deploy/e2e/run.sh",
     "typecheck:tools": "tsc --noEmit -p tsconfig.tools.json",
     "create:sub-app": "node packages/sub-app-kit/bin/create.ts"
   },

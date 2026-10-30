@@ -61,3 +61,6 @@ playwright/.cache/
 
 # ---- 本地运行数据（deploy/docker-compose 挂载卷）----
 deploy/data/
+
+# 独立 E2E 运行日志与临时签名密钥
+deploy/e2e/run-*/

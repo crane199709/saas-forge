@@ -78,6 +78,17 @@ test.beforeEach(async ({ page }) => {
   const errors: string[] = []
   browserErrors.set(page, errors)
   await signIn(page)
+  await page.route('**/demo/orders?*', (route) =>
+    route.fulfill({
+      json: {
+        code: 'ok',
+        httpStatus: 200,
+        data: [],
+        traceId: 'trace-orders',
+        meta: { page: { number: 1, size: 20, totalElements: 0, totalPages: 0 } },
+      },
+    }),
+  )
   page.on('pageerror', (error) => errors.push(error.message))
   page.on('console', (message) => {
     if (['error', 'warning'].includes(message.type())) errors.push(message.text())
