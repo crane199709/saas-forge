@@ -229,7 +229,8 @@ test('A 退出，B 回到登录', async ({ context, page: a }) => {
   await b.goto('/')
   await openOrders(b)
 
-  await a.getByRole('button', { name: '重新登录' }).click()
+  await a.getByTestId('user-menu').click()
+  await a.getByTestId('user-logout').click()
   await expect(a.getByLabel('账号或邮箱')).toBeVisible()
   await expect(b.getByLabel('账号或邮箱')).toBeVisible()
   await expect(b.getByTestId('order-title')).toHaveCount(0)

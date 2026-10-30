@@ -1,5 +1,5 @@
 import type { Pinia } from 'pinia'
-import type { InjectionKey } from 'vue'
+import { ref, type InjectionKey } from 'vue'
 import type { SubAppHost } from './sub-app-host'
 
 /** Shell 中的 Sub-App 宿主，供导航与占位区域读取加载状态。 */
@@ -25,3 +25,6 @@ export function createShellReload(
     navigate()
   }
 }
+
+/** 技术验证用的主题切换：验证 Shell 与 Sub-App 共用主题 token。 */
+export const alternateTheme = ref(false)

@@ -133,13 +133,13 @@ test('不在套餐中的 Sub-App 不被加载', async ({ page }) => {
   // IAM 已按套餐裁掉指向 demo 的菜单，可加载列表中也没有它
   await resignIn(page, ['order:read'], [], [])
   await page.goto('/apps/demo/overview')
-  await expect(page.getByRole('heading', { name: '欢迎使用 SaaS Forge 租户端' })).toBeVisible()
+  await expect(page.getByTestId('status-404')).toBeVisible()
   await expect(page.getByRole('link', { name: '示例子应用', exact: true })).toHaveCount(0)
   await expect(page.getByRole('heading', { name: '概览', exact: true })).toHaveCount(0)
   // 菜单仍可见但当前环境没有可加载的入口时，同样不请求、不展示
   await resignIn(page, ['order:read'], [])
   await page.reload()
-  await expect(page.getByRole('heading', { name: '欢迎使用 SaaS Forge 租户端' })).toBeVisible()
+  await expect(page.getByTestId('status-404')).toBeVisible()
   await expect(page.getByRole('link', { name: '示例子应用', exact: true })).toHaveCount(0)
   expect(requested).toEqual([])
 })
@@ -159,7 +159,7 @@ test('单个 Sub-App 加载失败只在其区域提示错误，Shell 导航与�
   )
   await page.goto('/apps/broken/home')
   await expect(page.getByTestId('sub-app-error-broken')).toContainText('子应用 broken 加载失败')
-  await expect(page.getByRole('heading', { name: '欢迎使用 SaaS Forge 租户端' })).toBeVisible()
+  await expect(page.getByTestId('menu-home')).toBeVisible()
 
   await page.getByRole('link', { name: '示例子应用', exact: true }).click()
   await expect(page.getByRole('heading', { name: '概览', exact: true })).toBeVisible()
@@ -259,6 +259,8 @@ for (const host of ['127.0.0.1', 'localhost']) {
     await expect(page.getByRole('heading', { name: '示例子应用 v1' })).toBeVisible()
     await expect(page).toHaveTitle('SaaS Forge 租户端')
     await expect(page.locator('vite-error-overlay')).toHaveCount(0)
+    // 诊断暂放在首页（frontend-shell 工单 03 移到 /__diagnostics）
+    await page.getByTestId('menu-home').click()
     for (const dependency of [
       'vue',
       'vue-router',
@@ -275,19 +277,23 @@ for (const host of ['127.0.0.1', 'localhost']) {
   })
 }
 
+// 诊断暂放在首页（frontend-shell 工单 03 移到 /__diagnostics），Shell 与 Sub-App 的元素分别在首页与 Sub-App 页上检查。
 test('主题 token 同步，Sub-App scoped CSS 不泄漏到 Shell', async ({ page }) => {
   await page.goto('/apps/demo/overview')
   const shell = page.getByTestId('shell-theme')
   const remote = page.getByTestId('remote-theme')
-  await expect(shell).toHaveCSS('background-color', 'rgb(64, 158, 255)')
   await expect(remote).toHaveCSS('background-color', 'rgb(64, 158, 255)')
-  await expect(page.getByTestId('shell-scope')).toHaveCSS('border-top-width', '0px')
   await expect(page.getByTestId('remote-scope')).toHaveCSS('border-top-width', '7px')
+  await page.getByTestId('menu-home').click()
+  await expect(shell).toHaveCSS('background-color', 'rgb(64, 158, 255)')
+  // Sub-App 的样式已加载，Shell 的同类元素不受影响
+  await expect(page.getByTestId('shell-scope')).toHaveCSS('border-top-width', '0px')
   await page.getByRole('button', { name: '切换主题' }).click()
   await page.getByRole('heading', { name: '欢迎使用 SaaS Forge 租户端' }).click()
   await expect(shell).toHaveCSS('background-color', 'rgb(139, 92, 246)')
-  await expect(remote).toHaveCSS('background-color', 'rgb(139, 92, 246)')
   await expect(page.getByTestId('shell-scope')).toHaveCSS('border-top-width', '0px')
+  await page.getByRole('link', { name: '示例子应用', exact: true }).click()
+  await expect(remote).toHaveCSS('background-color', 'rgb(139, 92, 246)')
 })
 
 test('Sub-App 嵌套路由与 Shell 同步，支持前进、后退及深链接刷新', async ({ page }) => {
@@ -296,7 +302,21 @@ test('Sub-App 嵌套路由与 Shell 同步，支持前进、后退及深链接�
   await expect(page.getByRole('heading', { name: '概览', exact: true })).toBeVisible()
   await page.getByRole('link', { name: '查看详情' }).click()
   await expect(page).toHaveURL(/\/apps\/demo\/details\/42$/)
-  await expect(page.getByTestId('shell-route')).toHaveText('/apps/demo/details/42')
+  // 诊断的路由显示暂在首页，这里直接读取 Shell 路由器的当前路由
+  const shellRoute = () =>
+    page.evaluate(() => {
+      const app = document.querySelector('#app') as Element & {
+        __vue_app__: {
+          config: {
+            globalProperties: {
+              $router: { currentRoute: { value: { fullPath: string } } }
+            }
+          }
+        }
+      }
+      return app.__vue_app__.config.globalProperties.$router.currentRoute.value.fullPath
+    })
+  expect(await shellRoute()).toBe('/apps/demo/details/42')
   await expect(page.getByRole('heading', { name: '详情 42' })).toBeVisible()
   await page.goBack()
   await expect(page.getByRole('heading', { name: '概览', exact: true })).toBeVisible()
@@ -304,7 +324,8 @@ test('Sub-App 嵌套路由与 Shell 同步，支持前进、后退及深链接�
   await expect(page.getByRole('heading', { name: '详情 42' })).toBeVisible()
   await page.reload()
   await expect(page.getByRole('heading', { name: '详情 42' })).toBeVisible()
-  await page.getByRole('link', { name: 'Shell 首页' }).click()
+  await page.getByTestId('menu-home').click()
+  await expect(page.getByTestId('shell-route')).toHaveText('/')
   await expect(page.getByRole('heading', { name: '示例子应用 v1' })).toHaveCount(0)
 })
 

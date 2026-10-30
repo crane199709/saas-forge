@@ -1,34 +1,40 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter } from 'vue-router'
-import { computed, inject, onUnmounted, ref, watchEffect } from 'vue'
-import { tenantClientKey, useAccessControl } from '@forge/sdk'
+import { useRoute } from 'vue-router'
+import { computed, inject, watchEffect } from 'vue'
+import { useAccessControl } from '@forge/sdk'
 import { themeTokens } from '@forge/ui'
-import LoginPanel from './LoginPanel.vue'
 import TenantSwitcher from './TenantSwitcher.vue'
+import UserMenu from './UserMenu.vue'
 import { menuSections } from './menu-routes'
-import { subAppHostKey } from './shell'
+import { alternateTheme, subAppHostKey } from './shell'
 
-const providedClient = inject(tenantClientKey)
-if (!providedClient) throw new Error('Shell must provide a TenantClient')
-const client = providedClient
 const access = useAccessControl()
-const host = inject(subAppHostKey)
-// 导航只列出已注册的 Sub-App：菜单可见、套餐允许且在当前环境登记了入口地址
-const sections = computed(() => menuSections(access.menus(), host?.codes() ?? new Set()))
-
+const host = inject(subAppHostKey, undefined)
 const { t } = useI18n()
 const route = useRoute()
-const router = useRouter()
-const signedIn = ref(client.session() !== null)
-// 会话失效后离开 Sub-App 路由，不再展示属于已失效会话的页面。
-onUnmounted(
-  client.onSessionChange((value) => {
-    signedIn.value = value !== null
-    if (!value) void router.replace('/')
-  }),
+
+// Shell 自带的租户管理页按 iam 的管理权限码显示，授权被撤销后随权限刷新隐藏。
+const pages = computed(() =>
+  [
+    { code: 'members', to: '/members', name: t('member.nav'), permission: 'iam:member:manage' },
+    { code: 'org', to: '/org', name: t('org.nav'), permission: 'iam:org:manage' },
+    { code: 'roles', to: '/roles', name: t('role.nav'), permission: 'iam:role:manage' },
+    { code: 'audit', to: '/audit', name: t('audit.nav'), permission: 'iam:audit:read' },
+  ].filter((page) => access.has(page.permission)),
 )
-const alternateTheme = ref(false)
+// 导航只列出已注册的 Sub-App：菜单可见、套餐允许且在当前环境登记了入口地址
+const sections = computed(() => menuSections(access.menus(), host?.codes() ?? new Set()))
+// 高亮与当前路径最长匹配的菜单项，管理页内的下级路径也归到该项。
+const active = computed(() => {
+  const paths = ['/', ...pages.value.map((page) => page.to)].concat(
+    sections.value.flatMap((section) => section.links.map((link) => link.to)),
+  )
+  return paths
+    .filter((path) => route.path === path || route.path.startsWith(`${path}/`))
+    .reduce((best, path) => (path.length > best.length ? path : best), '')
+})
+
 watchEffect(() => {
   const color = alternateTheme.value ? themeTokens.alternate : themeTokens.primary
   document.documentElement.style.setProperty('--forge-color-primary', color)
@@ -48,87 +54,72 @@ watchEffect(() => {
 </script>
 
 <template>
-  <el-container>
+  <router-view v-if="route.meta.standalone" />
+  <el-container v-else class="shell">
     <el-header class="shell-header">
-      <TenantSwitcher />
+      <router-link to="/" class="brand">{{ t('app.product') }}</router-link>
+      <div class="shell-actions">
+        <TenantSwitcher />
+        <UserMenu />
+      </div>
     </el-header>
-    <el-main>
-      <el-card>
-        <h1>{{ t('app.welcome') }}</h1>
-        <LoginPanel />
-        <nav>
-          <router-link to="/">{{ t('spike.home') }}</router-link>
-          <!-- 租户管理页按 iam 的管理权限码显示，授权被撤销后随权限刷新隐藏。 -->
-          <router-link
-            v-if="signedIn"
-            v-perm="'iam:member:manage'"
-            to="/members"
-            data-testid="menu-members"
-            >{{ t('member.nav') }}</router-link
-          >
-          <router-link v-if="signedIn" v-perm="'iam:org:manage'" to="/org" data-testid="menu-org">{{
-            t('org.nav')
-          }}</router-link>
-          <router-link
-            v-if="signedIn"
-            v-perm="'iam:role:manage'"
-            to="/roles"
-            data-testid="menu-roles"
-            >{{ t('role.nav') }}</router-link
-          >
-          <router-link
-            v-if="signedIn"
-            v-perm="'iam:audit:read'"
-            to="/audit"
-            data-testid="menu-audit"
-            >{{ t('audit.nav') }}</router-link
-          >
-          <template v-for="section in sections" :key="section.code">
-            <span class="menu-section">{{ section.name }}</span>
-            <router-link
-              v-for="item in section.links"
-              :key="item.code"
-              :to="item.to"
-              :data-testid="`menu-${item.code}`"
-              >{{ item.name }}</router-link
-            >
-          </template>
-        </nav>
-        <p data-testid="shell-route">{{ route.fullPath }}</p>
-        <el-button
-          type="primary"
-          data-testid="shell-theme"
-          @click="alternateTheme = !alternateTheme"
-          >{{ t('spike.theme') }}</el-button
-        >
-        <p class="scope-probe" data-testid="shell-scope">{{ t('spike.scope') }}</p>
-        <!-- 工单 02 的诊断：Sub-App 导出 sharedReferences 时展示共享依赖是否为同一运行时实例 -->
-        <ul v-for="(checks, app) in host?.checks" :key="app">
-          <li v-for="(same, name) in checks" :key="name" :data-testid="`shared-${app}-${name}`">
-            {{ t(same ? 'spike.singleton' : 'spike.duplicate', { name }) }}
-          </li>
-        </ul>
+    <el-container>
+      <el-aside width="220px" class="shell-aside">
+        <el-menu :default-active="active" class="shell-menu">
+          <el-menu-item index="/">
+            <router-link to="/" class="menu-link" data-testid="menu-home">{{
+              t('app.home')
+            }}</router-link>
+          </el-menu-item>
+          <el-menu-item v-for="page in pages" :key="page.code" :index="page.to">
+            <router-link :to="page.to" class="menu-link" :data-testid="`menu-${page.code}`">{{
+              page.name
+            }}</router-link>
+          </el-menu-item>
+          <el-menu-item-group v-for="section in sections" :key="section.code" :title="section.name">
+            <el-menu-item v-for="item in section.links" :key="item.code" :index="item.to">
+              <router-link :to="item.to" class="menu-link" :data-testid="`menu-${item.code}`">{{
+                item.name
+              }}</router-link>
+            </el-menu-item>
+          </el-menu-item-group>
+        </el-menu>
+      </el-aside>
+      <el-main>
         <router-view />
-      </el-card>
-    </el-main>
+      </el-main>
+    </el-container>
   </el-container>
 </template>
 
 <style scoped>
+.shell {
+  min-height: 100vh;
+}
 .shell-header {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--el-border-color-light);
 }
-nav {
+.brand {
+  color: var(--el-text-color-primary);
+  font-size: 18px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.shell-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
+  align-items: center;
+  gap: 16px;
 }
-.menu-section {
-  color: var(--el-text-color-secondary);
+.shell-menu {
+  height: 100%;
 }
-.scope-probe {
-  border: 0;
+.menu-link {
+  display: block;
+  width: 100%;
+  color: inherit;
+  text-decoration: none;
 }
 </style>

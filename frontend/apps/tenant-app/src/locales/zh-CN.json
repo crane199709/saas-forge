@@ -1,10 +1,11 @@
 {
   "app": {
     "title": "SaaS Forge 租户端",
-    "welcome": "欢迎使用 SaaS Forge 租户端"
+    "welcome": "欢迎使用 SaaS Forge 租户端",
+    "product": "SaaS Forge",
+    "home": "首页"
   },
   "spike": {
-    "home": "Shell 首页",
     "theme": "切换主题",
     "scope": "Shell 局部样式",
     "singleton": "{name}: singleton",
@@ -21,6 +22,7 @@
     "tenantId": "Tenant ID",
     "membershipId": "Membership ID",
     "loginAgain": "重新登录",
+    "logout": "退出",
     "logoutFailed": "本地凭证已清除，但 IAM 退出失败，浏览器仍可能保持登录。请重试退出。",
     "retryLogout": "重试退出",
     "failed": "登录会话已失效，请重新登录",
@@ -46,6 +48,11 @@
     "unknown": "请求失败，请稍后重试",
     "traceId": "追踪 ID",
     "copyTraceId": "复制"
+  },
+  "result": {
+    "403": "没有访问该页面的权限",
+    "404": "页面不存在",
+    "home": "返回首页"
   },
   "tenant": {
     "selectTitle": "选择租户",

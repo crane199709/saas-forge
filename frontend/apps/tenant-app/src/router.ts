@@ -1,0 +1,116 @@
+import type { AccessControl, TenantClient } from '@forge/sdk'
+import {
+  createRouter,
+  type RouteLocationNormalized,
+  type Router,
+  type RouterHistory,
+} from 'vue-router'
+import { loginFlow } from './login-flow'
+import AuditPage from './audit/AuditPage.vue'
+import AcceptInvitationPage from './invitation/AcceptInvitationPage.vue'
+import HomePage from './HomePage.vue'
+import LoginPage from './LoginPage.vue'
+import MemberPage from './member/MemberPage.vue'
+import NoTenantPage from './NoTenantPage.vue'
+import OrganizationPage from './organization/OrganizationPage.vue'
+import RolePage from './role/RolePage.vue'
+import SelectTenantPage from './SelectTenantPage.vue'
+import StatusPage from './StatusPage.vue'
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    /** 无需登录即可进入。 */
+    public?: boolean
+    /** 不带顶栏与侧边菜单的整页。 */
+    standalone?: boolean
+    /** 进入页面所需的权限码；按钮级权限仍由 `v-perm` 控制，接口仍由后端校验。 */
+    permission?: string
+  }
+}
+
+/** 兜底路由名：不存在的路径，以及菜单中没有的 Sub-App 路径。 */
+export const notFoundRoute = 'not-found'
+
+/** 创建 Shell 路由。Sub-App 路由由 Sub-App 宿主按菜单动态注册在 `/apps/<appCode>` 下。 */
+export function createShellRouter(history: RouterHistory) {
+  return createRouter({
+    history,
+    routes: [
+      { path: '/', component: HomePage },
+      { path: '/login', component: LoginPage, meta: { public: true, standalone: true } },
+      {
+        path: '/select-tenant',
+        component: SelectTenantPage,
+        meta: { public: true, standalone: true },
+        // 可选租户只在登录后的内存中，页面刷新后无从选择，须重新登录。
+        beforeEnter: (to) => (loginFlow.memberships ? true : { path: '/login', query: to.query }),
+      },
+      { path: '/no-tenant', component: NoTenantPage, meta: { public: true, standalone: true } },
+      // 邀请链接的落地页，iam 的 forge.iam.invitation.accept-url 指向这里。
+      {
+        path: '/invitations/accept',
+        component: AcceptInvitationPage,
+        meta: { public: true, standalone: true },
+      },
+      // Shell 自带的租户管理页，不来自 Sub-App 菜单。
+      { path: '/members', component: MemberPage, meta: { permission: 'iam:member:manage' } },
+      { path: '/org', component: OrganizationPage, meta: { permission: 'iam:org:manage' } },
+      { path: '/roles', component: RolePage, meta: { permission: 'iam:role:manage' } },
+      { path: '/audit', component: AuditPage, meta: { permission: 'iam:audit:read' } },
+      {
+        path: '/403',
+        component: StatusPage,
+        props: { status: '403' },
+        meta: { standalone: true },
+      },
+      {
+        path: '/:pathMatch(.*)*',
+        name: notFoundRoute,
+        component: StatusPage,
+        props: { status: '404' },
+        meta: { standalone: true },
+      },
+    ],
+  })
+}
+
+// 未登录时 Sub-App 路由尚未注册，`/apps/` 下的深链接落在兜底路由上，仍须先登录。
+function requiresAuth(route: RouteLocationNormalized) {
+  if (route.meta.public) return false
+  return route.name !== notFoundRoute || route.path.startsWith('/apps/')
+}
+
+function loginLocation(path: string) {
+  return path === '/' ? { path: '/login' } : { path: '/login', query: { redirect: path } }
+}
+
+/**
+ * 安装路由守卫：未登录进入需登录页面时跳转登录并记下原路径，已登录访问登录页回首页，缺少页面权限码时进入 403；
+ * 本标签页的会话结束时（退出、刷新失败）离开需登录页面。
+ *
+ * @param ready 最近一次权限与菜单读取完成；登录或换发 Token 后的首个导航须等它，否则权限与 Sub-App 路由仍是旧的
+ */
+export function installGuard(
+  router: Router,
+  client: Pick<TenantClient, 'session' | 'onSessionChange'>,
+  access: Pick<AccessControl, 'has'>,
+  ready: () => Promise<unknown>,
+) {
+  router.beforeEach(async (to) => {
+    if (!client.session()) return requiresAuth(to) ? loginLocation(to.fullPath) : true
+    if (to.path === '/login') return '/'
+    await ready()
+    // 登录前解析的 Sub-App 地址落在兜底路由上；权限读取完成、路由已注册后重新解析。
+    if (to.name === notFoundRoute && router.resolve(to.fullPath).name !== notFoundRoute) {
+      return to.fullPath
+    }
+    if (to.meta.permission && !access.has(to.meta.permission)) return '/403'
+    return true
+  })
+  // 其他标签页引起的变化由 Shell 整页重载处理。
+  client.onSessionChange((session, change) => {
+    if (session || change.crossTab) return
+    const current = router.currentRoute.value
+    if (requiresAuth(current)) void router.replace(loginLocation(current.fullPath))
+  })
+}

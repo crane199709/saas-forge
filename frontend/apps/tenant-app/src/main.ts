@@ -8,16 +8,12 @@ import { loadRemote, registerRemotes } from '@module-federation/runtime'
 import { createPinia, defineStore } from 'pinia'
 import { createApp, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { createRouter, createWebHistory, useRouter } from 'vue-router'
+import { createWebHistory, useRouter } from 'vue-router'
 import App from './App.vue'
 import { i18n } from './i18n'
+import { createShellRouter, installGuard, notFoundRoute } from './router'
 import { createShellReload, reloadShellKey, subAppHostKey } from './shell'
 import { createSubAppHost, type SubAppModule } from './sub-app-host'
-import AuditPage from './audit/AuditPage.vue'
-import AcceptInvitationPage from './invitation/AcceptInvitationPage.vue'
-import MemberPage from './member/MemberPage.vue'
-import OrganizationPage from './organization/OrganizationPage.vue'
-import RolePage from './role/RolePage.vue'
 
 document.title = i18n.global.t('app.title')
 
@@ -25,21 +21,7 @@ document.title = i18n.global.t('app.title')
 const client = createTenantClient(localStorage)
 const access = createAccessControl(client)
 const pinia = createPinia()
-const router = createRouter({
-  history: createWebHistory(),
-  routes: [
-    { path: '/', component: { render: () => null } },
-    // Shell 自带的租户管理页，不来自 Sub-App 菜单；是否拥有 iam 的管理权限码由 IAM 判断。
-    { path: '/org', component: OrganizationPage },
-    { path: '/roles', component: RolePage },
-    { path: '/members', component: MemberPage },
-    { path: '/audit', component: AuditPage },
-    // 邀请链接的落地页，iam 的 forge.iam.invitation.accept-url 指向这里；无需登录。
-    { path: '/invitations/accept', component: AcceptInvitationPage },
-    // 菜单中没有的 Sub-App 路由不存在，深链接落到这里而不是空白报错。
-    { path: '/:pathMatch(.*)*', component: { render: () => null } },
-  ],
-})
+const router = createShellRouter(createWebHistory())
 
 // 入口地址来自 IAM 下发的 App Registry 副本，不编译进 Shell；修改注册表中的地址后刷新即加载新版本。
 const host = createSubAppHost({
@@ -67,7 +49,7 @@ const host = createSubAppHost({
 })
 
 // 路由由后端下发的菜单与可加载的 Sub-App 生成：会话结束时移除全部 Sub-App 路由，进入新的 Membership 后重新注册。
-async function refreshAccess() {
+async function loadAccess() {
   if (!client.session()) {
     access.clear()
   } else {
@@ -79,17 +61,21 @@ async function refreshAccess() {
     }
   }
   host.apply(access.menus(), access.subApps())
+}
+// 路由守卫等待的是读取与注册本身，不含其后的导航，否则这次导航会等待自己。
+let accessReady: Promise<void>
+async function refreshAccess() {
+  accessReady = loadAccess()
+  await accessReady
   // 新的菜单不再包含当前所在的 Sub-App 时，已渲染的页面属于失去权限的路由，回到首页。
   const current = router.currentRoute.value.fullPath
-  if (
-    current.startsWith('/apps/') &&
-    !router.resolve(current).matched.some((route) => route.name)
-  ) {
+  if (current.startsWith('/apps/') && router.resolve(current).name === notFoundRoute) {
     await router.replace('/')
   }
 }
 // 首次导航前完成注册，刷新页面时 Sub-App 深链接可直接进入；Sub-App 本身在后台加载，不阻塞 Shell。
 await refreshAccess()
+installGuard(router, client, access, () => accessReady)
 const reloadShell = createShellReload(host, pinia)
 let accessToken = client.session()?.accessToken
 let membershipId = client.session()?.membershipId

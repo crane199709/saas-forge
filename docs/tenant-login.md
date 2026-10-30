@@ -54,7 +54,7 @@ Redis 保存 Spring Session 登录会话和标准 `OAuth2Authorization`，刷新
 
 每次轮换保留一个 `:used-refresh` 摘要键，TTL 截止该旧凭证原来的过期时间，最长约 7 天；撤销授权后历史摘要也按各自 TTL 自然过期。按每 15 分钟刷新一次、连续活跃 7 天估算，一条授权约积累 672 个历史键；主动调用刷新接口会更多，因此这不是数量上限。运维需结合实际刷新频率关注键数、TTL、Redis 内存和淘汰情况，不能通过提前删除摘要来降低内存占用，否则会丢失重放关联。工单 07 评估了按授权聚合（每条授权一个以过期时间为分值的有序集合，轮换时顺带清理已过期成员）：重放检测要从被重放的凭证反查授权，而标准 Refresh Token 是不含授权 ID 的随机值，聚合必须改写 Refresh Token 生成器把授权 ID 编入凭证，并兼容已签发的旧格式凭证。键数虽减少，总条目与内存量级不变（摘要仍需逐条保留到原始过期时间），收益有限，因此保持现有存储结构，以上运维关注点不变。
 
-`@forge/sdk` 的 `createTenantClient(localStorage)` 提供登录、退出、刷新、同源请求和会话读取。业务调用用 `api<T>()` 直接取信封的 `data`、`page<T>()` 取 `{ items, page }`，失败抛出带 `code`、`httpStatus`、`userTip`、`traceId`、`errors` 的 `ApiError`；响应不是信封（如代理返回的 HTML）时为 `system.error`。`request()` 仍返回原始 `Response`。界面错误提示优先展示 `userTip`，并附可复制的 traceId。Shell 的 `App.vue` 创建唯一实例并 `provide(tenantClientKey, client)`；LoginPanel 与后续 Sub-App 通过 `inject(tenantClientKey)` 获取同一实例，不再自行创建客户端。注入键携带 `InjectionKey<TenantClient>` 类型信息。并发刷新在这个共享实例内合并，各标签页之间经 Web Locks 串行。demo-service `/context` 的响应类型由 tenant-app 调用方维护，不由通用 SDK 导出。
+`@forge/sdk` 的 `createTenantClient(localStorage)` 提供登录、退出、刷新、同源请求和会话读取。业务调用用 `api<T>()` 直接取信封的 `data`、`page<T>()` 取 `{ items, page }`，失败抛出带 `code`、`httpStatus`、`userTip`、`traceId`、`errors` 的 `ApiError`；响应不是信封（如代理返回的 HTML）时为 `system.error`。`request()` 仍返回原始 `Response`。界面错误提示优先展示 `userTip`，并附可复制的 traceId。Shell 的 `main.ts` 创建唯一实例并 `provide(tenantClientKey, client)`；登录等页面与 Sub-App 通过 `inject(tenantClientKey)` 获取同一实例，不再自行创建客户端。注入键携带 `InjectionKey<TenantClient>` 类型信息。并发刷新在这个共享实例内合并，各标签页之间经 Web Locks 串行。demo-service `/context` 的响应类型由 tenant-app 调用方维护，不由通用 SDK 导出。
 
 ### 会话存储
 
@@ -95,7 +95,7 @@ SDK 监听 `storage` 事件跟随其他标签页（决策见 [ADR-0017](adr/0017
 
 ## 多租户
 
-登录只认证全局 Identity，密码正确后响应列出可进入的 Membership；错误密码和未知账号继续返回同一 401。「可进入」指 Identity 与 Membership 是 `active`、所在 Tenant 是 `trial` 或 `active`，其他状态既不列出，也不能被选择或切换进入。SDK 的 `login` 据此返回三种结果：只有一个时自动进入（`signedIn`）；多个时返回 `selectTenant`，由租户选择页调用 `selectTenant(membershipId)`；没有时返回 `noTenant`，Shell 展示无租户页，不发起授权。
+登录只认证全局 Identity，密码正确后响应列出可进入的 Membership；错误密码和未知账号继续返回同一 401。「可进入」指 Identity 与 Membership 是 `active`、所在 Tenant 是 `trial` 或 `active`，其他状态既不列出，也不能被选择或切换进入。SDK 的 `login` 据此返回三种结果：只有一个时自动进入（`signedIn`）；多个时返回 `selectTenant`，由租户选择页调用 `selectTenant(membershipId)`；没有时返回 `noTenant`，Shell 展示无租户页，不发起授权。tenant-app 的登录、选择租户、无租户分别是 `/login`、`/select-tenant`、`/no-tenant` 整页。路由守卫把未登录访问需登录页面的请求转到 `/login?redirect=<原路径>`，进入租户后回到 `redirect`（只接受站内路径，否则回首页）；页面在路由元信息中声明所需权限码，缺少时进入 `/403`。
 
 选择租户时 `/auth/exchange` 携带 `membershipId`，适配器把它作为 Token 请求的附加参数 `membership_id` 交给标准端点，Token 定制器只在已认证 Identity 自己的有效 Membership 中查找目标，找不到则以 `access_denied` 拒绝，适配器转换为 403 `auth.tenantAccessDenied`。不带 `membershipId` 时仅当身份恰有一个有效 Membership 才签发。
 

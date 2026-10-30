@@ -1,13 +1,11 @@
 /// <reference types="node" />
-import { flushPromises, mount } from '@vue/test-utils'
-import ElementPlus from 'element-plus'
+import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { webcrypto } from 'node:crypto'
-import { createTenantClient, tenantClientKey } from '@forge/sdk'
+import { mountShell } from './test-shell'
 beforeEach(() => vi.stubGlobal('crypto', webcrypto))
-import LoginPanel from './LoginPanel.vue'
-import { i18n } from './i18n'
 
+enableAutoUnmount(afterEach)
 afterEach(() => {
   sessionStorage.clear()
   vi.unstubAllGlobals()
@@ -31,13 +29,8 @@ function noMemberships() {
   return ok({ clientId: 'tenant-app', redirectUri: location.origin + '/', memberships: [] })
 }
 
-function mountPanel() {
-  return mount(LoginPanel, {
-    global: {
-      plugins: [i18n, ElementPlus],
-      provide: { [tenantClientKey]: createTenantClient(sessionStorage) },
-    },
-  })
+async function mountPanel() {
+  return (await mountShell('/login')).wrapper
 }
 
 it('注册成功后以新账号登录并进入无租户页', async () => {
@@ -47,7 +40,7 @@ it('注册成功后以新账号登录并进入无租户页', async () => {
     .mockResolvedValueOnce(ok({ identityId: 'identity-new' }, 201))
     .mockResolvedValueOnce(noMemberships())
   vi.stubGlobal('fetch', fetcher)
-  const wrapper = mountPanel()
+  const wrapper = await mountPanel()
   await wrapper.get('[data-testid="mode-register"]').trigger('click')
   await wrapper.get('input[name="register-account"]').setValue('newcomer')
   await wrapper.get('input[name="register-password"]').setValue('Register-password-123!')
@@ -76,7 +69,7 @@ it('注册冲突时展示服务端提示并留在注册页', async () => {
     'fetch',
     vi.fn().mockResolvedValueOnce(fail('registration.accountTaken', 409, '该账号已被注册')),
   )
-  const wrapper = mountPanel()
+  const wrapper = await mountPanel()
   await wrapper.get('[data-testid="mode-register"]').trigger('click')
   await wrapper.get('input[name="register-account"]').setValue('demo')
   await wrapper.get('input[name="register-password"]').setValue('Register-password-123!')
@@ -96,7 +89,7 @@ it('验证码登录走与密码登录相同的结果处理', async () => {
     )
     .mockResolvedValueOnce(noMemberships())
   vi.stubGlobal('fetch', fetcher)
-  const wrapper = mountPanel()
+  const wrapper = await mountPanel()
   await wrapper.get('[data-testid="mode-code"]').trigger('click')
   await wrapper.get('input[name="code-target"]').setValue('13800000000')
   await wrapper.get('[data-testid="send-code"]').trigger('click')

@@ -138,4 +138,8 @@ onUnmounted(() => unsubscribe?.())
   gap: 12px;
   max-width: 560px;
 }
+/* 顶栏是 flex 布局，选择框不设宽度会收缩到只剩箭头 */
+.tenant-switcher .el-select {
+  width: 200px;
+}
 </style>
