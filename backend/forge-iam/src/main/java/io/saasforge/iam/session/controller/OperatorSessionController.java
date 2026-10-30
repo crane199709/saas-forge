@@ -1,5 +1,7 @@
 package io.saasforge.iam.session.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import io.saasforge.iam.session.model.OperatorTokenResponse;
 import io.saasforge.iam.session.service.LoginAudit;
 import io.saasforge.iam.session.service.OperatorSessionService;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Platform Realm 的认证接口，与 Tenant Realm 的 {@code /auth/*} 对称，签发 issuer 独立的 Operator Token（ADR-0003）。 */
+@Tag(name = "平台登录会话")
 @RestController
 class OperatorSessionController {
     private final OperatorSessionService sessions;

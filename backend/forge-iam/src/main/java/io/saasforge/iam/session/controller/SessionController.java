@@ -1,5 +1,7 @@
 package io.saasforge.iam.session.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import io.saasforge.iam.security.config.IamProperties;
 import io.saasforge.iam.session.model.TokenResponse;
 import io.saasforge.iam.session.service.LoginAudit;
@@ -29,6 +31,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "登录会话")
 @RestController
 class SessionController {
     private final TenantSessionService sessions;

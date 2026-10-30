@@ -1,5 +1,7 @@
 package io.saasforge.iam.registration.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import io.saasforge.iam.registration.service.RegistrationService;
 import io.saasforge.iam.verification.model.CodeDelivery;
 import io.saasforge.iam.verification.model.SendCodeRequest;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "注册")
 @RestController
 class RegistrationController {
     private final RegistrationService registrations;

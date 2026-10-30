@@ -1,5 +1,7 @@
 package io.saasforge.iam.invitation.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import io.saasforge.iam.invitation.model.AcceptedInvitation;
 import io.saasforge.iam.invitation.model.InvitationPreview;
 import io.saasforge.iam.invitation.service.InvitationService;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 // 令牌放在请求体而不是路径中，避免写入网关与服务的访问日志。
+@Tag(name = "邀请")
 @RestController
 class InvitationController {
     private final InvitationService invitations;

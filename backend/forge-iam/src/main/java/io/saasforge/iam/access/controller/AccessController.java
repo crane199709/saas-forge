@@ -1,5 +1,7 @@
 package io.saasforge.iam.access.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import io.saasforge.iam.access.service.AccessService;
 import io.saasforge.iam.subapp.model.LoadableSubApp;
 import io.saasforge.sdk.core.ResourceManifest.MenuNode;
@@ -12,6 +14,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "访问权限")
 @RestController
 class AccessController {
     private final AccessService access;

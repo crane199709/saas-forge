@@ -1,5 +1,7 @@
 package io.saasforge.iam.permission.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import io.saasforge.iam.permission.service.PermissionService;
 import io.saasforge.sdk.core.ResourceManifest;
 import io.saasforge.sdk.core.api.ApiResponse;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "内部权限清单")
 @RestController
 class ManifestController {
     private final PermissionService permissions;
