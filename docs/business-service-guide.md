@@ -79,3 +79,9 @@ mvn verify
 | Manifest 被拒 | 注册名与 IAM token 配置键是否一致、令牌和清单 version 是否正确 |
 | MQ 启动失败 / 初始化 pending | 使用 Proxy gRPC 而非 nameserver 地址、Topic 是否创建、platform 是否登记服务 |
 | 看不到菜单或加载失败 | Manifest、App Registry、套餐、角色、远程入口地址与 CORS；参照清单第 6 步 |
+
+## 维护者：模板冒烟
+
+准备 Java 17、Node 24、pnpm 12.4.2 与可用的 Docker daemon，在仓库根目录运行 `bash deploy/template-smoke/run.sh`。脚本发布当前版本到临时 Maven/npm 仓库，在仓库外生成两个工程，运行后端 verify 和前端安装、lint、类型检查、构建，再复用主链路 E2E 环境启动生成服务。新服务使用独立 smoke schema、Manifest 令牌及 /smoke 网关路由；浏览器以真实 IAM 登录验证菜单、成员授权与内部路径拒绝。数据库写入仅限本次创建的临时容器，退出后删除容器和卷。MQ 与 Nacos 在此 HTTP 接缝关闭，不覆盖真实消息投递。
+
+完整输出保存在 `deploy/template-smoke/run.log`，服务日志保存在 `deploy/e2e/run-*`；CI 同时保留 Playwright 报告，独立工作流在 PR/main 运行并作为发布质量门。

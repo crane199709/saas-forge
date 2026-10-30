@@ -2,6 +2,9 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './e2e/main-flow',
+  testMatch: process.env.FORGE_TEMPLATE_SERVICE
+    ? '**/template-smoke.spec.ts'
+    : '**/main-flow.spec.ts',
   fullyParallel: false,
   workers: 1,
   retries: 0,
