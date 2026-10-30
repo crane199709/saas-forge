@@ -7,7 +7,14 @@
 **Status:** ready-for-agent
 
 - [ ] 四个后端服务可用一条命令构建镜像，镜像标签为统一版本号；镜像内不含任何密钥或环境地址，所需配置通过环境变量或 Nacos 提供
-- [ ] tenant-app 与 platform-console 的镜像：静态文件服务、history fallback（嵌套路由可直接刷新）、运行时配置由容器启动时的环境变量生成；入口与运行时配置禁用缓存，带 hash 的资源长期缓存
+- [x] tenant-app 与 platform-console 的镜像：静态文件服务、history fallback（嵌套路由可直接刷新）、运行时配置由容器启动时的环境变量生成；入口与运行时配置禁用缓存，带 hash 的资源长期缓存
 - [ ] 发布工作流构建全部镜像；镜像仓库地址与凭证由 CI 密钥提供，未配置时只构建不推送
-- [ ] 文档说明每个镜像需要的环境变量（对应各服务的必须配置项）
+- [x] 文档说明每个镜像需要的环境变量（对应各服务的必须配置项）
 - [ ] 验证：用构建出的镜像启动后端四个服务与依赖，健康检查通过；Shell 镜像直接打开嵌套路由能正常显示，修改运行时配置后重启容器即生效。主链路 E2E 改用镜像的成本若过高，在 Comments 中注明，留到试点环境验证
+
+## Comments
+
+- 2026-10-30：新增 scripts/images/build.sh，Spring Boot build-image 构建后端；images profile 排除本地 application*.yml。四服务 clean install（跳过测试）通过，检查打包 jar 均不含本地 application 配置。生成服务补齐同样的 Boot 镜像入口。
+- 两个 Shell 前端构建与 Docker 镜像构建通过；临时 nginx 容器验证 tenant 的 /apps/orders/nested、platform 的 /operators/nested 返回 200 与 no-store；runtime-config.json 为 no-store，hash JS 为 max-age=31536000, immutable。改变网关变量后重新创建容器，nginx -T 确认新 upstream 生效；临时容器已删除。尚未用浏览器连接完整平台主链路。
+- 发布工作流已接入只构建任务。条件推送配置被自动审批拒绝：尚未确认可信 registry，持久化向任意 secrets 指定地址推送的逻辑未获准。按安全替代方案保留只构建；需确认可信目标后补齐，因此对应子项未勾选。未推送任何镜像。
+- 主链路 E2E 当前以本地 Java/Vite 进程启动；切换镜像需要部署配置与依赖网络调整，留待试点环境验收，不将 HTTP 静态文件检查当作主链路验证。
