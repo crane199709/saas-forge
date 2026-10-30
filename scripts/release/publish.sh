@@ -126,4 +126,8 @@ for module in root.iterdir():
         assert list(module.rglob('*-sources.jar')), f'缺少源码包：{module.name}'
 PY
 fi
+if [[ "${FORGE_TEMPLATE_SMOKE:-false}" == true ]]; then
+  [[ "$mode" == local ]] || { echo '模板冒烟仅允许临时本地发布' >&2; exit 1; }
+  "$root/deploy/template-smoke/consume.sh" "$work" "$version"
+fi
 printf '发布与消费自检通过：%s\n' "$version"

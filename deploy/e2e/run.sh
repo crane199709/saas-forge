@@ -39,9 +39,9 @@ PYVERSION
 start() {
   local module=$1 port=$2 probe=$3
   # 不继承开发环境的 Spring/数据库覆盖项，防止 Flyway 或服务误连共享资源。
-  env -i PATH="$PATH" HOME="$HOME" java -Xms64m -Xmx256m -XX:ActiveProcessorCount=2 -jar "backend/$module/target/${module##*/}-$FORGE_VERSION.jar" \
-    "--spring.config.additional-location=file:$ROOT/deploy/e2e/application.yml" \
-    "--server.port=$port" \
+  env -i PATH="$PATH" HOME="$HOME" JAVA_HOME="${JAVA_HOME:-}" java -Xms64m -Xmx256m -XX:ActiveProcessorCount=2 -jar "backend/$module/target/${module##*/}-$FORGE_VERSION.jar" \
+    "--spring.config.additional-location=file:$E2E_CONFIG" \
+    "--server.port=$port" "${TEMPLATE_ARGS[@]}" \
     "--forge.iam.signing-key-file=$RUN_DIR/tenant.jwk" \
     "--forge.iam.platform.signing-key-file=$RUN_DIR/platform.jwk" \
     --forge.iam.sub-app.environment=e2e \
@@ -56,9 +56,26 @@ start() {
   done
   echo "$module 启动超时" >&2; return 1
 }
+E2E_CONFIG="$ROOT/deploy/e2e/application.yml"
+if [[ -n "${FORGE_TEMPLATE_SERVICE:-}" ]]; then
+  E2E_CONFIG="$RUN_DIR/application.yml"
+  sed 's/id: demo/id: smoke/; s@/demo@/smoke@g' "$ROOT/deploy/e2e/application.yml" > "$E2E_CONFIG"
+  TEMPLATE_ARGS=(--forge.iam.manifest.tokens.smoke-service=template-smoke-token)
+else
+  TEMPLATE_ARGS=()
+fi
 start forge-iam 18101 /oauth2/jwks
-start examples/demo-service 18201 /actuator/health
+if [[ -n "${FORGE_TEMPLATE_SERVICE:-}" ]]; then
+  source "$ROOT/deploy/template-smoke/runtime.sh"
+  start_template
+else
+  start examples/demo-service 18201 /actuator/health
+fi
 start forge-platform 18102 /actuator/health
 start forge-gateway 18000 /actuator/health
-"${COMPOSE[@]}" exec -T postgres psql -U postgres -d forge -v ON_ERROR_STOP=1 < deploy/e2e/seed.sql
+if [[ -n "${FORGE_TEMPLATE_SERVICE:-}" ]]; then
+  sed "s/search_path = demo/search_path = smoke/; s/'demo'/'smoke'/g" deploy/e2e/seed.sql | "${COMPOSE[@]}" exec -T postgres psql -U postgres -d forge -v ON_ERROR_STOP=1
+else
+  "${COMPOSE[@]}" exec -T postgres psql -U postgres -d forge -v ON_ERROR_STOP=1 < deploy/e2e/seed.sql
+fi
 (cd frontend && pnpm exec playwright test -c playwright.main-flow.config.ts "$@")

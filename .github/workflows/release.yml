@@ -24,8 +24,11 @@ jobs:
   main-flow:
     needs: version
     uses: ./.github/workflows/main-flow-e2e.yml
+  template-smoke:
+    needs: version
+    uses: ./.github/workflows/template-smoke.yml
   publish:
-    needs: [backend, frontend, main-flow]
+    needs: [backend, frontend, main-flow, template-smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
