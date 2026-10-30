@@ -94,6 +94,10 @@ _Avoid_: 数据规则、行权限
 **Data Scope（数据范围）**:
 Data Policy 的常用预设，如「本人」「本部门」「本部门及下级」。
 
+**Menu（菜单）**:
+Business Service 在 Resource Manifest 中声明、由 Shell App 展示的导航节点；其可见性由所挂的 Permission Code 决定，本身不是授权单位。
+_Avoid_: 菜单权限、导航权限
+
 **Resource Manifest（资源清单）**:
 业务服务按版本向平台申报的 Permission Code、Data Resource 与菜单的集合。
 
