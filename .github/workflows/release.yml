@@ -1,0 +1,63 @@
+name: Release SDK
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/release/version.py check "$RELEASE_TAG"
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+  backend:
+    needs: version
+    uses: ./.github/workflows/backend-quality.yml
+  frontend:
+    needs: version
+    uses: ./.github/workflows/frontend-quality.yml
+  main-flow:
+    needs: version
+    uses: ./.github/workflows/main-flow-e2e.yml
+  publish:
+    needs: [backend, frontend, main-flow]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: frontend
+      - name: Publish and consume
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          MAVEN_RELEASE_URL: ${{ vars.MAVEN_RELEASE_URL }}
+          MAVEN_RELEASE_USERNAME: ${{ secrets.MAVEN_RELEASE_USERNAME }}
+          MAVEN_RELEASE_PASSWORD: ${{ secrets.MAVEN_RELEASE_PASSWORD }}
+          NPM_RELEASE_REGISTRY: ${{ vars.NPM_RELEASE_REGISTRY }}
+          NPM_RELEASE_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
+          NPM_RELEASE_TAG: ${{ vars.NPM_RELEASE_TAG }}
+        run: |
+          if [[ -z "$MAVEN_RELEASE_URL$MAVEN_RELEASE_USERNAME$MAVEN_RELEASE_PASSWORD$NPM_RELEASE_REGISTRY$NPM_RELEASE_TOKEN" ]]; then
+            mode=local
+          else
+            mode=remote
+          fi
+          scripts/release/publish.sh "$mode" "$RELEASE_TAG"

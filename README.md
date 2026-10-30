@@ -63,19 +63,19 @@ cd backend
 然后分别启动四个服务（各开一个终端，或在 IDE 中运行各模块的 `*Application`）：
 
 ```bash
-java -jar backend/forge-iam/target/forge-iam-0.1.0-SNAPSHOT.jar
+java -jar backend/forge-iam/target/forge-iam-0.1.0.jar
 ```
 
 ```bash
-java -jar backend/forge-platform/target/forge-platform-0.1.0-SNAPSHOT.jar
+java -jar backend/forge-platform/target/forge-platform-0.1.0.jar
 ```
 
 ```bash
-java -jar backend/examples/demo-service/target/demo-service-0.1.0-SNAPSHOT.jar
+java -jar backend/examples/demo-service/target/demo-service-0.1.0.jar
 ```
 
 ```bash
-java -jar backend/forge-gateway/target/forge-gateway-0.1.0-SNAPSHOT.jar
+java -jar backend/forge-gateway/target/forge-gateway-0.1.0.jar
 ```
 
 | 服务 | 端口 | 经网关访问 |
@@ -160,6 +160,8 @@ cd frontend && pnpm format:check
 ```
 
 ## 版本说明
+
+SDK 当前统一版本为 `0.1.0`。版本同步、标签发布与临时仓库自检见 [发布指南](scripts/release/README.md)，升级说明见 [变更日志](CHANGELOG.md)。
 
 - 版本组合锁定见 [ADR-0013](docs/adr/0013-pin-spring-boot-4-0.md)，全部由 `forge-dependencies` 管理。
 - 前端 TypeScript 锁定 5.9：TypeScript 7 是原生重写版本，vue-tsc 依赖的编译器 JS API 尚未就绪。

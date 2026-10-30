@@ -31,10 +31,15 @@ trap 'exit 130' INT TERM
 (cd frontend && pnpm install --frozen-lockfile && pnpm exec playwright install chromium && pnpm build:spike)
 (cd backend && ./mvnw -B -DskipTests package) >"$RUN_DIR/build.log" 2>&1
 "${COMPOSE[@]}" up -d --wait
+FORGE_VERSION=$(python3 - <<'PYVERSION'
+import xml.etree.ElementTree as ET
+print(ET.parse('backend/forge-dependencies/pom.xml').findtext('{http://maven.apache.org/POM/4.0.0}version'))
+PYVERSION
+)
 start() {
   local module=$1 port=$2 probe=$3
   # 不继承开发环境的 Spring/数据库覆盖项，防止 Flyway 或服务误连共享资源。
-  env -i PATH="$PATH" HOME="$HOME" java -Xms64m -Xmx256m -XX:ActiveProcessorCount=2 -jar "backend/$module/target/${module##*/}-0.1.0-SNAPSHOT.jar" \
+  env -i PATH="$PATH" HOME="$HOME" java -Xms64m -Xmx256m -XX:ActiveProcessorCount=2 -jar "backend/$module/target/${module##*/}-$FORGE_VERSION.jar" \
     "--spring.config.additional-location=file:$ROOT/deploy/e2e/application.yml" \
     "--server.port=$port" \
     "--forge.iam.signing-key-file=$RUN_DIR/tenant.jwk" \

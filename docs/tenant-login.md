@@ -7,7 +7,7 @@
 按 README 启动依赖和构建后，在**仓库根目录**启动 IAM 并显式启用演示数据：
 
 ```bash
-java -jar backend/forge-iam/target/forge-iam-0.1.0-SNAPSHOT.jar --spring.profiles.active=demo
+java -jar backend/forge-iam/target/forge-iam-0.1.0.jar --spring.profiles.active=demo
 ```
 
 `demo` profile 在普通迁移之外加载 `db/demo` 的 Flyway 演示数据。仅用于独立本地数据库，不要在共享环境启用。账号 `demo`，邮箱 `demo@example.com`，密码 `Demo-password-123!`。不启用此 profile 时只创建表，不插入已知密码的身份。
