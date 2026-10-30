@@ -206,7 +206,8 @@ class TenantProvisioningTest {
     private static List<Map.Entry<Object, Object>> statuses(Map<String, Object> detail) {
         return ((List<?>) detail.get("initializations"))
                 .stream()
-                        .map(item -> Map.entry(((Map<?, ?>) item).get("service"), ((Map<?, ?>) item).get("status")))
+                        .map(item -> Map.<Object, Object>entry(
+                                ((Map<?, ?>) item).get("service"), ((Map<?, ?>) item).get("status")))
                         .toList();
     }
 
