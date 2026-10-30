@@ -45,7 +45,9 @@ import tools.jackson.databind.json.JsonMapper;
         properties = {
             "spring.cloud.nacos.config.enabled=false",
             "spring.cloud.nacos.discovery.enabled=false",
-            "forge.gateway.rate-limit.default-qps=2"
+            "forge.gateway.rate-limit.default-qps=2",
+            "forge.gateway.services[0].prefix=/orders",
+            "forge.gateway.services[0].realm=tenant"
         })
 @Testcontainers
 class TenantRateLimitTest {
@@ -67,7 +69,7 @@ class TenantRateLimitTest {
             DOWNSTREAM = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
             DOWNSTREAM.setExecutor(Executors.newCachedThreadPool());
             DOWNSTREAM.createContext("/jwks", exchange -> respond(exchange, new JWKSet(KEY.toPublicJWK()).toString()));
-            DOWNSTREAM.createContext("/demo/context", exchange -> respond(exchange, "{}"));
+            DOWNSTREAM.createContext("/orders/context", exchange -> respond(exchange, "{}"));
             DOWNSTREAM.start();
         } catch (Exception error) {
             throw new ExceptionInInitializerError(error);
@@ -78,7 +80,7 @@ class TenantRateLimitTest {
     static void gateway(DynamicPropertyRegistry registry) {
         String downstream = "http://127.0.0.1:" + DOWNSTREAM.getAddress().getPort();
         registry.add("spring.cloud.gateway.server.webflux.routes[0].id", () -> "demo");
-        registry.add("spring.cloud.gateway.server.webflux.routes[0].predicates[0]", () -> "Path=/demo/**");
+        registry.add("spring.cloud.gateway.server.webflux.routes[0].predicates[0]", () -> "Path=/orders/**");
         registry.add("spring.cloud.gateway.server.webflux.routes[0].uri", () -> downstream);
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
@@ -138,7 +140,7 @@ class TenantRateLimitTest {
                 .baseUrl("http://localhost:" + port)
                 .build()
                 .get()
-                .uri("/demo/context")
+                .uri("/orders/context")
                 .header("Authorization", "Bearer " + token)
                 .exchange((request, response) -> new Response(
                         response.getStatusCode().value(),

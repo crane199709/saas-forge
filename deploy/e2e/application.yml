@@ -26,6 +26,14 @@ server:
   address: 127.0.0.1
   forward-headers-strategy: framework
 forge:
+  gateway:
+    services:
+      - prefix: /iam
+        realm: tenant
+      - prefix: /platform
+        realm: platform
+      - prefix: /demo
+        realm: tenant
   mq:
     enabled: false
   security:

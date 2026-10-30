@@ -26,18 +26,15 @@ spring:
               filters:
                 - StripPrefix=1
 
-springdoc:
-  swagger-ui:
-    urls:
-      - name: forge-iam
-        url: /iam/v3/api-docs
-      - name: forge-platform
-        url: /platform/v3/api-docs
-      - name: demo-service
-        url: /demo/v3/api-docs
-
 forge:
   gateway:
+    services:
+      - prefix: /iam
+        realm: tenant
+      - prefix: /platform
+        realm: platform
+      - prefix: /demo
+        realm: tenant
     # 按 Token 中的 tenant_id 限流，第一期所有租户使用同一阈值；超限返回 429 request.rateLimited。
     # 按网关单实例计数（多实例时乘以实例数），启动时加载，修改后需重启网关
     rate-limit:

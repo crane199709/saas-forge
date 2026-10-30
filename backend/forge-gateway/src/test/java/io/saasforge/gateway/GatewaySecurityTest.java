@@ -12,6 +12,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import io.saasforge.gateway.routing.config.GatewayServicesProperties;
 import io.saasforge.sdk.core.MembershipStateKeys;
 import io.saasforge.sdk.core.OperatorStateKeys;
 import java.io.IOException;
@@ -19,7 +20,9 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
@@ -27,8 +30,10 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -49,8 +54,12 @@ import tools.jackson.databind.json.JsonMapper;
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
             "spring.cloud.nacos.config.enabled=false", "spring.cloud.nacos.discovery.enabled=false",
+            "forge.gateway.services[0].prefix=/iam", "forge.gateway.services[0].realm=tenant",
+            "forge.gateway.services[1].prefix=/platform", "forge.gateway.services[1].realm=platform",
+            "forge.gateway.services[2].prefix=/orders", "forge.gateway.services[2].realm=tenant",
+            "forge.gateway.services[3].prefix=/control", "forge.gateway.services[3].realm=platform",
             "spring.cloud.gateway.server.webflux.routes[0].id=demo",
-                    "spring.cloud.gateway.server.webflux.routes[0].predicates[0]=Path=/demo/**"
+                    "spring.cloud.gateway.server.webflux.routes[0].predicates[0]=Path=/orders/**"
         })
 @Testcontainers
 class GatewaySecurityTest {
@@ -83,12 +92,13 @@ class GatewaySecurityTest {
                     "/platform-jwks",
                     exchange -> respond(exchange, 200, new JWKSet(PLATFORM_KEY.toPublicJWK()).toString()));
             JWKS.createContext("/platform/", exchange -> respond(exchange, 200, "{}"));
-            JWKS.createContext("/demo/context", exchange -> {
+            JWKS.createContext("/orders/context", exchange -> {
                 RECEIVED_TRACEPARENT.set(exchange.getRequestHeaders().getFirst("traceparent"));
                 respond(exchange, 200, "{}");
             });
-            JWKS.createContext("/demo/missing", exchange -> respond(exchange, 404, DOWNSTREAM_ENVELOPE));
-            JWKS.createContext("/demo/slow", exchange -> {
+            JWKS.createContext("/orders/v3/api-docs", exchange -> respond(exchange, 200, "{}"));
+            JWKS.createContext("/orders/missing", exchange -> respond(exchange, 404, DOWNSTREAM_ENVELOPE));
+            JWKS.createContext("/orders/slow", exchange -> {
                 try {
                     Thread.sleep(2000);
                 } catch (InterruptedException e) {
@@ -106,15 +116,16 @@ class GatewaySecurityTest {
     static void security(DynamicPropertyRegistry registry) {
         String downstream = "http://127.0.0.1:" + JWKS.getAddress().getPort();
         registry.add("spring.cloud.gateway.server.webflux.routes[0].id", () -> "demo");
-        registry.add("spring.cloud.gateway.server.webflux.routes[0].predicates[0]", () -> "Path=/demo/**");
+        registry.add("spring.cloud.gateway.server.webflux.routes[0].predicates[0]", () -> "Path=/orders/**");
         registry.add("spring.cloud.gateway.server.webflux.routes[0].uri", () -> downstream);
         // 端口 1 无服务监听，模拟下游不可用
         registry.add("spring.cloud.gateway.server.webflux.routes[1].id", () -> "unavailable");
-        registry.add("spring.cloud.gateway.server.webflux.routes[1].predicates[0]", () -> "Path=/demo/unavailable/**");
+        registry.add(
+                "spring.cloud.gateway.server.webflux.routes[1].predicates[0]", () -> "Path=/orders/unavailable/**");
         registry.add("spring.cloud.gateway.server.webflux.routes[1].uri", () -> "http://127.0.0.1:1");
         registry.add("spring.cloud.gateway.server.webflux.routes[1].order", () -> "-1");
         registry.add("spring.cloud.gateway.server.webflux.routes[2].id", () -> "slow");
-        registry.add("spring.cloud.gateway.server.webflux.routes[2].predicates[0]", () -> "Path=/demo/slow");
+        registry.add("spring.cloud.gateway.server.webflux.routes[2].predicates[0]", () -> "Path=/orders/slow");
         registry.add("spring.cloud.gateway.server.webflux.routes[2].uri", () -> downstream);
         registry.add("spring.cloud.gateway.server.webflux.routes[2].order", () -> "-1");
         registry.add("spring.cloud.gateway.server.webflux.routes[2].metadata.response-timeout", () -> "300");
@@ -140,7 +151,7 @@ class GatewaySecurityTest {
         @Bean
         RouterFunction<ServerResponse> failingRoute() {
             return RouterFunctions.route()
-                    .GET("/demo/boom", request -> {
+                    .GET("/orders/boom", request -> {
                         throw new IllegalStateException("redis password=secret leaked");
                     })
                     .build();
@@ -220,7 +231,7 @@ class GatewaySecurityTest {
         RECEIVED_TRACEPARENT.set(null);
         Response response = call(
                 HttpMethod.GET,
-                "/demo/context",
+                "/orders/context",
                 token(KEY, ISSUER, Instant.now().plusSeconds(900)));
         assertThat(response.status()).isEqualTo(200);
         assertThat(response.traceIdHeader()).hasSize(32);
@@ -232,7 +243,7 @@ class GatewaySecurityTest {
     void passesDownstreamEnvelopeThroughUnchanged() throws Exception {
         Response response = call(
                 HttpMethod.GET,
-                "/demo/missing",
+                "/orders/missing",
                 token(KEY, ISSUER, Instant.now().plusSeconds(900)));
         assertThat(response.status()).isEqualTo(404);
         assertThat(response.rawBody()).isEqualTo(DOWNSTREAM_ENVELOPE);
@@ -243,7 +254,7 @@ class GatewaySecurityTest {
     void unavailableDownstreamIs503Envelope() throws Exception {
         Response response = call(
                 HttpMethod.GET,
-                "/demo/unavailable/x",
+                "/orders/unavailable/x",
                 token(KEY, ISSUER, Instant.now().plusSeconds(900)));
         assertEnvelope(response, 503, "system.unavailable");
         assertThat(response.body().path("errorMessage").asString()).isEqualTo("Internal error");
@@ -253,7 +264,7 @@ class GatewaySecurityTest {
     @Test
     void downstreamTimeoutIs503Envelope() throws Exception {
         Response response = call(
-                HttpMethod.GET, "/demo/slow", token(KEY, ISSUER, Instant.now().plusSeconds(900)));
+                HttpMethod.GET, "/orders/slow", token(KEY, ISSUER, Instant.now().plusSeconds(900)));
         assertEnvelope(response, 503, "system.unavailable");
         assertThat(response.body().path("userTip").asString()).isEqualTo("服务暂时不可用，请稍后重试");
     }
@@ -261,7 +272,7 @@ class GatewaySecurityTest {
     @Test
     void unknownGatewayErrorIs500EnvelopeWithoutExceptionText() throws Exception {
         Response response = call(
-                HttpMethod.GET, "/demo/boom", token(KEY, ISSUER, Instant.now().plusSeconds(900)));
+                HttpMethod.GET, "/orders/boom", token(KEY, ISSUER, Instant.now().plusSeconds(900)));
         assertEnvelope(response, 500, "system.error");
         assertThat(response.body().path("errorMessage").asString()).isEqualTo("Internal error");
         assertThat(response.body().path("userTip").asString()).isEqualTo("系统繁忙，请稍后重试");
@@ -279,7 +290,7 @@ class GatewaySecurityTest {
         String operator = platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "platform-console");
         assertThat(call(HttpMethod.GET, "/platform/operators/current", operator).status())
                 .isEqualTo(200);
-        assertUnauthenticatedAt("/demo/context", operator);
+        assertUnauthenticatedAt("/orders/context", operator);
         assertUnauthenticatedAt("/iam/auth/memberships", operator);
         // issuer 正确但用 Tenant Realm 密钥签名、或不是签发给 platform-console 的 Token 同样被拒。
         assertUnauthenticatedAt("/platform/operators/current", platformToken(KEY, PLATFORM_ISSUER, "platform-console"));
@@ -396,8 +407,91 @@ class GatewaySecurityTest {
         }
     }
 
+    @Test
+    void declaredServicesDenyInternalPathsAndUndeclaredPrefixes() throws Exception {
+        String tenant = token(KEY, ISSUER, Instant.now().plusSeconds(900));
+        String platform = platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "platform-console");
+        for (String path : List.of("/orders/internal", "/orders/internal/secrets", "/iam/internal/secrets")) {
+            assertEnvelope(call(HttpMethod.GET, path, tenant), 403, "auth.forbidden");
+        }
+        assertEnvelope(call(HttpMethod.GET, "/platform/internal/secrets", platform), 403, "auth.forbidden");
+        for (String path : List.of("/demo/context", "/unknown/context", "/orders-extra/context")) {
+            assertEnvelope(call(HttpMethod.GET, path, tenant), 403, "auth.forbidden");
+            assertUnauthenticatedAt(path, null);
+        }
+    }
+
+    @Test
+    void declaredServiceDocsAreAnonymous() {
+        assertThat(call(HttpMethod.GET, "/orders/v3/api-docs", null).status()).isEqualTo(200);
+        assertThat(call(HttpMethod.GET, "/platform/v3/api-docs", null).status()).isEqualTo(200);
+        assertEnvelope(call(HttpMethod.GET, "/iam/v3/api-docs", null), 404, "request.notFound");
+    }
+
+    @Test
+    void swaggerGroupsComeFromDeclaredServices() {
+        Response response = call(HttpMethod.GET, "/v3/api-docs/swagger-config", null);
+        assertThat(response.status()).isEqualTo(200);
+        var urls = response.body().path("urls");
+        assertThat(urls.size()).isEqualTo(4);
+        var groups = new HashMap<String, String>();
+        urls.forEach(
+                url -> groups.put(url.path("name").asString(), url.path("url").asString()));
+        assertThat(groups)
+                .containsExactlyInAnyOrderEntriesOf(Map.of(
+                        "iam",
+                        "/iam/v3/api-docs",
+                        "platform",
+                        "/platform/v3/api-docs",
+                        "orders",
+                        "/orders/v3/api-docs",
+                        "control",
+                        "/control/v3/api-docs"));
+    }
+
+    @Test
+    void newPlatformServiceUsesPlatformRealmAndOperatorVersion() throws Exception {
+        String operator = platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "platform-console");
+        assertUnauthenticatedAt("/control/items", null);
+        assertUnauthenticatedAt(
+                "/control/items", token(KEY, ISSUER, Instant.now().plusSeconds(900)));
+        assertEnvelope(call(HttpMethod.GET, "/control/items", operator), 404, "request.notFound");
+        assertEnvelope(call(HttpMethod.GET, "/control/internal/secrets", operator), 403, "auth.forbidden");
+        assertEnvelope(call(HttpMethod.GET, "/control/v3/api-docs", null), 404, "request.notFound");
+        redisTemplate.opsForValue().set(OperatorStateKeys.version(OPERATOR_ID), "2");
+        assertUnauthenticatedAt("/control/items", operator);
+    }
+
+    @Test
+    void missingEmptyOrInvalidServiceConfigurationFailsStartup() {
+        var runner = new ApplicationContextRunner().withUserConfiguration(ServiceBinding.class);
+        for (String[] properties : List.of(
+                new String[] {},
+                new String[] {"forge.gateway.services[0].prefix=/webjars", "forge.gateway.services[0].realm=tenant"},
+                new String[] {"forge.gateway.services="},
+                new String[] {"forge.gateway.services[0].prefix=/orders"},
+                new String[] {"forge.gateway.services[0].realm=tenant"},
+                new String[] {"forge.gateway.services[0].prefix=/**", "forge.gateway.services[0].realm=tenant"},
+                new String[] {"forge.gateway.services[0].prefix=/orders", "forge.gateway.services[0].realm=other"},
+                new String[] {
+                    "forge.gateway.services[0].prefix=/orders",
+                    "forge.gateway.services[0].realm=tenant",
+                    "forge.gateway.services[1].prefix=/orders",
+                    "forge.gateway.services[1].realm=platform"
+                },
+                new String[] {"forge.gateway.services[0].prefix=/iam", "forge.gateway.services[0].realm=platform"})) {
+            runner.withPropertyValues(properties)
+                    .run(context -> assertThat(context).hasFailed());
+        }
+        runner.withPropertyValues("forge.gateway.services[0].prefix=/orders", "forge.gateway.services[0].realm=tenant")
+                .run(context -> assertThat(context).hasNotFailed());
+    }
+
+    @EnableConfigurationProperties(GatewayServicesProperties.class)
+    static class ServiceBinding {}
+
     private void assertUnauthenticated(String token) {
-        assertUnauthenticatedAt("/demo/context", token);
+        assertUnauthenticatedAt("/orders/context", token);
     }
 
     private void assertUnauthenticatedAt(String path, String token) {
@@ -420,7 +514,7 @@ class GatewaySecurityTest {
     }
 
     private int status(String token) {
-        return call(HttpMethod.GET, "/demo/context", token).status();
+        return call(HttpMethod.GET, "/orders/context", token).status();
     }
 
     private Response call(HttpMethod method, String path, String token) {

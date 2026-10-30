@@ -219,10 +219,10 @@ WebFlux 的 `ErrorWebExceptionHandler` 归入 `filter` 而不是 `controller`：
 
 ### 经网关暴露
 
-网关只做粗粒度判断：要求哪个 Realm 的 Token、能否匿名、是否暴露；功能权限由服务判断（`@RequiresPermission`，Platform Realm 服务按 Operator 的平台角色判断；iam 按自身的管理类权限码 `iam:*`、`platform:*` 自行校验）。规则在 `GatewaySecurityConfiguration` 中按服务前缀书写，不逐个列出需认证的接口：
+网关只做粗粒度判断：要求哪个 Realm 的 Token、能否匿名、是否暴露；功能权限由服务判断（`@RequiresPermission`，Platform Realm 服务按 Operator 的平台角色判断；iam 按自身的管理类权限码 `iam:*`、`platform:*` 自行校验）。通过 `forge.gateway.services` 声明服务路径前缀（如 `/orders`）与 Realm（`tenant` / `platform`），网关统一生成安全规则与 OpenAPI 聚合分组，不逐个列出需认证的接口；前缀必须是单个小写路径段（允许数字和连字符），不得占用 `/actuator`、`/v3`、`/swagger-ui`、`/webjars`。列表为空、缺字段、前缀非法或重复时启动失败，修改配置后重启网关生效：
 
-- 业务服务与 iam 的接口默认要求 Tenant Realm Token，`/platform/**` 与 `/iam/platform/**` 要求 Platform Realm Token，新增接口不改网关；新接入的服务才需要加前缀与路由。
-- 匿名接口必须在网关显式列出，同时在服务的安全链中放行，不靠推断。
+- 业务服务与 iam 的接口默认要求 Tenant Realm Token，`/platform/**` 与 `/iam/platform/**` 要求 Platform Realm Token，新增接口不改网关；新接入的服务只需在配置中声明前缀与 Realm，并添加 Spring Cloud Gateway 路由，无需修改网关代码。
+- 已声明服务的 `/v3/api-docs/**` 允许匿名 GET，其余接口默认认证；未声明前缀拒绝访问。IAM 专属匿名与 OAuth2 规则保留在代码中。其他匿名接口必须在网关显式列出，同时在服务的安全链中放行，不靠推断。
 - 只供同进程或服务间直连调用的接口放在 `/internal/` 下，网关显式拒绝；iam 的 OAuth2 端点除授权端点与 JWKS 外同样拒绝。
 - iam 中供 Operator 使用、需认证的接口放在 iam 的 `/platform/` 下（网关路径 `/iam/platform/**`），并加入 iam 的 Platform Realm 过滤链；功能权限按 `platform:*` 权限码自行校验。
 
