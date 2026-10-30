@@ -15,3 +15,8 @@
 - [x] 本地可用一条命令复现，写入接入指南的「维护者」一节
 
 验证记录：本地临时发布与仓库外后端 verify（14 tests）、前端真实 registry install/lint/typecheck/build 通过（/tmp/ticket08-release2.log）。复用该外部 jar 的真实运行接缝通过：独立 smoke schema、Manifest 菜单、网关 GET 200 / POST 201、未授权 POST 403 与 internal 403；Playwright 1 passed（/tmp/ticket08-runtime.log）。两阶段分别执行；新增组合入口与 GitHub 工作流尚未在 GitHub runner 执行。首次运行暴露 env 隔离丢失 JAVA_HOME，修复后重验通过。MQ/Nacos 不在本接缝覆盖范围。
+
+## Comments
+
+- 2026-10-30 集成验证修复：普通 E2E 模式的空 `TEMPLATE_ARGS` 在 macOS Bash 3.2 + `set -u` 下报 unbound variable，失败清理路径的空 `PIDS` 也存在同类问题。对这两处可空数组使用条件展开，空数组不传入参数，非空数组保留元素边界；Compose 非空数组保持不变。
+- 轻量红绿验证使用本机 `/bin/bash` 3.2.57，从实际脚本提取传参语句和 cleanup 循环：修复前空参数与空 PID 两项失败、非空两项通过；修复后四项均通过，包含带空格参数和多个 PID 的 kill/wait 顺序。`/bin/bash -n deploy/e2e/run.sh` 通过。真实普通模式 E2E 由主任务重跑，本条不声明全链路已通过。

@@ -16,12 +16,13 @@ for port in (15432,16379,18000,18101,18102,18201,15174,15175):
 PY
 RUN_DIR=$(mktemp -d "$ROOT/deploy/e2e/run-XXXXXXXX")
 COMPOSE=(docker compose -p "forge-e2e-$(basename "$RUN_DIR" | tr '[:upper:]' '[:lower:]')" -f "$ROOT/deploy/e2e/compose.yml")
+# Bash 3.2 的 nounset 会拒绝空数组；下方用条件展开保留零参数语义。
 PIDS=()
 cleanup() {
   result=$?
   trap - EXIT INT TERM
-  for pid in "${PIDS[@]}"; do kill "$pid" 2>/dev/null || true; done
-  for pid in "${PIDS[@]}"; do wait "$pid" 2>/dev/null || true; done
+  for pid in ${PIDS[@]+"${PIDS[@]}"}; do kill "$pid" 2>/dev/null || true; done
+  for pid in ${PIDS[@]+"${PIDS[@]}"}; do wait "$pid" 2>/dev/null || true; done
   "${COMPOSE[@]}" down --volumes >"$RUN_DIR/cleanup.log" 2>&1 || true
   echo "E2E 日志：$RUN_DIR"
   exit "$result"
@@ -41,7 +42,7 @@ start() {
   # 不继承开发环境的 Spring/数据库覆盖项，防止 Flyway 或服务误连共享资源。
   env -i PATH="$PATH" HOME="$HOME" JAVA_HOME="${JAVA_HOME:-}" java -Xms64m -Xmx256m -XX:ActiveProcessorCount=2 -jar "backend/$module/target/${module##*/}-$FORGE_VERSION.jar" \
     "--spring.config.additional-location=file:$E2E_CONFIG" \
-    "--server.port=$port" "${TEMPLATE_ARGS[@]}" \
+    "--server.port=$port" ${TEMPLATE_ARGS[@]+"${TEMPLATE_ARGS[@]}"} \
     "--forge.iam.signing-key-file=$RUN_DIR/tenant.jwk" \
     "--forge.iam.platform.signing-key-file=$RUN_DIR/platform.jwk" \
     --forge.iam.sub-app.environment=e2e \
