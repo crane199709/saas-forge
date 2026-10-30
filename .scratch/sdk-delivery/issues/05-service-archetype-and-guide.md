@@ -12,7 +12,7 @@
 - [x] 生成 TenantCreated 的幂等初始化订阅、Flyway 迁移（标准列、ENABLE + FORCE RLS、`WHERE NOT deleted` 部分唯一索引）、Resource Manifest 清单文件
 - [x] 配置文件中环境相关项不设默认值，每项注释说明含义与提供方（平台运维 / 接入清单的哪一步）
 - [x] 生成架构规则测试（引入 forge-architecture），以及 Testcontainers 的租户隔离、功能权限、数据权限测试样例
-- [ ] 生成镜像构建配置（与 07 的方式一致；07 未完成时先留空，07 完成后补上）
+- [x] 生成镜像构建配置（与 07 的方式一致；07 未完成时先留空，07 完成后补上）
 - [x] 新增业务服务接入指南：从生成工程到平台上看到菜单的完整顺序；必须配置项清单；常见启动失败及原因；Manifest version 何时升级；Provisioning 订阅与幂等；`/internal/` 约定；按需引入 storage；引用 03 的接入清单
 - [x] archetype 自带集成测试：用默认参数生成工程，并对生成的工程运行 `verify`（编译、架构规则、Testcontainers 样例全部通过）
 - [x] 生成的示例代码与 demo-service 的对应部分一致；demo-service 保留，作为平台端到端验收样本
@@ -29,3 +29,5 @@
 - archetype 本地 `file:///tmp/forge-ticket05-repository` deploy 成功，主 jar、POM、sources.jar 均已发布，符合既有发布自检。版本脚本 0.1.0 → 0.2.1 → 0.1.0 往返无差异，标签校验通过。日志 `/tmp/ticket05-deploy.log`。
 - 新增 `docs/business-service-guide.md`，涵盖生成、必须配置、启动排障、Manifest 升级、幂等 Provisioning、内部接口、storage 和从平台准备到租户菜单的完整步骤，引用 03 接入清单。模板环境地址/账号/密码均不设默认值。
 - 镜像配置按本工单约定留给 07 补齐，尚未勾选；08 将验证仅消费发布制品的完整平台冒烟（实际 Manifest、网关、菜单/MQ 联调不由本次隔离 HTTP 测试证明）。未访问共享业务库、未发布远端制品、未部署服务。实现转 ready-for-human 供审阅。
+
+- 07 补齐 Spring Boot build-image 配置与独立工程命令；实际后端镜像运行验收见 07，未将配置完成等同于容器健康验收。
