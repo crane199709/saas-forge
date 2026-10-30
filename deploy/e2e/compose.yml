@@ -8,6 +8,7 @@ services:
       POSTGRES_PASSWORD: postgres
     ports: ['127.0.0.1:15432:5432']
     volumes:
+      # 与本地 compose 共用参数化数据库准备脚本。
       - ../postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres -d forge']

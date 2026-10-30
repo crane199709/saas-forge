@@ -14,6 +14,7 @@ services:
       - "${FORGE_PG_PORT:-5432}:5432"
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
+      # 入口调用 lib/provision-service.sql；lib 子目录不会被镜像重复自动执行。
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d forge"]

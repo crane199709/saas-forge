@@ -33,6 +33,8 @@ Realm 场景先证明 Tenant Token 可访问订单，再检查 `/platform/operat
 
 ## 边界
 
+数据库准备与新服务接入步骤见[平台侧接入清单](service-onboarding-checklist.md)。E2E 与本地 compose 共用 `deploy/postgres/init/lib/provision-service.sql`，由初始化入口分别传入 iam/platform/demo 的本地凭证。
+
 MQ 投递和 Nacos 发现关闭，网关用固定地址路由；注册表副本由种子准备，demo 的 Resource Manifest 仍由服务启动时向 IAM 真实上报。认证、Redis 即时失效、功能权限、数据权限、租户拦截器与 PostgreSQL RLS 保持开启。本用例不证明 MQ 广播、租户开通、对象存储或服务发现，这些由相应集成测试负责。
 
 原有 `frontend/pnpm test:e2e` 保留为 mock 浏览器回归，与本套真实 E2E 分开运行。GitHub Actions 的 `Main flow E2E` 工作流在 PR、main push 和手动触发时运行，失败报告及服务日志保留 7 天。

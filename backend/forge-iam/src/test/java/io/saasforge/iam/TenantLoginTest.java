@@ -53,8 +53,7 @@ class TenantLoginTest {
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
             .withDatabaseName("forge")
             .withCopyFileToContainer(
-                    MountableFile.forHostPath("../../deploy/postgres/init/01-service-schemas.sql"),
-                    "/docker-entrypoint-initdb.d/01-service-schemas.sql");
+                    MountableFile.forHostPath("../../deploy/postgres/init"), "/docker-entrypoint-initdb.d/");
 
     @Container
     static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);

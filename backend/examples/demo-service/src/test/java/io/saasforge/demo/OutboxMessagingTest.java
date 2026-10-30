@@ -55,8 +55,7 @@ class OutboxMessagingTest {
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
             .withDatabaseName("forge")
             .withCopyFileToContainer(
-                    MountableFile.forHostPath("../../../deploy/postgres/init/01-service-schemas.sql"),
-                    "/docker-entrypoint-initdb.d/01-service-schemas.sql");
+                    MountableFile.forHostPath("../../../deploy/postgres/init"), "/docker-entrypoint-initdb.d/");
 
     /**
      * namesrv、broker 与 proxy 放在同一容器。proxy 用 cluster 模式：local 模式（broker 内嵌 proxy）的路由返回容器内 IP，
