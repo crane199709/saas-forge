@@ -60,7 +60,7 @@ Operator 表增加 `version`。以下变更在事务提交后递增版本并发�
 - 负责区域变化
 - 重置密码（已签发的 Access Token 失效）
 
-iam 自身的平台管理接口按数据库中的当前状态判断权限与 Operator 是否 active，不依赖 Token 刷新。platform-console 在 Token 变化时重新读取 `GET /iam/platform/access`，面板按权限显示或隐藏。
+iam 自身的平台管理接口按数据库中的当前状态判断权限与 Operator 是否 active，不依赖 Token 刷新。platform-console 在 Token 变化时重新读取 `GET /iam/platform/access`，侧边菜单按权限显示或隐藏，当前页面失去权限时进入 403 页。
 
 ## 接口（网关路径）
 

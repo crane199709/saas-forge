@@ -41,7 +41,7 @@
 - **密钥**：`JwtEncoder` 按 issuer 选择签名密钥。Platform 公钥只由 `/platform/oauth2/jwks` 发布，不出现在标准 `/oauth2/jwks` 中，所以即使某个验签方漏查 issuer，也无法用对方 JWKS 验过。
 - **网关**：`/platform/**` 与 `/iam/platform/**` 用 Platform 解码器（issuer、`aud=platform-console`、`sub` 为 UUID、`ver` 为数字）加 Operator 版本校验，其余受保护路由用 Tenant 解码器加即时失效校验。用错 Realm 的 Token 一律 401 `auth.unauthenticated`（`invalid_token`），不是 403。
 - **业务服务 SDK**：`forge.security.realm` 取 `tenant`（默认）或 `platform`，其他取值启动失败。`platform` 时用 `forge.security.platform.issuer` 与 `forge.security.platform.jwk-set-uri` 验签，不绑定 `CurrentTenant`，以 `OperatorContext.current()` 读取当前 Operator。forge-platform 已配置为 `platform`。
-- **前端 SDK**：`createTenantClient(storage)` 与 `createPlatformClient(storage)` 分别使用 `tenantRealm`、`platformRealm` 配置（接口前缀、scope、存储键 `forge.tenant.session` / `forge.platform.session`、跨标签页轮换锁 `forge.tenant.rotation` / `forge.platform.rotation`）。platform-console 通过 `platformClientKey` 提供唯一实例，会话存于 `localStorage`，同一浏览器的标签页共享登录：其他标签页刷新时按新 Token 重新读取权限，登录或退出时登录面板随之切换，刷新跨标签页互斥，见 [ADR-0017](adr/0017-local-storage-session-cross-tab.md)。
+- **前端 SDK**：`createTenantClient(storage)` 与 `createPlatformClient(storage)` 分别使用 `tenantRealm`、`platformRealm` 配置（接口前缀、scope、存储键 `forge.tenant.session` / `forge.platform.session`、跨标签页轮换锁 `forge.tenant.rotation` / `forge.platform.rotation`）。platform-console 通过 `platformClientKey` 提供唯一实例，会话存于 `localStorage`，同一浏览器的标签页共享登录：其他标签页刷新时按新 Token 重新读取权限，其他标签页退出时回到登录页，登录时停在登录页的标签页随之进入，刷新跨标签页互斥，见 [ADR-0017](adr/0017-local-storage-session-cross-tab.md)。
 
 ## 已知限制
 
@@ -63,4 +63,4 @@
 
 ## 验收
 
-后端 `cd backend && ./mvnw verify`：`PlatformLoginTest`（Operator 登录、独立 issuer 与密钥、跨 Realm 签发被拒、元数据）、`OperatorSessionServiceTest`（MFA 开关）、`GatewaySecurityTest`（Tenant Token 访问平台路由与 Platform Token 访问租户路由均 401）、forge-platform `OperatorContextTest`（SDK 验签并读取 Operator）。前端 `pnpm test` 中 platform-console 的 `LoginPanel.spec.ts`。
+后端 `cd backend && ./mvnw verify`：`PlatformLoginTest`（Operator 登录、独立 issuer 与密钥、跨 Realm 签发被拒、元数据）、`OperatorSessionServiceTest`（MFA 开关）、`GatewaySecurityTest`（Tenant Token 访问平台路由与 Platform Token 访问租户路由均 401）、forge-platform `OperatorContextTest`（SDK 验签并读取 Operator）。前端 `pnpm test` 中 platform-console 的 `LoginPage.spec.ts`、`router.spec.ts`。

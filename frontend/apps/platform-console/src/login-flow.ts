@@ -1,0 +1,26 @@
+import type { PlatformClient } from '@forge/sdk'
+import { reactive } from 'vue'
+
+/** 退出与登录页之间传递的状态。只存于内存，页面刷新后随之丢失。 */
+export const loginFlow = reactive({
+  /** IAM 退出失败：本地凭证已清除，但浏览器仍可能保持 IAM 登录会话，登录页据此提示。 */
+  logoutFailed: false,
+})
+
+/**
+ * 登录后回跳的地址：只接受站内路径，防止开放重定向。`//host` 与 `/\host` 都会被浏览器当作站外地址。
+ */
+export function safeRedirect(value: unknown): string {
+  if (typeof value !== 'string' || !value.startsWith('/')) return '/'
+  return value.startsWith('//') || value.startsWith('/\\') ? '/' : value
+}
+
+/** 退出登录。本地凭证先被清除，IAM 退出失败时记入 `logoutFailed`。 */
+export async function signOut(client: Pick<PlatformClient, 'logout'>) {
+  loginFlow.logoutFailed = false
+  try {
+    await client.logout()
+  } catch {
+    loginFlow.logoutFailed = true
+  }
+}

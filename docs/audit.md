@@ -69,7 +69,7 @@ demo-service 的订单增删改、forge-platform 的租户创建、状态变更�
 
 参数：`page`、`size`、`from`（含）、`to`（不含，ISO 8601）、`actor`（账号或显示名包含）、`action`、`resourceType`、`resourceId`。按发生时间倒序。
 
-前端：tenant-app「审计日志」页（`/audit`），platform-console「平台审计」面板。
+前端：tenant-app「审计日志」页（`/audit`），platform-console「平台审计」页（`/audit`）。
 
 ## 部署
 
