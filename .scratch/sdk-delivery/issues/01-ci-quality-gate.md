@@ -2,7 +2,7 @@
 
 **What to build:** 每个 PR 与 main 推送都运行完整质量门：后端 `verify`（Testcontainers 集成测试、架构规则、Spotless），前端类型检查、单测、格式检查、构建与 mock E2E，加上现有的真实主链路 E2E。各任务互相独立、可以并行，失败时保留报告。见[规格 · CI 质量门](../spec.md#ci-质量门)。
 
-**Blocked by:** 无（实际运行需要先配置仓库远端，这是人工步骤）
+**Blocked by:** 无
 
 **Status:** ready-for-human
 
@@ -27,3 +27,8 @@
 - 按 code-review 技能串行完成 Standards / Spec 两轴审查：规范问题 0，规格实现问题 0；远端验收待办 1 项。
 - `mise exec node@24.14.1 -- deploy/e2e/run.sh` 真实主链路 3/3 通过，脚本已清理独立测试环境；日志：`/tmp/forge-ci-main-flow.log`。
 - 实现及本地验证完成，状态转为 `ready-for-human`，等待推送后在 PR 上完成三个工作流与失败 artifact 的远端验收。
+
+### 2026-10-30 远端运行反馈
+
+- 用户确认已成功推送，Backend quality、Frontend quality、Main flow E2E 三个 CI 工作流均运行成功。
+- 本条依据用户反馈记录；尚未提供 PR 运行结果及远端故障注入、失败 artifact 上传的验证结果，因此综合验收项保持未勾选，状态仍为 `ready-for-human`。
