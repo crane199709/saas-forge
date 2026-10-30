@@ -25,6 +25,8 @@
     </distributionManagement>
 
     <properties>
+        <!-- 业务服务继承 BOM 时 project.version 是业务版本，SDK 必须保持发布版本。 -->
+        <forge.version>0.1.0</forge.version>
         <spring-cloud.version>2025.1.4</spring-cloud.version>
         <spring-cloud-alibaba.version>2025.1.0.0</spring-cloud-alibaba.version>
         <springdoc.version>3.0.3</springdoc.version>
@@ -44,62 +46,62 @@
             <dependency>
                 <groupId>io.saasforge</groupId>
                 <artifactId>forge-architecture</artifactId>
-                <version>${project.version}</version>
+                <version>${forge.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.saasforge</groupId>
                 <artifactId>forge-sdk-core</artifactId>
-                <version>${project.version}</version>
+                <version>${forge.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.saasforge</groupId>
                 <artifactId>forge-sdk-web</artifactId>
-                <version>${project.version}</version>
+                <version>${forge.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.saasforge</groupId>
                 <artifactId>forge-sdk-security</artifactId>
-                <version>${project.version}</version>
+                <version>${forge.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.saasforge</groupId>
                 <artifactId>forge-sdk-tenant</artifactId>
-                <version>${project.version}</version>
+                <version>${forge.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.saasforge</groupId>
                 <artifactId>forge-sdk-abac</artifactId>
-                <version>${project.version}</version>
+                <version>${forge.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.saasforge</groupId>
                 <artifactId>forge-sdk-mq</artifactId>
-                <version>${project.version}</version>
+                <version>${forge.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.saasforge</groupId>
                 <artifactId>forge-sdk-provisioning</artifactId>
-                <version>${project.version}</version>
+                <version>${forge.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.saasforge</groupId>
                 <artifactId>forge-sdk-audit</artifactId>
-                <version>${project.version}</version>
+                <version>${forge.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.saasforge</groupId>
                 <artifactId>forge-sdk-storage</artifactId>
-                <version>${project.version}</version>
+                <version>${forge.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.saasforge</groupId>
                 <artifactId>forge-sdk-openapi</artifactId>
-                <version>${project.version}</version>
+                <version>${forge.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.saasforge</groupId>
                 <artifactId>forge-sdk-manifest</artifactId>
-                <version>${project.version}</version>
+                <version>${forge.version}</version>
             </dependency>
 
             <!-- Boot 4 的 Flyway starter 不再自带数据库方言，PostgreSQL 模块必须显式引入 -->

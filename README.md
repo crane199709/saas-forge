@@ -122,7 +122,7 @@ platform-console 运行在 <http://localhost:5173>，tenant-app 运行在 <http:
 本地使用 JDK 17、Node 24、pnpm 12.4.2 和可用的 Docker，按以下命令复现（从仓库根目录执行）：
 
 ```bash
-(cd backend && ./mvnw --batch-mode verify)
+(cd backend && ./mvnw --batch-mode install -Parchetype-it)
 
 (
   cd frontend
@@ -168,3 +168,5 @@ SDK 当前统一版本为 `0.1.0`。版本同步、标签发布与临时仓库�
 - 本地 S3 使用 MinIO 的社区分支 silo（MinIO 社区版已停止发布二进制，见 ADR-0011），代码只依赖 S3 协议。
 
 真实主链路浏览器验收（双租户、权限、数据范围、即时失效、Realm 隔离）：见 [主链路 E2E](docs/main-flow-e2e.md)，一键执行 `deploy/e2e/run.sh`。
+
+后端普通 `verify` 可在冷缓存执行；`install -Parchetype-it` 还会验证新服务模板，先安装本次 SDK，再让生成工程独立执行 `verify`。业务服务接入见 [接入指南](docs/business-service-guide.md)。
