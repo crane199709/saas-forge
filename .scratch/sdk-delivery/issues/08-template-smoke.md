@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 网关按配置声明接入服务, 03 服务数据库准备脚本与平台侧接入清单, 05 后端工程模板与接入指南, 06 前端脚手架可在仓库外运行
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
 - [x] 把当前提交的全部 Maven 制品与 npm 包发布到任务内临时本地仓库（复用 04 的发布流程）
 - [x] 在仓库外的空目录用 archetype 生成服务，Maven 只从临时本地仓库和公共仓库解析依赖，不读取 monorepo；运行它的 `verify` 并通过
@@ -20,3 +20,12 @@
 
 - 2026-10-30 集成验证修复：普通 E2E 模式的空 `TEMPLATE_ARGS` 在 macOS Bash 3.2 + `set -u` 下报 unbound variable，失败清理路径的空 `PIDS` 也存在同类问题。对这两处可空数组使用条件展开，空数组不传入参数，非空数组保留元素边界；Compose 非空数组保持不变。
 - 轻量红绿验证使用本机 `/bin/bash` 3.2.57，从实际脚本提取传参语句和 cleanup 循环：修复前空参数与空 PID 两项失败、非空两项通过；修复后四项均通过，包含带空格参数和多个 PID 的 kill/wait 顺序。`/bin/bash -n deploy/e2e/run.sh` 通过。真实普通模式 E2E 由主任务重跑，本条不声明全链路已通过。
+
+### 2026-10-30 集成分支最终验收
+
+- `codex/sdk-delivery-remaining` 完整后端 `./mvnw -B install -Parchetype-it` 通过：447 项现有测试及 14 项生成工程测试，零失败、错误与跳过，包含 Testcontainers、架构与格式检查。日志 `/tmp/sdk-delivery-final-backend.log`。
+- 前端完整 171 项测试、`typecheck` 及 `format:check` 通过；日志 `/tmp/sdk-delivery-final-frontend-tests.log`、`/tmp/sdk-delivery-final-typecheck.log`、`/tmp/sdk-delivery-final-format.log`。
+- 普通模式主链路 3/3 通过，验证模板模式未改变现有行为；日志 `/tmp/sdk-delivery-final-main-e2e.log`。
+- 组合入口 `bash deploy/template-smoke/run.sh` 从临时发布到仓库外生成、14 项后端测试、真实 registry 安装、前端 lint/typecheck/build 和新服务权限联调全部通过；Playwright 1/1，日志 `/tmp/sdk-delivery-final-template-smoke.log`。所有本轮临时服务、容器和测试卷已清理。
+- code-review：Standards 0 项；Spec 发现 1 项版本硬编码，已修复并完成红绿验证。集成回归另发现 Bash 3.2 空数组问题，修复后两个 E2E 模式均通过。
+- 本地实现与验收完成，转 ready-for-human 供审阅；未推送分支或标签，未在 GitHub runner 执行，真实 MQ/Nacos 和工单 09 的团队试点仍待人工验收。

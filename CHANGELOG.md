@@ -9,6 +9,8 @@
 - 首次交付 Forge BOM、按能力拆分的 SDK starter 与共享架构规则，Java 模块附带源码包。
 - 发布 `@forge/sdk`、`@forge/ui`、`@forge/sub-app-kit`；提供类型声明与编译后的 CLI。
 - 提供统一版本命令、标签发布质量门和临时 Maven/npm 仓库消费自检。
+- 提供 Business Service archetype、接入指南和可在仓库外运行的 Sub-App 生成器；BOM 的 SDK 版本独立于业务工程版本。
+- 提供四个后端服务与两个 Shell 的镜像构建入口，以及从临时发布到仓库外生成、启动和权限校验的模板冒烟质量门。
 
 ### 不兼容变更
 
