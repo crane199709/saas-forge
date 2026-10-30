@@ -39,8 +39,8 @@ async function signIn(
 ) {
   // 只在没有会话时写入：切换租户后重载，Shell 保存的新会话不应被改回
   await page.addInitScript(() => {
-    if (sessionStorage.getItem('forge.tenant.session')) return
-    sessionStorage.setItem(
+    if (localStorage.getItem('forge.tenant.session')) return
+    localStorage.setItem(
       'forge.tenant.session',
       JSON.stringify({
         accessToken: 'access-1',

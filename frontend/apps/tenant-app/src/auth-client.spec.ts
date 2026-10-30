@@ -275,6 +275,8 @@ it('清除会话后，已发出的刷新响应不能恢复旧身份', async () =
   )
   const client = createTenantClient(sessionStorage)
   const pending = client.refresh()
+  // 取得轮换锁、刷新请求已发出后再清除。
+  await vi.waitFor(() => expect(finish).toBeDefined())
   client.clear()
   finish(tokens('late-access', 'late-refresh'))
   await expect(pending).rejects.toThrow('auth.sessionChanged')

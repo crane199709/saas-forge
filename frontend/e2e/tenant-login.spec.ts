@@ -109,7 +109,7 @@ test('登录页显示统一失败提示，成功后显示上下文并在刷新�
   await page.getByRole('button', { name: '重试退出' }).click()
   await expect(page.getByRole('alert')).toHaveCount(0)
   expect(logoutCount).toBe(2)
-  expect(await page.evaluate(() => sessionStorage.getItem('forge.tenant.session'))).toBeNull()
+  expect(await page.evaluate(() => localStorage.getItem('forge.tenant.session'))).toBeNull()
 })
 
 test('多租户身份先选择租户，切换后重新加载并只看到新租户的上下文', async ({ page }) => {

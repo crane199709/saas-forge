@@ -12,6 +12,8 @@ export interface RealmConfig {
   authPath: string
   /** 授权请求的 scope，与 IAM 注册客户端一致。 */
   scope: string
+  /** 刷新与切换跨标签页互斥用的 Web Locks 名称；同一 Realm 的所有标签页共享一个刷新凭证。 */
+  rotationLock: string
 }
 
 /** Tenant Realm：Identity 登录，Token 绑定 Active Tenant。 */
@@ -19,6 +21,7 @@ export const tenantRealm: RealmConfig = Object.freeze({
   storageKey: 'forge.tenant.session',
   authPath: '/iam/auth',
   scope: 'tenant',
+  rotationLock: 'forge.tenant.rotation',
 })
 
 /** Platform Realm：Operator 登录，Token 的 issuer 与 Tenant Realm 不同，只能访问平台路由。 */
@@ -26,6 +29,7 @@ export const platformRealm: RealmConfig = Object.freeze({
   storageKey: 'forge.platform.session',
   authPath: '/iam/platform/auth',
   scope: 'platform',
+  rotationLock: 'forge.platform.rotation',
 })
 
 /** 两个 Realm 会话共有的凭证字段。 */
@@ -36,7 +40,7 @@ export interface RealmSession {
   expiresIn: number
 }
 
-/** Tenant Realm 登录返回的会话；凭证只保存在当前浏览器标签页。 */
+/** Tenant Realm 登录返回的会话；凭证保存在传入的 Storage 中，宿主传入 `localStorage` 时同一浏览器的标签页共享。 */
 export interface TenantSession extends RealmSession {
   identityName: string
   /** 当前 Active Tenant；切换租户后随新 Token 一起变化。 */
@@ -96,11 +100,19 @@ export interface InvitationAcceptance {
   displayName?: string
 }
 
+/** 会话变化的来源；`crossTab` 为 true 表示由同一浏览器的其他标签页改写。 */
+export interface SessionChange {
+  crossTab: boolean
+}
+
 /** 会话变化（登录、刷新、切换、清除）时的回调；`null` 表示已无会话。 */
-export type TenantSessionListener = (session: TenantSession | null) => void
+export type TenantSessionListener = (session: TenantSession | null, change: SessionChange) => void
 
 /** Platform Realm 会话变化时的回调；`null` 表示已无会话。 */
-export type PlatformSessionListener = (session: PlatformSession | null) => void
+export type PlatformSessionListener = (
+  session: PlatformSession | null,
+  change: SessionChange,
+) => void
 
 /** Shell 创建并提供的客户端类型，业务组件复用同一刷新队列。 */
 export type TenantClient = ReturnType<typeof createTenantClient>
@@ -124,9 +136,17 @@ export function useTenantClient(): TenantClient {
 /** platform-console 通过 Vue provide 提供 Platform Realm 客户端。 */
 export const platformClientKey: InjectionKey<PlatformClient> = Symbol('forge.platform.client')
 
-/** 创建同源 Tenant Realm 客户端；Shell 持有一个实例，Sub-App 共享该实例。 */
+/**
+ * 创建同源 Tenant Realm 客户端；Shell 持有一个实例，Sub-App 共享该实例。传入 `localStorage` 时各标签页共享会话：
+ * 其他标签页切换租户、登录或退出时本实例的会话代次递增，在途请求以 `auth.sessionChanged` 失败。
+ */
 export function createTenantClient(storage: Storage) {
-  const core = createRealmClient<TenantSession>(tenantRealm, storage)
+  // 同一 Membership 下的刷新不改变上下文；Membership 变化才是切换。
+  const core = createRealmClient<TenantSession>(
+    tenantRealm,
+    storage,
+    (previous, next) => previous.membershipId === next.membershipId,
+  )
 
   /** 校验账号密码并建立 IAM 登录会话，按可进入的 Membership 数量决定自动进入、选择租户或无租户。 */
   function login(account: string, password: string): Promise<TenantLoginResult> {
@@ -228,7 +248,8 @@ export function createTenantClient(storage: Storage) {
 
 /** 创建同源 Platform Realm 客户端；platform-console 持有一个实例。 */
 export function createPlatformClient(storage: Storage) {
-  const core = createRealmClient<PlatformSession>(platformRealm, storage)
+  // 没有租户上下文，其他标签页的刷新始终沿用同一会话。
+  const core = createRealmClient<PlatformSession>(platformRealm, storage, () => true)
 
   /** 校验 Operator 账号密码后经标准授权码 + PKCE 流程签发 Platform Realm Token。 */
   async function login(account: string, password: string): Promise<PlatformSession> {
@@ -249,30 +270,60 @@ export function createPlatformClient(storage: Storage) {
   }
 }
 
-/** 两个 Realm 共用的会话、授权码 + PKCE、刷新与请求逻辑；接口位置与存储键来自 Realm 配置。 */
-function createRealmClient<S extends RealmSession>(realm: RealmConfig, storage: Storage) {
+/**
+ * 两个 Realm 共用的会话、授权码 + PKCE、刷新与请求逻辑；接口位置与存储键来自 Realm 配置。
+ * `sameContext` 判断其他标签页写入的会话是否只是同一上下文下的刷新。
+ */
+function createRealmClient<S extends RealmSession>(
+  realm: RealmConfig,
+  storage: Storage,
+  sameContext: (previous: S, next: S) => boolean,
+) {
   // 刷新与切换都会轮换同一个 Refresh Token，必须串行，共用这一个队列。
   let pendingRotation: Promise<S> | undefined
   let generation = 0
   // 登录会话已建立、尚未签发 Token 时的授权参数；只在同一 generation 内有效。
   let authorization: { clientId: string; redirectUri: string; generation: number } | undefined
-  const listeners = new Set<(session: S | null) => void>()
+  const listeners = new Set<(session: S | null, change: SessionChange) => void>()
+
+  function notify(value: S | null, crossTab: boolean) {
+    for (const listener of listeners) listener(value, { crossTab })
+  }
 
   function store(value: S | null) {
     if (value) storage.setItem(realm.storageKey, JSON.stringify(value))
     else storage.removeItem(realm.storageKey)
-    for (const listener of listeners) listener(value)
+    notify(value, false)
+  }
+
+  // storage 事件只在其他标签页改写时触发。切换、登录与退出相当于本标签页的 clear 或 rebind，提升代次使在途请求作废；
+  // 同一上下文的刷新与本标签页刷新一样不提升代次，在途请求遇到 401 时可用新 Token 重发。
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (event) => {
+      if (event.storageArea !== storage) return
+      if (event.key !== null && event.key !== realm.storageKey) return
+      const previous = parse(event.oldValue)
+      const next = session()
+      if (!previous || !next || !sameContext(previous, next)) {
+        generation += 1
+        pendingRotation = undefined
+        authorization = undefined
+      }
+      notify(next, true)
+    })
   }
 
   /** 订阅会话变化，返回取消订阅函数。 */
-  function onSessionChange(listener: (session: S | null) => void): () => void {
+  function onSessionChange(
+    listener: (session: S | null, change: SessionChange) => void,
+  ): () => void {
     listeners.add(listener)
     return () => listeners.delete(listener)
   }
 
-  function session(): S | null {
+  function parse(raw: string | null): S | null {
     try {
-      const value = JSON.parse(storage.getItem(realm.storageKey) ?? 'null') as S | null
+      const value = JSON.parse(raw ?? 'null') as S | null
       if (
         value &&
         typeof value.accessToken === 'string' &&
@@ -283,8 +334,20 @@ function createRealmClient<S extends RealmSession>(realm: RealmConfig, storage: 
     } catch {
       // 历史或损坏的存储不能阻止登录页启动。
     }
-    storage.removeItem(realm.storageKey)
     return null
+  }
+
+  function session(): S | null {
+    const value = parse(storage.getItem(realm.storageKey))
+    if (!value) storage.removeItem(realm.storageKey)
+    return value
+  }
+
+  /**
+   * 在跨标签页的轮换锁内执行。各标签页共享同一个一次性刷新凭证，并发轮换时晚到的一方会被 IAM 视为重放并撤销整个授权族。
+   */
+  async function rotating<T>(task: () => Promise<T>): Promise<T> {
+    return await navigator.locks.request(realm.rotationLock, task)
   }
 
   function clear() {
@@ -416,31 +479,34 @@ function createRealmClient<S extends RealmSession>(realm: RealmConfig, storage: 
     const previous = pendingRotation ?? Promise.resolve(undefined)
     const operation = previous
       .catch(() => undefined)
-      .then(async () => {
-        const value = session()
-        if (!value) throw new Error('auth.failed')
-        const started = generation
-        const response = await fetch(path, {
-          method: 'POST',
-          credentials: 'omit',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken: value.refreshToken, ...body }),
-        })
-        if (started !== generation) throw new Error('auth.sessionChanged')
-        let next: S
-        try {
-          next = (await readEnvelope<S>(response)).data as S
-        } catch (error) {
-          // 只有刷新凭证被拒绝才说明会话已失效；租户被拒绝、网关或服务端故障时保留原会话以便重试。
-          if (error instanceof ApiError && error.code === 'auth.failed' && started === generation)
-            clear()
-          throw error
-        }
-        if (started !== generation) throw new Error('auth.sessionChanged')
-        generation += 1
-        store(next)
-        return next
-      })
+      .then(() =>
+        rotating(async () => {
+          // 取得锁后再读存储，使用其他标签页可能刚轮换出的刷新凭证。
+          const value = session()
+          if (!value) throw new Error('auth.failed')
+          const started = generation
+          const response = await fetch(path, {
+            method: 'POST',
+            credentials: 'omit',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken: value.refreshToken, ...body }),
+          })
+          if (started !== generation) throw new Error('auth.sessionChanged')
+          let next: S
+          try {
+            next = (await readEnvelope<S>(response)).data as S
+          } catch (error) {
+            // 只有刷新凭证被拒绝才说明会话已失效；租户被拒绝、网关或服务端故障时保留原会话以便重试。
+            if (error instanceof ApiError && error.code === 'auth.failed' && started === generation)
+              clear()
+            throw error
+          }
+          if (started !== generation) throw new Error('auth.sessionChanged')
+          generation += 1
+          store(next)
+          return next
+        }),
+      )
       .finally(() => {
         if (pendingRotation === operation) pendingRotation = undefined
       })
@@ -449,15 +515,22 @@ function createRealmClient<S extends RealmSession>(realm: RealmConfig, storage: 
   }
 
   /**
-   * 轮换刷新凭证；并发调用共用进行中的一次。凭证被拒绝（刷新接口返回 401，或 Membership、租户已停用）时清除会话，
-   * 服务端或网络故障以原错误失败并保留会话。
+   * 轮换刷新凭证；本标签页的并发调用共用进行中的一次，各标签页之间经轮换锁串行，其他标签页已轮换时直接采用存储中的新会话。
+   * 凭证被拒绝（刷新接口返回 401，或 Membership、租户已停用）时清除会话，服务端或网络故障以原错误失败并保留会话。
    */
   function refresh(): Promise<S> {
     if (pendingRotation) return pendingRotation
     const value = session()
     if (!value) return Promise.reject(new Error('auth.failed'))
     const started = generation
-    const operation = exchange(`${realm.authPath}/refresh`, { refreshToken: value.refreshToken })
+    const operation = rotating(async () => {
+      if (started !== generation) throw new Error('auth.sessionChanged')
+      const current = session()
+      if (!current) throw new Error('auth.failed')
+      // 等锁期间其他标签页已轮换：直接采用存储中的新会话，再用旧凭证刷新会被视为重放。
+      if (current.refreshToken !== value.refreshToken) return current
+      return exchange(`${realm.authPath}/refresh`, { refreshToken: value.refreshToken })
+    })
       .catch((error: unknown) => {
         // 只有刷新凭证被拒绝才登出：刷新接口的任何 401（不论响应是否为信封）或租户被拒绝；
         // 5xx、503 与网络故障保留会话，恢复后可继续刷新。

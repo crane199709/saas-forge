@@ -8,7 +8,7 @@ import OperatorPanel from './OperatorPanel.vue'
 import { createOperatorApi } from './operator-api'
 
 afterEach(() => {
-  sessionStorage.clear()
+  localStorage.clear()
   document.body.innerHTML = ''
   vi.unstubAllGlobals()
 })
@@ -44,11 +44,11 @@ function route(url: string, init?: RequestInit) {
 }
 
 function mountPanel() {
-  sessionStorage.setItem(
+  localStorage.setItem(
     'forge.platform.session',
     JSON.stringify({ accessToken: 'access', refreshToken: 'r', operatorName: '运营' }),
   )
-  const client = createPlatformClient(sessionStorage)
+  const client = createPlatformClient(localStorage)
   return mount(OperatorPanel, {
     props: { api: createOperatorApi(client), roleApi: createPlatformRoleApi(client) },
     global: { plugins: [i18n, ElementPlus] },

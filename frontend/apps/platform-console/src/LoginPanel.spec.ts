@@ -9,7 +9,7 @@ import { i18n } from './i18n'
 
 beforeEach(() => vi.stubGlobal('crypto', webcrypto))
 afterEach(() => {
-  sessionStorage.clear()
+  localStorage.clear()
   vi.unstubAllGlobals()
 })
 
@@ -30,7 +30,7 @@ function mountPanel() {
   return mount(LoginPanel, {
     global: {
       plugins: [i18n, ElementPlus],
-      provide: { [platformClientKey as symbol]: createPlatformClient(sessionStorage) },
+      provide: { [platformClientKey as symbol]: createPlatformClient(localStorage) },
     },
   })
 }
@@ -73,8 +73,8 @@ it('运营账号经 Platform Realm 登录，展示平台服务验签后的当前
   const headers = new Headers((fetcher.mock.calls[3]![1] as RequestInit).headers)
   expect(headers.get('Authorization')).toBe('Bearer platform-access')
   // 两个 Realm 的凭证分开存放，平台登录不会写入 Tenant Realm 的会话。
-  expect(sessionStorage.getItem('forge.platform.session')).toContain('platform-access')
-  expect(sessionStorage.getItem('forge.tenant.session')).toBeNull()
+  expect(localStorage.getItem('forge.platform.session')).toContain('platform-access')
+  expect(localStorage.getItem('forge.tenant.session')).toBeNull()
 })
 
 it('登录失败时展示服务端提示与 traceId，不发起授权', async () => {
@@ -100,7 +100,7 @@ it('登录失败时展示服务端提示与 traceId，不发起授权', async ()
 })
 
 it('退出调用 Platform Realm 的退出接口并回到登录表单', async () => {
-  sessionStorage.setItem(
+  localStorage.setItem(
     'forge.platform.session',
     JSON.stringify({ accessToken: 'a', refreshToken: 'r', operatorName: '演示运营' }),
   )
@@ -115,5 +115,5 @@ it('退出调用 Platform Realm 的退出接口并回到登录表单', async () 
   await flushPromises()
   expect(fetcher.mock.calls[1]![0]).toBe('/iam/platform/auth/logout')
   expect(wrapper.find('input[name="account"]').exists()).toBe(true)
-  expect(sessionStorage.getItem('forge.platform.session')).toBeNull()
+  expect(localStorage.getItem('forge.platform.session')).toBeNull()
 })

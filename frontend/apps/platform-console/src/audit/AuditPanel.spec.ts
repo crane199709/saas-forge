@@ -7,7 +7,7 @@ import AuditPanel from './AuditPanel.vue'
 import { createAuditApi, type AuditEvent } from './audit-api'
 
 afterEach(() => {
-  sessionStorage.clear()
+  localStorage.clear()
   document.body.innerHTML = ''
   vi.unstubAllGlobals()
 })
@@ -35,7 +35,7 @@ function ok(data: unknown, total: number) {
 }
 
 it('查询 Platform Realm 审计并按条件筛选', async () => {
-  sessionStorage.setItem(
+  localStorage.setItem(
     'forge.platform.session',
     JSON.stringify({ accessToken: 'access', refreshToken: 'r', operatorName: '运营' }),
   )
@@ -45,7 +45,7 @@ it('查询 Platform Realm 审计并按条件筛选', async () => {
     .mockResolvedValueOnce(ok([], 0))
   vi.stubGlobal('fetch', fetcher)
   const wrapper = mount(AuditPanel, {
-    props: { api: createAuditApi(createPlatformClient(sessionStorage)) },
+    props: { api: createAuditApi(createPlatformClient(localStorage)) },
     global: { plugins: [i18n, ElementPlus] },
     attachTo: document.body,
   })

@@ -7,7 +7,7 @@ import SubAppPanel from './SubAppPanel.vue'
 import { createSubAppApi } from './sub-app-api'
 
 afterEach(() => {
-  sessionStorage.clear()
+  localStorage.clear()
   document.body.innerHTML = ''
   vi.unstubAllGlobals()
 })
@@ -33,12 +33,12 @@ function ok(data: unknown, httpStatus = 200) {
 }
 
 function mountPanel() {
-  sessionStorage.setItem(
+  localStorage.setItem(
     'forge.platform.session',
     JSON.stringify({ accessToken: 'access', refreshToken: 'r', operatorName: '运营' }),
   )
   return mount(SubAppPanel, {
-    props: { api: createSubAppApi(createPlatformClient(sessionStorage)) },
+    props: { api: createSubAppApi(createPlatformClient(localStorage)) },
     global: { plugins: [i18n, ElementPlus] },
     attachTo: document.body,
   })

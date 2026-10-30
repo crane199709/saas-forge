@@ -7,7 +7,7 @@ import PlatformRolePanel from './PlatformRolePanel.vue'
 import { createPlatformRoleApi } from './platform-role-api'
 
 afterEach(() => {
-  sessionStorage.clear()
+  localStorage.clear()
   document.body.innerHTML = ''
   vi.unstubAllGlobals()
 })
@@ -59,12 +59,12 @@ function route(url: string, init?: RequestInit) {
 
 function mountPanel(fetcher: ReturnType<typeof vi.fn>) {
   vi.stubGlobal('fetch', fetcher)
-  sessionStorage.setItem(
+  localStorage.setItem(
     'forge.platform.session',
     JSON.stringify({ accessToken: 'access', refreshToken: 'r', operatorName: '运营' }),
   )
   return mount(PlatformRolePanel, {
-    props: { api: createPlatformRoleApi(createPlatformClient(sessionStorage)) },
+    props: { api: createPlatformRoleApi(createPlatformClient(localStorage)) },
     global: { plugins: [i18n, ElementPlus] },
     attachTo: document.body,
   })

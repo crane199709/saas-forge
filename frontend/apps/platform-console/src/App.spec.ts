@@ -5,7 +5,7 @@ import App from './App.vue'
 import { i18n } from './i18n'
 
 afterEach(() => {
-  sessionStorage.clear()
+  localStorage.clear()
   vi.unstubAllGlobals()
 })
 
@@ -36,7 +36,7 @@ describe('App', () => {
   })
 
   it('按当前运营人员的平台权限显示面板：只读租户时不显示管理功能', async () => {
-    sessionStorage.setItem(
+    localStorage.setItem(
       'forge.platform.session',
       JSON.stringify({ accessToken: 'access', refreshToken: 'r', operatorName: '华东运营' }),
     )

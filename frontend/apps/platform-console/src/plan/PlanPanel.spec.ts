@@ -7,7 +7,7 @@ import PlanPanel from './PlanPanel.vue'
 import { createPlanApi } from './plan-api'
 
 afterEach(() => {
-  sessionStorage.clear()
+  localStorage.clear()
   document.body.innerHTML = ''
   vi.unstubAllGlobals()
 })
@@ -40,12 +40,12 @@ function ok(data: unknown, httpStatus = 200) {
 }
 
 function mountPanel() {
-  sessionStorage.setItem(
+  localStorage.setItem(
     'forge.platform.session',
     JSON.stringify({ accessToken: 'access', refreshToken: 'r', operatorName: '运营' }),
   )
   return mount(PlanPanel, {
-    props: { api: createPlanApi(createPlatformClient(sessionStorage)) },
+    props: { api: createPlanApi(createPlatformClient(localStorage)) },
     global: { plugins: [i18n, ElementPlus] },
     attachTo: document.body,
   })

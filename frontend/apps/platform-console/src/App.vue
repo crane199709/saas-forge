@@ -19,7 +19,8 @@ import { createTenantApi } from './tenant/tenant-api'
 
 const { t } = useI18n()
 // Shell 只创建一个 Platform Realm 客户端，刷新队列只在同一实例内合并。
-const client = createPlatformClient(sessionStorage)
+// 会话存于 localStorage，同一浏览器的标签页共享登录（ADR-0017）。
+const client = createPlatformClient(localStorage)
 provide(platformClientKey, client)
 const access = createPlatformAccess(client)
 const tenantApi = createTenantApi(client)

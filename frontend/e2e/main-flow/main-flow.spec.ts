@@ -16,9 +16,7 @@ async function login(page: Page, account = 'e2e-member') {
 }
 
 async function token(page: Page): Promise<string> {
-  return page.evaluate(
-    () => JSON.parse(sessionStorage.getItem('forge.tenant.session')!).accessToken,
-  )
+  return page.evaluate(() => JSON.parse(localStorage.getItem('forge.tenant.session')!).accessToken)
 }
 
 // 不拦截网络、不注入会话：浏览器经历真实的密码登录、授权码 + PKCE、网关和动态远程加载。
@@ -82,7 +80,7 @@ test('管理员停用成员后下一次操作立即登出', async ({ page, brows
       await rejected
       await expect(page.getByLabel('账号或邮箱')).toBeVisible()
       await expect(page.getByTestId('order-title')).toHaveCount(0)
-      expect(await page.evaluate(() => sessionStorage.getItem('forge.tenant.session'))).toBeNull()
+      expect(await page.evaluate(() => localStorage.getItem('forge.tenant.session'))).toBeNull()
       const replay = await page.request.get('/demo/orders', {
         headers: { Authorization: `Bearer ${accessToken}` },
       })

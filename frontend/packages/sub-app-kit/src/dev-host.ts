@@ -25,7 +25,7 @@ export interface DevHostOptions {
  * 只用于 `vite` 开发模式；构建产物只暴露 `./sub-app`，由真正的 Shell 加载。Sub-App 自己不得创建这些实例（隔离约定）。
  */
 export async function startDevHost(options: DevHostOptions) {
-  const client = createTenantClient(sessionStorage)
+  const client = createTenantClient(localStorage)
   const access = createAccessControl(client)
   const base = `/apps/${options.appCode}`
   const router = createRouter({

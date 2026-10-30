@@ -50,15 +50,28 @@ Access Token 有效期 15 分钟，包含 `sub`、`tenant_id`、`membership_id`�
 
 Redis 保存 Spring Session 登录会话和标准 `OAuth2Authorization`，刷新凭证有效期 7 天。授权码/Token 的索引使用 SHA-256；认证前的索引和会话统一使用 `iam:global:` 前缀，因查询前还没有可相信的租户标识。授权状态采用 Spring 的 JDK 序列化器，只连接受信任的 Redis。Token 端点按授权 ID 使用 Redis 互斥，避免同一授权的凭证并发消费。重放撤销不等待这把锁；在途换码或刷新只能原子更新仍然存在的授权，不能重新创建被撤销的授权。标准提供者负责授权码失效和刷新轮换；旧 Refresh Token 的摘要保留至其原始过期时间，检测到重放就删除该授权及当前 Token 索引，使其后续刷新失败。这也意味着丢失刷新响应后重试旧凭证会要求重新登录。刷新时重新查询原会话绑定的身份、租户和 Membership，不能隐式切换租户。Redis 故障时登录或刷新失败，返回 503 `system.unavailable`（包括在过滤器层访问 Redis 失败、经容器转发到 `/error` 的情况），前端据此保留会话。停用 Membership 或租户后 Access Token 的即时失效见下文「即时失效」；刷新凭证被拒绝（401）后前端清除本地凭证。
 
-当前重放检测**没有宽限期**。复制标签页时，若浏览器同时复制了 sessionStorage，两个标签页就会持有相同的 Refresh Token；一个标签页轮换后，另一个使用旧凭证会撤销整条授权的后续刷新能力。两个独立客户端并发刷新时，后到的请求若已被识别为使用旧凭证，即使遇到锁争用，也会触发撤销。两边都需要重新登录，但持有的 Access Token 在过期前仍可能有效，界面不一定立即同步退出。Shell 的共享实例只能合并同一实例内正在进行的刷新，不能协调复制出的标签页。暂不加入宽限期，以保持旧凭证一经识别为重放即撤销的语义。
+当前重放检测**没有宽限期**。同一浏览器的标签页共享一个 Refresh Token（见下文「会话存储」）；若两个标签页并发刷新，后到的一方使用已轮换的旧凭证，就会撤销整条授权的后续刷新能力，所有标签页都需要重新登录。为此 SDK 让刷新与切换租户在各标签页之间串行，取得锁后发现凭证已被其他标签页轮换就直接采用新会话（[ADR-0017](adr/0017-local-storage-session-cross-tab.md)）。其他浏览器或独立客户端持有同一凭证时不受此协调，仍按重放撤销。暂不加入宽限期，以保持旧凭证一经识别为重放即撤销的语义。
 
 每次轮换保留一个 `:used-refresh` 摘要键，TTL 截止该旧凭证原来的过期时间，最长约 7 天；撤销授权后历史摘要也按各自 TTL 自然过期。按每 15 分钟刷新一次、连续活跃 7 天估算，一条授权约积累 672 个历史键；主动调用刷新接口会更多，因此这不是数量上限。运维需结合实际刷新频率关注键数、TTL、Redis 内存和淘汰情况，不能通过提前删除摘要来降低内存占用，否则会丢失重放关联。工单 07 评估了按授权聚合（每条授权一个以过期时间为分值的有序集合，轮换时顺带清理已过期成员）：重放检测要从被重放的凭证反查授权，而标准 Refresh Token 是不含授权 ID 的随机值，聚合必须改写 Refresh Token 生成器把授权 ID 编入凭证，并兼容已签发的旧格式凭证。键数虽减少，总条目与内存量级不变（摘要仍需逐条保留到原始过期时间），收益有限，因此保持现有存储结构，以上运维关注点不变。
 
-`@forge/sdk` 的 `createTenantClient(sessionStorage)` 提供登录、退出、刷新、同源请求和会话读取。业务调用用 `api<T>()` 直接取信封的 `data`、`page<T>()` 取 `{ items, page }`，失败抛出带 `code`、`httpStatus`、`userTip`、`traceId`、`errors` 的 `ApiError`；响应不是信封（如代理返回的 HTML）时为 `system.error`。`request()` 仍返回原始 `Response`。界面错误提示优先展示 `userTip`，并附可复制的 traceId。Shell 的 `App.vue` 创建唯一实例并 `provide(tenantClientKey, client)`；LoginPanel 与后续 Sub-App 通过 `inject(tenantClientKey)` 获取同一实例，不再自行创建客户端。注入键携带 `InjectionKey<TenantClient>` 类型信息。并发刷新只在这个共享实例内合并；不同标签页不共享刷新队列。demo-service `/context` 的响应类型由 tenant-app 调用方维护，不由通用 SDK 导出。
+`@forge/sdk` 的 `createTenantClient(localStorage)` 提供登录、退出、刷新、同源请求和会话读取。业务调用用 `api<T>()` 直接取信封的 `data`、`page<T>()` 取 `{ items, page }`，失败抛出带 `code`、`httpStatus`、`userTip`、`traceId`、`errors` 的 `ApiError`；响应不是信封（如代理返回的 HTML）时为 `system.error`。`request()` 仍返回原始 `Response`。界面错误提示优先展示 `userTip`，并附可复制的 traceId。Shell 的 `App.vue` 创建唯一实例并 `provide(tenantClientKey, client)`；LoginPanel 与后续 Sub-App 通过 `inject(tenantClientKey)` 获取同一实例，不再自行创建客户端。注入键携带 `InjectionKey<TenantClient>` 类型信息。并发刷新在这个共享实例内合并，各标签页之间经 Web Locks 串行。demo-service `/context` 的响应类型由 tenant-app 调用方维护，不由通用 SDK 导出。
 
-Token 保存在当前标签页的 sessionStorage。请求遇到 401 时合并刷新并只重试一次。生产环境必须使用 HTTPS，并防止脚本读取浏览器凭证。
+### 会话存储
 
-「重新登录」调用 `/auth/logout`，清除本地凭证并等待服务端销毁 IAM 会话；失败时显示“浏览器仍可能保持登录”并允许重试。此接口只接受 JSON，不启用跨域访问。IAM 登录会话的空闲超时为 30 分钟（访问可延长会话）；未退出时，同一浏览器可用新 PKCE 再次授权而不输入密码，这是保留的 SSO 行为。**关闭标签页或单独调用 SDK `clear()` 不会退出 IAM 会话**。退出当前浏览器会话不撤销已签发的 Access/Refresh Token，也不清除其他标签页的凭证；已泄漏 Access Token 在过期前仍可通过网关。即时失效按 Membership 与租户生效，不能单独吊销某一个 Token。
+Token 保存在 `localStorage`，同一浏览器的所有标签页共享登录，关闭浏览器后在刷新凭证有效期（7 天）内仍保持登录，公用电脑上须主动退出。请求遇到 401 时合并刷新并只重试一次。生产环境必须使用 HTTPS，并防止脚本读取浏览器凭证；`localStorage` 保留时间更长，凭证泄漏的影响窗口也更长。从 `sessionStorage` 升级时不迁移旧会话，用户重新登录一次即可。
+
+SDK 监听 `storage` 事件跟随其他标签页（决策见 [ADR-0017](adr/0017-local-storage-session-cross-tab.md)）：
+
+| 其他标签页的操作 | 本标签页的行为 |
+| --- | --- |
+| 刷新 Token（Membership 不变） | `onSessionChange` 订阅者收到新会话（`change.crossTab` 为 true），权限与菜单按新 Token 重新读取，页面不重载 |
+| 切换租户 | 在途请求以 `auth.sessionChanged` 失败；Shell 卸载全部 Sub-App、清空共享 Pinia 状态后回首页 |
+| 退出或会话被清除 | 同上，回到登录 |
+| 登录 | 停留在登录的标签页进入首页 |
+
+所有标签页始终处于同一个租户，不支持不同标签页同时停留在不同租户。刷新（`refresh`）与切换（`switchTenant`）在标签页内串行队列之外，再以 `navigator.locks.request('forge.tenant.rotation', ...)` 跨标签页互斥。
+
+「重新登录」调用 `/auth/logout`，清除本地凭证并等待服务端销毁 IAM 会话；失败时显示“浏览器仍可能保持登录”并允许重试。此接口只接受 JSON，不启用跨域访问。IAM 登录会话的空闲超时为 30 分钟（访问可延长会话）；未退出时，同一浏览器可用新 PKCE 再次授权而不输入密码，这是保留的 SSO 行为。**关闭标签页或单独调用 SDK `clear()` 不会退出 IAM 会话**。退出会清除所有标签页共享的本地凭证，其他标签页随之回到登录；但不撤销已签发的 Access/Refresh Token，已泄漏 Access Token 在过期前仍可通过网关。即时失效按 Membership 与租户生效，不能单独吊销某一个 Token。
 
 账号区分大小写，邮箱按不区分大小写匹配并保持唯一；账号禁止 `@`，邮箱必须包含非空的 `@` 两侧，避免两个登录标识命名空间重叠。V3 迁移只增加约束，不自动改写历史数据；已有非法邮箱或仅大小写不同的重复邮箱会使迁移失败，需要先由维护者处理。
 

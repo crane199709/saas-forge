@@ -29,6 +29,7 @@ export type {
   RealmConfig,
   RealmSession,
   RegistrationInput,
+  SessionChange,
   TenantClient,
   TenantLoginResult,
   TenantMembership,

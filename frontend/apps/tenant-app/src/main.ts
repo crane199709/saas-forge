@@ -21,7 +21,8 @@ import RolePage from './role/RolePage.vue'
 
 document.title = i18n.global.t('app.title')
 
-const client = createTenantClient(sessionStorage)
+// 会话存于 localStorage，同一浏览器的标签页共享登录并始终处于同一租户（ADR-0017）。
+const client = createTenantClient(localStorage)
 const access = createAccessControl(client)
 const pinia = createPinia()
 const router = createRouter({
@@ -89,10 +90,20 @@ async function refreshAccess() {
 }
 // 首次导航前完成注册，刷新页面时 Sub-App 深链接可直接进入；Sub-App 本身在后台加载，不阻塞 Shell。
 await refreshAccess()
+const reloadShell = createShellReload(host, pinia)
 let accessToken = client.session()?.accessToken
+let membershipId = client.session()?.membershipId
 // 除 Membership 变化（登录、选择租户、退出）外，Token 刷新也要重新读取：角色或授权变更使旧 Token 失效，
 // 刷新换到新 Token 后菜单与按钮随之按新权限变化。
-client.onSessionChange((session) => {
+client.onSessionChange((session, change) => {
+  const membershipChanged = session?.membershipId !== membershipId
+  membershipId = session?.membershipId
+  // 其他标签页切换租户、登录或退出：与本标签页切换相同，丢弃旧租户的 Sub-App 与共享状态后回首页，
+  // 首页按新会话显示登录或租户首页。
+  if (change.crossTab && membershipChanged) {
+    void reloadShell()
+    return
+  }
   if (session?.accessToken === accessToken) return
   accessToken = session?.accessToken
   void refreshAccess()
@@ -101,7 +112,7 @@ client.onSessionChange((session) => {
 createApp(App)
   .provide(tenantClientKey, client)
   .provide(subAppHostKey, host)
-  .provide(reloadShellKey, createShellReload(host, pinia))
+  .provide(reloadShellKey, reloadShell)
   .use(access)
   .use(pinia)
   .use(i18n)

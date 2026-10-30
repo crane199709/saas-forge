@@ -7,7 +7,7 @@ import TenantPanel from './TenantPanel.vue'
 import { createTenantApi } from './tenant-api'
 
 afterEach(() => {
-  sessionStorage.clear()
+  localStorage.clear()
   document.body.innerHTML = ''
   vi.unstubAllGlobals()
 })
@@ -71,12 +71,12 @@ const plans = [
 ]
 
 function mountPanel() {
-  sessionStorage.setItem(
+  localStorage.setItem(
     'forge.platform.session',
     JSON.stringify({ accessToken: 'access', refreshToken: 'r', operatorName: '运营' }),
   )
   return mount(TenantPanel, {
-    props: { api: createTenantApi(createPlatformClient(sessionStorage)), plans },
+    props: { api: createTenantApi(createPlatformClient(localStorage)), plans },
     global: { plugins: [i18n, ElementPlus] },
     attachTo: document.body,
   })

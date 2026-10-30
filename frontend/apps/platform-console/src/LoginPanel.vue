@@ -65,9 +65,15 @@ async function logout() {
   }
 }
 
-// 刷新凭证被拒绝时 SDK 清除会话，面板随之回到登录表单。
-const unsubscribe = client.onSessionChange((value) => {
-  if (value) return
+// 刷新凭证被拒绝或其他标签页退出时 SDK 清除会话，面板随之回到登录表单；其他标签页登录时面板随之进入已登录状态。
+const unsubscribe = client.onSessionChange((value, change) => {
+  if (value) {
+    if (change.crossTab && !session.value) {
+      session.value = value
+      void loadOperator().catch(showError)
+    }
+    return
+  }
   session.value = null
   operator.value = null
 })
