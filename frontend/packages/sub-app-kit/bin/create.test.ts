@@ -63,9 +63,11 @@ test('仓库命令继续默认生成到 apps 并支持独立编译配置', async
       new URL('./create.ts', import.meta.url),
       join(root, 'packages/sub-app-kit/bin/create.ts'),
     )
-    await copyFile(
-      new URL('../package.json', import.meta.url),
+    const kit = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
+    // 固定测试输入，避免统一升版改变用例的版本约定。
+    await writeFile(
       join(root, 'packages/sub-app-kit/package.json'),
+      JSON.stringify({ ...kit, version: '0.8.2' }),
     )
     await copyFile(
       new URL('../../../apps/tenant-app/package.json', import.meta.url),
@@ -78,7 +80,9 @@ test('仓库命令继续默认生成到 apps 并支持独立编译配置', async
     )
     assert.equal(run.status, 0, run.stderr)
     const pkg = JSON.parse(await readFile(join(root, 'apps/billing-sub-app/package.json'), 'utf8'))
-    assert.equal(pkg.dependencies['@forge/sdk'], '0.1.0')
+    assert.equal(pkg.dependencies['@forge/sdk'], '0.8.2')
+    assert.equal(pkg.dependencies['@forge/ui'], '0.8.2')
+    assert.equal(pkg.devDependencies['@forge/sub-app-kit'], '0.8.2')
     assert.ok(!JSON.stringify(pkg).includes('workspace:'))
     const config = JSON.parse(
       await readFile(join(root, 'apps/billing-sub-app/tsconfig.json'), 'utf8'),

@@ -23,3 +23,6 @@
 - TDD：仓库外命令测试先因读取不存在的 tenant-app/package.json 失败，完成后转绿；现有 lint 与新增生成器测试合计 6 个通过，sub-app-kit 类型检查通过，sdk/ui/sub-app-kit 构建与真实 pnpm pack 通过。
 - 仓库外 `/tmp` 用实际 tgz 中的编译后 CLI（`node --no-experimental-strip-types`）生成工程，无 Shell 源码或父目录 tsconfig；临时 pnpm overrides 指向本次三个 Forge tgz 后，安装、lint、typecheck、build 通过并生成 remoteEntry.js。file: overrides 导致 pnpm peers check 将文件路径与 peer 的 0.1.0 作比较并报警；此项仅为本地打包消费验证，真实临时 registry 发布/安装验收由 08 完成，不能以 overrides 替代该验收。
 - 仓库内原命令实际生成临时 Sub-App，lint/typecheck/build 通过；已清理临时工程，原 frozen-lockfile 安装通过。未启动真实 Shell、业务服务或验证登录/分页接口联调。
+
+- 2026-10-30 代码审查修复：Standards 0；Spec 1（P2），已修复 1。仓库模式测试原先复制当前 package.json 却把 SDK 版本断言固定为 0.1.0，统一升版后会阻断前端质量门禁。现在只在临时夹具将 kit 版本显式设为 0.8.2，并分别断言生成工程的 SDK、UI、sub-app-kit 均为该已知版本；项目发布版本未变。
+- 本次红绿证据：夹具改为 0.8.2 后旧断言以 `0.8.2 !== 0.1.0` 失败；修复断言后，`mise exec node@24 -- node --test frontend/packages/sub-app-kit/bin/create.test.ts frontend/packages/sub-app-kit/bin/lint.test.ts` 共 6 项通过。仅验证生成器公开命令与现有 lint；集成分支全量门禁由主任务另行记录，本次未重复安装或构建。
