@@ -3,6 +3,8 @@ import { onUnmounted, provide, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { createPlatformClient, platformClientKey } from '@forge/sdk'
 import { createPlatformAccess, permissions } from './access'
+import AuditPanel from './audit/AuditPanel.vue'
+import { createAuditApi } from './audit/audit-api'
 import LoginPanel from './LoginPanel.vue'
 import OperatorPanel from './operator/OperatorPanel.vue'
 import { createOperatorApi } from './operator/operator-api'
@@ -25,6 +27,7 @@ const planApi = createPlanApi(client)
 const subAppApi = createSubAppApi(client)
 const operatorApi = createOperatorApi(client)
 const roleApi = createPlatformRoleApi(client)
+const auditApi = createAuditApi(client)
 // 租户面板据此选择与展示套餐，套餐面板据此提供可选的 Sub-App 编码；两个列表只要求已认证，
 // 没有对应管理面板的 Operator 也由 Shell 读取，有面板时随面板加载或修改更新。
 const plans = ref<Plan[]>([])
@@ -105,6 +108,9 @@ onUnmounted(client.onSessionChange((value) => follow(value?.accessToken ?? null)
         </el-card>
         <el-card v-if="access.has(permissions.roleManage)" class="panel">
           <PlatformRolePanel :api="roleApi" />
+        </el-card>
+        <el-card v-if="access.has(permissions.auditRead)" class="panel">
+          <AuditPanel :api="auditApi" />
         </el-card>
       </template>
     </el-main>

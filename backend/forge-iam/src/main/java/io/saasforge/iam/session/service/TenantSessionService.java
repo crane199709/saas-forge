@@ -6,6 +6,7 @@ import io.saasforge.iam.identity.service.IdentityService;
 import io.saasforge.iam.verification.model.CodeDelivery;
 import io.saasforge.iam.verification.service.VerificationCodeService;
 import io.saasforge.iam.verification.service.VerificationPurpose;
+import io.saasforge.sdk.audit.AuditRealm;
 import io.saasforge.sdk.core.api.ForgeException;
 import java.util.List;
 import java.util.UUID;
@@ -20,12 +21,18 @@ public class TenantSessionService {
     private final IdentityService identities;
     private final VerificationCodeService verifications;
     private final PasswordEncoder passwords;
+    private final LoginAudit audits;
     private final String dummyHash;
 
-    TenantSessionService(IdentityService identities, VerificationCodeService verifications, PasswordEncoder passwords) {
+    TenantSessionService(
+            IdentityService identities,
+            VerificationCodeService verifications,
+            PasswordEncoder passwords,
+            LoginAudit audits) {
         this.identities = identities;
         this.verifications = verifications;
         this.passwords = passwords;
+        this.audits = audits;
         dummyHash = passwords.encode(UUID.randomUUID().toString());
     }
 
@@ -35,6 +42,12 @@ public class TenantSessionService {
         String hash = credential == null ? dummyHash : credential.passwordHash();
         boolean valid = passwords.matches(password, hash);
         if (!valid || credential == null) {
+            audits.failed(
+                    AuditRealm.TENANT,
+                    LoginAudit.LOGIN,
+                    credential == null ? null : credential.identityId(),
+                    account,
+                    SessionErrorCode.AUTH_FAILED.code());
             throw ForgeException.withErrorMessage(SessionErrorCode.AUTH_FAILED, "Bad credentials");
         }
         return authenticated(credential.identityId());
@@ -48,13 +61,23 @@ public class TenantSessionService {
 
     // 与密码登录建立同样的会话主体，之后的授权码与 Token 流程完全相同。
     public Authentication authenticateByCode(String target, String code) {
-        verifications.verify(VerificationPurpose.LOGIN, target, code);
-        // 发码后身份被停用或删除时才会找不到。
-        UUID identityId = identities
-                .findActiveIdByContact(target)
-                .orElseThrow(
-                        () -> ForgeException.withErrorMessage(SessionErrorCode.AUTH_FAILED, "Identity unavailable"));
-        return authenticated(identityId);
+        try {
+            verifications.verify(VerificationPurpose.LOGIN, target, code);
+            // 发码后身份被停用或删除时才会找不到。
+            UUID identityId = identities
+                    .findActiveIdByContact(target)
+                    .orElseThrow(() ->
+                            ForgeException.withErrorMessage(SessionErrorCode.AUTH_FAILED, "Identity unavailable"));
+            return authenticated(identityId);
+        } catch (ForgeException error) {
+            audits.failed(
+                    AuditRealm.TENANT,
+                    LoginAudit.LOGIN,
+                    null,
+                    target,
+                    error.errorCode().code());
+            throw error;
+        }
     }
 
     private static Authentication authenticated(UUID identityId) {

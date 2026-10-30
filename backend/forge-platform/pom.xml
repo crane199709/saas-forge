@@ -43,6 +43,11 @@
             <groupId>io.saasforge</groupId>
             <artifactId>forge-sdk-provisioning</artifactId>
         </dependency>
+        <!-- 以 @AuditLog 审计租户的创建、状态变更与更换套餐，作为 Platform Realm 的业务操作审计 -->
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-audit</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>

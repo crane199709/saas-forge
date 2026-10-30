@@ -7,6 +7,7 @@ import io.saasforge.iam.operator.service.OperatorService;
 import io.saasforge.iam.security.config.IamProperties;
 import io.saasforge.iam.security.service.TokenEndpointClient;
 import io.saasforge.iam.session.model.OperatorTokenResponse;
+import io.saasforge.sdk.audit.AuditRealm;
 import io.saasforge.sdk.core.api.ForgeException;
 import java.text.ParseException;
 import java.util.Map;
@@ -25,6 +26,7 @@ public class OperatorSessionService {
     private final OperatorService operators;
     private final PasswordEncoder passwords;
     private final TokenEndpointClient tokenEndpoint;
+    private final LoginAudit audits;
     private final String redirectUri;
     private final boolean mfaRequired;
     private final String dummyHash;
@@ -33,10 +35,12 @@ public class OperatorSessionService {
             OperatorService operators,
             PasswordEncoder passwords,
             TokenEndpointClient tokenEndpoint,
+            LoginAudit audits,
             IamProperties properties) {
         this.operators = operators;
         this.passwords = passwords;
         this.tokenEndpoint = tokenEndpoint;
+        this.audits = audits;
         this.redirectUri = properties.platform().redirectUri();
         this.mfaRequired = properties.platform().mfaRequired();
         dummyHash = passwords.encode(UUID.randomUUID().toString());
@@ -49,6 +53,7 @@ public class OperatorSessionService {
     public Authentication authenticate(String account, String password) {
         // MFA 尚未实现：要求强制 MFA 时在校验密码之前拒绝，不能退化为仅凭密码登录，也不借此暴露密码是否正确。
         if (mfaRequired) {
+            audits.failed(AuditRealm.PLATFORM, LoginAudit.LOGIN, null, account, SessionErrorCode.MFA_REQUIRED.code());
             throw ForgeException.withErrorMessage(
                     SessionErrorCode.MFA_REQUIRED, "Operator MFA is required but not supported yet");
         }
@@ -56,6 +61,12 @@ public class OperatorSessionService {
         String hash = credential == null ? dummyHash : credential.passwordHash();
         boolean valid = passwords.matches(password, hash);
         if (!valid || credential == null) {
+            audits.failed(
+                    AuditRealm.PLATFORM,
+                    LoginAudit.LOGIN,
+                    credential == null ? null : credential.operatorId(),
+                    account,
+                    SessionErrorCode.AUTH_FAILED.code());
             throw ForgeException.withErrorMessage(SessionErrorCode.AUTH_FAILED, "Bad credentials");
         }
         // 授权端点与 Tenant Realm 共用登录会话，Token 定制器凭 OPERATOR 权限区分 Realm，拒绝跨 Realm 签发。
@@ -72,7 +83,19 @@ public class OperatorSessionService {
         form.add("code", code);
         form.add("code_verifier", verifier);
         form.add("redirect_uri", redirectUri);
-        return exchange(form);
+        OperatorTokenResponse tokens = exchange(form);
+        audits.operatorEntered(operatorOf(tokens));
+        return tokens;
+    }
+
+    // 只解析本进程标准 Token 端点签发的 Token。
+    private static UUID operatorOf(OperatorTokenResponse tokens) {
+        try {
+            return UUID.fromString(
+                    SignedJWT.parse(tokens.accessToken()).getJWTClaimsSet().getSubject());
+        } catch (ParseException error) {
+            throw new IllegalStateException(error);
+        }
     }
 
     public OperatorTokenResponse refresh(String token) {

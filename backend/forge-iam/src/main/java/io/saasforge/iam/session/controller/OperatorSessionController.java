@@ -1,6 +1,7 @@
 package io.saasforge.iam.session.controller;
 
 import io.saasforge.iam.session.model.OperatorTokenResponse;
+import io.saasforge.iam.session.service.LoginAudit;
 import io.saasforge.iam.session.service.OperatorSessionService;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,9 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 class OperatorSessionController {
     private final OperatorSessionService sessions;
+    private final LoginAudit audits;
 
-    OperatorSessionController(OperatorSessionService sessions) {
+    OperatorSessionController(OperatorSessionService sessions, LoginAudit audits) {
         this.sessions = sessions;
+        this.audits = audits;
     }
 
     @Operation(summary = "认证 Operator 并建立标准授权流程的登录会话")
@@ -41,8 +44,9 @@ class OperatorSessionController {
     @Operation(summary = "退出当前浏览器的 IAM 登录会话，不吊销已签发的 Token")
     @PostMapping(value = "/platform/auth/logout", consumes = "application/json")
     ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
-        new SecurityContextLogoutHandler()
-                .logout(request, response, SecurityContextHolder.getContext().getAuthentication());
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        new SecurityContextLogoutHandler().logout(request, response, authentication);
+        audits.loggedOut(authentication);
         return ApiResponse.ok();
     }
 

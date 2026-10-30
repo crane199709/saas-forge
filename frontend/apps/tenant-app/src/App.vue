@@ -76,6 +76,13 @@ watchEffect(() => {
             data-testid="menu-roles"
             >{{ t('role.nav') }}</router-link
           >
+          <router-link
+            v-if="signedIn"
+            v-perm="'iam:audit:read'"
+            to="/audit"
+            data-testid="menu-audit"
+            >{{ t('audit.nav') }}</router-link
+          >
           <template v-for="section in sections" :key="section.code">
             <span class="menu-section">{{ section.name }}</span>
             <router-link

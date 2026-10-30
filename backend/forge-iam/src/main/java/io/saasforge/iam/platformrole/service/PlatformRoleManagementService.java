@@ -13,6 +13,10 @@ import io.saasforge.iam.role.model.DataResourceOption;
 import io.saasforge.iam.role.model.RoleDataPolicyRow;
 import io.saasforge.iam.role.model.RolePermissionRow;
 import io.saasforge.iam.role.service.DataConditionService;
+import io.saasforge.sdk.audit.AuditCategory;
+import io.saasforge.sdk.audit.AuditEvent;
+import io.saasforge.sdk.audit.AuditRealm;
+import io.saasforge.sdk.audit.AuditRecorder;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
 import java.util.ArrayList;
@@ -41,18 +45,21 @@ public class PlatformRoleManagementService {
     private final PermissionService permissions;
     private final OperatorStateService operatorStates;
     private final TransactionTemplate transactions;
+    private final AuditRecorder audits;
 
     PlatformRoleManagementService(
             PlatformRoleMapper roles,
             PlatformRoleService roleService,
             PermissionService permissions,
             OperatorStateService operatorStates,
-            TransactionTemplate transactions) {
+            TransactionTemplate transactions,
+            AuditRecorder audits) {
         this.roles = roles;
         this.roleService = roleService;
         this.permissions = permissions;
         this.operatorStates = operatorStates;
         this.transactions = transactions;
+        this.audits = audits;
     }
 
     /** 全部平台角色及其有效授权与 Data Policy；管理 Operator 账号时也要据此选择要分配的角色。 */
@@ -102,6 +109,12 @@ public class PlatformRoleManagementService {
             if (!granted.isEmpty()) roles.grant(id, granted);
             if (!scoped.isEmpty()) roles.insertPolicies(id, scoped);
         });
+        audits.record(audit(actor, "platformRole.create", "platformRole", id)
+                .detail("code", code)
+                .detail("name", name)
+                .detail("permissions", granted.stream().sorted().toList())
+                .detail("dataPolicies", scoped)
+                .build());
         return PlatformRoleDetail.of(
                 new PlatformRoleRow(id, code, name, false, 0),
                 granted.stream().sorted().toList(),
@@ -139,6 +152,11 @@ public class PlatformRoleManagementService {
             return changed == 0 ? List.<UUID>of() : roles.holders(id);
         });
         affected.forEach(operatorStates::incrementVersion);
+        audits.record(audit(actor, "platformRole.update", "platformRole", id)
+                .detail("name", name)
+                .detail("permissions", granted.stream().sorted().toList())
+                .detail("dataPolicies", scoped)
+                .build());
     }
 
     /** 仍有 Operator 持有时拒绝删除；与角色分配在同一把锁下判断，避免删除的同时被分配。 */
@@ -151,10 +169,17 @@ public class PlatformRoleManagementService {
             roles.deleteAllPolicies(id);
             roles.delete(id, actor);
         });
+        audits.record(audit(actor, "platformRole.delete", "platformRole", id).build());
     }
 
     private void requireManager(UUID actor) {
         roleService.requirePermission(actor, PlatformPermissions.ROLE_MANAGE);
+    }
+
+    private static AuditEvent.Builder audit(UUID actor, String action, String resourceType, UUID resourceId) {
+        return AuditEvent.builder(AuditRealm.PLATFORM, AuditCategory.PERMISSION, action)
+                .actor(actor)
+                .resource(resourceType, resourceId);
     }
 
     private PlatformRoleRow requireCustom(UUID id) {

@@ -292,8 +292,8 @@ class IamSecurityConfiguration {
     @Bean
     @Order(2)
     SecurityFilterChain accessTokenSecurity(HttpSecurity http, EnvelopeSecurityErrorHandler errors) throws Exception {
-        // 已持有 Access Token 的身份读取自己的 Membership 与权限、管理本租户成员、组织与角色；无状态、不使用登录会话 Cookie。
-        http.securityMatcher("/auth/memberships", "/auth/access", "/org/**", "/roles/**", "/members/**")
+        // 已持有 Access Token 的身份读取自己的 Membership 与权限、管理本租户成员、组织与角色、查看本租户审计；无状态、不使用登录会话 Cookie。
+        http.securityMatcher("/auth/memberships", "/auth/access", "/org/**", "/roles/**", "/members/**", "/audit/**")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
@@ -314,7 +314,7 @@ class IamSecurityConfiguration {
             PlatformSigningKey platformKey,
             RealmIssuerProperties issuers)
             throws Exception {
-        // Operator 管理 Operator 账号与平台角色、读取自己的平台权限；只接受 Platform Realm 的 Access Token，不使用登录会话 Cookie。
+        // Operator 管理 Operator 账号与平台角色、读取自己的平台权限、查看平台审计；只接受 Platform Realm 的 Access Token，不使用登录会话 Cookie。
         // 解码器不注册为 Bean：标准资源服务器配置按类型取唯一的 JwtDecoder，那是 Tenant Realm 的 accessTokenDecoder。
         var decoder = NimbusJwtDecoder.withPublicKey(platformKey.key().toRSAPublicKey())
                 .build();
@@ -324,7 +324,7 @@ class IamSecurityConfiguration {
                 new JwtClaimValidator<List<String>>(
                         JwtClaimNames.AUD, audience -> audience != null && audience.contains(PLATFORM_CLIENT)),
                 new JwtClaimValidator<Object>("ver", Number.class::isInstance)));
-        http.securityMatcher("/platform/operators/**", "/platform/roles/**", "/platform/access")
+        http.securityMatcher("/platform/operators/**", "/platform/roles/**", "/platform/access", "/platform/audit/**")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())

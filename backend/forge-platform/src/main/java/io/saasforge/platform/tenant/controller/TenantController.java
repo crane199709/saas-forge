@@ -5,6 +5,7 @@ import io.saasforge.platform.tenant.entity.TenantInitialization;
 import io.saasforge.platform.tenant.entity.TenantStatusChange;
 import io.saasforge.platform.tenant.service.TenantLifecycleService;
 import io.saasforge.platform.tenant.service.TenantService;
+import io.saasforge.sdk.audit.AuditLog;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.security.RequiresPermission;
 import io.saasforge.sdk.web.PageQuery;
@@ -49,6 +50,7 @@ class TenantController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @RequiresPermission(MANAGE)
+    @AuditLog(action = "tenant.create", resourceType = "tenant", resourceId = "#result.data().tenant().id()")
     ApiResponse<TenantDetailResponse> create(@Valid @RequestBody CreateTenantRequest request) {
         Tenant tenant = tenants.create(
                 request.name().strip(),
@@ -65,6 +67,7 @@ class TenantController {
     @Operation(summary = "变更租户状态：按合法迁移表迁移并广播；迁移到 deleted 进入冷静期，冷静期内迁移回删除前的状态即撤回删除")
     @PostMapping("/{id}/transitions")
     @RequiresPermission(MANAGE)
+    @AuditLog(action = "tenant.transition", resourceType = "tenant", resourceId = "#id")
     ApiResponse<TenantDetailResponse> transition(@PathVariable UUID id, @Valid @RequestBody TransitionRequest request) {
         String reason = request.reason() == null || request.reason().isBlank()
                 ? null
@@ -75,6 +78,7 @@ class TenantController {
     @Operation(summary = "为租户更换套餐并广播；降级后超出新套餐的授权随即失效但保留记录，升级后恢复")
     @PutMapping("/{id}/plan")
     @RequiresPermission(MANAGE)
+    @AuditLog(action = "tenant.changePlan", resourceType = "tenant", resourceId = "#id")
     ApiResponse<TenantDetailResponse> changePlan(@PathVariable UUID id, @Valid @RequestBody ChangePlanRequest request) {
         return ApiResponse.ok(detail(tenants.changePlan(id, request.planId())));
     }

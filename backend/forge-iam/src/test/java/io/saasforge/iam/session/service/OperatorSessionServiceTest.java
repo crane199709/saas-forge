@@ -46,6 +46,7 @@ class OperatorSessionServiceTest {
                 null,
                 null,
                 new IamProperties.Platform("http://localhost:5173/", "platform-signing.jwk", mfaRequired));
-        return new OperatorSessionService(operators, passwords, mock(TokenEndpointClient.class), properties);
+        return new OperatorSessionService(
+                operators, passwords, mock(TokenEndpointClient.class), mock(LoginAudit.class), properties);
     }
 }

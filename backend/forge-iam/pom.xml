@@ -32,6 +32,11 @@
             <groupId>io.saasforge</groupId>
             <artifactId>forge-sdk-provisioning</artifactId>
         </dependency>
+        <!-- 登录与权限变更产出 Audit Event，并消费各服务的 Audit Event 写入审计表 -->
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-audit</artifactId>
+        </dependency>
         <!-- /auth/* 业务接口的响应信封、异常映射与 traceId -->
         <dependency>
             <groupId>io.saasforge</groupId>

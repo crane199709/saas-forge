@@ -15,6 +15,10 @@ import io.saasforge.iam.plan.service.PlanService;
 import io.saasforge.iam.role.service.RoleManagementService;
 import io.saasforge.iam.role.service.RoleService;
 import io.saasforge.iam.tenant.service.TenantService;
+import io.saasforge.sdk.audit.AuditCategory;
+import io.saasforge.sdk.audit.AuditEvent;
+import io.saasforge.sdk.audit.AuditRealm;
+import io.saasforge.sdk.audit.AuditRecorder;
 import io.saasforge.sdk.core.api.ForgeException;
 import java.util.Collection;
 import java.util.List;
@@ -28,7 +32,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Tenant Admin 邀请、停用、恢复与移除成员，成员主动退出，Owner 转让所有者身份。
  *
  * <p>状态变更与角色分配、Owner 转让都在租户的角色写锁下进行：Owner 的判断与停用、移除之间不会插入一次转让，
- * 租户始终恰有一个 Owner。变更在事务提交后发布新版本，被停用或离开的成员下一次请求即被网关拒绝。
+ * 租户始终恰有一个 Owner。变更在事务提交后发布新版本，被停用或离开的成员下一次请求即被网关拒绝，并记录一条权限变更 Audit Event。
  *
  * <p>只改变 Membership，不提供修改 Identity 的密码、邮箱或手机号的能力：那是全局凭证，不属于任何租户。
  */
@@ -44,6 +48,7 @@ public class MemberService {
     private final TenantService tenants;
     private final PlanService plans;
     private final TransactionTemplate transactions;
+    private final AuditRecorder audits;
 
     MemberService(
             MembershipService memberships,
@@ -55,7 +60,8 @@ public class MemberService {
             AssignmentService assignments,
             TenantService tenants,
             PlanService plans,
-            TransactionTemplate transactions) {
+            TransactionTemplate transactions,
+            AuditRecorder audits) {
         this.memberships = memberships;
         this.membershipStates = membershipStates;
         this.identities = identities;
@@ -66,6 +72,7 @@ public class MemberService {
         this.tenants = tenants;
         this.plans = plans;
         this.transactions = transactions;
+        this.audits = audits;
     }
 
     /** 一页成员，含已离开的成员；条件为 null 时不过滤。 */
@@ -118,6 +125,11 @@ public class MemberService {
             assignments.assignPrimaryDepartment(actor, membership.membershipId(), primaryDepartmentId);
         }
         invitations.invite(contact, tenants.name(actor.tenantId()), membership, identity.pending());
+        audits.record(audit(actor, "membership.invite", membership.membershipId())
+                .detail("contact", contact)
+                .detail("roleIds", List.copyOf(roleIds))
+                .detail("primaryDepartmentId", primaryDepartmentId)
+                .build());
         return membership;
     }
 
@@ -127,6 +139,7 @@ public class MemberService {
         change(
                 actor,
                 membershipId,
+                "membership.suspend",
                 true,
                 () -> memberships.transition(
                         actor.tenantId(),
@@ -142,6 +155,7 @@ public class MemberService {
         change(
                 actor,
                 membershipId,
+                "membership.resume",
                 false,
                 () -> memberships.transition(
                         actor.tenantId(),
@@ -154,12 +168,12 @@ public class MemberService {
     /** 移除成员（含撤回尚未接受的邀请）：成员变为已离开，角色与组织分配一并清除。 */
     public void remove(TenantActor actor, UUID membershipId) {
         requireManager(actor);
-        leave(actor, membershipId);
+        leave(actor, membershipId, "membership.remove");
     }
 
     /** 成员主动退出当前租户；Owner 须先转让。 */
     public void leave(TenantActor actor) {
-        leave(actor, actor.membershipId());
+        leave(actor, actor.membershipId(), "membership.leave");
     }
 
     /**
@@ -180,10 +194,13 @@ public class MemberService {
         });
         membershipStates.incrementVersion(actor.membershipId());
         membershipStates.incrementVersion(targetId);
+        audits.record(audit(actor, "membership.ownerTransfer", targetId)
+                .detail("previousOwner", actor.membershipId())
+                .build());
     }
 
-    private void leave(TenantActor actor, UUID membershipId) {
-        change(actor, membershipId, true, () -> {
+    private void leave(TenantActor actor, UUID membershipId, String action) {
+        change(actor, membershipId, action, true, () -> {
             Optional<MembershipChange> change = memberships.leave(actor.tenantId(), membershipId, actor.identityId());
             change.ifPresent(ignored -> {
                 roles.revokeAll(membershipId);
@@ -195,7 +212,11 @@ public class MemberService {
 
     // 角色写锁先于 Membership 行锁取得，与角色分配的加锁顺序一致；版本只能在提交后发布，理由同 RoleManagementService。
     private void change(
-            TenantActor actor, UUID membershipId, boolean protectOwner, Supplier<Optional<MembershipChange>> update) {
+            TenantActor actor,
+            UUID membershipId,
+            String action,
+            boolean protectOwner,
+            Supplier<Optional<MembershipChange>> update) {
         MembershipChange change = transactions.execute(status -> {
             roles.lockTenant(actor.tenantId());
             String current = memberships
@@ -212,9 +233,17 @@ public class MemberService {
                             MemberErrorCode.ILLEGAL_STATUS, "Membership is " + current));
         });
         membershipStates.publish(change.tenantId(), membershipId, change.version());
+        audits.record(audit(actor, action, membershipId).build());
     }
 
     private void requireManager(TenantActor actor) {
         roles.requirePermission(actor.membershipId(), IamPermissions.MEMBER_MANAGE);
+    }
+
+    private static AuditEvent.Builder audit(TenantActor actor, String action, UUID membershipId) {
+        return AuditEvent.builder(AuditRealm.TENANT, AuditCategory.PERMISSION, action)
+                .tenant(actor.tenantId())
+                .actor(actor.identityId())
+                .resource("membership", membershipId);
     }
 }

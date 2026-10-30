@@ -15,6 +15,7 @@ export const permissions = Object.freeze({
   subAppManage: 'platform:sub-app:manage',
   operatorManage: 'platform:operator:manage',
   roleManage: 'platform:role:manage',
+  auditRead: 'platform:audit:read',
 })
 
 const empty: PlatformAccess = Object.freeze({ roles: [], permissions: [] })

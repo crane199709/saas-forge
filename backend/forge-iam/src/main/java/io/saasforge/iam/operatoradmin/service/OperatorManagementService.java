@@ -6,6 +6,10 @@ import io.saasforge.iam.operator.service.OperatorStateService;
 import io.saasforge.iam.operatoradmin.model.ManagedOperator;
 import io.saasforge.iam.permission.service.PlatformPermissions;
 import io.saasforge.iam.platformrole.service.PlatformRoleService;
+import io.saasforge.sdk.audit.AuditCategory;
+import io.saasforge.sdk.audit.AuditEvent;
+import io.saasforge.sdk.audit.AuditRealm;
+import io.saasforge.sdk.audit.AuditRecorder;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -27,16 +31,19 @@ public class OperatorManagementService {
     private final OperatorStateService operatorStates;
     private final PlatformRoleService roles;
     private final TransactionTemplate transactions;
+    private final AuditRecorder audits;
 
     OperatorManagementService(
             OperatorService operators,
             OperatorStateService operatorStates,
             PlatformRoleService roles,
-            TransactionTemplate transactions) {
+            TransactionTemplate transactions,
+            AuditRecorder audits) {
         this.operators = operators;
         this.operatorStates = operatorStates;
         this.roles = roles;
         this.transactions = transactions;
+        this.audits = audits;
     }
 
     /** 全部未删除的 Operator 及其平台角色，按账号排序。 */
@@ -59,6 +66,11 @@ public class OperatorManagementService {
             roles.assign(created, roleIds);
             return created;
         });
+        audits.record(audit(actor, "operator.create", "operator", id)
+                .detail("account", account)
+                .detail("region", region)
+                .detail("roleIds", List.copyOf(roleIds))
+                .build());
         return new ManagedOperator(operators.get(id), List.copyOf(roleIds));
     }
 
@@ -72,6 +84,10 @@ public class OperatorManagementService {
             return !Objects.equals(current.region(), region);
         }));
         if (regionChanged) operatorStates.incrementVersion(id);
+        audits.record(audit(actor, "operator.update", "operator", id)
+                .detail("displayName", displayName)
+                .detail("region", region)
+                .build());
     }
 
     /** 停用后该 Operator 的 Token 立即失效，且不能再登录或刷新；已停用时为无操作。 */
@@ -92,6 +108,7 @@ public class OperatorManagementService {
         roles.requireSuperAdminFor(actor, id, List.of());
         operators.changePassword(id, password, actor);
         operatorStates.incrementVersion(id);
+        audits.record(audit(actor, "operator.passwordReset", "operator", id).build());
     }
 
     /** 整体替换 Operator 的平台角色，可多选，权限取并集；该 Operator 下一次请求起按新权限处理。 */
@@ -104,6 +121,9 @@ public class OperatorManagementService {
             return roles.assign(id, roleIds);
         }));
         if (changed) operatorStates.incrementVersion(id);
+        audits.record(audit(actor, "operator.rolesAssign", "operator", id)
+                .detail("roleIds", List.copyOf(roleIds))
+                .build());
     }
 
     private void changeStatus(UUID actor, UUID id, String status) {
@@ -117,9 +137,17 @@ public class OperatorManagementService {
             return true;
         }));
         if (changed) operatorStates.incrementVersion(id);
+        String action = OperatorService.DISABLED.equals(status) ? "operator.disable" : "operator.enable";
+        audits.record(audit(actor, action, "operator", id).build());
     }
 
     private void requireManager(UUID actor) {
         roles.requirePermission(actor, PlatformPermissions.OPERATOR_MANAGE);
+    }
+
+    private static AuditEvent.Builder audit(UUID actor, String action, String resourceType, UUID resourceId) {
+        return AuditEvent.builder(AuditRealm.PLATFORM, AuditCategory.PERMISSION, action)
+                .actor(actor)
+                .resource(resourceType, resourceId);
     }
 }

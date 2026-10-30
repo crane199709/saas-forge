@@ -24,6 +24,7 @@
 | `platform:sub-app:manage` | forge-platform | 登记、修改、删除 Sub-App |
 | `platform:operator:manage` | iam | `/iam/platform/operators/**` |
 | `platform:role:manage` | iam | `/iam/platform/roles/**`（角色列表也对 `platform:operator:manage` 开放，用于分配） |
+| `platform:audit:read` | iam | `GET /iam/platform/audit/events`，见[审计](audit.md) |
 
 `GET /platform/plans` 与 `GET /platform/sub-apps` 只要求已认证：租户与套餐面板需要据此选择。
 

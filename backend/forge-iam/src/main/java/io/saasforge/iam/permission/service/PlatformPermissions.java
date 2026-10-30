@@ -15,10 +15,13 @@ public final class PlatformPermissions {
     /** 管理平台角色及其授权与 Data Policy。 */
     public static final String ROLE_MANAGE = "platform:role:manage";
 
+    /** 查看 Platform Realm 的审计记录。 */
+    public static final String AUDIT_READ = "platform:audit:read";
+
     /** 登记清单使用的服务名。 */
     public static final String SERVICE = "forge-iam-platform";
     // 同 IamPermissions：改动权限码、名称或分组时必须升级版本。
-    private static final String VERSION = "1";
+    private static final String VERSION = "2";
     private static final String GROUP = "平台管理";
 
     private PlatformPermissions() {}
@@ -27,7 +30,10 @@ public final class PlatformPermissions {
         return new ResourceManifest(
                 SERVICE,
                 VERSION,
-                List.of(new Permission(OPERATOR_MANAGE, "管理运营账号", GROUP), new Permission(ROLE_MANAGE, "管理平台角色", GROUP)),
+                List.of(
+                        new Permission(OPERATOR_MANAGE, "管理运营账号", GROUP),
+                        new Permission(ROLE_MANAGE, "管理平台角色", GROUP),
+                        new Permission(AUDIT_READ, "查看平台审计", GROUP)),
                 List.of(),
                 List.of(),
                 List.of(),

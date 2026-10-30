@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.saasforge.platform.tenant.mapper.OutboxAuditMapper;
 import io.saasforge.platform.tenant.service.TenantService;
+import io.saasforge.sdk.audit.AuditEvent;
+import io.saasforge.sdk.audit.AuditOutcome;
+import io.saasforge.sdk.audit.AuditRealm;
 import io.saasforge.sdk.core.CurrentTenant;
 import io.saasforge.sdk.mq.EventHandler;
 import io.saasforge.sdk.provisioning.TenantCreated;
@@ -91,6 +94,19 @@ class TenantProvisioningTest {
         // 事件带新租户的上下文发布，订阅方据此恢复租户
         assertThat(payloads(tenantId, TenantCreated.class, TenantCreated.class))
                 .containsExactly(new TenantCreated(tenantId, "示例租户", "Owner@Example.com", "active"));
+        // Operator 的业务操作以 @AuditLog 记为 Platform Realm 事件：没有租户上下文，操作人取自 Platform Realm Token
+        assertThat(outbox.globalPayloads(AuditEvent.class.getSimpleName()).stream()
+                        .map(payload -> JSON.readValue(payload, AuditEvent.class))
+                        .filter(event -> event.action().equals("tenant.create")
+                                && tenantId.toString().equals(event.resourceId())))
+                .singleElement()
+                .satisfies(event -> {
+                    assertThat(event.realm()).isEqualTo(AuditRealm.PLATFORM);
+                    assertThat(event.tenantId()).isNull();
+                    assertThat(event.actorId()).hasToString(PlatformTokens.OPERATOR_ID);
+                    assertThat(event.outcome()).isEqualTo(AuditOutcome.SUCCESS);
+                    assertThat(event.service()).isEqualTo("forge-platform");
+                });
 
         Response list = call("GET", "/tenants?page=1&size=100", null);
         assertThat(list.status()).isEqualTo(200);

@@ -2,6 +2,7 @@ package io.saasforge.iam.session.controller;
 
 import io.saasforge.iam.security.config.IamProperties;
 import io.saasforge.iam.session.model.TokenResponse;
+import io.saasforge.iam.session.service.LoginAudit;
 import io.saasforge.iam.session.service.TenantSessionService;
 import io.saasforge.iam.session.service.TokenExchangeService;
 import io.saasforge.iam.verification.model.CodeDelivery;
@@ -32,11 +33,14 @@ import org.springframework.web.bind.annotation.RestController;
 class SessionController {
     private final TenantSessionService sessions;
     private final TokenExchangeService tokens;
+    private final LoginAudit audits;
     private final String redirectUri;
 
-    SessionController(TenantSessionService sessions, TokenExchangeService tokens, IamProperties properties) {
+    SessionController(
+            TenantSessionService sessions, TokenExchangeService tokens, LoginAudit audits, IamProperties properties) {
         this.sessions = sessions;
         this.tokens = tokens;
+        this.audits = audits;
         this.redirectUri = properties.redirectUri();
     }
 
@@ -95,8 +99,9 @@ class SessionController {
     @PostMapping(value = "/auth/logout", consumes = "application/json")
     ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         // 仅接受同源 JSON 请求；同时销毁 Redis 会话和当前请求的安全上下文。
-        new SecurityContextLogoutHandler()
-                .logout(request, response, SecurityContextHolder.getContext().getAuthentication());
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        new SecurityContextLogoutHandler().logout(request, response, authentication);
+        audits.loggedOut(authentication);
         return ApiResponse.ok();
     }
 

@@ -11,4 +11,17 @@
     <artifactId>forge-sdk-audit</artifactId>
     <name>Forge SDK Audit</name>
     <description>@AuditLog 注解与审计事件</description>
+
+    <dependencies>
+        <!-- 审计事件经 Outbox 异步投递，与业务事件共用发布、重试与幂等消费 -->
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-mq</artifactId>
+        </dependency>
+        <!-- 事件带上当前 traceId，便于从审计记录回查日志；只用 Tracer API -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing</artifactId>
+        </dependency>
+    </dependencies>
 </project>

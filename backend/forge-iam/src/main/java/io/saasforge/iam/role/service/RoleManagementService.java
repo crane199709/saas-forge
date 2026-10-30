@@ -22,6 +22,10 @@ import io.saasforge.iam.role.model.RoleDataPolicyRow;
 import io.saasforge.iam.role.model.RoleDetail;
 import io.saasforge.iam.role.model.RolePermissionRow;
 import io.saasforge.iam.role.model.RoleRow;
+import io.saasforge.sdk.audit.AuditCategory;
+import io.saasforge.sdk.audit.AuditEvent;
+import io.saasforge.sdk.audit.AuditRealm;
+import io.saasforge.sdk.audit.AuditRecorder;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
 import java.util.ArrayList;
@@ -40,7 +44,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Tenant Admin 维护自定义角色、角色授权、角色上的 Data Policy 与成员的角色分配。变更影响到的成员在事务提交后递增 version，
- * 旧 Token 立即失效，刷新后按新权限签发。
+ * 旧 Token 立即失效，刷新后按新权限签发。每次变更提交后记录一条权限变更 Audit Event。
  *
  * <p>与 {@link RoleService} 分开：发布明细的 {@link MembershipStateService} 经 {@link RoleService} 读取授权，
  * 本服务又要经它递增版本，合在一起会形成 Bean 循环依赖。
@@ -57,6 +61,7 @@ public class RoleManagementService {
     private final DataConditionService conditions;
     private final TransactionTemplate transactions;
     private final JsonMapper json;
+    private final AuditRecorder audits;
 
     RoleManagementService(
             RoleMapper roles,
@@ -68,7 +73,8 @@ public class RoleManagementService {
             MembershipStateService membershipStates,
             DataConditionService conditions,
             TransactionTemplate transactions,
-            JsonMapper json) {
+            JsonMapper json,
+            AuditRecorder audits) {
         this.roles = roles;
         this.grants = grants;
         this.dataPolicies = dataPolicies;
@@ -79,6 +85,7 @@ public class RoleManagementService {
         this.conditions = conditions;
         this.transactions = transactions;
         this.json = json;
+        this.audits = audits;
     }
 
     /** 租户的全部角色及其有效授权与 Data Policy，含开通时按业务服务模板预置的角色。 */
@@ -142,6 +149,9 @@ public class RoleManagementService {
             return roles.holders(id);
         });
         publish(affected);
+        audits.record(audit(actor, "role.dataPoliciesReplace", "role", id)
+                .detail("dataPolicies", requested)
+                .build());
     }
 
     /** 可授予的 Permission Code：只含有效且在租户 Plan 范围内的，已下线或超出 Plan 的不出现。 */
@@ -166,6 +176,12 @@ public class RoleManagementService {
             if (!granted.isEmpty()) grants.grant(id, granted);
             if (!scoped.isEmpty()) dataPolicies.insert(id, scoped);
         });
+        audits.record(audit(actor, "role.create", "role", id)
+                .detail("code", code)
+                .detail("name", name)
+                .detail("permissions", sorted(granted))
+                .detail("dataPolicies", scoped)
+                .build());
         return RoleDetail.of(new RoleRow(id, code, name, false, false, 0), sorted(granted), scoped);
     }
 
@@ -175,6 +191,8 @@ public class RoleManagementService {
         if (roles.rename(actor.tenantId(), id, name, actor.identityId()) == 0) {
             throw new ForgeException(RoleErrorCode.NOT_FOUND);
         }
+        audits.record(
+                audit(actor, "role.rename", "role", id).detail("name", name).build());
     }
 
     /**
@@ -194,6 +212,9 @@ public class RoleManagementService {
             return changed == 0 ? List.<UUID>of() : roles.holders(id);
         });
         publish(affected);
+        audits.record(audit(actor, "role.permissionsReplace", "role", id)
+                .detail("permissions", sorted(granted))
+                .build());
     }
 
     /** 仍有成员持有时拒绝删除；与成员分配在同一把租户锁下判断，避免删除的同时被分配。 */
@@ -206,6 +227,7 @@ public class RoleManagementService {
             dataPolicies.deleteByRole(id);
             roles.delete(actor.tenantId(), id, actor.identityId());
         });
+        audits.record(audit(actor, "role.delete", "role", id).build());
     }
 
     /** 一页成员及其角色。 */
@@ -253,10 +275,20 @@ public class RoleManagementService {
             return rows > 0;
         }));
         if (changed) publish(List.of(membershipId));
+        audits.record(audit(actor, "membership.rolesAssign", "membership", membershipId)
+                .detail("roleIds", List.copyOf(assigned))
+                .build());
     }
 
     private void requireManager(TenantActor actor) {
         roleService.requirePermission(actor.membershipId(), IamPermissions.ROLE_MANAGE);
+    }
+
+    private static AuditEvent.Builder audit(TenantActor actor, String action, String resourceType, UUID resourceId) {
+        return AuditEvent.builder(AuditRealm.TENANT, AuditCategory.PERMISSION, action)
+                .tenant(actor.tenantId())
+                .actor(actor.identityId())
+                .resource(resourceType, resourceId);
     }
 
     private RoleRow requireCustom(TenantActor actor, UUID id) {

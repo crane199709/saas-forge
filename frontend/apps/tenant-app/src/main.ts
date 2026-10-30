@@ -13,6 +13,7 @@ import App from './App.vue'
 import { i18n } from './i18n'
 import { createShellReload, reloadShellKey, subAppHostKey } from './shell'
 import { createSubAppHost, type SubAppModule } from './sub-app-host'
+import AuditPage from './audit/AuditPage.vue'
 import AcceptInvitationPage from './invitation/AcceptInvitationPage.vue'
 import MemberPage from './member/MemberPage.vue'
 import OrganizationPage from './organization/OrganizationPage.vue'
@@ -31,6 +32,7 @@ const router = createRouter({
     { path: '/org', component: OrganizationPage },
     { path: '/roles', component: RolePage },
     { path: '/members', component: MemberPage },
+    { path: '/audit', component: AuditPage },
     // 邀请链接的落地页，iam 的 forge.iam.invitation.accept-url 指向这里；无需登录。
     { path: '/invitations/accept', component: AcceptInvitationPage },
     // 菜单中没有的 Sub-App 路由不存在，深链接落到这里而不是空白报错。

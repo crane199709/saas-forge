@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.audit.mapper.AuditMapper">
+    <select id="ensurePartition" resultType="string">
+        SELECT audit_event_ensure_partition(#{month})::text
+    </select>
+
+    <!-- audit_event 只追加，没有标准列 -->
+    <insert id="insert">
+        INSERT INTO audit_event (id, occurred_at, realm, tenant_id, actor_id, category, action, resource_type, resource_id,
+            outcome, error_code, detail, service, trace_id)
+        VALUES (#{id}, #{occurredAt}, #{realm}, #{tenantId}, #{actorId}, #{category}, #{action}, #{resourceType},
+            #{resourceId}, #{outcome}, #{errorCode}, #{detail}::jsonb, #{service}, #{traceId})
+        ON CONFLICT DO NOTHING
+    </insert>
+
+    <!-- 操作人按 Realm 取自 Identity 或 Operator；已删除的操作人不显示账号与名称，记录本身保留 -->
+    <sql id="searchCondition">
+        FROM audit_event a
+        <choose>
+            <when test="realm == 'tenant'">
+                LEFT JOIN identity p ON p.id = a.actor_id AND NOT p.deleted
+                WHERE a.realm = 'tenant' AND a.tenant_id = #{tenantId}
+            </when>
+            <otherwise>
+                LEFT JOIN operator p ON p.id = a.actor_id AND NOT p.deleted
+                WHERE a.realm = 'platform'
+            </otherwise>
+        </choose>
+        <if test="query.from != null">AND a.occurred_at &gt;= #{query.from}</if>
+        <if test="query.to != null">AND a.occurred_at &lt; #{query.to}</if>
+        <if test="query.action != null">AND a.action = #{query.action}</if>
+        <if test="query.resourceType != null">AND a.resource_type = #{query.resourceType}</if>
+        <if test="query.resourceId != null">AND a.resource_id = #{query.resourceId}</if>
+        <if test="query.actor != null">
+            AND (strpos(lower(coalesce(p.account, '')), lower(#{query.actor})) &gt; 0
+                OR strpos(lower(coalesce(p.display_name, '')), lower(#{query.actor})) &gt; 0)
+        </if>
+    </sql>
+
+    <select id="search" resultType="io.saasforge.iam.audit.model.AuditRecord">
+        SELECT a.id, a.occurred_at, a.category, a.action, a.actor_id, p.account AS actor_account,
+            p.display_name AS actor_name, a.resource_type, a.resource_id, a.outcome, a.error_code, a.detail::text AS detail,
+            a.service, a.trace_id
+        <include refid="searchCondition"/>
+        ORDER BY a.occurred_at DESC, a.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT count(*)
+        <include refid="searchCondition"/>
+    </select>
+</mapper>

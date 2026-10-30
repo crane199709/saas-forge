@@ -6,6 +6,7 @@ import io.saasforge.iam.security.config.IamProperties;
 import io.saasforge.iam.security.config.TenantTokenParameters;
 import io.saasforge.iam.security.service.TokenEndpointClient;
 import io.saasforge.iam.session.model.TokenResponse;
+import io.saasforge.sdk.audit.AuditRealm;
 import io.saasforge.sdk.core.api.ForgeException;
 import java.text.ParseException;
 import java.util.Map;
@@ -19,11 +20,17 @@ import org.springframework.web.client.HttpClientErrorException;
 public class TokenExchangeService {
     private final TokenEndpointClient tokenEndpoint;
     private final IdentityService identities;
+    private final LoginAudit audits;
     private final String redirectUri;
 
-    TokenExchangeService(TokenEndpointClient tokenEndpoint, IdentityService identities, IamProperties properties) {
+    TokenExchangeService(
+            TokenEndpointClient tokenEndpoint,
+            IdentityService identities,
+            LoginAudit audits,
+            IamProperties properties) {
         this.tokenEndpoint = tokenEndpoint;
         this.identities = identities;
+        this.audits = audits;
         this.redirectUri = properties.redirectUri();
     }
 
@@ -35,7 +42,9 @@ public class TokenExchangeService {
         form.add("code_verifier", verifier);
         form.add("redirect_uri", redirectUri);
         if (membershipId != null) form.add(TenantTokenParameters.MEMBERSHIP_ID, membershipId.toString());
-        return exchange(form);
+        TokenResponse tokens = exchange(form);
+        audits.entered(LoginAudit.LOGIN, identityOf(tokens), tokens.tenantId(), tokens.membershipId());
+        return tokens;
     }
 
     public TokenResponse refresh(String token) {
@@ -51,7 +60,31 @@ public class TokenExchangeService {
         form.add("grant_type", "refresh_token");
         form.add("refresh_token", token);
         form.add(TenantTokenParameters.MEMBERSHIP_ID, membershipId.toString());
-        return exchange(form);
+        TokenResponse tokens;
+        try {
+            tokens = exchange(form);
+        } catch (ForgeException error) {
+            // 刷新凭证不透明，失败时无法确定是谁与要进入哪个租户，事件不带操作人与租户
+            audits.failed(
+                    AuditRealm.TENANT,
+                    LoginAudit.SWITCH_TENANT,
+                    null,
+                    null,
+                    error.errorCode().code());
+            throw error;
+        }
+        audits.entered(LoginAudit.SWITCH_TENANT, identityOf(tokens), tokens.tenantId(), tokens.membershipId());
+        return tokens;
+    }
+
+    // 只解析本进程标准 Token 端点签发的 Token。
+    private static UUID identityOf(TokenResponse tokens) {
+        try {
+            return UUID.fromString(
+                    SignedJWT.parse(tokens.accessToken()).getJWTClaimsSet().getSubject());
+        } catch (ParseException error) {
+            throw new IllegalStateException(error);
+        }
     }
 
     private TokenResponse exchange(LinkedMultiValueMap<String, String> form) {
