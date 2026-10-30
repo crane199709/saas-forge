@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import { computed, inject, watchEffect } from 'vue'
+import { computed, inject } from 'vue'
 import { useAccessControl } from '@forge/sdk'
 import { themeTokens } from '@forge/ui'
 import TenantSwitcher from './TenantSwitcher.vue'
 import UserMenu from './UserMenu.vue'
 import { menuSections } from './menu-routes'
-import { alternateTheme, subAppHostKey } from './shell'
+import { applyPrimaryColor, subAppHostKey } from './shell'
 
 const access = useAccessControl()
 const host = inject(subAppHostKey, undefined)
@@ -35,22 +35,7 @@ const active = computed(() => {
     .reduce((best, path) => (path.length > best.length ? path : best), '')
 })
 
-watchEffect(() => {
-  const color = alternateTheme.value ? themeTokens.alternate : themeTokens.primary
-  document.documentElement.style.setProperty('--forge-color-primary', color)
-  document.documentElement.style.setProperty('--el-color-primary', color)
-  // Element Plus 的悬停、禁用和边框使用派生 token，必须与主色一起切换。
-  for (const level of [3, 5, 7, 8, 9]) {
-    document.documentElement.style.setProperty(
-      `--el-color-primary-light-${level}`,
-      `color-mix(in srgb, ${color}, white ${level * 10}%)`,
-    )
-  }
-  document.documentElement.style.setProperty(
-    '--el-color-primary-dark-2',
-    `color-mix(in srgb, ${color}, black 20%)`,
-  )
-})
+applyPrimaryColor(themeTokens.primary)
 </script>
 
 <template>

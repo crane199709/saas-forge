@@ -1,5 +1,5 @@
 import type { Pinia } from 'pinia'
-import { ref, type InjectionKey } from 'vue'
+import type { InjectionKey } from 'vue'
 import type { SubAppHost } from './sub-app-host'
 
 /** Shell 中的 Sub-App 宿主，供导航与占位区域读取加载状态。 */
@@ -26,5 +26,17 @@ export function createShellReload(
   }
 }
 
-/** 技术验证用的主题切换：验证 Shell 与 Sub-App 共用主题 token。 */
-export const alternateTheme = ref(false)
+/** 把主色写入 Shell 与 Element Plus 的 CSS 变量，Sub-App 读取同一组变量。 */
+export function applyPrimaryColor(color: string) {
+  const style = document.documentElement.style
+  style.setProperty('--forge-color-primary', color)
+  style.setProperty('--el-color-primary', color)
+  // Element Plus 的悬停、禁用和边框使用派生 token，必须与主色一起切换。
+  for (const level of [3, 5, 7, 8, 9]) {
+    style.setProperty(
+      `--el-color-primary-light-${level}`,
+      `color-mix(in srgb, ${color}, white ${level * 10}%)`,
+    )
+  }
+  style.setProperty('--el-color-primary-dark-2', `color-mix(in srgb, ${color}, black 20%)`)
+}

@@ -57,6 +57,10 @@ export function createShellRouter(history: RouterHistory) {
       { path: '/org', component: OrganizationPage, meta: { permission: 'iam:org:manage' } },
       { path: '/roles', component: RolePage, meta: { permission: 'iam:role:manage' } },
       { path: '/audit', component: AuditPage, meta: { permission: 'iam:audit:read' } },
+      // 技术验证诊断只在开发与 E2E 构建中注册，正式构建不打包诊断页。
+      ...(import.meta.env.DEV || import.meta.env.VITE_FORGE_DIAGNOSTICS === 'true'
+        ? [{ path: '/__diagnostics', component: () => import('./diagnostics/DiagnosticsPage.vue') }]
+        : []),
       {
         path: '/403',
         component: StatusPage,

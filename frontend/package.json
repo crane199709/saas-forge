@@ -15,7 +15,7 @@
     "test": "pnpm -r test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "build:spike": "pnpm --filter @forge/tenant-app build && pnpm --filter @forge/demo-sub-app build && pnpm --filter @forge/demo-sub-app build:v2",
+    "build:spike": "VITE_FORGE_DIAGNOSTICS=true pnpm --filter @forge/tenant-app build && pnpm --filter @forge/demo-sub-app build && pnpm --filter @forge/demo-sub-app build:v2",
     "test:e2e": "playwright test",
     "test:e2e:main": "../deploy/e2e/run.sh",
     "typecheck:tools": "tsc --noEmit -p tsconfig.tools.json",

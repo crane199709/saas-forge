@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] 当前路由显示（`shell-route`）、主题切换（`shell-theme`）、scope 探针（`shell-scope`）、共享依赖单例检查（`shared-*`）移到 `/__diagnostics`，`data-testid` 不变
-- [ ] 该路由只在 `import.meta.env.DEV` 或构建时 `VITE_FORGE_DIAGNOSTICS=true` 时注册；E2E 使用的构建打开该开关
-- [ ] `spike.*` 文案随之移动或改名为诊断用文案，正式构建产物中不出现
-- [ ] `federation.spec.ts` 中相关断言改为访问 `/__diagnostics`，原有验证点一个不少
-- [ ] 验证：不带开关的 `pnpm build` 产物中搜不到诊断组件与文案，访问 `/__diagnostics` 显示 404；`pnpm test:e2e` 通过
-- [ ] `pnpm typecheck`、`pnpm test`、`pnpm format:check` 通过
+- [x] 当前路由显示（`shell-route`）、主题切换（`shell-theme`）、scope 探针（`shell-scope`）、共享依赖单例检查（`shared-*`）移到 `/__diagnostics`，`data-testid` 不变
+- [x] 该路由只在 `import.meta.env.DEV` 或构建时 `VITE_FORGE_DIAGNOSTICS=true` 时注册；E2E 使用的构建打开该开关
+- [x] `spike.*` 文案随之移动或改名为诊断用文案，正式构建产物中不出现
+- [x] `federation.spec.ts` 中相关断言改为访问 `/__diagnostics`，原有验证点一个不少
+- [x] 验证：不带开关的 `pnpm build` 产物中搜不到诊断组件与文案，访问 `/__diagnostics` 显示 404；`pnpm test:e2e` 通过
+- [x] `pnpm typecheck`、`pnpm test`、`pnpm format:check` 通过

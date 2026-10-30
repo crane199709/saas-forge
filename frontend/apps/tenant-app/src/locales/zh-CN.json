@@ -5,12 +5,6 @@
     "product": "SaaS Forge",
     "home": "首页"
   },
-  "spike": {
-    "theme": "切换主题",
-    "scope": "Shell 局部样式",
-    "singleton": "{name}: singleton",
-    "duplicate": "{name}: duplicate"
-  },
   "auth": {
     "title": "租户登录",
     "account": "账号或邮箱",

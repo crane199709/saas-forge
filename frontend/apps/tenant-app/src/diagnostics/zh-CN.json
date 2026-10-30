@@ -1,0 +1,9 @@
+{
+  "diagnostics": {
+    "title": "技术验证诊断",
+    "theme": "切换主题",
+    "scope": "Shell 局部样式",
+    "singleton": "{name}: singleton",
+    "duplicate": "{name}: duplicate"
+  }
+}
