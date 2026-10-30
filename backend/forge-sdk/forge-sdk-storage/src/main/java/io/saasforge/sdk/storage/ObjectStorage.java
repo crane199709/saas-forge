@@ -13,7 +13,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
@@ -29,11 +34,13 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequ
  * 一样得到 {@link StorageErrorCode#OBJECT_NOT_FOUND}。文件内容不经过服务：上传与下载都由客户端凭预签名 URL 直接访问存储。
  *
  * <p>上传分两步：{@link #prepareUpload} 校验存储容量 Quota、登记对象并签发上传 URL；客户端上传后调用 {@link #completeUpload}
- * 确认，对象此后才可下载。已用容量包含尚未过期的上传申请，并发申请不会合计超出 Quota。
+ * 确认，对象此后才可下载。已用容量包含尚未过期的上传申请，并发申请不会合计超出 Quota；{@link #delete} 删除对象后释放容量。
  *
  * <p>所有方法都要求已绑定租户上下文。
  */
 public class ObjectStorage {
+    private static final Logger log = LoggerFactory.getLogger(ObjectStorage.class);
+
     /** S3 单次 PUT 的大小上限。 */
     static final long MAX_OBJECT_SIZE = 5L * 1024 * 1024 * 1024;
 
@@ -196,6 +203,36 @@ public class ObjectStorage {
                                 .responseContentType(object.contentType())
                                 .responseContentDisposition(contentDisposition(object.filename()))));
         return new DownloadTicket(URI.create(presigned.url().toString()), expiresAt);
+    }
+
+    /**
+     * 删除对象：删除登记，并在事务提交后删除存储中的文件，释放其占用的存储容量。已确认与尚未确认上传的对象都可删除。
+     *
+     * <p>调用方在事务中时，登记随调用方事务一起提交或回滚，文件只在提交后删除，回滚不会留下没有文件的登记。文件删除失败只记日志：
+     * 登记已不存在，文件不再计入容量也无法访问。
+     *
+     * @param objectId 对象 ID
+     * @throws ForgeException 对象不存在或属于其他租户时为 {@link StorageErrorCode#OBJECT_NOT_FOUND}
+     */
+    public void delete(UUID objectId) {
+        StorageObjectRecord object = mapper.findById(objectId);
+        if (object == null) {
+            throw notFound(objectId);
+        }
+        transaction.executeWithoutResult(status -> {
+            mapper.delete(objectId);
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        s3.deleteObject(
+                                request -> request.bucket(properties.bucket()).key(object.objectKey()));
+                    } catch (SdkException e) {
+                        log.warn("Failed to delete object {} from storage, left as orphan", object.objectKey(), e);
+                    }
+                }
+            });
+        });
     }
 
     /**

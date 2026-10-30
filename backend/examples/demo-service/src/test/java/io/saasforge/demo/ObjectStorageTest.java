@@ -3,8 +3,11 @@ package io.saasforge.demo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.saasforge.sdk.core.CurrentTenant;
+import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.mq.EventHandler;
 import io.saasforge.sdk.provisioning.TenantPlanChanged;
+import io.saasforge.sdk.storage.ObjectStorage;
+import io.saasforge.sdk.storage.StorageErrorCode;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -13,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +43,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
-/** 订单附件经 SDK 对象存储上传下载（工单 24）：key 前缀由 SDK 强制、跨租户访问被拒、超出存储容量 Quota 的上传被拒。 */
+/** 订单附件经 SDK 对象存储上传、下载与删除（工单 24）：key 前缀由 SDK 强制、跨租户访问被拒、超出存储容量 Quota 的上传被拒。 */
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ObjectStorageTest {
@@ -98,6 +102,9 @@ class ObjectStorageTest {
 
     @Autowired
     TransactionTemplate transaction;
+
+    @Autowired
+    ObjectStorage storage;
 
     private UUID tenant;
 
@@ -262,6 +269,60 @@ class ObjectStorageTest {
         assertThat((List<?>) exchange(tenant, HttpMethod.GET, attachments(orderId), null)
                         .get("data"))
                 .hasSize(1);
+    }
+
+    @Test
+    void deletingAttachmentRemovesFileAndFreesQuotaButOnlyWithinOwnTenant() throws Exception {
+        deliver(planChanged(1L, 1));
+        String orderId = createOrder(tenant);
+        int size = 600 * 1024;
+        Map<?, ?> ticket = prepareUpload(tenant, orderId, "first.bin", size);
+        put(ticket, new byte[size]);
+        String objectId = (String) ticket.get("objectId");
+        String attachmentId = (String)
+                ((Map<?, ?>) exchange(tenant, HttpMethod.POST, attachments(orderId), Map.of("objectId", objectId))
+                                .get("data"))
+                        .get("id");
+        assertThat(exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("second.bin", size))
+                        .get("code"))
+                .isEqualTo("storage.quotaExceeded");
+
+        UUID other = UUID.randomUUID();
+        TestGrants.publishAll(redisTemplate, other, TestTokens.MEMBERSHIP_ID);
+        String otherOrderId = createOrder(other);
+        assertThat(exchange(other, HttpMethod.DELETE, attachments(orderId) + "/" + attachmentId, null)
+                        .get("code"))
+                .isEqualTo("order.notFound");
+        assertThat(exchange(other, HttpMethod.DELETE, attachments(otherOrderId) + "/" + attachmentId, null)
+                        .get("code"))
+                .isEqualTo("attachment.notFound");
+        var stolen = new AtomicReference<Throwable>();
+        CurrentTenant.run(other, () -> {
+            try {
+                storage.delete(UUID.fromString(objectId));
+            } catch (ForgeException e) {
+                stolen.set(e);
+            }
+        });
+        assertThat(stolen.get())
+                .isInstanceOfSatisfying(
+                        ForgeException.class,
+                        e -> assertThat(e.errorCode()).isEqualTo(StorageErrorCode.OBJECT_NOT_FOUND));
+        assertThat(objectKeys()).contains(tenant + "/demo-service/" + objectId);
+
+        Map<String, Object> deleted =
+                exchange(tenant, HttpMethod.DELETE, attachments(orderId) + "/" + attachmentId, null);
+        assertThat(deleted.get("httpStatus")).isEqualTo(200);
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, attachments(orderId), null)
+                        .get("data"))
+                .isEmpty();
+        assertThat(objectKeys()).doesNotContain(tenant + "/demo-service/" + objectId);
+        assertThat(exchange(tenant, HttpMethod.GET, attachments(orderId) + "/" + attachmentId + "/download", null)
+                        .get("code"))
+                .isEqualTo("attachment.notFound");
+        assertThat(exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("second.bin", size))
+                        .get("httpStatus"))
+                .isEqualTo(201);
     }
 
     private TenantPlanChanged planChanged(Long storageQuotaMb, long version) {

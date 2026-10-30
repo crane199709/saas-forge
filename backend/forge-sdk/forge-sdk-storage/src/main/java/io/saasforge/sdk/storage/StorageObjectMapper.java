@@ -58,7 +58,7 @@ interface StorageObjectMapper {
      */
     int markStored(@Param("id") UUID id);
 
-    /** 删除对象登记，用于确认上传时超出容量而拒绝的对象。 */
+    /** 删除当前租户的对象登记：业务删除对象，或确认上传时因超出容量而拒绝。 */
     void delete(@Param("id") UUID id);
 
     /**

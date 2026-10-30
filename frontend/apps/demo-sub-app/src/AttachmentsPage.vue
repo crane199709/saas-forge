@@ -38,6 +38,7 @@ const { t } = useI18n({
       noOrders: '暂无订单',
       upload: '上传',
       download: '下载',
+      remove: '删除',
       empty: '暂无附件',
       uploadFailed: '文件上传失败，请重试',
       failed: '操作失败，请稍后重试',
@@ -114,6 +115,15 @@ async function download(attachment: Attachment) {
   })
 }
 
+async function remove(attachment: Attachment) {
+  await run(async () => {
+    await client.api(`/demo/orders/${orderId.value}/attachments/${attachment.id}`, {
+      method: 'DELETE',
+    })
+    await loadAttachments()
+  })
+}
+
 async function run(action: () => Promise<void>) {
   busy.value = true
   error.value = ''
@@ -161,6 +171,14 @@ function formatSize(size: number) {
         <el-button link type="primary" :disabled="busy" @click="download(attachment)">{{
           t('download')
         }}</el-button>
+        <el-button
+          v-perm="'order:update'"
+          link
+          type="danger"
+          :disabled="busy"
+          @click="remove(attachment)"
+          >{{ t('remove') }}</el-button
+        >
       </li>
     </ul>
   </template>

@@ -12,6 +12,7 @@ import io.saasforge.sdk.storage.UploadTicket;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 演示订单附件：文件经 SDK 签发的预签名 URL 由客户端直传对象存储，服务只登记归属。业务代码不接触对象 key，
@@ -65,12 +66,24 @@ public class OrderAttachmentService {
     }
 
     public DownloadTicket prepareDownload(UUID orderId, UUID attachmentId) {
+        return storage.prepareDownload(find(orderId, attachmentId).getObjectId());
+    }
+
+    /** 附件逻辑删除与对象登记删除同一事务提交，SDK 在提交后才删除文件，任一步失败都不会留下指向已删文件的附件。 */
+    @Transactional
+    public void delete(UUID orderId, UUID attachmentId) {
+        OrderAttachment attachment = find(orderId, attachmentId);
+        attachmentMapper.deleteById(attachment);
+        storage.delete(attachment.getObjectId());
+    }
+
+    private OrderAttachment find(UUID orderId, UUID attachmentId) {
         orderService.get(orderId);
         OrderAttachment attachment = attachmentMapper.selectById(attachmentId);
         if (attachment == null || !attachment.getOrderId().equals(orderId)) {
             throw ForgeException.withErrorMessage(
                     AttachmentErrorCode.NOT_FOUND, "Attachment " + attachmentId + " not found in order " + orderId);
         }
-        return storage.prepareDownload(attachment.getObjectId());
+        return attachment;
     }
 }

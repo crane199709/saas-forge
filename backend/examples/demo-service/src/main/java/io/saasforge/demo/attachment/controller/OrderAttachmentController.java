@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -68,6 +69,15 @@ class OrderAttachmentController {
     ApiResponse<DownloadResponse> download(@PathVariable UUID orderId, @PathVariable UUID attachmentId) {
         DownloadTicket ticket = attachmentService.prepareDownload(orderId, attachmentId);
         return ApiResponse.ok(new DownloadResponse(ticket.url(), ticket.expiresAt()));
+    }
+
+    @Operation(summary = "删除附件及其文件，释放占用的存储容量")
+    @DeleteMapping("/{attachmentId}")
+    @RequiresPermission("order:update")
+    @AuditLog(action = "order.detach", resourceType = "order", resourceId = "#orderId")
+    ApiResponse<Void> delete(@PathVariable UUID orderId, @PathVariable UUID attachmentId) {
+        attachmentService.delete(orderId, attachmentId);
+        return ApiResponse.ok();
     }
 
     /** @param size 文件大小（字节） */
