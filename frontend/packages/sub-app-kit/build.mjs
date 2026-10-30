@@ -36,3 +36,16 @@ for (const name of ['create', 'lint', 'rules']) {
   await writeFile(`dist/bin/${name}.js`, outputText)
   await chmod(`dist/bin/${name}.js`, 0o755)
 }
+
+// 生成器与发布包一起携带 Shell 的精确版本，仓库外不访问源码目录。
+const shell = JSON.parse(await readFile('../../apps/tenant-app/package.json', 'utf8'))
+const kit = JSON.parse(await readFile('package.json', 'utf8'))
+const versions = {
+  ...shell.dependencies,
+  ...shell.devDependencies,
+  '@module-federation/vite': kit.devDependencies['@module-federation/vite'],
+  ...Object.fromEntries(
+    ['@forge/sdk', '@forge/ui', '@forge/sub-app-kit'].map((name) => [name, kit.version]),
+  ),
+}
+await writeFile('dist/versions.json', `${JSON.stringify(versions, null, 2)}\n`)

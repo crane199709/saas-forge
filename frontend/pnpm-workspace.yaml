@@ -1,3 +1,6 @@
 packages:
   - apps/*
   - packages/*
+
+# 新生成的 Sub-App 使用发布版本号，仓库内仍消费同版本源码包。
+linkWorkspacePackages: true

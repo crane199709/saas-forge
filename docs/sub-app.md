@@ -15,13 +15,35 @@ Sub-App 经共享的 `@forge/sdk` 取得 Token 与租户上下文：`useTenantCl
 
 ## 新建 Sub-App
 
+### 仓库外开发
+
+先配置团队提供的 npm registry 和认证（包括 `@forge` scope），使用与目标 Shell 同一发布版本。Node.js 24 与 pnpm 12 可用于以下命令：
+
+```bash
+pnpm --package=@forge/sub-app-kit@0.1.0 dlx forge-create-sub-app billing 5180
+cd billing-sub-app
+pnpm install
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm dev
+```
+
+可追加目标目录：`forge-create-sub-app billing 5180 ./business/billing`。默认是当前目录的 `billing-sub-app`，目标已存在即失败，不覆盖文件。发布包的命令是编译后的 JavaScript。
+
+生成器使用随 sub-app-kit 发布的版本表（构建时取自同版本 tenant-app），共享依赖使用精确版本，三个 `@forge/*` 包使用统一发布版本；无需平台源码或父目录 tsconfig。不要单独升级共享依赖，混合版本兼容不在当前支持范围内。
+
+首页带 `ListPage`、分页、加载状态与错误提示，默认请求 `/billing/orders`，请按业务接口修改路径与行字段。开发宿主通过 `vite.config.ts` 的 `apiPrefixes` 代理业务前缀，`gateway`、`shellOrigins` 按环境设置。未接入后端时列表展示加载错误，不伪造业务数据。
+
+### monorepo 内开发
+
 在 `frontend` 目录执行：
 
 ```bash
 pnpm create:sub-app billing 5180
 ```
 
-生成 `apps/billing-sub-app`，随后执行 `pnpm install`。生成的工程使用 `@forge/sub-app-kit`：
+生成 `apps/billing-sub-app`，随后执行 `pnpm install`，把精确版本依赖链接到仓库内同版本包。生成的工程使用 `@forge/sub-app-kit`：
 
 | 命令 | 作用 |
 | --- | --- |
@@ -30,6 +52,14 @@ pnpm create:sub-app billing 5180
 | `pnpm --filter @forge/billing-sub-app build` | 产出 `dist/remoteEntry.js`，部署后把地址登记到 App Registry |
 
 开发模式不启用 Module Federation，Sub-App 直接使用自己的依赖副本，因此 HMR 照常生效；联邦加载与共享单例只在 build/preview 下由真实 Shell 验证（`pnpm test:e2e`）。
+
+## 发布到租户 Shell
+
+1. 执行 `pnpm build`，部署整个 `dist` 到静态服务，确认 `remoteEntry.js` 与相对资源可访问，并允许目标 Shell 的跨源请求。
+2. Operator 在「应用注册表」登记编码 `billing`、当前环境入口 URL、应用版本及最低共享依赖版本；共享依赖版本应取本次生成的 package.json。环境名须与 iam 的 `FORGE_ENVIRONMENT` 一致。
+3. 业务服务 Resource Manifest 的菜单叶子声明 `"app": "billing"`、`"path": "home"`，绑定业务权限码；修改后递增 Manifest version 并重新上报。
+4. 在租户使用的 Plan 的 Feature Pack 中开放 `billing` 及对应 Permission Code，并为成员分配包含该权限的 Role。仅登记入口不会自动给成员授权。
+5. 刷新租户 Shell，在拥有权限的租户中确认菜单可见且页面加载成功。若不可见，依次核对菜单权限、套餐范围、登记环境与 `GET /iam/auth/access` 返回的 subApps。
 
 ## 使用 `@forge/ui`
 

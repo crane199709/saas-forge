@@ -13,7 +13,7 @@
   },
   "scripts": {
     "typecheck": "vue-tsc --noEmit",
-    "test": "node --test bin/lint.test.ts",
+    "test": "node --test bin/*.test.ts",
     "build": "node build.mjs && vue-tsc -p tsconfig.build.json"
   },
   "peerDependencies": {
