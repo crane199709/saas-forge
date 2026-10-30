@@ -188,6 +188,9 @@ test('A 登录后 B 刷新即已登录，关闭全部页面再打开仍已登录
   await b.goto('/')
   await expect(b.getByLabel('账号或邮箱')).toBeVisible()
   await login(a)
+  // A 登录后 B 自行整页回首页；等它完成再刷新，避免两次导航相互打断
+  await expect(b.getByTestId('tenant-switcher')).toBeVisible()
+  await expect(b.getByText('当前租户：租户 A')).toBeVisible()
   await b.reload()
   await expect(b.getByTestId('tenant-switcher')).toBeVisible()
   await expect(b.getByText('当前租户：租户 A')).toBeVisible()

@@ -14,4 +14,4 @@
 - [x] `vue`、`element-plus`、`vue-i18n` 为 peer 依赖，不新增 Module Federation 共享项；组件文案使用 local scope 的 `zh-CN` 语言包，不创建全局 i18n
 - [x] 更新 [docs/sub-app.md](../../../docs/sub-app.md)：Sub-App 如何使用 `ListPage` 与主题 token
 - [x] 测试：`@forge/ui` 各组件有 Vitest 测试（`ListPage` 覆盖翻页与分页信息展示，`applyTheme` 覆盖派生色）；`federation.spec.ts` 的共享依赖单例检查继续通过
-- [ ] `pnpm typecheck`、`pnpm test`、`pnpm test:e2e`、`pnpm format:check` 通过
+- [x] `pnpm typecheck`、`pnpm test`、`pnpm test:e2e`、`pnpm format:check` 通过
