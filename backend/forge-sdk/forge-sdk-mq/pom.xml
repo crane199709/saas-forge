@@ -13,6 +13,12 @@
     <description>RocketMQ 封装、Outbox、幂等消费与租户上下文透传</description>
 
     <dependencies>
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-architecture</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
         <!-- 消费端恢复租户后照常经租户拦截与 RLS 访问数据，并沿用其 UUID 类型处理器 -->
         <dependency>
             <groupId>io.saasforge</groupId>

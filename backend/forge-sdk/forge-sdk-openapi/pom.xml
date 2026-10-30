@@ -13,6 +13,12 @@
     <description>springdoc 默认配置</description>
 
     <dependencies>
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-architecture</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
         <!-- 服务只输出 /v3/api-docs，Swagger UI 由网关统一提供（ADR-0010） -->
         <dependency>
             <groupId>org.springdoc</groupId>

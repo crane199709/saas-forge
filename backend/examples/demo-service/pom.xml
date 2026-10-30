@@ -16,6 +16,12 @@
     <dependencies>
         <dependency>
             <groupId>io.saasforge</groupId>
+            <artifactId>forge-architecture</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.saasforge</groupId>
             <artifactId>forge-sdk-core</artifactId>
         </dependency>
         <dependency>

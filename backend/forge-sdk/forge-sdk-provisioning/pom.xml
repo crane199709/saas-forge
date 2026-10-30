@@ -13,6 +13,12 @@
     <description>Provisioning 事件契约与租户初始化扩展点</description>
 
     <dependencies>
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-architecture</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
         <!-- 订阅 TenantCreated 与回报初始化结果都经 Outbox 与幂等消费 -->
         <dependency>
             <groupId>io.saasforge</groupId>

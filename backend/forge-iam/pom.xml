@@ -15,6 +15,12 @@
     <dependencies>
         <dependency>
             <groupId>io.saasforge</groupId>
+            <artifactId>forge-architecture</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.saasforge</groupId>
             <artifactId>forge-sdk-openapi</artifactId>
         </dependency>
         <!-- 即时失效状态的 Redis 键约定与明细模型，iam 是唯一写入方（ADR-0005） -->

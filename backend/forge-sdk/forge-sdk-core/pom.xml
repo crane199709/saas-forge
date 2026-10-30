@@ -13,6 +13,12 @@
     <description>租户上下文、响应信封与错误模型、框架级错误码文案</description>
 
     <dependencies>
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-architecture</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
         <!-- 只用注解声明信封的序列化规则（null 不输出），Servlet 服务与 WebFlux 网关的 Jackson 都能识别；不引入 Spring -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

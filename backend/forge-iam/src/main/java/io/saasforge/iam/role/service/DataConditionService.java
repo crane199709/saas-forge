@@ -2,11 +2,6 @@ package io.saasforge.iam.role.service;
 
 import io.saasforge.iam.membership.service.MembershipService;
 import io.saasforge.iam.membership.service.SubjectAttributeSource;
-import io.saasforge.iam.organization.model.DepartmentRow;
-import io.saasforge.iam.organization.model.ExtendedAttributeRow;
-import io.saasforge.iam.organization.service.DepartmentService;
-import io.saasforge.iam.organization.service.ExtendedAttributeService;
-import io.saasforge.iam.organization.service.PositionService;
 import io.saasforge.iam.permission.model.ServiceDataResource;
 import io.saasforge.iam.permission.service.PermissionService;
 import io.saasforge.iam.role.model.ConditionAttribute;
@@ -14,7 +9,6 @@ import io.saasforge.iam.role.model.ConditionOptions;
 import io.saasforge.iam.role.model.DataPolicy;
 import io.saasforge.iam.role.model.DataResourceOption;
 import io.saasforge.iam.role.model.PolicyPreview;
-import io.saasforge.iam.role.model.ValueOption;
 import io.saasforge.sdk.abac.AttributeDefinition;
 import io.saasforge.sdk.abac.DataResourceDefinition;
 import io.saasforge.sdk.abac.DataScope;
@@ -47,23 +41,17 @@ public class DataConditionService {
     static final int MAX_SAMPLES = 50;
 
     private final PermissionService permissions;
-    private final ExtendedAttributeService extendedAttributes;
-    private final DepartmentService departments;
-    private final PositionService positions;
+    private final OrganizationConditionSource organization;
     private final MembershipService memberships;
     private final SubjectAttributeSource subjects;
 
     DataConditionService(
             PermissionService permissions,
-            ExtendedAttributeService extendedAttributes,
-            DepartmentService departments,
-            PositionService positions,
+            OrganizationConditionSource organization,
             MembershipService memberships,
             SubjectAttributeSource subjects) {
         this.permissions = permissions;
-        this.extendedAttributes = extendedAttributes;
-        this.departments = departments;
-        this.positions = positions;
+        this.organization = organization;
         this.memberships = memberships;
         this.subjects = subjects;
     }
@@ -93,7 +81,7 @@ public class DataConditionService {
         for (AttributeDefinition attribute : DataResourceDefinition.SUBJECT_ATTRIBUTES) {
             subject.add(attribute(attribute, null));
         }
-        for (ExtendedAttributeRow definition : extendedAttributes.definitions(tenantId)) {
+        for (OrganizationConditionSource.Attribute definition : organization.attributes(tenantId)) {
             subject.add(new ConditionAttribute(
                     "subject.attributes." + definition.code(), definition.name(), definition.type(), false));
         }
@@ -102,10 +90,8 @@ public class DataConditionService {
                 DataResourceDefinition.ENVIRONMENT_ATTRIBUTES.stream()
                         .map(attribute -> attribute(attribute, null))
                         .toList(),
-                departmentOptions(departments.all(tenantId)),
-                positions.all(tenantId).stream()
-                        .map(position -> new ValueOption(position.id().toString(), position.name()))
-                        .toList());
+                organization.departments(tenantId),
+                organization.positions(tenantId));
     }
 
     /**
@@ -251,7 +237,7 @@ public class DataConditionService {
 
     private Map<String, String> extendedTypes(UUID tenantId) {
         Map<String, String> types = new HashMap<>();
-        for (ExtendedAttributeRow definition : extendedAttributes.definitions(tenantId)) {
+        for (OrganizationConditionSource.Attribute definition : organization.attributes(tenantId)) {
             types.put(definition.code(), definition.type());
         }
         return types;
@@ -270,18 +256,5 @@ public class DataConditionService {
     private static ConditionAttribute attribute(AttributeDefinition attribute, String label) {
         return new ConditionAttribute(
                 attribute.name(), label, attribute.type().name().toLowerCase(Locale.ROOT), attribute.multiValued());
-    }
-
-    // 部门按路径排序，上级总在下级之前；上级已删除的部门以自身名称开头。
-    private static List<ValueOption> departmentOptions(List<DepartmentRow> rows) {
-        Map<UUID, String> labels = new HashMap<>();
-        return rows.stream()
-                .map(row -> {
-                    String parent = row.parentId() == null ? null : labels.get(row.parentId());
-                    String label = parent == null ? row.name() : parent + " / " + row.name();
-                    labels.put(row.id(), label);
-                    return new ValueOption(row.path(), label);
-                })
-                .toList();
     }
 }

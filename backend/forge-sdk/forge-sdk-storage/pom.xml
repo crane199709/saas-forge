@@ -13,6 +13,12 @@
     <description>S3 协议对象存储抽象</description>
 
     <dependencies>
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-architecture</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
         <!-- 存储容量 Quota 取自 TenantPlanChanged；对象登记经租户拦截与 RLS 隔离 -->
         <dependency>
             <groupId>io.saasforge</groupId>

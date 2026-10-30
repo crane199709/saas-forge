@@ -17,6 +17,7 @@
 
     <modules>
         <module>forge-dependencies</module>
+        <module>forge-architecture</module>
         <module>forge-sdk</module>
         <module>forge-gateway</module>
         <module>forge-iam</module>

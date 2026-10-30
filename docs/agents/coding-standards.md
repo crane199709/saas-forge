@@ -244,3 +244,28 @@ WebFlux 的 `ErrorWebExceptionHandler` 归入 `filter` 而不是 `controller`：
 - 前端 `@forge/sdk`、`@forge/ui` 的导出函数与组件 props（TSDoc）。
 
 业务服务与前端应用内部的代码不强制文档注释，逻辑不直观时才写。Controller 接口说明使用 springdoc 注解，不再重复写 Javadoc。
+
+
+## 自动架构检查
+
+后端的 `forge-architecture` 提供共享 ArchUnit 规则，各服务与 SDK 的 `ArchitectureTest` 继承
+`ForgeArchitectureTest`，随 Maven `test` / `verify` 执行。测试类放在模块根包，
+例如 `io.saasforge.demo`；仅扫描生产类，测试夹具不受生产规则约束。
+
+新增模块时，添加 `io.saasforge:forge-architecture` 的 test 依赖，并在模块根包添加：
+
+```java
+class ArchitectureTest extends ForgeArchitectureTest {}
+```
+
+规则覆盖 SQL 注解、字符串 Wrapper、SQL 片段调用及方法引用、业务服务 JDBC 依赖、
+SDK 依赖方向与包循环、服务分层与功能包循环、IAM Mapper 的 tenantLine 标注和 REST 接口响应信封。
+JDBC 基础设施仅在 SDK 包中豁免；SQL 注解与 Wrapper 限制对 SDK 同样生效。
+Mapper XML 的 SQL 语义不属于字节码检查范围，仍需代码审查。
+
+快速执行全部模块的架构检查：
+
+```sh
+cd backend
+./mvnw test -Dtest=ArchitectureTest,ForgeArchitectureRulesTest -Dsurefire.failIfNoSpecifiedTests=false
+```

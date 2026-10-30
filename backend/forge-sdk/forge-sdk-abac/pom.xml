@@ -13,6 +13,12 @@
     <description>ABAC 策略表达式树、SQL 编译器、内存求值器与数据权限拦截器</description>
 
     <dependencies>
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-architecture</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
         <!-- 引擎（io.saasforge.sdk.abac 包）不依赖 Spring 与数据库，只需要解析 JSON 表达式树与清单中的 Data Resource -->
         <dependency>
             <groupId>io.saasforge</groupId>
