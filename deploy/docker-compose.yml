@@ -129,3 +129,17 @@ services:
       - "${FORGE_S3_PORT:-9000}:9000"
     volumes:
       - ./data/s3:/data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # 一次性任务：创建所有租户共用的 bucket（forge.storage.bucket），已存在时跳过。
+  s3-init:
+    image: pgsty/silo:RELEASE.2026-10-18T00-00-00Z
+    depends_on:
+      s3:
+        condition: service_healthy
+    entrypoint: ["sh", "-c", "mc alias set local http://s3:9000 forge forge-local-secret && mc mb --ignore-existing local/forge"]
+    restart: "no"

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.sdk.storage.StorageObjectMapper">
+    <resultMap id="object" type="io.saasforge.sdk.storage.StorageObjectRecord">
+        <constructor>
+            <idArg column="id" javaType="java.util.UUID"/>
+            <arg column="object_key" javaType="string"/>
+            <arg column="filename" javaType="string"/>
+            <arg column="content_type" javaType="string"/>
+            <arg column="size" javaType="_long"/>
+            <arg column="status" javaType="string"/>
+            <arg column="upload_expires_at" javaType="java.time.OffsetDateTime"/>
+            <arg column="stored_at" javaType="java.time.OffsetDateTime"/>
+        </constructor>
+    </resultMap>
+
+    <insert id="insertPending">
+        INSERT INTO forge_storage_object (id, object_key, filename, content_type, size, status, upload_expires_at)
+        VALUES (#{id}, #{objectKey}, #{filename}, #{contentType}, #{size}, 'PENDING', #{uploadExpiresAt})
+    </insert>
+
+    <select id="findById" resultMap="object">
+        SELECT id, object_key, filename, content_type, size, status, upload_expires_at, stored_at
+        FROM forge_storage_object WHERE id = #{id}
+    </select>
+
+    <select id="usedBytes" resultType="_long">
+        SELECT coalesce(sum(size), 0) FROM forge_storage_object
+        WHERE (status = 'STORED' OR upload_expires_at &gt; #{now})
+        <if test="excludeId != null">AND id &lt;&gt; #{excludeId}</if>
+    </select>
+
+    <select id="quota" resultType="java.lang.Long">
+        SELECT quota_bytes FROM forge_storage_quota
+    </select>
+
+    <select id="lockQuota" resultType="java.lang.Long">
+        SELECT quota_bytes FROM forge_storage_quota FOR UPDATE
+    </select>
+
+    <update id="markStored">
+        UPDATE forge_storage_object SET status = 'STORED', stored_at = now() WHERE id = #{id} AND status = 'PENDING'
+    </update>
+
+    <delete id="delete">
+        DELETE FROM forge_storage_object WHERE id = #{id}
+    </delete>
+
+    <!-- ON CONFLICT 的 WHERE 不成立时不更新，受影响行数为 0 -->
+    <insert id="applyQuota">
+        INSERT INTO forge_storage_quota (tenant_id, quota_bytes, plan_version)
+        VALUES (#{tenantId}, #{quotaBytes}, #{version})
+        ON CONFLICT (tenant_id) DO UPDATE SET quota_bytes = EXCLUDED.quota_bytes, plan_version = EXCLUDED.plan_version
+        WHERE forge_storage_quota.plan_version &lt; EXCLUDED.plan_version
+    </insert>
+</mapper>

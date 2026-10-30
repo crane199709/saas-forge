@@ -11,4 +11,23 @@
     <artifactId>forge-sdk-storage</artifactId>
     <name>Forge SDK Storage</name>
     <description>S3 协议对象存储抽象</description>
+
+    <dependencies>
+        <!-- 存储容量 Quota 取自 TenantPlanChanged；对象登记经租户拦截与 RLS 隔离 -->
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-provisioning</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <exclusions>
+                <!-- 只用同步客户端，不需要异步的 Netty 实现 -->
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>netty-nio-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+    </dependencies>
 </project>

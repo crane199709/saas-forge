@@ -8,6 +8,7 @@ import { useRouter, type RouteRecordRaw } from 'vue-router'
 import DemoApp from './DemoApp.vue'
 import OverviewPage from './OverviewPage.vue'
 import DetailPage from './DetailPage.vue'
+import AttachmentsPage from './AttachmentsPage.vue'
 
 export const sharedReferences = {
   vue: ref,
@@ -25,6 +26,7 @@ export const routes: RouteRecordRaw[] = [
     children: [
       { path: 'overview', name: 'demo:overview', component: OverviewPage },
       { path: 'details/:id', name: 'demo:details', component: DetailPage },
+      { path: 'attachments', name: 'demo:attachments', component: AttachmentsPage },
     ],
   },
 ]

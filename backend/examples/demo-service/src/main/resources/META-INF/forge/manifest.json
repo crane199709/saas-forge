@@ -29,6 +29,13 @@
           "app": "demo",
           "path": "overview",
           "permission": "order:read"
+        },
+        {
+          "code": "demo.attachments",
+          "name": "订单附件",
+          "app": "demo",
+          "path": "attachments",
+          "permission": "order:read"
         }
       ]
     }
