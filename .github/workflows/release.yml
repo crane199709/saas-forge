@@ -65,7 +65,7 @@ jobs:
           fi
           scripts/release/publish.sh "$mode" "$RELEASE_TAG"
   images:
-    needs: [backend, frontend, main-flow]
+    needs: [backend, frontend, main-flow, template-smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
