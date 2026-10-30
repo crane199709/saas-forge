@@ -39,20 +39,14 @@
     "submit": "注册并登录"
   },
   "error": {
-    "unknown": "请求失败，请稍后重试",
-    "traceId": "追踪 ID",
-    "copyTraceId": "复制"
+    "unknown": "请求失败，请稍后重试"
   },
   "result": {
-    "403": "没有访问该页面的权限",
-    "404": "页面不存在",
     "home": "返回首页"
   },
   "tenant": {
     "selectTitle": "选择租户",
     "selectHint": "此身份加入了多个租户，请选择要进入的租户。",
-    "noneTitle": "暂无可进入的租户",
-    "noneHint": "此身份目前没有有效的成员关系，请联系租户管理员邀请加入。",
     "switcher": "切换租户",
     "leave": "退出当前租户",
     "leaveConfirm": "退出后将无法再进入「{tenant}」，除非被重新邀请。确定退出吗？",

@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@forge/sdk'
+import { ErrorAlert, type ErrorTip } from '@forge/ui'
 import type { SubApp, SubAppApi } from './sub-app-api'
 
 const props = defineProps<{ api: SubAppApi }>()
@@ -10,7 +11,7 @@ const emit = defineEmits<{ loaded: [apps: SubApp[]] }>()
 const { t } = useI18n()
 const apps = ref<SubApp[]>([])
 const busy = ref(false)
-const error = ref<{ message: string; traceId?: string } | null>(null)
+const error = ref<ErrorTip | null>(null)
 
 interface Pair {
   key: string
@@ -112,17 +113,7 @@ onMounted(() => run(fetchApps))
         t('subApp.create')
       }}</el-button>
     </header>
-    <el-alert
-      v-if="error && !dialogOpen"
-      :title="error.message"
-      type="error"
-      :closable="false"
-      role="alert"
-    >
-      <p v-if="error.traceId" class="trace">
-        {{ t('error.traceId') }}：<code>{{ error.traceId }}</code>
-      </p>
-    </el-alert>
+    <ErrorAlert v-if="error && !dialogOpen" :tip="error" />
 
     <el-table :data="apps" :empty-text="t('subApp.empty')">
       <el-table-column prop="name" :label="t('subApp.name')" />
@@ -163,7 +154,7 @@ onMounted(() => run(fetchApps))
       width="min(720px, 92vw)"
       :title="editing ? t('subApp.editTitle', { name: editing.name }) : t('subApp.create')"
     >
-      <el-alert v-if="error" :title="error.message" type="error" :closable="false" role="alert" />
+      <ErrorAlert v-if="error" :tip="error" />
       <el-form label-position="top" @submit.prevent="save">
         <el-form-item :label="t('subApp.code')" for="sub-app-code">
           <el-input
@@ -249,10 +240,6 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-.trace {
-  margin: 4px 0 0;
-  overflow-wrap: anywhere;
 }
 .wrap {
   overflow-wrap: anywhere;

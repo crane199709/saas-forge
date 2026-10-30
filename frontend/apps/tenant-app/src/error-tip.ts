@@ -1,10 +1,7 @@
 import { ApiError } from '@forge/sdk'
+import type { ErrorTip } from '@forge/ui'
 
-/** 界面展示的错误：文案加可选的 traceId，供用户报障时复制。 */
-export interface ErrorTip {
-  message: string
-  traceId?: string
-}
+export type { ErrorTip }
 
 // SDK 在本地判定、没有服务端 userTip 的错误码，例如授权回调 state 不匹配时的 auth.failed。
 const localKeys = ['auth.failed']

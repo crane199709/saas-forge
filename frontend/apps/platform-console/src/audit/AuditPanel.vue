@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@forge/sdk'
+import { ErrorAlert, type ErrorTip } from '@forge/ui'
 import type { AuditApi, AuditEvent } from './audit-api'
 
 const props = defineProps<{ api: AuditApi }>()
@@ -16,7 +17,7 @@ const actor = ref('')
 const action = ref('')
 const resourceType = ref('')
 const resourceId = ref('')
-const error = ref<{ message: string; traceId?: string } | null>(null)
+const error = ref<ErrorTip | null>(null)
 
 async function load(number = page.value) {
   error.value = null
@@ -57,11 +58,7 @@ onMounted(() => void load(1))
 <template>
   <section :aria-label="t('audit.title')">
     <h2>{{ t('audit.title') }}</h2>
-    <el-alert v-if="error" :title="error.message" type="error" :closable="false" role="alert">
-      <p v-if="error.traceId" class="trace">
-        {{ t('error.traceId') }}：<code>{{ error.traceId }}</code>
-      </p>
-    </el-alert>
+    <ErrorAlert v-if="error" :tip="error" />
     <div class="toolbar">
       <el-date-picker
         v-model="range"

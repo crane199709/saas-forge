@@ -6,5 +6,7 @@
     "declaration": true,
     "outDir": "dist",
     "rootDir": "src"
-  }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts", "src/test-mount.ts"]
 }

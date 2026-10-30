@@ -2,7 +2,7 @@
 import { inject, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { tenantClientKey } from '@forge/sdk'
-import ErrorAlert from '../ErrorAlert.vue'
+import { ErrorAlert } from '@forge/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import RoleListPanel from './RoleListPanel.vue'
 import RoleMemberPanel from './RoleMemberPanel.vue'

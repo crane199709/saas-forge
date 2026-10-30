@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@forge/sdk'
+import { ErrorAlert, type ErrorTip } from '@forge/ui'
 import type { Plan } from '../plan/plan-api'
 import type {
   CreateTenant,
@@ -38,7 +39,7 @@ const emptyTransition = () => ({ status: '' as TenantStatus | '', reason: '', ex
 const transitionDraft = ref(emptyTransition())
 const planDraft = ref('')
 const busy = ref(false)
-const error = ref<{ message: string; traceId?: string } | null>(null)
+const error = ref<ErrorTip | null>(null)
 
 const statusType: Record<InitializationStatus, 'info' | 'success' | 'danger'> = {
   pending: 'info',
@@ -158,11 +159,7 @@ onMounted(() => load(1))
         t('tenant.create')
       }}</el-button>
     </header>
-    <el-alert v-if="error" :title="error.message" type="error" :closable="false" role="alert">
-      <p v-if="error.traceId" class="trace">
-        {{ t('error.traceId') }}：<code>{{ error.traceId }}</code>
-      </p>
-    </el-alert>
+    <ErrorAlert v-if="error" :tip="error" />
 
     <el-table :data="tenants" :empty-text="t('tenant.empty')">
       <el-table-column prop="name" :label="t('tenant.name')" />
@@ -387,10 +384,6 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-.trace {
-  margin: 4px 0 0;
-  overflow-wrap: anywhere;
 }
 .warning {
   color: var(--el-color-warning);

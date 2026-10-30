@@ -3,7 +3,7 @@ import { inject, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { tenantClientKey } from '@forge/sdk'
 import type { TenantContextResponse } from './demo-context'
-import ErrorAlert from './ErrorAlert.vue'
+import { ErrorAlert } from '@forge/ui'
 import { errorTip, type ErrorTip } from './error-tip'
 
 const { t } = useI18n()

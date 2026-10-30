@@ -9,8 +9,8 @@ const alternateTheme = ref(false)
 import { inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import { themeTokens } from '@forge/ui'
-import { applyPrimaryColor, subAppHostKey } from '../shell'
+import { applyTheme, themeTokens } from '@forge/ui'
+import { subAppHostKey } from '../shell'
 import zhCN from './zh-CN.json'
 
 // 文案只随诊断页打包，正式构建不包含。
@@ -21,7 +21,7 @@ const host = inject(subAppHostKey, undefined)
 // 主题切换不是产品功能，用来验证 Shell 与 Sub-App 共用主题 token。
 function toggleTheme() {
   alternateTheme.value = !alternateTheme.value
-  applyPrimaryColor(alternateTheme.value ? themeTokens.alternate : themeTokens.primary)
+  applyTheme(alternateTheme.value ? themeTokens.alternate : themeTokens.primary)
 }
 </script>
 

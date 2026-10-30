@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@forge/sdk'
+import { ErrorAlert, type ErrorTip } from '@forge/ui'
 import type { CatalogPermission, Plan, PlanApi } from './plan-api'
 
 // subApps：App Registry 中已登记的编码，作为 Feature Pack 的选项；仍可输入尚未登记的编码，登记后随之生效
@@ -12,7 +13,7 @@ const { t } = useI18n()
 const plans = ref<Plan[]>([])
 const catalog = ref<CatalogPermission[]>([])
 const busy = ref(false)
-const error = ref<{ message: string; traceId?: string } | null>(null)
+const error = ref<ErrorTip | null>(null)
 
 // 新建与编辑共用一个对话框：editing 为 null 时新建；编码只在新建时填写。
 const dialogOpen = ref(false)
@@ -146,17 +147,7 @@ onMounted(() => run(fetchPlans))
         t('plan.create')
       }}</el-button>
     </header>
-    <el-alert
-      v-if="error && !dialogOpen"
-      :title="error.message"
-      type="error"
-      :closable="false"
-      role="alert"
-    >
-      <p v-if="error.traceId" class="trace">
-        {{ t('error.traceId') }}：<code>{{ error.traceId }}</code>
-      </p>
-    </el-alert>
+    <ErrorAlert v-if="error && !dialogOpen" :tip="error" />
 
     <el-table :data="plans" :empty-text="t('plan.empty')">
       <el-table-column prop="name" :label="t('plan.name')" />
@@ -202,7 +193,7 @@ onMounted(() => run(fetchPlans))
       width="720px"
       :title="editing ? t('plan.editTitle', { name: editing.name }) : t('plan.create')"
     >
-      <el-alert v-if="error" :title="error.message" type="error" :closable="false" role="alert" />
+      <ErrorAlert v-if="error" :tip="error" />
       <p v-if="editing" class="hint">{{ t('plan.editHint') }}</p>
       <el-form label-position="top" @submit.prevent="save">
         <el-form-item :label="t('plan.code')" for="plan-code">
@@ -288,10 +279,6 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-.trace {
-  margin: 4px 0 0;
-  overflow-wrap: anywhere;
 }
 .hint {
   margin: 4px 0 0;

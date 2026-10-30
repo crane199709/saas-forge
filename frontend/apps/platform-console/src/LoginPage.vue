@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError } from '@forge/sdk'
+import { ErrorAlert, type ErrorTip } from '@forge/ui'
 import { loginFlow, safeRedirect } from './login-flow'
 import { usePlatformClient } from './shell'
 
@@ -13,7 +14,7 @@ const client = usePlatformClient()
 const account = ref('')
 const password = ref('')
 const busy = ref(false)
-const error = ref<{ message: string; traceId?: string } | null>(null)
+const error = ref<ErrorTip | null>(null)
 
 // 优先展示服务端已翻译的 userTip；SDK 本地判定的 auth.failed 与其他故障按 i18n key 显示。
 function showError(cause: unknown) {
@@ -47,18 +48,8 @@ async function login() {
     <el-card class="auth-card">
       <section :aria-label="t('auth.title')">
         <h2>{{ t('auth.title') }}</h2>
-        <el-alert
-          v-if="loginFlow.logoutFailed"
-          :title="t('auth.logoutFailed')"
-          type="error"
-          :closable="false"
-          role="alert"
-        />
-        <el-alert v-if="error" :title="error.message" type="error" :closable="false" role="alert">
-          <p v-if="error.traceId" class="trace">
-            {{ t('error.traceId') }}：<code>{{ error.traceId }}</code>
-          </p>
-        </el-alert>
+        <ErrorAlert v-if="loginFlow.logoutFailed" :tip="{ message: t('auth.logoutFailed') }" />
+        <ErrorAlert v-if="error" :tip="error" />
         <el-form label-position="top" @submit.prevent="login">
           <el-form-item :label="t('auth.account')" for="operator-account">
             <el-input
@@ -98,9 +89,5 @@ async function login() {
 .auth-card {
   width: 100%;
   max-width: 480px;
-}
-.trace {
-  margin: 4px 0 0;
-  overflow-wrap: anywhere;
 }
 </style>

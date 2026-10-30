@@ -3,7 +3,7 @@ import { inject, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { tenantClientKey } from '@forge/sdk'
-import AuthCard from './AuthCard.vue'
+import { ResultPage } from '@forge/ui'
 import { signOut } from './login-flow'
 
 const { t } = useI18n()
@@ -23,9 +23,9 @@ async function loginAgain() {
 </script>
 
 <template>
-  <AuthCard :title="t('auth.title')">
-    <h3>{{ t('tenant.noneTitle') }}</h3>
-    <p>{{ t('tenant.noneHint') }}</p>
-    <el-button :loading="busy" @click="loginAgain">{{ t('auth.loginAgain') }}</el-button>
-  </AuthCard>
+  <main>
+    <ResultPage status="no-tenant">
+      <el-button :loading="busy" @click="loginAgain">{{ t('auth.loginAgain') }}</el-button>
+    </ResultPage>
+  </main>
 </template>

@@ -31,6 +31,72 @@ pnpm create:sub-app billing 5180
 
 开发模式不启用 Module Federation，Sub-App 直接使用自己的依赖副本，因此 HMR 照常生效；联邦加载与共享单例只在 build/preview 下由真实 Shell 验证（`pnpm test:e2e`）。
 
+## 使用 `@forge/ui`
+
+`@forge/ui` 与 Shell 共享同一实例，组件内置文案经 local scope 取 Shell 当前语言（第一期为 `zh-CN`），Sub-App 无需注册。
+
+### 列表页 `ListPage`
+
+`ListPage` 提供搜索区插槽、`el-table` 与底部的总条数和翻页，直接接收 `@forge/sdk` 的 `client.page<T>()` 结果（`Page<T>`，页码取自 `meta.page.number`，从 1 开始）。翻页时触发 `page-change`，参数是新页码，由 Sub-App 按新页码重新请求；只有一页时不显示翻页。示例见 `apps/demo-sub-app/src/OrdersList.vue`：
+
+```vue
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { ElButton, ElTableColumn } from 'element-plus'
+import { useTenantClient, type Page } from '@forge/sdk'
+import { ListPage } from '@forge/ui'
+
+interface Order {
+  id: string
+  title: string
+}
+
+const client = useTenantClient()
+const orders = ref<Page<Order> | null>(null)
+const busy = ref(false)
+
+async function load(page = 1) {
+  busy.value = true
+  try {
+    orders.value = await client.page<Order>(`/billing/orders?page=${page}&size=20`)
+  } finally {
+    busy.value = false
+  }
+}
+onMounted(() => load())
+</script>
+
+<template>
+  <ListPage :page="orders" :loading="busy" empty-text="暂无订单" @page-change="load">
+    <template #search><el-button @click="load()">刷新</el-button></template>
+    <el-table-column prop="title" label="标题" />
+  </ListPage>
+</template>
+```
+
+| 属性 / 事件 / 插槽 | 说明 |
+| --- | --- |
+| `page` | `Page<T> \| null`，首次加载完成前为 `null`，此时不显示分页信息 |
+| `loading` | 表格显示加载遮罩，翻页不可操作 |
+| `empty-text` | 没有数据时表格中的提示 |
+| `page-change` | 翻页，参数为新页码 |
+| `#search` | 搜索与操作区，位于表格上方 |
+| 默认插槽 | `el-table-column` |
+
+加载失败时用 `ErrorAlert` 展示提示与 traceId：`<ErrorAlert v-if="error" :tip="{ message, traceId }" />`，错误码到文案的转换由 Sub-App 自己完成。
+
+### 主题 token
+
+主色由 Shell 调用 `applyTheme(color)` 写入文档根节点：`--forge-color-primary`、`--el-color-primary` 及 Element Plus 的派生色 `--el-color-primary-light-3/5/7/8/9`、`--el-color-primary-dark-2`。Sub-App 不调用 `applyTheme`，也不修改文档根节点；样式中读取这些变量即可随 Shell 切换主题，Element Plus 组件自动跟随：
+
+```css
+.summary {
+  border-left: 4px solid var(--forge-color-primary);
+}
+```
+
+`themeTokens` 是预置的主色取值，供 Shell 选择主题，Sub-App 不应硬编码其中的颜色。
+
 ## 隔离约定检查
 
 `forge-sub-app-lint` 检查 `src` 下的 `.ts` 与 `.vue`（`src/dev.ts` 除外），违反时列出位置并失败：

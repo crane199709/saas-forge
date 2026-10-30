@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElButton, ElPagination } from 'element-plus'
-import { ApiError, useTenantClient } from '@forge/sdk'
+import { ElButton, ElTableColumn } from 'element-plus'
+import { ApiError, useTenantClient, type Page } from '@forge/sdk'
+import { ErrorAlert, ListPage, type ErrorTip } from '@forge/ui'
 
 interface Order {
   id: string
@@ -11,11 +12,9 @@ interface Order {
 }
 
 const client = useTenantClient()
-const orders = ref<Order[]>([])
-const page = ref(1)
-const total = ref(0)
+const orders = ref<Page<Order> | null>(null)
 const busy = ref(false)
-const error = ref('')
+const error = ref<ErrorTip | null>(null)
 const { t } = useI18n({
   useScope: 'local',
   messages: {
@@ -30,56 +29,40 @@ const { t } = useI18n({
   },
 })
 
-async function load() {
+async function load(page = orders.value?.page.number ?? 1) {
   busy.value = true
-  error.value = ''
-  orders.value = []
+  error.value = null
   try {
     // 数据范围由服务端裁剪；通过 Shell 的共享客户端，让 401 走统一刷新与登出流程。
-    const result = await client.page<Order>(
-      `/demo/orders?page=${page.value}&size=20&sort=createdAt,asc`,
-    )
-    orders.value = result.items
-    total.value = result.page.totalElements
+    orders.value = await client.page<Order>(`/demo/orders?page=${page}&size=20&sort=createdAt,asc`)
   } catch (cause) {
-    total.value = 0
-    error.value = cause instanceof ApiError && cause.userTip ? cause.userTip : t('failed')
+    orders.value = null
+    error.value = {
+      message: cause instanceof ApiError && cause.userTip ? cause.userTip : t('failed'),
+      traceId: cause instanceof ApiError ? cause.traceId : undefined,
+    }
   } finally {
     busy.value = false
   }
 }
 
-onMounted(load)
+onMounted(() => load())
 </script>
 
 <template>
-  <section :aria-label="t('title')" :aria-busy="busy">
+  <section :aria-label="t('title')">
     <h3>{{ t('title') }}</h3>
-    <el-button :disabled="busy" @click="load">{{ t('refresh') }}</el-button>
-    <p v-if="error" role="alert">{{ error }}</p>
-    <table v-else>
-      <thead>
-        <tr>
-          <th>{{ t('name') }}</th>
-          <th>{{ t('amount') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="order in orders" :key="order.id">
-          <td data-testid="order-title">{{ order.title }}</td>
-          <td>{{ order.amount }}</td>
-        </tr>
-      </tbody>
-    </table>
-    <p v-if="!busy && !error && !orders.length">{{ t('empty') }}</p>
-    <el-pagination
-      v-if="total > 20"
-      v-model:current-page="page"
-      :page-size="20"
-      :total="total"
-      :disabled="busy"
-      layout="prev, pager, next"
-      @current-change="load"
-    />
+    <ErrorAlert v-if="error" :tip="error" />
+    <ListPage :page="orders" :loading="busy" :empty-text="t('empty')" @page-change="load">
+      <template #search>
+        <el-button :disabled="busy" @click="load()">{{ t('refresh') }}</el-button>
+      </template>
+      <el-table-column :label="t('name')">
+        <template #default="{ row }">
+          <span data-testid="order-title">{{ row.title }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="amount" :label="t('amount')" />
+    </ListPage>
   </section>
 </template>

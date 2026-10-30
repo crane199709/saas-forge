@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import ErrorAlert from '../ErrorAlert.vue'
+import { ErrorAlert } from '@forge/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import ConditionGroup from './ConditionGroup.vue'
 import ConditionPreview from './ConditionPreview.vue'

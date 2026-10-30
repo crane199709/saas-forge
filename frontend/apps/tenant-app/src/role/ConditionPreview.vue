@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import ErrorAlert from '../ErrorAlert.vue'
+import { ErrorAlert } from '@forge/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import type {
   ConditionAttribute,

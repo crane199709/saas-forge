@@ -1,2 +1,9 @@
-/** Shell 与 Sub-App 共用的主题 token；CSS 变量由 Shell 写入文档根节点。 */
-export const themeTokens = Object.freeze({ primary: '#409eff', alternate: '#8b5cf6' })
+export { AppLayout } from './AppLayout'
+export type { MenuItem } from './AppLayout'
+export { ErrorAlert } from './ErrorAlert'
+export type { ErrorTip } from './ErrorAlert'
+export { ListPage } from './ListPage'
+export type { ListPageProps } from './ListPage'
+export { ResultPage } from './ResultPage'
+export type { ResultStatus } from './ResultPage'
+export { applyTheme, themeTokens } from './theme'

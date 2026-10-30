@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@forge/sdk'
+import { ErrorAlert, type ErrorTip } from '@forge/ui'
 import type {
   DataPolicy,
   PlatformDataResource,
@@ -16,7 +17,7 @@ const roles = ref<PlatformRole[]>([])
 const catalog = ref<PlatformPermission[]>([])
 const resources = ref<PlatformDataResource[]>([])
 const busy = ref(false)
-const error = ref<{ message: string; traceId?: string } | null>(null)
+const error = ref<ErrorTip | null>(null)
 
 // 「负责区域」是最常用的自定义条件：资源的区域等于 Operator 的负责区域，编辑器单独提供，保存为自定义条件。
 const regionCondition = {
@@ -201,17 +202,7 @@ onMounted(() =>
         >{{ t('platformRole.create') }}</el-button
       >
     </header>
-    <el-alert
-      v-if="error && !dialogOpen"
-      :title="error.message"
-      type="error"
-      :closable="false"
-      role="alert"
-    >
-      <p v-if="error.traceId" class="trace">
-        {{ t('error.traceId') }}：<code>{{ error.traceId }}</code>
-      </p>
-    </el-alert>
+    <ErrorAlert v-if="error && !dialogOpen" :tip="error" />
 
     <el-table :data="roles" :empty-text="t('platformRole.empty')">
       <el-table-column prop="name" :label="t('platformRole.name')" />
@@ -259,7 +250,7 @@ onMounted(() =>
         editing ? t('platformRole.editTitle', { name: editing.name }) : t('platformRole.create')
       "
     >
-      <el-alert v-if="error" :title="error.message" type="error" :closable="false" role="alert" />
+      <ErrorAlert v-if="error" :tip="error" />
       <el-form label-position="top" @submit.prevent="save">
         <el-form-item :label="t('platformRole.code')" for="platform-role-code">
           <el-input
@@ -330,10 +321,6 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-.trace {
-  margin: 4px 0 0;
-  overflow-wrap: anywhere;
 }
 .hint {
   margin: 4px 0 0;
