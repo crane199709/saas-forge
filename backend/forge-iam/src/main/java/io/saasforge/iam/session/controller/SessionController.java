@@ -1,7 +1,5 @@
 package io.saasforge.iam.session.controller;
 
-import io.swagger.v3.oas.annotations.tags.Tag;
-
 import io.saasforge.iam.security.config.IamProperties;
 import io.saasforge.iam.session.model.TokenResponse;
 import io.saasforge.iam.session.service.LoginAudit;
@@ -11,6 +9,7 @@ import io.saasforge.iam.verification.model.CodeDelivery;
 import io.saasforge.iam.verification.model.SendCodeRequest;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;

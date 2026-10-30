@@ -1,12 +1,11 @@
 package io.saasforge.iam.session.controller;
 
-import io.swagger.v3.oas.annotations.tags.Tag;
-
 import io.saasforge.iam.session.model.OperatorTokenResponse;
 import io.saasforge.iam.session.service.LoginAudit;
 import io.saasforge.iam.session.service.OperatorSessionService;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;

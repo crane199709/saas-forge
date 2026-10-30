@@ -111,15 +111,35 @@ platform-console 运行在 <http://localhost:5173>，tenant-app 运行在 <http:
 
 ## 构建与测试
 
+每个 PR、main 分支推送与手动触发都会独立运行三个 GitHub Actions 工作流，可并行执行，各自超时为 30 分钟：
+
+| 工作流 | 检查内容 | 失败报告（保留 7 天） |
+| --- | --- | --- |
+| Backend quality | Maven `verify`：单测、Testcontainers 集成测试、ArchUnit 架构规则、Spotless 格式检查 | Surefire / Failsafe 报告 |
+| Frontend quality | 类型检查、单测、Prettier 格式检查、构建、mock E2E | 单测与格式检查日志、Playwright HTML 报告、测试结果与失败 trace |
+| Main flow E2E | 独立容器环境中的真实主链路 E2E | Playwright 报告、测试结果与服务日志 |
+
+本地使用 JDK 17、Node 24、pnpm 12.4.2 和可用的 Docker，按以下命令复现（从仓库根目录执行）：
+
 ```bash
-cd backend && ./mvnw verify
+(cd backend && ./mvnw --batch-mode verify)
+
+(
+  cd frontend
+  pnpm install --frozen-lockfile &&
+  pnpm typecheck &&
+  pnpm test &&
+  pnpm format:check &&
+  pnpm build &&
+  pnpm build:spike &&
+  pnpm exec playwright install --with-deps chromium &&
+  pnpm test:e2e --reporter=line,html
+)
+
+deploy/e2e/run.sh
 ```
 
-`verify` 会运行测试（`demo-service` 的数据库测试需要 Docker）并执行 `spotless:check`。
-
-```bash
-cd frontend && pnpm build && pnpm test
-```
+`build:spike` 为 mock E2E 准备诊断页面与子应用 v2。真实主链路脚本会创建并清理独立容器与数据卷；所需端口见 [E2E 脚本](deploy/e2e/run.sh)。格式检查等早期步骤失败时可能尚无测试报告，原因见对应工作流日志。
 
 ## 代码格式化
 

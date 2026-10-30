@@ -1,12 +1,11 @@
 package io.saasforge.iam.invitation.controller;
 
-import io.swagger.v3.oas.annotations.tags.Tag;
-
 import io.saasforge.iam.invitation.model.AcceptedInvitation;
 import io.saasforge.iam.invitation.model.InvitationPreview;
 import io.saasforge.iam.invitation.service.InvitationService;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;

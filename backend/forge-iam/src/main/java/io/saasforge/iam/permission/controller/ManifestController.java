@@ -1,11 +1,10 @@
 package io.saasforge.iam.permission.controller;
 
-import io.swagger.v3.oas.annotations.tags.Tag;
-
 import io.saasforge.iam.permission.service.PermissionService;
 import io.saasforge.sdk.core.ResourceManifest;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;

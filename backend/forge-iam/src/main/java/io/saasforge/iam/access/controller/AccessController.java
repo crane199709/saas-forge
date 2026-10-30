@@ -1,12 +1,11 @@
 package io.saasforge.iam.access.controller;
 
-import io.swagger.v3.oas.annotations.tags.Tag;
-
 import io.saasforge.iam.access.service.AccessService;
 import io.saasforge.iam.subapp.model.LoadableSubApp;
 import io.saasforge.sdk.core.ResourceManifest.MenuNode;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

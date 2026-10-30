@@ -1,0 +1,43 @@
+name: Frontend quality
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test 2>&1 | tee unit-test.log
+      - run: pnpm format:check 2>&1 | tee format-check.log
+      - run: pnpm build
+      # mock E2E 会访问诊断页面并切换到子应用 v2，普通构建不包含这些产物。
+      - run: pnpm build:spike
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e --reporter=line,html
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: frontend-quality-reports
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+            frontend/unit-test.log
+            frontend/format-check.log
+          retention-days: 7
