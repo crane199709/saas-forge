@@ -17,7 +17,8 @@ jobs:
           java-version: '17'
           cache: maven
       - run: docker info
-      - run: ./mvnw --batch-mode verify
+      # install 包含 verify，并让生成工程的独立 Maven 进程能解析本次 SDK 制品。
+      - run: ./mvnw --batch-mode install -Parchetype-it
         working-directory: backend
       - uses: actions/upload-artifact@v4
         if: failure()

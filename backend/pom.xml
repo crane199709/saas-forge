@@ -23,6 +23,7 @@
         <module>forge-iam</module>
         <module>forge-platform</module>
         <module>examples/demo-service</module>
+        <module>forge-service-archetype</module>
     </modules>
 
     <properties>

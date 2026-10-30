@@ -1,0 +1,11 @@
+<archetype-descriptor xmlns="https://maven.apache.org/plugins/maven-archetype-plugin/archetype-descriptor/1.2.0" name="forge-service">
+<requiredProperties>
+<requiredProperty key="serviceName"><defaultValue>sample-service</defaultValue><validationRegex>[a-z][a-z0-9-]*</validationRegex></requiredProperty>
+<requiredProperty key="pathPrefix"><defaultValue>sample</defaultValue><validationRegex>[a-z][a-z0-9-]*</validationRegex></requiredProperty>
+</requiredProperties><fileSets>
+<fileSet filtered="true" packaged="true"><directory>src/main/java</directory></fileSet>
+<fileSet filtered="true" packaged="true"><directory>src/test/java</directory></fileSet>
+<fileSet filtered="true"><directory>src/main/resources</directory></fileSet>
+<fileSet filtered="true"><directory>src/test/resources</directory></fileSet>
+<fileSet filtered="true"><directory></directory><includes><include>pom.xml</include></includes></fileSet>
+</fileSets></archetype-descriptor>
