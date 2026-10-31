@@ -76,6 +76,26 @@ export interface GrantablePermission {
   group: string | null
 }
 
+export interface TreePermission {
+  code: string
+  name: string
+  sharedWith: string[]
+}
+
+export interface PermissionMenu {
+  code: string
+  name: string
+  icon: string | null
+  permission: TreePermission | null
+  actions: TreePermission[]
+  children: PermissionMenu[]
+}
+
+export interface PermissionTree {
+  menus: PermissionMenu[]
+  others: GrantablePermission[]
+}
+
 export interface PermissionGroup {
   key: string
   service: string
@@ -123,6 +143,7 @@ export function createRoleApi(client: Pick<TenantClient, 'api' | 'page'>) {
   return {
     roles: () => send<Role[]>('GET', ''),
     permissions: () => send<GrantablePermission[]>('GET', '/permissions'),
+    permissionTree: () => send<PermissionTree>('GET', '/permission-tree'),
     dataResources: () => send<DataResource[]>('GET', '/data-resources'),
     conditionOptions: () => send<ConditionOptions>('GET', '/condition-options'),
     preview: (policy: DataPolicy, membershipId: string, samples: Record<string, unknown>[]) =>

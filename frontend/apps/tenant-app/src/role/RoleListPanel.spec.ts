@@ -1,7 +1,8 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 import { afterEach, expect, it, vi } from 'vitest'
-import { createTenantClient } from '@crane199709/sdk'
+import { createTenantClient, tenantClientKey } from '@crane199709/sdk'
+import RolePage from './RolePage.vue'
 import { i18n } from '../i18n'
 import RoleListPanel from './RoleListPanel.vue'
 import {
@@ -111,7 +112,7 @@ function mountPanel(fetcher: ReturnType<typeof vi.fn>) {
     props: {
       api: createRoleApi(createTenantClient(sessionStorage)),
       roles,
-      permissions,
+      permissionTree: { menus: [], others: permissions },
       dataResources,
       conditionOptions,
     },
@@ -355,5 +356,210 @@ it('预览以所选成员对样例数据求值并展示命中情况', async () =
   expect(document.querySelector('[data-testid="preview-result-0"]')!.textContent).toContain('命中')
   expect(document.querySelector('[data-testid="preview-context"]')!.textContent).toContain(
     '所在部门',
+  )
+})
+
+it('编辑树中勾选操作自动授予页面，同码页面同步，取消页面移除操作', async () => {
+  const fetcher = vi.fn().mockResolvedValue(ok(null))
+  const wrapper = mountPanel(fetcher)
+  await wrapper.setProps({
+    permissionTree: {
+      menus: [
+        {
+          code: 'demo',
+          name: '示例',
+          icon: null,
+          permission: null,
+          actions: [],
+          children: [
+            {
+              code: 'orders',
+              name: '订单页面',
+              icon: null,
+              permission: { code: 'order:read', name: '查看订单', sharedWith: ['attachments'] },
+              actions: [{ code: 'order:create', name: '创建订单', sharedWith: [] }],
+              children: [],
+            },
+            {
+              code: 'attachments',
+              name: '附件页面',
+              icon: null,
+              permission: { code: 'order:read', name: '查看订单', sharedWith: ['orders'] },
+              actions: [],
+              children: [],
+            },
+            { code: 'help', name: '帮助', icon: null, permission: null, actions: [], children: [] },
+          ],
+        },
+      ],
+      others: permissions.filter((p) => p.code !== 'order:read'),
+    },
+  })
+  await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
+  await flushPromises()
+  const input = (id: string) =>
+    document.querySelector(`[data-testid="${id}"] input`) as HTMLInputElement
+  expect(input('menu-orders').checked).toBe(true)
+  expect(input('menu-attachments').checked).toBe(true)
+  expect(input('menu-help').disabled).toBe(true)
+  expect(document.body.textContent).toContain('始终可见')
+  expect(document.body.textContent).toContain('与「附件页面」共用权限，会一起显示')
+  input('menu-orders').click()
+  await flushPromises()
+  input('action-orders-order:create').click()
+  await flushPromises()
+  expect(input('menu-orders').checked).toBe(true)
+  expect(input('menu-attachments').checked).toBe(true)
+  input('action-orders-order:create').click()
+  await flushPromises()
+  expect(input('menu-orders').checked).toBe(true)
+  expect(input('action-orders-order:create').checked).toBe(false)
+  input('action-orders-order:create').click()
+  await flushPromises()
+  ;(document.querySelector('[data-testid="role-save"]') as HTMLElement).click()
+  await flushPromises()
+  expect(JSON.parse(fetcher.mock.calls[0]![1].body).permissions.sort()).toEqual([
+    'order:create',
+    'order:read',
+  ])
+  await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
+  await flushPromises()
+  input('action-orders-order:create').click()
+  await flushPromises()
+  input('menu-attachments').click()
+  await flushPromises()
+  expect(input('action-orders-order:create').checked).toBe(false)
+  ;(document.querySelector('[data-testid="role-save"]') as HTMLElement).click()
+  await flushPromises()
+  expect(JSON.parse(fetcher.mock.calls.at(-1)![1].body)).toEqual({ permissions: [] })
+})
+
+it('新建角色按分组全选，跨页面共用的页面及操作权限传递联动并去重提交', async () => {
+  const fetcher = vi.fn().mockResolvedValue(ok(roles[1]))
+  const wrapper = mountPanel(fetcher)
+  await wrapper.setProps({
+    permissionTree: {
+      menus: [
+        {
+          code: 'app',
+          name: '业务应用',
+          icon: null,
+          permission: null,
+          actions: [],
+          children: [
+            {
+              code: 'a',
+              name: '页面 A',
+              icon: null,
+              permission: { code: 'a:read', name: '查看 A', sharedWith: [] },
+              actions: [{ code: 'b:read', name: '操作 B', sharedWith: ['b'] }],
+              children: [],
+            },
+            {
+              code: 'b',
+              name: '页面 B',
+              icon: null,
+              permission: { code: 'b:read', name: '查看 B', sharedWith: ['a'] },
+              actions: [
+                { code: 'b:create', name: '创建 B', sharedWith: [] },
+                { code: 'b:delete', name: '删除 B', sharedWith: [] },
+              ],
+              children: [],
+            },
+            { code: 'help', name: '帮助', icon: null, permission: null, actions: [], children: [] },
+          ],
+        },
+      ],
+      others: permissions,
+    },
+  })
+  await wrapper.get('[data-testid="role-create"]').trigger('click')
+  await flushPromises()
+  const input = (id: string) =>
+    document.querySelector(`[data-testid="${id}"] input`) as HTMLInputElement
+  for (const [id, value] of [
+    ['role-code', 'tree-role'],
+    ['role-name', '树角色'],
+  ]) {
+    const field = document.querySelector(`input[data-testid="${id}"]`) as HTMLInputElement
+    field.value = value!
+    field.dispatchEvent(new Event('input'))
+  }
+  input('menu-app').click()
+  await flushPromises()
+  expect(input('action-b-b:delete').checked).toBe(true)
+  expect(input('menu-help').checked).toBe(false)
+  input('menu-app').click()
+  await flushPromises()
+  input('action-b-b:create').click()
+  await flushPromises()
+  expect(input('menu-b').checked).toBe(true)
+  expect(input('action-a-b:read').checked).toBe(true)
+  expect(input('menu-a').checked).toBe(true)
+  expect(input('action-b-b:delete').checked).toBe(false)
+  expect(input('menu-app').indeterminate).toBe(true)
+  input('menu-a').click()
+  await flushPromises()
+  expect(input('menu-b').checked).toBe(false)
+  expect(input('action-b-b:create').checked).toBe(false)
+  input('action-b-b:create').click()
+  await flushPromises()
+  input('perm-iam:role:manage').click()
+  await flushPromises()
+  expect(document.body.textContent).toContain('forge-iam · 租户管理')
+  ;(document.querySelector('[data-testid="role-save"]') as HTMLElement).click()
+  await flushPromises()
+  const [url, init] = fetcher.mock.calls.at(-1)!
+  expect(url).toBe(`${location.origin}/iam/roles`)
+  expect(JSON.parse(init.body)).toEqual({
+    code: 'tree-role',
+    name: '树角色',
+    permissions: ['b:create', 'b:read', 'a:read', 'iam:role:manage'],
+    dataPolicies: [],
+  })
+})
+
+it('角色页从授权树接口加载菜单及功能权限', async () => {
+  const fetcher = vi.fn().mockImplementation((url: string) => {
+    const path = new URL(url).pathname
+    if (path === '/iam/roles') return Promise.resolve(ok(roles))
+    if (path.endsWith('/permission-tree'))
+      return Promise.resolve(
+        ok({
+          menus: [
+            {
+              code: 'help',
+              name: '帮助中心',
+              icon: null,
+              permission: null,
+              actions: [],
+              children: [],
+            },
+          ],
+          others: permissions,
+        }),
+      )
+    if (path.endsWith('/data-resources')) return Promise.resolve(ok([]))
+    if (path.endsWith('/condition-options')) return Promise.resolve(ok(conditionOptions))
+    throw new Error(`Unexpected request: ${path}`)
+  })
+  vi.stubGlobal('fetch', fetcher)
+  sessionStorage.setItem(
+    'forge.tenant.session',
+    JSON.stringify({ accessToken: 'access', refreshToken: 'r', membershipId: 'admin' }),
+  )
+  const wrapper = mount(RolePage, {
+    global: {
+      plugins: [i18n, ElementPlus],
+      provide: { [tenantClientKey as symbol]: createTenantClient(sessionStorage) },
+    },
+    attachTo: document.body,
+  })
+  await flushPromises()
+  await wrapper.get('[data-testid="role-create"]').trigger('click')
+  await flushPromises()
+  expect(document.querySelector('[data-testid="menu-help"]')?.textContent).toContain('帮助中心')
+  expect(document.querySelector('[data-testid="perm-order:read"]')?.textContent).toContain(
+    '查看订单',
   )
 })

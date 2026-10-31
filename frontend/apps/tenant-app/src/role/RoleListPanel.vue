@@ -5,6 +5,8 @@ import { ErrorAlert } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import ConditionGroup from './ConditionGroup.vue'
 import ConditionPreview from './ConditionPreview.vue'
+import PermissionTreeEditor from './PermissionTreeEditor.vue'
+import { menuRows } from './permission-selection'
 import {
   emptyGroup,
   fromConditionJson,
@@ -13,12 +15,11 @@ import {
   type GroupNode,
 } from './condition'
 import {
-  groupPermissions,
   type ConditionOptions,
   type DataPolicy,
   type DataResource,
   type DataScopeName,
-  type GrantablePermission,
+  type PermissionTree,
   type Role,
   type RoleApi,
 } from './role-api'
@@ -26,14 +27,24 @@ import {
 const props = defineProps<{
   api: RoleApi
   roles: Role[]
-  permissions: GrantablePermission[]
+  permissionTree: PermissionTree
   dataResources: DataResource[]
   conditionOptions: ConditionOptions
 }>()
 const emit = defineEmits<{ changed: [] }>()
 const { t } = useI18n()
-const groups = computed(() => groupPermissions(props.permissions))
-const names = computed(() => new Map(props.permissions.map((item) => [item.code, item.name])))
+const names = computed(
+  () =>
+    new Map(
+      [
+        ...props.permissionTree.others,
+        ...menuRows(props.permissionTree.menus).flatMap(({ menu }) => [
+          ...(menu.permission ? [menu.permission] : []),
+          ...menu.actions,
+        ]),
+      ].map((item) => [item.code, item.name]),
+    ),
+)
 const resourceNames = computed(
   () => new Map(props.dataResources.map((item) => [item.code, item.name])),
 )
@@ -141,11 +152,16 @@ async function save() {
   const done = await run(async () => {
     if (!role) {
       // 授权与数据范围随新建一次提交，后端同一事务写入
-      await props.api.createRole(draft.value.code.trim(), name, draft.value.permissions, policies)
+      await props.api.createRole(
+        draft.value.code.trim(),
+        name,
+        [...new Set(draft.value.permissions)],
+        policies,
+      )
       return
     }
     if (name !== role.name) await props.api.renameRole(role.id, name)
-    await props.api.replacePermissions(role.id, draft.value.permissions)
+    await props.api.replacePermissions(role.id, [...new Set(draft.value.permissions)])
     // 数据范围变化会让持有者的 Token 失效，未改动时不提交
     if (JSON.stringify(policies) !== JSON.stringify(policiesOf(scopesOf(role.dataPolicies))))
       await props.api.replaceDataPolicies(role.id, policies)
@@ -241,21 +257,7 @@ const scopeSummary = (role: Role) =>
           <el-input v-model="draft.name" maxlength="120" data-testid="role-name" />
         </el-form-item>
         <el-form-item :label="t('role.list.permissions')">
-          <el-checkbox-group v-model="draft.permissions" class="permissions">
-            <div v-for="group in groups" :key="group.key" class="permission-group">
-              <div class="group-title">
-                {{ group.service }} · {{ group.group ?? t('role.dialog.ungrouped') }}
-              </div>
-              <el-checkbox
-                v-for="permission in group.permissions"
-                :key="permission.code"
-                :value="permission.code"
-                :data-testid="`perm-${permission.code}`"
-              >
-                {{ permission.name }}（{{ permission.code }}）
-              </el-checkbox>
-            </div>
-          </el-checkbox-group>
+          <PermissionTreeEditor v-model="draft.permissions" :tree="permissionTree" />
         </el-form-item>
         <el-form-item v-if="dataResources.length > 0" :label="t('role.dialog.dataScopes')">
           <div class="scopes">
@@ -349,12 +351,6 @@ const scopeSummary = (role: Role) =>
   padding: 6px 8px;
   text-align: left;
   border-bottom: 1px solid var(--el-border-color-lighter);
-}
-.permissions {
-  display: block;
-}
-.permission-group {
-  margin-bottom: 8px;
 }
 .group-title {
   color: var(--el-text-color-secondary);

@@ -10,7 +10,7 @@ import {
   createRoleApi,
   type ConditionOptions,
   type DataResource,
-  type GrantablePermission,
+  type PermissionTree,
   type Role,
 } from './role-api'
 
@@ -20,7 +20,7 @@ if (!client) throw new Error('Shell must provide a TenantClient')
 const api = createRoleApi(client)
 const tab = ref('roles')
 const roles = ref<Role[]>([])
-const permissions = ref<GrantablePermission[]>([])
+const permissionTree = ref<PermissionTree>({ menus: [], others: [] })
 const dataResources = ref<DataResource[]>([])
 const conditionOptions = ref<ConditionOptions>({
   subject: [],
@@ -35,10 +35,10 @@ const error = ref<ErrorTip | null>(null)
 async function load() {
   error.value = null
   try {
-    ;[roles.value, permissions.value, dataResources.value, conditionOptions.value] =
+    ;[roles.value, permissionTree.value, dataResources.value, conditionOptions.value] =
       await Promise.all([
         api.roles(),
-        api.permissions(),
+        api.permissionTree(),
         api.dataResources(),
         api.conditionOptions(),
       ])
@@ -60,7 +60,7 @@ onMounted(load)
         <RoleListPanel
           :api="api"
           :roles="roles"
-          :permissions="permissions"
+          :permission-tree="permissionTree"
           :data-resources="dataResources"
           :condition-options="conditionOptions"
           @changed="load"

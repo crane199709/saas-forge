@@ -216,6 +216,12 @@
       "result": "结果",
       "hit": "命中",
       "miss": "未命中"
+    },
+    "tree": {
+      "menus": "菜单与操作",
+      "others": "功能权限",
+      "alwaysVisible": "始终可见",
+      "shared": "与「{menus}」共用权限，会一起显示"
     }
   },
   "member": {
