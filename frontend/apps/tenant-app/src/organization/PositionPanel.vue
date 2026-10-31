@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ErrorAlert } from '@forge/ui'
+import { ErrorAlert } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import type { OrganizationApi, Position } from './org-api'
 

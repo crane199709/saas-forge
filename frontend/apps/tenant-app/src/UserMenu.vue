@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { inject, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { tenantClientKey } from '@forge/sdk'
+import { tenantClientKey } from '@crane199709/sdk'
 import { signOut } from './login-flow'
 
 const { t } = useI18n()

@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 import { afterEach, expect, it, vi } from 'vitest'
-import { createTenantClient } from '@forge/sdk'
+import { createTenantClient } from '@crane199709/sdk'
 import { i18n } from '../i18n'
 import RoleMemberPanel from './RoleMemberPanel.vue'
 import { createRoleApi, type Role } from './role-api'

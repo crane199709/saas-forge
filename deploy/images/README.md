@@ -46,3 +46,7 @@ docker run --rm -p 5174:8080 -e FORGE_GATEWAY_URL=http://gateway:8080 -e 'FORGE_
 ```
 
 API 前缀不能与 Shell 页面路由重名。嵌套路由回退到 index.html；入口、fallback、runtime-config.json 为 no-store；assets 下 Vite hash 资源长期缓存。runtime-config.json 只公布同源模式，不公布内部地址。边缘 TLS 与 forwarded header 策略由部署环境配置。
+
+## npm scope 兼容性
+
+SDK 发布包已迁移到 `@crane199709/sdk`、`@crane199709/ui`、`@crane199709/sub-app-kit`，Shell 与 Sub-App 的 Module Federation 共享键同步迁移。上文已验收的旧 SHA 镜像仍使用 `@forge` 共享键，不能与新 scope 的 Sub-App 混用。迁移后需重新构建并配套部署 Shell 与 Sub-App；正式 release 会从同一版本重建镜像。

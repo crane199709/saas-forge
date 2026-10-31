@@ -1,7 +1,7 @@
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
-import { createAccessControl, createTenantClient, tenantClientKey } from '@forge/sdk'
+import { createAccessControl, createTenantClient, tenantClientKey } from '@crane199709/sdk'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import { createI18n } from 'vue-i18n'

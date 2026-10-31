@@ -2,7 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { onMounted, ref, watch } from 'vue'
 import { ElButton, ElOption, ElSelect } from 'element-plus'
-import { ApiError, useTenantClient } from '@forge/sdk'
+import { ApiError, useTenantClient } from '@crane199709/sdk'
 
 interface Order {
   id: string

@@ -1,5 +1,5 @@
 import { inject, ref, type InjectionKey } from 'vue'
-import { platformClientKey, type PlatformClient } from '@forge/sdk'
+import { platformClientKey, type PlatformClient } from '@crane199709/sdk'
 import { createPlatformAccess } from './access'
 
 /**

@@ -9,7 +9,7 @@ const alternateTheme = ref(false)
 import { inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import { applyTheme, themeTokens } from '@forge/ui'
+import { applyTheme, themeTokens } from '@crane199709/ui'
 import { subAppHostKey } from '../shell'
 import zhCN from './zh-CN.json'
 

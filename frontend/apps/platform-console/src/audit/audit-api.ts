@@ -1,4 +1,4 @@
-import type { Page, PlatformClient } from '@forge/sdk'
+import type { Page, PlatformClient } from '@crane199709/sdk'
 
 /** iam 平台审计接口返回的一条 Platform Realm Audit Event，由 platform-console 维护，不属于通用 SDK。 */
 export interface AuditEvent {

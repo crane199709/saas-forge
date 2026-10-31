@@ -15,8 +15,8 @@ backend/                 Maven 多模块（JDK 17、Spring Boot 4.0.9、Spring C
 frontend/                pnpm workspace
   apps/platform-console/ 平台侧 Shell App
   apps/tenant-app/       租户侧 Shell App
-  packages/ui/           @forge/ui
-  packages/sdk/          @forge/sdk
+  packages/ui/           @crane199709/ui
+  packages/sdk/          @crane199709/sdk
 deploy/                  本地依赖的 docker compose
 ```
 

@@ -113,7 +113,7 @@ async function resignIn(
 test('修改注册表中的入口地址后刷新即加载新版本，Shell 无需重新发布', async ({ page }) => {
   await page.goto('/apps/demo/overview')
   await expect(page.getByRole('heading', { name: '示例子应用 v1' })).toBeVisible()
-  // Sub-App 经共享的 @forge/sdk 取得 Shell 的会话与租户上下文
+  // Sub-App 经共享的 @crane199709/sdk 取得 Shell 的会话与租户上下文
   await expect(page.getByTestId('remote-tenant')).toHaveText('当前租户：演示租户')
 
   // Operator 在 App Registry 中把地址改为 v2，IAM 的副本随之下发新地址
@@ -266,8 +266,8 @@ for (const host of ['127.0.0.1', 'localhost']) {
       'vue-router',
       'pinia',
       'element-plus',
-      '@forge/ui',
-      '@forge/sdk',
+      '@crane199709/ui',
+      '@crane199709/sdk',
       'vue-i18n',
     ]) {
       await expect(page.getByTestId(`shared-demo-${dependency}`)).toHaveText(

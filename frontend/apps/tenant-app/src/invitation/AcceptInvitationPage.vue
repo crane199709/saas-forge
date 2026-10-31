@@ -2,8 +2,8 @@
 import { inject, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import { tenantClientKey, type InvitationPreview } from '@forge/sdk'
-import { ErrorAlert } from '@forge/ui'
+import { tenantClientKey, type InvitationPreview } from '@crane199709/sdk'
+import { ErrorAlert } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 
 const { t } = useI18n()

@@ -1,4 +1,4 @@
-import type { MenuNode, SubAppEntry } from '@forge/sdk'
+import type { MenuNode, SubAppEntry } from '@crane199709/sdk'
 import { flushPromises } from '@vue/test-utils'
 import { createPinia, defineStore, setActivePinia } from 'pinia'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -46,7 +46,7 @@ function setup(
   })
   const host = createSubAppHost({
     router,
-    sharedVersions: { vue: '3.5.44', '@forge/sdk': '0.1.0' },
+    sharedVersions: { vue: '3.5.44', '@crane199709/sdk': '0.1.0' },
     loadModule,
     timeoutMs,
   })
@@ -118,7 +118,7 @@ describe('createSubAppHost', () => {
   it('Shell 的共享依赖低于 Sub-App 声明的最低版本时拒绝加载，不请求入口', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const { host, loadModule } = setup()
-    host.apply(menu('demo'), [entry('demo', { vue: '3.6.0', '@forge/sdk': '0.1.0' })])
+    host.apply(menu('demo'), [entry('demo', { vue: '3.6.0', '@crane199709/sdk': '0.1.0' })])
     await flushPromises()
 
     expect(loadModule).not.toHaveBeenCalled()

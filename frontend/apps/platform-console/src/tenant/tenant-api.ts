@@ -1,4 +1,4 @@
-import type { Page, PlatformClient } from '@forge/sdk'
+import type { Page, PlatformClient } from '@crane199709/sdk'
 
 /** forge-platform 租户接口的模型，由 platform-console 维护，不属于通用 SDK。 */
 /** Tenant Lifecycle 状态，合法迁移由服务端的迁移表决定。 */

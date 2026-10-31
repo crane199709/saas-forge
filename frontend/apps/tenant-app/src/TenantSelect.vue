@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import type { TenantMembership } from '@forge/sdk'
+import type { TenantMembership } from '@crane199709/sdk'
 
 defineProps<{ memberships: TenantMembership[]; busy: boolean }>()
 const emit = defineEmits<{ select: [membershipId: string] }>()

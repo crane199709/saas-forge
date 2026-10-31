@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { inject, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { tenantClientKey } from '@forge/sdk'
+import { tenantClientKey } from '@crane199709/sdk'
 import SendCodeButton from './SendCodeButton.vue'
 
 const emit = defineEmits<{

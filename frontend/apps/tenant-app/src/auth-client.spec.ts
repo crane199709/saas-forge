@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { webcrypto } from 'node:crypto'
 beforeEach(() => vi.stubGlobal('crypto', webcrypto))
-import { ApiError, createTenantClient } from '@forge/sdk'
+import { ApiError, createTenantClient } from '@crane199709/sdk'
 
 function envelope(body: object, status = 200) {
   return new Response(JSON.stringify(body), {

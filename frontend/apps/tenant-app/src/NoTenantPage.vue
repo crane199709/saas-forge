@@ -2,8 +2,8 @@
 import { inject, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { tenantClientKey } from '@forge/sdk'
-import { ResultPage } from '@forge/ui'
+import { tenantClientKey } from '@crane199709/sdk'
+import { ResultPage } from '@crane199709/ui'
 import { signOut } from './login-flow'
 
 const { t } = useI18n()

@@ -5,7 +5,7 @@ import {
   createTenantClient,
   tenantClientKey,
   type TenantAccess,
-} from '@forge/sdk'
+} from '@crane199709/sdk'
 import { createMemoryHistory } from 'vue-router'
 import App from './App.vue'
 import { i18n } from './i18n'

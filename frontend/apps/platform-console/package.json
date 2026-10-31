@@ -12,8 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@forge/sdk": "workspace:*",
-    "@forge/ui": "workspace:*",
+    "@crane199709/sdk": "workspace:*",
+    "@crane199709/ui": "workspace:*",
     "element-plus": "2.14.7",
     "pinia": "4.1.0",
     "vue": "3.5.44",

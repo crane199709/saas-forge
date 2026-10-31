@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { CodeDelivery } from '@forge/sdk'
+import type { CodeDelivery } from '@crane199709/sdk'
 
 // 只负责发送与倒计时；失败交给父组件按统一方式展示。
 const props = defineProps<{ target: string; send: (target: string) => Promise<CodeDelivery> }>()

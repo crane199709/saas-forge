@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ApiError } from '@forge/sdk'
-import { ErrorAlert, type ErrorTip } from '@forge/ui'
+import { ApiError } from '@crane199709/sdk'
+import { ErrorAlert, type ErrorTip } from '@crane199709/ui'
 import type { CatalogPermission, Plan, PlanApi } from './plan-api'
 
 // subApps：App Registry 中已登记的编码，作为 Feature Pack 的选项；仍可输入尚未登记的编码，登记后随之生效

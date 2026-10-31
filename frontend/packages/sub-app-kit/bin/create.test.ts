@@ -14,9 +14,9 @@ test('仓库外生成使用发布版本快照，支持目标目录且拒绝覆�
     await writeFile(
       join(root, 'kit/versions.json'),
       JSON.stringify({
-        '@forge/sdk': '0.8.2',
-        '@forge/ui': '0.8.2',
-        '@forge/sub-app-kit': '0.8.2',
+        '@crane199709/sdk': '0.8.2',
+        '@crane199709/ui': '0.8.2',
+        '@crane199709/sub-app-kit': '0.8.2',
         vue: '3.5.44',
         'vue-router': '5.4.0',
         pinia: '4.1.0',
@@ -38,9 +38,9 @@ test('仓库外生成使用发布版本快照，支持目标目录且拒绝覆�
     const generated = run()
     assert.equal(generated.status, 0, generated.stderr)
     const pkg = JSON.parse(await readFile(join(root, 'billing-sub-app/package.json'), 'utf8'))
-    assert.equal(pkg.dependencies['@forge/sdk'], '0.8.2')
-    assert.equal(pkg.dependencies['@forge/ui'], '0.8.2')
-    assert.equal(pkg.devDependencies['@forge/sub-app-kit'], '0.8.2')
+    assert.equal(pkg.dependencies['@crane199709/sdk'], '0.8.2')
+    assert.equal(pkg.dependencies['@crane199709/ui'], '0.8.2')
+    assert.equal(pkg.devDependencies['@crane199709/sub-app-kit'], '0.8.2')
     assert.equal(pkg.dependencies.vue, '3.5.44')
     assert.ok(!JSON.stringify(pkg).includes('workspace:'))
     assert.equal(run().status, 1)
@@ -80,9 +80,9 @@ test('仓库命令继续默认生成到 apps 并支持独立编译配置', async
     )
     assert.equal(run.status, 0, run.stderr)
     const pkg = JSON.parse(await readFile(join(root, 'apps/billing-sub-app/package.json'), 'utf8'))
-    assert.equal(pkg.dependencies['@forge/sdk'], '0.8.2')
-    assert.equal(pkg.dependencies['@forge/ui'], '0.8.2')
-    assert.equal(pkg.devDependencies['@forge/sub-app-kit'], '0.8.2')
+    assert.equal(pkg.dependencies['@crane199709/sdk'], '0.8.2')
+    assert.equal(pkg.dependencies['@crane199709/ui'], '0.8.2')
+    assert.equal(pkg.devDependencies['@crane199709/sub-app-kit'], '0.8.2')
     assert.ok(!JSON.stringify(pkg).includes('workspace:'))
     const config = JSON.parse(
       await readFile(join(root, 'apps/billing-sub-app/tsconfig.json'), 'utf8'),

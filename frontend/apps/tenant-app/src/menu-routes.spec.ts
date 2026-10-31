@@ -1,4 +1,4 @@
-import type { MenuNode } from '@forge/sdk'
+import type { MenuNode } from '@crane199709/sdk'
 import { describe, expect, it } from 'vitest'
 import { menuSections } from './menu-routes'
 

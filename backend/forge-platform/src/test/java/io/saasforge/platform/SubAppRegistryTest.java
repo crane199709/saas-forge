@@ -61,7 +61,7 @@ class SubAppRegistryTest {
                                 Map.of(
                                         "local", "http://127.0.0.1:5175/remoteEntry.js",
                                         "prod", "https://cdn.example.com/billing/1.0.0/remoteEntry.js"),
-                        "sharedRequirements", Map.of("vue", "3.5.0", "@forge/sdk", "0.1.0")));
+                        "sharedRequirements", Map.of("vue", "3.5.0", "@crane199709/sdk", "0.1.0")));
         assertThat(created.status()).isEqualTo(201);
         assertThat(created.data())
                 .containsEntry("code", "billing")
@@ -71,7 +71,7 @@ class SubAppRegistryTest {
                         Map.of(
                                 "local", "http://127.0.0.1:5175/remoteEntry.js",
                                 "prod", "https://cdn.example.com/billing/1.0.0/remoteEntry.js"))
-                .containsEntry("sharedRequirements", Map.of("vue", "3.5.0", "@forge/sdk", "0.1.0"));
+                .containsEntry("sharedRequirements", Map.of("vue", "3.5.0", "@crane199709/sdk", "0.1.0"));
         String id = (String) created.data().get("id");
         SubAppChanged first = last();
         assertThat(first.code()).isEqualTo("billing");

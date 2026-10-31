@@ -42,7 +42,10 @@ const versions: Record<string, string> = workspace
         ...shell.dependencies,
         ...shell.devDependencies,
         ...Object.fromEntries(
-          ['@forge/sdk', '@forge/ui', '@forge/sub-app-kit'].map((name) => [name, kit.version]),
+          ['@crane199709/sdk', '@crane199709/ui', '@crane199709/sub-app-kit'].map((name) => [
+            name,
+            kit.version,
+          ]),
         ),
         '@module-federation/vite': kit.devDependencies['@module-federation/vite'],
       }
@@ -70,12 +73,18 @@ const files: Record<string, string> = {
         lint: 'forge-sub-app-lint',
       },
       dependencies: Object.fromEntries(
-        ['@forge/sdk', '@forge/ui', 'element-plus', 'pinia', 'vue', 'vue-i18n', 'vue-router'].map(
-          (name) => [name, version(name)],
-        ),
+        [
+          '@crane199709/sdk',
+          '@crane199709/ui',
+          'element-plus',
+          'pinia',
+          'vue',
+          'vue-i18n',
+          'vue-router',
+        ].map((name) => [name, version(name)]),
       ),
       devDependencies: {
-        '@forge/sub-app-kit': version('@forge/sub-app-kit'),
+        '@crane199709/sub-app-kit': version('@crane199709/sub-app-kit'),
         ...Object.fromEntries(
           ['@module-federation/vite', '@vitejs/plugin-vue', 'typescript', 'vite', 'vue-tsc'].map(
             (name) => [name, version(name)],
@@ -100,7 +109,7 @@ const files: Record<string, string> = {
   "include": ["src/**/*.ts", "src/**/*.vue"]
 }
 `,
-  'vite.config.ts': `import { defineSubAppConfig } from '@forge/sub-app-kit/vite'
+  'vite.config.ts': `import { defineSubAppConfig } from '@crane199709/sub-app-kit/vite'
 
 // 开发模式经 index.html 运行独立宿主；构建产物暴露 ./sub-app 的 remoteEntry.js，入口地址登记到 App Registry。
 export default defineSubAppConfig({ appCode: '${code}', port: ${port}, apiPrefixes: ['/${code}'] })
@@ -118,7 +127,7 @@ export default defineSubAppConfig({ appCode: '${code}', port: ${port}, apiPrefix
   </body>
 </html>
 `,
-  'src/dev.ts': `import { startDevHost } from '@forge/sub-app-kit/dev-host'
+  'src/dev.ts': `import { startDevHost } from '@crane199709/sub-app-kit/dev-host'
 import { routes } from './sub-app'
 
 // 仅用于 pnpm dev：无需启动 Shell App 工程即可运行与调试，修改代码后经 HMR 更新。
@@ -136,8 +145,8 @@ export const routes: RouteRecordRaw[] = [
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElButton, ElTableColumn } from 'element-plus'
-import { ApiError, useTenantClient, type Page } from '@forge/sdk'
-import { ErrorAlert, ListPage, type ErrorTip } from '@forge/ui'
+import { ApiError, useTenantClient, type Page } from '@crane199709/sdk'
+import { ErrorAlert, ListPage, type ErrorTip } from '@crane199709/ui'
 
 interface Order {
   id: string

@@ -1,4 +1,4 @@
-import type { Page, TenantClient } from '@forge/sdk'
+import type { Page, TenantClient } from '@crane199709/sdk'
 
 export type MemberStatus = 'invited' | 'active' | 'suspended' | 'left'
 

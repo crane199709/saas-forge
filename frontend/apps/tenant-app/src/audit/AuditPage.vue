@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { inject, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { tenantClientKey } from '@forge/sdk'
-import { ErrorAlert } from '@forge/ui'
+import { tenantClientKey } from '@crane199709/sdk'
+import { ErrorAlert } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import { createAuditApi, type AuditEvent } from './audit-api'
 

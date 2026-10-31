@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import ElementPlus, { ElSelect } from 'element-plus'
 import { afterEach, expect, it, vi } from 'vitest'
-import { createPlatformClient } from '@forge/sdk'
+import { createPlatformClient } from '@crane199709/sdk'
 import { i18n } from '../i18n'
 import TenantPanel from './TenantPanel.vue'
 import { createTenantApi } from './tenant-api'

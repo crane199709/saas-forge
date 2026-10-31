@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { ResultPage } from '@forge/ui'
+import { ResultPage } from '@crane199709/ui'
 
 defineProps<{ status: '403' | '404' }>()
 const { t } = useI18n()

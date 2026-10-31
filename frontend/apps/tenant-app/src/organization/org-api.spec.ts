@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { createTenantClient } from '@forge/sdk'
+import { createTenantClient } from '@crane199709/sdk'
 import { createOrganizationApi, departmentTree } from './org-api'
 
 afterEach(() => {

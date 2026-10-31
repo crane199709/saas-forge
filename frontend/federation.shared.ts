@@ -10,8 +10,8 @@ export function sharedVersions(): Record<string, string> {
     pinia: tenantPackage.dependencies.pinia,
     'element-plus': tenantPackage.dependencies['element-plus'],
     'vue-i18n': tenantPackage.dependencies['vue-i18n'],
-    '@forge/ui': uiPackage.version,
-    '@forge/sdk': sdkPackage.version,
+    '@crane199709/ui': uiPackage.version,
+    '@crane199709/sdk': sdkPackage.version,
   }
 }
 

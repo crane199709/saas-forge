@@ -1,4 +1,4 @@
-import type { PlatformClient } from '@forge/sdk'
+import type { PlatformClient } from '@crane199709/sdk'
 import { reactive } from 'vue'
 
 /** 退出与登录页之间传递的状态。只存于内存，页面刷新后随之丢失。 */

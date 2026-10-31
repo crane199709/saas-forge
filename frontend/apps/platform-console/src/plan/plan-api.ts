@@ -1,4 +1,4 @@
-import type { PlatformClient } from '@forge/sdk'
+import type { PlatformClient } from '@crane199709/sdk'
 
 /** forge-platform 套餐接口的模型，由 platform-console 维护，不属于通用 SDK。 */
 export interface Plan {

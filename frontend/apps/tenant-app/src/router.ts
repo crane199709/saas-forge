@@ -1,4 +1,4 @@
-import type { AccessControl, TenantClient } from '@forge/sdk'
+import type { AccessControl, TenantClient } from '@crane199709/sdk'
 import {
   createRouter,
   type RouteLocationNormalized,

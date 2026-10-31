@@ -187,10 +187,10 @@ importers:
 
   apps/demo-sub-app:
     dependencies:
-      '@forge/sdk':
+      '@crane199709/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
-      '@forge/ui':
+      '@crane199709/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       element-plus:
@@ -209,7 +209,7 @@ importers:
         specifier: 5.4.0
         version: 5.4.0(@rspack/core@2.2.9)(@vue/compiler-sfc@3.5.44)(pinia@4.1.0(typescript@5.9.3)(vue@3.5.44(typescript@5.9.3)))(rolldown@1.2.15)(vite@8.3.5(@types/node@24.19.2)(jiti@2.4.2))(vue@3.5.44(typescript@5.9.3))
     devDependencies:
-      '@forge/sub-app-kit':
+      '@crane199709/sub-app-kit':
         specifier: workspace:*
         version: link:../../packages/sub-app-kit
       '@vitejs/plugin-vue':
@@ -227,10 +227,10 @@ importers:
 
   apps/platform-console:
     dependencies:
-      '@forge/sdk':
+      '@crane199709/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
-      '@forge/ui':
+      '@crane199709/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       element-plus:
@@ -279,10 +279,10 @@ importers:
 
   apps/tenant-app:
     dependencies:
-      '@forge/sdk':
+      '@crane199709/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
-      '@forge/ui':
+      '@crane199709/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@module-federation/runtime':
@@ -337,7 +337,7 @@ importers:
 
   packages/sub-app-kit:
     devDependencies:
-      '@forge/sdk':
+      '@crane199709/sdk':
         specifier: workspace:*
         version: link:../sdk
       '@module-federation/vite':
@@ -376,7 +376,7 @@ importers:
 
   packages/ui:
     devDependencies:
-      '@forge/sdk':
+      '@crane199709/sdk':
         specifier: workspace:*
         version: link:../sdk
       '@vue/test-utils':

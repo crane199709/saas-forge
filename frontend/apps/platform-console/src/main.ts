@@ -1,6 +1,6 @@
-// Element Plus 组件与样式由构建插件按需引入；@forge/ui 列表页以 vLoading 指令具名导入，插件不为指令补样式。
+// Element Plus 组件与样式由构建插件按需引入；@crane199709/ui 列表页以 vLoading 指令具名导入，插件不为指令补样式。
 import 'element-plus/es/components/loading/style/css'
-import { createPlatformClient, platformClientKey } from '@forge/sdk'
+import { createPlatformClient, platformClientKey } from '@crane199709/sdk'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import { createWebHistory } from 'vue-router'

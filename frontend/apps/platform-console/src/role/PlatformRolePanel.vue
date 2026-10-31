@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ApiError } from '@forge/sdk'
-import { ErrorAlert, type ErrorTip } from '@forge/ui'
+import { ApiError } from '@crane199709/sdk'
+import { ErrorAlert, type ErrorTip } from '@crane199709/ui'
 import type {
   DataPolicy,
   PlatformDataResource,

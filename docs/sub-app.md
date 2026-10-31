@@ -11,16 +11,16 @@
 5. 修改注册表中的地址即切换版本：用户刷新页面后加载新地址，Shell 无需重新发布。已加载的页面不会被强制替换（工单 02 结论）。
 6. 切换租户时 Shell 先卸载全部 Sub-App（回到首页并移除其路由），清空共享 Pinia 状态，再整页重载。
 
-Sub-App 经共享的 `@forge/sdk` 取得 Token 与租户上下文：`useTenantClient()` 返回 Shell 的客户端，`session()` 带当前租户，`api()` 自动携带 Token 并在过期时刷新。Sub-App 自身不处理登录。
+Sub-App 经共享的 `@crane199709/sdk` 取得 Token 与租户上下文：`useTenantClient()` 返回 Shell 的客户端，`session()` 带当前租户，`api()` 自动携带 Token 并在过期时刷新。Sub-App 自身不处理登录。
 
 ## 新建 Sub-App
 
 ### 仓库外开发
 
-先配置团队提供的 npm registry 和认证（包括 `@forge` scope），使用与目标 Shell 同一发布版本。Node.js 24 与 pnpm 12 可用于以下命令：
+先配置团队提供的 npm registry 和认证（包括 `@crane199709` scope），使用与目标 Shell 同一发布版本。Node.js 24 与 pnpm 12 可用于以下命令：
 
 ```bash
-pnpm --package=@forge/sub-app-kit@0.1.0 dlx forge-create-sub-app billing 5180
+pnpm --package=@crane199709/sub-app-kit@0.1.0 dlx forge-create-sub-app billing 5180
 cd billing-sub-app
 pnpm install
 pnpm lint
@@ -31,7 +31,7 @@ pnpm dev
 
 可追加目标目录：`forge-create-sub-app billing 5180 ./business/billing`。默认是当前目录的 `billing-sub-app`，目标已存在即失败，不覆盖文件。发布包的命令是编译后的 JavaScript。
 
-生成器使用随 sub-app-kit 发布的版本表（构建时取自同版本 tenant-app），共享依赖使用精确版本，三个 `@forge/*` 包使用统一发布版本；无需平台源码或父目录 tsconfig。不要单独升级共享依赖，混合版本兼容不在当前支持范围内。
+生成器使用随 sub-app-kit 发布的版本表（构建时取自同版本 tenant-app），共享依赖使用精确版本，三个 `@crane199709/*` 包使用统一发布版本；无需平台源码或父目录 tsconfig。不要单独升级共享依赖，混合版本兼容不在当前支持范围内。
 
 首页带 `ListPage`、分页、加载状态与错误提示，默认请求 `/billing/orders`，请按业务接口修改路径与行字段。开发宿主通过 `vite.config.ts` 的 `apiPrefixes` 代理业务前缀，`gateway`、`shellOrigins` 按环境设置。未接入后端时列表展示加载错误，不伪造业务数据。
 
@@ -43,7 +43,7 @@ pnpm dev
 pnpm create:sub-app billing 5180
 ```
 
-生成 `apps/billing-sub-app`，随后执行 `pnpm install`，把精确版本依赖链接到仓库内同版本包。生成的工程使用 `@forge/sub-app-kit`：
+生成 `apps/billing-sub-app`，随后执行 `pnpm install`，把精确版本依赖链接到仓库内同版本包。生成的工程使用 `@crane199709/sub-app-kit`：
 
 | 命令 | 作用 |
 | --- | --- |
@@ -61,20 +61,20 @@ pnpm create:sub-app billing 5180
 4. 在租户使用的 Plan 的 Feature Pack 中开放 `billing` 及对应 Permission Code，并为成员分配包含该权限的 Role。仅登记入口不会自动给成员授权。
 5. 刷新租户 Shell，在拥有权限的租户中确认菜单可见且页面加载成功。若不可见，依次核对菜单权限、套餐范围、登记环境与 `GET /iam/auth/access` 返回的 subApps。
 
-## 使用 `@forge/ui`
+## 使用 `@crane199709/ui`
 
-`@forge/ui` 与 Shell 共享同一实例，组件内置文案经 local scope 取 Shell 当前语言（第一期为 `zh-CN`），Sub-App 无需注册。
+`@crane199709/ui` 与 Shell 共享同一实例，组件内置文案经 local scope 取 Shell 当前语言（第一期为 `zh-CN`），Sub-App 无需注册。
 
 ### 列表页 `ListPage`
 
-`ListPage` 提供搜索区插槽、`el-table` 与底部的总条数和翻页，直接接收 `@forge/sdk` 的 `client.page<T>()` 结果（`Page<T>`，页码取自 `meta.page.number`，从 1 开始）。翻页时触发 `page-change`，参数是新页码，由 Sub-App 按新页码重新请求；只有一页时不显示翻页。示例见 `apps/demo-sub-app/src/OrdersList.vue`：
+`ListPage` 提供搜索区插槽、`el-table` 与底部的总条数和翻页，直接接收 `@crane199709/sdk` 的 `client.page<T>()` 结果（`Page<T>`，页码取自 `meta.page.number`，从 1 开始）。翻页时触发 `page-change`，参数是新页码，由 Sub-App 按新页码重新请求；只有一页时不显示翻页。示例见 `apps/demo-sub-app/src/OrdersList.vue`：
 
 ```vue
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ElButton, ElTableColumn } from 'element-plus'
-import { useTenantClient, type Page } from '@forge/sdk'
-import { ListPage } from '@forge/ui'
+import { useTenantClient, type Page } from '@crane199709/sdk'
+import { ListPage } from '@crane199709/ui'
 
 interface Order {
   id: string
@@ -132,7 +132,7 @@ onMounted(() => load())
 `forge-sub-app-lint` 检查 `src` 下的 `.ts` 与 `.vue`（`src/dev.ts` 除外），违反时列出位置并失败：
 
 - 不得调用 `createApp`、`createRouter`、`create*History`、`createPinia`、`createI18n`：这些实例由 Shell 创建。
-- 只能从共享依赖（vue、vue-router、pinia、element-plus、vue-i18n、`@forge/ui`、`@forge/sdk`）的根入口导入，不得导入子路径（包括 Element Plus 样式）。
+- 只能从共享依赖（vue、vue-router、pinia、element-plus、vue-i18n、`@crane199709/ui`、`@crane199709/sdk`）的根入口导入，不得导入子路径（包括 Element Plus 样式）。
 - 不得 `addRoute`/`removeRoute`、改写 `history`、整页跳转、修改文档根节点的样式，不得写 Shell 的 `forge.*` 会话存储。
 - `.vue` 的 `<style>` 必须 `scoped` 或 `module`，不得使用 `:global(...)`，不得为 `html`、`body`、`:root` 设置样式。
 

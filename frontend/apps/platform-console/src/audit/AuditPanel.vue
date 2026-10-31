@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ApiError } from '@forge/sdk'
-import { ErrorAlert, type ErrorTip } from '@forge/ui'
+import { ApiError } from '@crane199709/sdk'
+import { ErrorAlert, type ErrorTip } from '@crane199709/ui'
 import type { AuditApi, AuditEvent } from './audit-api'
 
 const props = defineProps<{ api: AuditApi }>()

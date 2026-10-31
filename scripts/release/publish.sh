@@ -22,7 +22,7 @@ uplinks:
   npmjs:
     url: https://registry.npmjs.org/
 packages:
-  '@forge/*':
+  '@crane199709/*':
     access: $all
     publish: $all
   '**':
@@ -83,7 +83,7 @@ if url.scheme not in ('https', 'http') or not url.netloc or url.username or url.
     raise SystemExit('npm registry 必须为无凭证的 HTTP(S) URL')
 path = url.path.rstrip('/') + '/'
 with open(os.environ['NPM_CONFIG_USERCONFIG'], 'w') as f:
-    f.write(f'@forge:registry={os.environ["NPM_RELEASE_REGISTRY"]}\n//{url.netloc}{path}:_authToken=${{NPM_RELEASE_TOKEN}}\n')
+    f.write(f'@crane199709:registry={os.environ["NPM_RELEASE_REGISTRY"]}\n//{url.netloc}{path}:_authToken=${{NPM_RELEASE_TOKEN}}\n')
 PY
 if [[ "$mode" == remote ]]; then
   # 身份预检不能保证包写权限，但可在 Maven 发布前拒绝无效 npm 凭证。
@@ -91,7 +91,7 @@ if [[ "$mode" == remote ]]; then
 fi
 (cd "$root/backend" && ./mvnw --batch-mode -s "$work/settings.xml" \
   "-Dforge.release.url=$MAVEN_RELEASE_URL" -DskipTests deploy)
-(cd "$root/frontend" && pnpm --filter @forge/sdk --filter @forge/ui --filter @forge/sub-app-kit build)
+(cd "$root/frontend" && pnpm --filter @crane199709/sdk --filter @crane199709/ui --filter @crane199709/sub-app-kit build)
 mkdir "$work/tarballs"
 for package in sdk ui sub-app-kit; do
   # pnpm pack 负责替换 workspace: 依赖与 publishConfig；npm 只发布该确定的 tarball。
@@ -136,7 +136,7 @@ PYCACHE
 "$root/backend/mvnw" --batch-mode -s "$work/settings.xml" -f "$work/consumer/maven/pom.xml" \
   "-Dmaven.repo.local=$work/consumer/m2" org.apache.maven.plugins:maven-dependency-plugin:3.9.0:resolve
 (cd "$work/consumer/npm" && npm install --no-audit --no-fund && npx --no-install tsc && \
-  node --input-type=module -e "import { defineSubAppConfig } from '@forge/sub-app-kit/vite'; defineSubAppConfig({appCode:'smoke',port:5179})({command:'build',mode:'production'})" && \
+  node --input-type=module -e "import { defineSubAppConfig } from '@crane199709/sub-app-kit/vite'; defineSubAppConfig({appCode:'smoke',port:5179})({command:'build',mode:'production'})" && \
   mkdir src && printf 'export const value = 1\n' > src/index.ts && npx --no-install forge-sub-app-lint)
 if [[ "$mode" == local ]]; then
   python3 - "$work/maven-repository/io/saasforge" <<'PY'

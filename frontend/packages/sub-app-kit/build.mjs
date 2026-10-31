@@ -45,7 +45,10 @@ const versions = {
   ...shell.devDependencies,
   '@module-federation/vite': kit.devDependencies['@module-federation/vite'],
   ...Object.fromEntries(
-    ['@forge/sdk', '@forge/ui', '@forge/sub-app-kit'].map((name) => [name, kit.version]),
+    ['@crane199709/sdk', '@crane199709/ui', '@crane199709/sub-app-kit'].map((name) => [
+      name,
+      kit.version,
+    ]),
   ),
 }
 await writeFile('dist/versions.json', `${JSON.stringify(versions, null, 2)}\n`)

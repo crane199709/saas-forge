@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { createAccessControl, type TenantAccess } from '@forge/sdk'
+import { createAccessControl, type TenantAccess } from '@crane199709/sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 

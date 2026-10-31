@@ -18,11 +18,11 @@ deps = ''.join(f'<dependency><groupId>io.saasforge</groupId><artifactId>{a}</art
 <dependencyManagement><dependencies><dependency><groupId>io.saasforge</groupId><artifactId>forge-dependencies</artifactId><version>{version}</version><type>pom</type><scope>import</scope></dependency></dependencies></dependencyManagement>
 <dependencies>{deps}</dependencies></project>''')
 (root / 'npm').mkdir()
-(root / 'npm/package.json').write_text(json.dumps({'name': 'release-consumer', 'version': '1.0.0', 'private': True, 'type': 'module', 'dependencies': {f'@forge/{name}': version for name in ['sdk', 'ui', 'sub-app-kit']}, 'devDependencies': {'typescript': '5.9.3', '@types/node': '^24.19.2'}}, indent=2))
-(root / 'npm/index.ts').write_text('''import * as sdk from '@forge/sdk'
-import * as ui from '@forge/ui'
-import { defineSubAppConfig } from '@forge/sub-app-kit/vite'
-import { startDevHost } from '@forge/sub-app-kit/dev-host'
+(root / 'npm/package.json').write_text(json.dumps({'name': 'release-consumer', 'version': '1.0.0', 'private': True, 'type': 'module', 'dependencies': {f'@crane199709/{name}': version for name in ['sdk', 'ui', 'sub-app-kit']}, 'devDependencies': {'typescript': '5.9.3', '@types/node': '^24.19.2'}}, indent=2))
+(root / 'npm/index.ts').write_text('''import * as sdk from '@crane199709/sdk'
+import * as ui from '@crane199709/ui'
+import { defineSubAppConfig } from '@crane199709/sub-app-kit/vite'
+import { startDevHost } from '@crane199709/sub-app-kit/dev-host'
 console.log(sdk, ui, defineSubAppConfig({ appCode: 'smoke', port: 5179 }), startDevHost)
 ''')
 (root / 'npm/tsconfig.json').write_text(json.dumps({'compilerOptions': {'strict': True, 'noEmit': True, 'skipLibCheck': True, 'module': 'ESNext', 'moduleResolution': 'Bundler', 'target': 'ES2022'}, 'include': ['index.ts']}))

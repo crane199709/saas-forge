@@ -1,4 +1,4 @@
-import type { PlatformClient } from '@forge/sdk'
+import type { PlatformClient } from '@crane199709/sdk'
 import {
   createRouter,
   type RouteLocationNormalizedLoaded,

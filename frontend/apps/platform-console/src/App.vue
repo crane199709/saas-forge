@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import { AppLayout, ErrorAlert, type MenuItem } from '@forge/ui'
+import { AppLayout, ErrorAlert, type MenuItem } from '@crane199709/ui'
 // Element Plus 内置文案默认是英文，与第一期只支持简体中文保持一致；按需引入时语言包经 ConfigProvider 下发。
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { consolePages } from './router'

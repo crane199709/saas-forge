@@ -1,4 +1,4 @@
-import type { TenantClient, TenantMembership } from '@forge/sdk'
+import type { TenantClient, TenantMembership } from '@crane199709/sdk'
 import { reactive } from 'vue'
 import type { ErrorTip } from './error-tip'
 

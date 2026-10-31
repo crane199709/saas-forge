@@ -4,8 +4,13 @@ import ElementPlus, { ElDialog } from 'element-plus'
 import 'element-plus/dist/index.css'
 // Element Plus 内置文案默认是英文，与第一期只支持简体中文保持一致
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
-import { createAccessControl, createTenantClient, sdkRuntime, tenantClientKey } from '@forge/sdk'
-import { themeTokens } from '@forge/ui'
+import {
+  createAccessControl,
+  createTenantClient,
+  sdkRuntime,
+  tenantClientKey,
+} from '@crane199709/sdk'
+import { themeTokens } from '@crane199709/ui'
 import { loadRemote, registerRemotes } from '@module-federation/runtime'
 import { createPinia, defineStore } from 'pinia'
 import { createApp, ref } from 'vue'
@@ -44,8 +49,8 @@ const host = createSubAppHost({
     'vue-router': useRouter,
     pinia: defineStore,
     'element-plus': ElDialog,
-    '@forge/sdk': sdkRuntime,
-    '@forge/ui': themeTokens,
+    '@crane199709/sdk': sdkRuntime,
+    '@crane199709/ui': themeTokens,
     'vue-i18n': useI18n,
   },
 })

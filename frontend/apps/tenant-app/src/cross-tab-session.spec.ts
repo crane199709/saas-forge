@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { webcrypto } from 'node:crypto'
-import { createTenantClient, type TenantSession } from '@forge/sdk'
+import { createTenantClient, type TenantSession } from '@crane199709/sdk'
 
 beforeEach(() => vi.stubGlobal('crypto', webcrypto))
 afterEach(() => {

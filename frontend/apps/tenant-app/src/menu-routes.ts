@@ -1,4 +1,4 @@
-import type { MenuNode } from '@forge/sdk'
+import type { MenuNode } from '@crane199709/sdk'
 
 /** 菜单中的一个可导航入口。 */
 export interface MenuLink {

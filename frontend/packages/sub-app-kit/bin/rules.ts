@@ -6,7 +6,15 @@ export interface Violation {
 }
 
 // Shell 以 singleton 提供的共享依赖：只能从根入口导入，子路径可能绕开共享声明得到第二份实例（工单 02 坑点 5）。
-const SHARED = ['vue', 'vue-router', 'pinia', 'element-plus', 'vue-i18n', '@forge/ui', '@forge/sdk']
+const SHARED = [
+  'vue',
+  'vue-router',
+  'pinia',
+  'element-plus',
+  'vue-i18n',
+  '@crane199709/ui',
+  '@crane199709/sdk',
+]
 
 // Shell 统一创建应用级实例，Sub-App 只导出路由与组件（工单 02 坑点 1）。
 const FACTORIES: Record<string, string[]> = {
@@ -41,7 +49,7 @@ const CODE_PATTERNS: Pattern[] = [
   },
   {
     test: /\b(local|session)Storage\.(setItem|removeItem|clear)\s*\(\s*['"]forge\./,
-    message: '不得读写 Shell 的会话存储，Token 经 @forge/sdk 获取',
+    message: '不得读写 Shell 的会话存储，Token 经 @crane199709/sdk 获取',
   },
 ]
 

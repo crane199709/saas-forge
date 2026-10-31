@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useTenantClient } from '@forge/sdk'
+import { useTenantClient } from '@crane199709/sdk'
 
 // 开发用宿主的外壳：只提供登录与租户选择，便于 Sub-App 调用需要 Token 的接口；界面文案不进入任何产物。
 defineProps<{ appCode: string }>()

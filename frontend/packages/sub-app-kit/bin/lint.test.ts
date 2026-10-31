@@ -13,7 +13,7 @@ test('不得创建应用级实例或导入共享依赖的子路径', () => {
       "import { createRouter, type RouteRecordRaw } from 'vue-router'",
       "import 'element-plus/dist/index.css'",
       "import { ElButton } from 'element-plus'",
-      "import { useTenantClient } from '@forge/sdk'",
+      "import { useTenantClient } from '@crane199709/sdk'",
     ].join('\n'),
   )
   assert.equal(found.length, 3)
@@ -70,7 +70,7 @@ test('遵守约定的 Sub-App 没有违规', () => {
       [
         '<script setup lang="ts">',
         "import { useRouter } from 'vue-router'",
-        "import { useTenantClient } from '@forge/sdk'",
+        "import { useTenantClient } from '@crane199709/sdk'",
         'const router = useRouter()',
         '</script>',
         '<style module>.a { color: var(--forge-color-primary) }</style>',

@@ -1,5 +1,5 @@
-import { ApiError } from '@forge/sdk'
-import type { ErrorTip } from '@forge/ui'
+import { ApiError } from '@crane199709/sdk'
+import type { ErrorTip } from '@crane199709/ui'
 
 export type { ErrorTip }
 

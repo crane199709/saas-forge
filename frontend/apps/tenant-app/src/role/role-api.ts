@@ -1,4 +1,4 @@
-import type { Page, TenantClient } from '@forge/sdk'
+import type { Page, TenantClient } from '@crane199709/sdk'
 
 /** IAM 角色接口的模型，由 tenant-app 维护，不属于通用 SDK。 */
 export interface Role {

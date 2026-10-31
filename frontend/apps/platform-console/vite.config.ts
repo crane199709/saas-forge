@@ -7,7 +7,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   plugins: [
     vue(),
-    // 按需引入 Element Plus：模板中的 <el-*> 由 Components 解析，脚本中具名导入的组件（含 @forge/ui）由 ElementPlus 补上样式。
+    // 按需引入 Element Plus：模板中的 <el-*> 由 Components 解析，脚本中具名导入的组件（含 @crane199709/ui）由 ElementPlus 补上样式。
     // 组件类型来自 tsconfig 的 element-plus/global，不生成 components.d.ts。
     // 单元测试中 element-plus 由 Node 直接加载，无法导入 CSS，只解析组件不引样式。
     Components({

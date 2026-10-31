@@ -1,11 +1,11 @@
-import type { Page } from '@forge/sdk'
+import type { Page } from '@crane199709/sdk'
 import { ElPagination, ElTable, vLoading } from 'element-plus'
 import { defineComponent, h, withDirectives, type SlotsType, type VNode } from 'vue'
 import { useUiI18n } from './i18n'
 
 /** ListPage 的属性。 */
 export interface ListPageProps<T> {
-  /** `@forge/sdk` 分页接口的结果；首次加载完成前为 `null`。 */
+  /** `@crane199709/sdk` 分页接口的结果；首次加载完成前为 `null`。 */
   page: Page<T> | null
   /** 加载中：表格显示加载遮罩，分页不可操作。 */
   loading?: boolean

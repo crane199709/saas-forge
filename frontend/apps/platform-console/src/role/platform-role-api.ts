@@ -1,4 +1,4 @@
-import type { PlatformClient } from '@forge/sdk'
+import type { PlatformClient } from '@crane199709/sdk'
 
 /**
  * 平台角色在一个数据资源上的 Data Policy：预设（如 `self`、`all`）或自定义条件 `custom`。

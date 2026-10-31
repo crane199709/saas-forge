@@ -2,8 +2,8 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElButton, ElTableColumn } from 'element-plus'
-import { ApiError, useTenantClient, type Page } from '@forge/sdk'
-import { ErrorAlert, ListPage, type ErrorTip } from '@forge/ui'
+import { ApiError, useTenantClient, type Page } from '@crane199709/sdk'
+import { ErrorAlert, ListPage, type ErrorTip } from '@crane199709/ui'
 
 interface Order {
   id: string

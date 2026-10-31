@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ErrorAlert } from '@forge/ui'
+import { ErrorAlert } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import type { MemberRoles, Role, RoleApi } from './role-api'
 

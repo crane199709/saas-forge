@@ -2,7 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { createTenantClient, tenantClientKey } from '@forge/sdk'
+import { createTenantClient, tenantClientKey } from '@crane199709/sdk'
 import { i18n } from '../i18n'
 import AcceptInvitationPage from './AcceptInvitationPage.vue'
 

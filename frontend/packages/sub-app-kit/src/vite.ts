@@ -18,7 +18,7 @@ export interface SubAppOptions {
 }
 
 /**
- * Module Federation 容器名，须与 `@forge/sdk` 的 `subAppContainerName` 一致：Shell 按应用编码注册远程模块。
+ * Module Federation 容器名，须与 `@crane199709/sdk` 的 `subAppContainerName` 一致：Shell 按应用编码注册远程模块。
  * 构建配置在 Node 中加载，不引入运行时 SDK。
  */
 export function containerName(appCode: string): string {
@@ -28,7 +28,7 @@ export function containerName(appCode: string): string {
 /**
  * Sub-App 的 Vite 配置，按工单 02 的接入契约生成。
  *
- * - `vite`（开发）：不启用 Module Federation，`index.html` 经 `@forge/sub-app-kit/dev-host` 提供开发用宿主，
+ * - `vite`（开发）：不启用 Module Federation，`index.html` 经 `@crane199709/sub-app-kit/dev-host` 提供开发用宿主，
  *   无需启动 Shell App 工程，Vue 的 HMR 照常生效。
  * - `vite build` / `vite preview`：暴露 `./sub-app` 的 ESM `remoteEntry.js`，共享依赖 singleton 且只消费 Shell 提供的实例
  *   （`import: false`，`loaded-first`），资源使用相对 `base`，preview 允许 Shell 源跨源访问。

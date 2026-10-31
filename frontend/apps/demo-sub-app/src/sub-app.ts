@@ -1,5 +1,5 @@
-import { sdkRuntime } from '@forge/sdk'
-import { themeTokens } from '@forge/ui'
+import { sdkRuntime } from '@crane199709/sdk'
+import { themeTokens } from '@crane199709/ui'
 import { ElDialog } from 'element-plus'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
@@ -15,8 +15,8 @@ export const sharedReferences = {
   'vue-router': useRouter,
   pinia: defineStore,
   'element-plus': ElDialog,
-  '@forge/sdk': sdkRuntime,
-  '@forge/ui': themeTokens,
+  '@crane199709/sdk': sdkRuntime,
+  '@crane199709/ui': themeTokens,
   'vue-i18n': useI18n,
 }
 export const routes: RouteRecordRaw[] = [

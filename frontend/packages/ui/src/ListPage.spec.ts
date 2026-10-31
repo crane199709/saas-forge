@@ -1,4 +1,4 @@
-import type { Page } from '@forge/sdk'
+import type { Page } from '@crane199709/sdk'
 import { ElTableColumn } from 'element-plus'
 import { expect, it, vi } from 'vitest'
 import { h } from 'vue'

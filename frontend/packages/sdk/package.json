@@ -1,5 +1,5 @@
 {
-  "name": "@forge/sdk",
+  "name": "@crane199709/sdk",
   "version": "0.1.0",
   "description": "SaaS Forge 前端 SDK：登录、Token 刷新、租户切换、请求拦截与权限指令",
   "type": "module",

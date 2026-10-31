@@ -1,5 +1,5 @@
 import { shallowRef } from 'vue'
-import type { PlatformClient } from '@forge/sdk'
+import type { PlatformClient } from '@crane199709/sdk'
 
 /** iam 下发的当前 Operator 的平台角色与有效权限码。 */
 export interface PlatformAccess {

@@ -1,4 +1,4 @@
-import { subAppContainerName, type MenuNode, type SubAppEntry } from '@forge/sdk'
+import { subAppContainerName, type MenuNode, type SubAppEntry } from '@crane199709/sdk'
 import { reactive, shallowRef } from 'vue'
 import type { RouteRecordRaw, Router } from 'vue-router'
 import SubAppStatus from './SubAppStatus.vue'

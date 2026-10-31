@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // 检查当前 Sub-App 的 src 是否遵守隔离约定（工单 02、ADR-0009），违反时列出位置并以非零状态退出。
-// src/dev.ts 只用于独立开发，经 @forge/sub-app-kit/dev-host 创建宿主，不进入构建产物，不检查。
+// src/dev.ts 只用于独立开发，经 @crane199709/sub-app-kit/dev-host 创建宿主，不进入构建产物，不检查。
 import { readFile, readdir } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 import { check } from './rules.ts'

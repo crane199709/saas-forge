@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { ResultPage } from '@forge/ui'
+import { ResultPage } from '@crane199709/ui'
 import { useConsoleAccess } from './shell'
 
 const { t } = useI18n()

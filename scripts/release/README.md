@@ -41,7 +41,7 @@ scripts/release/publish.sh local v0.1.0
 
 Maven 用户名来自 `github.actor`，密码来自自动生成的 `GITHUB_TOKEN`，无需额外 Maven Secret。只有发布 job 授予 `contents: read` 和 `packages: write`；已有 Maven 包需允许当前仓库 Actions 写入。仓库外消费 GitHub Packages 时仍需配置读取凭证及 Maven server id `forge-release`。
 
-上述 Variables 与 npm Secret 全部未配置时，CI 使用临时仓库；自动提供的 GitHub 身份和 token 不触发正式发布。任一项配置后进入 remote，缺项会失败。remote 仅接受上述两个目标，npm 可见性不设默认值；本地模式固定 `restricted`，继续使用临时 Verdaccio。当前包 scope 保持 `@forge`，正式发布前必须确认该 scope 的所有权与写权限，并确定包可见性。
+上述 Variables 与 npm Secret 全部未配置时，CI 使用临时仓库；自动提供的 GitHub 身份和 token 不触发正式发布。任一项配置后进入 remote，缺项会失败。remote 仅接受上述两个目标，npm 可见性不设默认值；本地模式固定 `restricted`，继续使用临时 Verdaccio。三个发布包使用已选定的 `@crane199709` scope；正式发布前须确认该 scope 的写权限并确定包可见性。
 
 目标、必填参数和 access 校验，以及 `npm whoami` 身份预检，都在 Maven deploy/npm publish 前执行。身份预检不代表已经确认目标 scope 的写权限、付费私有包资格或全部发布策略。临时 npmrc/settings.xml 只保存环境变量引用，不落盘密钥。
 
@@ -51,4 +51,4 @@ Maven 用户名来自 `github.actor`，密码来自自动生成的 `GITHUB_TOKEN
 scripts/release/publish.sh remote v0.1.0
 ```
 
-Maven 与 npm 发布不是跨仓库事务：其中一个失败时可能已经发布部分制品，需要检查目标仓库后处理，不能盲目覆盖同版本。正式发布由维护者安排；本次仅适配配置，未配置远端变量或密钥、未推送版本标签，也未向 GitHub Packages/npmjs.org 发布 SDK。
+Maven 与 npm 发布不是跨仓库事务：其中一个失败时可能已经发布部分制品，需要检查目标仓库后处理，不能盲目覆盖同版本。正式发布由维护者安排；代码适配本身不执行远端配置或发布；SDK 尚未向 GitHub Packages/npmjs.org 发布，也未推送正式版本标签。

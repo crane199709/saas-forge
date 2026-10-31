@@ -102,7 +102,7 @@ SDK 不允许出现循环依赖，模块级与包级都不允许。循环会让�
 - 模块依赖单向：`forge-sdk-core` 是底层，不依赖其他 SDK 模块；SDK 模块不依赖 `forge-iam`、`forge-platform`、`forge-gateway` 等服务模块。
 - 包级无环：`io.saasforge.sdk..` 下的包之间不得互相引用成环，同一模块内的包也一样。Maven 只拦截模块级循环，包级循环需要单独检查。
 - 出现双向需求时，把共用部分下沉到更底层的模块，或由底层模块定义接口（扩展点），上层模块实现，不要直接反向引用。
-- 前端 `@forge/sdk`、`@forge/ui` 同样适用：包内模块之间不循环 import，共享包不依赖 `apps/` 下的应用。
+- 前端 `@crane199709/sdk`、`@crane199709/ui` 同样适用：包内模块之间不循环 import，共享包不依赖 `apps/` 下的应用。
 
 ## 服务模块包结构
 
@@ -241,7 +241,7 @@ WebFlux 的 `ErrorWebExceptionHandler` 归入 `filter` 而不是 `controller`：
 
 - `forge-sdk-*` 中所有 public 类、接口与 public 方法（Javadoc）。它们是业务服务使用的 API。
 - Mapper 接口的每个方法：说明用途，以及是否受 Data Policy 过滤。
-- 前端 `@forge/sdk`、`@forge/ui` 的导出函数与组件 props（TSDoc）。
+- 前端 `@crane199709/sdk`、`@crane199709/ui` 的导出函数与组件 props（TSDoc）。
 
 业务服务与前端应用内部的代码不强制文档注释，逻辑不直观时才写。Controller 接口说明使用 springdoc 注解，不再重复写 Javadoc。
 
