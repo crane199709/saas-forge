@@ -8,7 +8,6 @@ import io.saasforge.iam.subapp.service.SubAppService;
 import io.saasforge.sdk.core.ResourceManifest.MenuNode;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -38,35 +37,24 @@ public class AccessService {
      */
     public Access of(UUID tenantId, UUID membershipId) {
         Set<String> granted = roles.grantsOf(membershipId).permissions();
-        List<MenuNode> menus = visible(permissions.currentMenus(), granted, plans.subAppsOf(tenantId));
+        List<MenuNode> menus = withoutActions(permissions.visibleMenus(granted, plans.subAppsOf(tenantId)));
         Set<String> referenced = new TreeSet<>();
         collectApps(menus, referenced);
         return new Access(new ArrayList<>(new TreeSet<>(granted)), menus, subApps.loadable(referenced));
     }
 
-    // 缺少权限或指向套餐外 Sub-App 的节点连同子树一起隐藏；子节点全部被隐藏的分组节点也不再展示。未登记 Plan 的租户不限 Sub-App。
-    private static List<MenuNode> visible(List<MenuNode> nodes, Set<String> granted, Optional<Set<String>> plan) {
-        List<MenuNode> result = new ArrayList<>();
-        for (MenuNode node : nodes) {
-            if (node.permission() != null && !granted.contains(node.permission())) continue;
-            if (node.children().isEmpty()) {
-                if (plan.isEmpty() || plan.get().contains(node.app())) {
-                    // Shell App 只需要导航信息，页面操作的组织关系留在授权树中。
-                    result.add(new MenuNode(
-                            node.code(),
-                            node.name(),
-                            node.icon(),
-                            node.app(),
-                            node.path(),
-                            node.permission(),
-                            List.of()));
-                }
-                continue;
-            }
-            List<MenuNode> children = visible(node.children(), granted, plan);
-            if (!children.isEmpty()) result.add(node.withChildren(children));
-        }
-        return result;
+    // Shell App 只需要导航信息，页面操作的组织关系留在授权树中。
+    private static List<MenuNode> withoutActions(List<MenuNode> nodes) {
+        return nodes.stream()
+                .map(node -> new MenuNode(
+                        node.code(),
+                        node.name(),
+                        node.icon(),
+                        node.app(),
+                        node.path(),
+                        node.permission(),
+                        withoutActions(node.children())))
+                .toList();
     }
 
     private static void collectApps(List<MenuNode> nodes, Set<String> apps) {

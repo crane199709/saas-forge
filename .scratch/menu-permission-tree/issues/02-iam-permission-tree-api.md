@@ -16,6 +16,10 @@
 
 ## Comments
 
+- 2026-10-31 最终审查维护修复：将导航与授权树的权限码、Plan Sub-App、空分组裁剪统一至 `PermissionService.visibleMenus`，调用方分别保留导航去除 actions、授权树仅展示可授予 actions 的投影；授权语义不变。
+- 复用已授权 HTTP seam 回归：`ResourceManifestTest` 16 项、`RoleManagementTest` 8 项以及 11 项相关模块 `ArchitectureTest` 全部通过（35 项，零失败/跳过），Testcontainers 隔离 PostgreSQL/Redis；`spotless:check` 与 `git diff --check` 通过。
+- 命令：`cd backend && ./mvnw -q -pl forge-iam -am spotless:apply test -Dtest=ResourceManifestTest,RoleManagementTest,ArchitectureTest -Dsurefire.failIfNoSpecifiedTests=false`，随后同 reactor 执行 `spotless:check`。本次是审查阶段的行为保持重构，沿用现有边界测试，未增加实现细节测试。
+
 ## Answer
 
 新增 `GET /roles/permission-tree`，沿用 `iam:role:manage`，响应为 record 与 `ApiResponse`。按当前租户可授予权限和 Plan 的 Sub-App 裁剪菜单、actions 与空分组；共用关系仅统计可见树，未进树的权限保持原有排序进入 `others`。未登记 Plan 的租户不受裁剪，不按请求成员的业务权限裁剪。

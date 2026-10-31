@@ -1,6 +1,6 @@
 # 角色授权菜单树规格
 
-Status: needs-triage
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-10-30 的设计拷问逐条确认，核心决策由 [ADR-0018](../../docs/adr/0018-menu-is-not-an-authorization-unit.md) 记录。
 
@@ -76,3 +76,7 @@ Status: needs-triage
 
 - 平台在 Plan 中「指定菜单」（例如某菜单只对专业版可见）。倾向同样通过拆分 Permission Code、放入不同 Feature Pack 实现，尚未确认。
 - 平台角色授权界面是否采用同样的树。
+
+## 完成记录
+
+2026-10-31：tickets 01–03 均已完成并记录验证结果。最终 Standards 审查提出的重复菜单裁剪已集中到共享服务；Spec 审查无确定问题。相关 HTTP 与架构回归共 35 项及 Spotless 检查通过。

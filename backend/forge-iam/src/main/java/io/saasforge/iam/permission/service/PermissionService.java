@@ -11,8 +11,10 @@ import io.saasforge.sdk.core.ResourceManifest.Permission;
 import io.saasforge.sdk.core.ResourceManifest.RoleTemplate;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -105,6 +107,26 @@ public class PermissionService {
         return currentManifests(false).stream()
                 .flatMap(manifest -> manifest.menus().stream())
                 .toList();
+    }
+
+    /** 按调用方提供的权限码与 Plan 裁剪当前菜单，保留 actions 供各接口自行投影。 */
+    public List<MenuNode> visibleMenus(Set<String> allowed, Optional<Set<String>> subApps) {
+        return visible(currentMenus(), allowed, subApps);
+    }
+
+    // 缺少权限的节点连同子树隐藏；Plan 外叶子和裁剪后为空的分组隐藏。未登记 Plan 时不限 Sub-App。
+    private static List<MenuNode> visible(List<MenuNode> nodes, Set<String> allowed, Optional<Set<String>> subApps) {
+        List<MenuNode> result = new ArrayList<>();
+        for (MenuNode node : nodes) {
+            if (node.permission() != null && !allowed.contains(node.permission())) continue;
+            if (node.children().isEmpty()) {
+                if (subApps.isEmpty() || subApps.get().contains(node.app())) result.add(node);
+                continue;
+            }
+            List<MenuNode> children = visible(node.children(), allowed, subApps);
+            if (!children.isEmpty()) result.add(node.withChildren(children));
+        }
+        return result;
     }
 
     /** 各服务当前版本的角色模板，按服务名依次拼接。 */
