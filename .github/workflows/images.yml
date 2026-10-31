@@ -17,6 +17,7 @@ jobs:
     env:
       IMAGE_PREFIX: ${{ vars.IMAGE_PREFIX }}
       IMAGE_SOURCE: ${{ github.server_url }}/${{ github.repository }}
+      OWNER_TYPE: ${{ github.event.repository.owner.type }}
     steps:
       - uses: actions/checkout@v4
       - name: Select image destination and tag
@@ -38,6 +39,14 @@ jobs:
           else
             python3 scripts/release/version.py check "$RELEASE_TAG"
           fi
+      - name: Check existing GHCR packages before building
+        if: env.IMAGE_PREFIX != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for name in forge-gateway forge-iam forge-platform demo-service tenant-app platform-console; do
+            bash scripts/images/check-package.sh "$name" allow-missing
+          done
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -63,38 +72,34 @@ jobs:
         if: env.IMAGE_PREFIX != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OWNER_TYPE: ${{ github.event.repository.owner.type }}
         run: |
-          owner_path=users
-          if [[ "$OWNER_TYPE" == Organization ]]; then owner_path=orgs; fi
           version=$(python3 -c 'import json; print(json.load(open("frontend/package.json"))["version"])')
           tag=${IMAGE_TAG:-$version}
           for name in forge-gateway forge-iam forge-platform demo-service tenant-app platform-console; do
             image="$IMAGE_PREFIX/$name:$tag"
             id=$(docker image inspect --format '{{.Id}}' "$image")
             source=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.source"}}' "$image")
-            [[ "$source" == "$IMAGE_SOURCE" ]]
-            package=${IMAGE_PREFIX#ghcr.io/*/}/$name
-            encoded=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$package")
-            package_api="/$owner_path/$GITHUB_REPOSITORY_OWNER/packages/container/$encoded"
-            response=$(mktemp)
-            status=$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
-              -H "Authorization: Bearer $GH_TOKEN" "$GITHUB_API_URL$package_api")
-            case "$status" in
-              200) [[ "$(jq -r '.visibility + " " + .repository.full_name' "$response")" == "private $GITHUB_REPOSITORY" ]] ;;
-              404) ;; # 首次创建由 GHCR 默认设为私有。
-              *) echo "Cannot verify package access: HTTP $status" >&2; rm -f "$response"; exit 1 ;;
-            esac
-            rm -f "$response"
+            if [[ "$source" != "$IMAGE_SOURCE" ]]; then
+              printf 'Source label mismatch for %s: expected=%s actual=%s\n' "$image" "$IMAGE_SOURCE" "$source" >&2
+              exit 1
+            fi
+            bash scripts/images/check-package.sh "$name" allow-missing
             docker push "$image"
-            metadata=$(gh api "/$owner_path/$GITHUB_REPOSITORY_OWNER/packages/container/$encoded" --jq '.visibility + " " + .repository.full_name')
-            [[ "$metadata" == "private $GITHUB_REPOSITORY" ]]
+            bash scripts/images/check-package.sh "$name"
             digest=$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$image" | awk -v repo="$IMAGE_PREFIX/$name@" 'index($0, repo) == 1 { print; exit }')
-            [[ "$digest" =~ @sha256:[a-f0-9]{64}$ ]]
+            if [[ ! "$digest" =~ @sha256:[a-f0-9]{64}$ ]]; then
+              printf 'Digest mismatch for %s: expected=%s@sha256:<64 hex> actual=%s\n' "$image" "$IMAGE_PREFIX/$name" "$digest" >&2
+              docker image inspect --format 'Available RepoDigests: {{json .RepoDigests}}' "$image" >&2
+              exit 1
+            fi
             # 删除本地引用，确保验收实际访问 registry 并恢复刚发布的镜像。
             docker image rm "$image"
             docker pull "$digest"
-            [[ "$(docker image inspect --format '{{.Id}}' "$digest")" == "$id" ]]
+            pulled_id=$(docker image inspect --format '{{.Id}}' "$digest")
+            if [[ "$pulled_id" != "$id" ]]; then
+              printf 'Image ID mismatch for %s: expected=%s actual=%s\n' "$digest" "$id" "$pulled_id" >&2
+              exit 1
+            fi
             printf '%s → `%s`\n' "$name" "$digest" >> "$GITHUB_STEP_SUMMARY"
           done
       - name: Report build-only mode

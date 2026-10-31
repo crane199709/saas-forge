@@ -26,3 +26,5 @@
 - 2026-10-31：已确认 GHCR 私有镜像目标 `ghcr.io/crane199709/saas-forge-v2`；实现共享 images 工作流，release 质量门后调用，独立 workflow_dispatch 使用 SHA 标签。IMAGE_PREFIX 未设仍只构建；推送用 job 级 GITHUB_TOKEN，限制当前 owner 的 GHCR，检查 private/repository 关联，删除本地标签后按 digest 重拉并比对 ID。六镜像补 source label。仅完成本地轻量检查，真实推拉由远端 CI 验证后记录，不提前勾选。
 - 本次轻量验证：两个工作流 YAML 解析、所有新增 run 段与 build.sh 的 bash -n、POM XML 解析、git diff --check、四服务 images profile 离线 Maven validate 均通过。effective-pom 因本机缺失 Maven Help 插件依赖无法离线执行；未重建镜像、未向远端推送。
 - 首轮远端 CI（images run 41158737468、backend run 41158723728）发现父 POM 不符合 Spotless 的空元素与节点排序规则，尚未进入镜像推拉。随后仅对父 POM 执行 `mise exec java@oracle-17.0.12 -- mvn -B -N -f backend/pom.xml spotless:apply`，同参数 `spotless:check` 与 `git diff --check` 均通过；待集成后重新运行远端 CI。
+- 第二轮远端 images run 41158999818：六镜像构建与 GHCR 登录成功，gateway 推送成功（digest `sha256:f7973ad732ab70661ebe033807a5be6f8a3e9f36c0e000fe48412c79329e7585`），随后校验退出但旧日志未标明具体断言，根因仍待核实。补充 source/包元数据/digest/镜像 ID 的期望值与实际值诊断；共享只读包检查脚本用于构建前预检、推送前与推送后校验，不改变权限或可见性。
+- 诊断改动本地验证：工作流 YAML 解析、全部 run 段及 check-package.sh 的 bash -n、git diff --check 通过；未本地重建或推送镜像，未将第二轮失败推断为权限或 digest 根因。
