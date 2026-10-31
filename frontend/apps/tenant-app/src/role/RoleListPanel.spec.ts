@@ -377,7 +377,10 @@ it('编辑树中勾选操作自动授予页面，同码页面同步，取消页�
               name: '订单页面',
               icon: null,
               permission: { code: 'order:read', name: '查看订单', sharedWith: ['attachments'] },
-              actions: [{ code: 'order:create', name: '创建订单', sharedWith: [] }],
+              actions: [
+                { code: 'order:create', name: '创建订单', sharedWith: [] },
+                { code: 'order:delete', name: '删除订单', sharedWith: [] },
+              ],
               children: [],
             },
             {
@@ -406,10 +409,23 @@ it('编辑树中勾选操作自动授予页面，同码页面同步，取消页�
   expect(document.body.textContent).toContain('与「附件页面」共用权限，会一起显示')
   input('menu-orders').click()
   await flushPromises()
+  input('menu-orders').click()
+  await flushPromises()
+  expect(input('action-orders-order:create').checked).toBe(true)
+  expect(input('action-orders-order:delete').checked).toBe(true)
+  input('action-orders-order:delete').click()
+  await flushPromises()
+  expect(input('menu-orders').checked).toBe(true)
+  expect(input('action-orders-order:create').checked).toBe(true)
+  expect(input('action-orders-order:delete').checked).toBe(false)
+  input('menu-orders').click()
+  await flushPromises()
+  expect(input('action-orders-order:create').checked).toBe(false)
   input('action-orders-order:create').click()
   await flushPromises()
   expect(input('menu-orders').checked).toBe(true)
   expect(input('menu-attachments').checked).toBe(true)
+  expect(input('action-orders-order:delete').checked).toBe(false)
   input('action-orders-order:create').click()
   await flushPromises()
   expect(input('menu-orders').checked).toBe(true)

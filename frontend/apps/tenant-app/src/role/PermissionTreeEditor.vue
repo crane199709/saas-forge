@@ -44,7 +44,7 @@ const shared = (permission: TreePermission) =>
           :indeterminate="partial(codes(menu))"
           :disabled="codes(menu).length === 0"
           :data-testid="`menu-${menu.code}`"
-          @change="(value) => change(codes(menu), value)"
+          @change="(value) => change(menuCodes(menu), value)"
           >{{ menu.name }}</el-checkbox
         >
         <span v-if="!menu.children.length && !menu.permission" class="hint">{{
