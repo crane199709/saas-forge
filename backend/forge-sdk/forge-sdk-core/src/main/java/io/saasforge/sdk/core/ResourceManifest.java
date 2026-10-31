@@ -235,6 +235,22 @@ public record ResourceManifest(
                 throw new IllegalArgumentException(
                         "Menu " + node.code() + " must have either app and path or children");
             }
+            if (!leaf && !node.actions().isEmpty()) {
+                throw new IllegalArgumentException("Menu " + node.code() + " actions are only allowed on leaf nodes");
+            }
+            Set<String> actions = new HashSet<>();
+            for (String action : node.actions()) {
+                if (!codes.contains(action)) {
+                    throw new IllegalArgumentException("Menu " + node.code() + " has undeclared action: " + action);
+                }
+                if (!actions.add(action)) {
+                    throw new IllegalArgumentException("Duplicate action in menu " + node.code() + ": " + action);
+                }
+                if (action.equals(node.permission())) {
+                    throw new IllegalArgumentException(
+                            "Menu " + node.code() + " action repeats its permission: " + action);
+                }
+            }
             validateMenus(node.children(), codes, menuCodes);
         }
     }
@@ -313,6 +329,7 @@ public record ResourceManifest(
      * @param path 叶子节点在 Sub-App 内的相对路由，分组节点为 null
      * @param permission 查看该节点所需的 Permission Code，为 null 表示已登录成员均可见
      * @param children 子节点
+     * @param actions 叶子页面内的操作权限码，仅用于角色授权树展示，缺省为空
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record MenuNode(
@@ -322,10 +339,34 @@ public record ResourceManifest(
             String app,
             String path,
             String permission,
-            List<MenuNode> children) {
-        /** 子节点缺省为空列表。 */
+            List<MenuNode> children,
+            @JsonInclude(JsonInclude.Include.NON_EMPTY) List<String> actions) {
+        /** 子节点与页面操作缺省为空列表。 */
         public MenuNode {
             children = children == null ? List.of() : List.copyOf(children);
+            actions = actions == null ? List.of() : List.copyOf(actions);
+        }
+
+        /**
+         * 不声明页面操作的菜单，保留已有调用方的构造方式。
+         *
+         * @param code 菜单编码
+         * @param name 展示名称
+         * @param icon 图标名
+         * @param app 叶子所属 Sub-App
+         * @param path Sub-App 内的路由
+         * @param permission 查看节点所需的权限码
+         * @param children 子节点
+         */
+        public MenuNode(
+                String code,
+                String name,
+                String icon,
+                String app,
+                String path,
+                String permission,
+                List<MenuNode> children) {
+            this(code, name, icon, app, path, permission, children, List.of());
         }
 
         /**
@@ -335,7 +376,7 @@ public record ResourceManifest(
          * @return 其余字段相同的节点
          */
         public MenuNode withChildren(List<MenuNode> children) {
-            return new MenuNode(code, name, icon, app, path, permission, children);
+            return new MenuNode(code, name, icon, app, path, permission, children, actions);
         }
     }
 }

@@ -1,0 +1,20 @@
+{
+  "menus": [
+    {
+      "code": "group",
+      "name": "分组",
+      "actions": [
+        "order:approve"
+      ],
+      "children": [
+        {
+          "code": "orders",
+          "name": "订单",
+          "app": "demo",
+          "path": "orders",
+          "permission": "order:read"
+        }
+      ]
+    }
+  ]
+}

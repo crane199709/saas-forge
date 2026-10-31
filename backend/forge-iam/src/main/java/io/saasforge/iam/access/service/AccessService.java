@@ -50,7 +50,17 @@ public class AccessService {
         for (MenuNode node : nodes) {
             if (node.permission() != null && !granted.contains(node.permission())) continue;
             if (node.children().isEmpty()) {
-                if (plan.isEmpty() || plan.get().contains(node.app())) result.add(node);
+                if (plan.isEmpty() || plan.get().contains(node.app())) {
+                    // Shell App 只需要导航信息，页面操作的组织关系留在授权树中。
+                    result.add(new MenuNode(
+                            node.code(),
+                            node.name(),
+                            node.icon(),
+                            node.app(),
+                            node.path(),
+                            node.permission(),
+                            List.of()));
+                }
                 continue;
             }
             List<MenuNode> children = visible(node.children(), granted, plan);

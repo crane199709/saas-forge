@@ -28,7 +28,8 @@
           "name": "订单概览",
           "app": "demo",
           "path": "overview",
-          "permission": "order:read"
+          "permission": "order:read",
+          "actions": ["order:create", "order:update", "order:delete"]
         },
         {
           "code": "demo.attachments",

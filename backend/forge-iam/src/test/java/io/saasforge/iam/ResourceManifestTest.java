@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -124,6 +125,105 @@ class ResourceManifestTest {
                         List.of()));
         assertThat(taken.getStatusCode().value()).isEqualTo(409);
         assertThat(taken.getBody().get("code")).isEqualTo("manifest.permissionConflict");
+    }
+
+    @Test
+    @Sql("/fixtures/legacy_manifest.sql")
+    void storedManifestWithoutActionsCanBeReportedAgainAtTheSameVersion() {
+        Map<String, Object> legacy = Map.of(
+                "service",
+                "demo-service",
+                "version",
+                "legacy-actions",
+                "permissions",
+                List.of(Map.of("code", "order:read", "name", "查看订单")),
+                "menus",
+                List.of(Map.of(
+                        "code", "legacy", "name", "旧菜单", "app", "demo", "path", "legacy", "permission", "order:read")));
+        assertThat(report(TOKEN, legacy).getStatusCode().value()).isEqualTo(200);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"group", "unknown", "duplicate", "page"})
+    void invalidMenuActionsAreRejectedOnReport(String violation) {
+        Map<String, Object> page = new HashMap<>(
+                Map.of("code", "orders", "name", "订单", "app", "demo", "path", "orders", "permission", "order:read"));
+        page.put(
+                "actions",
+                switch (violation) {
+                    case "unknown" -> List.of("order:typo");
+                    case "duplicate" -> List.of("order:approve", "order:approve");
+                    case "page" -> List.of("order:read");
+                    default -> List.of("order:approve");
+                });
+        if (violation.equals("group")) {
+            page.remove("app");
+            page.remove("path");
+            page.put("children", List.of(Map.of("code", "child", "name", "子菜单", "app", "demo", "path", "child")));
+        }
+        Map<String, Object> body =
+                new HashMap<>(manifest("invalid-actions-" + violation, List.of("order:read", "order:approve")));
+        body.put("menus", List.of(page));
+        var response = report(TOKEN, body);
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+        assertThat(response.getBody().get("code")).isEqualTo("manifest.invalid");
+    }
+
+    @Test
+    void sharedActionsAreAcceptedButNotExposedToTheShell() throws Exception {
+        Map<String, Object> body = new HashMap<>(manifest("shared-actions", List.of("order:read", "order:approve")));
+        body.put(
+                "menus",
+                List.of(Map.of(
+                        "code",
+                        "group",
+                        "name",
+                        "分组",
+                        "children",
+                        List.of(
+                                Map.of(
+                                        "code",
+                                        "page-a",
+                                        "name",
+                                        "页面甲",
+                                        "app",
+                                        "demo",
+                                        "path",
+                                        "a",
+                                        "permission",
+                                        "order:read",
+                                        "actions",
+                                        List.of("order:approve")),
+                                Map.of(
+                                        "code",
+                                        "page-b",
+                                        "name",
+                                        "页面乙",
+                                        "app",
+                                        "demo",
+                                        "path",
+                                        "b",
+                                        "permission",
+                                        "order:read",
+                                        "actions",
+                                        List.of("order:approve")),
+                                Map.of(
+                                        "code",
+                                        "page-c",
+                                        "name",
+                                        "页面丙",
+                                        "app",
+                                        "demo",
+                                        "path",
+                                        "c",
+                                        "permission",
+                                        "order:approve")))));
+        assertThat(report(TOKEN, body).getStatusCode().value()).isEqualTo(201);
+        Map<?, ?> access = access(ADMIN);
+        assertThat(menuCodes(access)).containsExactly("group", "page-a", "page-b", "page-c");
+        assertThat(JsonMapper.builder().build().writeValueAsString(access.get("menus")))
+                .doesNotContain("actions");
+        assertThat(List.<Object>copyOf((List<?>) access.get("permissions"))).contains("order:approve");
     }
 
     @Test

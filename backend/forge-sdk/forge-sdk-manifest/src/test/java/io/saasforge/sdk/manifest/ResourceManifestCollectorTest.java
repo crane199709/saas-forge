@@ -11,6 +11,8 @@ import io.saasforge.sdk.core.ResourceManifest.Permission;
 import io.saasforge.sdk.core.ResourceManifest.RoleTemplate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import tools.jackson.databind.json.JsonMapper;
 
 class ResourceManifestCollectorTest {
@@ -52,6 +54,30 @@ class ResourceManifestCollectorTest {
         assertThat(ResourceManifestCollector.dataResources(
                         ResourceManifestCollectorTest.class.getClassLoader(), "manifests/valid.json"))
                 .isEqualTo(manifest.dataResources());
+    }
+
+    @Test
+    void pageActionsAreCollectedAndPreservedWhenReplacingChildren() {
+        ResourceManifest manifest = collect("manifests/actions.json");
+        MenuNode page = manifest.menus().get(0);
+        assertThat(page.actions()).containsExactly("order:approve");
+        assertThat(page.withChildren(List.of()).actions()).containsExactly("order:approve");
+        assertThat(JSON.writeValueAsString(page)).contains("\"actions\":[\"order:approve\"]");
+        MenuNode legacy =
+                collect("manifests/valid.json").menus().get(0).children().get(0);
+        assertThat(legacy.actions()).isEmpty();
+        assertThat(JSON.writeValueAsString(legacy))
+                .isEqualTo(
+                        "{\"code\":\"orders.overview\",\"name\":\"订单概览\",\"app\":\"demo\",\"path\":\"overview\",\"permission\":\"order:read\",\"children\":[]}");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"action-group,leaf", "action-unknown,order:typo", "action-duplicate,Duplicate", "action-page,permission"
+    })
+    void invalidPageActionsAreRejected(String fixture, String reason) {
+        assertThatThrownBy(() -> collect("manifests/" + fixture + ".json"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(reason);
     }
 
     @Test

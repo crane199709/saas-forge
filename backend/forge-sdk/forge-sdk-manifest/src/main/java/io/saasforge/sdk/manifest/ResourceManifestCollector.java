@@ -30,8 +30,10 @@ import tools.jackson.databind.json.JsonMapper;
  *
  * <pre>{@code
  * {
- *   "permissions": { "order:read": { "name": "查看订单", "group": "订单" } },
- *   "menus": [ { "code": "orders", "name": "订单", "app": "demo", "path": "overview", "permission": "order:read" } ],
+ *   "permissions": { "order:read": { "name": "查看订单", "group": "订单" },
+ *     "order:create": { "name": "创建订单", "group": "订单" } },
+ *   "menus": [ { "code": "orders", "name": "订单", "app": "demo", "path": "overview", "permission": "order:read",
+ *     "actions": ["order:create"] } ],
  *   "roles": [ { "code": "order-viewer", "name": "订单查看员", "permissions": ["order:read"] } ],
  *   "dataResources": [ { "code": "order", "name": "订单", "table": "orders", "attributes": [
  *     { "code": "ownerId", "name": "归属成员", "type": "uuid", "column": "owner_id" } ] } ]
