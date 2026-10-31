@@ -32,7 +32,11 @@ test('仓库外模板的 Manifest、网关路由与成员权限', async ({ page 
     ).status(),
   ).toBe(403)
   await page.getByTestId('tenant-switcher').click()
-  await page.getByRole('option', { name: 'E2E 租户 B', exact: true }).click()
+  // 租户名称可能先在旧文档更新；等 Shell 整页重载完成后再读取新会话。
+  await Promise.all([
+    page.waitForEvent('load'),
+    page.getByRole('option', { name: 'E2E 租户 B', exact: true }).click(),
+  ])
   await expect(page.getByText('当前租户：E2E 租户 B', { exact: true }).first()).toBeVisible()
   expect(
     (
