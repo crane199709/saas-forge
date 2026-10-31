@@ -1,0 +1,39 @@
+name: Verify published SDK
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '已发布标签（须与所选分支源码版本一致，如 v0.1.0）'
+        required: true
+        type: string
+permissions:
+  contents: read
+  packages: read
+jobs:
+  consume:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check requested version against source
+        run: python3 scripts/release/version.py check "$RELEASE_TAG"
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Wait for packages and consume existing release
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          MAVEN_RELEASE_URL: ${{ vars.MAVEN_RELEASE_URL }}
+          MAVEN_RELEASE_USERNAME: ${{ github.actor }}
+          MAVEN_RELEASE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          NPM_RELEASE_REGISTRY: ${{ vars.NPM_RELEASE_REGISTRY }}
+          NPM_RELEASE_ACCESS: ${{ vars.NPM_RELEASE_ACCESS }}
+          NPM_RELEASE_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
+        run: scripts/release/publish.sh consume "$RELEASE_TAG"

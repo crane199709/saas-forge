@@ -51,4 +51,24 @@ Maven 用户名来自 `github.actor`，密码来自自动生成的 `GITHUB_TOKEN
 scripts/release/publish.sh remote v0.1.0
 ```
 
-Maven 与 npm 发布不是跨仓库事务：其中一个失败时可能已经发布部分制品，需要检查目标仓库后处理，不能盲目覆盖同版本。正式发布由维护者安排；代码适配本身不执行远端配置或发布；SDK 尚未向 GitHub Packages/npmjs.org 发布，也未推送正式版本标签。
+Maven 与 npm 发布不是跨仓库事务：其中一个失败时可能已经发布部分制品，需要检查目标仓库后处理，不能盲目覆盖同版本。正式发布由维护者安排；上传成功与仓库外消费验收是两个独立结果。
+
+## 发布后的可用性与恢复验证
+
+npm 上传成功后，安装元数据和 tarball 可能尚未可读。[npm 发布扫描说明](https://github.blog/changelog/2026-07-28-npm-publish-time-malware-scanning-and-dual-use-metadata/) 提示自动化流程需容忍此延迟。单版本查询返回 200 也不足以证明可安装：安装客户端读取的是包元数据（packument）。
+
+`remote` 发布完成后先轮询三个包的安装元数据，确认 `versions[本次版本]` 存在且对应 tarball 可下载，再执行仓库外 Maven/npm 消费。三个包共享 20 分钟总预算（含 HTTP 请求），每轮间隔 15 秒。仅对短暂不可用的 HTTP 状态和网络错误重试；401/403、版本不匹配等立即失败。超时明确失败，不代表包没有上传成功。本地 Verdaccio 模式跳过等待。
+
+若上传已成功、只有消费验证失败，不要重跑发布 job，也不要删除或覆盖同版本。使用 **Verify published SDK** 手动工作流，选择含此修复的分支，`tag` 输入已发布标签（如 `v0.1.0`）。该标签须与所选分支全部源码版本一致；工作流只授予 `packages: read`，复用现有 Variables、npm Secret 和 GitHub 自动 token。它只等待并消费既有制品，不运行 Maven deploy、npm publish、前端构建或镜像发布。
+
+本地使用相同配置执行：
+
+```sh
+scripts/release/publish.sh consume v0.1.0
+```
+
+轻量 HTTP/CLI 回归（不连接正式仓库）：
+
+```sh
+python3 -m unittest discover -s scripts/release -p 'test_*.py'
+```

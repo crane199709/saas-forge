@@ -2,7 +2,7 @@
 # 质量门由调用方运行；本脚本只负责发布与仓库外消费验证。
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
-mode=${1:?用法：publish.sh local|remote v0.1.0}
+mode=${1:?用法：publish.sh local|remote|consume v0.1.0}
 tag=${2:?缺少版本标签}
 version=$(python3 "$root/scripts/release/version.py" check "$tag")
 work=$(mktemp -d "${TMPDIR:-/tmp}/forge-release.XXXXXX")
@@ -42,7 +42,7 @@ EOF
     done
     curl -fsS "$NPM_RELEASE_REGISTRY/-/ping" >/dev/null
     ;;
-  remote)
+  remote|consume)
     for required in MAVEN_RELEASE_URL MAVEN_RELEASE_USERNAME MAVEN_RELEASE_PASSWORD \
       NPM_RELEASE_REGISTRY NPM_RELEASE_TOKEN NPM_RELEASE_ACCESS GITHUB_REPOSITORY; do
       if [[ -z "${!required:-}" ]]; then
@@ -66,7 +66,7 @@ if os.environ['NPM_RELEASE_ACCESS'] not in ('public', 'restricted'):
     raise SystemExit('NPM_RELEASE_ACCESS 必须明确设为 public 或 restricted')
 PYTARGET
     ;;
-  *) echo '模式必须为 local 或 remote' >&2; exit 1 ;;
+  *) echo '模式必须为 local、remote 或 consume' >&2; exit 1 ;;
 esac
 # settings 只保留环境变量引用，不落盘密钥。
 cat > "$work/settings.xml" <<'EOF'
@@ -89,6 +89,7 @@ if [[ "$mode" == remote ]]; then
   # 身份预检不能保证包写权限，但可在 Maven 发布前拒绝无效 npm 凭证。
   npm whoami --registry "$NPM_RELEASE_REGISTRY" >/dev/null
 fi
+if [[ "$mode" != consume ]]; then
 (cd "$root/backend" && ./mvnw --batch-mode -s "$work/settings.xml" \
   "-Dforge.release.url=$MAVEN_RELEASE_URL" -DskipTests deploy)
 (cd "$root/frontend" && pnpm --filter @crane199709/sdk --filter @crane199709/ui --filter @crane199709/sub-app-kit build)
@@ -118,6 +119,10 @@ PYCHECK
 for archive in "$work"/tarballs/*.tgz; do
   npm publish "$archive" --registry "$NPM_RELEASE_REGISTRY" --access "$NPM_RELEASE_ACCESS" --provenance=false --tag "${NPM_RELEASE_TAG:-latest}"
 done
+fi
+if [[ "$mode" != local ]]; then
+  python3 "$root/scripts/release/wait_npm.py" "$version"
+fi
 python3 "$root/scripts/release/consume.py" "$work/consumer" "$version" "$MAVEN_RELEASE_URL"
 # 复用第三方下载，隔离全部 Forge 缓存；deploy 刚写入的 install 产物绝不能蒙混过关。
 python3 - "$work/consumer/m2" <<'PYCACHE'
@@ -155,4 +160,4 @@ if [[ "${FORGE_TEMPLATE_SMOKE:-false}" == true ]]; then
   [[ "$mode" == local ]] || { echo '模板冒烟仅允许临时本地发布' >&2; exit 1; }
   "$root/deploy/template-smoke/consume.sh" "$work" "$version"
 fi
-printf '发布与消费自检通过：%s\n' "$version"
+printf '制品消费自检通过：%s\n' "$version"
