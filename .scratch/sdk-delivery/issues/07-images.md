@@ -4,13 +4,13 @@
 
 **Blocked by:** 04 统一版本与发布流程
 
-**Status:** ready-for-human
+**Status:** resolved
 
 - [x] 四个后端服务可用一条命令构建镜像，镜像标签为统一版本号；镜像内不含任何密钥或环境地址，所需配置通过环境变量或 Nacos 提供
 - [x] tenant-app 与 platform-console 的镜像：静态文件服务、history fallback（嵌套路由可直接刷新）、运行时配置由容器启动时的环境变量生成；入口与运行时配置禁用缓存，带 hash 的资源长期缓存
-- [ ] 发布工作流构建全部镜像；镜像仓库地址与凭证由 CI 密钥提供，未配置时只构建不推送
+- [x] 发布工作流构建全部镜像；镜像仓库地址由 CI 变量提供，凭证使用 GitHub 自动生成的 GITHUB_TOKEN，未配置地址时只构建不推送
 - [x] 文档说明每个镜像需要的环境变量（对应各服务的必须配置项）
-- [ ] 验证：用构建出的镜像启动后端四个服务与依赖，健康检查通过；Shell 镜像直接打开嵌套路由能正常显示，修改运行时配置后重启容器即生效。主链路 E2E 改用镜像的成本若过高，在 Comments 中注明，留到试点环境验证
+- [x] 验证：用构建出的镜像启动后端四个服务与依赖，健康检查通过；Shell 镜像直接打开嵌套路由能正常显示，修改运行时配置后重启容器即生效。主链路 E2E 改用镜像的成本若过高，在 Comments 中注明，留到试点环境验证
 
 ## Comments
 
@@ -30,3 +30,19 @@
 - 诊断改动本地验证：工作流 YAML 解析、全部 run 段及 check-package.sh 的 bash -n、git diff --check 通过；未本地重建或推送镜像，未将第二轮失败推断为权限或 digest 根因。
 - 第三轮远端 images run 41159533036 的前置检查明确返回 `visibility=private repository=null`。Container 包 API 可不返回 repository，原强制比较误判失败；现严格核验 private、包名、owner，repository 非空才要求匹配，null 记录验证边界。source 标签标记源码，令牌实际推拉验收访问权，不声称已验证 UI 关联。真实响应形状回归先复现 private+null 失败，再修正通过；保留 public、其他包名/owner/repository 的拒绝校验，不修改 GHCR 权限或可见性。
 - 本地 `python3 scripts/images/test-check-package.py` 7/7 通过（临时 curl 响应夹具调用真实脚本，覆盖 private+null、public、其他 repository、其他包名、其他 owner、匹配 repository、owner 大小写）；bash -n 与 git diff --check 通过。未本地重建镜像，完整推拉仍待远端重跑。
+- 2026-10-31 闭单验收：四个后端服务的健康检查沿用 `/tmp/forge-images-InNTHt` 的既有镜像证据，全部 UP；Shell 沿用上文嵌套路由 HTTP 200、缓存头与修改配置后 nginx upstream 生效的容器验证。本次新增真实 GHCR 六镜像推拉验收，不将它描述为重新完成了完整平台部署。按照本工单允许的替代验收，镜像主链路 E2E 因依赖网络与部署配置改造成本留待试点；真实 MQ/Nacos 与浏览器完整平台链路仍未验证，因此勾选表示在此明确边界下完成镜像交付。
+
+## Answer
+
+已完成六个私有镜像的构建、推送与重新拉取。[真实 CI run 41159814332](https://github.com/crane199709/saas-forge-v2/actions/runs/41159814332) 成功，代码提交 `64210fb90a6d1c0f39e048b95f560486496cb1ff`，六个镜像标签均为 `sha-64210fb90a6d1c0f39e048b95f560486496cb1ff`。CI 验证 private、包名与 owner、源码 source 标签，并逐个删除本地标签后按 digest 拉取、比对镜像 ID。API 未返回 repository，未据此声称验证了 UI 仓库关联；当前仓库 GITHUB_TOKEN 的实际推拉证明访问权。
+
+这是手动 SHA 标签验证，尚未创建正式版本标签 `v0.1.0` 或发布镜像标签 `0.1.0`，也未执行 Maven/npm 发布。以下 digest 可与统一前缀 `ghcr.io/crane199709/saas-forge-v2` 组合成 `前缀/镜像名@digest` 拉取；本地完整日志 `/tmp/forge-ghcr-41159814332.log`。
+
+| 镜像 | Digest |
+| --- | --- |
+| `forge-gateway` | `sha256:92e92ed949cbc4b5d510cf5393ae6607290ff4d011e9188234f1f9caae5b17a0` |
+| `forge-iam` | `sha256:b6b69a6301de1176e7fb305bfe33dd466584f8a116942e45b6b2e131c49866fd` |
+| `forge-platform` | `sha256:ae0b593d686a63a29e95e8a36bb411bd0fc4d60ccf09f64706414b33b104971f` |
+| `demo-service` | `sha256:16642230047f1164d78fdb3594f1452519679651a256613bb7776c911de427a4` |
+| `tenant-app` | `sha256:4baf7607f3511ffd5defa77157748427cae5822f9964f5257b4094cdd48a8f9b` |
+| `platform-console` | `sha256:ec89a4a98ea8919cca27545c7eb9a64307b87c48c27efcc07ade795340250827` |

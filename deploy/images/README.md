@@ -11,7 +11,7 @@
 
 发布标签 `v<统一版本>` 在完整质量门通过后调用共享的 `images.yml`，推送版本标签；Actions 中手动运行 **Build and publish images** 可单独验证六个镜像，不发布 Maven/npm，也不创建版本标签。手动运行始终使用 `sha-<完整提交 SHA>`，包括 main，避免覆盖正式版本。首次使用手动入口须先将工作流合入默认分支，然后可选择待验证分支。
 
-镜像名称为 `forge-gateway`、`forge-iam`、`forge-platform`、`demo-service`、`tenant-app`、`platform-console`，例如 `ghcr.io/crane199709/saas-forge-v2/forge-iam:0.1.0`。六个镜像均带 `org.opencontainers.image.source` 指向当前仓库。
+镜像名称为 `forge-gateway`、`forge-iam`、`forge-platform`、`demo-service`、`tenant-app`、`platform-console`，例如 `ghcr.io/crane199709/saas-forge-v2/forge-iam:sha-64210fb90a6d1c0f39e048b95f560486496cb1ff`。六个镜像均带 `org.opencontainers.image.source` 指向当前仓库。该 SHA 标签已通过 [CI run 41159814332](https://github.com/crane199709/saas-forge-v2/actions/runs/41159814332) 真实推拉；正式 `0.1.0` 标签尚未发布，需后续 release。
 
 CI 使用自动生成的 `GITHUB_TOKEN` 登录；仅镜像 job 授予 `packages: write`，不配置额外 PAT。GHCR 新包默认私有，工作流在构建前及推送前后检查 private 与包名称、owner 身份；source 标签标记源码，当前仓库令牌的实际推拉验证访问权。API 返回 repository 时要求匹配当前仓库；未返回时不作为失败，也不据此声称已验证 UI 中的仓库关联。已有同名包需允许当前仓库 Actions 访问。工作流不会修改包可见性或权限。推送后记录 digest、删除本地标签，再按 digest 拉取并比对镜像 ID；摘要保留六个不可变拉取引用。此验证不代替服务健康与试点主链路验收。
 
@@ -19,7 +19,7 @@ CI 使用自动生成的 `GITHUB_TOKEN` 登录；仅镜像 job 授予 `packages:
 
 ```sh
 printf '%s' "$GHCR_READ_TOKEN" | docker login ghcr.io -u "$GITHUB_USERNAME" --password-stdin
-docker pull ghcr.io/crane199709/saas-forge-v2/forge-iam:0.1.0
+docker pull ghcr.io/crane199709/saas-forge-v2/forge-iam:sha-64210fb90a6d1c0f39e048b95f560486496cb1ff
 ```
 
 生产部署优先使用工作流摘要里的 `镜像名@sha256:...`。参见 [GitHub Container registry 官方说明](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)。
