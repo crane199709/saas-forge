@@ -13,7 +13,7 @@
 
 镜像名称为 `forge-gateway`、`forge-iam`、`forge-platform`、`demo-service`、`tenant-app`、`platform-console`，例如 `ghcr.io/crane199709/saas-forge-v2/forge-iam:0.1.0`。六个镜像均带 `org.opencontainers.image.source` 指向当前仓库。
 
-CI 使用自动生成的 `GITHUB_TOKEN` 登录；仅镜像 job 授予 `packages: write`，不配置额外 PAT。GHCR 新包默认私有，工作流在推送前检查已有包、推送后检查每个包保持 private 且关联当前 repository；已有同名包需提前关联当前仓库并允许该仓库 Actions 访问。工作流不会修改包可见性或权限。推送后记录 digest、删除本地标签，再按 digest 拉取并比对镜像 ID；摘要保留六个不可变拉取引用。此验证不代替服务健康与试点主链路验收。
+CI 使用自动生成的 `GITHUB_TOKEN` 登录；仅镜像 job 授予 `packages: write`，不配置额外 PAT。GHCR 新包默认私有，工作流在构建前及推送前后检查 private 与包名称、owner 身份；source 标签标记源码，当前仓库令牌的实际推拉验证访问权。API 返回 repository 时要求匹配当前仓库；未返回时不作为失败，也不据此声称已验证 UI 中的仓库关联。已有同名包需允许当前仓库 Actions 访问。工作流不会修改包可见性或权限。推送后记录 digest、删除本地标签，再按 digest 拉取并比对镜像 ID；摘要保留六个不可变拉取引用。此验证不代替服务健康与试点主链路验收。
 
 在开发机或部署环境拉取私有包，使用有目标包读取权限、至少 `read:packages` scope 的 **personal access token (classic)**（组织启用 SSO 时还需相应授权）：
 

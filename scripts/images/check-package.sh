@@ -13,11 +13,21 @@ status=$(curl --silent --show-error --output "$response" --write-out '%{http_cod
 case "$status" in
   200)
     visibility=$(jq -r '.visibility' "$response")
+    actual_name=$(jq -r '.name' "$response")
+    owner=$(jq -r '.owner.login' "$response" | tr '[:upper:]' '[:lower:]')
+    expected_owner=$(printf '%s' "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
     repository=$(jq -r '.repository.full_name' "$response")
-    printf '%s: visibility=%s repository=%s\n' "$package" "$visibility" "$repository"
-    if [[ "$visibility" != private || "$repository" != "$GITHUB_REPOSITORY" ]]; then
-      printf 'Package metadata mismatch for %s: expected visibility=private repository=%s; actual visibility=%s repository=%s\n' \
-        "$package" "$GITHUB_REPOSITORY" "$visibility" "$repository" >&2
+    printf '%s: visibility=%s name=%s owner=%s repository=%s\n' "$package" "$visibility" "$actual_name" "$owner" "$repository"
+    if [[ "$visibility" != private || "$actual_name" != "$package" || "$owner" != "$expected_owner" ]]; then
+      printf 'Package identity mismatch: expected visibility=private name=%s owner=%s; actual visibility=%s name=%s owner=%s\n' \
+        "$package" "$expected_owner" "$visibility" "$actual_name" "$owner" >&2
+      exit 1
+    fi
+    if [[ "$repository" == null ]]; then
+      # Container 包响应可省略 repository；source 标签和令牌实际推拉分别验收源码标记与访问权。
+      printf '%s: API did not return repository; source label and token push/pull are checked separately\n' "$package"
+    elif [[ "$repository" != "$GITHUB_REPOSITORY" ]]; then
+      printf 'Package repository mismatch for %s: expected=%s actual=%s\n' "$package" "$GITHUB_REPOSITORY" "$repository" >&2
       exit 1
     fi
     ;;

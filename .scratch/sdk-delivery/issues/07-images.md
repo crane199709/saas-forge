@@ -28,3 +28,5 @@
 - 首轮远端 CI（images run 41158737468、backend run 41158723728）发现父 POM 不符合 Spotless 的空元素与节点排序规则，尚未进入镜像推拉。随后仅对父 POM 执行 `mise exec java@oracle-17.0.12 -- mvn -B -N -f backend/pom.xml spotless:apply`，同参数 `spotless:check` 与 `git diff --check` 均通过；待集成后重新运行远端 CI。
 - 第二轮远端 images run 41158999818：六镜像构建与 GHCR 登录成功，gateway 推送成功（digest `sha256:f7973ad732ab70661ebe033807a5be6f8a3e9f36c0e000fe48412c79329e7585`），随后校验退出但旧日志未标明具体断言，根因仍待核实。补充 source/包元数据/digest/镜像 ID 的期望值与实际值诊断；共享只读包检查脚本用于构建前预检、推送前与推送后校验，不改变权限或可见性。
 - 诊断改动本地验证：工作流 YAML 解析、全部 run 段及 check-package.sh 的 bash -n、git diff --check 通过；未本地重建或推送镜像，未将第二轮失败推断为权限或 digest 根因。
+- 第三轮远端 images run 41159533036 的前置检查明确返回 `visibility=private repository=null`。Container 包 API 可不返回 repository，原强制比较误判失败；现严格核验 private、包名、owner，repository 非空才要求匹配，null 记录验证边界。source 标签标记源码，令牌实际推拉验收访问权，不声称已验证 UI 关联。真实响应形状回归先复现 private+null 失败，再修正通过；保留 public、其他包名/owner/repository 的拒绝校验，不修改 GHCR 权限或可见性。
+- 本地 `python3 scripts/images/test-check-package.py` 7/7 通过（临时 curl 响应夹具调用真实脚本，覆盖 private+null、public、其他 repository、其他包名、其他 owner、匹配 repository、owner 大小写）；bash -n 与 git diff --check 通过。未本地重建镜像，完整推拉仍待远端重跑。
