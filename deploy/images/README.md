@@ -1,9 +1,28 @@
 # 镜像
 
 前提：Java 17、Maven、Node 24、pnpm 12.4.2、Docker；在 frontend 执行 `pnpm install --frozen-lockfile`。
-根目录运行 `scripts/images/build.sh` 串行构建四个后端服务和两个 Shell，标签取统一版本。IMAGE_PREFIX 默认 forge，可指定本地命名空间。脚本与发布工作流只构建，不推送。镜像仓库尚未选定；可信目标与凭证确认后再接入推送。
+根目录运行 `scripts/images/build.sh` 串行构建四个后端服务和两个 Shell，标签取统一版本。IMAGE_PREFIX 默认 forge，可指定本地命名空间。本地脚本只构建，不推送；`IMAGE_TAG` 可覆盖标签，`IMAGE_SOURCE` 可提供源码仓库 URL。
 
 后端使用 Spring Boot build-image（首次下载 builder/run image）。images profile 排除本地 application*.yml；必须 clean，避免旧配置残留。运行时挂载部署专用 `/config/application.yml` 并设置 `SPRING_CONFIG_LOCATION=file:/config/application.yml`，不要直接使用仓库本地默认配置。
+
+## GHCR 发布与验证
+
+仓库 Actions variable `IMAGE_PREFIX` 设置为 `ghcr.io/crane199709/saas-forge-v2`。工作流只接受 `ghcr.io/<当前仓库 owner>/<单段命名空间>`，不接受其他 registry 或 owner。未配置时仍构建六个镜像，不登录、不推送。
+
+发布标签 `v<统一版本>` 在完整质量门通过后调用共享的 `images.yml`，推送版本标签；Actions 中手动运行 **Build and publish images** 可单独验证六个镜像，不发布 Maven/npm，也不创建版本标签。手动运行始终使用 `sha-<完整提交 SHA>`，包括 main，避免覆盖正式版本。首次使用手动入口须先将工作流合入默认分支，然后可选择待验证分支。
+
+镜像名称为 `forge-gateway`、`forge-iam`、`forge-platform`、`demo-service`、`tenant-app`、`platform-console`，例如 `ghcr.io/crane199709/saas-forge-v2/forge-iam:0.1.0`。六个镜像均带 `org.opencontainers.image.source` 指向当前仓库。
+
+CI 使用自动生成的 `GITHUB_TOKEN` 登录；仅镜像 job 授予 `packages: write`，不配置额外 PAT。GHCR 新包默认私有，工作流在推送前检查已有包、推送后检查每个包保持 private 且关联当前 repository；已有同名包需提前关联当前仓库并允许该仓库 Actions 访问。工作流不会修改包可见性或权限。推送后记录 digest、删除本地标签，再按 digest 拉取并比对镜像 ID；摘要保留六个不可变拉取引用。此验证不代替服务健康与试点主链路验收。
+
+在开发机或部署环境拉取私有包，使用有目标包读取权限、至少 `read:packages` scope 的 **personal access token (classic)**（组织启用 SSO 时还需相应授权）：
+
+```sh
+printf '%s' "$GHCR_READ_TOKEN" | docker login ghcr.io -u "$GITHUB_USERNAME" --password-stdin
+docker pull ghcr.io/crane199709/saas-forge-v2/forge-iam:0.1.0
+```
+
+生产部署优先使用工作流摘要里的 `镜像名@sha256:...`。参见 [GitHub Container registry 官方说明](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)。
 
 ## 后端配置
 

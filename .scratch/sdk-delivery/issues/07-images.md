@@ -22,3 +22,6 @@
 - 后续实测：四个后端镜像均通过 Spring Boot build-image 构建（统一 0.1.0 标签）。首次 JRE 下载导致 creator 51；宿主与 builder 容器内官方 URL 均可达，重试成功，未关闭 TLS 或修改系统代理。
 - 四个镜像在全新临时 Docker 网络、PostgreSQL 17 与 Redis 8.8.1 中串行启动，/actuator/health 全部 status=UP；DB/Redis 健康。采用现有 E2E 的 MQ/Nacos 禁用模式，未验证真实 MQ/Nacos。临时容器与网络均清理，证据目录 /tmp/forge-images-InNTHt。综合验证子项因真实依赖与浏览器主链路未覆盖仍保留未勾选。
 - 已合并 08 的模板冒烟实现，发布 images 任务依赖 template-smoke 通过。实现转 ready-for-human 供审阅；剩余为可信仓库推送配置与试点完整链路验收。
+
+- 2026-10-31：已确认 GHCR 私有镜像目标 `ghcr.io/crane199709/saas-forge-v2`；实现共享 images 工作流，release 质量门后调用，独立 workflow_dispatch 使用 SHA 标签。IMAGE_PREFIX 未设仍只构建；推送用 job 级 GITHUB_TOKEN，限制当前 owner 的 GHCR，检查 private/repository 关联，删除本地标签后按 digest 重拉并比对 ID。六镜像补 source label。仅完成本地轻量检查，真实推拉由远端 CI 验证后记录，不提前勾选。
+- 本次轻量验证：两个工作流 YAML 解析、所有新增 run 段与 build.sh 的 bash -n、POM XML 解析、git diff --check、四服务 images profile 离线 Maven validate 均通过。effective-pom 因本机缺失 Maven Help 插件依赖无法离线执行；未重建镜像、未向远端推送。

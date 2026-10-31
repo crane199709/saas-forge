@@ -1,0 +1,102 @@
+name: Build and publish images
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE_PREFIX: ${{ vars.IMAGE_PREFIX }}
+      IMAGE_SOURCE: ${{ github.server_url }}/${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select image destination and tag
+        env:
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if [[ -n "$IMAGE_PREFIX" ]]; then
+            owner=${REPOSITORY_OWNER,,}
+            namespace=${IMAGE_PREFIX#ghcr.io/$owner/}
+            if [[ "$IMAGE_PREFIX" != "ghcr.io/$owner/"* || ! "$namespace" =~ ^[a-z0-9]+([._-][a-z0-9]+)*$ ]]; then
+              echo 'IMAGE_PREFIX must be ghcr.io/<current owner>/<namespace>' >&2
+              exit 1
+            fi
+          fi
+          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            echo "IMAGE_TAG=sha-$GITHUB_SHA" >> "$GITHUB_ENV"
+          else
+            python3 scripts/release/version.py check "$RELEASE_TAG"
+          fi
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: pnpm install --frozen-lockfile
+        working-directory: frontend
+      - run: scripts/images/build.sh
+      - name: Log in to GHCR
+        if: env.IMAGE_PREFIX != ''
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push and pull each image by digest
+        if: env.IMAGE_PREFIX != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER_TYPE: ${{ github.event.repository.owner.type }}
+        run: |
+          owner_path=users
+          if [[ "$OWNER_TYPE" == Organization ]]; then owner_path=orgs; fi
+          version=$(python3 -c 'import json; print(json.load(open("frontend/package.json"))["version"])')
+          tag=${IMAGE_TAG:-$version}
+          for name in forge-gateway forge-iam forge-platform demo-service tenant-app platform-console; do
+            image="$IMAGE_PREFIX/$name:$tag"
+            id=$(docker image inspect --format '{{.Id}}' "$image")
+            source=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.source"}}' "$image")
+            [[ "$source" == "$IMAGE_SOURCE" ]]
+            package=${IMAGE_PREFIX#ghcr.io/*/}/$name
+            encoded=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$package")
+            package_api="/$owner_path/$GITHUB_REPOSITORY_OWNER/packages/container/$encoded"
+            response=$(mktemp)
+            status=$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
+              -H "Authorization: Bearer $GH_TOKEN" "$GITHUB_API_URL$package_api")
+            case "$status" in
+              200) [[ "$(jq -r '.visibility + " " + .repository.full_name' "$response")" == "private $GITHUB_REPOSITORY" ]] ;;
+              404) ;; # 首次创建由 GHCR 默认设为私有。
+              *) echo "Cannot verify package access: HTTP $status" >&2; rm -f "$response"; exit 1 ;;
+            esac
+            rm -f "$response"
+            docker push "$image"
+            metadata=$(gh api "/$owner_path/$GITHUB_REPOSITORY_OWNER/packages/container/$encoded" --jq '.visibility + " " + .repository.full_name')
+            [[ "$metadata" == "private $GITHUB_REPOSITORY" ]]
+            digest=$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$image" | awk -v repo="$IMAGE_PREFIX/$name@" 'index($0, repo) == 1 { print; exit }')
+            [[ "$digest" =~ @sha256:[a-f0-9]{64}$ ]]
+            # 删除本地引用，确保验收实际访问 registry 并恢复刚发布的镜像。
+            docker image rm "$image"
+            docker pull "$digest"
+            [[ "$(docker image inspect --format '{{.Id}}' "$digest")" == "$id" ]]
+            printf '%s → `%s`\n' "$name" "$digest" >> "$GITHUB_STEP_SUMMARY"
+          done
+      - name: Report build-only mode
+        if: env.IMAGE_PREFIX == ''
+        run: echo 'IMAGE_PREFIX is unset; all six images were built without publishing.' >> "$GITHUB_STEP_SUMMARY"
