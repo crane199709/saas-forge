@@ -9,7 +9,7 @@ python3 scripts/release/version.py check v0.1.0
 
 命令同步 backend reactor 中的 Forge 坐标和 frontend 根目录、packages、apps 的版本；不改第三方版本。发布标签必须为 `v<语义版本>`，拒绝 SNAPSHOT、标签与文件不一致。修改版本后更新根目录 CHANGELOG.md，单列不兼容变更，再提交与推送标签。
 
-标签工作流复用后端验证（含 archetype 生成测试）、前端完整检查与 mock E2E、真实主链路 E2E 和模板冒烟；所有质量门通过后才能发布。镜像构建也依赖这些质量门，当前只构建、不推送，参见 [镜像说明](../../deploy/images/README.md)。
+标签工作流复用后端验证（含 archetype 生成测试）、前端完整检查与 mock E2E、真实主链路 E2E 和模板冒烟；所有质量门通过后才能发布。镜像工作流也依赖这些质量门；配置 `IMAGE_PREFIX` 时推送 GHCR 并验证拉取，未配置时只构建，参见 [镜像说明](../../deploy/images/README.md)。
 
 Maven 发布包含 forge-dependencies、forge-parent、forge-sdk 聚合 POM、全部 forge-sdk-*、forge-architecture 与 forge-service-archetype；父 POM 是仓库外解析继承链所必需的。平台服务和 demo-service 设置 deploy/source skip。目标 URL 通过 `-Dforge.release.url` 注入，凭证对应 Maven server id `forge-release`。
 
@@ -29,13 +29,26 @@ scripts/release/publish.sh local v0.1.0
 
 ## 正式仓库配置
 
-GitHub Variables：`MAVEN_RELEASE_URL`、`NPM_RELEASE_REGISTRY`；可选 `NPM_RELEASE_TAG`（默认 latest，预发布建议设 next）。GitHub Secrets：`MAVEN_RELEASE_USERNAME`、`MAVEN_RELEASE_PASSWORD`、`NPM_RELEASE_TOKEN`。
+已选定 Maven 使用当前 GitHub 仓库的 GitHub Packages，npm 使用 npmjs.org。配置如下：
 
-全部未配置时 CI 自动执行临时发布；只配置部分会失败，避免误判发布成功。全部配置后执行 remote 模式并从目标仓库消费验证。npm registry URL 不嵌入凭证；临时 npmrc/settings.xml 只保存环境变量引用。
+| 配置 | 来源 | 值 |
+| --- | --- | --- |
+| `MAVEN_RELEASE_URL` | GitHub Variable | `https://maven.pkg.github.com/<小写 owner>/<小写 repo>`，必须对应当前仓库 |
+| `NPM_RELEASE_REGISTRY` | GitHub Variable | `https://registry.npmjs.org/`（可省略尾斜杠） |
+| `NPM_RELEASE_ACCESS` | GitHub Variable | 必填，`public` 或 `restricted`，由维护者明确选择 |
+| `NPM_RELEASE_TOKEN` | GitHub Secret | 有目标 scope/package 发布权限的 npm token |
+| `NPM_RELEASE_TAG` | GitHub Variable | 可选，默认 `latest`，预发布建议 `next` |
+
+Maven 用户名来自 `github.actor`，密码来自自动生成的 `GITHUB_TOKEN`，无需额外 Maven Secret。只有发布 job 授予 `contents: read` 和 `packages: write`；已有 Maven 包需允许当前仓库 Actions 写入。仓库外消费 GitHub Packages 时仍需配置读取凭证及 Maven server id `forge-release`。
+
+上述 Variables 与 npm Secret 全部未配置时，CI 使用临时仓库；自动提供的 GitHub 身份和 token 不触发正式发布。任一项配置后进入 remote，缺项会失败。remote 仅接受上述两个目标，npm 可见性不设默认值；本地模式固定 `restricted`，继续使用临时 Verdaccio。当前包 scope 保持 `@forge`，正式发布前必须确认该 scope 的所有权与写权限，并确定包可见性。
+
+目标、必填参数和 access 校验，以及 `npm whoami` 身份预检，都在 Maven deploy/npm publish 前执行。身份预检不代表已经确认目标 scope 的写权限、付费私有包资格或全部发布策略。临时 npmrc/settings.xml 只保存环境变量引用，不落盘密钥。
 
 ```sh
-# 先在环境中提供上述五项参数，再执行；不要把凭证写进命令历史。
+# 本地正式发布需先在环境中提供上表配置、GITHUB_REPOSITORY、
+# MAVEN_RELEASE_USERNAME、MAVEN_RELEASE_PASSWORD；不要把凭证写进命令历史。
 scripts/release/publish.sh remote v0.1.0
 ```
 
-Maven 与 npm 发布不是跨仓库事务：其中一个失败时可能已经发布部分制品，需要检查目标仓库后处理，不能盲目覆盖同版本。仓库选型与正式发布由维护者安排，本次实现不推送版本标签。
+Maven 与 npm 发布不是跨仓库事务：其中一个失败时可能已经发布部分制品，需要检查目标仓库后处理，不能盲目覆盖同版本。正式发布由维护者安排；本次仅适配配置，未配置远端变量或密钥、未推送版本标签，也未向 GitHub Packages/npmjs.org 发布 SDK。

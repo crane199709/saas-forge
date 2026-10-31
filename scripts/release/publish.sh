@@ -35,6 +35,7 @@ EOF
     port=$(docker port "$registry_container" 4873/tcp | awk -F: '{print $NF}')
     export NPM_RELEASE_REGISTRY="http://127.0.0.1:$port"
     export NPM_RELEASE_TOKEN=local-smoke-token
+    export NPM_RELEASE_ACCESS=restricted
     for attempt in {1..60}; do
       if curl -fsS "$NPM_RELEASE_REGISTRY/-/ping" >/dev/null; then break; fi
       sleep 1
@@ -42,8 +43,28 @@ EOF
     curl -fsS "$NPM_RELEASE_REGISTRY/-/ping" >/dev/null
     ;;
   remote)
-    : "${MAVEN_RELEASE_URL:?}" "${MAVEN_RELEASE_USERNAME:?}" "${MAVEN_RELEASE_PASSWORD:?}"
-    : "${NPM_RELEASE_REGISTRY:?}" "${NPM_RELEASE_TOKEN:?}"
+    for required in MAVEN_RELEASE_URL MAVEN_RELEASE_USERNAME MAVEN_RELEASE_PASSWORD \
+      NPM_RELEASE_REGISTRY NPM_RELEASE_TOKEN NPM_RELEASE_ACCESS GITHUB_REPOSITORY; do
+      if [[ -z "${!required:-}" ]]; then
+        echo "缺少发布配置：$required" >&2
+        exit 1
+      fi
+    done
+    # GITHUB_TOKEN 只能发往当前仓库，避免配置错误泄漏发布凭证。
+    python3 - <<'PYTARGET'
+import os
+import re
+repository = os.environ['GITHUB_REPOSITORY']
+if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository):
+    raise SystemExit('GITHUB_REPOSITORY 必须为 owner/repository')
+expected = 'https://maven.pkg.github.com/' + repository.lower()
+if os.environ['MAVEN_RELEASE_URL'] not in (expected, expected + '/'):
+    raise SystemExit('MAVEN_RELEASE_URL 必须指向当前仓库：' + expected)
+if os.environ['NPM_RELEASE_REGISTRY'] not in ('https://registry.npmjs.org', 'https://registry.npmjs.org/'):
+    raise SystemExit('NPM_RELEASE_REGISTRY 必须为 https://registry.npmjs.org/')
+if os.environ['NPM_RELEASE_ACCESS'] not in ('public', 'restricted'):
+    raise SystemExit('NPM_RELEASE_ACCESS 必须明确设为 public 或 restricted')
+PYTARGET
     ;;
   *) echo '模式必须为 local 或 remote' >&2; exit 1 ;;
 esac
@@ -64,6 +85,10 @@ path = url.path.rstrip('/') + '/'
 with open(os.environ['NPM_CONFIG_USERCONFIG'], 'w') as f:
     f.write(f'@forge:registry={os.environ["NPM_RELEASE_REGISTRY"]}\n//{url.netloc}{path}:_authToken=${{NPM_RELEASE_TOKEN}}\n')
 PY
+if [[ "$mode" == remote ]]; then
+  # 身份预检不能保证包写权限，但可在 Maven 发布前拒绝无效 npm 凭证。
+  npm whoami --registry "$NPM_RELEASE_REGISTRY" >/dev/null
+fi
 (cd "$root/backend" && ./mvnw --batch-mode -s "$work/settings.xml" \
   "-Dforge.release.url=$MAVEN_RELEASE_URL" -DskipTests deploy)
 (cd "$root/frontend" && pnpm --filter @forge/sdk --filter @forge/ui --filter @forge/sub-app-kit build)
@@ -91,7 +116,7 @@ for path in Path(sys.argv[1]).glob('*.tgz'):
         assert all(target.endswith('.js') for target in package.get('bin', {}).values())
 PYCHECK
 for archive in "$work"/tarballs/*.tgz; do
-  npm publish "$archive" --registry "$NPM_RELEASE_REGISTRY" --access restricted --provenance=false --tag "${NPM_RELEASE_TAG:-latest}"
+  npm publish "$archive" --registry "$NPM_RELEASE_REGISTRY" --access "$NPM_RELEASE_ACCESS" --provenance=false --tag "${NPM_RELEASE_TAG:-latest}"
 done
 python3 "$root/scripts/release/consume.py" "$work/consumer" "$version" "$MAVEN_RELEASE_URL"
 # 复用第三方下载，隔离全部 Forge 缓存；deploy 刚写入的 install 产物绝不能蒙混过关。
