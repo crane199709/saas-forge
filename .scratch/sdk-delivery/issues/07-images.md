@@ -25,3 +25,4 @@
 
 - 2026-10-31：已确认 GHCR 私有镜像目标 `ghcr.io/crane199709/saas-forge-v2`；实现共享 images 工作流，release 质量门后调用，独立 workflow_dispatch 使用 SHA 标签。IMAGE_PREFIX 未设仍只构建；推送用 job 级 GITHUB_TOKEN，限制当前 owner 的 GHCR，检查 private/repository 关联，删除本地标签后按 digest 重拉并比对 ID。六镜像补 source label。仅完成本地轻量检查，真实推拉由远端 CI 验证后记录，不提前勾选。
 - 本次轻量验证：两个工作流 YAML 解析、所有新增 run 段与 build.sh 的 bash -n、POM XML 解析、git diff --check、四服务 images profile 离线 Maven validate 均通过。effective-pom 因本机缺失 Maven Help 插件依赖无法离线执行；未重建镜像、未向远端推送。
+- 首轮远端 CI（images run 41158737468、backend run 41158723728）发现父 POM 不符合 Spotless 的空元素与节点排序规则，尚未进入镜像推拉。随后仅对父 POM 执行 `mise exec java@oracle-17.0.12 -- mvn -B -N -f backend/pom.xml spotless:apply`，同参数 `spotless:check` 与 `git diff --check` 均通过；待集成后重新运行远端 CI。
