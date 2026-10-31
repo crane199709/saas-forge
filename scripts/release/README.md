@@ -72,3 +72,15 @@ scripts/release/publish.sh consume v0.1.0
 ```sh
 python3 -m unittest discover -s scripts/release -p 'test_*.py'
 ```
+
+## 0.1.0 正式发布记录
+
+正式标签 `v0.1.0` 固定指向 `1e57298beed8f2aa53531afce29dfeb2f34ecf20`，不移动标签或覆盖同版本。[发布 run 41164401705](https://github.com/crane199709/saas-forge-v2/actions/runs/41164401705) 的四个质量门通过，Maven 制品与三个公开 npm 包上传成功，六个正式 `0.1.0` 镜像发布及按 digest 回拉通过。原 run 的发布 job 随后因 npm 安装元数据短暂 404 而失败；该失败记录保留，上传成功不作为消费验收成功。
+
+[只消费恢复 run 41165936334](https://github.com/crane199709/saas-forge-v2/actions/runs/41165936334) 已成功，使用修复后的 `Verify published SDK` 等待并消费既有 `0.1.0`：隔离 Forge 缓存解析 Maven 依赖，安装三个 npm 包、编译类型示例、加载 Vite 配置并运行 lint CLI 全部通过。没有重新发布制品；不要再次运行上文的 `remote v0.1.0` 发布命令。另已在仓库外通过匿名公开 npm registry 执行：
+
+```sh
+pnpm --package=@crane199709/sub-app-kit@0.1.0 dlx forge-create-sub-app billing 5180
+```
+
+生成 `billing-sub-app` 成功，生成工程的三个 SDK 包依赖均为 `0.1.0`；这只证明公开下载与生成命令可用，不替代生成工程的构建、部署或试点验收。

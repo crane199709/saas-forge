@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 CI 质量门
 
-**Status:** ready-for-human
+**Status:** resolved
 
 - [x] 提供一条命令同步设置后端与前端全部版本号；发布前校验标签与各处版本一致且不是 SNAPSHOT，不一致时失败
 - [x] Maven：可发布模块配置发布与源码包；平台服务（gateway、iam、platform）与 demo-service 跳过发布；发布目标地址与凭证由参数提供，构建配置中不写死地址
@@ -34,3 +34,12 @@
 - 真实 `v0.1.0` 发布曾在 npm 上传成功后因安装元数据短暂 404 导致消费失败。补充远端发布后的有界可用性等待，检查三个包安装元数据内的精确版本及 tarball；总预算 20 分钟，认证错误直接失败，本地临时仓库不等待。
 - 增加 `publish.sh consume` 和 `Verify published SDK` 手动入口，只读取既有制品，禁止将恢复验收变成同版本再次发布。输入标签继续校验全部源码版本，工作流仅使用 `packages: read`。
 - HTTP/CLI 轻量回归已验证元数据/tarball 延迟、单版本端点可见但安装元数据仍不可用、缺少目标版本、超时、401/403 与版本不匹配；真实仓库消费恢复由集成工作流继续验收，本工单保持待人工验收。
+
+
+## Answer
+
+统一版本 `0.1.0` 已完成正式发布与仓库外消费验收。标签 `v0.1.0` 固定指向 `1e57298beed8f2aa53531afce29dfeb2f34ecf20`；[发布 run 41164401705](https://github.com/crane199709/saas-forge-v2/actions/runs/41164401705) 的后端、前端、真实主链路、模板冒烟四个质量门通过，Maven 制品和三个公开 `@crane199709` npm 包上传成功，六镜像发布与按 digest 回拉通过。原发布 job 在上传后因 npm 安装元数据短暂 404 而失败，该 run 保留失败结果，不以已上传替代消费验收。
+
+修复提交 `1c23d8cb4d4004cade9a293234e9fa92086104c0` 增加安装元数据及 tarball 的有界等待、只消费恢复模式；7 项 HTTP/CLI 轻量回归通过。[只消费恢复 run 41165936334](https://github.com/crane199709/saas-forge-v2/actions/runs/41165936334) 最终 `success`，`Wait for packages and consume existing release` 成功：排除全部 Forge 本地缓存后解析 Maven BOM/SDK/架构依赖，空 npm 工程安装三个包、检查类型、加载 Vite 配置和执行 lint CLI 全部通过。此次恢复未重新 deploy/publish、未覆盖制品或移动标签。
+
+此外，仓库外通过公开 npm registry 匿名运行 `pnpm --package=@crane199709/sub-app-kit@0.1.0 dlx forge-create-sub-app billing 5180` 成功，生成 `billing-sub-app`，三个 SDK 包依赖均为 `0.1.0`。此项证明公开下载与生成命令可用；完整试点部署及验收仍属于工单 09，本次未修改其状态。

@@ -36,7 +36,7 @@
 
 已完成六个私有镜像的构建、推送与重新拉取。[真实 CI run 41159814332](https://github.com/crane199709/saas-forge-v2/actions/runs/41159814332) 成功，代码提交 `64210fb90a6d1c0f39e048b95f560486496cb1ff`，六个镜像标签均为 `sha-64210fb90a6d1c0f39e048b95f560486496cb1ff`。CI 验证 private、包名与 owner、源码 source 标签，并逐个删除本地标签后按 digest 拉取、比对镜像 ID。API 未返回 repository，未据此声称验证了 UI 仓库关联；当前仓库 GITHUB_TOKEN 的实际推拉证明访问权。
 
-这是手动 SHA 标签验证，尚未创建正式版本标签 `v0.1.0` 或发布镜像标签 `0.1.0`，也未执行 Maven/npm 发布。以下 digest 可与统一前缀 `ghcr.io/crane199709/saas-forge-v2` 组合成 `前缀/镜像名@digest` 拉取；本地完整日志 `/tmp/forge-ghcr-41159814332.log`。
+以上为当时的手动 SHA 标签验证；正式 `0.1.0` 的后续验收见下文。以下 digest 可与统一前缀 `ghcr.io/crane199709/saas-forge-v2` 组合成 `前缀/镜像名@digest` 拉取；本地完整日志 `/tmp/forge-ghcr-41159814332.log`。
 
 | 镜像 | Digest |
 | --- | --- |
@@ -46,3 +46,10 @@
 | `demo-service` | `sha256:16642230047f1164d78fdb3594f1452519679651a256613bb7776c911de427a4` |
 | `tenant-app` | `sha256:4baf7607f3511ffd5defa77157748427cae5822f9964f5257b4094cdd48a8f9b` |
 | `platform-console` | `sha256:ec89a4a98ea8919cca27545c7eb9a64307b87c48c27efcc07ade795340250827` |
+
+
+### 正式 0.1.0 镜像验收
+
+[发布 run 41164401705](https://github.com/crane199709/saas-forge-v2/actions/runs/41164401705) 由正式标签 `v0.1.0` 触发，标签固定指向 `1e57298beed8f2aa53531afce29dfeb2f34ecf20`。四个质量门通过后，六个镜像均以 `0.1.0` 标签发布到既定私有 GHCR 命名空间，并完成按 digest 回拉与镜像 ID 比对；正式 digest 以该 run 的镜像摘要为准，不沿用上表旧 SHA 标签摘要。正式 Shell 使用 `@crane199709` 共享键。
+
+该 run 整体因另一发布 job 的 npm 消费步骤遇到安装元数据短暂 404 而保留失败状态；镜像发布 job 本身成功。此补充不声称完成了试点部署、真实 MQ/Nacos 或浏览器完整主链路，既有验收边界保持不变。
