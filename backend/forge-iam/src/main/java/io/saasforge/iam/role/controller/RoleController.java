@@ -8,8 +8,10 @@ import io.saasforge.iam.role.model.ConditionOptions;
 import io.saasforge.iam.role.model.DataPolicy;
 import io.saasforge.iam.role.model.DataResourceOption;
 import io.saasforge.iam.role.model.MemberRoles;
+import io.saasforge.iam.role.model.PermissionTreeResponse;
 import io.saasforge.iam.role.model.PolicyPreview;
 import io.saasforge.iam.role.model.RoleDetail;
+import io.saasforge.iam.role.service.PermissionTreeService;
 import io.saasforge.iam.role.service.RoleManagementService;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.web.PageQuery;
@@ -45,8 +47,10 @@ import tools.jackson.databind.json.JsonMapper;
 class RoleController {
     private final RoleManagementService roles;
     private final JsonMapper json;
+    private final PermissionTreeService permissionTrees;
 
-    RoleController(RoleManagementService roles, JsonMapper json) {
+    RoleController(RoleManagementService roles, JsonMapper json, PermissionTreeService permissionTrees) {
+        this.permissionTrees = permissionTrees;
         this.roles = roles;
         this.json = json;
     }
@@ -57,6 +61,12 @@ class RoleController {
         return ApiResponse.ok(roles.list(TenantActor.of(jwt)).stream()
                 .map(role -> RoleResponse.from(role, this::toBody))
                 .toList());
+    }
+
+    @Operation(summary = "当前租户可授予的菜单授权树")
+    @GetMapping("/permission-tree")
+    ApiResponse<PermissionTreeResponse> permissionTree(@AuthenticationPrincipal Jwt jwt) {
+        return ApiResponse.ok(permissionTrees.of(TenantActor.of(jwt)));
     }
 
     @Operation(summary = "可授予的有效 Permission Code，按服务与分组排序")

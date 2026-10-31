@@ -113,6 +113,167 @@ class RoleManagementTest {
     }
 
     @Test
+    @Sql(scripts = {"/fixtures/roles.sql", "/fixtures/permission-tree-plan.sql"})
+    @Sql(scripts = "/fixtures/permission-tree-plan-cleanup.sql", executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD)
+    void permissionTreePrunesPlanPermissionsSubAppsAndEmptyGroups() throws Exception {
+        permissions.report(
+                "plan-tree-service",
+                new ResourceManifest(
+                        "plan-tree-service",
+                        "1",
+                        List.of(
+                                new Permission("pt:read", "查看", "树"), new Permission("pt:edit", "编辑", "树"),
+                                new Permission("pt:outside", "套餐外", "树"), new Permission("pt:orphan", "隐藏页面操作", "树")),
+                        List.of(new MenuNode(
+                                "pt",
+                                "树",
+                                null,
+                                null,
+                                null,
+                                null,
+                                List.of(
+                                        new MenuNode(
+                                                "pt.visible",
+                                                "可见页",
+                                                null,
+                                                "demo",
+                                                "visible",
+                                                "pt:read",
+                                                List.of(),
+                                                List.of("pt:edit", "pt:outside")),
+                                        new MenuNode("pt.public", "公共页", null, "demo", "public", null, List.of()),
+                                        new MenuNode(
+                                                "pt.other-app",
+                                                "其他应用",
+                                                null,
+                                                "outside",
+                                                "other",
+                                                "pt:read",
+                                                List.of(),
+                                                List.of("pt:orphan")),
+                                        new MenuNode(
+                                                "pt.blocked",
+                                                "套餐外分组",
+                                                null,
+                                                null,
+                                                null,
+                                                "pt:outside",
+                                                List.of(new MenuNode(
+                                                        "pt.blocked-child",
+                                                        "隐藏子页",
+                                                        null,
+                                                        "demo",
+                                                        "child",
+                                                        "pt:read",
+                                                        List.of()))),
+                                        new MenuNode(
+                                                "pt.empty",
+                                                "空分组",
+                                                null,
+                                                null,
+                                                null,
+                                                null,
+                                                List.of(new MenuNode(
+                                                        "pt.outside",
+                                                        "套餐外页面",
+                                                        null,
+                                                        "demo",
+                                                        "outside",
+                                                        "pt:outside",
+                                                        List.of()))))))));
+        var response = call(ADMIN_B, HttpMethod.GET, "/roles/permission-tree", null);
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        var tree = data(response);
+        var menus = (List<Map<String, Object>>) tree.get("menus");
+        assertThat(menus.stream().map(node -> node.get("code"))).containsExactly("pt");
+        var children = (List<Map<String, Object>>) menus.get(0).get("children");
+        assertThat(children.stream().map(node -> node.get("code"))).containsExactly("pt.visible", "pt.public");
+        assertThat(children.get(0).get("permission"))
+                .isEqualTo(Map.of("code", "pt:read", "name", "查看", "sharedWith", List.of()));
+        assertThat(children.get(0).get("actions"))
+                .isEqualTo(List.of(Map.of("code", "pt:edit", "name", "编辑", "sharedWith", List.of())));
+        var others = (List<Map<String, Object>>) tree.get("others");
+        assertThat(others.stream().map(item -> item.get("code")))
+                .contains("pt:orphan", "iam:role:manage")
+                .doesNotContain("pt:read", "pt:edit", "pt:outside");
+        var flat = (List<Map<String, Object>>) call(ADMIN_B, HttpMethod.GET, "/roles/permissions", null)
+                .getBody()
+                .get("data");
+        assertThat(others)
+                .isEqualTo(flat.stream()
+                        .filter(item -> !List.of("pt:read", "pt:edit").contains(item.get("code")))
+                        .toList());
+    }
+
+    @Test
+    void permissionTreeShowsSharedCodesAndKeepsUnplacedPermissions() throws Exception {
+        permissions.report(
+                "tree-service",
+                new ResourceManifest(
+                        "tree-service",
+                        "1",
+                        List.of(new Permission("tree:read", "查看", "树"), new Permission("tree:edit", "编辑", "树")),
+                        List.of(new MenuNode(
+                                "tree",
+                                "树",
+                                "grid",
+                                null,
+                                null,
+                                null,
+                                List.of(
+                                        new MenuNode(
+                                                "tree.first",
+                                                "第一页",
+                                                null,
+                                                "demo",
+                                                "first",
+                                                "tree:read",
+                                                List.of(),
+                                                List.of("tree:edit")),
+                                        new MenuNode(
+                                                "tree.second", "第二页", null, "demo", "second", "tree:read", List.of()),
+                                        new MenuNode(
+                                                "tree.public",
+                                                "公共页",
+                                                null,
+                                                "demo",
+                                                "public",
+                                                null,
+                                                List.of(),
+                                                List.of("tree:read")))))));
+        var response = call(ADMIN, HttpMethod.GET, "/roles/permission-tree", null);
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        var tree = data(response);
+        var menus = (List<Map<String, Object>>) tree.get("menus");
+        var group = menus.stream()
+                .filter(node -> node.get("code").equals("tree"))
+                .findFirst()
+                .orElseThrow();
+        var children = (List<Map<String, Object>>) group.get("children");
+        assertThat(children).hasSize(3);
+        assertThat((Map<String, Object>) children.get(0).get("permission"))
+                .containsEntry("code", "tree:read")
+                .containsEntry("name", "查看")
+                .containsEntry("sharedWith", List.of("tree.second", "tree.public"));
+        assertThat(children.get(0).get("actions"))
+                .isEqualTo(List.of(Map.of("code", "tree:edit", "name", "编辑", "sharedWith", List.of())));
+        assertThat(children.get(2)).containsEntry("permission", null);
+        var others = (List<Map<String, Object>>) tree.get("others");
+        assertThat(others.stream().map(item -> item.get("code")))
+                .contains("iam:role:manage", "iam:member:manage")
+                .doesNotContain("tree:read", "tree:edit");
+        assertThat(call(MEMBER, HttpMethod.GET, "/roles/permission-tree", null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(403);
+        String manager = createRole("tree-manager", "角色管理员", List.of("iam:role:manage"));
+        assign(ADMIN, MEMBER, List.of(manager));
+        assertThat(data(call(MEMBER, HttpMethod.GET, "/roles/permission-tree", null)))
+                .isEqualTo(tree);
+        assign(ADMIN, MEMBER, List.of());
+    }
+
+    @Test
     void revokedPermissionIsDeniedOnTheNextRequestAndItsMenuDisappears() throws Exception {
         String approver = createRole("approver", "审批员", List.of("order:approve", "iam:org:manage"));
         String reader = createRole("reader", "查看员", List.of("order:read"));
