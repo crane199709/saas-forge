@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 工程骨架与版本组合验证
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 禁止使用 `@Select`、`@Insert`、`@Update`、`@Delete` 与 `@*Provider` 注解
 - [x] 禁止依赖 `QueryWrapper`、`UpdateWrapper` 等字符串列名 Wrapper

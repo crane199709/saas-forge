@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 platform-console 路由与布局
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 两个 Shell 的路由页面改为 `component: () => import(...)`
 - [x] platform-console 改为按需引入 Element Plus 组件与样式，不再全量 `app.use(ElementPlus)`；中文语言包（`zh-cn`）仍生效

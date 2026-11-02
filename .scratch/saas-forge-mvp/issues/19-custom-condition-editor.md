@@ -4,7 +4,7 @@
 
 **Blocked by:** 18 数据权限端到端（Data Scope 预设）
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 编辑器可选的资源属性来自 Resource Manifest，主体属性来自组织模型与扩展属性定义
 - [x] 支持嵌套 and/or、全部操作符，按属性类型限制可用操作符与取值控件

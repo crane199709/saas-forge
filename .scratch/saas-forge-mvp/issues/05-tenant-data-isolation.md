@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 Tenant Realm 最小登录链路
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] SDK 租户 starter 基于 MyBatis-Plus（3.5.16+）自动为查询、插入、更新、删除注入 `tenant_id`；可声明不隔离的全局表
 - [x] 每次获取数据库连接时设置当前租户会话变量，业务表启用 RLS 策略

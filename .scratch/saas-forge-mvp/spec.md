@@ -1,6 +1,6 @@
 # SaaS Forge 第一期（MVP）规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准，关键决策见 [docs/adr/](../../docs/adr/)。
 

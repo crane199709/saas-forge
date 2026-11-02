@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 tenant-app 布局与路由守卫
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 当前路由显示（`shell-route`）、主题切换（`shell-theme`）、scope 探针（`shell-scope`）、共享依赖单例检查（`shared-*`）移到 `/__diagnostics`，`data-testid` 不变
 - [x] 该路由只在 `import.meta.env.DEV` 或构建时 `VITE_FORGE_DIAGNOSTICS=true` 时注册；E2E 使用的构建打开该开关

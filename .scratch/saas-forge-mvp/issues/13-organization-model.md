@@ -4,7 +4,7 @@
 
 **Blocked by:** 06 多租户成员与切换租户
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Department 树以 PostgreSQL `ltree` 存储层级，支持新增、改名、移动（含子树）、删除（有成员或子部门时拒绝）
 - [x] Position 的增删改

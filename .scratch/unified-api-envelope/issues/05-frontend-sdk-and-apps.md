@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 安全与网关错误输出, 04 迁移 IAM 与 demo-service 接口
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] `@forge/sdk` 导出 `ApiResponse`、`PageMeta`、`ApiError` 类型；新增 `api<T>(path, init)`，成功返回 `data`，失败抛 `ApiError`（`code`、`httpStatus`、`userTip`、`traceId`、`errors`）
 - [x] 新增 `page<T>(path, init)`，返回 `{ items, page }`

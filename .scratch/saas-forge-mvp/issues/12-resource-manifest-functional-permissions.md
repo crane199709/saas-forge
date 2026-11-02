@@ -4,7 +4,7 @@
 
 **Blocked by:** 06 多租户成员与切换租户
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] SDK 扫描 `@RequiresPermission` 收集权限码，合并清单文件中的名称、分组与菜单树
 - [x] 启动时上报清单（也支持在 CI 中生成与上报）；iam 按 `service + version` 存储，下线的权限码标记失效，不物理删除

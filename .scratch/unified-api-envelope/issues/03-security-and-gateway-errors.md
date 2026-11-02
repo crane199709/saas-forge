@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 信封模型与 forge-sdk-web
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] `forge-sdk-security` 替换默认 `AuthenticationEntryPoint` 与 `AccessDeniedHandler`：401 输出 `auth.unauthenticated`，403 输出 `auth.forbidden`，带 `userTip` 与 `traceId`
 - [x] gateway 的安全处理器同样输出信封：缺失、伪造、issuer 不符、过期 Token，以及 Membership `ver` 或租户状态不一致，均为 401 `auth.unauthenticated`

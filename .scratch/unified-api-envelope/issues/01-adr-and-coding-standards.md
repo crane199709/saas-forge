@@ -4,7 +4,7 @@
 
 **Blocked by:** 无
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 新增 `docs/adr/0015-unified-api-envelope.md`，格式与现有 ADR 一致，记录：所有响应套信封而非只统一错误；不用 RFC 9457 Problem Details 的原因；HTTP 状态码如实返回；不再使用 204；点分错误码兼作 i18n key；Controller 显式返回 `ApiResponse<T>` 而非 Advice 自动包装；默认 offset 分页
 - [x] `docs/agents/coding-standards.md` 新增「接口格式」一节：Controller 公开方法返回 `ApiResponse<T>`；错误码 `<领域>.<原因>` 命名，由功能包 `service` 层的 `ErrorCode` 枚举定义，业务异常抛 `ForgeException`；分页与排序参数约定、排序字段白名单；`errorMessage` 与 `userTip` 的分工及 5xx 脱敏

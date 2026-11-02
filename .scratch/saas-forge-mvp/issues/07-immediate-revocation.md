@@ -4,7 +4,7 @@
 
 **Blocked by:** 06 多租户成员与切换租户
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] iam 在 Redis 维护每个 Membership 的 `version` 与每个租户的状态，相关变更时更新
 - [x] 网关每次请求比对 Token 中的 `ver` 与租户状态，不一致返回 401

@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 租户数据隔离
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] SDK 封装 `rocketmq-client-java` 5.x，不依赖 rocketmq-spring-boot-starter
 - [x] 发布事件写入 Outbox 表，与业务数据同一本地事务；事务回滚则事件不存在

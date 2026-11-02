@@ -4,7 +4,7 @@
 
 **Blocked by:** saas-forge-mvp 工单 22–26
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] tenant-app、platform-console 与 `@forge/sub-app-kit` 的 `dev-host.ts` 创建客户端时传入 `localStorage`；存储键不变，不迁移 `sessionStorage` 中的旧会话
 - [x] SDK 监听 `storage` 事件：其他标签页刷新 Token 时通知 `onSessionChange` 订阅者；切换租户（`membershipId` 变化）时本标签页卸载 Sub-App、清空共享 Pinia 状态并回首页；退出或会话清除时回到登录；登录时停留在登录的标签页进入首页

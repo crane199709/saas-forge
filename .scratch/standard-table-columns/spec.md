@@ -1,6 +1,6 @@
 # 建表标准列与 MyBatis-Plus 统一填充规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-10-27 的设计拷问逐条确认，落地后由 ADR-0016 记录。
 

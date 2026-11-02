@@ -4,7 +4,7 @@
 
 **Blocked by:** 08 Platform Realm 与运营登录, 09 Outbox 与租户感知消息, 16 租户角色管理
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 实现说明见 [docs/audit.md](../../../docs/audit.md)。
 

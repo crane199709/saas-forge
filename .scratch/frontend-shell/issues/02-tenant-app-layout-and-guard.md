@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 会话改存 localStorage
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 用 `el-container`、`el-header`、`el-aside`、`el-menu` 重写 `App.vue`；菜单数据沿用 `access.menus()` 与 `menuSections`，内置管理页按 `iam:member:manage`、`iam:org:manage`、`iam:role:manage` 显示；当前路由对应的菜单项高亮
 - [x] 顶栏：产品名、现有 `TenantSwitcher`、用户菜单（显示登录名，含「退出」）

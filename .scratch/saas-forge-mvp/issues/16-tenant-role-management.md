@@ -4,7 +4,7 @@
 
 **Blocked by:** 07 Token 即时失效与刷新, 12 资源清单与功能权限校验
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Role 的增删改与权限码授权；预置角色（Owner、Tenant Admin）不可删除
 - [x] 权限码按服务与分组展示，失效的权限码不可再授予

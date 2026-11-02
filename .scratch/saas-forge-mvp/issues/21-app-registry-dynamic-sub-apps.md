@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 Module Federation 技术验证, 12 资源清单与功能权限校验, 20 套餐
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] App Registry 的增删改与按环境的入口地址配置
 - [x] 菜单节点可指向某 Sub-App 的路由
