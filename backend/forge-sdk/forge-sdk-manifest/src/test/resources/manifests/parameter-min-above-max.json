@@ -1,0 +1,12 @@
+{
+  "parameters": [
+    {
+      "code": "order.p",
+      "name": "参数",
+      "type": "integer",
+      "default": 5,
+      "min": 10,
+      "max": 1
+    }
+  ]
+}
