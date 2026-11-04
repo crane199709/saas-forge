@@ -3,7 +3,7 @@
 <mapper namespace="io.saasforge.demo.order.mapper.OrderMapper">
     <select id="selectPage" resultType="io.saasforge.demo.order.entity.Order">
         <!-- 手写查询不经过 MyBatis-Plus 的逻辑删除条件，须自行排除已删除的行 -->
-        SELECT id, title, amount, owner_id, department_path, created_at, updated_at, created_by, updated_by, deleted
+        SELECT id, number, title, amount, owner_id, department_path, created_at, updated_at, created_by, updated_by, deleted
         FROM orders
         WHERE NOT deleted
         ORDER BY

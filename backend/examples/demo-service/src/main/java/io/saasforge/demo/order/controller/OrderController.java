@@ -79,14 +79,22 @@ class OrderController {
     record OrderRequest(String title, BigDecimal amount) {}
 
     /**
+     * @param number Business Number，如 {@code SO-20261104-0007}；引入编号前创建的订单为 null
      * @param ownerId 数据归属的 Membership，系统创建的订单为 null
      * @param departmentPath 数据归属部门的路径，归属成员未分配部门时为 null
      */
     record OrderResponse(
-            UUID id, String title, BigDecimal amount, UUID ownerId, String departmentPath, OffsetDateTime createdAt) {
+            UUID id,
+            String number,
+            String title,
+            BigDecimal amount,
+            UUID ownerId,
+            String departmentPath,
+            OffsetDateTime createdAt) {
         static OrderResponse from(Order order) {
             return new OrderResponse(
                     order.getId(),
+                    order.getNumber(),
                     order.getTitle(),
                     order.getAmount(),
                     order.getOwnerId(),

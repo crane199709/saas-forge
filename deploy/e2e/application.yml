@@ -26,6 +26,8 @@ server:
   address: 127.0.0.1
   forward-headers-strategy: framework
 forge:
+  # E2E 不连接 Nacos，在此提供共享配置 forge-common.yaml 中的 Business Time Zone
+  business-zone: Asia/Shanghai
   gateway:
     services:
       - prefix: /iam

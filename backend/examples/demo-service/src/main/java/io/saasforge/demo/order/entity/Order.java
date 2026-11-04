@@ -11,6 +11,8 @@ import java.util.UUID;
 @TableName("orders")
 public class Order extends AuditableEntity {
     private UUID id;
+    // Business Number，创建时生成，之后不随接口修改；引入编号前创建的订单为 null
+    private String number;
     private String title;
     private BigDecimal amount;
     // 数据归属，是 Data Resource「order」的资源属性；创建时取当前成员与其主部门，之后不随接口修改。
@@ -25,6 +27,14 @@ public class Order extends AuditableEntity {
 
     public void setId(UUID id) {
         this.id = id;
+    }
+
+    public String getNumber() {
+        return number;
+    }
+
+    public void setNumber(String number) {
+        this.number = number;
     }
 
     public String getTitle() {

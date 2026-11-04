@@ -1,3 +1,8 @@
+forge:
+  # Business Time Zone：全平台统一，用于业务日期（Business Number 的日期段与计数周期、定时任务的 cron）。
+  # 代码中不设默认值，用到业务日期的服务漏配时启动失败
+  business-zone: Asia/Shanghai
+
 server:
   # 经网关访问时按 X-Forwarded-* 还原外部地址，springdoc 生成的 servers 才会指向网关而不是服务本机端口
   forward-headers-strategy: framework
