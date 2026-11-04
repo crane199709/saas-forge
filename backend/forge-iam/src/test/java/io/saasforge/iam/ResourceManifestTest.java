@@ -170,6 +170,56 @@ class ResourceManifestTest {
     }
 
     @Test
+    void dictionariesAndParametersAreStoredWithTheManifestVersion() {
+        Map<String, Object> body = withReferenceData("reference-data", "PT30M");
+        assertThat(report(TOKEN, body).getStatusCode().value()).isEqualTo(201);
+        assertThat(report(TOKEN, body).getStatusCode().value()).isEqualTo(200);
+
+        // 只改参数默认值也是内容变化，沿用同一版本被拒绝。
+        var changed = report(TOKEN, withReferenceData("reference-data", "PT45M"));
+        assertThat(changed.getStatusCode().value()).isEqualTo(409);
+        assertThat(changed.getBody().get("code")).isEqualTo("manifest.versionConflict");
+    }
+
+    // 与 SDK 生成时共用 ResourceManifest.validate()；ResourceManifestCollectorTest 覆盖生成一侧的同样规则。
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "duplicate-dictionary",
+                "duplicate-parameter",
+                "custom-prefix",
+                "duplicate-item-name",
+                "default-out-of-range",
+                "default-too-long",
+                "default-not-item",
+                "unknown-dictionary"
+            })
+    void invalidDictionariesAndParametersAreRejectedOnReport(String violation) {
+        Map<String, Object> dictionary = dictionary(List.of(item("online", "线上"), item("referral", "转介绍")));
+        List<Map<String, Object>> dictionaries = List.of(dictionary);
+        List<Map<String, Object>> parameters = List.of(duration("PT30M"));
+        switch (violation) {
+            case "duplicate-dictionary" -> dictionaries = List.of(dictionary, dictionary);
+            case "duplicate-parameter" -> parameters = List.of(duration("PT30M"), duration("PT30M"));
+            case "custom-prefix" -> dictionaries = List.of(dictionary(List.of(item("custom.vip", "大客户"))));
+            case "duplicate-item-name" ->
+                dictionaries = List.of(dictionary(List.of(item("online", "线上"), item("web", "线上"))));
+            case "default-out-of-range" -> parameters = List.of(duration("P5D"));
+            case "default-too-long" ->
+                parameters = List.of(Map.of(
+                        "code", "order.remark", "name", "备注", "type", "string", "default", "abcdef", "maxLength", 5));
+            case "default-not-item" -> parameters = List.of(dictionaryParameter("customer-source", "offline"));
+            default -> parameters = List.of(dictionaryParameter("customer-sources", "online"));
+        }
+        Map<String, Object> body = new HashMap<>(manifest("invalid-reference-" + violation, List.of("order:read")));
+        body.put("dictionaries", dictionaries);
+        body.put("parameters", parameters);
+        var response = report(TOKEN, body);
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+        assertThat(response.getBody().get("code")).isEqualTo("manifest.invalid");
+    }
+
+    @Test
     void sharedActionsAreAcceptedButNotExposedToTheShell() throws Exception {
         Map<String, Object> body = new HashMap<>(manifest("shared-actions", List.of("order:read", "order:approve")));
         body.put(
@@ -325,6 +375,53 @@ class ResourceManifestTest {
                                                         codes.contains("order:approve")
                                                                 ? "order:approve"
                                                                 : "order:read")))));
+    }
+
+    private static Map<String, Object> withReferenceData(String version, String autoClose) {
+        Map<String, Object> body = new HashMap<>(manifest(version, List.of("order:read")));
+        body.put("dictionaries", List.of(dictionary(List.of(item("online", "线上"), item("referral", "转介绍")))));
+        body.put("parameters", List.of(duration(autoClose), dictionaryParameter("customer-source", "online")));
+        return body;
+    }
+
+    private static Map<String, Object> dictionary(List<Map<String, Object>> items) {
+        return Map.of("code", "customer-source", "name", "客户来源", "extensible", true, "items", items);
+    }
+
+    private static Map<String, Object> item(String code, String name) {
+        return Map.of("code", code, "name", name);
+    }
+
+    private static Map<String, Object> duration(String defaultValue) {
+        return Map.of(
+                "code",
+                "order.auto-close",
+                "name",
+                "未支付订单自动关闭时长",
+                "type",
+                "duration",
+                "default",
+                defaultValue,
+                "min",
+                "PT5M",
+                "max",
+                "P3D",
+                "tenantEditable",
+                true);
+    }
+
+    private static Map<String, Object> dictionaryParameter(String dictionary, String defaultValue) {
+        return Map.of(
+                "code",
+                "customer.default-source",
+                "name",
+                "默认客户来源",
+                "type",
+                "dictionary",
+                "dictionary",
+                dictionary,
+                "default",
+                defaultValue);
     }
 
     private ResponseEntity<Map> report(String token, Map<String, Object> body) {

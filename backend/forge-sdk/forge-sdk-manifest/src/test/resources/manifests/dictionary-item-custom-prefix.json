@@ -1,0 +1,14 @@
+{
+  "dictionaries": [
+    {
+      "code": "customer-source",
+      "name": "客户来源",
+      "items": [
+        {
+          "code": "custom.vip",
+          "name": "大客户"
+        }
+      ]
+    }
+  ]
+}

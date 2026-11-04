@@ -1,0 +1,49 @@
+{
+  "dictionaries": [
+    {
+      "code": "customer-source",
+      "name": "客户来源",
+      "extensible": true,
+      "items": [
+        { "code": "online", "name": "线上" },
+        { "code": "referral", "name": "转介绍" }
+      ]
+    },
+    {
+      "code": "order-status",
+      "name": "订单状态",
+      "items": [ { "code": "open", "name": "未完成" } ]
+    }
+  ],
+  "parameters": [
+    {
+      "code": "order.auto-close",
+      "name": "未支付订单自动关闭时长",
+      "type": "duration",
+      "default": "PT30M",
+      "min": "PT5M",
+      "max": "P3D",
+      "tenantEditable": true
+    },
+    { "code": "order.remark", "name": "订单备注模板", "type": "string", "default": "请尽快付款", "maxLength": 10 },
+    {
+      "code": "order.max-items",
+      "name": "单笔订单最多商品数",
+      "type": "integer",
+      "default": 50,
+      "min": 1,
+      "max": 200,
+      "tenantEditable": true
+    },
+    { "code": "order.discount", "name": "默认折扣率", "type": "decimal", "default": 0.95, "min": 0, "max": 1 },
+    { "code": "order.invoice", "name": "默认开票", "type": "boolean", "default": false },
+    {
+      "code": "customer.default-source",
+      "name": "默认客户来源",
+      "type": "dictionary",
+      "dictionary": "customer-source",
+      "default": "online",
+      "tenantEditable": true
+    }
+  ]
+}
