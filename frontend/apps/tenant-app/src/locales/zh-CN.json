@@ -292,5 +292,51 @@
       "success": "成功",
       "failure": "失败"
     }
+  },
+  "referenceData": {
+    "dictionary": {
+      "nav": "字典",
+      "title": "字典",
+      "service": "服务",
+      "code": "编码",
+      "name": "显示名",
+      "sort": "排序",
+      "status": "状态",
+      "statuses": {
+        "enabled": "启用",
+        "disabled": "已停用",
+        "retired": "已下线"
+      },
+      "custom": "自定义",
+      "builtin": "内置",
+      "readOnly": "固定字典，由服务维护，不能修改",
+      "showDisabled": "显示已停用项",
+      "save": "保存",
+      "disable": "停用",
+      "enable": "启用",
+      "newCode": "编码（保存时自动加 custom. 前缀）",
+      "newName": "显示名",
+      "create": "新增自定义项",
+      "empty": "暂无字典"
+    },
+    "parameter": {
+      "nav": "参数",
+      "title": "参数",
+      "service": "服务",
+      "name": "参数",
+      "value": "当前值",
+      "defaultValue": "默认值",
+      "constraints": "约束",
+      "min": "最小 {value}",
+      "max": "最大 {value}",
+      "maxLength": "最长 {value} 字",
+      "dictionary": "取自字典 {value}",
+      "overridden": "已覆盖",
+      "override": "覆盖",
+      "reset": "恢复默认",
+      "empty": "没有可修改的参数",
+      "true": "是",
+      "false": "否"
+    }
   }
 }
