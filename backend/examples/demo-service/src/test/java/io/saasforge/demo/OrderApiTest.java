@@ -67,11 +67,14 @@ class OrderApiTest {
         Map<?, ?> order = (Map<?, ?>) created.get("data");
         assertThat(order.get("title")).isEqualTo("办公用品");
         assertThat(order.get("createdAt")).isNotNull();
+        // Business Number 与订单同一事务生成，日期段按 Business Time Zone
+        assertThat(order.get("number")).asString().matches("SO-\\d{8}-\\d{4}");
         String id = (String) order.get("id");
 
         Map<?, ?> updated = exchange(HttpMethod.PUT, "/orders/" + id, Map.of("title", "改名", "amount", 1));
         assertThat(updated.get("httpStatus")).isEqualTo(200);
         assertThat(((Map<?, ?>) updated.get("data")).get("createdAt")).isEqualTo(order.get("createdAt"));
+        assertThat(((Map<?, ?>) updated.get("data")).get("number")).isEqualTo(order.get("number"));
 
         Map<String, Object> deleted = exchange(HttpMethod.DELETE, "/orders/" + id, null);
         assertThat(deleted.get("code")).isEqualTo("ok");
