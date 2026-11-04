@@ -101,6 +101,98 @@ _Avoid_: 菜单权限、导航权限
 **Resource Manifest（资源清单）**:
 业务服务按版本向平台申报的 Permission Code、Data Resource 与菜单的集合。
 
+## 账号安全
+
+**First Factor（第一因素）**:
+登录时证明「是谁」的首个凭证，即密码或发往已登记手机号、邮箱的一次性验证码。
+_Avoid_: 主认证、基础认证
+
+**MFA（多因素认证）**:
+第一因素通过后，再以账号持有者手中的验证器生成的动态码完成的第二步认证。
+_Avoid_: 二次验证、两步验证、2FA
+
+**Authenticator（验证器）**:
+绑定在 Identity 或 Operator 上、用于 MFA 的动态码生成方；Identity 只有一个，在其所有 Tenant 通用。
+_Avoid_: 令牌、MFA 设备
+
+**Recovery Code（恢复码）**:
+绑定 Authenticator 时一次性发给持有者的一组备用码，每个只能代替动态码完成一次 MFA。
+_Avoid_: 备用码、救援码
+
+**MFA Reset（MFA 重置）**:
+持有者丢失 Authenticator 与 Recovery Code 后，由有权限的 Operator 人工清除其 Authenticator 的操作；不存在自助重置。
+_Avoid_: 找回 MFA、MFA 申诉
+
+**MFA Requirement（MFA 要求）**:
+Tenant 对其 Membership 必须完成 MFA 的准入要求；Tenant 只提出要求，不拥有也不管理 Authenticator。
+_Avoid_: 租户 MFA、MFA 开关
+
+**Password Policy（密码策略）**:
+每个 Realm 一套、由平台设定的密码可接受规则；Tenant 不能自定，因为密码是 Identity 的全局凭证。
+_Avoid_: 密码规则、密码复杂度
+
+**Login Lockout（登录锁定）**:
+账号在一段时间内认证失败过多后被临时拒绝认证的状态，到期自动解除，不存在永久锁定。
+_Avoid_: 账号冻结、封号、停用
+
+## 参考数据
+
+**Dictionary（字典）**:
+Business Service 声明的一组可选值，每个值由编码与名称组成，用于界面选择与取值校验；只有一层，不成树。
+_Avoid_: 枚举表、码表、数据字典
+
+**Dictionary Item（字典项）**:
+Dictionary 中的一个可选值；业务数据保存它的编码。分为服务声明的内置项与 Tenant 新增的自定义项。
+_Avoid_: 选项、字典值
+
+**Extensible Dictionary（可扩展字典）**:
+允许 Tenant 新增自定义项、停用内置项、调整排序与显示名的 Dictionary；其余 Dictionary 对 Tenant 只读。
+_Avoid_: 自定义字典、租户字典
+
+**Parameter（参数）**:
+Business Service 声明的一个有类型、有默认值的设置项；声明为可修改时，Tenant 可在取值范围内覆盖默认值。
+_Avoid_: 配置项、系统参数、Setting
+
+**Numbering Rule（编号规则）**:
+Business Service 声明的、为某类业务数据生成 Business Number 的格式与计数方式；Tenant 不能修改。
+_Avoid_: 编码规则、序列号规则
+
+**Business Number（业务编号）**:
+按 Numbering Rule 为业务数据生成的、在 Tenant 内唯一且连续不跳号的可读编号，如 `SO-20261104-0007`；不是主键。
+_Avoid_: 单号、流水号、业务 ID
+
+**Business Time Zone（业务时区）**:
+全平台统一、用于确定业务日期（如 Business Number 中的日期段与计数周期）的时区；Tenant 没有各自的时区。
+_Avoid_: 系统时区、服务器时区
+
+## 定时任务
+
+**Global Task（全局任务）**:
+Business Service 或 Platform Core 声明的、按时间触发且不绑定任何 Tenant 的任务；多实例部署时同一时刻只在一个实例上执行。
+_Avoid_: 系统任务、平台任务
+
+**Tenant Task（按租户任务）**:
+按时间触发、每次触发时对处于试用或正常状态的每个 Tenant 各执行一遍的任务；每遍都在该 Tenant 的上下文中运行，彼此失败隔离。
+_Avoid_: 租户定时任务、多租户任务
+
+## 导入导出
+
+**Import Task（导入任务）**:
+Membership 提交一个 Excel 文件、由 Business Service 异步校验并写入业务数据的一次作业；全部行通过校验才写入，否则一行不写。
+_Avoid_: 批量导入、上传任务
+
+**Export Task（导出任务）**:
+Membership 按列表查询条件提交、由 Business Service 异步生成 Excel 文件的一次作业；导出范围与提交时其在列表中可见的数据一致。
+_Avoid_: 下载任务、报表导出
+
+**Import Template（导入模板）**:
+按导入模型自动生成、供 Membership 填写的 Excel 文件，字典列带可选项下拉。
+_Avoid_: 导入样例、模板文件
+
+**Error Report（错误报告）**:
+导入校验未通过时生成的、在原文件每行后附上错误原因的 Excel 文件。
+_Avoid_: 失败明细、导入日志
+
 ## 系统构成
 
 **Platform Core（平台核心）**:
