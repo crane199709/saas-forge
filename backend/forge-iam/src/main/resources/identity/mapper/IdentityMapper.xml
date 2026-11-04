@@ -26,6 +26,9 @@
         SELECT id::text FROM identity
         WHERE NOT deleted AND status = 'active' AND (lower(email) = lower(#{target}) OR phone = #{target})
     </select>
+    <select id="findLoginName" resultType="string">
+        SELECT COALESCE(account, email, phone) FROM identity WHERE id = #{identityId} AND NOT deleted
+    </select>
     <select id="existsAccount" resultType="boolean">
         SELECT EXISTS (SELECT 1 FROM identity WHERE NOT deleted AND account = #{account})
     </select>

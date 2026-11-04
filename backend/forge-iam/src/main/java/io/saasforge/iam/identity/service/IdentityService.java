@@ -40,6 +40,11 @@ public class IdentityService {
         return Optional.ofNullable(identities.findActiveIdByContact(target)).map(UUID::fromString);
     }
 
+    /** 身份的账号，没有账号时取邮箱或手机号；身份已删除时为空。 */
+    public Optional<String> findLoginName(UUID identityId) {
+        return Optional.ofNullable(identities.findLoginName(identityId));
+    }
+
     public boolean existsAccount(String account) {
         return identities.existsAccount(account);
     }

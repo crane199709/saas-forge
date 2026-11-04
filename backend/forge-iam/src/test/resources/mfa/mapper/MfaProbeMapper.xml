@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.mfa.mapper.MfaProbeMapper">
+    <select id="activeSecretHex" resultType="string">
+        SELECT encode(secret_ciphertext, 'hex') FROM identity_authenticator
+        WHERE identity_id = #{identityId} AND NOT deleted
+    </select>
+    <select id="activeRecoveryCodeHashes" resultType="string">
+        SELECT code_hash FROM identity_recovery_code WHERE identity_id = #{identityId} AND NOT deleted ORDER BY code_hash
+    </select>
+</mapper>

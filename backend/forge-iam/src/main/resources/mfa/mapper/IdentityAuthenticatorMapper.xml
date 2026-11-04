@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.mfa.mapper.IdentityAuthenticatorMapper">
+    <select id="findByIdentity" resultType="io.saasforge.iam.mfa.model.StoredAuthenticator">
+        SELECT id, secret_ciphertext, last_used_step FROM identity_authenticator
+        WHERE identity_id = #{identityId} AND NOT deleted
+    </select>
+    <insert id="insert">
+        INSERT INTO identity_authenticator
+            (id, identity_id, secret_ciphertext, last_used_step, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{identityId}, #{secretCiphertext}, #{lastUsedStep}, now(), now(), #{actor}, #{actor})
+    </insert>
+    <update id="advanceStep">
+        UPDATE identity_authenticator SET last_used_step = #{step}, updated_at = now(), updated_by = #{actor}
+        WHERE id = #{id} AND last_used_step &lt; #{step} AND NOT deleted
+    </update>
+    <update id="deleteByIdentity">
+        UPDATE identity_authenticator SET deleted = true, updated_at = now(), updated_by = #{actor}
+        WHERE identity_id = #{identityId} AND NOT deleted
+    </update>
+</mapper>

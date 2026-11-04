@@ -14,3 +14,5 @@
 - [ ] 测试覆盖：存在与不存在的标识表现一致、到期解锁、MFA 失败计数、IP 限速
 
 ## Comments
+
+- 2026-11-04（工单 01 实现时发现）：`/auth/mfa/bind/confirm`、`/auth/mfa/recovery-codes/regenerate`、`/auth/mfa/unbind` 目前不限动态码错误次数；持有 Access Token 的攻击者可借暴力猜码重新生成 Recovery Code。本工单的「动态码失败计在 Identity 上」应覆盖这三个入口。

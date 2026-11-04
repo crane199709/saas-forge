@@ -106,6 +106,9 @@ class GatewaySecurityConfiguration {
                                     "/iam/auth/register",
                                     "/iam/auth/invitations/preview",
                                     "/iam/auth/invitations/accept",
+                                    // 绑定 Authenticator 也接受 iam 登录会话（尚未取得 Token 时当场绑定），由 iam 校验会话或 Token
+                                    "/iam/auth/mfa/bind/start",
+                                    "/iam/auth/mfa/bind/confirm",
                                     "/iam/platform/auth/login",
                                     "/iam/platform/auth/logout",
                                     "/iam/platform/auth/exchange",

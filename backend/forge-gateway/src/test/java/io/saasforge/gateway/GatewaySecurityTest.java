@@ -408,6 +408,19 @@ class GatewaySecurityTest {
     }
 
     @Test
+    void authenticatorBindingIsReachableWithALoginSessionButOtherMfaEndpointsNeedAToken() throws Exception {
+        // 绑定接口由 iam 自行校验 Access Token 或登录会话，网关只放行；携带的 Token 无效时仍在网关被拒。
+        String expired = token(KEY, ISSUER, Instant.now().minusSeconds(60));
+        for (String path : List.of("/iam/auth/mfa/bind/start", "/iam/auth/mfa/bind/confirm")) {
+            assertEnvelope(call(HttpMethod.POST, path, null), 404, "request.notFound");
+            assertEnvelope(call(HttpMethod.POST, path, expired), 401, "auth.unauthenticated");
+        }
+        for (String path : List.of("/iam/auth/mfa/recovery-codes/regenerate", "/iam/auth/mfa/unbind")) {
+            assertEnvelope(call(HttpMethod.POST, path, null), 401, "auth.unauthenticated");
+        }
+    }
+
+    @Test
     void declaredServicesDenyInternalPathsAndUndeclaredPrefixes() throws Exception {
         String tenant = token(KEY, ISSUER, Instant.now().plusSeconds(900));
         String platform = platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "platform-console");

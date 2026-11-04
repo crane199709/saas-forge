@@ -2,7 +2,7 @@ package io.saasforge.sdk.audit;
 
 /** Audit Event 的三类来源。 */
 public enum AuditCategory {
-    /** 登录成功、失败、退出与切换租户，由 iam 产出。 */
+    /** 登录成功、失败、退出与切换租户，以及 MFA 绑定、解绑等认证凭证变更，由 iam 产出。 */
     LOGIN,
     /** Role、授权、Data Policy 与 Membership 变更，由 iam 产出。 */
     PERMISSION,
