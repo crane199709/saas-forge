@@ -10,7 +10,9 @@ public enum MfaErrorCode implements ErrorCode {
     /** 确认绑定时没有进行中的绑定：从未开始、已超时或已确认。 */
     BINDING_EXPIRED("mfa.bindingExpired", 400),
     /** 动态码错误、超出时钟容差或已被使用过。 */
-    CODE_INVALID("mfa.codeInvalid", 400);
+    CODE_INVALID("mfa.codeInvalid", 400),
+    /** 登录时提交的 Recovery Code 错误或已用过。 */
+    RECOVERY_CODE_INVALID("mfa.recoveryCodeInvalid", 400);
 
     private final String code;
     private final int httpStatus;

@@ -102,6 +102,8 @@ class GatewaySecurityConfiguration {
                                     "/iam/auth/switch",
                                     "/iam/auth/login/send-code",
                                     "/iam/auth/code-login",
+                                    // 待 MFA 状态保存在 iam 登录会话中，由 iam 校验
+                                    "/iam/auth/login/mfa",
                                     "/iam/auth/register/send-code",
                                     "/iam/auth/register",
                                     "/iam/auth/invitations/preview",

@@ -26,9 +26,10 @@ Vite 将 `/iam` 与 `/demo` 代理到本地网关 `http://localhost:8080`。部�
 
 | 接口（网关路径） | 请求 | 结果 |
 | --- | --- | --- |
-| `POST /iam/auth/login` | JSON `account`、`password` | Redis 登录会话 Cookie、`clientId`、`redirectUri`、`memberships`（可进入的租户） |
+| `POST /iam/auth/login` | JSON `account`、`password` | Redis 登录会话 Cookie、`nextStep`、`clientId`、`redirectUri`、`memberships`（可进入的租户）；已绑定 Authenticator 时见下文「两步登录」 |
 | `POST /iam/auth/login/send-code` | JSON `target`（邮箱或手机号） | `expiresIn`、`resendIn`（秒）；目标未注册时响应相同但不发送 |
-| `POST /iam/auth/code-login` | JSON `target`、`code` | 与 `/auth/login` 相同：登录会话 Cookie、`clientId`、`redirectUri`、`memberships` |
+| `POST /iam/auth/code-login` | JSON `target`、`code` | 与 `/auth/login` 相同 |
+| `POST /iam/auth/login/mfa` | JSON `code`（6 位动态码）或 `recoveryCode`，恰好一个 + IAM 会话 Cookie | 与未绑定时的 `/auth/login` 相同；见下文「两步登录」 |
 | `POST /iam/auth/register/send-code` | JSON `target` | `expiresIn`、`resendIn`；已被注册时 409 `registration.contactTaken` |
 | `POST /iam/auth/register` | JSON `account`、`password`、`target`、`code`，可选 `displayName` | 201，`identityId`；不建立登录会话、不加入任何租户 |
 | `GET /iam/oauth2/authorize` | 标准 authorization_code + S256 PKCE 参数 | 重定向至注册回调，携带一次性 code 和 state |
@@ -39,6 +40,8 @@ Vite 将 `/iam` 与 `/demo` 代理到本地网关 `http://localhost:8080`。部�
 | `GET /iam/auth/memberships` | `Authorization: Bearer …` | 当前身份的有效 Membership：`membershipId`、`tenantId`、`tenantName` |
 | `GET /iam/oauth2/jwks` | 无 | Spring Authorization Server 发布的公钥 |
 | `GET /demo/context` | `Authorization: Bearer …` | `identityId`、`tenantId`、`membershipId`、`version` |
+
+**两步登录**（[账号安全规格](../.scratch/account-security/spec.md) 2.3、[ADR-0019](adr/0019-mfa-per-identity-enforced-at-token-issuance.md)）：未绑定 Authenticator 时 `nextStep` 为 `authorize`，直接走授权码流程。已绑定时 First Factor（密码或验证码）通过后返回 `nextStep: "mfa"`，其余字段为空，登录会话只进入「待 MFA」状态：会话中没有已认证主体，`/oauth2/authorize` 不认可它。须在 5 分钟内向 `/auth/login/mfa` 提交动态码或 Recovery Code（用后作废）；错误时（`mfa.codeInvalid`、`mfa.recoveryCodeInvalid`）可重试，超时或没有待 MFA 状态时返回 401 `auth.mfaExpired`，须重新提交 First Factor。通过后换发会话标识并建立登录会话，会话主体带 `MFA` 权限；授权码流程把主体存入授权，Refresh Token 链（refresh 与 switch）沿用这条记录。每次提交都写 `auth.mfa` 审计，`detail.method` 为 `totp` 或 `recoveryCode`。
 
 登录使用标准授权码 + S256 PKCE：JSON 凭证入口建立登录会话；SDK 生成 verifier 和 state，经 `/oauth2/authorize` 获取授权码，并校验回调 state。首版 scope 为 `tenant`，不签发 OIDC ID Token，也不启用 password grant。
 

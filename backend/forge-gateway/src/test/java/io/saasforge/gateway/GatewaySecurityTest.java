@@ -401,6 +401,7 @@ class GatewaySecurityTest {
         for (String path : List.of(
                 "/iam/auth/login/send-code",
                 "/iam/auth/code-login",
+                "/iam/auth/login/mfa",
                 "/iam/auth/register/send-code",
                 "/iam/auth/register")) {
             assertEnvelope(call(HttpMethod.POST, path, null), 404, "request.notFound");

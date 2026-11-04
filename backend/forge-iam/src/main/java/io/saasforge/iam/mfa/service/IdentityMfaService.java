@@ -25,7 +25,8 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * Identity 自助管理 Authenticator 与 Recovery Code：两步绑定、重新生成 Recovery Code、解绑（账号安全规格 2.1–2.2）。
+ * Identity 自助管理 Authenticator 与 Recovery Code：两步绑定、重新生成 Recovery Code、解绑（账号安全规格 2.1–2.2），
+ * 以及登录第二步的动态码与 Recovery Code 校验（规格 2.3）。
  *
  * <p>绑定分两步：开始时生成的密钥只加密暂存在 Redis，用户提交首个正确的动态码后才写库生效，扫码失败或放弃不会留下半成品。
  */
@@ -112,10 +113,31 @@ public class IdentityMfaService {
         return codes;
     }
 
+    /** 是否已绑定 Authenticator；已绑定的身份每次登录都须在 First Factor 之后完成 MFA（ADR-0019）。 */
+    public boolean isBound(UUID identityId) {
+        return authenticators.findByIdentity(identityId) != null;
+    }
+
+    /** 登录第二步校验动态码，通过即用掉该码。登录流程尚无认证上下文，标准列操作人为 null。 */
+    public void verifyLoginCode(UUID identityId, String code) {
+        verifyCode(identityId, code, null);
+    }
+
+    /** 登录第二步以 Recovery Code 代替动态码，通过即作废该码；码错误或已用过时拒绝。 */
+    public void useRecoveryCode(UUID identityId, String recoveryCode) {
+        if (!isBound(identityId)) {
+            throw ForgeException.withErrorMessage(MfaErrorCode.NOT_BOUND, "No authenticator bound");
+        }
+        // 条件更新保证同一码并发提交时只有一个通过。
+        if (recoveryCodes.consume(identityId, RecoveryCodes.hash(recoveryCode), null) == 0) {
+            throw ForgeException.withErrorMessage(MfaErrorCode.RECOVERY_CODE_INVALID, "Recovery code rejected");
+        }
+    }
+
     /** 验证一次动态码后作废全部旧 Recovery Code，另发一组；明文只在本次返回。 */
     @Transactional
     public List<String> regenerateRecoveryCodes(UUID identityId, String code) {
-        verifyCode(identityId, code);
+        verifyCode(identityId, code, identityId);
         recoveryCodes.deleteByIdentity(identityId, identityId);
         List<String> codes = issueRecoveryCodes(identityId);
         record(REGENERATE, identityId);
@@ -125,13 +147,13 @@ public class IdentityMfaService {
     /** 验证一次动态码后解绑，Recovery Code 一并作废。 */
     @Transactional
     public void unbind(UUID identityId, String code) {
-        verifyCode(identityId, code);
+        verifyCode(identityId, code, identityId);
         authenticators.deleteByIdentity(identityId, identityId);
         recoveryCodes.deleteByIdentity(identityId, identityId);
         record(UNBIND, identityId);
     }
 
-    private void verifyCode(UUID identityId, String code) {
+    private void verifyCode(UUID identityId, String code, UUID actor) {
         StoredAuthenticator authenticator = authenticators.findByIdentity(identityId);
         if (authenticator == null) {
             throw ForgeException.withErrorMessage(MfaErrorCode.NOT_BOUND, "No authenticator bound");
@@ -140,7 +162,7 @@ public class IdentityMfaService {
         long step = Totp.match(secret, code, Instant.now(), authenticator.lastUsedStep())
                 .orElseThrow(IdentityMfaService::invalidCode);
         // 条件更新保证并发提交同一动态码时只有一个通过。
-        if (authenticators.advanceStep(authenticator.id(), step, identityId) == 0) throw invalidCode();
+        if (authenticators.advanceStep(authenticator.id(), step, actor) == 0) throw invalidCode();
     }
 
     private void requireUnbound(UUID identityId) {

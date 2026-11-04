@@ -14,3 +14,5 @@
 - [ ] 测试覆盖：三个签发路径都被拦、绑定后可进入、无要求的 Tenant 不受影响、无权限访问设置返回 403
 
 ## Comments
+
+- 2026-11-04（工单 02 实现时记录）：授权是否完成 MFA 记在会话主体的 `MFA` 权限上，授权码流程把该主体存入授权，Token 定制器中用 `MfaAuthority.completed(context.getPrincipal())` 读取，exchange、refresh、switch 都一样。当场绑定后要把「当前授权视为已完成 MFA」，需要同时更新登录会话的主体与授权中保存的主体（`Principal.class.getName()` 属性）。

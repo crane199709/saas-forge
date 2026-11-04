@@ -8,6 +8,10 @@
             (#{code.id}, #{identityId}, #{code.codeHash}, now(), now(), #{actor}, #{actor})
         </foreach>
     </insert>
+    <update id="consume">
+        UPDATE identity_recovery_code SET deleted = true, updated_at = now(), updated_by = #{actor}
+        WHERE identity_id = #{identityId} AND code_hash = #{codeHash} AND NOT deleted
+    </update>
     <update id="deleteByIdentity">
         UPDATE identity_recovery_code SET deleted = true, updated_at = now(), updated_by = #{actor}
         WHERE identity_id = #{identityId} AND NOT deleted

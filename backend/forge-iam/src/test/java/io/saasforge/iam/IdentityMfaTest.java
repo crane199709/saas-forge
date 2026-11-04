@@ -5,28 +5,45 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.saasforge.iam.mfa.mapper.MfaProbeMapper;
 import io.saasforge.iam.mfa.service.Totp;
 import io.saasforge.iam.provisioning.mapper.OutboxAuditMapper;
+import io.saasforge.iam.security.service.MfaAuthority;
+import io.saasforge.iam.security.service.RedisAuthorizationService;
+import io.saasforge.iam.session.model.PendingMfa;
+import io.saasforge.iam.verification.service.EmailSender;
+import io.saasforge.iam.verification.service.VerificationMessage;
 import io.saasforge.sdk.audit.AuditEvent;
+import io.saasforge.sdk.audit.AuditOutcome;
 import io.saasforge.sdk.audit.AuditRealm;
 import java.io.ByteArrayOutputStream;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.Principal;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
+import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
+import org.springframework.session.Session;
+import org.springframework.session.SessionRepository;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.jdbc.Sql;
@@ -40,7 +57,8 @@ import org.testcontainers.utility.MountableFile;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Identity 的 Authenticator 与 Recovery Code（账号安全工单 01）：两步绑定、重新生成、解绑、防重放与审计。
+ * Identity 的 Authenticator 与 Recovery Code（账号安全工单 01）：两步绑定、重新生成、解绑、防重放与审计；以及 Tenant Realm
+ * 两步登录（工单 02）：已绑定者通过 First Factor 后进入待 MFA 状态，提交动态码或 Recovery Code 后才能走授权码流程。
  *
  * <p>每个用例使用 fixture 中的独立身份，绑定状态互不影响，用例顺序不影响结果。
  */
@@ -55,6 +73,17 @@ class IdentityMfaTest {
     static final UUID REGENERATE = UUID.fromString("019a0110-0000-7000-8000-000000000304");
     static final UUID UNBIND = UUID.fromString("019a0110-0000-7000-8000-000000000305");
     static final UUID GUARD = UUID.fromString("019a0110-0000-7000-8000-000000000306");
+    static final UUID LOGIN = UUID.fromString("019a0110-0000-7000-8000-000000000308");
+    static final UUID CODE_LOGIN = UUID.fromString("019a0110-0000-7000-8000-000000000309");
+    static final UUID RECOVERY = UUID.fromString("019a0110-0000-7000-8000-00000000030a");
+    static final UUID EXPIRED = UUID.fromString("019a0110-0000-7000-8000-00000000030b");
+    static final UUID UNBOUND = UUID.fromString("019a0110-0000-7000-8000-00000000030d");
+    static final UUID LOGIN_IN_DEMO_TENANT = UUID.fromString("019a0110-0000-7000-8000-000000000318");
+    static final UUID LOGIN_IN_SECOND_TENANT = UUID.fromString("019a0110-0000-7000-8000-000000000328");
+    static final UUID SECOND_TENANT = UUID.fromString("019a0110-0000-7000-8000-000000000004");
+    /** 最近一次发往各邮箱的登录验证码。 */
+    static final Map<String, String> SENT_CODES = new ConcurrentHashMap<>();
+
     static final JsonMapper JSON = JsonMapper.builder().build();
 
     @Container
@@ -76,6 +105,17 @@ class IdentityMfaTest {
         registry.add("forge.iam.signing-key-file", () -> "target/test-mfa-signing.jwk");
     }
 
+    /** 截获邮件验证码，供验证码登录用例使用。 */
+    @TestConfiguration
+    static class CapturingEmail {
+        @Bean
+        EmailSender emailSender() {
+            return (email, message) -> {
+                if (message instanceof VerificationMessage verification) SENT_CODES.put(email, verification.code());
+            };
+        }
+    }
+
     @LocalServerPort
     int port;
 
@@ -84,6 +124,12 @@ class IdentityMfaTest {
 
     @Autowired
     OutboxAuditMapper outbox;
+
+    @Autowired
+    RedisAuthorizationService authorizations;
+
+    @Autowired
+    SessionRepository<? extends Session> httpSessions;
 
     @Test
     void bindingTakesEffectOnlyAfterTheFirstCodeAndReturnsRecoveryCodesOnce() {
@@ -247,6 +293,170 @@ class IdentityMfaTest {
         assertThat(mfaAudits(GUARD)).isEmpty();
     }
 
+    @Test
+    void passwordLoginOfABoundIdentityRequiresMfaAndTheAuthorizationRemembersIt() {
+        Bound bound = bind("mfa-login");
+        Login first = passwordLogin("mfa-login", null);
+        assertThat(first.response().status()).isEqualTo(200);
+        assertThat(first.response().data()).containsEntry("nextStep", "mfa");
+        // 完成 MFA 之前不返回可进入的租户，也不能发起授权码流程。
+        assertThat(first.response().data().get("memberships")).isNull();
+        assertThat(authorizeStatus(first.cookie())).isIn(401, 403);
+
+        // 绑定时用掉的动态码不能再用于登录；失败后待 MFA 状态保留，可以重试。
+        Login replayed = submitMfa(first.cookie(), Map.of("code", currentCode(bound.secret())));
+        assertThat(replayed.response().status()).isEqualTo(400);
+        assertThat(replayed.response().code()).isEqualTo("mfa.codeInvalid");
+        Login passed = submitMfa(first.cookie(), Map.of("code", nextCode(bound.secret())));
+        assertThat(passed.response().status()).isEqualTo(200);
+        assertThat(passed.response().data())
+                .containsEntry("nextStep", "authorize")
+                .containsEntry("clientId", "tenant-app")
+                .containsEntry("redirectUri", "http://localhost:5174/");
+        assertThat((List<?>) passed.response().data().get("memberships")).hasSize(2);
+        // 完成 MFA 时换发会话标识。
+        assertThat(passed.cookie()).isNotEqualTo(first.cookie());
+
+        Map<?, ?> tokens = exchange(authorizationCode(passed.cookie()), LOGIN_IN_DEMO_TENANT);
+        assertThat(mfaCompleted((String) tokens.get("refreshToken"))).isTrue();
+        // Refresh Token 链沿用建立授权时的认证结果，refresh 与 switch 之后仍可读到。
+        Map<?, ?> refreshed = tokenCall("/auth/refresh", Map.of("refreshToken", tokens.get("refreshToken")));
+        assertThat(mfaCompleted((String) refreshed.get("refreshToken"))).isTrue();
+        Map<?, ?> switched = tokenCall(
+                "/auth/switch",
+                Map.of("refreshToken", refreshed.get("refreshToken"), "membershipId", LOGIN_IN_SECOND_TENANT));
+        assertThat(switched.get("tenantId")).isEqualTo(SECOND_TENANT.toString());
+        assertThat(mfaCompleted((String) switched.get("refreshToken"))).isTrue();
+
+        // 完成后待 MFA 状态即清除，同一会话不能再次提交。
+        assertThat(submitMfa(
+                                passed.cookie(),
+                                Map.of("recoveryCode", bound.recoveryCodes().get(0)))
+                        .response()
+                        .code())
+                .isEqualTo("auth.mfaExpired");
+        assertThat(loginMfaAudits(LOGIN)).containsExactly("totp:mfa.codeInvalid", "totp:success");
+    }
+
+    @Test
+    void codeLoginOfABoundIdentityAlsoRequiresMfa() {
+        Bound bound = bind("mfa-code-login");
+        String email = "mfa-code-login@example.com";
+        assertThat(post("/auth/login/send-code", Map.of("target", email), null)
+                        .response()
+                        .status())
+                .isEqualTo(200);
+        Login first = post("/auth/code-login", Map.of("target", email, "code", SENT_CODES.get(email)), null);
+        assertThat(first.response().status()).isEqualTo(200);
+        assertThat(first.response().data()).containsEntry("nextStep", "mfa");
+        assertThat(authorizeStatus(first.cookie())).isIn(401, 403);
+
+        Login passed = submitMfa(first.cookie(), Map.of("code", nextCode(bound.secret())));
+        assertThat(passed.response().data()).containsEntry("nextStep", "authorize");
+        assertThat((List<?>) passed.response().data().get("memberships")).hasSize(1);
+        Map<?, ?> tokens = exchange(authorizationCode(passed.cookie()), null);
+        assertThat(mfaCompleted((String) tokens.get("refreshToken"))).isTrue();
+        assertThat(loginMfaAudits(CODE_LOGIN)).containsExactly("totp:success");
+    }
+
+    @Test
+    void aRecoveryCodeCanReplaceTheCodeOnlyOnce() {
+        Bound bound = bind("mfa-recovery");
+        String code = bound.recoveryCodes().get(0);
+        Login first = passwordLogin("mfa-recovery", null);
+        // 抄写时的大小写、空格与连字符不影响匹配。
+        Login passed = submitMfa(
+                first.cookie(),
+                Map.of("recoveryCode", code.toLowerCase(Locale.ROOT).replace('-', ' ')));
+        assertThat(passed.response().data()).containsEntry("nextStep", "authorize");
+        assertThat(probe.activeRecoveryCodeHashes(RECOVERY)).hasSize(9);
+        assertThat(mfaCompleted((String)
+                        exchange(authorizationCode(passed.cookie()), null).get("refreshToken")))
+                .isTrue();
+
+        Login again = passwordLogin("mfa-recovery", null);
+        Login reused = submitMfa(again.cookie(), Map.of("recoveryCode", code));
+        assertThat(reused.response().status()).isEqualTo(400);
+        assertThat(reused.response().code()).isEqualTo("mfa.recoveryCodeInvalid");
+        assertThat(submitMfa(
+                                again.cookie(),
+                                Map.of("recoveryCode", bound.recoveryCodes().get(1)))
+                        .response()
+                        .data())
+                .containsEntry("nextStep", "authorize");
+        assertThat(probe.activeRecoveryCodeHashes(RECOVERY)).hasSize(8);
+
+        // 动态码与 Recovery Code 须恰好提供一个。
+        Login third = passwordLogin("mfa-recovery", null);
+        assertThat(submitMfa(third.cookie(), Map.of()).response().code()).isEqualTo("request.invalid");
+        assertThat(submitMfa(
+                                third.cookie(),
+                                Map.of(
+                                        "code",
+                                        nextCode(bound.secret()),
+                                        "recoveryCode",
+                                        bound.recoveryCodes().get(2)))
+                        .response()
+                        .code())
+                .isEqualTo("request.invalid");
+        assertThat(loginMfaAudits(RECOVERY))
+                .containsExactly(
+                        "recoveryCode:success", "recoveryCode:mfa.recoveryCodeInvalid", "recoveryCode:success");
+    }
+
+    @Test
+    void anExpiredPendingStateRequiresTheFirstFactorAgain() {
+        Bound bound = bind("mfa-expired");
+        Login first = passwordLogin("mfa-expired", null);
+        expirePendingMfa(first.cookie());
+        Login expired = submitMfa(first.cookie(), Map.of("code", nextCode(bound.secret())));
+        assertThat(expired.response().status()).isEqualTo(401);
+        assertThat(expired.response().code()).isEqualTo("auth.mfaExpired");
+        assertThat(authorizeStatus(expired.cookie())).isIn(401, 403);
+
+        // 过期时不校验、不消耗动态码；重新提交 First Factor 后即可完成。
+        Login again = passwordLogin("mfa-expired", null);
+        assertThat(submitMfa(again.cookie(), Map.of("code", nextCode(bound.secret())))
+                        .response()
+                        .data())
+                .containsEntry("nextStep", "authorize");
+        assertThat(loginMfaAudits(EXPIRED)).containsExactly("totp:auth.mfaExpired", "totp:success");
+    }
+
+    @Test
+    void aPendingSessionCannotObtainTokensEvenIfItWasSignedInBefore() {
+        bind("mfa-pending");
+        // 已登录的会话再以已绑定身份通过 First Factor：原有的已认证主体被清除，不能借它继续授权。
+        Login signedIn = passwordLogin("mfa-unbound", null);
+        assertThat(authorizeStatus(signedIn.cookie())).isEqualTo(302);
+        Login pending = passwordLogin("mfa-pending", signedIn.cookie());
+        assertThat(pending.response().data()).containsEntry("nextStep", "mfa");
+        assertThat(authorizeStatus(pending.cookie())).isIn(401, 403);
+        assertThat(authorizeStatus(signedIn.cookie())).isIn(401, 403);
+
+        // 没有待 MFA 状态：无会话，或会话已认证。
+        assertThat(submitMfa(null, Map.of("code", "123456")).response().code()).isEqualTo("auth.mfaExpired");
+        Login unbound = passwordLogin("mfa-unbound", null);
+        assertThat(submitMfa(unbound.cookie(), Map.of("code", "123456"))
+                        .response()
+                        .code())
+                .isEqualTo("auth.mfaExpired");
+    }
+
+    @Test
+    void anIdentityWithoutAnAuthenticatorSignsInAsBefore() {
+        Login login = passwordLogin("mfa-unbound", null);
+        assertThat(login.response().data())
+                .containsEntry("nextStep", "authorize")
+                .containsEntry("clientId", "tenant-app");
+        assertThat((List<?>) login.response().data().get("memberships")).hasSize(1);
+        // 未绑定时授权上记为未完成 MFA（ADR-0019 的「未绑定、无需 MFA」）。
+        assertThat(mfaCompleted((String)
+                        exchange(authorizationCode(login.cookie()), null).get("refreshToken")))
+                .isFalse();
+        assertThat(loginMfaAudits(UNBOUND)).isEmpty();
+    }
+
     /** 开始绑定并从 otpauth URI 中取出密钥，模拟验证器 App 扫码。 */
     private byte[] start(Auth auth) {
         Response started = call(auth, "/auth/mfa/bind/start", null);
@@ -276,8 +486,9 @@ class IdentityMfaTest {
             return (String) body.get("code");
         }
 
-        Map<?, ?> data() {
-            return (Map<?, ?>) body.get("data");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data() {
+            return (Map<String, Object>) body.get("data");
         }
     }
 
@@ -379,13 +590,120 @@ class IdentityMfaTest {
         return login.getHeaders().getFirst("Set-Cookie").split(";")[0];
     }
 
+    record Bound(byte[] secret, List<String> recoveryCodes) {}
+
+    record Login(Response response, String cookie) {}
+
+    /** 尚未绑定的身份凭登录会话绑定 Authenticator，确认时用掉当前步长的动态码。 */
+    private Bound bind(String account) {
+        Auth session = loginSession(account);
+        byte[] secret = start(session);
+        Response confirmed = call(session, "/auth/mfa/bind/confirm", Map.of("code", currentCode(secret)));
+        assertThat(confirmed.status()).isEqualTo(201);
+        return new Bound(secret, recoveryCodes(confirmed));
+    }
+
+    private Login passwordLogin(String account, String cookie) {
+        return post("/auth/login", Map.of("account", account, "password", PASSWORD), cookie);
+    }
+
+    private Login submitMfa(String cookie, Map<String, ?> body) {
+        return post("/auth/login/mfa", body, cookie);
+    }
+
+    /** 带上会话 Cookie 发送 JSON 请求；响应换发会话 Cookie 时返回新值，否则沿用原值。 */
+    private Login post(String path, Object body, String cookie) {
+        return noRedirectClient()
+                .post()
+                .uri(path)
+                .headers(headers -> {
+                    if (cookie != null) headers.add("Cookie", cookie);
+                })
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .exchange((req, res) -> {
+                    assertThat(res.getHeaders().getCacheControl()).isEqualTo("no-store");
+                    String issued = res.getHeaders().getFirst("Set-Cookie");
+                    return new Login(
+                            new Response(res.getStatusCode().value(), res.bodyTo(Map.class)),
+                            issued == null ? cookie : issued.split(";")[0]);
+                });
+    }
+
+    private Map<?, ?> exchange(String code, UUID membershipId) {
+        var form = new HashMap<String, Object>(Map.of("code", code, "codeVerifier", VERIFIER));
+        if (membershipId != null) form.put("membershipId", membershipId);
+        return tokenCall("/auth/exchange", form);
+    }
+
+    private Map<?, ?> tokenCall(String path, Map<String, ?> body) {
+        return (Map<?, ?>) RestClient.create(baseUrl())
+                .post()
+                .uri(path)
+                .body(body)
+                .retrieve()
+                .body(Map.class)
+                .get("data");
+    }
+
+    /** 刷新凭证所属授权上是否记为已完成 MFA；Token 定制器在 refresh 与 switch 时读取的正是这个主体。 */
+    private boolean mfaCompleted(String refreshToken) {
+        OAuth2Authorization authorization = authorizations.findByToken(refreshToken, OAuth2TokenType.REFRESH_TOKEN);
+        assertThat(authorization).isNotNull();
+        Authentication principal = authorization.getAttribute(Principal.class.getName());
+        return MfaAuthority.completed(principal);
+    }
+
+    /** 把会话中的待 MFA 状态改为已过期，模拟超过有效期。 */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private void expirePendingMfa(String cookie) {
+        // 会话 Cookie 的值是 Base64 编码的会话标识。
+        String id = new String(
+                Base64.getDecoder().decode(cookie.substring(cookie.indexOf('=') + 1)), StandardCharsets.UTF_8);
+        SessionRepository repository = httpSessions;
+        Session session = repository.findById(id);
+        PendingMfa pending = session.getAttribute(PendingMfa.SESSION_ATTRIBUTE);
+        session.setAttribute(
+                PendingMfa.SESSION_ATTRIBUTE,
+                new PendingMfa(pending.identityId(), Instant.now().minusSeconds(1)));
+        repository.save(session);
+    }
+
+    /** 该身份的 auth.mfa 事件，按发生顺序记为「方式:success」或「方式:错误码」；发生在登录会话上，不属于任何租户。 */
+    private List<String> loginMfaAudits(UUID identityId) {
+        return outbox.payloadsOf(AuditEvent.class.getSimpleName()).stream()
+                .map(payload -> JSON.readValue(payload, AuditEvent.class))
+                .filter(event ->
+                        identityId.equals(event.actorId()) && event.action().equals("auth.mfa"))
+                .peek(event -> {
+                    assertThat(event.realm()).isEqualTo(AuditRealm.TENANT);
+                    assertThat(event.tenantId()).isNull();
+                })
+                .map(event -> event.detail().get("method") + ":"
+                        + (event.outcome() == AuditOutcome.SUCCESS ? "success" : event.errorCode()))
+                .toList();
+    }
+
+    private int authorizeStatus(String cookie) {
+        return authorizeRequest(cookie)
+                .exchange((req, res) -> res.getStatusCode().value());
+    }
+
     private String authorizationCode(String cookie) {
+        var response = authorizeRequest(cookie).retrieve().toBodilessEntity();
+        return UriComponentsBuilder.fromUri(response.getHeaders().getLocation())
+                .build()
+                .getQueryParams()
+                .getFirst("code");
+    }
+
+    private RestClient.RequestHeadersSpec<?> authorizeRequest(String cookie) {
         try {
             String challenge = Base64.getUrlEncoder()
                     .withoutPadding()
                     .encodeToString(
                             MessageDigest.getInstance("SHA-256").digest(VERIFIER.getBytes(StandardCharsets.US_ASCII)));
-            var response = noRedirectClient()
+            return noRedirectClient()
                     .get()
                     .uri(builder -> builder.path("/oauth2/authorize")
                             .queryParam("response_type", "code")
@@ -396,13 +714,7 @@ class IdentityMfaTest {
                             .queryParam("code_challenge_method", "S256")
                             .queryParam("code_challenge", challenge)
                             .build())
-                    .header("Cookie", cookie)
-                    .retrieve()
-                    .toBodilessEntity();
-            return UriComponentsBuilder.fromUri(response.getHeaders().getLocation())
-                    .build()
-                    .getQueryParams()
-                    .getFirst("code");
+                    .header("Cookie", cookie);
         } catch (Exception error) {
             throw new IllegalStateException(error);
         }
