@@ -297,7 +297,7 @@ class IamSecurityConfiguration {
     @Order(2)
     SecurityFilterChain accessTokenSecurity(HttpSecurity http, EnvelopeSecurityErrorHandler errors) throws Exception {
         // 已持有 Access Token 的身份读取自己的 Membership 与权限、管理自己的 Recovery Code 与解绑 Authenticator、管理本租户成员、组织与角色、
-        // 查看本租户审计；无状态、不使用登录会话 Cookie。
+        // 查看本租户审计、读取与管理本租户的字典与参数；无状态、不使用登录会话 Cookie。
         http.securityMatcher(
                         "/auth/memberships",
                         "/auth/access",
@@ -306,7 +306,8 @@ class IamSecurityConfiguration {
                         "/org/**",
                         "/roles/**",
                         "/members/**",
-                        "/audit/**")
+                        "/audit/**",
+                        "/reference-data/**")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())

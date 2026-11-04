@@ -20,4 +20,7 @@
     <select id="currentContents" resultType="string">
         SELECT content::text FROM resource_manifest WHERE current AND NOT deleted ORDER BY service
     </select>
+    <select id="previousContents" resultType="string">
+        SELECT content::text FROM resource_manifest WHERE NOT current AND NOT deleted ORDER BY created_at DESC, id DESC
+    </select>
 </mapper>

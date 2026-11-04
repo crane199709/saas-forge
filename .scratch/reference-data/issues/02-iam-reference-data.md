@@ -6,17 +6,32 @@
 
 **Status:** ready-for-agent
 
-- [ ] 新增权限码 `iam:reference-data:manage`（Tenant Admin 预置拥有）
-- [ ] 自定义项：租户填写编码、系统加 `custom.` 前缀、「租户 + 字典」内唯一、不可修改；只能停用不能删除
-- [ ] 内置项：停用或启用、排序、改显示名；编码不能改
-- [ ] 可选项显示名在「租户 + 字典」内唯一（改名、新增、启用时检查）
-- [ ] 固定字典只读；只有 `tenantEditable` 的参数可覆盖、值须满足约束，可恢复默认
-- [ ] 合并后的字典接口对当前 Tenant 全部成员开放，含停用与下线项并带标记；参数只在管理接口返回
-- [ ] Manifest 新版本删除的内置项按「不再可选」返回；删除的参数的覆盖值保留但不生效
-- [ ] 修改后经 Outbox 发出 `ReferenceDataChanged`（带租户）
-- [ ] 租户删除时逻辑删除该租户的自定义项与覆盖值
-- [ ] 审计 `dictionary.itemCreate/itemUpdate/itemDisable/itemEnable`、`parameter.override/reset`
-- [ ] 表带标准列与租户隔离（RLS），手写 SQL 只在 mapper XML
-- [ ] 测试覆盖：前缀与唯一性、名称冲突、固定字典与不可改参数被拒、约束校验、事件发出、无权限 403
+- [x] 新增权限码 `iam:reference-data:manage`（Tenant Admin 预置拥有）
+- [x] 自定义项：租户填写编码、系统加 `custom.` 前缀、「租户 + 字典」内唯一、不可修改；只能停用不能删除
+- [x] 内置项：停用或启用、排序、改显示名；编码不能改
+- [x] 可选项显示名在「租户 + 字典」内唯一（改名、新增、启用时检查）
+- [x] 固定字典只读；只有 `tenantEditable` 的参数可覆盖、值须满足约束，可恢复默认
+- [x] 合并后的字典接口对当前 Tenant 全部成员开放，含停用与下线项并带标记；参数只在管理接口返回
+- [x] Manifest 新版本删除的内置项按「不再可选」返回；删除的参数的覆盖值保留但不生效
+- [x] 修改后经 Outbox 发出 `ReferenceDataChanged`（带租户）
+- [x] 租户删除时逻辑删除该租户的自定义项与覆盖值
+- [x] 审计 `dictionary.itemCreate/itemUpdate/itemDisable/itemEnable`、`parameter.override/reset`
+- [x] 表带标准列与租户隔离（RLS），手写 SQL 只在 mapper XML
+- [x] 测试覆盖：前缀与唯一性、名称冲突、固定字典与不可改参数被拒、约束校验、事件发出、无权限 403
 
 ## Comments
+
+**租户隔离不用 RLS（与清单措辞不同，2026-11-04 决定）**
+
+- 新表 `dictionary_item`、`parameter_override`（V20）沿用 ADR-0001 的 iam 例外：不启用 RLS，每条 mapper XML 语句显式写 `tenant_id = #{tenantId}`，Mapper 带 `@InterceptorIgnore(tenantLine = "true")`，与 `extended_attribute` 等 iam 表一致。iam 从不设置 `app.tenant_id`，启用 RLS 会让所有查询读不到行。标准列、逻辑删除与 `WHERE NOT deleted` 部分唯一索引照常。
+
+**实现备注**
+
+- 默认值只来自清单，租户只在修改或自定义时才有行：内置项的设置行 `name`、`sort_order` 为 NULL 表示沿用声明；自定义项编码为 `custom.` 加租户填写的部分（`[A-Za-z0-9][A-Za-z0-9._-]{0,56}`，总长不超过 64）。
+- 排序：内置项缺省为声明位置（从 1 起），新自定义项为当前最大排序加 1；租户以整数 `sort` 调整。字典项按「下线项在最后 → sort → 编码」排列。
+- 下线项：iam 保存了各服务的全部清单版本，字典接口把旧版本声明、当前版本删除的内置项作为 `retired` 返回（名称取最后一次声明）。整个字典被删除时不再返回该字典。字典由可扩展改为固定时，租户设置不再生效，已有自定义项变为 `retired`。下线项不能修改或启用（`referenceData.itemNotFound`）。
+- 名称唯一只在可选项（`enabled`）之间检查；改名只在该项可选时检查，已停用项改名后在启用时检查。同一租户同一字典的修改用事务级咨询锁串行。
+- 覆盖值只在参数仍可修改且仍满足当前声明时生效，否则返回默认值（服务新版本收紧约束或取消可修改后，行保留但不生效）。`dictionary` 类型的覆盖值须为该字典在本租户的可选项，可以是自定义项。值的类型与约束校验复用 SDK 新增的 `ResourceManifest.Parameter.requireValue(Object)`，与默认值的校验同一套规则。
+- `ReferenceDataChanged(tenantId)` 放在 `forge-sdk-provisioning`，新 Topic `forge-reference-data`（已加入 `deploy/rocketmq/create-topics.sh`），只在修改实际发生时发布；恢复默认而没有覆盖值时不发。
+- 审计类别为 `operation`（业务操作），`resourceType` 为 `dictionaryItem` / `parameter`。
+- 给 03：`ReferenceDataService.dictionaries(tenantId)` 与 `parameters(tenantId)` 返回合并后的生效值且不校验权限，内部接口只需在 controller 中包一层。

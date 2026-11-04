@@ -54,6 +54,8 @@ demo-service 的订单增删改、forge-platform 的租户创建、状态变更�
 | 权限变更 | `role.create`、`role.rename`、`role.permissionsReplace`、`role.dataPoliciesReplace`、`role.delete`、`membership.rolesAssign` | 租户角色、授权、Data Policy 与成员角色 |
 | 权限变更 | `membership.invite`、`membership.suspend`、`membership.resume`、`membership.remove`、`membership.leave`、`membership.ownerTransfer` | Membership 变更 |
 | 权限变更 | `platformRole.create/update/delete`、`operator.create/update/disable/enable/passwordReset/rolesAssign` | 平台角色与运营账号（Platform Realm） |
+| 业务操作 | `dictionary.itemCreate`、`dictionary.itemUpdate`、`dictionary.itemDisable`、`dictionary.itemEnable` | 租户修改 Extensible Dictionary 的字典项；`resourceId` 为 `服务:字典:字典项编码` |
+| 业务操作 | `parameter.override`、`parameter.reset` | 租户覆盖 Parameter 或恢复默认值；`resourceId` 为 `服务:参数编码`，覆盖值记在 `detail.value` |
 
 ## 存储与分区
 

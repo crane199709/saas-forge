@@ -271,54 +271,29 @@ public record ResourceManifest(
             if (!type.equals("dictionary") && parameter.dictionary() != null) {
                 throw new IllegalArgumentException(where + ": dictionary is only for the dictionary type");
             }
+            if (parameter.maxLength() != null && parameter.maxLength() <= 0) {
+                throw new IllegalArgumentException(where + " has invalid maxLength");
+            }
+            if (ranged) {
+                Comparable<Object> min =
+                        parameter.min() == null ? null : comparable(type, parameter.min(), "Min of " + where);
+                Comparable<Object> max =
+                        parameter.max() == null ? null : comparable(type, parameter.max(), "Max of " + where);
+                if (min != null && max != null && min.compareTo(max) > 0) {
+                    throw new IllegalArgumentException(where + " has min greater than max");
+                }
+            }
             String defaultOf = "Default of " + where;
-            switch (type) {
-                case "string" -> {
-                    if (!(parameter.defaultValue() instanceof String value)) {
-                        throw new IllegalArgumentException(
-                                defaultOf + " is not a valid string: " + parameter.defaultValue());
-                    }
-                    if (parameter.maxLength() != null) {
-                        if (parameter.maxLength() <= 0)
-                            throw new IllegalArgumentException(where + " has invalid maxLength");
-                        if (value.length() > parameter.maxLength()) {
-                            throw new IllegalArgumentException(defaultOf + " is longer than maxLength");
-                        }
-                    }
+            parameter.check(parameter.defaultValue(), defaultOf);
+            if (type.equals("dictionary")) {
+                Dictionary dictionary = declared.get(parameter.dictionary());
+                if (dictionary == null) {
+                    throw new IllegalArgumentException(
+                            where + " refers to undeclared Dictionary: " + parameter.dictionary());
                 }
-                case "boolean" -> {
-                    if (!(parameter.defaultValue() instanceof Boolean)) {
-                        throw new IllegalArgumentException(
-                                defaultOf + " is not a valid boolean: " + parameter.defaultValue());
-                    }
-                }
-                case "dictionary" -> {
-                    Dictionary dictionary = declared.get(parameter.dictionary());
-                    if (dictionary == null) {
-                        throw new IllegalArgumentException(
-                                where + " refers to undeclared Dictionary: " + parameter.dictionary());
-                    }
-                    if (dictionary.items().stream()
-                            .noneMatch(item -> item.code().equals(parameter.defaultValue()))) {
-                        throw new IllegalArgumentException(defaultOf + " is not an item of Dictionary "
-                                + dictionary.code() + ": " + parameter.defaultValue());
-                    }
-                }
-                default -> {
-                    Comparable<Object> value = comparable(type, parameter.defaultValue(), defaultOf);
-                    Comparable<Object> min =
-                            parameter.min() == null ? null : comparable(type, parameter.min(), "Min of " + where);
-                    Comparable<Object> max =
-                            parameter.max() == null ? null : comparable(type, parameter.max(), "Max of " + where);
-                    if (min != null && max != null && min.compareTo(max) > 0) {
-                        throw new IllegalArgumentException(where + " has min greater than max");
-                    }
-                    if (min != null && value.compareTo(min) < 0) {
-                        throw new IllegalArgumentException(defaultOf + " is less than min");
-                    }
-                    if (max != null && value.compareTo(max) > 0) {
-                        throw new IllegalArgumentException(defaultOf + " is greater than max");
-                    }
+                if (dictionary.items().stream().noneMatch(item -> item.code().equals(parameter.defaultValue()))) {
+                    throw new IllegalArgumentException(defaultOf + " is not an item of Dictionary " + dictionary.code()
+                            + ": " + parameter.defaultValue());
                 }
             }
         }
@@ -562,6 +537,44 @@ public record ResourceManifest(
         /** 未声明 {@code tenantEditable} 视为不可修改。 */
         public Parameter {
             tenantEditable = Boolean.TRUE.equals(tenantEditable);
+        }
+
+        /**
+         * 检查取值是否满足本参数声明的类型与约束，iam 据此校验 Tenant 的覆盖值，规则与默认值相同。{@code dictionary} 类型只检查取值为字符串，
+         * 是否为可选项由调用方按租户合并后的字典判断（覆盖值可以是自定义项，不限于内置项）。
+         *
+         * @param value 待检查的取值，JSON 写法同默认值
+         * @throws IllegalArgumentException 类型不符或超出约束；声明本身不合法时结果未定义，先执行 {@link ResourceManifest#validate()}
+         */
+        public void requireValue(Object value) {
+            check(value, "Value of Parameter " + code);
+        }
+
+        private void check(Object value, String what) {
+            switch (type) {
+                case "string", "dictionary" -> {
+                    if (!(value instanceof String text)) {
+                        throw new IllegalArgumentException(what + " is not a valid string: " + value);
+                    }
+                    if (maxLength != null && text.length() > maxLength) {
+                        throw new IllegalArgumentException(what + " is longer than maxLength");
+                    }
+                }
+                case "boolean" -> {
+                    if (!(value instanceof Boolean)) {
+                        throw new IllegalArgumentException(what + " is not a valid boolean: " + value);
+                    }
+                }
+                default -> {
+                    Comparable<Object> comparable = comparable(type, value, what);
+                    if (min != null && comparable.compareTo(comparable(type, min, what)) < 0) {
+                        throw new IllegalArgumentException(what + " is less than min");
+                    }
+                    if (max != null && comparable.compareTo(comparable(type, max, what)) > 0) {
+                        throw new IllegalArgumentException(what + " is greater than max");
+                    }
+                }
+            }
         }
     }
 

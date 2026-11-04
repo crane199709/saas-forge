@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.referencedata.mapper.ParameterOverrideMapper">
+    <select id="list" resultType="io.saasforge.iam.referencedata.model.ParameterOverrideRow">
+        SELECT service, code, value::text AS value FROM parameter_override WHERE tenant_id = #{tenantId} AND NOT deleted
+    </select>
+    <insert id="save">
+        INSERT INTO parameter_override (id, tenant_id, service, code, value, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{tenantId}, #{service}, #{code}, CAST(#{value} AS jsonb), now(), now(), #{actor}, #{actor})
+        ON CONFLICT (tenant_id, service, code) WHERE NOT deleted DO UPDATE
+        SET value = EXCLUDED.value, updated_at = now(), updated_by = #{actor}
+    </insert>
+    <update id="delete">
+        UPDATE parameter_override SET deleted = true, updated_at = now(), updated_by = #{actor}
+        WHERE tenant_id = #{tenantId} AND service = #{service} AND code = #{code} AND NOT deleted
+    </update>
+    <update id="deleteTenant">
+        UPDATE parameter_override SET deleted = true, updated_at = now(), updated_by = NULL
+        WHERE tenant_id = #{tenantId} AND NOT deleted
+    </update>
+</mapper>
