@@ -33,8 +33,6 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.MountableFile;
 
 /**
  * 以「订单已创建」验证 Outbox 链路：事件随业务事务原子落库、MQ 故障恢复后全部送达、重复投递只处理一次，
@@ -51,11 +49,7 @@ class OutboxMessagingTest {
     /** 否定断言（某事件不应被处理）没有完成信号，只能等待一段足以完成投递与消费的时间。 */
     static final Duration QUIET_PERIOD = Duration.ofSeconds(3);
 
-    @Container
-    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
-            .withDatabaseName("forge")
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath("../../../deploy/postgres/init"), "/docker-entrypoint-initdb.d/");
+    static final SharedContainers.Postgres postgres = SharedContainers.postgres();
 
     /**
      * namesrv、broker 与 proxy 放在同一容器。proxy 用 cluster 模式：local 模式（broker 内嵌 proxy）的路由返回容器内 IP，

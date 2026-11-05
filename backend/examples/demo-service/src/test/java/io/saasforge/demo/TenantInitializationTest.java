@@ -22,10 +22,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.MountableFile;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -34,17 +30,12 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>按消费端的方式调用 SDK 注册的事件处理器（恢复租户上下文并开启事务），不经 RocketMQ；
  * 同一事件 ID 的去重由 forge-sdk-mq 负责，已在 {@link OutboxMessagingTest} 验证，这里验证重复的初始化本身不产生重复数据。
  */
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 class TenantInitializationTest {
     static final String SERVICE = "demo-service";
     static final JsonMapper JSON = JsonMapper.builder().build();
 
-    @Container
-    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
-            .withDatabaseName("forge")
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath("../../../deploy/postgres/init"), "/docker-entrypoint-initdb.d/");
+    static final SharedContainers.Postgres postgres = SharedContainers.postgres();
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {

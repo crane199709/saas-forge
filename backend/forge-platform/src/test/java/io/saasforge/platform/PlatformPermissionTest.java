@@ -12,45 +12,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.web.client.RestClient;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.MountableFile;
 
 /**
  * 平台侧权限（工单 22）：forge-platform 作为 Platform Realm 服务申报权限码与数据资源，接口按 Operator 的平台角色明细校验功能权限，
  * 租户列表、读取与修改按 Operator 的 Data Policy 过滤。明细由 PlatformTokens 模拟 iam 发布。
  */
-@Testcontainers
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Sql("/fixtures/plan.sql")
-class PlatformPermissionTest {
+class PlatformPermissionTest extends PlatformIntegrationTest {
     static final ParameterizedTypeReference<Map<String, Object>> ENVELOPE = new ParameterizedTypeReference<>() {};
     static final String REGION_POLICY =
             "{\"attr\":\"resource.region\",\"op\":\"eq\",\"value\":{\"ref\":\"subject.attributes.region\"}}";
     static final String READ = "platform:tenant:read";
     static final String MANAGE = "platform:tenant:manage";
-
-    @Container
-    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
-            .withDatabaseName("forge")
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath("../../deploy/postgres/init"), "/docker-entrypoint-initdb.d/");
-
-    @DynamicPropertySource
-    static void properties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        PlatformTokens.register(registry);
-    }
 
     @LocalServerPort
     int port;
