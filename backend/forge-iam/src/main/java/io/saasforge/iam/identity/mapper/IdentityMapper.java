@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import io.saasforge.iam.identity.model.ActiveMembership;
 import io.saasforge.iam.identity.model.ContactIdentity;
 import io.saasforge.iam.identity.model.IdentityPassword;
+import io.saasforge.iam.identity.model.IdentitySummary;
 import io.saasforge.iam.identity.model.LoginCredential;
 import java.util.List;
 import java.util.UUID;
@@ -60,6 +61,12 @@ public interface IdentityMapper {
 
     /** 替换未删除的 active 身份的密码哈希，返回受影响行数；操作人为身份本人。没有租户上下文，不受 Data Policy 过滤。 */
     int changePassword(@Param("identityId") UUID identityId, @Param("passwordHash") String passwordHash);
+
+    /**
+     * 按登录标识精确定位未删除的身份（不论状态）：账号区分大小写，邮箱不区分大小写，手机号原样比较；供平台查找身份以重置 MFA，
+     * 不受 Data Policy 过滤。账号不含 {@code @} 且以字母开头，三种标识互不重叠，至多一行。
+     */
+    IdentitySummary findByLoginIdentifier(@Param("identifier") String identifier);
 
     /** 注册新身份；注册时没有认证上下文，created_by、updated_by 为 NULL（系统）。 */
     void insert(

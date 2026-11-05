@@ -98,6 +98,17 @@ public class PlatformRoleService implements OperatorGrantSource {
         }
     }
 
+    /**
+     * 要求操作人是 active 且持有超级管理员的 Operator，用于只有超级管理员能做、不另设权限码的操作（如重置 Operator 的 MFA）。
+     *
+     * @throws ForgeException 403 {@code auth.forbidden}
+     */
+    public void requireSuperAdmin(UUID actor) {
+        if (operators.findActive(actor) == null || !roles.roleCodes(actor).contains(SUPER_ADMIN)) {
+            throw new ForgeException(FrameworkErrorCode.AUTH_FORBIDDEN);
+        }
+    }
+
     /** 在事务内取得平台角色的写锁，至事务结束：授权、分配与 Operator 停用串行，「至少保留一位超级管理员」的判断才可靠。 */
     public void lock() {
         roles.lock();

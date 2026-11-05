@@ -5,6 +5,7 @@ import io.saasforge.iam.identity.model.ActiveMembership;
 import io.saasforge.iam.identity.model.ContactIdentity;
 import io.saasforge.iam.identity.model.IdentityPassword;
 import io.saasforge.iam.identity.model.IdentityStatus;
+import io.saasforge.iam.identity.model.IdentitySummary;
 import io.saasforge.iam.identity.model.LoginCredential;
 import io.saasforge.iam.verification.service.VerificationCodeService;
 import io.saasforge.sdk.core.UuidV7;
@@ -44,6 +45,11 @@ public class IdentityService {
     /** 身份的账号，没有账号时取邮箱或手机号；身份已删除时为空。 */
     public Optional<String> findLoginName(UUID identityId) {
         return Optional.ofNullable(identities.findLoginName(identityId));
+    }
+
+    /** 按账号、邮箱或手机号精确查找未删除的身份（不论状态）；查不到时为空。 */
+    public Optional<IdentitySummary> findByLoginIdentifier(String identifier) {
+        return Optional.ofNullable(identities.findByLoginIdentifier(identifier));
     }
 
     public boolean existsAccount(String account) {
