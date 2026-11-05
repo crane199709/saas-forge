@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 新增权限码 `iam:reference-data:manage`（Tenant Admin 预置拥有）
 - [x] 自定义项：租户填写编码、系统加 `custom.` 前缀、「租户 + 字典」内唯一、不可修改；只能停用不能删除

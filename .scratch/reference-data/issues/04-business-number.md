@@ -4,7 +4,7 @@
 
 **Blocked by:** —
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] `forge-sdk-core` 提供 Business Time Zone 配置 `forge.business-zone`（record 绑定，不设默认值）；由使用方模块在需要时强制要求，漏配即启动失败
 - [x] Numbering Rule 声明：前缀、可选日期段（`yyyy`/`yyyyMM`/`yyyyMMdd`）、序号最小位数；计数周期跟随日期段

@@ -4,7 +4,7 @@
 
 **Blocked by:** —
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] `ResourceManifest` 新增字典（编码、名称、`extensible`、内置项）与参数（编码、名称、类型、默认值、约束、`tenantEditable`）的 record
 - [x] 参数类型 `string`（`maxLength`）、`integer`、`decimal`、`duration`（`min`/`max`）、`boolean`、`dictionary`（须指明字典）

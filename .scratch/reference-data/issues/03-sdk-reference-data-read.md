@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] iam `/internal/` 接口返回某租户合并后的生效值（网关拒绝 `/internal/`）
 - [x] SDK 门面：按编码读取字典（可选项与全部项）与参数（按声明类型返回）

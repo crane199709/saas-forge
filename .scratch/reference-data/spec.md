@@ -1,6 +1,6 @@
 # 字典、参数与编号规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准（「参考数据」一节）。本规格的决策经 2026-11-04 的设计拷问逐条确认（Q23–Q41），未单独记录 ADR。
 
