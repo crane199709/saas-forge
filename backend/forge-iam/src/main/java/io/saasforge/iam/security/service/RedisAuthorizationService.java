@@ -124,6 +124,11 @@ public class RedisAuthorizationService implements OAuth2AuthorizationService {
         }
     }
 
+    /** 同一授权上换码、刷新与改写的互斥锁，由 {@code TokenGrantLockFilter} 与 {@link MfaCompletionService} 共用。 */
+    public static String grantLockKey(String authorizationId) {
+        return "iam:global:oauth-grant-lock:" + authorizationId;
+    }
+
     static String usedRefreshKey(String token) {
         return tokenKey(token) + ":used-refresh";
     }

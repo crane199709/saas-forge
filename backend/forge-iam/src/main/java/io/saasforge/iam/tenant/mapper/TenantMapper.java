@@ -25,4 +25,16 @@ public interface TenantMapper {
 
     /** 租户名称；未登记或已删除时为 null。租户表是全局表，不受 Data Policy 过滤。 */
     String findName(@Param("tenantId") UUID tenantId);
+
+    /** 租户是否提出 MFA Requirement；未登记或已删除时为 false。租户表是全局表，不受 Data Policy 过滤。 */
+    boolean findMfaRequired(@Param("tenantId") UUID tenantId);
+
+    /**
+     * 设置租户的 MFA Requirement。租户表是全局表，不受 Data Policy 过滤。
+     *
+     * @param actor 操作者的 Identity，写入 {@code updated_by}
+     * @return 租户已登记且未删除时为 1，否则为 0
+     */
+    int updateMfaRequired(
+            @Param("tenantId") UUID tenantId, @Param("mfaRequired") boolean mfaRequired, @Param("actor") UUID actor);
 }

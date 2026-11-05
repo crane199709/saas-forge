@@ -19,4 +19,12 @@
     <select id="findName" resultType="string">
         SELECT name FROM tenant WHERE id = #{tenantId} AND NOT deleted
     </select>
+    <!-- 未登记或已删除的租户视为没有要求：签发前已由 Membership 校验确认租户存在。 -->
+    <select id="findMfaRequired" resultType="boolean">
+        SELECT COALESCE((SELECT mfa_required FROM tenant WHERE id = #{tenantId} AND NOT deleted), false)
+    </select>
+    <update id="updateMfaRequired">
+        UPDATE tenant SET mfa_required = #{mfaRequired}, updated_at = now(), updated_by = #{actor}
+        WHERE id = #{tenantId} AND NOT deleted
+    </update>
 </mapper>
