@@ -9,7 +9,10 @@ import io.saasforge.demo.order.model.OrderCreated;
 import io.saasforge.demo.order.service.OrderService;
 import io.saasforge.sdk.core.CurrentTenant;
 import io.saasforge.sdk.mq.EventPublisher;
+import io.saasforge.sdk.provisioning.ReferenceDataChanged;
 import io.saasforge.sdk.provisioning.TenantCreated;
+import io.saasforge.sdk.referencedata.ReferenceData;
+import io.saasforge.sdk.referencedata.ReferenceDataAutoConfiguration;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -23,7 +26,13 @@ import org.apache.rocketmq.client.apis.producer.Producer;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -87,8 +96,8 @@ class OutboxMessagingTest {
      */
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
-        // 服务订阅的全部 Topic：订单事件，以及 SDK 为租户初始化订阅的 Provisioning 事件
-        for (String topic : List.of(OrderCreated.TOPIC, TenantCreated.TOPIC)) {
+        // 服务订阅的全部 Topic：订单事件，SDK 为租户初始化订阅的 Provisioning 事件，以及参考数据变更事件
+        for (String topic : List.of(OrderCreated.TOPIC, TenantCreated.TOPIC, ReferenceDataChanged.TOPIC)) {
             Awaitility.await()
                     .atMost(Duration.ofMinutes(2))
                     .pollInterval(Duration.ofSeconds(2))
@@ -111,6 +120,7 @@ class OutboxMessagingTest {
         registry.add("forge.mq.initial-backoff", () -> "200ms");
         registry.add("forge.mq.max-backoff", () -> "1s");
         TestTokens.register(registry);
+        TestReferenceData.register(registry);
     }
 
     @Autowired
@@ -121,6 +131,12 @@ class OutboxMessagingTest {
 
     @Autowired
     TransactionTemplate transactionTemplate;
+
+    @Autowired
+    ReferenceData referenceData;
+
+    @Autowired
+    EventPublisher eventPublisher;
 
     @Test
     void eventIsConsumedInPublishersTenant() {
@@ -147,7 +163,8 @@ class OutboxMessagingTest {
         CurrentTenant.run(
                 TENANT_A,
                 () -> transactionTemplate.executeWithoutResult(status -> {
-                    rolledBack.set(orderService.create("回滚的订单", BigDecimal.TEN).getId());
+                    rolledBack.set(
+                            orderService.create("回滚的订单", BigDecimal.TEN, null).getId());
                     status.setRollbackOnly();
                 }));
         UUID committed = createOrder(TENANT_A, "提交的订单");
@@ -214,9 +231,62 @@ class OutboxMessagingTest {
                 () -> assertThat(notificationService.findByOrder(orderId)).hasSize(1));
     }
 
+    /**
+     * 参考数据缓存在每个实例的进程内，同一服务的每个实例都要收到 {@link ReferenceDataChanged}，而不是像服务的消费组那样只分给其中一个。
+     * 另起一个只含参考数据能力的上下文作为同一服务的第二个实例。
+     */
+    @Test
+    void referenceDataChangedEvictsTheTenantsCacheOnEveryInstance() {
+        TestReferenceData.referral(TENANT_A, "enabled");
+        try (ConfigurableApplicationContext secondInstance = new SpringApplicationBuilder(SecondInstance.class)
+                .web(WebApplicationType.NONE)
+                // 以命令行参数传入：它同样读取服务的 application.yml，默认属性的优先级低于其中的本地开发地址
+                .run(
+                        "--forge.reference-data.iam-uri=" + TestReferenceData.uri(),
+                        "--forge.reference-data.token=" + TestReferenceData.TOKEN,
+                        "--forge.mq.endpoints=" + endpoints())) {
+            List<ReferenceData> instances = List.of(referenceData, secondInstance.getBean(ReferenceData.class));
+            for (ReferenceData instance : instances) {
+                assertThat(referralSelectable(instance)).isTrue();
+            }
+
+            // 租户在 iam 中停用了转介绍，iam 随后发布事件；缓存过期时间为 10 分钟，只有事件能让新值这么快生效
+            TestReferenceData.referral(TENANT_A, "disabled");
+            CurrentTenant.run(
+                    TENANT_A,
+                    () -> transactionTemplate.executeWithoutResult(status ->
+                            eventPublisher.publish(ReferenceDataChanged.TOPIC, new ReferenceDataChanged(TENANT_A))));
+
+            for (ReferenceData instance : instances) {
+                Awaitility.await().atMost(DELIVERY_TIMEOUT).until(() -> !referralSelectable(instance));
+            }
+        }
+    }
+
+    private static boolean referralSelectable(ReferenceData instance) {
+        var selectable = new AtomicReference<Boolean>();
+        CurrentTenant.run(TENANT_A, () -> selectable.set(instance.isSelectable("customer-source", "referral")));
+        return selectable.get();
+    }
+
+    /**
+     * 同一服务的另一个实例：只装配参考数据读取与变更订阅，连接同一个 RocketMQ。不标 {@code @Configuration}：
+     * 测试类内嵌的配置类会取代 Spring Boot 应用成为测试上下文的配置。
+     */
+    @ImportAutoConfiguration(ReferenceDataAutoConfiguration.class)
+    static class SecondInstance {
+        @Bean
+        ClientConfiguration clientConfiguration(Environment environment) {
+            return ClientConfiguration.newBuilder()
+                    .setEndpoints(environment.getRequiredProperty("forge.mq.endpoints"))
+                    .enableSsl(false)
+                    .build();
+        }
+    }
+
     private UUID createOrder(UUID tenantId, String title) {
         var created = new AtomicReference<Order>();
-        CurrentTenant.run(tenantId, () -> created.set(orderService.create(title, BigDecimal.ONE)));
+        CurrentTenant.run(tenantId, () -> created.set(orderService.create(title, BigDecimal.ONE, null)));
         return created.get().getId();
     }
 

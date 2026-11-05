@@ -4,11 +4,13 @@ import io.saasforge.demo.order.entity.Order;
 import io.saasforge.demo.order.service.OrderService;
 import io.saasforge.sdk.audit.AuditLog;
 import io.saasforge.sdk.core.api.ApiResponse;
+import io.saasforge.sdk.referencedata.DictionaryValue;
 import io.saasforge.sdk.security.RequiresPermission;
 import io.saasforge.sdk.web.PageQuery;
 import io.saasforge.sdk.web.SortableFields;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -39,8 +41,9 @@ class OrderController {
     @RequiresPermission("order:create")
     @AuditLog(action = "order.create", resourceType = "order", resourceId = "#result.data().id()")
     @ResponseStatus(HttpStatus.CREATED)
-    ApiResponse<OrderResponse> create(@RequestBody OrderRequest request) {
-        return ApiResponse.created(OrderResponse.from(orderService.create(request.title(), request.amount())));
+    ApiResponse<OrderResponse> create(@Valid @RequestBody OrderRequest request) {
+        return ApiResponse.created(
+                OrderResponse.from(orderService.create(request.title(), request.amount(), request.customerSource())));
     }
 
     @Operation(summary = "分页列出当前租户中当前成员数据范围内的订单")
@@ -63,8 +66,9 @@ class OrderController {
     @PutMapping("/{id}")
     @RequiresPermission("order:update")
     @AuditLog(action = "order.update", resourceType = "order", resourceId = "#id")
-    ApiResponse<OrderResponse> update(@PathVariable UUID id, @RequestBody OrderRequest request) {
-        return ApiResponse.ok(OrderResponse.from(orderService.update(id, request.title(), request.amount())));
+    ApiResponse<OrderResponse> update(@PathVariable UUID id, @Valid @RequestBody OrderRequest request) {
+        return ApiResponse.ok(OrderResponse.from(
+                orderService.update(id, request.title(), request.amount(), request.customerSource())));
     }
 
     @Operation(summary = "删除当前租户的订单")
@@ -76,10 +80,15 @@ class OrderController {
         return ApiResponse.ok();
     }
 
-    record OrderRequest(String title, BigDecimal amount) {}
+    /** @param customerSource 客户来源，字典 customer-source 的可选项编码，可不填 */
+    record OrderRequest(
+            String title,
+            BigDecimal amount,
+            @DictionaryValue("customer-source") String customerSource) {}
 
     /**
      * @param number Business Number，如 {@code SO-20261104-0007}；引入编号前创建的订单为 null
+     * @param customerSource 客户来源的字典项编码，只返回编码，名称由前端按字典翻译；未填写时为 null
      * @param ownerId 数据归属的 Membership，系统创建的订单为 null
      * @param departmentPath 数据归属部门的路径，归属成员未分配部门时为 null
      */
@@ -88,6 +97,7 @@ class OrderController {
             String number,
             String title,
             BigDecimal amount,
+            String customerSource,
             UUID ownerId,
             String departmentPath,
             OffsetDateTime createdAt) {
@@ -97,6 +107,7 @@ class OrderController {
                     order.getNumber(),
                     order.getTitle(),
                     order.getAmount(),
+                    order.getCustomerSource(),
                     order.getOwnerId(),
                     order.getDepartmentPath(),
                     order.getCreatedAt());

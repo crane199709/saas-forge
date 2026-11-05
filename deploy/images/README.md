@@ -33,7 +33,7 @@ docker pull ghcr.io/crane199709/saas-forge-v2/forge-iam:0.1.0
 | gateway | forge.security.issuer/jwk-set-uri、forge.security.platform.issuer/jwk-set-uri、forge.gateway.services 和 Spring Cloud Gateway 路由 |
 | iam | forge.security.issuer、forge.security.platform.issuer、forge.iam.signing-key-file、forge.iam.platform.signing-key-file、forge.iam.mfa.encryption-key（Base64 编码的 256 位密钥，可用 `openssl rand -base64 32` 生成，多实例一致，更换后已绑定的 Authenticator 失效）、forge.iam.invitation.accept-url、forge.iam.sub-app.environment、forge.iam.manifest.tokens |
 | platform | forge.security.realm=platform、forge.security.platform.issuer/jwk-set-uri、forge.manifest.iam-uri/token/version、forge.platform.iam.uri/token、forge.platform.provisioning.services、forge.tenant.ignore-tables |
-| demo-service | forge.security.issuer/jwk-set-uri、forge.manifest.iam-uri/token/version、forge.storage.endpoint/bucket/access-key/secret-key |
+| demo-service | forge.security.issuer/jwk-set-uri、forge.manifest.iam-uri/token/version、forge.reference-data.iam-uri/token、forge.storage.endpoint/bucket/access-key/secret-key |
 
 iam/platform/demo 另需 spring.datasource.url/username/password、spring.flyway.user/password/schemas/default-schema/create-schemas=false、forge.mq.endpoints、mybatis-plus.mapper-locations（classpath*:/*/mapper/**/*.xml）。iam 需要 mybatis-plus.configuration.arg-name-based-constructor-auto-mapping=true。标准 Spring 环境变量规则：点替换下划线、删除连字符、转大写，例如 FORGE_SECURITY_JWKSETURI、SPRING_DATASOURCE_PASSWORD。列表与 token map 建议使用挂载 YAML。非环境不变量如 manifest version、ignore-tables、mapper 扫描路径参照各服务 application.yml 保留；环境地址和密码全部替换。数据库账号和 schema 按接入指南预建；IAM 密钥使用持久化可写卷。issuer 浏览器可达，JWKS/Manifest 使用容器间地址。
 

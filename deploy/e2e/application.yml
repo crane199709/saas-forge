@@ -48,6 +48,8 @@ forge:
     redirect-uri: http://127.0.0.1:15174/
   manifest:
     iam-uri: http://127.0.0.1:18101
+  reference-data:
+    iam-uri: http://127.0.0.1:18101
   platform:
     iam:
       uri: http://127.0.0.1:18101

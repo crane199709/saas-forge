@@ -57,6 +57,7 @@ class ReferenceDataTest {
             ADMIN, UUID.fromString("019a0110-0000-7000-8000-0000000002c2"),
             MEMBER, UUID.fromString("019a0110-0000-7000-8000-0000000002c4"),
             ADMIN_B, UUID.fromString("019a0110-0000-7000-8000-0000000002c6"));
+    static final String SERVICE_TOKEN = "refdata-service-token";
     static final JsonMapper JSON = JsonMapper.builder().build();
 
     @Container
@@ -75,6 +76,7 @@ class ReferenceDataTest {
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
         registry.add("spring.flyway.locations", () -> "classpath:db/migration,classpath:db/demo");
         registry.add("forge.iam.signing-key-file", () -> KEY_FILE);
+        registry.add("forge.iam.manifest.tokens." + SERVICE, () -> SERVICE_TOKEN);
     }
 
     @LocalServerPort
@@ -301,6 +303,52 @@ class ReferenceDataTest {
         assertThat(parameters(ADMIN_B))
                 .extracting(parameter -> parameter.get("code") + "=" + parameter.get("value"))
                 .contains("order.auto-close=PT30M");
+    }
+
+    @Test
+    void servicesReadATenantsEffectiveValuesThroughTheInternalEndpoint() throws Exception {
+        createItem(ADMIN_B, "grade", "gold", "黄金");
+        call(ADMIN_B, HttpMethod.POST, itemPath("grade", "normal") + "/disable", null);
+        call(ADMIN_B, HttpMethod.PUT, parameterPath("order.max-items"), Map.of("value", 120));
+
+        var response = internal(SERVICE_TOKEN, "/internal/reference-data/" + TENANT_B);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        Map<String, Object> data = data(response);
+        Map<String, Object> grade = ((List<?>) data.get("dictionaries"))
+                .stream()
+                        .map(ReferenceDataTest::map)
+                        .filter(dictionary ->
+                                SERVICE.equals(dictionary.get("service")) && "grade".equals(dictionary.get("code")))
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(items(grade))
+                .extracting(item -> item.get("code") + ":" + item.get("status"))
+                .contains("normal:disabled", "custom.gold:enabled");
+        // 参数只返回调用方服务自己的，含不可修改的参数，取值为生效值。
+        assertThat(((List<?>) data.get("parameters"))
+                        .stream().map(ReferenceDataTest::map).toList())
+                .extracting(parameter ->
+                        parameter.get("service") + "/" + parameter.get("code") + "=" + parameter.get("value"))
+                .containsExactly(
+                        SERVICE + "/order.auto-close=PT30M",
+                        SERVICE + "/order.max-items=120",
+                        SERVICE + "/order.remark=请尽快付款",
+                        SERVICE + "/customer.default-source=online");
+        // 服务令牌之外的凭证一律拒绝。
+        assertThat(internal("wrong-token", "/internal/reference-data/" + TENANT_B)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(401);
+    }
+
+    private ResponseEntity<Map> internal(String serviceToken, String uri) {
+        return client().get()
+                .uri(uri)
+                .headers(headers -> headers.setBearerAuth(serviceToken))
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (req, res) -> {})
+                .toEntity(Map.class);
     }
 
     private int changed(UUID tenant) {

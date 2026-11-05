@@ -61,10 +61,11 @@ public class OrderService implements TenantDataCleaner {
      * 订单写入失败时编号随事务回滚，不留空号。
      */
     @Transactional
-    public Order create(String title, BigDecimal amount) {
+    public Order create(String title, BigDecimal amount, String customerSource) {
         var order = new Order();
         order.setTitle(title);
         order.setAmount(amount);
+        order.setCustomerSource(customerSource);
         dataPermission.currentSubject().ifPresent(subject -> {
             order.setOwnerId((UUID) subject.get("subject.membershipId"));
             order.setDepartmentPath((String) subject.get("subject.primaryDepartmentPath"));
@@ -94,11 +95,12 @@ public class OrderService implements TenantDataCleaner {
         return order;
     }
 
-    public Order update(UUID id, String title, BigDecimal amount) {
+    public Order update(UUID id, String title, BigDecimal amount, String customerSource) {
         var order = new Order();
         order.setId(id);
         order.setTitle(title);
         order.setAmount(amount);
+        order.setCustomerSource(customerSource);
         if (orderMapper.updateById(order) == 0) {
             throw notFound(id);
         }

@@ -92,7 +92,7 @@ class StandardColumnsTest {
         assertThat(created.deleted()).isFalse();
 
         // 无认证上下文的修改把 updated_by 置为 NULL，下一次经接口修改须重新写回当前用户
-        CurrentTenant.run(TENANT, () -> orderService.update(id, "后台修改", BigDecimal.TEN));
+        CurrentTenant.run(TENANT, () -> orderService.update(id, "后台修改", BigDecimal.TEN, null));
         Row bySystem = row(id);
         assertThat(bySystem.updatedBy()).isNull();
         assertThat(bySystem.updatedAt()).isAfter(created.updatedAt());
@@ -109,7 +109,7 @@ class StandardColumnsTest {
     void deletedOrderIsHiddenButRowIsMarkedDeletedWithRefreshedUpdatedColumns() throws Exception {
         UUID id = createOrder("待删除");
         UUID kept = createOrder("保留");
-        CurrentTenant.run(TENANT, () -> orderService.update(id, "后台修改", BigDecimal.ONE));
+        CurrentTenant.run(TENANT, () -> orderService.update(id, "后台修改", BigDecimal.ONE, null));
         Row beforeDelete = row(id);
         assertThat(beforeDelete.updatedBy()).isNull();
 

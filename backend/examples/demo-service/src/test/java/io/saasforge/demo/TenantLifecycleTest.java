@@ -114,11 +114,11 @@ class TenantLifecycleTest {
         // 查询不受影响
         assertThat(call(tenant, HttpMethod.GET, null).get("httpStatus")).isEqualTo(200);
         // 消息消费、定时任务等无请求上下文的写入同样被拒，服务可声明例外
-        assertThatThrownBy(() -> inTenant(tenant, () -> orders.create("后台写入", BigDecimal.ONE)))
+        assertThatThrownBy(() -> inTenant(tenant, () -> orders.create("后台写入", BigDecimal.ONE, null)))
                 .hasRootCauseInstanceOf(ForgeException.class);
         var exempted = new AtomicReference<Order>();
         CurrentTenant.run(
-                tenant, () -> TenantWriteGuard.exempt(() -> exempted.set(orders.create("例外写入", BigDecimal.ONE))));
+                tenant, () -> TenantWriteGuard.exempt(() -> exempted.set(orders.create("例外写入", BigDecimal.ONE, null))));
         assertThat(exempted.get().getTitle()).isEqualTo("例外写入");
 
         setStatus(tenant, "trial");
@@ -162,7 +162,7 @@ class TenantLifecycleTest {
 
     private Order seed(UUID tenant) {
         deliver(tenant, new TenantCreated(tenant, "待清理", "admin@example.com", "active"));
-        Order order = inTenant(tenant, () -> orders.create("订单", BigDecimal.TEN));
+        Order order = inTenant(tenant, () -> orders.create("订单", BigDecimal.TEN, null));
         CurrentTenant.run(
                 tenant,
                 () -> notifications.handle(new OrderCreated(order.getId(), order.getTitle(), order.getAmount())));
