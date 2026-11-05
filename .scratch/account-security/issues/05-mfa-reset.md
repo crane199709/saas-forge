@@ -15,4 +15,4 @@
 - [ ] 测试覆盖：无权限 403、查不到时的响应、重置后下次登录不再要求 MFA
 
 ## Comments
-- 2026-11-05（工单 04 实现时记录）：Operator 的 Authenticator 与 Recovery Code 存于 `operator_authenticator`、`operator_recovery_code`（V21），由 `mfa.service.OperatorMfaService` 管理，Mapper 已有 `deleteByOperator`；重置时可一并删除 Redis 中进行中的绑定 `iam:global:mfa:binding:operator:<id>`。`mfa-required=true` 时被重置的 Operator 下次登录进入「必须绑定」，无需额外处理。
+- 2026-11-05（工单 04 实现时记录）：Operator 的 Authenticator 与 Recovery Code 存于 `operator_authenticator`、`operator_recovery_code`（V22），由 `mfa.service.OperatorMfaService` 管理，Mapper 已有 `deleteByOperator`；重置时可一并删除 Redis 中进行中的绑定 `iam:global:mfa:binding:operator:<id>`。`mfa-required=true` 时被重置的 Operator 下次登录进入「必须绑定」，无需额外处理。

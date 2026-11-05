@@ -4,12 +4,17 @@ import io.saasforge.iam.mfa.service.IdentityMfaService;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,12 +35,27 @@ class MfaController {
         return ApiResponse.ok(new BindingStartResponse(mfa.startBinding(identityId(authentication))));
     }
 
-    @Operation(summary = "以首个动态码确认绑定，返回只展示这一次的 Recovery Code；接受 Access Token 或登录会话")
+    @Operation(summary = "以首个动态码确认绑定，返回只展示这一次的 Recovery Code；接受 Access Token 或登录会话，确认后当前授权或会话视为已完成 MFA")
     @PostMapping(value = "/auth/mfa/bind/confirm", consumes = "application/json")
     ApiResponse<RecoveryCodesResponse> confirmBinding(
-            Authentication authentication, @Valid @RequestBody CodeRequest body) {
-        return ApiResponse.created(
-                new RecoveryCodesResponse(mfa.confirmBinding(identityId(authentication), body.code())));
+            Authentication authentication,
+            @Valid @RequestBody CodeRequest body,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        UUID identityId = identityId(authentication);
+        List<String> codes = mfa.confirmBinding(identityId, body.code());
+        // 首个动态码已在此验证，当前会话或授权即视为完成 MFA，被 MFA Requirement 拦下的身份随后可重试进入（ADR-0019）。
+        if (authentication instanceof JwtAuthenticationToken jwt) {
+            mfa.completeAuthorization(identityId, jwt.getToken().getTokenValue());
+        } else {
+            // 会话权限提升，换发会话标识防会话固定；重新走授权码流程即得到记为已完成 MFA 的授权。
+            request.changeSessionId();
+            var context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(mfa.completeSession(authentication));
+            SecurityContextHolder.setContext(context);
+            new HttpSessionSecurityContextRepository().saveContext(context, request, response);
+        }
+        return ApiResponse.created(new RecoveryCodesResponse(codes));
     }
 
     @Operation(summary = "验证动态码后重新生成 Recovery Code，旧的一组全部作废")

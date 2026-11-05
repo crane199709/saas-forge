@@ -40,7 +40,7 @@
 
 ### MFA（账号安全工单 04）
 
-TOTP、密钥加密、Recovery Code 与 Identity 相同（[ADR-0019](adr/0019-mfa-per-identity-enforced-at-token-issuance.md)），存于 `operator_authenticator`、`operator_recovery_code`（V21）。登录第二步：已绑定者 `nextStep=mfa`；`mfa-required=true` 且未绑定者 `nextStep=bind`，当场绑定并提交首个动态码即认证成功；两种状态有效期 5 分钟，过期或步骤不符返回 401 `auth.mfaExpired`。
+TOTP、密钥加密、Recovery Code 与 Identity 相同（[ADR-0019](adr/0019-mfa-per-identity-enforced-at-token-issuance.md)），存于 `operator_authenticator`、`operator_recovery_code`（V22）。登录第二步：已绑定者 `nextStep=mfa`；`mfa-required=true` 且未绑定者 `nextStep=bind`，当场绑定并提交首个动态码即认证成功；两种状态有效期 5 分钟，过期或步骤不符返回 401 `auth.mfaExpired`。
 
 已登录 Operator 凭 Platform Access Token 自助管理，均为 `POST`，请求体 JSON `code`（6 位动态码，`bind/start` 为 `{}`）：
 
