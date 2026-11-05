@@ -296,6 +296,31 @@ class ReferenceDataTest {
     }
 
     @Test
+    void aParameterCannotBeResetToADisabledDefault() throws Exception {
+        // 覆盖为 p-mid 后默认值 p-low 不再被使用，可以停用；此时恢复默认会让生效值落在停用项上，须拒绝。
+        call(ADMIN, HttpMethod.PUT, parameterPath("ticket.priority"), Map.of("value", "p-mid"));
+        call(ADMIN, HttpMethod.POST, itemPath("priority", "p-low") + "/disable", null);
+
+        var reset = call(ADMIN, HttpMethod.DELETE, parameterPath("ticket.priority"), null);
+        assertThat(reset.getStatusCode().value()).isEqualTo(409);
+        assertThat(reset.getBody().get("code")).isEqualTo("parameter.defaultUnavailable");
+        assertThat((String) reset.getBody().get("userTip")).contains("工单默认优先级").contains("低优先级");
+        assertThat(parameters(ADMIN))
+                .extracting(parameter -> parameter.get("code") + "=" + parameter.get("value"))
+                .contains("ticket.priority=p-mid");
+
+        // 启用默认值对应的项后可以恢复默认。
+        call(ADMIN, HttpMethod.POST, itemPath("priority", "p-low") + "/enable", null);
+        assertThat(call(ADMIN, HttpMethod.DELETE, parameterPath("ticket.priority"), null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(200);
+        assertThat(parameters(ADMIN))
+                .extracting(parameter -> parameter.get("code") + "=" + parameter.get("value"))
+                .contains("ticket.priority=p-low");
+    }
+
+    @Test
     void onlyEditableParametersCanBeOverriddenWithinTheirConstraintsAndReset() throws Exception {
         assertThat(parameters(ADMIN))
                 .extracting(parameter -> parameter.get("code") + "=" + parameter.get("value"))

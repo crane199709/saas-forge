@@ -19,6 +19,8 @@ public enum ReferenceDataErrorCode implements ErrorCode {
     PARAMETER_NOT_FOUND("parameter.notFound", 404),
     /** 参数未声明为租户可修改。 */
     PARAMETER_NOT_EDITABLE("parameter.notEditable", 409),
+    /** 参数的默认值是本租户已停用的字典项，恢复默认后将没有可选的生效值；须先启用该项。 */
+    DEFAULT_UNAVAILABLE("parameter.defaultUnavailable", 409),
     /** 覆盖值不满足参数声明的类型或约束，或不是字典的可选项。 */
     INVALID_PARAMETER_VALUE("parameter.invalidValue", 400);
 

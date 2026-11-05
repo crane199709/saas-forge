@@ -289,15 +289,34 @@ public class ReferenceDataService {
         return view(parameter, value, true);
     }
 
-    /** 恢复默认值；没有覆盖值时不做修改，也不递增版本。 */
+    /**
+     * 恢复默认值；没有覆盖值时不做修改，也不递增版本。{@code dictionary} 类型的默认值已被租户停用时拒绝，否则生效值会落在停用项上。
+     */
     public void resetParameter(TenantActor actor, String service, String code) {
         requireManager(actor);
-        requireEditable(service, code);
+        ServiceParameter parameter = requireEditable(service, code);
         transactions.executeWithoutResult(status -> {
-            if (overrides.delete(actor.tenantId(), service, code, actor.identityId()) > 0) {
-                changed(actor, parameterAudit(actor, "parameter.reset", service, code));
-            }
+            String dictionary = parameter.parameter().dictionary();
+            // 与停用共用字典锁：检查默认值可选与删除覆盖值之间，默认值对应的项不会被停用。
+            if (dictionary != null) items.lockDictionary(actor.tenantId(), service, dictionary);
+            if (overrides.delete(actor.tenantId(), service, code, actor.identityId()) == 0) return;
+            if (dictionary != null) requireDefaultSelectable(actor.tenantId(), parameter);
+            changed(actor, parameterAudit(actor, "parameter.reset", service, code));
         });
+    }
+
+    private void requireDefaultSelectable(UUID tenantId, ServiceParameter current) {
+        Parameter parameter = current.parameter();
+        dictionaries(tenantId).stream()
+                .filter(dictionary -> dictionary.service().equals(current.service())
+                        && dictionary.code().equals(parameter.dictionary()))
+                .flatMap(dictionary -> dictionary.items().stream())
+                .filter(item -> item.code().equals(parameter.defaultValue()) && !item.selectable())
+                .findFirst()
+                .ifPresent(item -> {
+                    // 抛出后事务回滚，覆盖值保留。
+                    throw new ForgeException(ReferenceDataErrorCode.DEFAULT_UNAVAILABLE, parameter.name(), item.name());
+                });
     }
 
     private void requireManager(TenantActor actor) {

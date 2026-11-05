@@ -48,3 +48,7 @@
   - 重名：合并时不自动处理，字典接口与内部接口给与其他可选项重名的可选项标记 `nameConflict`，租户改名其中之一后标记消失；tenant-app 字典页标出并提示改名。导入（data-import-export）对名称匹配到多个可选项的行报错。
 - `ReferenceDataChanged` 事件、它的 Outbox 发布与 Topic `forge-reference-data` 已删除（没有其他订阅方）。改为在修改事务提交后（`afterCommit`）以 `INCR` 递增 Redis 键 `iam:{tenant_id}:reference-data:version`（`ReferenceDataKeys.version`，在 forge-sdk-core），Redis 失败只记日志，由业务服务的缓存过期兜底。被拒绝的修改与没有覆盖值时的恢复默认不递增。
 - 已知余留（未处理，待定）：参数覆盖为其他项后，默认值指向的项不再是生效值，可以停用；之后恢复默认（删除覆盖值）不检查默认值是否可选，生效值又会是停用项。本次之前已停用的默认值同样不受影响。
+
+**恢复默认的检查（2026-11-05，用户决定）**
+
+- 上面的已知余留已处理，写入 spec §3.2：`dictionary` 类型参数的默认值是本租户已停用的项时，恢复默认返回 409 `parameter.defaultUnavailable`（文案点名参数与该项），覆盖值保留；启用该项后可恢复。检查与停用共用该字典的咨询锁。没有覆盖值时恢复默认仍是空操作，不检查。
