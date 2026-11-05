@@ -15,6 +15,8 @@
     <properties>
         <maven.deploy.skip>true</maven.deploy.skip>
         <maven.source.skip>true</maven.source.skip>
+        <!-- 测试类按 2 个 JVM 并行，每个 JVM 共享一个容器与 Spring 上下文；本机 Docker 4 核下 3 个反而更慢。可用 -DforkCount 调整。 -->
+        <forkCount>2</forkCount>
     </properties>
 
     <dependencies>

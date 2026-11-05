@@ -10,40 +10,19 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.web.client.RestClient;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.MountableFile;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Operator 维护套餐并分配给租户，分配与套餐内容的变更经 Outbox 广播 TenantPlanChanged（工单 20）。 */
-@Testcontainers
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Sql("/fixtures/plan.sql")
-class PlanTest {
+class PlanTest extends PlatformIntegrationTest {
     static final JsonMapper JSON = JsonMapper.builder().build();
     static final ParameterizedTypeReference<Map<String, Object>> ENVELOPE = new ParameterizedTypeReference<>() {};
-
-    @Container
-    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
-            .withDatabaseName("forge")
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath("../../deploy/postgres/init"), "/docker-entrypoint-initdb.d/");
-
-    @DynamicPropertySource
-    static void properties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        PlatformTokens.register(registry);
-    }
 
     @LocalServerPort
     int port;
