@@ -11,8 +11,8 @@ import com.nimbusds.jwt.SignedJWT;
 import io.saasforge.iam.provisioning.mapper.OutboxAuditMapper;
 import io.saasforge.sdk.audit.AuditEvent;
 import io.saasforge.sdk.core.CurrentTenant;
+import io.saasforge.sdk.core.ReferenceDataKeys;
 import io.saasforge.sdk.mq.EventHandler;
-import io.saasforge.sdk.provisioning.ReferenceDataChanged;
 import io.saasforge.sdk.provisioning.TenantDeleted;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -90,6 +91,9 @@ class ReferenceDataTest {
 
     @Autowired
     TransactionTemplate transaction;
+
+    @Autowired
+    StringRedisTemplate redisTemplate;
 
     @Test
     void everyMemberReadsTheMergedDictionariesWithItemsNoLongerSelectableFlagged() throws Exception {
@@ -343,8 +347,9 @@ class ReferenceDataTest {
     }
 
     @Test
-    void changesPublishReferenceDataChangedForTheTenantAndAreAudited() throws Exception {
-        int before = changed(TENANT_B);
+    void changesAdvanceTheTenantsReferenceDataVersionAndAreAudited() throws Exception {
+        long before = version(TENANT_B);
+        long other = version(TENANT);
         createItem(ADMIN_B, "channel", "phone", "电话");
         call(ADMIN_B, HttpMethod.PUT, itemPath("channel", "custom.phone"), Map.of("name", "电话渠道", "sort", 5));
         call(ADMIN_B, HttpMethod.POST, itemPath("channel", "custom.phone") + "/disable", null);
@@ -352,10 +357,9 @@ class ReferenceDataTest {
         call(ADMIN_B, HttpMethod.PUT, parameterPath("order.max-items"), Map.of("value", 10));
         call(ADMIN_B, HttpMethod.DELETE, parameterPath("order.max-items"), null);
 
-        assertThat(changed(TENANT_B)).isEqualTo(before + 6);
-        assertThat(outbox.payloads(TENANT_B, ReferenceDataChanged.class.getSimpleName()).stream()
-                        .map(payload -> JSON.readValue(payload, ReferenceDataChanged.class)))
-                .allMatch(event -> event.tenantId().equals(TENANT_B));
+        // 业务服务按 Redis 中的版本号判断缓存是否过时，只递增修改所在的租户。
+        assertThat(version(TENANT_B)).isEqualTo(before + 6);
+        assertThat(version(TENANT)).isEqualTo(other);
         List<AuditEvent> audits = outbox.payloadsOf(AuditEvent.class.getSimpleName()).stream()
                 .map(payload -> JSON.readValue(payload, AuditEvent.class))
                 .filter(event -> TENANT_B.equals(event.tenantId()))
@@ -369,9 +373,10 @@ class ReferenceDataTest {
                         "dictionary.itemEnable",
                         "parameter.override",
                         "parameter.reset");
-        // 被拒绝的修改不发事件。
+        // 被拒绝的修改与没有覆盖值时的恢复默认都没有改变数据，不递增版本。
         createItem(ADMIN_B, "channel", "phone", "电话");
-        assertThat(changed(TENANT_B)).isEqualTo(before + 6);
+        call(ADMIN_B, HttpMethod.DELETE, parameterPath("order.max-items"), null);
+        assertThat(version(TENANT_B)).isEqualTo(before + 6);
     }
 
     @Test
@@ -458,9 +463,9 @@ class ReferenceDataTest {
                 .toEntity(Map.class);
     }
 
-    private int changed(UUID tenant) {
-        return outbox.payloads(tenant, ReferenceDataChanged.class.getSimpleName())
-                .size();
+    private long version(UUID tenant) {
+        String value = redisTemplate.opsForValue().get(ReferenceDataKeys.version(tenant));
+        return value == null ? 0 : Long.parseLong(value);
     }
 
     /** 与 SDK 消费端一致：先恢复发布方的租户，再在事务中调用处理器。 */

@@ -10,7 +10,7 @@
 
     <artifactId>forge-sdk-referencedata</artifactId>
     <name>Forge SDK Reference Data</name>
-    <description>读取当前租户生效的 Dictionary 与 Parameter，按租户缓存并随 ReferenceDataChanged 失效</description>
+    <description>读取当前租户生效的 Dictionary 与 Parameter，按租户缓存并按 iam 在 Redis 发布的版本号失效</description>
 
     <dependencies>
         <dependency>
@@ -19,10 +19,14 @@
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
-        <!-- ReferenceDataChanged 事件契约；经它传递得到 forge-sdk-mq 与 RocketMQ 客户端 -->
         <dependency>
             <groupId>io.saasforge</groupId>
-            <artifactId>forge-sdk-provisioning</artifactId>
+            <artifactId>forge-sdk-core</artifactId>
+        </dependency>
+        <!-- 读取 iam 发布的参考数据版本号；连接由服务的 spring-boot-starter-data-redis 提供 -->
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-redis</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -46,6 +50,16 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

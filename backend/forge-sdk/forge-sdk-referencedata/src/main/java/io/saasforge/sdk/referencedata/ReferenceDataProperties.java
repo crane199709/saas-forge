@@ -9,7 +9,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *
  * @param iamUri iam 的内部地址，不经网关
  * @param token 本服务的服务令牌，即 iam {@code forge.iam.manifest.tokens} 中本服务的值（与上报清单的令牌相同）
- * @param cacheTtl 每个租户的缓存最长保留时间：正常情况下 {@code ReferenceDataChanged} 到达即清除，过期只兜底漏收的事件
+ * @param cacheTtl 每个租户的缓存最长保留时间：正常情况下 iam 递增版本号即重新拉取，过期只兜底版本号缺失或 iam 递增失败
  */
 @ConfigurationProperties("forge.reference-data")
 public record ReferenceDataProperties(

@@ -51,7 +51,7 @@ spring:
 
 ## 3. RocketMQ 与租户开通
 
-- [ ] **做什么**：列出服务生产、消费的 Topic，确认共享 Topic `forge-tenant`、`forge-app`、`forge-audit`、`forge-reference-data`，再创建服务专属 Topic（demo 的例子是 `demo-order`）。使用 `forge-sdk-referencedata` 的服务每个实例启动时以 `<服务名>-reference-data-<随机 UUID>` 消费组订阅 `forge-reference-data`（gRPC 客户端不支持广播消费），Broker 须允许自动创建订阅组；实例退出后遗留的同前缀消费组需定期清理。
+- [ ] **做什么**：列出服务生产、消费的 Topic，确认共享 Topic `forge-tenant`、`forge-app`、`forge-audit`，再创建服务专属 Topic（demo 的例子是 `demo-order`）。
 - [ ] **在哪里配**：方式与 [create-topics.sh](../deploy/rocketmq/create-topics.sh) 一致，使用目标集群的 nameserver 和集群名，不依赖自动建 Topic：
 
 ```bash

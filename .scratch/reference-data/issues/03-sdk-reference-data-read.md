@@ -31,3 +31,10 @@
 - 门面 `ReferenceData`：`items` / `selectableItems` / `isSelectable`（字典编码不带前缀即本服务），`string/integer(long)/decimal/duration/boolean/dictionaryParameter`（类型不符或未声明抛 IllegalArgumentException）。iam 不可用时抛 503 `system.unavailable`。缓存项移出 Map 即失效，事件之前开始的拉取不会把旧值写回缓存。
 - `@DictionaryValue` 校验器由 Spring 约束校验器工厂注入 `ReferenceData`，null 视为未填写；字段错误码 `validation.dictionaryValue`，文案加在 SDK `forge-messages.properties`。
 - demo-service：清单 version 5→6，声明字典 `customer-source`（可扩展：online、referral）与参数 `order.auto-close`；订单新增可空列 `customer_source`（V10），创建与修改请求体 `@Valid` + `@DictionaryValue("customer-source")`，响应只返回编码。测试以本地 `HttpServer` 模拟 iam 内部接口（`TestReferenceData`）。
+
+**缓存失效改为 Redis 版本号（2026-11-05，用户批准，分支 feat/refdata-followups）**
+
+- 取代上面「每实例独占消费组」：`ReferenceDataChangedListener`、每实例消费组与 Topic `forge-reference-data` 已删除，运维不再需要清理遗留消费组。
+- 沿用 ADR-0005 的做法：iam 在修改提交后递增 `iam:{tenant_id}:reference-data:version`（`ReferenceDataKeys`，forge-sdk-core，全局键，不走租户前缀模板）；`ReferenceData` 每次读取先经 Spring Boot 的 `StringRedisTemplate` 读这个键（一次 GET），与缓存时记下的值不同即重新拉取。先读版本再拉取，拉取期间又有修改时下次读取会再拉一次。
+- 兜底：键缺失（未修改过或被淘汰）时只靠 `cache-ttl`（默认 10 分钟）；读 Redis 失败时记日志并沿用未过期的缓存；服务没有 `StringRedisTemplate` 时只靠过期。
+- 模块依赖由 forge-sdk-provisioning 改为 forge-sdk-core + spring-data-redis。SDK `ReferenceDataTest` 以真实 Redis 验证 iam 递增版本后（没有任何事件）读到新值、没有版本号时过期后读到新值；iam `ReferenceDataTest` 验证修改递增本租户版本、被拒绝的修改不递增。demo 的双实例 RocketMQ 测试随之删除。字典项新增的 `nameConflict` 字段 SDK 不读取（`TenantDictionaryItem` 忽略未知字段）。

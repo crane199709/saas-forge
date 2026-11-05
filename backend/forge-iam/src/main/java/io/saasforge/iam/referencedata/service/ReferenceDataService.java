@@ -17,15 +17,13 @@ import io.saasforge.sdk.audit.AuditCategory;
 import io.saasforge.sdk.audit.AuditEvent;
 import io.saasforge.sdk.audit.AuditRealm;
 import io.saasforge.sdk.audit.AuditRecorder;
-import io.saasforge.sdk.core.CurrentTenant;
+import io.saasforge.sdk.core.ReferenceDataKeys;
 import io.saasforge.sdk.core.ResourceManifest;
 import io.saasforge.sdk.core.ResourceManifest.Dictionary;
 import io.saasforge.sdk.core.ResourceManifest.DictionaryItem;
 import io.saasforge.sdk.core.ResourceManifest.Parameter;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
-import io.saasforge.sdk.mq.EventPublisher;
-import io.saasforge.sdk.provisioning.ReferenceDataChanged;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -34,18 +32,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 租户的参考数据：服务在 Resource Manifest 中声明的 Dictionary 与 Parameter，合并租户对 Extensible Dictionary 的修改与 Parameter 的覆盖值。
  *
- * <p>默认值只来自清单，租户只在修改或自定义时才有数据，开通租户无需初始化。每次修改都在同一事务中经 Outbox 发布
- * {@link ReferenceDataChanged}，业务服务据此清除该租户的缓存。
+ * <p>默认值只来自清单，租户只在修改或自定义时才有数据，开通租户无需初始化。每次修改在事务提交后递增 Redis 中该租户的版本号
+ * （{@link ReferenceDataKeys#version(UUID)}，做法同 ADR-0005 的 Membership version），业务服务读取前比对版本，不同即重新拉取。
  */
 @Service
 public class ReferenceDataService {
+    private static final Logger log = LoggerFactory.getLogger(ReferenceDataService.class);
     private static final Comparator<TenantDictionaryItem> ITEM_ORDER = Comparator.comparing(
                     (TenantDictionaryItem item) -> TenantDictionaryItem.RETIRED.equals(item.status()))
             .thenComparingInt(TenantDictionaryItem::sort)
@@ -56,7 +60,7 @@ public class ReferenceDataService {
     private final PermissionService permissions;
     private final RoleService roles;
     private final AuditRecorder audits;
-    private final EventPublisher events;
+    private final StringRedisTemplate redis;
     private final TransactionTemplate transactions;
     private final JsonMapper json;
 
@@ -66,7 +70,7 @@ public class ReferenceDataService {
             PermissionService permissions,
             RoleService roles,
             AuditRecorder audits,
-            EventPublisher events,
+            StringRedisTemplate redis,
             TransactionTemplate transactions,
             JsonMapper json) {
         this.items = items;
@@ -74,7 +78,7 @@ public class ReferenceDataService {
         this.permissions = permissions;
         this.roles = roles;
         this.audits = audits;
-        this.events = events;
+        this.redis = redis;
         this.transactions = transactions;
         this.json = json;
     }
@@ -284,7 +288,7 @@ public class ReferenceDataService {
         return view(parameter, value, true);
     }
 
-    /** 恢复默认值；没有覆盖值时不做修改，也不发事件。 */
+    /** 恢复默认值；没有覆盖值时不做修改，也不递增版本。 */
     public void resetParameter(TenantActor actor, String service, String code) {
         requireManager(actor);
         requireEditable(service, code);
@@ -372,10 +376,19 @@ public class ReferenceDataService {
     }
 
     private void changed(TenantActor actor, AuditEvent.Builder audit) {
-        // iam 的请求不绑定租户上下文，事件须显式带上租户，订阅方才能按租户清除缓存。
-        CurrentTenant.run(
-                actor.tenantId(),
-                () -> events.publish(ReferenceDataChanged.TOPIC, new ReferenceDataChanged(actor.tenantId())));
+        // 提交后才递增：提交前递增，业务服务可能在提交前重新拉取到旧数据并记下新版本，之后再也不会刷新。
+        String key = ReferenceDataKeys.version(actor.tenantId());
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    redis.opsForValue().increment(key);
+                } catch (RuntimeException error) {
+                    // 修改已提交，不能因 Redis 失败而报错；业务服务的缓存过期后读到新值。
+                    log.warn("Failed to advance reference data version {}", key, error);
+                }
+            }
+        });
         audits.record(audit.build());
     }
 

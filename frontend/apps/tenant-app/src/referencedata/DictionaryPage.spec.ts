@@ -20,7 +20,14 @@ const dictionaries = [
       { code: 'web', name: '官网', sort: 1, custom: false, status: 'enabled', nameConflict: true },
       { code: 'custom.expo', name: '展会', sort: 2, custom: true, status: 'disabled' },
       { code: 'fax', name: '传真', sort: 3, custom: false, status: 'retired' },
-      { code: 'custom.site', name: '官网', sort: 4, custom: true, status: 'enabled', nameConflict: true },
+      {
+        code: 'custom.site',
+        name: '官网',
+        sort: 4,
+        custom: true,
+        status: 'enabled',
+        nameConflict: true,
+      },
     ],
   },
   {

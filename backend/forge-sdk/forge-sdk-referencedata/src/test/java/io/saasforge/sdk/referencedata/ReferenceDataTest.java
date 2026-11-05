@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sun.net.httpserver.HttpServer;
 import io.saasforge.sdk.core.CurrentTenant;
+import io.saasforge.sdk.core.ReferenceDataKeys;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import jakarta.validation.Validator;
@@ -15,22 +16,39 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.validation.autoconfigure.ValidationAutoConfiguration;
+import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
-/** 业务服务经 SDK 读取当前租户的生效字典与参数：按租户缓存、事件失效、过期兜底与取值校验（参考数据工单 03）。 */
+/** 业务服务经 SDK 读取当前租户的生效字典与参数：按租户缓存、按 Redis 版本号失效、过期兜底与取值校验（参考数据工单 03）。 */
+@Testcontainers
 class ReferenceDataTest {
     static final UUID TENANT = UUID.fromString("019a0110-0000-7000-8000-000000000001");
     static final UUID OTHER = UUID.fromString("019a0110-0000-7000-8000-0000000000bb");
     static final String TOKEN = "demo-token";
+
+    /** 与 iam 共用的 Redis。 */
+    @Container
+    static final GenericContainer<?> redisServer = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+
+    static LettuceConnectionFactory factory;
+    static StringRedisTemplate redis;
 
     final Map<UUID, String> responses = new ConcurrentHashMap<>();
     final Map<UUID, AtomicInteger> requests = new ConcurrentHashMap<>();
@@ -60,6 +78,20 @@ class ReferenceDataTest {
     @AfterEach
     void stopIam() {
         iam.stop(0);
+        redis.delete(List.of(ReferenceDataKeys.version(TENANT), ReferenceDataKeys.version(OTHER)));
+    }
+
+    @BeforeAll
+    static void connectRedis() {
+        factory = new LettuceConnectionFactory(
+                new RedisStandaloneConfiguration(redisServer.getHost(), redisServer.getMappedPort(6379)));
+        factory.afterPropertiesSet();
+        redis = new StringRedisTemplate(factory);
+    }
+
+    @AfterAll
+    static void disconnectRedis() {
+        factory.destroy();
     }
 
     @Test
@@ -102,8 +134,9 @@ class ReferenceDataTest {
     }
 
     @Test
-    void afterReferenceDataChangedTheTenantReadsTheNewValues() {
+    void onceIamAdvancesTheTenantsVersionTheNewValuesAreRead() {
         responses.put(TENANT, data("enabled", 50));
+        redis.opsForValue().set(ReferenceDataKeys.version(TENANT), "3");
         runner().run(context -> {
             ReferenceData referenceData = context.getBean(ReferenceData.class);
             CurrentTenant.run(
@@ -113,7 +146,7 @@ class ReferenceDataTest {
             CurrentTenant.run(OTHER, () -> referenceData.integerParameter("order.max-items"));
             responses.put(TENANT, data("disabled", 80));
 
-            // 缓存期内不再请求 iam。
+            // 版本未变时缓存期内不再请求 iam。
             CurrentTenant.run(TENANT, () -> {
                 assertThat(referenceData.integerParameter("order.max-items")).isEqualTo(50L);
                 assertThat(referenceData.isSelectable("customer-source", "referral"))
@@ -121,7 +154,8 @@ class ReferenceDataTest {
             });
             assertThat(requests.get(TENANT)).hasValue(1);
 
-            referenceData.evict(TENANT);
+            // iam 提交修改后递增版本号，不发任何事件；缓存远未过期。
+            redis.opsForValue().increment(ReferenceDataKeys.version(TENANT));
 
             CurrentTenant.run(TENANT, () -> {
                 assertThat(referenceData.integerParameter("order.max-items")).isEqualTo(80L);
@@ -129,14 +163,15 @@ class ReferenceDataTest {
                         .isFalse();
             });
             assertThat(requests.get(TENANT)).hasValue(2);
-            // 只清除事件所指租户的缓存。
+            // 其他租户的版本未变，仍用缓存。
             CurrentTenant.run(OTHER, () -> referenceData.integerParameter("order.max-items"));
             assertThat(requests.get(OTHER)).hasValue(1);
         });
     }
 
     @Test
-    void withoutTheEventNewValuesAreReadOnceTheCacheExpires() {
+    void withoutAVersionInRedisNewValuesAreReadOnceTheCacheExpires() {
+        // 租户从未修改过，或 iam 提交后递增失败：Redis 中没有版本号，只能依靠过期。
         responses.put(TENANT, data("enabled", 50));
         runner().withPropertyValues("forge.reference-data.cache-ttl=10m")
                 .run(context -> CurrentTenant.run(TENANT, () -> {
@@ -205,6 +240,7 @@ class ReferenceDataTest {
                 .withConfiguration(
                         AutoConfigurations.of(ReferenceDataAutoConfiguration.class, ValidationAutoConfiguration.class))
                 .withBean(Clock.class, () -> clock)
+                .withBean(StringRedisTemplate.class, () -> redis)
                 .withPropertyValues(
                         "spring.application.name=demo-service",
                         "forge.reference-data.iam-uri=http://127.0.0.1:"
