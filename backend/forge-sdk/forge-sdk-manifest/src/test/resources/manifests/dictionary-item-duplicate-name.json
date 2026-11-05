@@ -1,0 +1,18 @@
+{
+  "dictionaries": [
+    {
+      "code": "customer-source",
+      "name": "客户来源",
+      "items": [
+        {
+          "code": "online",
+          "name": "线上"
+        },
+        {
+          "code": "web",
+          "name": "线上"
+        }
+      ]
+    }
+  ]
+}

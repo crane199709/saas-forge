@@ -1,0 +1,91 @@
+<script setup lang="ts">
+import { computed, inject, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { tenantClientKey } from '@crane199709/sdk'
+import { ErrorAlert } from '@crane199709/ui'
+import { errorTip, type ErrorTip } from '../error-tip'
+import DictionaryPanel from './DictionaryPanel.vue'
+import { createReferenceDataApi, type Dictionary } from './reference-data-api'
+
+const { t } = useI18n()
+const client = inject(tenantClientKey)
+if (!client) throw new Error('Shell must provide a TenantClient')
+const api = createReferenceDataApi(client)
+const dictionaries = ref<Dictionary[]>([])
+const selectedKey = ref('')
+const loaded = ref(false)
+const error = ref<ErrorTip | null>(null)
+
+const keyOf = (dictionary: Dictionary) => `${dictionary.service}/${dictionary.code}`
+
+const services = computed(() => {
+  const groups = new Map<string, Dictionary[]>()
+  for (const dictionary of dictionaries.value) {
+    groups.set(dictionary.service, [...(groups.get(dictionary.service) ?? []), dictionary])
+  }
+  return [...groups].map(([service, list]) => ({ service, dictionaries: list }))
+})
+
+const selected = computed(() =>
+  dictionaries.value.find((dictionary) => keyOf(dictionary) === selectedKey.value),
+)
+
+// 每次修改后整体重读：排序、状态与名称校验都以服务端合并结果为准。
+async function load() {
+  error.value = null
+  try {
+    dictionaries.value = await api.dictionaries()
+    if (!selected.value)
+      selectedKey.value = dictionaries.value[0] ? keyOf(dictionaries.value[0]) : ''
+    loaded.value = true
+  } catch (cause) {
+    error.value = errorTip(cause, t)
+  }
+}
+
+onMounted(load)
+</script>
+
+<template>
+  <section class="dictionaries">
+    <h2>{{ t('referenceData.dictionary.title') }}</h2>
+    <ErrorAlert v-if="error" :tip="error" />
+    <p v-if="loaded && !dictionaries.length">{{ t('referenceData.dictionary.empty') }}</p>
+    <div v-if="loaded && dictionaries.length" class="layout">
+      <nav>
+        <div
+          v-for="group in services"
+          :key="group.service"
+          :data-testid="`service-${group.service}`"
+        >
+          <h3>{{ group.service }}</h3>
+          <el-button
+            v-for="dictionary in group.dictionaries"
+            :key="dictionary.code"
+            link
+            :type="keyOf(dictionary) === selectedKey ? 'primary' : 'default'"
+            :data-testid="`dictionary-${keyOf(dictionary)}`"
+            @click="selectedKey = keyOf(dictionary)"
+          >
+            {{ dictionary.name }}
+          </el-button>
+        </div>
+      </nav>
+      <DictionaryPanel v-if="selected" :api="api" :dictionary="selected" @changed="load" />
+    </div>
+  </section>
+</template>
+
+<style scoped>
+.layout {
+  display: flex;
+  gap: 24px;
+}
+nav {
+  min-width: 180px;
+}
+nav .el-button {
+  display: block;
+  margin: 4px 0;
+}
+</style>

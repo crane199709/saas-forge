@@ -76,5 +76,33 @@
         }
       ]
     }
+  ],
+  "dictionaries": [
+    {
+      "code": "customer-source",
+      "name": "客户来源",
+      "extensible": true,
+      "items": [
+        {
+          "code": "online",
+          "name": "线上"
+        },
+        {
+          "code": "referral",
+          "name": "转介绍"
+        }
+      ]
+    }
+  ],
+  "parameters": [
+    {
+      "code": "order.auto-close",
+      "name": "未支付订单自动关闭时长",
+      "type": "duration",
+      "default": "PT30M",
+      "min": "PT5M",
+      "max": "P3D",
+      "tenantEditable": true
+    }
   ]
 }

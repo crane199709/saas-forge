@@ -4,6 +4,8 @@ import io.saasforge.iam.permission.mapper.PermissionMapper;
 import io.saasforge.iam.permission.mapper.ResourceManifestMapper;
 import io.saasforge.iam.permission.model.PermissionRow;
 import io.saasforge.iam.permission.model.ServiceDataResource;
+import io.saasforge.iam.permission.model.ServiceDictionary;
+import io.saasforge.iam.permission.model.ServiceParameter;
 import io.saasforge.sdk.core.ResourceManifest;
 import io.saasforge.sdk.core.ResourceManifest.DataResource;
 import io.saasforge.sdk.core.ResourceManifest.MenuNode;
@@ -144,6 +146,37 @@ public class PermissionService {
     /** Platform Realm 各服务当前版本声明的 Data Resource，排序与下线规则同 {@link #currentDataResources()}。 */
     public List<ServiceDataResource> currentPlatformDataResources() {
         return dataResourcesOf(currentManifests(true));
+    }
+
+    /** Tenant Realm 各服务当前版本声明的 Dictionary，按服务名、声明顺序排列。 */
+    public List<ServiceDictionary> currentDictionaries() {
+        return dictionariesOf(currentManifests(false));
+    }
+
+    /**
+     * Tenant Realm 各服务非当前版本中声明的 Dictionary，按版本存储时间从新到旧排列，同一字典可能出现多次。
+     * 供参考数据找出被新版本删除的字典项：业务数据仍保存这些编码，需要它们最后一次声明的名称。
+     */
+    public List<ServiceDictionary> previousDictionaries() {
+        return dictionariesOf(manifests.previousContents().stream()
+                .map(content -> json.readValue(content, ResourceManifest.class))
+                .filter(manifest -> !manifest.platform())
+                .toList());
+    }
+
+    /** Tenant Realm 各服务当前版本声明的 Parameter，按服务名、声明顺序排列；新版本删除的参数不再出现。 */
+    public List<ServiceParameter> currentParameters() {
+        return currentManifests(false).stream()
+                .flatMap(manifest -> manifest.parameters().stream()
+                        .map(parameter -> new ServiceParameter(manifest.service(), parameter)))
+                .toList();
+    }
+
+    private static List<ServiceDictionary> dictionariesOf(List<ResourceManifest> manifests) {
+        return manifests.stream()
+                .flatMap(manifest -> manifest.dictionaries().stream()
+                        .map(dictionary -> new ServiceDictionary(manifest.service(), dictionary)))
+                .toList();
     }
 
     private static List<ServiceDataResource> dataResourcesOf(List<ResourceManifest> manifests) {

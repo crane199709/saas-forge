@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.saasforge</groupId>
+        <artifactId>forge-sdk</artifactId>
+        <version>0.1.0</version>
+    </parent>
+
+    <artifactId>forge-sdk-numbering</artifactId>
+    <name>Forge SDK Numbering</name>
+    <description>按本地声明的 Numbering Rule 在业务事务内生成 Business Number</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-architecture</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- 计数行经租户拦截与 RLS 隔离，租户删除时经 TenantDataCleaner 逻辑删除 -->
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-provisioning</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

@@ -111,6 +111,7 @@ class OutboxMessagingTest {
         registry.add("forge.mq.initial-backoff", () -> "200ms");
         registry.add("forge.mq.max-backoff", () -> "1s");
         TestTokens.register(registry);
+        TestReferenceData.register(registry);
     }
 
     @Autowired
@@ -147,7 +148,8 @@ class OutboxMessagingTest {
         CurrentTenant.run(
                 TENANT_A,
                 () -> transactionTemplate.executeWithoutResult(status -> {
-                    rolledBack.set(orderService.create("回滚的订单", BigDecimal.TEN).getId());
+                    rolledBack.set(
+                            orderService.create("回滚的订单", BigDecimal.TEN, null).getId());
                     status.setRollbackOnly();
                 }));
         UUID committed = createOrder(TENANT_A, "提交的订单");
@@ -216,7 +218,7 @@ class OutboxMessagingTest {
 
     private UUID createOrder(UUID tenantId, String title) {
         var created = new AtomicReference<Order>();
-        CurrentTenant.run(tenantId, () -> created.set(orderService.create(title, BigDecimal.ONE)));
+        CurrentTenant.run(tenantId, () -> created.set(orderService.create(title, BigDecimal.ONE, null)));
         return created.get().getId();
     }
 

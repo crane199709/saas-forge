@@ -1,0 +1,11 @@
+{
+  "parameters": [
+    {
+      "code": "order.p",
+      "name": "参数",
+      "type": "duration",
+      "default": "P5D",
+      "max": "P3D"
+    }
+  ]
+}

@@ -64,6 +64,10 @@ mvn verify
 
 需要附件时在 POM 添加同版本 `io.saasforge:forge-sdk-storage`，由平台提供 `forge.storage.endpoint`、`bucket`、`access-key`、`secret-key`；endpoint 必须供浏览器访问。参考 demo-service 的 attachment 功能及 V8 迁移，不应只添加依赖却遗漏配置和存储表。
 
+需要 Business Number 时添加 `io.saasforge:forge-sdk-numbering`，把 SDK 中 `io/saasforge/sdk/numbering/schema.sql` 复制到 Flyway 迁移，在保存业务数据的事务中调用 `BusinessNumbers.next(rule)`。日期段按 Nacos 共享配置中的 `forge.business-zone` 计算，漏配时启动失败。参考 demo-service 的订单编号及 V9 迁移。
+
+需要字典或参数时在 Resource Manifest 中声明 `dictionaries`/`parameters`（内容变化须升 `forge.manifest.version`），添加 `io.saasforge:forge-sdk-referencedata` 与 `spring-boot-starter-validation`，配置 `forge.reference-data.iam-uri` 与 `token`（同清单上报令牌，无默认值，漏配启动失败）。经 `ReferenceData` 读取当前租户的字典与按类型的参数，在请求体字段上用 `@DictionaryValue("<字典编码>")` 并在控制器参数加 `@Valid` 校验取值；引用其他服务的字典写作 `服务:编码`。结果按租户缓存，每次读取先比对 iam 在 Redis 发布的租户参考数据版本号（`ReferenceDataKeys`，同 ADR-0005 的做法），版本变化即重新拉取，另有 `forge.reference-data.cache-ttl`（默认 10 分钟）兜底。参考 demo-service 订单的客户来源及 V10 迁移。
+
 镜像统一采用 Spring Boot build-image：生成工程中运行 `mvn spring-boot:build-image -DskipTests`，默认镜像标签为 artifactId:version；用 `-Dspring-boot.build-image.imageName=命名空间/服务:版本` 覆盖。需要 Docker，首次下载 buildpack builder/run image。生成配置只引用必填环境变量，不内置地址或密钥；运行时注入上表变量。平台与 Shell 镜像参见 [镜像说明](../deploy/images/README.md)。
 
 ## 常见失败

@@ -22,6 +22,18 @@ const menu = computed<MenuItem[]>(() => [
     { key: 'org', path: '/org', title: t('org.nav'), permission: 'iam:org:manage' },
     { key: 'roles', path: '/roles', title: t('role.nav'), permission: 'iam:role:manage' },
     { key: 'audit', path: '/audit', title: t('audit.nav'), permission: 'iam:audit:read' },
+    {
+      key: 'dictionaries',
+      path: '/dictionaries',
+      title: t('referenceData.dictionary.nav'),
+      permission: 'iam:reference-data:manage',
+    },
+    {
+      key: 'parameters',
+      path: '/parameters',
+      title: t('referenceData.parameter.nav'),
+      permission: 'iam:reference-data:manage',
+    },
   ].filter((page) => access.has(page.permission)),
   // 导航只列出已注册的 Sub-App：菜单可见、套餐允许且在当前环境登记了入口地址
   ...menuSections(access.menus(), host?.codes() ?? new Set()).map((section) => ({

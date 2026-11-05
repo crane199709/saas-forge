@@ -2,9 +2,16 @@ package io.saasforge.sdk.core;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.time.Duration;
+import java.time.format.DateTimeParseException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -21,6 +28,8 @@ import java.util.regex.Pattern;
  * @param dataResources 本服务受数据权限保护的 Data Resource，可为 null（视为没有）
  * @param realm 服务所属的 Realm：{@value #PLATFORM_REALM} 表示 Platform Realm 服务（如 forge-platform），其权限码与数据资源
  *     只能授予平台角色；Tenant Realm 服务为 null（{@value #TENANT_REALM} 也规范化为 null）
+ * @param dictionaries 本服务声明的 Dictionary，可为 null（视为没有）
+ * @param parameters 本服务声明的 Parameter，可为 null（视为没有）
  */
 public record ResourceManifest(
         String service,
@@ -32,12 +41,21 @@ public record ResourceManifest(
         // 同 roles：没有数据资源时不输出，已存储的旧清单与之按内容比较仍然相同。
         @JsonInclude(JsonInclude.Include.NON_EMPTY) List<DataResource> dataResources,
         // 同 roles：Tenant Realm 服务不输出该字段，加入本字段前存储的清单按内容比较仍然相同。
-        @JsonInclude(JsonInclude.Include.NON_NULL) String realm) {
+        @JsonInclude(JsonInclude.Include.NON_NULL) String realm,
+        // 同 roles：没有字典或参数的服务不输出这两节，已存储的旧清单按内容比较仍然相同，无需升版本。
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<Dictionary> dictionaries,
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<Parameter> parameters) {
     /** Tenant Realm 服务的 Realm 名，与 {@code forge.security.realm} 的取值一致。 */
     public static final String TENANT_REALM = "tenant";
 
     /** Platform Realm 服务的 Realm 名，与 {@code forge.security.realm} 的取值一致。 */
     public static final String PLATFORM_REALM = "platform";
+
+    /** Tenant 自定义字典项编码的前缀，服务声明的内置项不能使用。 */
+    public static final String CUSTOM_ITEM_PREFIX = "custom.";
+
+    // 服务名与字典、参数编码都不含冒号，拼接后能无歧义地拆开。
+    private static final String QUALIFIER = ":";
 
     // 长度上限与 iam 表的列宽一致。
     private static final Pattern CODE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9:._-]{0,127}");
@@ -49,6 +67,12 @@ public record ResourceManifest(
     private static final Pattern IDENTIFIER = Pattern.compile("[A-Za-z_][A-Za-z0-9_]{0,62}");
     // 与 forge-sdk-abac 的 AttributeType 一一对应；core 不依赖 abac，这里按名称约定。
     private static final Set<String> DATA_TYPES = Set.of("string", "number", "boolean", "uuid", "ltree");
+    // 字典与参数编码不含冒号：跨服务引用写作「服务:编码」，编码中不能再出现分隔符。
+    private static final Pattern REFERENCE_CODE = Pattern.compile("[a-z][a-z0-9._-]{0,63}");
+    // 租户自定义项编码为 custom. 加租户填写的部分，总长同样受 64 的列宽约束。
+    private static final Pattern ITEM_CODE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,63}");
+    private static final Set<String> PARAMETER_TYPES =
+            Set.of("string", "integer", "decimal", "duration", "boolean", "dictionary");
     private static final int MAX_KEY = 64;
     private static final int MAX_NAME = 120;
 
@@ -59,6 +83,30 @@ public record ResourceManifest(
         roles = roles == null ? List.of() : List.copyOf(roles);
         dataResources = dataResources == null ? List.of() : List.copyOf(dataResources);
         realm = TENANT_REALM.equals(realm) ? null : realm;
+        dictionaries = dictionaries == null ? List.of() : List.copyOf(dictionaries);
+        parameters = parameters == null ? List.of() : List.copyOf(parameters);
+    }
+
+    /**
+     * 没有 Dictionary 与 Parameter 的清单。
+     *
+     * @param service 服务名
+     * @param version 清单版本
+     * @param permissions 全部 Permission Code
+     * @param menus 菜单树
+     * @param roles 角色模板
+     * @param dataResources 数据资源
+     * @param realm 服务所属的 Realm
+     */
+    public ResourceManifest(
+            String service,
+            String version,
+            List<Permission> permissions,
+            List<MenuNode> menus,
+            List<RoleTemplate> roles,
+            List<DataResource> dataResources,
+            String realm) {
+        this(service, version, permissions, menus, roles, dataResources, realm, List.of(), List.of());
     }
 
     /**
@@ -122,13 +170,38 @@ public record ResourceManifest(
     }
 
     /**
+     * 服务限定的 Dictionary 或 Parameter 编码 {@code 服务:编码}，在全部服务的字典与参数中唯一，跨服务引用字典即写作此形式。
+     *
+     * @param service 声明它的服务名
+     * @param code 服务内的 Dictionary 或 Parameter 编码
+     * @return {@code 服务:编码}
+     */
+    public static String qualifiedCode(String service, String code) {
+        return service + QUALIFIER + code;
+    }
+
+    /**
+     * 把业务代码中的字典引用解析为服务限定编码：已写作 {@code 服务:编码} 的原样返回，不带服务前缀的是 {@code service} 自己的字典。
+     *
+     * @param service 引用方的服务名
+     * @param dictionary 字典编码，可写作 {@code 服务:编码}
+     * @return 服务限定编码，同 {@link #qualifiedCode(String, String)}
+     */
+    public static String qualifiedDictionary(String service, String dictionary) {
+        return dictionary.contains(QUALIFIER) ? dictionary : qualifiedCode(service, dictionary);
+    }
+
+    /**
      * 检查清单是否完整、自洽。SDK 生成清单时与 iam 接收上报时执行同一套规则，CI 或其他客户端直接上报也不例外。
      *
      * <p>规则：服务名与版本非空；权限码格式合法且不重复，名称非空；菜单编码不重复；菜单引用的权限码必须在本清单中声明；
      * 叶子节点必须同时有 {@code app} 与 {@code path}，分组节点不能带路由，Shell 才能据此生成导航与路由；
      * 角色模板编码为小写字母、数字与连字符且不重复、不占用预置角色编码，名称非空，引用的权限码必须在本清单中声明；
      * Data Resource 的规则见 {@link #validateDataResources(List)}；Realm 只能是 Tenant 或 Platform，Platform Realm 服务不声明角色模板
-     * （模板只用于开通租户）。
+     * （模板只用于开通租户）；Dictionary 编码为小写字母开头的小写字母、数字、{@code _ . -} 且不重复，名称非空，内置项编码合法、
+     * 不以 {@value #CUSTOM_ITEM_PREFIX} 开头，编码与名称在字典内都不重复；Parameter 编码规则同 Dictionary 且不重复，名称非空，
+     * 类型合法，约束只用于适用的类型且 {@code min} 不大于 {@code max}，默认值存在且满足类型与约束，{@code dictionary} 类型引用
+     * 本清单声明的字典且默认值是其内置项。
      *
      * @throws IllegalArgumentException 违反任一规则，消息说明具体位置
      */
@@ -155,6 +228,121 @@ public record ResourceManifest(
         validateMenus(menus, codes, new HashSet<>());
         validateRoles(codes);
         validateDataResources(dataResources);
+        Map<String, Dictionary> declared = validateDictionaries();
+        validateParameters(declared);
+    }
+
+    private Map<String, Dictionary> validateDictionaries() {
+        Map<String, Dictionary> declared = new HashMap<>();
+        for (Dictionary dictionary : dictionaries) {
+            if (dictionary.code() == null
+                    || !REFERENCE_CODE.matcher(dictionary.code()).matches()) {
+                throw new IllegalArgumentException("Invalid Dictionary code: " + dictionary.code());
+            }
+            if (declared.putIfAbsent(dictionary.code(), dictionary) != null) {
+                throw new IllegalArgumentException("Duplicate Dictionary code: " + dictionary.code());
+            }
+            requireText(dictionary.name(), MAX_NAME, "name of Dictionary " + dictionary.code());
+            Set<String> itemCodes = new HashSet<>();
+            // 导入按名称匹配字典项，同一字典内名称重复就无法确定对应哪一项。
+            Set<String> itemNames = new HashSet<>();
+            for (DictionaryItem item : dictionary.items()) {
+                if (item.code() == null
+                        || !ITEM_CODE.matcher(item.code()).matches()
+                        || item.code().startsWith(CUSTOM_ITEM_PREFIX)) {
+                    throw new IllegalArgumentException("Invalid item code in Dictionary " + dictionary.code() + ": "
+                            + item.code() + " (built-in items cannot start with " + CUSTOM_ITEM_PREFIX + ")");
+                }
+                if (!itemCodes.add(item.code())) {
+                    throw new IllegalArgumentException(
+                            "Duplicate item code in Dictionary " + dictionary.code() + ": " + item.code());
+                }
+                requireText(item.name(), MAX_NAME, "name of item " + dictionary.code() + "." + item.code());
+                if (!itemNames.add(item.name())) {
+                    throw new IllegalArgumentException(
+                            "Duplicate item name in Dictionary " + dictionary.code() + ": " + item.name());
+                }
+            }
+        }
+        return declared;
+    }
+
+    private void validateParameters(Map<String, Dictionary> declared) {
+        Set<String> parameterCodes = new HashSet<>();
+        for (Parameter parameter : parameters) {
+            String where = "Parameter " + parameter.code();
+            if (parameter.code() == null
+                    || !REFERENCE_CODE.matcher(parameter.code()).matches()) {
+                throw new IllegalArgumentException("Invalid Parameter code: " + parameter.code());
+            }
+            if (!parameterCodes.add(parameter.code())) {
+                throw new IllegalArgumentException("Duplicate Parameter code: " + parameter.code());
+            }
+            requireText(parameter.name(), MAX_NAME, "name of " + where);
+            if (!PARAMETER_TYPES.contains(parameter.type())) {
+                throw new IllegalArgumentException("Unknown type of " + where + ": " + parameter.type());
+            }
+            if (parameter.defaultValue() == null) throw new IllegalArgumentException(where + " has no default");
+            String type = parameter.type();
+            boolean ranged = type.equals("integer") || type.equals("decimal") || type.equals("duration");
+            // 不适用的约束不能静默忽略，否则声明者以为有限制而实际没有。
+            if (!ranged && (parameter.min() != null || parameter.max() != null)) {
+                throw new IllegalArgumentException(
+                        where + ": min/max are only for the integer, decimal and duration types");
+            }
+            if (!type.equals("string") && parameter.maxLength() != null) {
+                throw new IllegalArgumentException(where + ": maxLength is only for the string type");
+            }
+            if (!type.equals("dictionary") && parameter.dictionary() != null) {
+                throw new IllegalArgumentException(where + ": dictionary is only for the dictionary type");
+            }
+            if (parameter.maxLength() != null && parameter.maxLength() <= 0) {
+                throw new IllegalArgumentException(where + " has invalid maxLength");
+            }
+            if (ranged) {
+                Comparable<Object> min =
+                        parameter.min() == null ? null : comparable(type, parameter.min(), "Min of " + where);
+                Comparable<Object> max =
+                        parameter.max() == null ? null : comparable(type, parameter.max(), "Max of " + where);
+                if (min != null && max != null && min.compareTo(max) > 0) {
+                    throw new IllegalArgumentException(where + " has min greater than max");
+                }
+            }
+            String defaultOf = "Default of " + where;
+            parameter.check(parameter.defaultValue(), defaultOf);
+            if (type.equals("dictionary")) {
+                Dictionary dictionary = declared.get(parameter.dictionary());
+                if (dictionary == null) {
+                    throw new IllegalArgumentException(
+                            where + " refers to undeclared Dictionary: " + parameter.dictionary());
+                }
+                if (dictionary.items().stream().noneMatch(item -> item.code().equals(parameter.defaultValue()))) {
+                    throw new IllegalArgumentException(defaultOf + " is not an item of Dictionary " + dictionary.code()
+                            + ": " + parameter.defaultValue());
+                }
+            }
+        }
+    }
+
+    // integer、decimal 统一按 BigDecimal 比较，duration 按 Duration 比较；JSON 反序列化给出的数字类型因解析器而异。
+    @SuppressWarnings("unchecked")
+    private static Comparable<Object> comparable(String type, Object raw, String what) {
+        Comparable<?> value = switch (type) {
+            case "integer" ->
+                raw instanceof Integer || raw instanceof Long || raw instanceof Short || raw instanceof BigInteger
+                        ? new BigDecimal(raw.toString())
+                        : null;
+            case "decimal" -> raw instanceof Number ? new BigDecimal(raw.toString()) : null;
+            default -> {
+                try {
+                    yield raw instanceof String text ? Duration.parse(text) : null;
+                } catch (DateTimeParseException error) {
+                    yield null;
+                }
+            }
+        };
+        if (value == null) throw new IllegalArgumentException(what + " is not a valid " + type + ": " + raw);
+        return (Comparable<Object>) value;
     }
 
     /**
@@ -318,6 +506,102 @@ public record ResourceManifest(
      * @param column 对应的表列
      */
     public record DataAttribute(String code, String name, String type, String column) {}
+
+    /**
+     * Dictionary：一组由编码与名称组成的可选值，只有一层。业务数据保存字典项的编码。
+     *
+     * @param code 字典编码，本服务内唯一；iam 以「服务 + 编码」区分不同服务的同名字典
+     * @param name 展示名称
+     * @param extensible 是否为 Extensible Dictionary：Tenant 可新增自定义项、停用内置项、调整排序与显示名；否则对 Tenant 只读
+     * @param items 服务声明的内置项，按展示顺序排列
+     */
+    public record Dictionary(String code, String name, Boolean extensible, List<DictionaryItem> items) {
+        /** 未声明 {@code extensible} 视为固定字典，内置项缺省为空列表。 */
+        public Dictionary {
+            extensible = Boolean.TRUE.equals(extensible);
+            items = items == null ? List.of() : List.copyOf(items);
+        }
+    }
+
+    /**
+     * 服务声明的内置字典项。
+     *
+     * @param code 字典项编码，字典内唯一，不能以 {@value ResourceManifest#CUSTOM_ITEM_PREFIX} 开头（该前缀留给租户自定义项）
+     * @param name 展示名称，字典内不重复
+     */
+    public record DictionaryItem(String code, String name) {}
+
+    /**
+     * Parameter：有类型、有默认值的设置项。
+     *
+     * <p>取值在 JSON 中的写法随类型而定：{@code string duration dictionary} 为字符串（{@code duration} 为 ISO-8601，如
+     * {@code PT30M}），{@code integer decimal} 为数字，{@code boolean} 为布尔值。{@code min}/{@code max} 只用于
+     * {@code integer decimal duration}，{@code maxLength} 只用于 {@code string}，{@code dictionary} 只用于 {@code dictionary}。
+     *
+     * @param code 参数编码，本服务内唯一
+     * @param name 展示名称
+     * @param type 类型：{@code string integer decimal duration boolean dictionary}
+     * @param dictionary {@code dictionary} 类型取值所属的字典编码，须在同一清单中声明；其他类型为 null
+     * @param defaultValue 默认值，必须满足类型与约束；JSON 字段名为 {@code default}
+     * @param min 最小值（含），可为 null
+     * @param max 最大值（含），可为 null
+     * @param maxLength {@code string} 类型的最大长度，可为 null
+     * @param tenantEditable Tenant 是否可覆盖默认值
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record Parameter(
+            String code,
+            String name,
+            String type,
+            String dictionary,
+            @JsonProperty("default") Object defaultValue,
+            Object min,
+            Object max,
+            Integer maxLength,
+            Boolean tenantEditable) {
+        /** 未声明 {@code tenantEditable} 视为不可修改。 */
+        public Parameter {
+            tenantEditable = Boolean.TRUE.equals(tenantEditable);
+        }
+
+        /**
+         * 检查取值是否满足本参数声明的类型与约束，iam 据此校验 Tenant 的覆盖值，规则与默认值相同。{@code dictionary} 类型只检查取值为字符串，
+         * 是否为可选项由调用方按租户合并后的字典判断（覆盖值可以是自定义项，不限于内置项）。
+         *
+         * @param value 待检查的取值，JSON 写法同默认值
+         * @throws IllegalArgumentException 类型不符或超出约束；声明本身不合法时结果未定义，先执行 {@link ResourceManifest#validate()}
+         */
+        public void requireValue(Object value) {
+            check(value, "Value of Parameter " + code);
+        }
+
+        private void check(Object value, String what) {
+            switch (type) {
+                case "string", "dictionary" -> {
+                    if (!(value instanceof String text)) {
+                        throw new IllegalArgumentException(what + " is not a valid string: " + value);
+                    }
+                    if (maxLength != null && text.length() > maxLength) {
+                        throw new IllegalArgumentException(what + " is longer than maxLength");
+                    }
+                }
+                case "boolean" -> {
+                    if (!(value instanceof Boolean)) {
+                        throw new IllegalArgumentException(what + " is not a valid boolean: " + value);
+                    }
+                }
+                default -> {
+                    Comparable<Object> comparable = comparable(type, value, what);
+                    if (min != null && comparable.compareTo(comparable(type, min, what)) < 0) {
+                        throw new IllegalArgumentException(what + " is less than min");
+                    }
+                    if (max != null && comparable.compareTo(comparable(type, max, what)) > 0) {
+                        throw new IllegalArgumentException(what + " is greater than max");
+                    }
+                }
+            }
+        }
+    }
 
     /**
      * 菜单节点。叶子节点指向某个 Sub-App 的路由，分组节点只有子节点。
