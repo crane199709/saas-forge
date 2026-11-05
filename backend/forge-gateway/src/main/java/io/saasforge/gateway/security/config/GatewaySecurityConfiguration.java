@@ -106,6 +106,10 @@ class GatewaySecurityConfiguration {
                                     "/iam/auth/login/mfa",
                                     "/iam/auth/register/send-code",
                                     "/iam/auth/register",
+                                    // 忘记密码：重设凭证与 MFA 由 iam 校验
+                                    "/iam/auth/password/forgot/send-code",
+                                    "/iam/auth/password/forgot/verify",
+                                    "/iam/auth/password/forgot/reset",
                                     "/iam/auth/invitations/preview",
                                     "/iam/auth/invitations/accept",
                                     // 绑定 Authenticator 也接受 iam 登录会话（尚未取得 Token 时当场绑定），由 iam 校验会话或 Token

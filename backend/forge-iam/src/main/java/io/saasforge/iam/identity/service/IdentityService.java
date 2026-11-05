@@ -3,6 +3,7 @@ package io.saasforge.iam.identity.service;
 import io.saasforge.iam.identity.mapper.IdentityMapper;
 import io.saasforge.iam.identity.model.ActiveMembership;
 import io.saasforge.iam.identity.model.ContactIdentity;
+import io.saasforge.iam.identity.model.IdentityPassword;
 import io.saasforge.iam.identity.model.IdentityStatus;
 import io.saasforge.iam.identity.model.LoginCredential;
 import io.saasforge.iam.verification.service.VerificationCodeService;
@@ -77,6 +78,16 @@ public class IdentityService {
     /** 为待激活身份设置凭证并激活；身份已激活时返回 false。账号重复时抛出 Spring 的 {@code DuplicateKeyException}。 */
     public boolean activatePending(UUID identityId, String account, String displayName, String passwordHash) {
         return identities.activatePending(identityId, account, displayName, passwordHash) > 0;
+    }
+
+    /** 未删除的 active 身份的登录标识与密码哈希；不存在时为空。 */
+    public Optional<IdentityPassword> findActivePassword(UUID identityId) {
+        return Optional.ofNullable(identities.findActivePassword(identityId));
+    }
+
+    /** 替换密码哈希，操作人为身份本人；身份已删除或不再 active 时返回 false。 */
+    public boolean changePassword(UUID identityId, String passwordHash) {
+        return identities.changePassword(identityId, passwordHash) > 0;
     }
 
     public ActiveMembership findForRefresh(UUID identityId, UUID membershipId, UUID tenantId) {

@@ -1,6 +1,7 @@
 package io.saasforge.iam.registration.service;
 
 import io.saasforge.iam.identity.service.IdentityService;
+import io.saasforge.iam.password.service.PasswordPolicy;
 import io.saasforge.iam.verification.model.CodeDelivery;
 import io.saasforge.iam.verification.service.VerificationCodeService;
 import io.saasforge.iam.verification.service.VerificationPurpose;
@@ -16,11 +17,17 @@ public class RegistrationService {
     private final IdentityService identities;
     private final VerificationCodeService verifications;
     private final PasswordEncoder passwords;
+    private final PasswordPolicy policy;
 
-    RegistrationService(IdentityService identities, VerificationCodeService verifications, PasswordEncoder passwords) {
+    RegistrationService(
+            IdentityService identities,
+            VerificationCodeService verifications,
+            PasswordEncoder passwords,
+            PasswordPolicy policy) {
         this.identities = identities;
         this.verifications = verifications;
         this.passwords = passwords;
+        this.policy = policy;
     }
 
     // 注册会如实提示邮箱或手机号已占用：提交注册时同样要提示，在发送前隐藏没有意义。
@@ -30,8 +37,9 @@ public class RegistrationService {
     }
 
     public UUID register(String account, String password, String displayName, String target, String code) {
-        // 先查重再校验验证码，账号重复时不消费验证码，用户改账号后可继续使用。
+        // 先查重与校验密码再校验验证码，账号重复或密码不合规时不消费验证码，用户修改后可继续使用。
         ensureAvailable(account, target);
+        policy.checkIdentity(password, account, target);
         verifications.verify(VerificationPurpose.REGISTER, target, code);
         boolean email = VerificationCodeService.isEmail(target);
         try {

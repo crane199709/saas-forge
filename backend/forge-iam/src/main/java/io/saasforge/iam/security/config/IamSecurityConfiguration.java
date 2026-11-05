@@ -303,13 +303,14 @@ class IamSecurityConfiguration {
     @Bean
     @Order(2)
     SecurityFilterChain accessTokenSecurity(HttpSecurity http, EnvelopeSecurityErrorHandler errors) throws Exception {
-        // 已持有 Access Token 的身份读取自己的 Membership 与权限、管理自己的 Recovery Code 与解绑 Authenticator、管理本租户成员、组织与角色、
+        // 已持有 Access Token 的身份读取自己的 Membership 与权限、管理自己的 Recovery Code 与解绑 Authenticator、改密码、管理本租户成员、组织与角色、
         // 查看本租户审计、读取与管理本租户的字典与参数、管理本租户的安全设置；无状态、不使用登录会话 Cookie。
         http.securityMatcher(
                         "/auth/memberships",
                         "/auth/access",
                         "/auth/mfa/recovery-codes/**",
                         "/auth/mfa/unbind",
+                        "/auth/password/change",
                         "/org/**",
                         "/roles/**",
                         "/members/**",
@@ -336,7 +337,7 @@ class IamSecurityConfiguration {
             PlatformSigningKey platformKey,
             RealmIssuerProperties issuers)
             throws Exception {
-        // Operator 管理 Operator 账号与平台角色、读取自己的平台权限、查看平台审计；只接受 Platform Realm 的 Access Token，不使用登录会话 Cookie。
+        // Operator 管理 Operator 账号与平台角色、读取自己的平台权限、改密码、查看平台审计；只接受 Platform Realm 的 Access Token，不使用登录会话 Cookie。
         // 解码器不注册为 Bean：标准资源服务器配置按类型取唯一的 JwtDecoder，那是 Tenant Realm 的 accessTokenDecoder。
         var decoder = NimbusJwtDecoder.withPublicKey(platformKey.key().toRSAPublicKey())
                 .build();
@@ -346,7 +347,12 @@ class IamSecurityConfiguration {
                 new JwtClaimValidator<List<String>>(
                         JwtClaimNames.AUD, audience -> audience != null && audience.contains(PLATFORM_CLIENT)),
                 new JwtClaimValidator<Object>("ver", Number.class::isInstance)));
-        http.securityMatcher("/platform/operators/**", "/platform/roles/**", "/platform/access", "/platform/audit/**")
+        http.securityMatcher(
+                        "/platform/operators/**",
+                        "/platform/roles/**",
+                        "/platform/access",
+                        "/platform/audit/**",
+                        "/platform/auth/password/change")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
@@ -408,6 +414,9 @@ class IamSecurityConfiguration {
                         "/auth/login/mfa",
                         "/auth/register/send-code",
                         "/auth/register",
+                        "/auth/password/forgot/send-code",
+                        "/auth/password/forgot/verify",
+                        "/auth/password/forgot/reset",
                         "/auth/invitations/preview",
                         "/auth/invitations/accept",
                         "/platform/auth/login",
@@ -428,6 +437,9 @@ class IamSecurityConfiguration {
                                 "/auth/login/mfa",
                                 "/auth/register/send-code",
                                 "/auth/register",
+                                "/auth/password/forgot/send-code",
+                                "/auth/password/forgot/verify",
+                                "/auth/password/forgot/reset",
                                 "/auth/invitations/preview",
                                 "/auth/invitations/accept",
                                 "/platform/auth/login",

@@ -4,6 +4,7 @@ import io.saasforge.iam.security.config.IamProperties;
 import io.saasforge.iam.session.model.PendingMfa;
 import io.saasforge.iam.session.model.TokenResponse;
 import io.saasforge.iam.session.service.LoginAudit;
+import io.saasforge.iam.session.service.LoginSessionRegistry;
 import io.saasforge.iam.session.service.TenantSessionService;
 import io.saasforge.iam.session.service.TokenExchangeService;
 import io.saasforge.iam.verification.model.CodeDelivery;
@@ -39,13 +40,19 @@ class SessionController {
     private final TenantSessionService sessions;
     private final TokenExchangeService tokens;
     private final LoginAudit audits;
+    private final LoginSessionRegistry loginSessions;
     private final String redirectUri;
 
     SessionController(
-            TenantSessionService sessions, TokenExchangeService tokens, LoginAudit audits, IamProperties properties) {
+            TenantSessionService sessions,
+            TokenExchangeService tokens,
+            LoginAudit audits,
+            LoginSessionRegistry loginSessions,
+            IamProperties properties) {
         this.sessions = sessions;
         this.tokens = tokens;
         this.audits = audits;
+        this.loginSessions = loginSessions;
         this.redirectUri = properties.redirectUri();
     }
 
@@ -103,6 +110,7 @@ class SessionController {
         SecurityContextHolder.setContext(context);
         new HttpSessionSecurityContextRepository().saveContext(context, request, response);
         request.getSession().removeAttribute(PendingMfa.SESSION_ATTRIBUTE);
+        loginSessions.register(authentication.getName(), request.getSession().getId());
         // 认证完成后才返回可进入的租户，由前端决定自动进入、选择租户或展示无租户页。
         var memberships = toMembershipResponses(UUID.fromString(authentication.getName()));
         return new LoginResponse(LoginResponse.NEXT_AUTHORIZE, "tenant-app", redirectUri, memberships);

@@ -49,6 +49,14 @@
             updated_at = now(), updated_by = NULL
         WHERE id = #{id} AND status = 'pending' AND NOT deleted
     </update>
+    <select id="findActivePassword" resultType="io.saasforge.iam.identity.model.IdentityPassword">
+        SELECT id AS identity_id, account, email, phone, password_hash FROM identity
+        WHERE id = #{identityId} AND status = 'active' AND NOT deleted
+    </select>
+    <update id="changePassword">
+        UPDATE identity SET password_hash = #{passwordHash}, updated_at = now(), updated_by = #{identityId}
+        WHERE id = #{identityId} AND status = 'active' AND NOT deleted
+    </update>
     <insert id="insert">
         INSERT INTO identity (id, account, email, phone, display_name, password_hash, created_at, updated_at)
         VALUES (#{id}, #{account}, #{email}, #{phone}, #{displayName}, #{passwordHash}, now(), now())

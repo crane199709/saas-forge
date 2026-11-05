@@ -8,7 +8,9 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Set;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2RefreshToken;
@@ -21,6 +23,13 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class RedisAuthorizationService implements OAuth2AuthorizationService {
+    // 主体到授权标识的索引，供改密码后吊销该主体的全部授权；索引只延长不缩短，覆盖其中最晚过期的授权。
+    private static final DefaultRedisScript<Long> INDEX_PRINCIPAL = new DefaultRedisScript<>(
+            "redis.call('sadd', KEYS[1], ARGV[1]) "
+                    + "if redis.call('pttl', KEYS[1]) < tonumber(ARGV[2]) then redis.call('pexpire', KEYS[1], ARGV[2]) end "
+                    + "return 1",
+            Long.class);
+
     private final StringRedisTemplate redis;
     private final JdkSerializationRedisSerializer serializer = new JdkSerializationRedisSerializer();
 
@@ -69,6 +78,29 @@ public class RedisAuthorizationService implements OAuth2AuthorizationService {
             if (!tokenTtl.isNegative() && !tokenTtl.isZero()) {
                 redis.opsForValue().set(tokenKey(token.getTokenValue()), authorization.getId(), tokenTtl);
             }
+        }
+        redis.execute(
+                INDEX_PRINCIPAL,
+                List.of(principalKey(authorization.getPrincipalName())),
+                authorization.getId(),
+                String.valueOf(ttl.toMillis()));
+    }
+
+    /**
+     * 删除主体的全部授权（含授权码与 Refresh Token 链），改密码或重设密码后调用；已在途的换码或刷新因授权不存在而失败。
+     *
+     * @param principalName Identity 或 Operator 标识
+     * @param keepAuthorizationId 保留的授权，如发起改密码的这一授权；为 null 时全部删除
+     */
+    public void removeByPrincipal(String principalName, String keepAuthorizationId) {
+        String key = principalKey(principalName);
+        Set<String> ids = redis.opsForSet().members(key);
+        if (ids == null) return;
+        for (String id : ids) {
+            if (id.equals(keepAuthorizationId)) continue;
+            OAuth2Authorization authorization = findById(id);
+            if (authorization != null) remove(authorization);
+            redis.opsForSet().remove(key, id);
         }
     }
 
@@ -131,6 +163,10 @@ public class RedisAuthorizationService implements OAuth2AuthorizationService {
 
     static String usedRefreshKey(String token) {
         return tokenKey(token) + ":used-refresh";
+    }
+
+    private static String principalKey(String principalName) {
+        return "iam:global:oauth-principal:" + principalName;
     }
 
     private String authorizationKey(String id) {
