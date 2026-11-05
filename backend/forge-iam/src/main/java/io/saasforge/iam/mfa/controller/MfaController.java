@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,6 +28,12 @@ class MfaController {
 
     MfaController(IdentityMfaService mfa) {
         this.mfa = mfa;
+    }
+
+    @Operation(summary = "读取当前身份是否已绑定 Authenticator，供账号安全页决定展示绑定还是解绑与重新生成")
+    @GetMapping("/auth/mfa")
+    ApiResponse<StatusResponse> status(Authentication authentication) {
+        return ApiResponse.ok(new StatusResponse(mfa.isBound(identityId(authentication))));
     }
 
     @Operation(summary = "开始绑定 Authenticator：返回供扫码的 otpauth URI，提交首个动态码后才生效；接受 Access Token 或登录会话")
@@ -83,6 +90,8 @@ class MfaController {
             return "CodeRequest[redacted]";
         }
     }
+
+    record StatusResponse(boolean bound) {}
 
     record BindingStartResponse(String otpauthUri) {
         @Override

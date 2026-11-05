@@ -13,3 +13,4 @@
 - [ ] 组件测试覆盖登录两步、强制绑定与身份查询
 
 ## Comments
+- 2026-11-05（工单 08 实现时记录）：SDK 的 `authenticate` 遇到 `nextStep: "mfa"` 时直接返回（不保留授权参数），`createPlatformClient().login` 目前仍随即调用 `authorize`，Operator MFA 上线后需像 Tenant 一样返回 MFA 步骤；`ApiError.retryAfter`（`auth.locked`）可直接复用。tenant-app 的 `security/RecoveryCodeList.vue`、`security/MfaBindForm.vue` 可作参考，platform-console 不能直接 import tenant-app。
