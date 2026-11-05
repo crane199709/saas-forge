@@ -95,6 +95,16 @@
             </dependency>
             <dependency>
                 <groupId>io.saasforge</groupId>
+                <artifactId>forge-sdk-numbering</artifactId>
+                <version>${forge.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.saasforge</groupId>
+                <artifactId>forge-sdk-referencedata</artifactId>
+                <version>${forge.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.saasforge</groupId>
                 <artifactId>forge-sdk-openapi</artifactId>
                 <version>${forge.version}</version>
             </dependency>

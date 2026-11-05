@@ -21,10 +21,13 @@ public final class IamPermissions {
     /** 查看本租户的审计记录。 */
     public static final String AUDIT_READ = "iam:audit:read";
 
+    /** 管理 Extensible Dictionary 的字典项与可修改 Parameter 的覆盖值。 */
+    public static final String REFERENCE_DATA_MANAGE = "iam:reference-data:manage";
+
     /** iam 登记清单使用的服务名。这些管理权限码不受套餐限制：Tenant Admin 始终能管理成员与角色。 */
     public static final String SERVICE = "forge-iam";
     // 同一版本的清单内容不可变：改动权限码、名称或分组时必须升级版本，否则启动时登记失败。
-    private static final String VERSION = "3";
+    private static final String VERSION = "4";
     private static final String GROUP = "租户管理";
 
     private IamPermissions() {}
@@ -37,7 +40,8 @@ public final class IamPermissions {
                         new Permission(MEMBER_MANAGE, "管理成员", GROUP),
                         new Permission(ORG_MANAGE, "管理组织", GROUP),
                         new Permission(ROLE_MANAGE, "管理角色", GROUP),
-                        new Permission(AUDIT_READ, "查看审计", GROUP)),
+                        new Permission(AUDIT_READ, "查看审计", GROUP),
+                        new Permission(REFERENCE_DATA_MANAGE, "管理字典与参数", GROUP)),
                 List.of());
     }
 }

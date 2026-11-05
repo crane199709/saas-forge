@@ -8,6 +8,9 @@ import io.saasforge.demo.order.model.OrderSort;
 import io.saasforge.sdk.abac.data.DataPermission;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.mq.EventPublisher;
+import io.saasforge.sdk.numbering.BusinessNumbers;
+import io.saasforge.sdk.numbering.DateSegment;
+import io.saasforge.sdk.numbering.NumberingRule;
 import io.saasforge.sdk.provisioning.TenantDataCleaner;
 import io.saasforge.sdk.provisioning.TenantDeleted;
 import io.saasforge.sdk.web.PageQuery;
@@ -29,14 +32,23 @@ public class OrderService implements TenantDataCleaner {
     /** 订单在清单中声明的 Data Resource 编码。 */
     static final String DATA_RESOURCE = "order";
 
+    /** 订单编号 SO-yyyyMMdd-NNNN，每个业务日重新计数。 */
+    static final NumberingRule NUMBERING = new NumberingRule("order", "SO", DateSegment.DAY, 4);
+
     private final OrderMapper orderMapper;
     private final EventPublisher eventPublisher;
     private final DataPermission dataPermission;
+    private final BusinessNumbers businessNumbers;
 
-    public OrderService(OrderMapper orderMapper, EventPublisher eventPublisher, DataPermission dataPermission) {
+    public OrderService(
+            OrderMapper orderMapper,
+            EventPublisher eventPublisher,
+            DataPermission dataPermission,
+            BusinessNumbers businessNumbers) {
         this.orderMapper = orderMapper;
         this.eventPublisher = eventPublisher;
         this.dataPermission = dataPermission;
+        this.businessNumbers = businessNumbers;
     }
 
     /**
@@ -44,17 +56,22 @@ public class OrderService implements TenantDataCleaner {
      *
      * <p>成员创建的订单归属本人与其主部门；INSERT 不经 SQL 过滤，先校验新订单在自己的数据范围内，否则 403，
      * 避免创建出自己看不到的数据。系统操作（无认证上下文）创建的订单没有归属。
+     *
+     * <p>编号在校验通过后、写入前才取：取号会锁住当天的计数行直到事务结束，越晚取，同一天的并发下单排队越短；
+     * 订单写入失败时编号随事务回滚，不留空号。
      */
     @Transactional
-    public Order create(String title, BigDecimal amount) {
+    public Order create(String title, BigDecimal amount, String customerSource) {
         var order = new Order();
         order.setTitle(title);
         order.setAmount(amount);
+        order.setCustomerSource(customerSource);
         dataPermission.currentSubject().ifPresent(subject -> {
             order.setOwnerId((UUID) subject.get("subject.membershipId"));
             order.setDepartmentPath((String) subject.get("subject.primaryDepartmentPath"));
         });
         dataPermission.check(DATA_RESOURCE, attributes(order));
+        order.setNumber(businessNumbers.next(NUMBERING));
         orderMapper.insert(order);
         eventPublisher.publish(OrderCreated.TOPIC, new OrderCreated(order.getId(), title, amount));
         // 创建时间由数据库生成，重新读取才能返回与之后查询一致的值
@@ -78,11 +95,12 @@ public class OrderService implements TenantDataCleaner {
         return order;
     }
 
-    public Order update(UUID id, String title, BigDecimal amount) {
+    public Order update(UUID id, String title, BigDecimal amount, String customerSource) {
         var order = new Order();
         order.setId(id);
         order.setTitle(title);
         order.setAmount(amount);
+        order.setCustomerSource(customerSource);
         if (orderMapper.updateById(order) == 0) {
             throw notFound(id);
         }

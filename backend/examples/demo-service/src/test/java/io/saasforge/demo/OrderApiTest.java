@@ -44,6 +44,7 @@ class OrderApiTest {
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
         TestTokens.register(registry);
+        TestReferenceData.register(registry);
     }
 
     @LocalServerPort
@@ -67,11 +68,14 @@ class OrderApiTest {
         Map<?, ?> order = (Map<?, ?>) created.get("data");
         assertThat(order.get("title")).isEqualTo("办公用品");
         assertThat(order.get("createdAt")).isNotNull();
+        // Business Number 与订单同一事务生成，日期段按 Business Time Zone
+        assertThat(order.get("number")).asString().matches("SO-\\d{8}-\\d{4}");
         String id = (String) order.get("id");
 
         Map<?, ?> updated = exchange(HttpMethod.PUT, "/orders/" + id, Map.of("title", "改名", "amount", 1));
         assertThat(updated.get("httpStatus")).isEqualTo(200);
         assertThat(((Map<?, ?>) updated.get("data")).get("createdAt")).isEqualTo(order.get("createdAt"));
+        assertThat(((Map<?, ?>) updated.get("data")).get("number")).isEqualTo(order.get("number"));
 
         Map<String, Object> deleted = exchange(HttpMethod.DELETE, "/orders/" + id, null);
         assertThat(deleted.get("code")).isEqualTo("ok");
@@ -126,6 +130,32 @@ class OrderApiTest {
         assertThat((List<?>) unlisted.get("errors"))
                 .<Object>extracting(error -> ((Map<?, ?>) error).get("field"))
                 .containsExactly("sort");
+    }
+
+    @Test
+    void customerSourceMustBeASelectableItemOfTheTenantsDictionary() throws Exception {
+        Map<String, Object> created = exchange(
+                HttpMethod.POST, "/orders", Map.of("title", "展会订单", "amount", 1, "customerSource", "custom.fair"));
+        assertThat(created.get("httpStatus")).isEqualTo(201);
+        assertThat(((Map<?, ?>) created.get("data")).get("customerSource")).isEqualTo("custom.fair");
+
+        // 租户已停用的项与不存在的编码都不能写入，字段错误码为 validation.dictionaryValue
+        for (String invalid : List.of("referral", "unknown")) {
+            Map<?, ?> rejected = exchange(
+                    HttpMethod.POST, "/orders", Map.of("title", "转介绍订单", "amount", 1, "customerSource", invalid));
+            assertThat(rejected.get("httpStatus")).isEqualTo(400);
+            assertThat(rejected.get("code")).isEqualTo("request.invalid");
+            assertThat((List<?>) rejected.get("errors"))
+                    .singleElement()
+                    .isEqualTo(Map.of(
+                            "field", "customerSource",
+                            "code", "validation.dictionaryValue",
+                            "userTip", "请选择有效的选项"));
+        }
+        String id = (String) ((Map<?, ?>) created.get("data")).get("id");
+        Map<?, ?> updated = exchange(
+                HttpMethod.PUT, "/orders/" + id, Map.of("title", "改", "amount", 1, "customerSource", "referral"));
+        assertThat(updated.get("httpStatus")).isEqualTo(400);
     }
 
     private static List<Integer> amounts(Map<?, ?> envelope) {

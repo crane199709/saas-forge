@@ -118,4 +118,14 @@ describe('App 布局', () => {
     await nextTick()
     expect(wrapper.find('[data-testid="menu-roles"]').exists()).toBe(false)
   })
+
+  it('字典与参数页入口要求 iam:reference-data:manage', async () => {
+    signedIn()
+    const { wrapper } = await mountShell('/', {
+      access: async () => ({ permissions: ['iam:reference-data:manage'] }),
+    })
+    expect(wrapper.get('[data-testid="menu-dictionaries"]').text()).toBe('字典')
+    expect(wrapper.get('[data-testid="menu-parameters"]').text()).toBe('参数')
+    expect(wrapper.find('[data-testid="menu-roles"]').exists()).toBe(false)
+  })
 })

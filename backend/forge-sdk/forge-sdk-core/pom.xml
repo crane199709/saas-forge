@@ -10,7 +10,7 @@
 
     <artifactId>forge-sdk-core</artifactId>
     <name>Forge SDK Core</name>
-    <description>租户上下文、响应信封与错误模型、框架级错误码文案</description>
+    <description>租户上下文、响应信封与错误模型、框架级错误码文案、Business Time Zone 配置</description>
 
     <dependencies>
         <dependency>
@@ -38,6 +38,12 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-tracing</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!-- 只用 @ConfigurationProperties 注解声明共用的 forge.business-zone；绑定发生在使用方的 Spring 应用中，core 本身不引入 Spring -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot</artifactId>
             <optional>true</optional>
         </dependency>
         <dependency>

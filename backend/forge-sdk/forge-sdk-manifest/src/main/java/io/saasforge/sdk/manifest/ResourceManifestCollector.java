@@ -2,7 +2,9 @@ package io.saasforge.sdk.manifest;
 
 import io.saasforge.sdk.core.ResourceManifest;
 import io.saasforge.sdk.core.ResourceManifest.DataResource;
+import io.saasforge.sdk.core.ResourceManifest.Dictionary;
 import io.saasforge.sdk.core.ResourceManifest.MenuNode;
+import io.saasforge.sdk.core.ResourceManifest.Parameter;
 import io.saasforge.sdk.core.ResourceManifest.Permission;
 import io.saasforge.sdk.core.ResourceManifest.RoleTemplate;
 import io.saasforge.sdk.security.RequiresPermission;
@@ -24,7 +26,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 生成服务的 Resource Manifest：扫描 {@link RequiresPermission} 得到 Permission Code，再合并清单文件
- * {@value #MANIFEST_LOCATION} 中的名称、分组、菜单树、角色模板与 Data Resource。服务启动时与 CI 中的 {@link ManifestCli} 共用。
+ * {@value #MANIFEST_LOCATION} 中的名称、分组、菜单树、角色模板、Data Resource、Dictionary 与 Parameter。服务启动时与 CI 中的 {@link ManifestCli} 共用。
  *
  * <p>清单文件格式：
  *
@@ -36,7 +38,11 @@ import tools.jackson.databind.json.JsonMapper;
  *     "actions": ["order:create"] } ],
  *   "roles": [ { "code": "order-viewer", "name": "订单查看员", "permissions": ["order:read"] } ],
  *   "dataResources": [ { "code": "order", "name": "订单", "table": "orders", "attributes": [
- *     { "code": "ownerId", "name": "归属成员", "type": "uuid", "column": "owner_id" } ] } ]
+ *     { "code": "ownerId", "name": "归属成员", "type": "uuid", "column": "owner_id" } ] } ],
+ *   "dictionaries": [ { "code": "customer-source", "name": "客户来源", "extensible": true,
+ *     "items": [ { "code": "online", "name": "线上" } ] } ],
+ *   "parameters": [ { "code": "order.auto-close", "name": "未支付订单自动关闭时长", "type": "duration",
+ *     "default": "PT30M", "min": "PT5M", "max": "P3D", "tenantEditable": true } ]
  * }
  * }</pre>
  *
@@ -82,7 +88,15 @@ public final class ResourceManifestCollector {
             permissions.add(new Permission(code, name, info == null ? null : info.group()));
         }
         var manifest = new ResourceManifest(
-                service, version, permissions, file.menus(), file.roles(), file.dataResources(), file.realm());
+                service,
+                version,
+                permissions,
+                file.menus(),
+                file.roles(),
+                file.dataResources(),
+                file.realm(),
+                file.dictionaries(),
+                file.parameters());
         try {
             manifest.validate();
         } catch (IllegalArgumentException error) {
@@ -140,7 +154,7 @@ public final class ResourceManifestCollector {
 
     private static ManifestFile read(ClassLoader classLoader, String location) {
         try (InputStream stream = classLoader.getResourceAsStream(location)) {
-            if (stream == null) return new ManifestFile(null, null, null, null, null);
+            if (stream == null) return new ManifestFile(null, null, null, null, null, null, null);
             return JSON.readValue(stream, ManifestFile.class);
         } catch (IOException | RuntimeException error) {
             throw new IllegalStateException("Invalid manifest file " + location, error);
@@ -154,7 +168,9 @@ public final class ResourceManifestCollector {
             List<MenuNode> menus,
             List<RoleTemplate> roles,
             List<DataResource> dataResources,
-            String realm) {
+            String realm,
+            List<Dictionary> dictionaries,
+            List<Parameter> parameters) {
         ManifestFile {
             permissions = permissions == null ? Map.of() : permissions;
             menus = menus == null ? List.of() : menus;

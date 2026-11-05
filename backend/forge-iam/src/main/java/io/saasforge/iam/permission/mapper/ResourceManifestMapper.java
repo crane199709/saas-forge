@@ -29,4 +29,7 @@ public interface ResourceManifestMapper {
 
     /** 全部服务当前版本的清单内容（JSON），按服务名排序。不受 Data Policy 过滤。 */
     List<String> currentContents();
+
+    /** 全部服务非当前版本的清单内容（JSON），按存储时间从新到旧排序。不受 Data Policy 过滤。 */
+    List<String> previousContents();
 }

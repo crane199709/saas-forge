@@ -2,11 +2,15 @@ package io.saasforge.sdk.manifest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.saasforge.sdk.core.ResourceManifest;
 import io.saasforge.sdk.core.ResourceManifest.DataAttribute;
 import io.saasforge.sdk.core.ResourceManifest.DataResource;
+import io.saasforge.sdk.core.ResourceManifest.Dictionary;
+import io.saasforge.sdk.core.ResourceManifest.DictionaryItem;
 import io.saasforge.sdk.core.ResourceManifest.MenuNode;
+import io.saasforge.sdk.core.ResourceManifest.Parameter;
 import io.saasforge.sdk.core.ResourceManifest.Permission;
 import io.saasforge.sdk.core.ResourceManifest.RoleTemplate;
 import java.util.List;
@@ -75,6 +79,71 @@ class ResourceManifestCollectorTest {
     @CsvSource({"action-group,leaf", "action-unknown,order:typo", "action-duplicate,Duplicate", "action-page,permission"
     })
     void invalidPageActionsAreRejected(String fixture, String reason) {
+        assertThatThrownBy(() -> collect("manifests/" + fixture + ".json"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(reason);
+    }
+
+    @Test
+    void dictionariesAndParametersAreCollectedFromTheManifestFile() {
+        ResourceManifest manifest = collect("manifests/reference-data.json");
+
+        assertThat(manifest.dictionaries())
+                .containsExactly(
+                        new Dictionary(
+                                "customer-source",
+                                "客户来源",
+                                true,
+                                List.of(new DictionaryItem("online", "线上"), new DictionaryItem("referral", "转介绍"))),
+                        new Dictionary("order-status", "订单状态", false, List.of(new DictionaryItem("open", "未完成"))));
+        assertThat(manifest.parameters())
+                .extracting(Parameter::code, Parameter::type, Parameter::tenantEditable)
+                .containsExactly(
+                        tuple("order.auto-close", "duration", true),
+                        tuple("order.remark", "string", false),
+                        tuple("order.max-items", "integer", true),
+                        tuple("order.discount", "decimal", false),
+                        tuple("order.invoice", "boolean", false),
+                        tuple("customer.default-source", "dictionary", true));
+        assertThat(JSON.writeValueAsString(manifest))
+                .contains(
+                        "{\"code\":\"order.auto-close\",\"name\":\"未支付订单自动关闭时长\",\"type\":\"duration\","
+                                + "\"default\":\"PT30M\",\"min\":\"PT5M\",\"max\":\"P3D\",\"tenantEditable\":true}",
+                        "\"default\":50,\"min\":1,\"max\":200",
+                        "\"default\":0.95,\"min\":0,\"max\":1",
+                        "\"dictionary\":\"customer-source\",\"default\":\"online\"");
+        // 没有声明字典与参数的服务输出与加入本节前相同，已存储的清单按内容比较不变，无需升版本。
+        assertThat(JSON.writeValueAsString(collect("manifests/valid.json")))
+                .doesNotContain("dictionaries")
+                .doesNotContain("parameters");
+    }
+
+    // iam 接收上报时执行同一套规则，ResourceManifestTest 用同样的违规清单覆盖接收一侧。
+    @ParameterizedTest
+    @CsvSource({
+        "dictionary-duplicate-code,Duplicate Dictionary code: customer-source",
+        "dictionary-invalid-code,Invalid Dictionary code: Customer:Source",
+        "dictionary-item-custom-prefix,custom.vip",
+        "dictionary-item-duplicate-code,Duplicate item code in Dictionary customer-source: online",
+        "dictionary-item-duplicate-name,Duplicate item name in Dictionary customer-source: 线上",
+        "parameter-duplicate-code,Duplicate Parameter code: order.p",
+        "parameter-unknown-type,Unknown type of Parameter order.p: date",
+        "parameter-missing-default,Parameter order.p has no default",
+        "parameter-string-too-long,longer than maxLength",
+        "parameter-integer-below-min,less than min",
+        "parameter-integer-not-integral,is not a valid integer",
+        "parameter-decimal-above-max,greater than max",
+        "parameter-duration-above-max,greater than max",
+        "parameter-duration-invalid,30 minutes",
+        "parameter-boolean-not-boolean,is not a valid boolean",
+        "parameter-min-above-max,min greater than max",
+        "parameter-constraint-not-applicable,maxLength is only for the string type",
+        "parameter-dictionary-unknown,undeclared Dictionary: customer-sources",
+        "parameter-dictionary-missing,undeclared Dictionary: null",
+        "parameter-dictionary-default-not-item,offline",
+        "parameter-dictionary-on-other-type,dictionary is only for the dictionary type"
+    })
+    void invalidDictionariesAndParametersAreRejected(String fixture, String reason) {
         assertThatThrownBy(() -> collect("manifests/" + fixture + ".json"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining(reason);
