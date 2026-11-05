@@ -1,6 +1,7 @@
 package io.saasforge.sdk.referencedata;
 
 import io.saasforge.sdk.core.CurrentTenant;
+import io.saasforge.sdk.core.ResourceManifest;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.referencedata.ReferenceDataClient.Snapshot;
 import java.math.BigDecimal;
@@ -45,7 +46,7 @@ public final class ReferenceData {
      * @throws ForgeException 503 {@code system.unavailable} 缓存未命中且 iam 不可用
      */
     public List<TenantDictionaryItem> items(String dictionary) {
-        String key = dictionary.contains(":") ? dictionary : service + ":" + dictionary;
+        String key = ResourceManifest.qualifiedDictionary(service, dictionary);
         List<TenantDictionaryItem> items = snapshot().dictionaries().get(key);
         if (items == null) throw new IllegalArgumentException("Unknown Dictionary: " + key);
         return items;
@@ -137,6 +138,11 @@ public final class ReferenceData {
         return (String) parameter(code, "dictionary");
     }
 
+    /** 本服务名（{@code spring.application.name}），不带服务前缀的字典编码与全部参数都属于它。 */
+    String service() {
+        return service;
+    }
+
     /** 清除租户的缓存，下次读取时重新从 iam 拉取；收到 {@code ReferenceDataChanged} 时调用，重复调用无副作用。 */
     void evict(UUID tenantId) {
         cache.remove(tenantId);
@@ -144,7 +150,8 @@ public final class ReferenceData {
 
     private Object parameter(String code, String type) {
         ReferenceDataClient.Parameter parameter = snapshot().parameters().get(code);
-        if (parameter == null) throw new IllegalArgumentException("Unknown Parameter: " + service + ":" + code);
+        if (parameter == null)
+            throw new IllegalArgumentException("Unknown Parameter: " + ResourceManifest.qualifiedCode(service, code));
         if (!parameter.type().equals(type)) {
             throw new IllegalArgumentException(
                     "Parameter " + code + " is of type " + parameter.type() + ", not " + type);

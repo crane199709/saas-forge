@@ -54,6 +54,9 @@ public record ResourceManifest(
     /** Tenant 自定义字典项编码的前缀，服务声明的内置项不能使用。 */
     public static final String CUSTOM_ITEM_PREFIX = "custom.";
 
+    // 服务名与字典、参数编码都不含冒号，拼接后能无歧义地拆开。
+    private static final String QUALIFIER = ":";
+
     // 长度上限与 iam 表的列宽一致。
     private static final Pattern CODE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9:._-]{0,127}");
     private static final Pattern ROLE_CODE = Pattern.compile("[a-z0-9][a-z0-9-]{0,63}");
@@ -164,6 +167,28 @@ public record ResourceManifest(
     @JsonIgnore
     public boolean platform() {
         return PLATFORM_REALM.equals(realm);
+    }
+
+    /**
+     * 服务限定的 Dictionary 或 Parameter 编码 {@code 服务:编码}，在全部服务的字典与参数中唯一，跨服务引用字典即写作此形式。
+     *
+     * @param service 声明它的服务名
+     * @param code 服务内的 Dictionary 或 Parameter 编码
+     * @return {@code 服务:编码}
+     */
+    public static String qualifiedCode(String service, String code) {
+        return service + QUALIFIER + code;
+    }
+
+    /**
+     * 把业务代码中的字典引用解析为服务限定编码：已写作 {@code 服务:编码} 的原样返回，不带服务前缀的是 {@code service} 自己的字典。
+     *
+     * @param service 引用方的服务名
+     * @param dictionary 字典编码，可写作 {@code 服务:编码}
+     * @return 服务限定编码，同 {@link #qualifiedCode(String, String)}
+     */
+    public static String qualifiedDictionary(String service, String dictionary) {
+        return dictionary.contains(QUALIFIER) ? dictionary : qualifiedCode(service, dictionary);
     }
 
     /**

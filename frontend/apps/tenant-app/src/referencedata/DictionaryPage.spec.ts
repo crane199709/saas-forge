@@ -113,7 +113,7 @@ it('可扩展字典新增自定义项：编码提示 custom. 前缀，提交不�
 it('编码重复时展示服务端的 userTip 与 traceId', async () => {
   const { wrapper } = await mountPage(
     respond(409, {
-      code: 'referenceData.itemCodeTaken',
+      code: 'dictionary.itemCodeTaken',
       errorMessage: 'taken',
       userTip: '字典项编码 custom.expo 已被使用',
     }),

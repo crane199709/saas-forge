@@ -1,6 +1,7 @@
 package io.saasforge.sdk.referencedata;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import io.saasforge.sdk.core.ResourceManifest;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
@@ -66,7 +67,9 @@ final class ReferenceDataClient {
         Snapshot snapshot() {
             Map<String, List<TenantDictionaryItem>> byCode = new HashMap<>();
             for (DictionaryView dictionary : dictionaries) {
-                byCode.put(dictionary.service() + ":" + dictionary.code(), List.copyOf(dictionary.items()));
+                byCode.put(
+                        ResourceManifest.qualifiedCode(dictionary.service(), dictionary.code()),
+                        List.copyOf(dictionary.items()));
             }
             Map<String, Parameter> byName = new HashMap<>();
             for (ParameterView parameter : parameters) {

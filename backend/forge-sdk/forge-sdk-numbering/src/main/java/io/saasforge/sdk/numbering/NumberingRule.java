@@ -23,6 +23,11 @@ public record NumberingRule(String code, String prefix, DateSegment dateSegment,
     // 无日期段时的计数周期：周期列不为 null，部分唯一索引才能约束「租户 + 规则 + 周期」一行
     static final String NO_PERIOD = "";
 
+    /**
+     * 校验规则声明，规则通常是常量，声明错误在类加载时即失败。
+     *
+     * @throws IllegalArgumentException 编码为空或超过 64 个字符、前缀为空，或 {@code minDigits} 不在 1–18 之间
+     */
     public NumberingRule {
         if (code == null || code.isBlank() || code.length() > MAX_CODE_LENGTH) {
             throw new IllegalArgumentException("Numbering rule code must be 1-" + MAX_CODE_LENGTH + " characters");

@@ -116,7 +116,7 @@ it('覆盖布尔参数时按布尔提交', async () => {
 it('越界时展示服务端的 userTip 与 traceId', async () => {
   const { wrapper } = await mountPage(
     respond(400, {
-      code: 'referenceData.invalidParameterValue',
+      code: 'parameter.invalidValue',
       errorMessage: 'invalid',
       userTip: '参数 order.max-lines 的取值不合法',
     }),

@@ -38,8 +38,7 @@ public final class ReferenceDataAutoConfiguration {
     @Bean
     @ConditionalOnBean(ClientConfiguration.class)
     ReferenceDataChangedListener referenceDataChangedListener(
-            ClientConfiguration configuration, ReferenceData referenceData, Environment environment) {
-        return new ReferenceDataChangedListener(
-                configuration, environment.getRequiredProperty("spring.application.name"), referenceData);
+            ClientConfiguration configuration, ReferenceData referenceData) {
+        return new ReferenceDataChangedListener(configuration, referenceData);
     }
 }

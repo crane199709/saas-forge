@@ -121,7 +121,7 @@ class ReferenceDataTest {
 
         var again = createItem(ADMIN, "grade", "vip", "贵宾二");
         assertThat(again.getStatusCode().value()).isEqualTo(409);
-        assertThat(again.getBody().get("code")).isEqualTo("referenceData.itemCodeTaken");
+        assertThat(again.getBody().get("code")).isEqualTo("dictionary.itemCodeTaken");
         // 另一个租户可以使用同一编码。
         assertThat(createItem(ADMIN_B, "grade", "vip", "贵宾").getStatusCode().value())
                 .isEqualTo(201);
@@ -160,26 +160,26 @@ class ReferenceDataTest {
 
         var fixed = call(ADMIN, HttpMethod.PUT, itemPath("order-status", "open"), Map.of("name", "进行中", "sort", 1));
         assertThat(fixed.getStatusCode().value()).isEqualTo(409);
-        assertThat(fixed.getBody().get("code")).isEqualTo("referenceData.dictionaryReadOnly");
+        assertThat(fixed.getBody().get("code")).isEqualTo("dictionary.readOnly");
         assertThat(createItem(ADMIN, "order-status", "x", "其他").getBody().get("code"))
-                .isEqualTo("referenceData.dictionaryReadOnly");
+                .isEqualTo("dictionary.readOnly");
         assertThat(call(ADMIN, HttpMethod.POST, itemPath("customer-source", "legacy") + "/enable", null)
                         .getBody()
                         .get("code"))
-                .isEqualTo("referenceData.itemNotFound");
+                .isEqualTo("dictionary.itemNotFound");
         assertThat(createItem(ADMIN, "missing", "x", "其他").getBody().get("code"))
-                .isEqualTo("referenceData.dictionaryNotFound");
+                .isEqualTo("dictionary.notFound");
     }
 
     @Test
     void selectableItemsCannotShareADisplayName() throws Exception {
         var duplicate = createItem(ADMIN, "channel", "site", "网站");
         assertThat(duplicate.getStatusCode().value()).isEqualTo(409);
-        assertThat(duplicate.getBody().get("code")).isEqualTo("referenceData.itemNameTaken");
+        assertThat(duplicate.getBody().get("code")).isEqualTo("dictionary.itemNameTaken");
         assertThat(call(ADMIN, HttpMethod.PUT, itemPath("channel", "store"), Map.of("name", "网站", "sort", 2))
                         .getBody()
                         .get("code"))
-                .isEqualTo("referenceData.itemNameTaken");
+                .isEqualTo("dictionary.itemNameTaken");
 
         // 停用的项不再占用名称；它再启用时与现有可选项重名即拒绝。
         call(ADMIN, HttpMethod.POST, itemPath("channel", "web") + "/disable", null);
@@ -187,7 +187,7 @@ class ReferenceDataTest {
                 .isEqualTo(201);
         var enable = call(ADMIN, HttpMethod.POST, itemPath("channel", "web") + "/enable", null);
         assertThat(enable.getStatusCode().value()).isEqualTo(409);
-        assertThat(enable.getBody().get("code")).isEqualTo("referenceData.itemNameTaken");
+        assertThat(enable.getBody().get("code")).isEqualTo("dictionary.itemNameTaken");
     }
 
     @Test
@@ -207,10 +207,10 @@ class ReferenceDataTest {
         for (Object invalid : List.of(500, "abc", 1.5)) {
             var rejected = call(ADMIN, HttpMethod.PUT, parameterPath("order.max-items"), Map.of("value", invalid));
             assertThat(rejected.getStatusCode().value()).isEqualTo(400);
-            assertThat(rejected.getBody().get("code")).isEqualTo("referenceData.invalidParameterValue");
+            assertThat(rejected.getBody().get("code")).isEqualTo("parameter.invalidValue");
         }
         var duration = call(ADMIN, HttpMethod.PUT, parameterPath("order.auto-close"), Map.of("value", "PT1M"));
-        assertThat(duration.getBody().get("code")).isEqualTo("referenceData.invalidParameterValue");
+        assertThat(duration.getBody().get("code")).isEqualTo("parameter.invalidValue");
         // dictionary 类型的覆盖值须是租户字典中的可选项：下线项不行，可选项可以。
         assertThat(call(ADMIN, HttpMethod.PUT, parameterPath("customer.default-source"), Map.of("value", "legacy"))
                         .getStatusCode()
@@ -223,12 +223,12 @@ class ReferenceDataTest {
 
         var fixed = call(ADMIN, HttpMethod.PUT, parameterPath("order.remark"), Map.of("value", "好"));
         assertThat(fixed.getStatusCode().value()).isEqualTo(409);
-        assertThat(fixed.getBody().get("code")).isEqualTo("referenceData.parameterNotEditable");
+        assertThat(fixed.getBody().get("code")).isEqualTo("parameter.notEditable");
         // 新版本删除的参数的覆盖值保留但不生效，也不能再修改。
         assertThat(call(ADMIN, HttpMethod.PUT, parameterPath("order.removed"), Map.of("value", 3))
                         .getBody()
                         .get("code"))
-                .isEqualTo("referenceData.parameterNotFound");
+                .isEqualTo("parameter.notFound");
 
         var reset = call(ADMIN, HttpMethod.DELETE, parameterPath("order.max-items"), null);
         assertThat(reset.getStatusCode().value()).isEqualTo(200);

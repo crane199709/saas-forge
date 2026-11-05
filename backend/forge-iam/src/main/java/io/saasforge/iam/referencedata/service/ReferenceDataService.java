@@ -85,14 +85,17 @@ public class ReferenceDataService {
     public List<TenantDictionary> dictionaries(UUID tenantId) {
         Map<String, List<DictionaryItemRow>> settings = new HashMap<>();
         for (DictionaryItemRow row : items.list(tenantId)) {
-            settings.computeIfAbsent(key(row.service(), row.dictionary()), key -> new ArrayList<>())
+            settings.computeIfAbsent(
+                            ResourceManifest.qualifiedCode(row.service(), row.dictionary()), key -> new ArrayList<>())
                     .add(row);
         }
         // 旧版本按从新到旧排列，同一编码以最后一次声明的名称与位置为准。
         Map<String, Map<String, PastItem>> past = new HashMap<>();
         for (ServiceDictionary previous : permissions.previousDictionaries()) {
             Map<String, PastItem> known = past.computeIfAbsent(
-                    key(previous.service(), previous.dictionary().code()), key -> new LinkedHashMap<>());
+                    ResourceManifest.qualifiedCode(
+                            previous.service(), previous.dictionary().code()),
+                    key -> new LinkedHashMap<>());
             List<DictionaryItem> declared = previous.dictionary().items();
             for (int i = 0; i < declared.size(); i++) {
                 known.putIfAbsent(
@@ -101,7 +104,8 @@ public class ReferenceDataService {
         }
         return permissions.currentDictionaries().stream()
                 .map(current -> {
-                    String key = key(current.service(), current.dictionary().code());
+                    String key = ResourceManifest.qualifiedCode(
+                            current.service(), current.dictionary().code());
                     return merge(
                             current.service(),
                             current.dictionary(),
@@ -112,17 +116,30 @@ public class ReferenceDataService {
     }
 
     /**
-     * 租户的全部参数及生效值，不校验权限，供业务服务读取。覆盖值只在参数仍可修改且仍满足声明时生效，否则为默认值：
+     * 一个服务的参数及在租户中的生效值，不校验权限，供业务服务读取自己的参数：其他服务的参数与它无关，不返回。
+     *
+     * @param service 声明参数的服务名
+     * @return 按声明顺序排列，生效值规则见 {@link #allParameters(UUID)}
+     */
+    public List<TenantParameter> parameters(UUID tenantId, String service) {
+        return allParameters(tenantId).stream()
+                .filter(parameter -> parameter.service().equals(service))
+                .toList();
+    }
+
+    /**
+     * 租户的全部参数及生效值。覆盖值只在参数仍可修改且仍满足声明时生效，否则为默认值：
      * 服务的新版本可能收紧约束、取消可修改或删除参数，覆盖值保留但不再生效。按服务名、声明顺序排列。
      */
-    public List<TenantParameter> parameters(UUID tenantId) {
+    private List<TenantParameter> allParameters(UUID tenantId) {
         Map<String, ParameterOverrideRow> values = new HashMap<>();
-        for (ParameterOverrideRow row : overrides.list(tenantId)) values.put(key(row.service(), row.code()), row);
+        for (ParameterOverrideRow row : overrides.list(tenantId))
+            values.put(ResourceManifest.qualifiedCode(row.service(), row.code()), row);
         List<TenantDictionary> dictionaries = dictionaries(tenantId);
         return permissions.currentParameters().stream()
                 .map(current -> {
-                    ParameterOverrideRow row = values.get(
-                            key(current.service(), current.parameter().code()));
+                    ParameterOverrideRow row = values.get(ResourceManifest.qualifiedCode(
+                            current.service(), current.parameter().code()));
                     Object value = row == null ? null : json.readValue(row.value(), Object.class);
                     boolean effective = row != null
                             && current.parameter().tenantEditable()
@@ -135,7 +152,7 @@ public class ReferenceDataService {
     /** 管理页可修改的参数及当前值。 */
     public List<TenantParameter> editableParameters(TenantActor actor) {
         requireManager(actor);
-        return parameters(actor.tenantId()).stream()
+        return allParameters(actor.tenantId()).stream()
                 .filter(TenantParameter::tenantEditable)
                 .toList();
     }
@@ -235,12 +252,7 @@ public class ReferenceDataService {
                     actor.identityId());
             String action = enabled ? "dictionary.itemEnable" : "dictionary.itemDisable";
             changed(actor, itemAudit(actor, action, service, dictionary, code));
-            return new TenantDictionaryItem(
-                    code,
-                    item.name(),
-                    item.sort(),
-                    item.custom(),
-                    enabled ? TenantDictionaryItem.ENABLED : TenantDictionaryItem.DISABLED);
+            return new TenantDictionaryItem(code, item.name(), item.sort(), item.custom(), status(enabled));
         });
     }
 
@@ -350,11 +362,16 @@ public class ReferenceDataService {
 
     private static AuditEvent.Builder itemAudit(
             TenantActor actor, String action, String service, String dictionary, String code) {
-        return audit(actor, action, "dictionaryItem", service + ":" + dictionary + ":" + code);
+        // 字典项编码同样不含冒号（自定义项前缀为 custom.），接在服务限定的字典编码后仍可拆分。
+        return audit(
+                actor,
+                action,
+                "dictionaryItem",
+                ResourceManifest.qualifiedCode(ResourceManifest.qualifiedCode(service, dictionary), code));
     }
 
     private static AuditEvent.Builder parameterAudit(TenantActor actor, String action, String service, String code) {
-        return audit(actor, action, "parameter", service + ":" + code);
+        return audit(actor, action, "parameter", ResourceManifest.qualifiedCode(service, code));
     }
 
     private static AuditEvent.Builder audit(TenantActor actor, String action, String type, String id) {
@@ -382,30 +399,33 @@ public class ReferenceDataService {
             DictionaryItemRow row = extensible ? byCode.get(item.code()) : null;
             merged.add(new TenantDictionaryItem(
                     item.code(),
-                    row == null || row.name() == null ? item.name() : row.name(),
+                    name(row, item.name()),
                     row == null || row.sortOrder() == null ? i + 1 : row.sortOrder(),
                     false,
-                    row == null || row.enabled() ? TenantDictionaryItem.ENABLED : TenantDictionaryItem.DISABLED));
+                    status(row == null || row.enabled())));
         }
         past.forEach((code, item) -> {
             if (declared.containsKey(code)) return;
             DictionaryItemRow row = byCode.get(code);
             merged.add(new TenantDictionaryItem(
-                    code,
-                    row == null || row.name() == null ? item.name() : row.name(),
-                    item.sort(),
-                    false,
-                    TenantDictionaryItem.RETIRED));
+                    code, name(row, item.name()), item.sort(), false, TenantDictionaryItem.RETIRED));
         });
         for (DictionaryItemRow row : rows) {
             if (!row.custom()) continue;
-            String status = !extensible
-                    ? TenantDictionaryItem.RETIRED
-                    : row.enabled() ? TenantDictionaryItem.ENABLED : TenantDictionaryItem.DISABLED;
+            String status = extensible ? status(row.enabled()) : TenantDictionaryItem.RETIRED;
             merged.add(new TenantDictionaryItem(row.code(), row.name(), row.sortOrder(), true, status));
         }
         merged.sort(ITEM_ORDER);
         return new TenantDictionary(service, dictionary.code(), dictionary.name(), extensible, merged);
+    }
+
+    // 内置项的设置行名称留空时沿用声明的名称。
+    private static String name(DictionaryItemRow row, String declared) {
+        return row == null || row.name() == null ? declared : row.name();
+    }
+
+    private static String status(boolean enabled) {
+        return enabled ? TenantDictionaryItem.ENABLED : TenantDictionaryItem.DISABLED;
     }
 
     private static TenantParameter view(ServiceParameter current, Object value, boolean overridden) {
@@ -423,11 +443,6 @@ public class ReferenceDataService {
                 parameter.tenantEditable(),
                 value,
                 overridden);
-    }
-
-    // 服务名与编码都不含冒号（工单 01），拼接后不会混淆。
-    private static String key(String service, String code) {
-        return service + ":" + code;
     }
 
     private record PastItem(String name, int sort) {}

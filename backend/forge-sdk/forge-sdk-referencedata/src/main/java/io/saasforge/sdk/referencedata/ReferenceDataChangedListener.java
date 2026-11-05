@@ -37,9 +37,9 @@ final class ReferenceDataChangedListener implements SmartLifecycle {
     private final ReferenceData referenceData;
     private volatile PushConsumer consumer;
 
-    ReferenceDataChangedListener(ClientConfiguration configuration, String service, ReferenceData referenceData) {
+    ReferenceDataChangedListener(ClientConfiguration configuration, ReferenceData referenceData) {
         this.configuration = configuration;
-        this.consumerGroup = service + "-reference-data-" + UUID.randomUUID();
+        this.consumerGroup = referenceData.service() + "-reference-data-" + UUID.randomUUID();
         this.referenceData = referenceData;
     }
 

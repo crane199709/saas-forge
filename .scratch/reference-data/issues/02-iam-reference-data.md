@@ -29,9 +29,14 @@
 
 - 默认值只来自清单，租户只在修改或自定义时才有行：内置项的设置行 `name`、`sort_order` 为 NULL 表示沿用声明；自定义项编码为 `custom.` 加租户填写的部分（`[A-Za-z0-9][A-Za-z0-9._-]{0,56}`，总长不超过 64）。
 - 排序：内置项缺省为声明位置（从 1 起），新自定义项为当前最大排序加 1；租户以整数 `sort` 调整。字典项按「下线项在最后 → sort → 编码」排列。
-- 下线项：iam 保存了各服务的全部清单版本，字典接口把旧版本声明、当前版本删除的内置项作为 `retired` 返回（名称取最后一次声明）。整个字典被删除时不再返回该字典。字典由可扩展改为固定时，租户设置不再生效，已有自定义项变为 `retired`。下线项不能修改或启用（`referenceData.itemNotFound`）。
+- 下线项：iam 保存了各服务的全部清单版本，字典接口把旧版本声明、当前版本删除的内置项作为 `retired` 返回（名称取最后一次声明）。整个字典被删除时不再返回该字典。字典由可扩展改为固定时，租户设置不再生效，已有自定义项变为 `retired`。下线项不能修改或启用（`dictionary.itemNotFound`）。
 - 名称唯一只在可选项（`enabled`）之间检查；改名只在该项可选时检查，已停用项改名后在启用时检查。同一租户同一字典的修改用事务级咨询锁串行。
 - 覆盖值只在参数仍可修改且仍满足当前声明时生效，否则返回默认值（服务新版本收紧约束或取消可修改后，行保留但不生效）。`dictionary` 类型的覆盖值须为该字典在本租户的可选项，可以是自定义项。值的类型与约束校验复用 SDK 新增的 `ResourceManifest.Parameter.requireValue(Object)`，与默认值的校验同一套规则。
 - `ReferenceDataChanged(tenantId)` 放在 `forge-sdk-provisioning`，新 Topic `forge-reference-data`（已加入 `deploy/rocketmq/create-topics.sh`），只在修改实际发生时发布；恢复默认而没有覆盖值时不发。
 - 审计类别为 `operation`（业务操作），`resourceType` 为 `dictionaryItem` / `parameter`。
 - 给 03：`ReferenceDataService.dictionaries(tenantId)` 与 `parameters(tenantId)` 返回合并后的生效值且不校验权限，内部接口只需在 controller 中包一层。
+
+**评审发现的规格空白（2026-11-05，仅记录，未实现，已写入 spec §10 待定）**
+
+- 清单新版本新增的内置项可能与租户的自定义项或改过名的内置项同名，产生重名的可选项，按名称导入会有歧义；名称唯一目前只在租户新增、改名、启用时检查。
+- `dictionary` 类型参数的默认值可能指向租户已停用的项：覆盖值失效时回落到默认值，而默认值不检查是否可选，参数读取仍把它作为生效值返回。

@@ -10,12 +10,15 @@ package io.saasforge.sdk.referencedata;
  * @param status {@code enabled}（可选）、{@code disabled}（租户已停用）或 {@code retired}（已下线）；只有可选项能用于新写入
  */
 public record TenantDictionaryItem(String code, String name, int sort, boolean custom, String status) {
+    // 与 iam 返回的状态取值一致。
+    private static final String ENABLED = "enabled";
+
     /**
      * 是否为可选项。
      *
      * @return 新写入的业务数据能否使用该编码
      */
     public boolean selectable() {
-        return "enabled".equals(status);
+        return ENABLED.equals(status);
     }
 }

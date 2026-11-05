@@ -28,10 +28,7 @@ class InternalReferenceDataController {
     @GetMapping("/internal/reference-data/{tenantId}")
     ApiResponse<ReferenceDataResponse> referenceData(@PathVariable UUID tenantId, Authentication service) {
         return ApiResponse.ok(new ReferenceDataResponse(
-                referenceData.dictionaries(tenantId),
-                referenceData.parameters(tenantId).stream()
-                        .filter(parameter -> parameter.service().equals(service.getName()))
-                        .toList()));
+                referenceData.dictionaries(tenantId), referenceData.parameters(tenantId, service.getName())));
     }
 
     record ReferenceDataResponse(List<TenantDictionary> dictionaries, List<TenantParameter> parameters) {}
