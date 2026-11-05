@@ -206,7 +206,8 @@ public class ReferenceDataService {
         return transactions.execute(status -> {
             TenantDictionary current = lockExtensible(actor, service, dictionary);
             TenantDictionaryItem item = requireItem(current, code);
-            if (item.selectable()) requireNameFree(current, name, code);
+            // 名称不变时不查重名：服务新版本可能引入与该项同名的内置项，冲突项须仍能调整排序。
+            if (item.selectable() && !name.equals(item.name())) requireNameFree(current, name, code);
             items.saveSettings(
                     actor.tenantId(),
                     UuidV7.generate(),

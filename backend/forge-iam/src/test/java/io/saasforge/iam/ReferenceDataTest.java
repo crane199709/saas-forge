@@ -250,6 +250,10 @@ class ReferenceDataTest {
                 .extracting(item -> item.get("code") + ":" + item.get("nameConflict"))
                 .contains("north:true", "custom.north:true");
 
+        // 名称不变只调整排序时不做重名检查，否则冲突项在改名前无法排序。
+        var resorted = call(ADMIN, HttpMethod.PUT, itemPath("region", "custom.north"), Map.of("name", "北方", "sort", 3));
+        assertThat(resorted.getStatusCode().value()).isEqualTo(200);
+
         var renamed = call(ADMIN, HttpMethod.PUT, itemPath("region", "custom.north"), Map.of("name", "北区", "sort", 3));
         assertThat(renamed.getStatusCode().value()).isEqualTo(200);
 
