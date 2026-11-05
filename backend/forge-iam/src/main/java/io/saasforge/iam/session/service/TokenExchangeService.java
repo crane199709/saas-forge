@@ -97,6 +97,11 @@ public class TokenExchangeService {
                 throw ForgeException.withErrorMessage(
                         SessionErrorCode.TENANT_ACCESS_DENIED, "Membership is not selectable by this identity");
             }
+            if (body != null && TenantTokenParameters.MFA_REQUIRED.equals(body.get("error"))) {
+                throw ForgeException.withErrorMessage(
+                        SessionErrorCode.MFA_REQUIRED,
+                        "Tenant requires MFA but the authorization has not completed it");
+            }
             throw ForgeException.withErrorMessage(SessionErrorCode.AUTH_FAILED, "Token grant rejected");
         }
         try {
