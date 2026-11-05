@@ -17,9 +17,10 @@ const dictionaries = [
     name: '客户来源',
     extensible: true,
     items: [
-      { code: 'web', name: '官网', sort: 1, custom: false, status: 'enabled' },
+      { code: 'web', name: '官网', sort: 1, custom: false, status: 'enabled', nameConflict: true },
       { code: 'custom.expo', name: '展会', sort: 2, custom: true, status: 'disabled' },
       { code: 'fax', name: '传真', sort: 3, custom: false, status: 'retired' },
+      { code: 'custom.site', name: '官网', sort: 4, custom: true, status: 'enabled', nameConflict: true },
     ],
   },
   {
@@ -170,4 +171,16 @@ it('停用启用中的项，启用已停用的项；已下线的项不可操作'
     ['POST', `${base}/custom.expo/enable`],
   ])
   expect(wrapper.get('[data-testid="item-fax"]').find('button').exists()).toBe(false)
+})
+
+it('与其他可选项重名的项带标记，提示改名其中之一', async () => {
+  const { wrapper } = await mountPage()
+
+  for (const code of ['web', 'custom.site']) {
+    expect(wrapper.get(`[data-testid="item-conflict-${code}"]`).text()).toContain('重名')
+  }
+  expect(wrapper.text()).toContain('请修改其中一项的显示名')
+  await wrapper.get('[data-testid="show-disabled"] input').setValue(true)
+  expect(wrapper.find('[data-testid="item-conflict-custom.expo"]').exists()).toBe(false)
+  expect(wrapper.find('[data-testid="item-conflict-fax"]').exists()).toBe(false)
 })

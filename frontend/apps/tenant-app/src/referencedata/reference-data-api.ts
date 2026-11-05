@@ -11,6 +11,8 @@ export interface DictionaryItem {
   custom: boolean
   /** 只有 enabled 可选；retired 是新版本 Manifest 删掉的内置项或字典改为固定后的自定义项。 */
   status: ItemStatus
+  /** 与同一字典的其他可选项重名（服务新版本新增的内置项造成），按名称导入会出错，需改名其中之一。 */
+  nameConflict: boolean
 }
 
 export interface Dictionary {

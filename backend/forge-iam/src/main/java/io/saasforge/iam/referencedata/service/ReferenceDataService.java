@@ -33,6 +33,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
@@ -433,8 +434,18 @@ public class ReferenceDataService {
             String status = extensible ? status(row.enabled()) : TenantDictionaryItem.RETIRED;
             merged.add(new TenantDictionaryItem(row.code(), row.name(), row.sortOrder(), true, status));
         }
-        merged.sort(ITEM_ORDER);
-        return new TenantDictionary(service, dictionary.code(), dictionary.name(), extensible, merged);
+        // 服务新版本新增的内置项可能与租户已有的可选项重名，不自动处理，标记出来提示租户改名。
+        Map<String, Long> selectableNames = merged.stream()
+                .filter(TenantDictionaryItem::selectable)
+                .collect(Collectors.groupingBy(TenantDictionaryItem::name, Collectors.counting()));
+        List<TenantDictionaryItem> flagged = merged.stream()
+                .map(item -> item.selectable() && selectableNames.get(item.name()) > 1
+                        ? new TenantDictionaryItem(
+                                item.code(), item.name(), item.sort(), item.custom(), item.status(), true)
+                        : item)
+                .sorted(ITEM_ORDER)
+                .toList();
+        return new TenantDictionary(service, dictionary.code(), dictionary.name(), extensible, flagged);
     }
 
     // 内置项的设置行名称留空时沿用声明的名称。

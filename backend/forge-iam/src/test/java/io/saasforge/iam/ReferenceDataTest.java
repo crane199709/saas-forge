@@ -102,9 +102,45 @@ class ReferenceDataTest {
         // v2 删除的内置项 legacy 仍返回，标记为下线，供历史数据显示名称。
         assertThat(items(source))
                 .containsExactly(
-                        Map.of("code", "online", "name", "线上", "sort", 1, "custom", false, "status", "enabled"),
-                        Map.of("code", "referral", "name", "转介绍", "sort", 2, "custom", false, "status", "enabled"),
-                        Map.of("code", "legacy", "name", "旧渠道", "sort", 2, "custom", false, "status", "retired"));
+                        Map.of(
+                                "code",
+                                "online",
+                                "name",
+                                "线上",
+                                "sort",
+                                1,
+                                "custom",
+                                false,
+                                "status",
+                                "enabled",
+                                "nameConflict",
+                                false),
+                        Map.of(
+                                "code",
+                                "referral",
+                                "name",
+                                "转介绍",
+                                "sort",
+                                2,
+                                "custom",
+                                false,
+                                "status",
+                                "enabled",
+                                "nameConflict",
+                                false),
+                        Map.of(
+                                "code",
+                                "legacy",
+                                "name",
+                                "旧渠道",
+                                "sort",
+                                2,
+                                "custom",
+                                false,
+                                "status",
+                                "retired",
+                                "nameConflict",
+                                false));
         assertThat(dictionary(response, "order-status").get("extensible")).isEqualTo(false);
     }
 
@@ -188,6 +224,34 @@ class ReferenceDataTest {
         var enable = call(ADMIN, HttpMethod.POST, itemPath("channel", "web") + "/enable", null);
         assertThat(enable.getStatusCode().value()).isEqualTo(409);
         assertThat(enable.getBody().get("code")).isEqualTo("dictionary.itemNameTaken");
+    }
+
+    @Test
+    void selectableItemsSharingANameAreFlaggedUntilOneIsRenamed() throws Exception {
+        // 夹具中自定义项 custom.north 与服务新版本的内置项 north 同名；已停用的 custom.south 与 south 同名但不可选，不算冲突。
+        assertThat(items(dictionary(call(MEMBER, HttpMethod.GET, "/reference-data/dictionaries", null), "region")))
+                .extracting(item -> item.get("code") + ":" + item.get("nameConflict"))
+                .containsExactly("north:true", "south:false", "custom.north:true", "custom.south:false");
+        // 业务服务经内部接口读到同样的标记。
+        Map<String, Object> internalRegion = ((List<?>)
+                        data(internal(SERVICE_TOKEN, "/internal/reference-data/" + TENANT))
+                                .get("dictionaries"))
+                .stream()
+                        .map(ReferenceDataTest::map)
+                        .filter(dictionary ->
+                                SERVICE.equals(dictionary.get("service")) && "region".equals(dictionary.get("code")))
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(items(internalRegion))
+                .extracting(item -> item.get("code") + ":" + item.get("nameConflict"))
+                .contains("north:true", "custom.north:true");
+
+        var renamed = call(ADMIN, HttpMethod.PUT, itemPath("region", "custom.north"), Map.of("name", "北区", "sort", 3));
+        assertThat(renamed.getStatusCode().value()).isEqualTo(200);
+
+        assertThat(items(dictionary(call(MEMBER, HttpMethod.GET, "/reference-data/dictionaries", null), "region")))
+                .extracting(item -> item.get("code") + ":" + item.get("name") + ":" + item.get("nameConflict"))
+                .containsExactly("north:北方:false", "south:南方:false", "custom.north:北区:false", "custom.south:南方:false");
     }
 
     @Test

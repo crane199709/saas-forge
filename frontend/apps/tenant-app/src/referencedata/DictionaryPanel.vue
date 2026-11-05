@@ -23,6 +23,9 @@ const items = computed(() =>
   props.dictionary.items.filter((item) => showDisabled.value || item.status === 'enabled'),
 )
 
+// 服务新版本新增的内置项可能与已有可选项重名，服务端只标记不处理；按名称导入会因此出错，提示租户改名。
+const hasNameConflict = computed(() => props.dictionary.items.some((item) => item.nameConflict))
+
 // 每行的显示名与排序先在本地编辑，点保存才提交；字典重读后以服务端结果重置。
 const drafts = ref<Record<string, { name: string; sort: number }>>({})
 watch(
@@ -75,6 +78,9 @@ function create() {
       data-testid="show-disabled"
       :label="t('referenceData.dictionary.showDisabled')"
     />
+    <p v-if="hasNameConflict" class="conflict-hint" data-testid="name-conflict-hint">
+      {{ t('referenceData.dictionary.nameConflictHint') }}
+    </p>
     <table class="items">
       <tbody>
         <tr v-for="item in items" :key="item.code" :data-testid="`item-${item.code}`">
@@ -112,7 +118,17 @@ function create() {
                 : t('referenceData.dictionary.builtin')
             }}
           </td>
-          <td>{{ t(`referenceData.dictionary.statuses.${item.status}`) }}</td>
+          <td>
+            {{ t(`referenceData.dictionary.statuses.${item.status}`) }}
+            <el-tag
+              v-if="item.nameConflict"
+              type="warning"
+              size="small"
+              :data-testid="`item-conflict-${item.code}`"
+            >
+              {{ t('referenceData.dictionary.nameConflict') }}
+            </el-tag>
+          </td>
           <td v-if="editable(item)">
             <el-button
               link
@@ -185,6 +201,9 @@ function create() {
   flex-wrap: wrap;
   gap: 8px;
   margin: 8px 0;
+}
+.conflict-hint {
+  color: var(--el-color-warning);
 }
 .items td {
   padding: 4px 12px 4px 0;

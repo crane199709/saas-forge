@@ -1,5 +1,7 @@
 package io.saasforge.sdk.referencedata;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 /**
  * 合并当前租户设置后的字典项。
  *
@@ -9,6 +11,7 @@ package io.saasforge.sdk.referencedata;
  * @param custom 是否为租户自定义项
  * @param status {@code enabled}（可选）、{@code disabled}（租户已停用）或 {@code retired}（已下线）；只有可选项能用于新写入
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record TenantDictionaryItem(String code, String name, int sort, boolean custom, String status) {
     // 与 iam 返回的状态取值一致。
     private static final String ENABLED = "enabled";
