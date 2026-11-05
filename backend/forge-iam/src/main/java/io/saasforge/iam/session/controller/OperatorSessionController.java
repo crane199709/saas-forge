@@ -2,6 +2,7 @@ package io.saasforge.iam.session.controller;
 
 import io.saasforge.iam.session.model.OperatorTokenResponse;
 import io.saasforge.iam.session.service.LoginAudit;
+import io.saasforge.iam.session.service.LoginSessionRegistry;
 import io.saasforge.iam.session.service.OperatorSessionService;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,10 +25,12 @@ import org.springframework.web.bind.annotation.RestController;
 class OperatorSessionController {
     private final OperatorSessionService sessions;
     private final LoginAudit audits;
+    private final LoginSessionRegistry loginSessions;
 
-    OperatorSessionController(OperatorSessionService sessions, LoginAudit audits) {
+    OperatorSessionController(OperatorSessionService sessions, LoginAudit audits, LoginSessionRegistry loginSessions) {
         this.sessions = sessions;
         this.audits = audits;
+        this.loginSessions = loginSessions;
     }
 
     @Operation(summary = "认证 Operator 并建立标准授权流程的登录会话")
@@ -40,6 +43,7 @@ class OperatorSessionController {
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
         new HttpSessionSecurityContextRepository().saveContext(context, request, response);
+        loginSessions.register(authentication.getName(), request.getSession().getId());
         return ApiResponse.ok(new LoginResponse("platform-console", sessions.redirectUri()));
     }
 

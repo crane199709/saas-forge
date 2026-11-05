@@ -4,6 +4,7 @@ import io.saasforge.iam.operator.model.OperatorRow;
 import io.saasforge.iam.operator.service.OperatorService;
 import io.saasforge.iam.operator.service.OperatorStateService;
 import io.saasforge.iam.operatoradmin.model.ManagedOperator;
+import io.saasforge.iam.password.service.PasswordPolicy;
 import io.saasforge.iam.permission.service.PlatformPermissions;
 import io.saasforge.iam.platformrole.service.PlatformRoleService;
 import io.saasforge.sdk.audit.AuditCategory;
@@ -32,18 +33,21 @@ public class OperatorManagementService {
     private final PlatformRoleService roles;
     private final TransactionTemplate transactions;
     private final AuditRecorder audits;
+    private final PasswordPolicy policy;
 
     OperatorManagementService(
             OperatorService operators,
             OperatorStateService operatorStates,
             PlatformRoleService roles,
             TransactionTemplate transactions,
-            AuditRecorder audits) {
+            AuditRecorder audits,
+            PasswordPolicy policy) {
         this.operators = operators;
         this.operatorStates = operatorStates;
         this.roles = roles;
         this.transactions = transactions;
         this.audits = audits;
+        this.policy = policy;
     }
 
     /** 全部未删除的 Operator 及其平台角色，按账号排序。 */
@@ -101,11 +105,12 @@ public class OperatorManagementService {
     }
 
     /**
-     * 由管理员设置新密码；已签发的 Access Token 随即失效。已有的登录会话（Refresh Token）不会终止，需要立即踢出时应停用。
+     * 由管理员设置新密码，执行 Platform Realm 的 Password Policy；已签发的 Access Token 随即失效。已有的登录会话（Refresh Token）不会终止，需要立即踢出时应停用。
      */
     public void resetPassword(UUID actor, UUID id, String password) {
         requireManager(actor);
         roles.requireSuperAdminFor(actor, id, List.of());
+        policy.checkOperator(password, operators.get(id).account());
         operators.changePassword(id, password, actor);
         operatorStates.incrementVersion(id);
         audits.record(audit(actor, "operator.passwordReset", "operator", id).build());

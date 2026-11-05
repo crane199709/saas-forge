@@ -31,6 +31,7 @@
 | `POST /iam/platform/auth/exchange` | JSON `code`、`codeVerifier` | `accessToken`、`refreshToken`、`tokenType`、`expiresIn`、`operatorName` |
 | `POST /iam/platform/auth/refresh` | JSON `refreshToken` | 新的一对 Token，轮换与重放撤销同 Tenant Realm |
 | `POST /iam/platform/auth/logout` | 同源 JSON `{}` + IAM 会话 Cookie | 销毁 IAM 登录会话 |
+| `POST /iam/platform/auth/password/change` | `Authorization: Bearer <Platform Token>` + JSON `currentPassword`、`newPassword` | 200；见 [tenant-login.md](tenant-login.md)「密码」 |
 | `GET /platform/operators/current` | `Authorization: Bearer <Platform Token>` | forge-platform 经 SDK 读取的 `operatorId` |
 
 `/iam/platform/auth/*` 同样一律 `Cache-Control: no-store`。账号不存在、密码错误、账号属于另一个 Realm 都返回同一个 401 `auth.failed`。

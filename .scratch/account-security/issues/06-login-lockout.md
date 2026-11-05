@@ -17,3 +17,4 @@
 
 - 2026-11-04（工单 01 实现时发现）：`/auth/mfa/bind/confirm`、`/auth/mfa/recovery-codes/regenerate`、`/auth/mfa/unbind` 目前不限动态码错误次数；持有 Access Token 的攻击者可借暴力猜码重新生成 Recovery Code。本工单的「动态码失败计在 Identity 上」应覆盖这三个入口。
 - 2026-11-04（工单 02 实现时发现）：`/auth/login/mfa` 在待 MFA 有效期（5 分钟）内不限提交次数，可反复猜动态码或 Recovery Code；本工单的 MFA 失败计数也应覆盖这个入口。
+- 2026-11-05（工单 07 实现时留下接入点）：`PasswordService`（`io.saasforge.iam.password.service`）中标注「工单 06 在此接入」的四处需计入失败：`changeIdentityPassword` 与 `changeOperatorPassword` 的原密码错误（计在 Identity / Operator 上，返回 `password.currentInvalid`）；`verifyResetCode` 的验证码错误（按规范化后的邮箱或手机号计数，未注册目标同样计数）；`reset` 中 `mfa.verifyLoginCode` / `mfa.useRecoveryCode` 的动态码或 Recovery Code 错误（计在 Identity 上）。锁定期内这些入口也应拒绝。

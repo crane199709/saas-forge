@@ -51,7 +51,8 @@ class InvitationController {
             @Pattern(regexp = "^[A-Za-z][A-Za-z0-9_.-]{2,63}$")
             String account,
 
-            @Size(min = 8, max = 72) String password,
+            // 长度等规则由 Password Policy 校验并返回 password.*，这里只限制请求体大小。
+            @Size(max = 256) String password,
             @Size(max = 120) String displayName) {
         @Override
         public String toString() {

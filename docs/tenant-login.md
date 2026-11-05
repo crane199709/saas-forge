@@ -38,6 +38,10 @@ Vite 将 `/iam` 与 `/demo` 代理到本地网关 `http://localhost:8080`。部�
 | `POST /iam/auth/refresh` | JSON `refreshToken` | 新的一对 Token；旧 Refresh Token 重放会撤销同一授权的后续刷新能力 |
 | `POST /iam/auth/switch` | JSON `refreshToken`、`membershipId` | 绑定目标 Membership 的新一对 Token；目标不可进入时 403 `auth.tenantAccessDenied` |
 | `GET /iam/auth/memberships` | `Authorization: Bearer …` | 当前身份的有效 Membership：`membershipId`、`tenantId`、`tenantName` |
+| `POST /iam/auth/password/change` | `Authorization: Bearer …` + JSON `currentPassword`、`newPassword` | 200；见下文「密码」 |
+| `POST /iam/auth/password/forgot/send-code` | JSON `target` | `expiresIn`、`resendIn`；目标未注册时响应相同但不发送 |
+| `POST /iam/auth/password/forgot/verify` | JSON `target`、`code` | `resetToken`（10 分钟、一次性）、`mfaRequired` |
+| `POST /iam/auth/password/forgot/reset` | JSON `resetToken`、`password`，已绑定 Authenticator 时另需 `code` 或 `recoveryCode` | 200 |
 | `GET /iam/oauth2/jwks` | 无 | Spring Authorization Server 发布的公钥 |
 | `GET /demo/context` | `Authorization: Bearer …` | `identityId`、`tenantId`、`membershipId`、`version` |
 
@@ -95,6 +99,22 @@ SDK 监听 `storage` 事件跟随其他标签页（决策见 [ADR-0017](adr/0017
 重新获取会覆盖同用途的旧码并清零错误次数。验证码状态只在 Redis（`iam:global:verification:` 前缀），明文存放：6 位数字的取值空间很小，哈希不能防住拿到 Redis 数据的人，防猜测依靠错误次数上限。为不暴露账号是否存在，登录验证码对未注册目标同样生成、计入发送间隔，只是不发送，因此响应和猜测时的错误与已注册目标一致；注册时则如实提示邮箱或手机号已被占用（提交注册时同样会提示，提前隐藏没有意义）。这里只按目标限频。网关按 Token 中的租户限流（工单 11），只作用于已登录请求；发送验证码等匿名接口按来源 IP 的限流尚未实现。
 
 短信与邮件发送是 SPI：声明 `io.saasforge.iam.verification.service.SmsSender` 或 `EmailSender` 类型的 Bean 即替换对应通道，两者独立。未声明时使用开发用实现，启动时写一条 WARN，并把验证码明文写入 INFO 日志，**生产环境必须提供实现**。
+
+## 密码
+
+[账号安全规格](../.scratch/account-security/spec.md) 第 4–5 节，工单 [07](../.scratch/account-security/issues/07-password-policy-and-self-service.md)。
+
+**Password Policy** 每个 Realm 一套，由平台配置，Tenant 不能自定：长度为 `forge.iam.password.tenant.min-length` / `forge.iam.password.platform.min-length`（默认 8，可配 8–72）个字符到 72 字节（BCrypt 只取前 72 字节）；不在内置弱密码清单中（`password/weak-passwords.txt`，1 万条，取自 zxcvbn 的常见密码频率表，比较不区分大小写，启动时加载）；不与账号、邮箱、手机号相同（不区分大小写）。不要求字符组合，不强制定期修改。注册、接受邀请（为待激活身份设密码）、自助改密码、忘记密码重设、管理员重置 Operator 密码执行同一规则，违反时 400 `password.tooShort`、`password.tooLong`、`password.tooCommon`、`password.sameAsIdentifier`。登录不校验，存量密码不受影响。管理员创建 Operator 时的初始密码暂未接入。
+
+**自助改密码**（Identity `/auth/password/change`、Operator `/platform/auth/password/change`）需原密码，错误时 400 `password.currentInvalid`。**忘记密码**只面向 Identity：验证码用途 `PASSWORD_RESET`，对未注册目标同样生成、计入发送间隔但不发送；`verify` 通过后签发一次性重设凭证（Redis 只存摘要），已绑定 Authenticator 时 `reset` 必须同时提交动态码或 Recovery Code，缺少时 400 `password.mfaRequired`。新密码或 MFA 不通过时凭证保留，可在有效期内重试；凭证过期或已用过时 400 `password.resetExpired`。
+
+改密码或重设成功后，该账号的其他凭证失效：
+
+- **Access Token**：Operator 递增 Operator 版本，与管理员重置密码相同；Identity 没有自己的版本，递增其全部有效 Membership 的版本。网关比对版本后拒绝已签发的 Access Token（含发起改密码的这个）。
+- **Refresh Token**：`RedisAuthorizationService` 按主体维护授权索引（`iam:global:oauth-principal:{id}`），删除该账号的全部授权；自助改密码保留发起请求的 Access Token 所属授权，客户端刷新后按新版本继续使用，忘记密码重设不保留。
+- **登录会话**：登录成功时在 `iam:global:principal-sessions:{id}` 登记会话标识，改密码后全部终止，不能再借授权码流程签发新 Token。
+
+审计 `password.change`（Realm 按账号所属）、`password.reset`，资源为 `identity` 或 `operator`，不属于任何租户。原密码、验证码、动态码错误计入 Login Lockout 待工单 06 接入。
 
 ## 多租户
 

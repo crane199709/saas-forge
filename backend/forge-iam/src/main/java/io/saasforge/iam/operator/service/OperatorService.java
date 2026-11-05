@@ -3,6 +3,7 @@ package io.saasforge.iam.operator.service;
 import io.saasforge.iam.operator.mapper.OperatorMapper;
 import io.saasforge.iam.operator.model.ActiveOperator;
 import io.saasforge.iam.operator.model.OperatorCredential;
+import io.saasforge.iam.operator.model.OperatorPassword;
 import io.saasforge.iam.operator.model.OperatorRow;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
@@ -34,6 +35,11 @@ public class OperatorService {
 
     public ActiveOperator findActive(UUID operatorId) {
         return operators.findActive(operatorId);
+    }
+
+    /** 未删除的 active Operator 的账号与密码哈希；不存在时为 null。 */
+    public OperatorPassword findActivePassword(UUID operatorId) {
+        return operators.findActivePassword(operatorId);
     }
 
     /** 全部未删除的 Operator，按账号排序。 */

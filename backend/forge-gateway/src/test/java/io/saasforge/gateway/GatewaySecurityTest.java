@@ -403,8 +403,15 @@ class GatewaySecurityTest {
                 "/iam/auth/code-login",
                 "/iam/auth/login/mfa",
                 "/iam/auth/register/send-code",
-                "/iam/auth/register")) {
+                "/iam/auth/register",
+                "/iam/auth/password/forgot/send-code",
+                "/iam/auth/password/forgot/verify",
+                "/iam/auth/password/forgot/reset")) {
             assertEnvelope(call(HttpMethod.POST, path, null), 404, "request.notFound");
+        }
+        // 自助改密码需要所在 Realm 的 Access Token。
+        for (String path : List.of("/iam/auth/password/change", "/iam/platform/auth/password/change")) {
+            assertEnvelope(call(HttpMethod.POST, path, null), 401, "auth.unauthenticated");
         }
     }
 

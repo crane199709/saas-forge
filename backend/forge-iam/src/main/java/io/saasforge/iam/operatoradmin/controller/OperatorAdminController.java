@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
@@ -132,8 +133,8 @@ class OperatorAdminController {
             @NotBlank @Size(max = 120) String displayName,
             @Size(max = 64) String region) {}
 
-    record PasswordRequest(
-            @NotBlank @Size(min = 8, max = 72) String password) {
+    // 长度等规则由 Password Policy 校验并返回 password.*，这里只限制请求体大小。
+    record PasswordRequest(@NotNull @Size(max = 256) String password) {
         @Override
         public String toString() {
             return "PasswordRequest[]";

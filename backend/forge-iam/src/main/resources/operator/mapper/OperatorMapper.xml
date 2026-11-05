@@ -9,6 +9,10 @@
         SELECT id AS operator_id, account, display_name, region, version FROM operator
         WHERE NOT deleted AND status = 'active' AND id = #{operatorId}
     </select>
+    <select id="findActivePassword" resultType="io.saasforge.iam.operator.model.OperatorPassword">
+        SELECT id AS operator_id, account, password_hash FROM operator
+        WHERE NOT deleted AND status = 'active' AND id = #{operatorId}
+    </select>
     <select id="list" resultType="io.saasforge.iam.operator.model.OperatorRow">
         SELECT id, account, display_name, region, status, created_at FROM operator
         WHERE NOT deleted ORDER BY account
