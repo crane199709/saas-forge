@@ -13,6 +13,8 @@ public enum ReferenceDataErrorCode implements ErrorCode {
     ITEM_CODE_TAKEN("dictionary.itemCodeTaken", 409),
     /** 与该字典现有的可选项重名。 */
     ITEM_NAME_TAKEN("dictionary.itemNameTaken", 409),
+    /** 停用的项是某个参数的生效值；参数可修改时须先改为其他取值。 */
+    ITEM_IN_USE("dictionary.itemInUse", 409),
     /** 当前清单中没有该服务的这个参数。 */
     PARAMETER_NOT_FOUND("parameter.notFound", 404),
     /** 参数未声明为租户可修改。 */

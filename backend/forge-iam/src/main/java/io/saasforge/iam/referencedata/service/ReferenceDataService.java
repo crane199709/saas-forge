@@ -238,6 +238,7 @@ public class ReferenceDataService {
             TenantDictionary current = lockExtensible(actor, service, dictionary);
             TenantDictionaryItem item = requireItem(current, code);
             if (enabled) requireNameFree(current, item.name(), code);
+            else requireUnused(actor.tenantId(), service, dictionary, code);
             // 内置项首次修改时新建设置行，名称与排序留空沿用声明；自定义项总有行，传入的当前值不会被写入。
             items.saveEnabled(
                     actor.tenantId(),
@@ -323,6 +324,23 @@ public class ReferenceDataService {
                         && !item.code().equals(except)
                         && item.name().equals(name));
         if (taken) throw new ForgeException(ReferenceDataErrorCode.ITEM_NAME_TAKEN, name);
+    }
+
+    /**
+     * 字典项是本服务某个 {@code dictionary} 类型参数的生效值时不能停用：覆盖值指向停用项会回落到默认值，而默认值停用后参数就没有可选的生效值。
+     * 不可修改的参数也算在内，它的默认值租户改不掉。
+     */
+    private void requireUnused(UUID tenantId, String service, String dictionary, String code) {
+        allParameters(tenantId).stream()
+                .filter(parameter -> parameter.service().equals(service)
+                        && "dictionary".equals(parameter.type())
+                        && dictionary.equals(parameter.dictionary())
+                        && code.equals(parameter.value()))
+                .findFirst()
+                .ifPresent(parameter -> {
+                    throw new ForgeException(
+                            ReferenceDataErrorCode.ITEM_IN_USE, parameter.name(), parameter.tenantEditable() ? 1 : 0);
+                });
     }
 
     private ServiceParameter requireEditable(String service, String code) {

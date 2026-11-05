@@ -191,10 +191,47 @@ class ReferenceDataTest {
     }
 
     @Test
+    void anItemThatIsTheEffectiveValueOfAParameterCannotBeDisabled() throws Exception {
+        // p-low 是可修改参数 ticket.priority 的默认值，且没有覆盖值：提示先修改参数。
+        var byDefault = call(ADMIN, HttpMethod.POST, itemPath("priority", "p-low") + "/disable", null);
+        assertThat(byDefault.getStatusCode().value()).isEqualTo(409);
+        assertThat(byDefault.getBody().get("code")).isEqualTo("dictionary.itemInUse");
+        assertThat((String) byDefault.getBody().get("userTip"))
+                .contains("工单默认优先级")
+                .contains("请先修改该参数");
+        // p-high 是不可修改参数 ticket.escalation 的默认值，租户无法改掉它。
+        var fixed = call(ADMIN, HttpMethod.POST, itemPath("priority", "p-high") + "/disable", null);
+        assertThat(fixed.getStatusCode().value()).isEqualTo(409);
+        assertThat(fixed.getBody().get("code")).isEqualTo("dictionary.itemInUse");
+        assertThat((String) fixed.getBody().get("userTip")).contains("工单升级优先级").doesNotContain("请先修改该参数");
+
+        // 覆盖为 p-mid 后，生效值是覆盖值：p-mid 不能停用，不再被使用的 p-low 可以。
+        assertThat(call(ADMIN, HttpMethod.PUT, parameterPath("ticket.priority"), Map.of("value", "p-mid"))
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(200);
+        var byOverride = call(ADMIN, HttpMethod.POST, itemPath("priority", "p-mid") + "/disable", null);
+        assertThat(byOverride.getStatusCode().value()).isEqualTo(409);
+        assertThat(byOverride.getBody().get("code")).isEqualTo("dictionary.itemInUse");
+        assertThat(call(ADMIN, HttpMethod.POST, itemPath("priority", "p-low") + "/disable", null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(200);
+
+        // 还原，其他测试按默认值断言参数。
+        call(ADMIN, HttpMethod.POST, itemPath("priority", "p-low") + "/enable", null);
+        call(ADMIN, HttpMethod.DELETE, parameterPath("ticket.priority"), null);
+    }
+
+    @Test
     void onlyEditableParametersCanBeOverriddenWithinTheirConstraintsAndReset() throws Exception {
         assertThat(parameters(ADMIN))
                 .extracting(parameter -> parameter.get("code") + "=" + parameter.get("value"))
-                .containsExactly("order.auto-close=PT30M", "order.max-items=50", "customer.default-source=online");
+                .containsExactly(
+                        "order.auto-close=PT30M",
+                        "order.max-items=50",
+                        "customer.default-source=online",
+                        "ticket.priority=p-low");
 
         var overridden = call(ADMIN, HttpMethod.PUT, parameterPath("order.max-items"), Map.of("value", 100));
         assertThat(overridden.getStatusCode().value()).isEqualTo(200);
@@ -234,7 +271,11 @@ class ReferenceDataTest {
         assertThat(reset.getStatusCode().value()).isEqualTo(200);
         assertThat(parameters(ADMIN))
                 .extracting(parameter -> parameter.get("code") + "=" + parameter.get("value"))
-                .containsExactly("order.auto-close=PT30M", "order.max-items=50", "customer.default-source=referral");
+                .containsExactly(
+                        "order.auto-close=PT30M",
+                        "order.max-items=50",
+                        "customer.default-source=referral",
+                        "ticket.priority=p-low");
     }
 
     @Test
@@ -334,7 +375,9 @@ class ReferenceDataTest {
                         SERVICE + "/order.auto-close=PT30M",
                         SERVICE + "/order.max-items=120",
                         SERVICE + "/order.remark=请尽快付款",
-                        SERVICE + "/customer.default-source=online");
+                        SERVICE + "/customer.default-source=online",
+                        SERVICE + "/ticket.priority=p-low",
+                        SERVICE + "/ticket.escalation=p-high");
         // 服务令牌之外的凭证一律拒绝。
         assertThat(internal("wrong-token", "/internal/reference-data/" + TENANT_B)
                         .getStatusCode()
