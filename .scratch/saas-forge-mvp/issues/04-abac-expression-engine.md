@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 工程骨架与版本组合验证
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 支持逻辑节点 `and`、`or`、`not` 与比较节点 `{attr, op, value}`；`attr` 命名空间为 `subject.*`、`resource.*`、`env.*`
 - [x] 支持操作符 `eq ne in nin gt gte lt lte contains is_null` 与部门「在子树下」（对应 PostgreSQL `ltree`）

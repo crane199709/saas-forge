@@ -1,6 +1,6 @@
 # 前端 Shell 整改规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-10-29 的讨论确认；会话存储改为 `localStorage` 由用户拍板，落地时新增 ADR 记录。
 

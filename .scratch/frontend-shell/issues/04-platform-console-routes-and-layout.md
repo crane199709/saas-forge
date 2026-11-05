@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 会话改存 localStorage
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 引入 `vue-router`，新增路由：`/login`、`/tenants`、`/plans`、`/sub-apps`、`/operators`、`/roles`、`/403` 与 404 兜底（另保留现有平台审计面板为 `/audit`，需 `auditRead`）；所需权限沿用 `access.ts` 的 `permissions`，`/tenants` 需 `tenantRead`，其管理操作仍按 `tenantManage` 控制
 - [x] `/` 跳转到第一个有权限的页面；一个都没有时显示现有的 `access.none` 提示

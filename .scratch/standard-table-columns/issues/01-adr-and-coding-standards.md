@@ -4,7 +4,7 @@
 
 **Blocked by:** 无
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 新增 `docs/adr/0016-standard-table-columns.md`，格式与现有 ADR 一致，记录 [spec](../spec.md) 第 11 节列出的决策；写明「逻辑删除进基线」的代价：唯一约束要改成部分唯一索引、手写 SQL 要自带 `NOT deleted`、数据不会被物理清除；同时写明放弃的方案：`deleted_at`、按表 opt-in、RLS 过滤已删除行、传递操作人
 - [x] `docs/agents/coding-standards.md` 的建表规范补充：标准表的范围与标准列定义（spec 第 2、3 节）；标准表禁止使用 `UNIQUE` 约束，只能用 `WHERE NOT deleted` 的部分唯一索引；实体继承 `AuditableEntity`；spec 第 9 节的手写 SQL 规则（第 4 条写为「删除使用能触发更新填充的方法」，具体方法由工单 02 验证后补充）

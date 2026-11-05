@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 信封模型与 forge-sdk-web
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] IAM 引入 `forge-sdk-web`；`SessionController` 的 login、memberships、switch、exchange、refresh、logout 返回 `ApiResponse<T>`，保留现有 `Cache-Control: no-store`；logout 由 204 改为 200 且 `data` 为 null
 - [x] 删除 IAM 的 `AuthenticationErrors`；`auth.failed`（401）与 `auth.tenantAccessDenied`（403）定义在功能包 `service` 层的 `ErrorCode` 枚举中，错误密码与未知账号仍返回完全相同的响应（`traceId` 除外）

@@ -4,7 +4,7 @@
 
 **Blocked by:** 无
 
-**Status:** ready-for-human
+**Status:** resolved
 
 - [x] 新增 `@ConfigurationProperties` record 绑定的服务列表，每项包含路径前缀与 Realm（tenant / platform）；不设默认值，列表为空或某项缺字段时启动失败
 - [x] 安全规则按配置生成：已声明前缀下 `/internal/**` denyAll，`/v3/api-docs/**` permitAll，其余 authenticated，并按 Realm 选择认证管理器；未声明前缀 denyAll

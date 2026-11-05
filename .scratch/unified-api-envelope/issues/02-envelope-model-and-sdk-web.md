@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 ADR 与编码规范
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] `forge-sdk-core` 提供 `ApiResponse<T>`、`FieldError`、`PageMeta`、`ErrorCode` 接口、`ForgeException`，不引入 Spring 依赖；public API 有文档注释
 - [x] `ApiResponse` 提供 `ok`、`created`、`page` 等工厂方法；成功 `code = "ok"`，`httpStatus` 与实际状态码一致；null 字段不输出（Boot 4 使用 Jackson 3，确认配置方式对信封生效）

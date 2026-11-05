@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 Tenant Realm 最小登录链路
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] SDK 自动把租户、成员与 trace 信息写入日志 MDC，无需业务代码参与
 - [x] Micrometer Tracing + OpenTelemetry 导出配置就绪，网关到下游服务的 trace 连续

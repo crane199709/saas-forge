@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 网关按配置声明接入服务, 03 服务数据库准备脚本与平台侧接入清单, 05 后端工程模板与接入指南, 06 前端脚手架可在仓库外运行
 
-**Status:** ready-for-human
+**Status:** resolved
 
 - [x] 把当前提交的全部 Maven 制品与 npm 包发布到任务内临时本地仓库（复用 04 的发布流程）
 - [x] 在仓库外的空目录用 archetype 生成服务，Maven 只从临时本地仓库和公共仓库解析依赖，不读取 monorepo；运行它的 `verify` 并通过

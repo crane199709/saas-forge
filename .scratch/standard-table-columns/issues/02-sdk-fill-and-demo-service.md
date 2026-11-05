@@ -4,7 +4,7 @@
 
 **Blocked by:** 无
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] `forge-sdk-core` 新增 `CurrentActorProvider`（返回 `Optional<UUID>`），要有文档注释
 - [x] `forge-sdk-security` 注册实现：有已认证的 `JwtAuthenticationToken` 时返回 `sub`，否则返回空，不抛异常

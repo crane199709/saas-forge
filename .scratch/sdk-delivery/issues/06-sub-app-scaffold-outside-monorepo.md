@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 统一版本与发布流程
 
-**Status:** ready-for-human
+**Status:** resolved
 
 - [x] 生成命令接受目标目录参数，默认生成到当前目录下 `<应用编码>-sub-app`；目标已存在时失败
 - [x] 构建 sub-app-kit 时，从 tenant-app 生成共享依赖版本表并打进发布产物；生成器在仓库外读取该表，在 monorepo 内继续可用

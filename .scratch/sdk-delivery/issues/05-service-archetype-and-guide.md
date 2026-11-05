@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 网关按配置声明接入服务, 03 服务数据库准备脚本与平台侧接入清单, 04 统一版本与发布流程
 
-**Status:** ready-for-human
+**Status:** resolved
 
 - [x] archetype 模块加入构建与发布范围；生成的 POM 以 forge-dependencies 为父 POM，不引用 monorepo 内的聚合 POM
 - [x] 默认引入 core、web、security、tenant、abac、mq、provisioning、audit、openapi、manifest 这几个 starter；storage 不默认引入

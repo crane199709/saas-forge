@@ -4,7 +4,7 @@
 
 **Blocked by:** 08 Platform Realm 与运营登录, 16 租户角色管理, 18 数据权限端到端（Data Scope 预设）
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] platform 服务的接口声明权限码并上报清单
 - [x] 内置超级管理员角色，不可删除

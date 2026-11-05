@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 租户数据隔离, 20 套餐
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] SDK 存储 starter 基于 AWS SDK for Java v2，兼容任意 S3 协议存储
 - [x] 生成上传与下载预签名 URL，有效期可配置；key 前缀由 SDK 强制，业务代码无法越过

@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 Tenant Realm 最小登录链路, 05 租户数据隔离
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] iam 提供「列出我的有效 Membership」与「切换租户（换发 Token）」能力
 - [x] 非 `active` 状态的 Membership 不可被选择或切换进入

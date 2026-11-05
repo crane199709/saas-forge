@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 工程骨架与版本组合验证
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] iam 以 Flyway 迁移建立 Identity、Tenant（最小字段）、Membership 的表结构与预置数据
 - [x] 账号/邮箱 + 密码登录成功，Access Token（约 15 分钟）claims 含 `sub`、`tenant_id`、`membership_id`、`ver`

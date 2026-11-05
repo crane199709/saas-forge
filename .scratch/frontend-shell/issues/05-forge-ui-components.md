@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 tenant-app 布局与路由守卫, 04 platform-console 路由与布局, saas-forge-mvp 工单 24、25（demo 子应用的订单列表）
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] `AppLayout`：顶栏 + 侧边菜单 + 内容区；菜单项（标题、路径、子项）由 props 传入，顶栏右侧为插槽；两个 Shell 改用
 - [x] `applyTheme(color)`：写入主色及 Element Plus 派生色（`--el-color-primary-light-*`、`-dark-2`），逻辑从 tenant-app 迁出；`/__diagnostics` 的主题切换改用它

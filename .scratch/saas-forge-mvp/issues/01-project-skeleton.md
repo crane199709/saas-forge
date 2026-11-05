@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 后端为 Maven 多模块工程，含 BOM，版本为 JDK 17、Spring Boot 4.0.9、Spring Cloud 2025.1.4、Spring Cloud Alibaba 2025.1.0.0；groupId 为 `io.saasforge`
 - [x] SDK starter 模块按规格第 4 节建立空壳并能被 demo-service 引入

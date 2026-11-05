@@ -4,7 +4,7 @@
 
 **Blocked by:** 14 租户创建与开通, 16 租户角色管理
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 邀请复用开通流程中的邀请机制，可在邀请时预设角色与部门
 - [x] 成员列表展示 Membership 状态（邀请中、正常、停用、已离开），支持搜索与筛选

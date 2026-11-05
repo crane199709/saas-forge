@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 Tenant Realm 最小登录链路
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Operator 以 Flyway 迁移独立建表，不与 Identity 共用
 - [x] iam 同时作为两个 issuer 签发 Token，各自暴露 JWKS 与 OIDC 元数据

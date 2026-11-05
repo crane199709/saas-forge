@@ -4,7 +4,7 @@
 
 **Blocked by:** 07 Token 即时失效与刷新, 14 租户创建与开通
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 状态机以显式的合法迁移表定义，非法迁移被拒绝
 - [x] 每次状态变更经 Outbox 广播 `TenantStatusChanged`，并更新网关可读取的租户状态

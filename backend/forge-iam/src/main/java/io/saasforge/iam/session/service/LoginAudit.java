@@ -11,7 +11,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 
 /**
- * 两个 Realm 的登录类 Audit Event：登录成功、失败、退出与切换租户。
+ * 两个 Realm 的登录类 Audit Event：登录成功、失败、MFA 步骤、退出与切换租户。
  *
  * <p>登录成功记在 Token 交换时：此时才确定进入哪个租户，Tenant Admin 据此看到本租户的登录。登录失败与退出发生在全局登录会话上，
  * 不属于任何租户，Tenant Realm 的这两类事件不带租户，Tenant Admin 查不到。
@@ -20,6 +20,12 @@ import org.springframework.stereotype.Service;
 public class LoginAudit {
     /** 登录（含验证码登录）。 */
     public static final String LOGIN = "auth.login";
+    /** 登录第二步：提交动态码或 Recovery Code。 */
+    public static final String MFA = "auth.mfa";
+    /** {@link #MFA} 事件以动态码完成。 */
+    public static final String MFA_TOTP = "totp";
+    /** {@link #MFA} 事件以 Recovery Code 完成。 */
+    public static final String MFA_RECOVERY_CODE = "recoveryCode";
     /** 退出登录会话。 */
     public static final String LOGOUT = "auth.logout";
     /** 切换租户。 */
@@ -60,6 +66,19 @@ public class LoginAudit {
                 .detail("account", account)
                 .failure(errorCode)
                 .build());
+    }
+
+    /**
+     * MFA 步骤成功或失败。与登录失败一样发生在全局登录会话上，不带租户。
+     *
+     * @param method {@link #MFA_TOTP} 或 {@link #MFA_RECOVERY_CODE}
+     * @param errorCode 失败时的错误码，成功时为 null
+     */
+    void mfa(AuditRealm realm, UUID actor, String method, String errorCode) {
+        var event =
+                AuditEvent.builder(realm, AuditCategory.LOGIN, MFA).actor(actor).detail("method", method);
+        if (errorCode != null) event.failure(errorCode);
+        audits.record(event.build());
     }
 
     /** 退出登录会话；未登录时的退出请求不记录。会话的 Realm 由登录时授予的权限区分。 */

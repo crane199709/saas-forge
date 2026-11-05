@@ -4,7 +4,7 @@
 
 **Blocked by:** 06 多租户成员与切换租户, 08 Platform Realm 与运营登录, 09 Outbox 与租户感知消息, 10 自主注册与验证码登录
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] platform 拥有 Tenant 主数据；创建 Tenant 与写入 `TenantCreated` 在同一本地事务
 - [x] iam 消费事件：按邮箱/手机匹配 Identity，存在则创建 `invited` Membership，不存在则创建待激活 Identity；均授予 Owner

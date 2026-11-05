@@ -28,6 +28,9 @@ public interface IdentityMapper {
     /** 按邮箱（不区分大小写）或手机号定位未删除的 active 身份，供验证码登录使用，不受 Data Policy 过滤。 */
     String findActiveIdByContact(@Param("target") String target);
 
+    /** 身份在验证器 App 中显示的名称：账号，没有账号时取邮箱或手机号；身份已删除时为 null。不受 Data Policy 过滤。 */
+    String findLoginName(@Param("identityId") UUID identityId);
+
     /** 账号是否已被未删除的身份占用（不论状态），与唯一索引的范围一致，不受 Data Policy 过滤。 */
     boolean existsAccount(@Param("account") String account);
 

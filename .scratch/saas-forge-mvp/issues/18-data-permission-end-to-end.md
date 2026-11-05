@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 ABAC 表达式树引擎, 05 租户数据隔离, 13 组织模型, 16 租户角色管理
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Resource Manifest 支持声明 Data Resource、属性、属性类型与对应表列
 - [x] Data Policy 挂在 Role 上并按 Data Resource 存储

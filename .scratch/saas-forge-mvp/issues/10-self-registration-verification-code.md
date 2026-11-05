@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 Tenant Realm 最小登录链路
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 用户名/邮箱/手机号全局唯一；注册需验证邮箱或手机
 - [x] 验证码有有效期、发送频率限制与错误次数上限

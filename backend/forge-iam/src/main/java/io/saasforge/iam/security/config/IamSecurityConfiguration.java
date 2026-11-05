@@ -38,6 +38,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -66,8 +68,10 @@ import org.springframework.security.oauth2.server.authorization.settings.ClientS
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration(proxyBeanMethods = false)
@@ -292,8 +296,17 @@ class IamSecurityConfiguration {
     @Bean
     @Order(2)
     SecurityFilterChain accessTokenSecurity(HttpSecurity http, EnvelopeSecurityErrorHandler errors) throws Exception {
-        // 已持有 Access Token 的身份读取自己的 Membership 与权限、管理本租户成员、组织与角色、查看本租户审计；无状态、不使用登录会话 Cookie。
-        http.securityMatcher("/auth/memberships", "/auth/access", "/org/**", "/roles/**", "/members/**", "/audit/**")
+        // 已持有 Access Token 的身份读取自己的 Membership 与权限、管理自己的 Recovery Code 与解绑 Authenticator、管理本租户成员、组织与角色、
+        // 查看本租户审计；无状态、不使用登录会话 Cookie。
+        http.securityMatcher(
+                        "/auth/memberships",
+                        "/auth/access",
+                        "/auth/mfa/recovery-codes/**",
+                        "/auth/mfa/unbind",
+                        "/org/**",
+                        "/roles/**",
+                        "/members/**",
+                        "/audit/**")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
@@ -353,6 +366,26 @@ class IamSecurityConfiguration {
 
     @Bean
     @Order(5)
+    SecurityFilterChain mfaBindingSecurity(HttpSecurity http, EnvelopeSecurityErrorHandler errors) throws Exception {
+        // 绑定 Authenticator 既接受 Tenant Realm 的 Access Token，也接受 iam 登录会话：被 MFA Requirement 拦下的身份还拿不到
+        // 进入该租户的 Token，只能凭登录会话当场绑定（ADR-0019）。带 Bearer 头时按 Token 认证，否则读取会话；同一会话也承载
+        // Operator 登录，所以会话主体必须带 TENANT 权限。与其他会话入口一样只接受 JSON，不开启 CORS，因此不需要 CSRF 令牌。
+        AuthorizationManager<RequestAuthorizationContext> tenantPrincipal = (authentication, context) ->
+                new AuthorizationDecision(authentication.get() instanceof JwtAuthenticationToken
+                        || hasAuthority(authentication.get(), "TENANT"));
+        http.securityMatcher("/auth/mfa/bind/**")
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth.anyRequest().access(tenantPrincipal))
+                .exceptionHandling(exceptions ->
+                        exceptions.authenticationEntryPoint(errors).accessDeniedHandler(errors))
+                .oauth2ResourceServer(server -> server.authenticationEntryPoint(errors)
+                        .accessDeniedHandler(errors)
+                        .jwt(Customizer.withDefaults()));
+        return http.build();
+    }
+
+    @Bean
+    @Order(6)
     SecurityFilterChain applicationSecurity(HttpSecurity http, EnvelopeSecurityErrorHandler errors) throws Exception {
         // JSON 凭证入口不开启 CORS，授权端点使用 Redis HTTP 会话；Token 交换仍需授权码和 PKCE。
         http.csrf(csrf -> csrf.ignoringRequestMatchers(
@@ -363,6 +396,7 @@ class IamSecurityConfiguration {
                         "/auth/switch",
                         "/auth/login/send-code",
                         "/auth/code-login",
+                        "/auth/login/mfa",
                         "/auth/register/send-code",
                         "/auth/register",
                         "/auth/invitations/preview",
@@ -382,6 +416,7 @@ class IamSecurityConfiguration {
                                 "/auth/switch",
                                 "/auth/login/send-code",
                                 "/auth/code-login",
+                                "/auth/login/mfa",
                                 "/auth/register/send-code",
                                 "/auth/register",
                                 "/auth/invitations/preview",

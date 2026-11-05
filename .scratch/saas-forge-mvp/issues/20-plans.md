@@ -4,7 +4,7 @@
 
 **Blocked by:** 14 租户创建与开通, 16 租户角色管理
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Plan 的增删改；Feature Pack 从 Resource Manifest 中选择权限码
 - [x] 创建 Tenant 时选择 Plan，之后可变更；变更经 Outbox 广播 `TenantPlanChanged`

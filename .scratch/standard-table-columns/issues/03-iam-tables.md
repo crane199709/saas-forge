@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 SDK 统一填充与逻辑删除，demo-service 落地
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 新增 Flyway 迁移：四张表补齐五列，存量行回填
 - [x] 唯一约束改造：`identity.account`、`identity_email_lower_key`（`lower(email)`）、`membership(identity_id, tenant_id)`、`operator.account` 改为 `WHERE NOT deleted` 的部分唯一索引，旧约束删除；`identity_email_format` 等 CHECK 约束保留
