@@ -67,6 +67,16 @@ export function createShellRouter(history: RouterHistory) {
         meta: { permission: 'iam:role:manage' },
       },
       {
+        path: '/dictionaries',
+        component: () => import('./referencedata/DictionaryPage.vue'),
+        meta: { permission: 'iam:reference-data:manage' },
+      },
+      {
+        path: '/parameters',
+        component: () => import('./referencedata/ParameterPage.vue'),
+        meta: { permission: 'iam:reference-data:manage' },
+      },
+      {
         path: '/audit',
         component: () => import('./audit/AuditPage.vue'),
         meta: { permission: 'iam:audit:read' },

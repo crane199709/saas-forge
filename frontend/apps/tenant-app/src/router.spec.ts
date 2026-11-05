@@ -104,6 +104,17 @@ describe('路由守卫', () => {
     expect(wrapper.find('.shell-header').exists()).toBe(false)
   })
 
+  it('没有参考数据管理权限时字典与参数页进入 403', async () => {
+    signedIn()
+    vi.stubGlobal('fetch', fakeFetch({}))
+    for (const path of ['/dictionaries', '/parameters']) {
+      const { router } = await mountShell(path, {
+        access: async () => ({ permissions: ['iam:member:manage'] }),
+      })
+      expect(router.currentRoute.value.fullPath).toBe('/403')
+    }
+  })
+
   it('不存在的路径显示 404 页，无需登录', async () => {
     const { wrapper, router } = await mountShell('/no-such-page')
     expect(router.currentRoute.value.fullPath).toBe('/no-such-page')
