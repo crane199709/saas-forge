@@ -35,35 +35,25 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.MountableFile;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 平台侧权限（工单 22）：超级管理员、平台角色与 Operator 管理，平台与租户的权限数据分离，停用与授权变更即时生效。
  * 网关按 Redis 中的版本拒绝旧 Token 由 GatewaySecurityTest 验证，这里验证 iam 发布的版本与明细。
  */
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @SuppressWarnings("unchecked")
 class PlatformRoleTest {
-    @Container
-    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
-            .withDatabaseName("forge")
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath("../../deploy/postgres/init"), "/docker-entrypoint-initdb.d/");
+    static final SharedContainers.Postgres postgres = SharedContainers.postgres();
 
-    @Container
-    static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+    static final SharedContainers.Redis redis = SharedContainers.redis();
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        registry.add("spring.data.redis.database", redis::database);
         registry.add("forge.iam.client-secret", () -> "test-client-secret");
         registry.add("spring.flyway.locations", () -> "classpath:db/migration,classpath:db/demo");
         registry.add("forge.iam.signing-key-file", () -> "target/test-signing.jwk");

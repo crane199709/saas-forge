@@ -34,11 +34,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.MountableFile;
 
 /**
  * iam 消费 Tenant Lifecycle 事件（工单 15）：按版本应用状态变更并更新网关读取的 Redis 状态，试用租户可登录，
@@ -46,25 +41,20 @@ import org.testcontainers.utility.MountableFile;
  *
  * <p>按消费端的方式调用 SDK 注册的事件处理器（恢复租户上下文并开启事务），不经 RocketMQ。
  */
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "server.address=127.0.0.1")
 class TenantLifecycleTest {
     static final ParameterizedTypeReference<Map<String, Object>> ENVELOPE = new ParameterizedTypeReference<>() {};
 
-    @Container
-    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
-            .withDatabaseName("forge")
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath("../../deploy/postgres/init"), "/docker-entrypoint-initdb.d/");
+    static final SharedContainers.Postgres postgres = SharedContainers.postgres();
 
-    @Container
-    static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+    static final SharedContainers.Redis redis = SharedContainers.redis();
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        registry.add("spring.data.redis.database", redis::database);
         registry.add("forge.iam.client-secret", () -> "test-client-secret");
         // 演示数据提供已有凭证的 Identity：demo / demo@example.com
         registry.add("spring.flyway.locations", () -> "classpath:db/migration,classpath:db/demo");

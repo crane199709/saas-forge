@@ -28,36 +28,26 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.RestClient;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.MountableFile;
 
 /**
  * 标准列由 SDK 统一填充、删除为逻辑删除（建表标准列规格第 4、6、8 节）。
  *
  * <p>逻辑删除后的行对 MyBatis-Plus 内置方法不可见，经测试专用的 {@link OrderAuditMapper} 手写查询读出 {@code deleted} 与审计列。
  */
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class StandardColumnsTest {
     static final UUID TENANT = UUID.fromString("019a0110-0000-7000-8000-0000000000dd");
 
-    @Container
-    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
-            .withDatabaseName("forge")
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath("../../../deploy/postgres/init"), "/docker-entrypoint-initdb.d/");
+    static final SharedContainers.Postgres postgres = SharedContainers.postgres();
 
-    @Container
-    static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+    static final SharedContainers.Redis redis = SharedContainers.redis();
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        registry.add("spring.data.redis.database", redis::database);
         TestTokens.register(registry);
     }
 

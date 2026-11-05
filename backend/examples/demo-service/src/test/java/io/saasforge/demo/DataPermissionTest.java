@@ -27,11 +27,6 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.RestClient;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.MountableFile;
 
 /**
  * 订单按当前成员的 Data Scope 过滤（工单 18）：不同部门、不同角色组合的成员看到的订单集合，越权更新与删除，
@@ -40,7 +35,6 @@ import org.testcontainers.utility.MountableFile;
  * <p>部门树：{@code a}、其下级 {@code a.b} 与另一个顶级部门 {@code c}。每个成员先以「全部」范围、按自己的主部门创建一张订单，
  * 之后以新版本的明细（等同于 iam 调整角色或组织分配后换发 Token）按不同范围查询。
  */
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class DataPermissionTest {
     private static final UUID TENANT = UUID.fromString("019a0110-0000-7000-8000-0000000000f0");
@@ -68,20 +62,16 @@ class DataPermissionTest {
             DAVE, inDepartments("c"),
             ERIN, SubjectAttributes.NONE);
 
-    @Container
-    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
-            .withDatabaseName("forge")
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath("../../../deploy/postgres/init"), "/docker-entrypoint-initdb.d/");
+    static final SharedContainers.Postgres postgres = SharedContainers.postgres();
 
-    @Container
-    static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+    static final SharedContainers.Redis redis = SharedContainers.redis();
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        registry.add("spring.data.redis.database", redis::database);
         TestTokens.register(registry);
     }
 
