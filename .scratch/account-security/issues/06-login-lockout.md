@@ -17,3 +17,4 @@
 
 - 2026-11-04（工单 01 实现时发现）：`/auth/mfa/bind/confirm`、`/auth/mfa/recovery-codes/regenerate`、`/auth/mfa/unbind` 目前不限动态码错误次数；持有 Access Token 的攻击者可借暴力猜码重新生成 Recovery Code。本工单的「动态码失败计在 Identity 上」应覆盖这三个入口。
 - 2026-11-04（工单 02 实现时发现）：`/auth/login/mfa` 在待 MFA 有效期（5 分钟）内不限提交次数，可反复猜动态码或 Recovery Code；本工单的 MFA 失败计数也应覆盖这个入口。
+- 2026-11-05（工单 04 实现时发现）：Operator 侧同样不限次数的入口：`/platform/auth/login/mfa`、`/platform/auth/login/bind/confirm`（会话内 5 分钟有效期），以及凭 Platform Access Token 的 `/platform/auth/mfa/{bind/confirm,replace/start,recovery-codes/regenerate,unbind}`；动态码失败应计在 Operator 上。

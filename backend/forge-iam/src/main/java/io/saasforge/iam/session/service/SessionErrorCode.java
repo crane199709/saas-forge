@@ -8,9 +8,7 @@ public enum SessionErrorCode implements ErrorCode {
     /** 请求进入的 Membership 不属于当前身份，或其本身、所在租户不是 active。 */
     TENANT_ACCESS_DENIED("auth.tenantAccessDenied", 403),
     /** 提交 MFA 时没有有效的待 MFA 状态：未通过 First Factor、已超时或已完成，须重新提交 First Factor。 */
-    MFA_EXPIRED("auth.mfaExpired", 401),
-    /** 配置要求 Operator 登录必须经过 MFA，而第一期尚未实现 MFA，因此拒绝全部 Operator 登录。 */
-    MFA_REQUIRED("auth.mfaRequired", 403);
+    MFA_EXPIRED("auth.mfaExpired", 401);
 
     private final String code;
     private final int httpStatus;

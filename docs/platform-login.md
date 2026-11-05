@@ -26,14 +26,33 @@
 
 | 接口 | 请求 | 结果 |
 | --- | --- | --- |
-| `POST /iam/platform/auth/login` | JSON `account`、`password` | IAM 登录会话 Cookie、`clientId`、`redirectUri` |
+| `POST /iam/platform/auth/login` | JSON `account`、`password` | IAM 登录会话 Cookie、`nextStep`；`nextStep=authorize` 时另有 `clientId`、`redirectUri` |
+| `POST /iam/platform/auth/login/mfa` | `nextStep=mfa` 的会话 Cookie + JSON `code` 或 `recoveryCode`（恰好一个） | 同 `nextStep=authorize` 的登录响应 |
+| `POST /iam/platform/auth/login/bind/start` | `nextStep=bind` 的会话 Cookie + `{}` | `otpauthUri` |
+| `POST /iam/platform/auth/login/bind/confirm` | 同上 + JSON `code`（首个动态码） | 201，`nextStep=authorize` 的登录响应，另带只展示一次的 `recoveryCodes` |
 | `GET /iam/oauth2/authorize` | `client_id=platform-console`、`scope=platform`、S256 PKCE | 重定向至 platform-console 回调 |
 | `POST /iam/platform/auth/exchange` | JSON `code`、`codeVerifier` | `accessToken`、`refreshToken`、`tokenType`、`expiresIn`、`operatorName` |
 | `POST /iam/platform/auth/refresh` | JSON `refreshToken` | 新的一对 Token，轮换与重放撤销同 Tenant Realm |
 | `POST /iam/platform/auth/logout` | 同源 JSON `{}` + IAM 会话 Cookie | 销毁 IAM 登录会话 |
 | `GET /platform/operators/current` | `Authorization: Bearer <Platform Token>` | forge-platform 经 SDK 读取的 `operatorId` |
 
-`/iam/platform/auth/*` 同样一律 `Cache-Control: no-store`。账号不存在、密码错误、账号属于另一个 Realm 都返回同一个 401 `auth.failed`。
+`/iam/platform/auth/*` 同样一律 `Cache-Control: no-store`。
+
+### MFA（账号安全工单 04）
+
+TOTP、密钥加密、Recovery Code 与 Identity 相同（[ADR-0019](adr/0019-mfa-per-identity-enforced-at-token-issuance.md)），存于 `operator_authenticator`、`operator_recovery_code`（V21）。登录第二步：已绑定者 `nextStep=mfa`；`mfa-required=true` 且未绑定者 `nextStep=bind`，当场绑定并提交首个动态码即认证成功；两种状态有效期 5 分钟，过期或步骤不符返回 401 `auth.mfaExpired`。
+
+已登录 Operator 凭 Platform Access Token 自助管理，均为 `POST`，请求体 JSON `code`（6 位动态码，`bind/start` 为 `{}`）：
+
+| 接口 | 结果 |
+| --- | --- |
+| `/iam/platform/auth/mfa/bind/start` | 未绑定时开始绑定，返回 `otpauthUri` |
+| `/iam/platform/auth/mfa/replace/start` | 验证旧动态码后开始更换，返回新的 `otpauthUri` |
+| `/iam/platform/auth/mfa/bind/confirm` | 以新密钥的首个动态码确认绑定或更换，201 `recoveryCodes`；更换时旧 Authenticator 与 Recovery Code 作废 |
+| `/iam/platform/auth/mfa/recovery-codes/regenerate` | 201 新的 `recoveryCodes`，旧组作废 |
+| `/iam/platform/auth/mfa/unbind` | 解绑；`mfa-required=true` 时 403 `mfa.unbindForbidden`，只能更换 |
+
+审计 `auth.mfa`（`detail.method` 为 `totp` 或 `recoveryCode`）、`mfa.bind`（更换时 `detail.replaced=true`）、`mfa.unbind`、`mfa.recoveryCodesRegenerate`，Realm 为 `PLATFORM`。账号不存在、密码错误、账号属于另一个 Realm 都返回同一个 401 `auth.failed`。
 
 ## 隔离边界
 
@@ -57,10 +76,10 @@
 | `forge.security.realm` | `tenant` | 业务服务接受哪个 Realm 的 Token；forge-platform 为 `platform` |
 | `forge.iam.platform.redirect-uri` | `http://localhost:5173/` | platform-console 回调，必须与之同源 |
 | `forge.iam.platform.signing-key-file` | 无，本地值 `deploy/data/iam/platform-signing.jwk` 写在 IAM `application.yml` | 首次启动生成，权限 0600，禁止提交；多实例须共用同一密钥，漏配则启动失败 |
-| `forge.iam.platform.mfa-required` | `false` | 是否强制 Operator 使用 MFA。第一期未实现 MFA，设为 `true` 时所有 Operator 登录在校验密码前以 403 `auth.mfaRequired` 拒绝；已有的 IAM 会话授权与 Refresh Token 刷新也被拒绝（401 `auth.failed`），不会退化为仅凭密码登录。已签发的 Access Token 在过期前仍有效 |
+| `forge.iam.platform.mfa-required` | `false` | 是否要求所有 Operator 使用 MFA。`true` 时未绑定者在登录中当场绑定，已绑定者不能解绑只能更换；未完成 MFA 的授权（开启前仅凭密码建立的 IAM 会话与 Refresh Token）不能再签发或刷新 Token（401 `auth.failed`）。已签发的 Access Token 在过期前仍有效 |
 
 `forge.iam.client-secret` 由两个注册客户端共用。
 
 ## 验收
 
-后端 `cd backend && ./mvnw verify`：`PlatformLoginTest`（Operator 登录、独立 issuer 与密钥、跨 Realm 签发被拒、元数据）、`OperatorSessionServiceTest`（MFA 开关）、`GatewaySecurityTest`（Tenant Token 访问平台路由与 Platform Token 访问租户路由均 401）、forge-platform `OperatorContextTest`（SDK 验签并读取 Operator）。前端 `pnpm test` 中 platform-console 的 `LoginPage.spec.ts`、`router.spec.ts`。
+后端 `cd backend && ./mvnw verify`：`PlatformLoginTest`（Operator 登录、独立 issuer 与密钥、跨 Realm 签发被拒、元数据）、`OperatorSessionServiceTest`（密码校验）、`OperatorMfaTest` 与 `RequiredOperatorMfaTest`（MFA 两步登录、强制绑定、解绑与更换）、`GatewaySecurityTest`（Tenant Token 访问平台路由与 Platform Token 访问租户路由均 401）、forge-platform `OperatorContextTest`（SDK 验签并读取 Operator）。前端 `pnpm test` 中 platform-console 的 `LoginPage.spec.ts`、`router.spec.ts`。
