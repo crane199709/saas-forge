@@ -429,6 +429,25 @@ class GatewaySecurityTest {
     }
 
     @Test
+    void operatorLoginSecondStepIsAnonymousButSelfServiceMfaNeedsAPlatformToken() throws Exception {
+        // 登录第二步的状态在 iam 登录会话中，由 iam 校验；已登录后的自助管理须带 Platform Token。
+        for (String path : List.of(
+                "/iam/platform/auth/login/mfa",
+                "/iam/platform/auth/login/bind/start",
+                "/iam/platform/auth/login/bind/confirm")) {
+            assertEnvelope(call(HttpMethod.POST, path, null), 404, "request.notFound");
+        }
+        for (String path : List.of(
+                "/iam/platform/auth/mfa/bind/start",
+                "/iam/platform/auth/mfa/bind/confirm",
+                "/iam/platform/auth/mfa/replace/start",
+                "/iam/platform/auth/mfa/recovery-codes/regenerate",
+                "/iam/platform/auth/mfa/unbind")) {
+            assertEnvelope(call(HttpMethod.POST, path, null), 401, "auth.unauthenticated");
+        }
+    }
+
+    @Test
     void declaredServicesDenyInternalPathsAndUndeclaredPrefixes() throws Exception {
         String tenant = token(KEY, ISSUER, Instant.now().plusSeconds(900));
         String platform = platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "platform-console");

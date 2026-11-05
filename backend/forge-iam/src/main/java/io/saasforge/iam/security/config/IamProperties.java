@@ -40,7 +40,8 @@ public record IamProperties(
      *
      * @param redirectUri platform-console 的回调地址
      * @param signingKeyFile Platform Realm 签名密钥文件，与 Tenant Realm 分开
-     * @param mfaRequired 是否强制 Operator 使用 MFA；MFA 尚未实现，开启后拒绝所有 Operator 登录与换发
+     * @param mfaRequired 是否要求所有 Operator 使用 MFA：未绑定者在登录时当场绑定，已绑定者不能解绑只能更换，未完成 MFA 的授权不能签发或刷新
+     *     Token
      */
     public record Platform(
             @DefaultValue("http://localhost:5173/") String redirectUri,

@@ -13,3 +13,4 @@
 - [ ] 组件测试覆盖登录两步、强制绑定与身份查询
 
 ## Comments
+- 2026-11-05（工单 04 实现时记录）：`/iam/platform/auth/login` 响应新增 `nextStep`（`authorize`/`mfa`/`bind`），`mfa` 与 `bind` 时 `clientId`、`redirectUri` 为空；第二步接口为 `/iam/platform/auth/login/mfa`、`/iam/platform/auth/login/bind/{start,confirm}`（后者 201 并带只展示一次的 `recoveryCodes`），已登录后的「更换 Authenticator」为 `/iam/platform/auth/mfa/replace/start` 加 `/iam/platform/auth/mfa/bind/confirm`，详见 docs/platform-login.md。`auth.mfaRequired` 已改为 Tenant Realm 的「租户要求 MFA」语义，Operator 登录不再返回它；`LoginPage.spec.ts` 中以它为样例的错误展示用例宜改用其他错误码。
