@@ -5,6 +5,8 @@ import io.saasforge.iam.mfa.mapper.IdentityAuthenticatorMapper;
 import io.saasforge.iam.mfa.mapper.IdentityRecoveryCodeMapper;
 import io.saasforge.iam.mfa.model.RecoveryCodeHash;
 import io.saasforge.iam.mfa.model.StoredAuthenticator;
+import io.saasforge.iam.security.service.MfaAuthority;
+import io.saasforge.iam.security.service.MfaCompletionService;
 import io.saasforge.sdk.audit.AuditCategory;
 import io.saasforge.sdk.audit.AuditEvent;
 import io.saasforge.sdk.audit.AuditRealm;
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -50,6 +53,7 @@ public class IdentityMfaService {
     private final SecretCipher cipher;
     private final StringRedisTemplate redis;
     private final AuditRecorder audits;
+    private final MfaCompletionService completions;
 
     IdentityMfaService(
             IdentityAuthenticatorMapper authenticators,
@@ -57,13 +61,15 @@ public class IdentityMfaService {
             IdentityService identities,
             SecretCipher cipher,
             StringRedisTemplate redis,
-            AuditRecorder audits) {
+            AuditRecorder audits,
+            MfaCompletionService completions) {
         this.authenticators = authenticators;
         this.recoveryCodes = recoveryCodes;
         this.identities = identities;
         this.cipher = cipher;
         this.redis = redis;
         this.audits = audits;
+        this.completions = completions;
     }
 
     /** 开始绑定：生成新密钥并暂存，覆盖未完成的上一次绑定；返回供验证器 App 扫码的 {@code otpauth://} URI。 */
@@ -111,6 +117,19 @@ public class IdentityMfaService {
         });
         record(BIND, identityId);
         return codes;
+    }
+
+    /**
+     * 当场绑定后，凭 Access Token 绑定时把该 Token 所属授权记为已完成 MFA，被 MFA Requirement 拦下的 switch、refresh 可直接重试
+     * （ADR-0019）。须在 {@link #confirmBinding} 提交之后调用。
+     */
+    public void completeAuthorization(UUID identityId, String accessToken) {
+        completions.completeAuthorization(identityId, accessToken);
+    }
+
+    /** 当场绑定后，凭登录会话绑定时该会话视为已完成 MFA：返回补记了 MFA 的会话主体，由调用方存回会话。 */
+    public Authentication completeSession(Authentication sessionPrincipal) {
+        return MfaAuthority.grant(sessionPrincipal);
     }
 
     /** 是否已绑定 Authenticator；已绑定的身份每次登录都须在 First Factor 之后完成 MFA（ADR-0019）。 */

@@ -15,3 +15,5 @@
 - [ ] 测试覆盖：未开启时行为不变、强制绑定流程、强制时解绑被拒、更换流程
 
 ## Comments
+
+- 2026-11-05（工单 03 实现时记录）：`auth.mfaRequired`（`SessionErrorCode.MFA_REQUIRED`）已被 Tenant Realm 用于「目标租户要求 MFA 而授权未完成」，文案改为通用的「需要先完成多因素认证：请绑定验证器后重试」；删除 Operator 旧语义时保留该错误码。`MfaAuthority.grant(Authentication)` 可为会话主体补记 MFA，可供「必须绑定」完成后复用。

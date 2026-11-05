@@ -14,3 +14,5 @@
 - [ ] 组件测试覆盖登录两步、强制绑定与锁定提示
 
 ## Comments
+
+- 2026-11-05（工单 03 实现时记录）：后端错误码为 `auth.mfaRequired`（403，即规格中的 `auth.mfa_required`），i18n key 用这个。exchange 被拒时：凭登录会话调用 `/auth/mfa/bind/start`、`/auth/mfa/bind/confirm`，确认成功后会话标识会换发（浏览器自动处理 Cookie），须重新发起 `/oauth2/authorize` 取新授权码再 exchange，原授权码不可重试。switch/refresh 被拒时：凭当前 Access Token 绑定，成功后用原 Refresh Token 直接重试。安全设置接口为 `GET/PUT /iam/security-settings`，体为 `{"mfaRequired": boolean}`。

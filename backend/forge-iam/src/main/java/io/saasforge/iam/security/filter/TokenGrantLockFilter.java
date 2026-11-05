@@ -50,7 +50,7 @@ public final class TokenGrantLockFilter extends OncePerRequestFilter {
         // 同一授权的正常消费互斥；重放撤销通过授权记录的原子更新条件阻止复活。
         String key = authorizationId == null
                 ? RedisAuthorizationService.tokenKey(value) + ":lock"
-                : "iam:global:oauth-grant-lock:" + authorizationId;
+                : RedisAuthorizationService.grantLockKey(authorizationId);
         String owner = UUID.randomUUID().toString();
         if (!Boolean.TRUE.equals(redis.opsForValue().setIfAbsent(key, owner, Duration.ofSeconds(30)))) {
             // 等待锁的短暂窗口内也可能发生轮换，重新确认旧凭证是否已经被消费。
