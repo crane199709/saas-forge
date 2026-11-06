@@ -3,6 +3,7 @@ package io.saasforge.sdk.scheduling;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.saasforge.sdk.core.BusinessZoneProperties;
+import io.saasforge.sdk.tenant.TenantStatusLookup;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -17,6 +18,7 @@ import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.EmbeddedValueResolver;
+import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.convert.DurationStyle;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.annotation.AnnotatedElementUtils;
@@ -40,11 +42,24 @@ final class TaskRegistrar implements BeanPostProcessor, SmartInitializingSinglet
 
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) {
-        MethodIntrospector.selectMethods(
-                        AopProxyUtils.ultimateTargetClass(bean), (MethodIntrospector.MetadataLookup<GlobalTask>)
-                                method -> AnnotatedElementUtils.findMergedAnnotation(method, GlobalTask.class))
-                .forEach((method, annotation) ->
-                        tasks.add(new Task(bean, AopUtils.selectInvocableMethod(method, bean.getClass()), annotation)));
+        MethodIntrospector.selectMethods(AopProxyUtils.ultimateTargetClass(bean), (MethodIntrospector.MetadataLookup<
+                                Task>)
+                        method -> {
+                            GlobalTask global = AnnotatedElementUtils.findMergedAnnotation(method, GlobalTask.class);
+                            TenantTask tenant = AnnotatedElementUtils.findMergedAnnotation(method, TenantTask.class);
+                            if (global == null && tenant == null) return null;
+                            if (global != null && tenant != null) {
+                                throw new IllegalStateException(
+                                        "Task must declare only one task annotation: " + method);
+                            }
+                            Method invocable = AopUtils.selectInvocableMethod(method, bean.getClass());
+                            return global != null
+                                    ? new Task(
+                                            bean, invocable, global.name(), global.cron(), global.fixedDelay(), false)
+                                    : new Task(
+                                            bean, invocable, tenant.name(), tenant.cron(), tenant.fixedDelay(), true);
+                        })
+                .forEach((method, task) -> tasks.add(task));
         return bean;
     }
 
@@ -54,7 +69,7 @@ final class TaskRegistrar implements BeanPostProcessor, SmartInitializingSinglet
         Set<String> names = new HashSet<>();
         List<Registration> registrations = new ArrayList<>();
         for (Task task : tasks) {
-            String name = values.resolveStringValue(task.annotation().name());
+            String name = values.resolveStringValue(task.name());
             if (name == null || name.isBlank()) {
                 throw new IllegalStateException("Task name must not be blank");
             }
@@ -64,8 +79,8 @@ final class TaskRegistrar implements BeanPostProcessor, SmartInitializingSinglet
             if (task.method().getParameterCount() != 0 || task.method().getReturnType() != void.class) {
                 throw new IllegalStateException("Task must be a no-argument void method: " + task.method());
             }
-            String cron = values.resolveStringValue(task.annotation().cron());
-            String delay = values.resolveStringValue(task.annotation().fixedDelay());
+            String cron = values.resolveStringValue(task.cron());
+            String delay = values.resolveStringValue(task.fixedDelay());
             if (cron.isBlank() == delay.isBlank()) {
                 throw new IllegalStateException("Task must declare exactly one of cron and fixedDelay: " + name);
             }
@@ -88,17 +103,26 @@ final class TaskRegistrar implements BeanPostProcessor, SmartInitializingSinglet
         if (registrations.isEmpty()) {
             return;
         }
+        MeterRegistry metrics = beans.getBeanProvider(MeterRegistry.class).getIfAvailable(SimpleMeterRegistry::new);
+        TenantTaskExecutor tenantExecutor = tasks.stream().anyMatch(Task::tenant)
+                ? new TenantTaskExecutor(
+                        new TenantDirectoryClient(
+                                Binder.get(environment).bindOrCreate("forge.scheduling", SchedulingProperties.class)),
+                        beans.getBean(TenantStatusLookup.class),
+                        metrics)
+                : null;
         runner = new TaskRunner(
                 new RedisTaskLock(
                         beans.getBean(StringRedisTemplate.class),
                         environment.getRequiredProperty("spring.application.name")),
-                beans.getBeanProvider(MeterRegistry.class).getIfAvailable(SimpleMeterRegistry::new));
+                metrics);
         TaskScheduler scheduler = beans.getBean("forgeTaskScheduler", TaskScheduler.class);
         for (Registration registration : registrations) {
             Task task = registration.task();
             ReflectionUtils.makeAccessible(task.method());
-            Runnable invocation = () ->
-                    runner.trigger(registration.name(), () -> ReflectionUtils.invokeMethod(task.method(), task.bean()));
+            Runnable method = () -> ReflectionUtils.invokeMethod(task.method(), task.bean());
+            Runnable body = task.tenant() ? () -> tenantExecutor.execute(registration.name(), method) : method;
+            Runnable invocation = () -> runner.trigger(registration.name(), body);
             if (registration.cron() != null) {
                 schedules.add(scheduler.schedule(invocation, registration.cron()));
             } else {
@@ -117,5 +141,5 @@ final class TaskRegistrar implements BeanPostProcessor, SmartInitializingSinglet
 
     private record Registration(Task task, String name, Duration delay, CronTrigger cron) {}
 
-    private record Task(Object bean, Method method, GlobalTask annotation) {}
+    private record Task(Object bean, Method method, String name, String cron, String fixedDelay, boolean tenant) {}
 }

@@ -35,6 +35,23 @@ class GlobalTaskRegistrationTest {
     }
 
     @Test
+    void globalAndTenantTasksShareTheSameNameNamespace() {
+        var scheduler = new RecordingScheduler();
+        runner(scheduler).withBean(MixedDuplicateName.class).run(context -> {
+            assertThat(context).hasFailed().getFailure().hasMessageContaining("duplicate: same");
+            assertThat(scheduler.delay).isNull();
+        });
+    }
+
+    static class MixedDuplicateName {
+        @GlobalTask(name = "same", fixedDelay = "1s")
+        void global() {}
+
+        @TenantTask(name = "same", fixedDelay = "1s")
+        void tenant() {}
+    }
+
+    @Test
     void readsFixedDelayFromAnAlreadyBoundConfigurationBean() {
         var scheduler = new RecordingScheduler();
         runner(scheduler)
