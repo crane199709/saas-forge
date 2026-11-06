@@ -18,6 +18,7 @@
         <module>forge-sdk-web</module>
         <module>forge-sdk-security</module>
         <module>forge-sdk-tenant</module>
+        <module>forge-sdk-scheduling</module>
         <module>forge-sdk-abac</module>
         <module>forge-sdk-mq</module>
         <module>forge-sdk-provisioning</module>
