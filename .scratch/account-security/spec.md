@@ -1,6 +1,6 @@
 # 账号安全规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-11-04 的设计拷问逐条确认（Q3–Q22），MFA 模型由 [ADR-0019](../../docs/adr/0019-mfa-per-identity-enforced-at-token-issuance.md) 记录。
 

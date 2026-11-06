@@ -4,7 +4,7 @@
 
 **Blocked by:** —
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] TOTP：SHA-1、6 位、30 秒步长、前后各 1 个步长容差；同一动态码有效期内不能重复使用
 - [x] 密钥 AES-GCM 加密入库；加密密钥经 `@ConfigurationProperties` record 绑定，不设默认值，漏配时 iam 启动失败

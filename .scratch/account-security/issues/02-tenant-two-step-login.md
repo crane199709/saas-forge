@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] `/auth/login`、`/auth/code-login` 对已绑定者不再直接建立已认证会话，响应指明下一步为 MFA；未绑定者行为不变
 - [x] 新增 MFA 提交接口：动态码或 Recovery Code（用后作废）通过后建立已认证会话并返回原登录响应（memberships 等）
