@@ -17,6 +17,7 @@ class SchemaCommentTest {
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        TestReferenceData.register(registry);
     }
 
     @Autowired

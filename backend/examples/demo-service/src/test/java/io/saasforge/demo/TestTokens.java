@@ -45,6 +45,7 @@ final class TestTokens {
     private TestTokens() {}
 
     static void register(DynamicPropertyRegistry registry) {
+        TestReferenceData.register(registry);
         registry.add("forge.security.issuer", () -> ISSUER);
         registry.add(
                 "forge.security.jwk-set-uri",

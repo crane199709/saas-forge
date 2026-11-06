@@ -89,6 +89,7 @@ class OrderController {
     /**
      * @param number Business Number，如 {@code SO-20261104-0007}；引入编号前创建的订单为 null
      * @param customerSource 客户来源的字典项编码，只返回编码，名称由前端按字典翻译；未填写时为 null
+     * @param status 订单状态：unpaid（未支付）、closed（已关闭）
      * @param ownerId 数据归属的 Membership，系统创建的订单为 null
      * @param departmentPath 数据归属部门的路径，归属成员未分配部门时为 null
      */
@@ -98,6 +99,7 @@ class OrderController {
             String title,
             BigDecimal amount,
             String customerSource,
+            String status,
             UUID ownerId,
             String departmentPath,
             OffsetDateTime createdAt) {
@@ -108,6 +110,7 @@ class OrderController {
                     order.getTitle(),
                     order.getAmount(),
                     order.getCustomerSource(),
+                    order.getStatus(),
                     order.getOwnerId(),
                     order.getDepartmentPath(),
                     order.getCreatedAt());

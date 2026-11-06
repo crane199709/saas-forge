@@ -1,6 +1,7 @@
 package io.saasforge.demo.order.mapper;
 
 import io.saasforge.demo.order.entity.Order;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -16,4 +17,7 @@ public interface OrderAuditMapper {
      * @return 订单（含标准列），不存在时为 {@code null}
      */
     Order selectIncludingDeleted(@Param("id") UUID id);
+
+    /** 为超时任务验收设置当前租户订单的创建时间；无成员上下文时不受 Data Policy 过滤。 */
+    void setCreatedAt(@Param("id") UUID id, @Param("createdAt") OffsetDateTime createdAt);
 }
