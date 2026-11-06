@@ -47,6 +47,12 @@ export const consolePages = [
     component: () => import('./operator/OperatorPage.vue'),
   },
   {
+    path: '/identities',
+    title: 'identity.title',
+    permission: permissions.identityMfaReset,
+    component: () => import('./identity/IdentityPage.vue'),
+  },
+  {
     path: '/roles',
     title: 'platformRole.title',
     permission: permissions.roleManage,
@@ -78,6 +84,11 @@ export function createConsoleRouter(history: RouterHistory) {
         component: page.component,
         meta: { permission: page.permission },
       })),
+      // 当前 Operator 的个人安全设置，任何已登录的运营人员都可进入。
+      {
+        path: '/account/security',
+        component: () => import('./security/AccountSecurityPage.vue'),
+      },
       {
         path: '/403',
         component: () => import('./StatusPage.vue'),

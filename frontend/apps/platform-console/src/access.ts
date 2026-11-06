@@ -16,6 +16,7 @@ export const permissions = Object.freeze({
   operatorManage: 'platform:operator:manage',
   roleManage: 'platform:role:manage',
   auditRead: 'platform:audit:read',
+  identityMfaReset: 'platform:identity-mfa:reset',
 })
 
 const empty: PlatformAccess = Object.freeze({ roles: [], permissions: [] })
@@ -43,7 +44,10 @@ export function createPlatformAccess(client: Pick<PlatformClient, 'api'>) {
   /** 是否拥有权限码。 */
   const has = (code: string) => state.value.permissions.includes(code)
 
-  return { load, clear, has, state }
+  /** 是否超级管理员；运营人员的「重置 MFA」只对其开放，没有对应的权限码。 */
+  const isSuperAdmin = () => state.value.roles.includes('super-admin')
+
+  return { load, clear, has, isSuperAdmin, state }
 }
 
 export type PlatformAccessControl = ReturnType<typeof createPlatformAccess>
