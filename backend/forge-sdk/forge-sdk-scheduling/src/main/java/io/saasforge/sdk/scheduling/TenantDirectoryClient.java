@@ -17,6 +17,7 @@ final class TenantDirectoryClient {
     private final RestClient client;
 
     TenantDirectoryClient(SchedulingProperties properties) {
+        properties.requireTenantTask();
         var factory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build());
         factory.setReadTimeout(Duration.ofSeconds(10));

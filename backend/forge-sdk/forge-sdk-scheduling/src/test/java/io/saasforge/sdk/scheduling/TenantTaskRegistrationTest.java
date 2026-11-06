@@ -21,6 +21,30 @@ import org.springframework.scheduling.support.SimpleTriggerContext;
 
 class TenantTaskRegistrationTest {
     @Test
+    void makesBoundDirectoryConfigurationAvailableToSpringBeans() {
+        var scheduler = new GlobalTaskRegistrationTest.RecordingScheduler();
+        configured(scheduler).withBean(ConfiguredTask.class).run(context -> {
+            assertThat(context).hasNotFailed();
+            SchedulingProperties directory = context.getBean(ConfiguredTask.class).directory;
+            assertThat(directory.iamUri()).isEqualTo("http://localhost");
+            assertThat(directory.token()).isEqualTo("service-token");
+            assertThat(directory.toString()).doesNotContain("service-token");
+            assertThat(scheduler.delay).isEqualTo(Duration.ofSeconds(1));
+        });
+    }
+
+    static class ConfiguredTask {
+        final SchedulingProperties directory;
+
+        ConfiguredTask(SchedulingProperties directory) {
+            this.directory = directory;
+        }
+
+        @TenantTask(name = "configured", fixedDelay = "1s")
+        void execute() {}
+    }
+
+    @Test
     void registersFixedDelayWithoutRequiringBusinessZone() {
         var scheduler = new GlobalTaskRegistrationTest.RecordingScheduler();
         configured(scheduler)
@@ -61,7 +85,7 @@ class TenantTaskRegistrationTest {
                 .run(context -> assertThat(context)
                         .hasFailed()
                         .getFailure()
-                        .hasRootCauseMessage(missingProperty + " must be set"));
+                        .hasStackTraceContaining(missingProperty + " must be set"));
     }
 
     static Stream<Arguments> missingDirectoryConfiguration() {

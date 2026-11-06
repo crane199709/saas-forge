@@ -35,3 +35,10 @@
 - 已合入集成基线 `abed45c`，交付前一次执行 `./mvnw -o -pl forge-sdk/forge-sdk-scheduling -am verify '-Dtest=io.saasforge.sdk.scheduling.*Test,io.saasforge.sdk.tenant.*Test' -Dsurefire.failIfNoSpecifiedTests=false`：scheduling 36 项、tenant 3 项全部通过，Spotless 与最新 SDK 架构规则通过。
 
 沿用 IAM offset 分页，不提供跨页目录快照；执行前仍实时复查状态。Redis 锁可能因故障切换或长停顿短暂失效，业务任务仍须幂等并自行保证正确性。未修改 platform、demo 或架构实现，未推送远端。
+
+审查修正（2026-11-06）：
+
+- `SchedulingProperties` 现通过 `@EnableConfigurationProperties` 注册为配置 Bean，注册器以 `ObjectProvider` 延迟消费；绑定允许缺省，仅发现 Tenant Task 时在启动阶段校验 IAM 地址与令牌。保留 Global Task 单独使用时免目录配置和 token 的 `toString` 脱敏，SDK 文档同步更新。
+- 补全 IAM `TenantMapper.countByStatus` 的 Data Policy 文档：租户目录是全局表，不受 Data Policy 过滤。
+- TDD 新增 Spring 任务 Bean 构造器注入目录配置的测试，先确认缺少配置 Bean 的红灯，再实现；Global/Tenant 注册 23 项通过。
+- 交付前一次同 reactor 执行 `./mvnw -o -pl forge-sdk/forge-sdk-scheduling,forge-platform,forge-iam -am verify '-Dtest=io.saasforge.sdk.scheduling.*Test,io.saasforge.sdk.tenant.*Test,io.saasforge.platform.TenantLifecycleTest,io.saasforge.platform.ArchitectureTest' -Dsurefire.failIfNoSpecifiedTests=false`：scheduling 37 项、tenant 3 项、platform 生命周期/架构 5 项全部通过，IAM 编译和所有相关 Spotless 检查通过。
