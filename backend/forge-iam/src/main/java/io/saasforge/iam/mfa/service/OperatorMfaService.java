@@ -25,15 +25,15 @@ import java.util.UUID;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Operator 的 Authenticator 与 Recovery Code（账号安全规格 2.1–2.3），TOTP、密钥加密与 Recovery Code 与 Identity 相同，分表存储。
  *
  * <p>与 Identity 的差别：{@code forge.iam.platform.mfa-required=true} 时不能解绑，只能更换——先验证旧动态码开始绑定新的，确认后新
  * Authenticator 取代旧的，Recovery Code 一并换新。
+ *
+ * <p>动态码校验都在事务之外：校验失败要计入 Login Lockout 并可能写 {@code auth.locked} 审计，放在事务内会随抛出的异常回滚而丢失审计。
  */
 @Service
 public class OperatorMfaService {
@@ -55,6 +55,7 @@ public class OperatorMfaService {
     private final AuditRecorder audits;
     private final boolean required;
     private final LoginLockoutService lockout;
+    private final TransactionTemplate transactions;
 
     OperatorMfaService(
             OperatorAuthenticatorMapper authenticators,
@@ -64,7 +65,8 @@ public class OperatorMfaService {
             StringRedisTemplate redis,
             AuditRecorder audits,
             IamProperties properties,
-            LoginLockoutService lockout) {
+            LoginLockoutService lockout,
+            TransactionTemplate transactions) {
         this.authenticators = authenticators;
         this.recoveryCodes = recoveryCodes;
         this.operators = operators;
@@ -73,6 +75,12 @@ public class OperatorMfaService {
         this.audits = audits;
         this.required = properties.platform().mfaRequired();
         this.lockout = lockout;
+        this.transactions = transactions;
+    }
+
+    // 同一键也由 MfaResetService 作废：重置前开始的绑定不能在重置后被确认。
+    static String pendingKey(UUID operatorId) {
+        return PENDING_PREFIX + operatorId;
     }
 
     /** 是否要求所有 Operator 使用 MFA（{@code forge.iam.platform.mfa-required}）。 */
@@ -103,9 +111,17 @@ public class OperatorMfaService {
      * <p>动态码错误时进行中的绑定保留，可以重试。暂存时记下了要取代的 Authenticator，确认时现状与之不符（期间被别处绑定、更换或重置）
      * 即拒绝，不能借一次旧码验证取代另一个 Authenticator。
      */
-    @Transactional
     public List<String> confirmBinding(UUID operatorId, String code) {
-        String key = PENDING_PREFIX + operatorId;
+        return confirmBinding(operatorId, code, operatorId);
+    }
+
+    /** 登录中当场绑定：与 {@link #confirmBinding(UUID, String)} 相同，只是登录流程尚无认证上下文，标准列操作人为 null。 */
+    public List<String> confirmLoginBinding(UUID operatorId, String code) {
+        return confirmBinding(operatorId, code, null);
+    }
+
+    private List<String> confirmBinding(UUID operatorId, String code, UUID actor) {
+        String key = pendingKey(operatorId);
         String pending = redis.opsForValue().get(key);
         if (pending == null) {
             throw ForgeException.withErrorMessage(MfaErrorCode.BINDING_EXPIRED, "No pending authenticator binding");
@@ -127,22 +143,19 @@ public class OperatorMfaService {
             throw invalidCode();
         }
         long step = matched.getAsLong();
-        if (current != null) {
-            authenticators.deleteByOperator(operatorId, operatorId);
-            recoveryCodes.deleteByOperator(operatorId, operatorId);
-        }
-        try {
-            authenticators.insert(UuidV7.generate(), operatorId, ciphertext, step, operatorId);
-        } catch (DuplicateKeyException concurrent) {
-            throw alreadyBound();
-        }
-        List<String> codes = issueRecoveryCodes(operatorId);
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                redis.delete(key);
+        List<String> codes = transactions.execute(status -> {
+            if (current != null) {
+                authenticators.deleteByOperator(operatorId, actor);
+                recoveryCodes.deleteByOperator(operatorId, actor);
             }
+            try {
+                authenticators.insert(UuidV7.generate(), operatorId, ciphertext, step, actor);
+            } catch (DuplicateKeyException concurrent) {
+                throw alreadyBound();
+            }
+            return issueRecoveryCodes(operatorId, actor);
         });
+        redis.delete(key);
         var event = event(BIND, operatorId);
         if (current != null) event.detail("replaced", true);
         audits.record(event.build());
@@ -169,11 +182,12 @@ public class OperatorMfaService {
     }
 
     /** 验证一次动态码后作废全部旧 Recovery Code，另发一组；明文只在本次返回。 */
-    @Transactional
     public List<String> regenerateRecoveryCodes(UUID operatorId, String code) {
         verifyCode(operatorId, code, operatorId);
-        recoveryCodes.deleteByOperator(operatorId, operatorId);
-        List<String> codes = issueRecoveryCodes(operatorId);
+        List<String> codes = transactions.execute(status -> {
+            recoveryCodes.deleteByOperator(operatorId, operatorId);
+            return issueRecoveryCodes(operatorId, operatorId);
+        });
         audits.record(event(REGENERATE, operatorId).build());
         return codes;
     }
@@ -183,14 +197,15 @@ public class OperatorMfaService {
      *
      * @throws ForgeException 403 {@code mfa.unbindForbidden}：要求 Operator 使用 MFA 时只能更换；此时不校验也不消耗动态码
      */
-    @Transactional
     public void unbind(UUID operatorId, String code) {
         if (required) {
             throw ForgeException.withErrorMessage(MfaErrorCode.UNBIND_FORBIDDEN, "Operator MFA is required");
         }
         verifyCode(operatorId, code, operatorId);
-        authenticators.deleteByOperator(operatorId, operatorId);
-        recoveryCodes.deleteByOperator(operatorId, operatorId);
+        transactions.executeWithoutResult(status -> {
+            authenticators.deleteByOperator(operatorId, operatorId);
+            recoveryCodes.deleteByOperator(operatorId, operatorId);
+        });
         audits.record(event(UNBIND, operatorId).build());
     }
 
@@ -202,7 +217,7 @@ public class OperatorMfaService {
         byte[] secret = Totp.newSecret();
         String sealed = Base64.getEncoder().encodeToString(cipher.encrypt(secret, owner(operatorId)));
         String value = (replaces == null ? "" : replaces.toString()) + SEPARATOR + sealed;
-        redis.opsForValue().set(PENDING_PREFIX + operatorId, value, PENDING_TTL);
+        redis.opsForValue().set(pendingKey(operatorId), value, PENDING_TTL);
         return Totp.otpauthUri(IdentityMfaService.ISSUER, operator.account(), secret);
     }
 
@@ -224,14 +239,14 @@ public class OperatorMfaService {
         return authenticator;
     }
 
-    private List<String> issueRecoveryCodes(UUID operatorId) {
+    private List<String> issueRecoveryCodes(UUID operatorId, UUID actor) {
         List<String> codes = RecoveryCodes.generate();
         recoveryCodes.insertAll(
                 operatorId,
                 codes.stream()
                         .map(code -> new RecoveryCodeHash(UuidV7.generate(), RecoveryCodes.hash(code)))
                         .toList(),
-                operatorId);
+                actor);
         return codes;
     }
 

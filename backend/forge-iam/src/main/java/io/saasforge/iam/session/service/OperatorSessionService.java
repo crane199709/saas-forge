@@ -8,6 +8,7 @@ import io.saasforge.iam.operator.model.ActiveOperator;
 import io.saasforge.iam.operator.model.OperatorCredential;
 import io.saasforge.iam.operator.service.OperatorService;
 import io.saasforge.iam.security.config.IamProperties;
+import io.saasforge.iam.security.service.LoginSessionRegistry;
 import io.saasforge.iam.security.service.MfaAuthority;
 import io.saasforge.iam.security.service.TokenEndpointClient;
 import io.saasforge.iam.session.model.OperatorTokenResponse;
@@ -43,6 +44,7 @@ public class OperatorSessionService {
     private final String redirectUri;
     private final OperatorMfaService mfa;
     private final LoginLockoutService lockout;
+    private final LoginSessionRegistry loginSessions;
     private final String dummyHash;
 
     OperatorSessionService(
@@ -52,7 +54,8 @@ public class OperatorSessionService {
             LoginAudit audits,
             OperatorMfaService mfa,
             IamProperties properties,
-            LoginLockoutService lockout) {
+            LoginLockoutService lockout,
+            LoginSessionRegistry loginSessions) {
         this.operators = operators;
         this.passwords = passwords;
         this.tokenEndpoint = tokenEndpoint;
@@ -60,11 +63,17 @@ public class OperatorSessionService {
         this.redirectUri = properties.platform().redirectUri();
         this.mfa = mfa;
         this.lockout = lockout;
+        this.loginSessions = loginSessions;
         dummyHash = passwords.encode(UUID.randomUUID().toString());
     }
 
     public String redirectUri() {
         return redirectUri;
+    }
+
+    /** 登录成功、会话中已存入认证主体后调用，改密码时据此终止会话。 */
+    public void registerLoginSession(String operatorId, String sessionId) {
+        loginSessions.register(operatorId, sessionId);
     }
 
     // 与 Tenant Realm 相同：不存在的账号同样计数；Operator 因动态码等失败被锁定时，密码正确也被拒。
@@ -140,7 +149,7 @@ public class OperatorSessionService {
     public BoundLogin confirmLoginBinding(PendingOperatorMfa pending, String code) {
         UUID operatorId = requirePending(pending, true);
         if (pending.expiredAt(Instant.now())) throw expired();
-        List<String> recoveryCodes = mfa.confirmBinding(operatorId, code);
+        List<String> recoveryCodes = mfa.confirmLoginBinding(operatorId, code);
         return new BoundLogin(authenticated(operatorId, true), recoveryCodes);
     }
 
@@ -150,7 +159,12 @@ public class OperatorSessionService {
      * @param authentication 带 MFA 标记的会话主体
      * @param recoveryCodes 只展示这一次的 Recovery Code
      */
-    public record BoundLogin(Authentication authentication, List<String> recoveryCodes) {}
+    public record BoundLogin(Authentication authentication, List<String> recoveryCodes) {
+        @Override
+        public String toString() {
+            return "BoundLogin[redacted]";
+        }
+    }
 
     // 状态不存在或不是所需的那一步时同样按超时处理：不知道是谁在提交，不记审计，须重新输入密码。
     private static UUID requirePending(PendingOperatorMfa pending, boolean bindRequired) {

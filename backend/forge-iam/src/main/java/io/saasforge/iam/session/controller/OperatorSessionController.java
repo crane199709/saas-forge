@@ -1,9 +1,10 @@
 package io.saasforge.iam.session.controller;
 
+import io.saasforge.iam.mfa.model.BindingStartResponse;
+import io.saasforge.iam.mfa.model.RecoveryCodeFormat;
 import io.saasforge.iam.session.model.OperatorTokenResponse;
 import io.saasforge.iam.session.model.PendingOperatorMfa;
 import io.saasforge.iam.session.service.LoginAudit;
-import io.saasforge.iam.session.service.LoginSessionRegistry;
 import io.saasforge.iam.session.service.OperatorSessionService;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,12 +32,10 @@ import org.springframework.web.bind.annotation.RestController;
 class OperatorSessionController {
     private final OperatorSessionService sessions;
     private final LoginAudit audits;
-    private final LoginSessionRegistry loginSessions;
 
-    OperatorSessionController(OperatorSessionService sessions, LoginAudit audits, LoginSessionRegistry loginSessions) {
+    OperatorSessionController(OperatorSessionService sessions, LoginAudit audits) {
         this.sessions = sessions;
         this.audits = audits;
-        this.loginSessions = loginSessions;
     }
 
     @Operation(summary = "以密码认证 Operator；已绑定 Authenticator 时进入待 MFA，要求 MFA 而未绑定时进入必须绑定，否则建立登录会话")
@@ -93,7 +92,8 @@ class OperatorSessionController {
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
         new HttpSessionSecurityContextRepository().saveContext(context, request, response);
-        loginSessions.register(authentication.getName(), request.getSession().getId());
+        sessions.registerLoginSession(
+                authentication.getName(), request.getSession().getId());
         request.getSession().removeAttribute(PendingOperatorMfa.SESSION_ATTRIBUTE);
         return new LoginResponse(
                 LoginResponse.NEXT_AUTHORIZE, "platform-console", sessions.redirectUri(), recoveryCodes);
@@ -145,9 +145,7 @@ class OperatorSessionController {
     /** 动态码与 Recovery Code 恰好提供一个；Recovery Code 忽略大小写、空格与连字符。 */
     record MfaRequest(
             @Pattern(regexp = "\\d{6}") String code,
-
-            @Size(min = 16, max = 64) @Pattern(regexp = "[0-9A-Za-z\\s-]+")
-            String recoveryCode) {
+            @RecoveryCodeFormat String recoveryCode) {
         @AssertTrue
         public boolean isExactlyOneFactor() {
             return (code == null) != (recoveryCode == null);
@@ -163,13 +161,6 @@ class OperatorSessionController {
         @Override
         public String toString() {
             return "TotpRequest[redacted]";
-        }
-    }
-
-    record BindingStartResponse(String otpauthUri) {
-        @Override
-        public String toString() {
-            return "BindingStartResponse[redacted]";
         }
     }
 

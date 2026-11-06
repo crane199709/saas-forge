@@ -1,6 +1,8 @@
 package io.saasforge.iam.mfa.controller;
 
+import io.saasforge.iam.mfa.model.BindingStartResponse;
 import io.saasforge.iam.mfa.service.IdentityMfaService;
+import io.saasforge.iam.security.config.IamProperties;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,9 +27,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 class MfaController {
     private final IdentityMfaService mfa;
+    private final String redirectUri;
 
-    MfaController(IdentityMfaService mfa) {
+    MfaController(IdentityMfaService mfa, IamProperties properties) {
         this.mfa = mfa;
+        this.redirectUri = properties.redirectUri();
     }
 
     @Operation(summary = "读取当前身份是否已绑定 Authenticator，供账号安全页决定展示绑定还是解绑与重新生成")
@@ -42,9 +46,11 @@ class MfaController {
         return ApiResponse.ok(new BindingStartResponse(mfa.startBinding(identityId(authentication))));
     }
 
-    @Operation(summary = "以首个动态码确认绑定，返回只展示这一次的 Recovery Code；接受 Access Token 或登录会话，确认后当前授权或会话视为已完成 MFA")
+    @Operation(
+            summary =
+                    "以首个动态码确认绑定，返回只展示这一次的 Recovery Code；接受 Access Token 或登录会话，确认后当前授权或会话视为已完成 MFA；凭登录会话时一并返回重新走授权码流程所需的参数")
     @PostMapping(value = "/auth/mfa/bind/confirm", consumes = "application/json")
-    ApiResponse<RecoveryCodesResponse> confirmBinding(
+    ApiResponse<ConfirmBindingResponse> confirmBinding(
             Authentication authentication,
             @Valid @RequestBody CodeRequest body,
             HttpServletRequest request,
@@ -54,15 +60,16 @@ class MfaController {
         // 首个动态码已在此验证，当前会话或授权即视为完成 MFA，被 MFA Requirement 拦下的身份随后可重试进入（ADR-0019）。
         if (authentication instanceof JwtAuthenticationToken jwt) {
             mfa.completeAuthorization(identityId, jwt.getToken().getTokenValue());
-        } else {
-            // 会话权限提升，换发会话标识防会话固定；重新走授权码流程即得到记为已完成 MFA 的授权。
-            request.changeSessionId();
-            var context = SecurityContextHolder.createEmptyContext();
-            context.setAuthentication(mfa.completeSession(authentication));
-            SecurityContextHolder.setContext(context);
-            new HttpSessionSecurityContextRepository().saveContext(context, request, response);
+            return ApiResponse.created(new ConfirmBindingResponse(codes, null, null));
         }
-        return ApiResponse.created(new RecoveryCodesResponse(codes));
+        // 会话权限提升，换发会话标识防会话固定；重新走授权码流程即得到记为已完成 MFA 的授权。
+        request.changeSessionId();
+        var context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(mfa.completeSession(authentication));
+        SecurityContextHolder.setContext(context);
+        new HttpSessionSecurityContextRepository().saveContext(context, request, response);
+        mfa.registerSession(identityId, request.getSession().getId());
+        return ApiResponse.created(new ConfirmBindingResponse(codes, "tenant-app", redirectUri));
     }
 
     @Operation(summary = "验证动态码后重新生成 Recovery Code，旧的一组全部作废")
@@ -93,10 +100,17 @@ class MfaController {
 
     record StatusResponse(boolean bound) {}
 
-    record BindingStartResponse(String otpauthUri) {
+    /**
+     * 确认绑定的响应。
+     *
+     * @param recoveryCodes 只展示这一次的 Recovery Code
+     * @param clientId 凭登录会话确认时返回，重新走授权码流程用；被拦时页面可能已刷新，登录响应给的参数不一定还在
+     * @param redirectUri 同上
+     */
+    record ConfirmBindingResponse(List<String> recoveryCodes, String clientId, String redirectUri) {
         @Override
         public String toString() {
-            return "BindingStartResponse[redacted]";
+            return "ConfirmBindingResponse[redacted]";
         }
     }
 

@@ -1,12 +1,10 @@
 package io.saasforge.iam;
 
-import static io.saasforge.iam.PlatformMfaClient.code;
-import static io.saasforge.iam.PlatformMfaClient.secretOf;
-import static io.saasforge.iam.PlatformMfaClient.wrongCode;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.saasforge.iam.PlatformMfaClient.Login;
 import io.saasforge.iam.PlatformMfaClient.Response;
+import io.saasforge.iam.mfa.mapper.MfaProbeMapper;
 import io.saasforge.iam.provisioning.mapper.OutboxAuditMapper;
 import java.util.Map;
 import java.util.UUID;
@@ -52,6 +50,9 @@ class RequiredOperatorMfaTest {
     @Autowired
     OutboxAuditMapper outbox;
 
+    @Autowired
+    MfaProbeMapper probe;
+
     PlatformMfaClient http;
 
     @BeforeEach
@@ -73,20 +74,29 @@ class RequiredOperatorMfaTest {
 
         Login started = http.post("/platform/auth/login/bind/start", null, first.cookie(), null);
         assertThat(started.response().status()).isEqualTo(200);
-        byte[] secret = secretOf((String) started.response().data().get("otpauthUri"));
+        byte[] secret =
+                PlatformMfaClient.secretOf((String) started.response().data().get("otpauthUri"));
         Login wrong = http.post(
-                "/platform/auth/login/bind/confirm", Map.of("code", wrongCode(secret)), started.cookie(), null);
+                "/platform/auth/login/bind/confirm",
+                Map.of("code", PlatformMfaClient.wrongCode(secret)),
+                started.cookie(),
+                null);
         assertThat(wrong.response().status()).isEqualTo(400);
         assertThat(wrong.response().code()).isEqualTo("mfa.codeInvalid");
         assertThat(http.authorizeStatus(wrong.cookie())).isIn(401, 403);
 
-        Login bound =
-                http.post("/platform/auth/login/bind/confirm", Map.of("code", code(secret, 0)), wrong.cookie(), null);
+        Login bound = http.post(
+                "/platform/auth/login/bind/confirm",
+                Map.of("code", PlatformMfaClient.code(secret, 0)),
+                wrong.cookie(),
+                null);
         assertThat(bound.response().status()).isEqualTo(201);
         assertThat(bound.response().data())
                 .containsEntry("nextStep", "authorize")
                 .containsEntry("clientId", "platform-console");
         assertThat(bound.response().recoveryCodes()).hasSize(10);
+        // 登录流程没有认证上下文，标准列操作人为系统。
+        assertThat(probe.operatorAuthenticatorCreatedBy(FORCED)).isNull();
         assertThat(bound.cookie()).isNotEqualTo(first.cookie());
         Map<?, ?> tokens = http.tokens(bound.cookie());
         assertThat(tokens.get("operatorName")).isEqualTo("op-mfa-forced");
@@ -106,35 +116,51 @@ class RequiredOperatorMfaTest {
         byte[] old = forcedBind("op-mfa-replace", -1);
         Login login = http.login("op-mfa-replace");
         assertThat(login.response().data()).containsEntry("nextStep", "mfa");
-        String token = http.accessToken(
-                http.post("/platform/auth/login/mfa", Map.of("code", code(old, 0)), login.cookie(), null)
-                        .cookie());
+        String token = http.accessToken(http.post(
+                        "/platform/auth/login/mfa",
+                        Map.of("code", PlatformMfaClient.code(old, 0)),
+                        login.cookie(),
+                        null)
+                .cookie());
 
         // 解绑在校验动态码之前即被拒绝，不消耗动态码。
-        Response unbind = http.withToken(token, "/platform/auth/mfa/unbind", Map.of("code", code(old, 1)));
+        Response unbind =
+                http.withToken(token, "/platform/auth/mfa/unbind", Map.of("code", PlatformMfaClient.code(old, 1)));
         assertThat(unbind.status()).isEqualTo(403);
         assertThat(unbind.code()).isEqualTo("mfa.unbindForbidden");
         assertThat(http.withToken(token, "/platform/auth/mfa/bind/start", null).code())
                 .isEqualTo("mfa.alreadyBound");
-        assertThat(http.withToken(token, "/platform/auth/mfa/replace/start", Map.of("code", wrongCode(old)))
+        assertThat(http.withToken(
+                                token,
+                                "/platform/auth/mfa/replace/start",
+                                Map.of("code", PlatformMfaClient.wrongCode(old)))
                         .code())
                 .isEqualTo("mfa.codeInvalid");
 
-        Response started = http.withToken(token, "/platform/auth/mfa/replace/start", Map.of("code", code(old, 1)));
+        Response started = http.withToken(
+                token, "/platform/auth/mfa/replace/start", Map.of("code", PlatformMfaClient.code(old, 1)));
         assertThat(started.status()).isEqualTo(200);
-        byte[] replacement = secretOf((String) started.data().get("otpauthUri"));
-        Response confirmed =
-                http.withToken(token, "/platform/auth/mfa/bind/confirm", Map.of("code", code(replacement, 0)));
+        byte[] replacement = PlatformMfaClient.secretOf((String) started.data().get("otpauthUri"));
+        Response confirmed = http.withToken(
+                token, "/platform/auth/mfa/bind/confirm", Map.of("code", PlatformMfaClient.code(replacement, 0)));
         assertThat(confirmed.status()).isEqualTo(201);
         assertThat(confirmed.recoveryCodes()).hasSize(10);
 
         // 旧 Authenticator 作废，新的生效。
         Login next = http.login("op-mfa-replace");
-        assertThat(http.post("/platform/auth/login/mfa", Map.of("code", code(old, 1)), next.cookie(), null)
+        assertThat(http.post(
+                                "/platform/auth/login/mfa",
+                                Map.of("code", PlatformMfaClient.code(old, 1)),
+                                next.cookie(),
+                                null)
                         .response()
                         .code())
                 .isEqualTo("mfa.codeInvalid");
-        assertThat(http.post("/platform/auth/login/mfa", Map.of("code", code(replacement, 1)), next.cookie(), null)
+        assertThat(http.post(
+                                "/platform/auth/login/mfa",
+                                Map.of("code", PlatformMfaClient.code(replacement, 1)),
+                                next.cookie(),
+                                null)
                         .response()
                         .data())
                 .containsEntry("nextStep", "authorize");
@@ -151,10 +177,14 @@ class RequiredOperatorMfaTest {
     void aReplacementCannotBeConfirmedWithoutOneStarted() {
         byte[] secret = forcedBind("op-mfa-keep", -1);
         Login login = http.login("op-mfa-keep");
-        String token = http.accessToken(
-                http.post("/platform/auth/login/mfa", Map.of("code", code(secret, 0)), login.cookie(), null)
-                        .cookie());
-        Response confirmed = http.withToken(token, "/platform/auth/mfa/bind/confirm", Map.of("code", code(secret, 1)));
+        String token = http.accessToken(http.post(
+                        "/platform/auth/login/mfa",
+                        Map.of("code", PlatformMfaClient.code(secret, 0)),
+                        login.cookie(),
+                        null)
+                .cookie());
+        Response confirmed = http.withToken(
+                token, "/platform/auth/mfa/bind/confirm", Map.of("code", PlatformMfaClient.code(secret, 1)));
         assertThat(confirmed.status()).isEqualTo(400);
         assertThat(confirmed.code()).isEqualTo("mfa.bindingExpired");
         // 已绑定者登录时是待 MFA，不能借登录中绑定的接口另绑一个。
@@ -173,9 +203,13 @@ class RequiredOperatorMfaTest {
         Login login = http.login(account);
         assertThat(login.response().data()).containsEntry("nextStep", "bind");
         Login started = http.post("/platform/auth/login/bind/start", null, login.cookie(), null);
-        byte[] secret = secretOf((String) started.response().data().get("otpauthUri"));
+        byte[] secret =
+                PlatformMfaClient.secretOf((String) started.response().data().get("otpauthUri"));
         Login bound = http.post(
-                "/platform/auth/login/bind/confirm", Map.of("code", code(secret, offset)), started.cookie(), null);
+                "/platform/auth/login/bind/confirm",
+                Map.of("code", PlatformMfaClient.code(secret, offset)),
+                started.cookie(),
+                null);
         assertThat(bound.response().status()).isEqualTo(201);
         return secret;
     }

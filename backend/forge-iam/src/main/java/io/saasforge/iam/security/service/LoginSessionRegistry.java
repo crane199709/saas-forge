@@ -1,4 +1,4 @@
-package io.saasforge.iam.session.service;
+package io.saasforge.iam.security.service;
 
 import java.time.Duration;
 import java.util.Set;

@@ -11,8 +11,9 @@ import io.saasforge.iam.operator.model.OperatorPassword;
 import io.saasforge.iam.operator.service.OperatorService;
 import io.saasforge.iam.operator.service.OperatorStateService;
 import io.saasforge.iam.password.model.ResetTicket;
+import io.saasforge.iam.security.service.LoginSessionRegistry;
 import io.saasforge.iam.security.service.RedisAuthorizationService;
-import io.saasforge.iam.session.service.LoginSessionRegistry;
+import io.saasforge.iam.session.service.LoginAudit;
 import io.saasforge.iam.verification.model.CodeDelivery;
 import io.saasforge.iam.verification.service.VerificationCodeService;
 import io.saasforge.iam.verification.service.VerificationErrorCode;
@@ -50,7 +51,8 @@ import org.springframework.stereotype.Service;
  *
  * <p>原密码错误、验证码错误与动态码错误计入 Login Lockout，锁定期内这些入口一并拒绝：原密码计在 Identity 或 Operator 上，验证码计在规范化后的
  * 邮箱或手机号上（与登录共用计数，未注册目标同样计数），动态码与 Recovery Code 由 MFA 服务计在 Identity 上。原密码正确不清零计数：该计数也承载
- * 动态码失败，不能借改密码重置。
+ * 动态码失败，不能借改密码重置。改密码另外检查账号自身各登录标识的锁：账号被猜密码锁定时，持有 Access Token 也不能借改密码继续尝试；忘记密码不查，
+ * 它凭的是另一个标识上的验证码，与用邮箱验证码登录同理。
  */
 @Service
 public class PasswordService {
@@ -75,6 +77,7 @@ public class PasswordService {
     private final PasswordEncoder passwords;
     private final StringRedisTemplate redis;
     private final AuditRecorder audits;
+    private final LoginAudit loginAudits;
     private final LoginLockoutService lockout;
     private final SecureRandom random = new SecureRandom();
 
@@ -91,6 +94,7 @@ public class PasswordService {
             PasswordEncoder passwords,
             StringRedisTemplate redis,
             AuditRecorder audits,
+            LoginAudit loginAudits,
             LoginLockoutService lockout) {
         this.identities = identities;
         this.operators = operators;
@@ -104,6 +108,7 @@ public class PasswordService {
         this.passwords = passwords;
         this.redis = redis;
         this.audits = audits;
+        this.loginAudits = loginAudits;
         this.lockout = lockout;
     }
 
@@ -118,12 +123,13 @@ public class PasswordService {
         IdentityPassword identity = identities.findActivePassword(identityId).orElseThrow(() -> currentInvalid());
         LockoutTarget target = LockoutTarget.identity(identityId);
         lockout.check(target);
+        checkIdentifiers(AuditRealm.TENANT, identity.account(), identity.email(), identity.phone());
         if (!passwords.matches(currentPassword, identity.passwordHash())) {
             lockout.failed(target);
             throw currentInvalid();
         }
         policy.checkIdentity(newPassword, identity.account(), identity.email(), identity.phone());
-        if (!identities.changePassword(identityId, passwords.encode(newPassword))) throw currentInvalid();
+        if (!identities.changePassword(identityId, passwords.encode(newPassword), identityId)) throw currentInvalid();
         revokeIdentity(identityId, authorizationOf(accessToken));
         audits.record(identityAudit(CHANGE, identityId));
     }
@@ -140,6 +146,7 @@ public class PasswordService {
         if (operator == null) throw currentInvalid();
         LockoutTarget target = LockoutTarget.operator(operatorId);
         lockout.check(target);
+        checkIdentifiers(AuditRealm.PLATFORM, operator.account());
         if (!passwords.matches(currentPassword, operator.passwordHash())) {
             lockout.failed(target);
             throw currentInvalid();
@@ -206,21 +213,42 @@ public class PasswordService {
         lockout.check(LockoutTarget.identity(identityId));
         policy.checkIdentity(newPassword, identity.account(), identity.email(), identity.phone());
         if (mfa.isBound(identityId)) {
-            // 动态码或 Recovery Code 错误由 MFA 服务计入该 Identity 的 Login Lockout。
-            if (code != null) {
-                mfa.verifyLoginCode(identityId, code);
-            } else if (recoveryCode != null) {
-                mfa.useRecoveryCode(identityId, recoveryCode);
-            } else {
+            if (code == null && recoveryCode == null) {
                 throw ForgeException.withErrorMessage(
                         PasswordErrorCode.MFA_REQUIRED, "MFA is required to reset the password");
             }
+            verifyResetMfa(identityId, code, recoveryCode);
         }
         // 凭证在最后一刻才作废：并发提交同一凭证时只有一个能设置密码。
         if (redis.opsForValue().getAndDelete(key) == null) throw resetExpired();
-        if (!identities.changePassword(identityId, passwords.encode(newPassword))) throw resetExpired();
+        // 忘记密码没有认证上下文，标准列操作人为 null。
+        if (!identities.changePassword(identityId, passwords.encode(newPassword), null)) throw resetExpired();
         revokeIdentity(identityId, null);
         audits.record(identityAudit(RESET, identityId));
+    }
+
+    // 动态码或 Recovery Code 错误由 MFA 服务计入该 Identity 的 Login Lockout。
+    private void verifyResetMfa(UUID identityId, String code, String recoveryCode) {
+        String method = code != null ? LoginAudit.MFA_TOTP : LoginAudit.MFA_RECOVERY_CODE;
+        try {
+            if (code != null) {
+                mfa.verifyLoginCode(identityId, code);
+            } else {
+                mfa.useRecoveryCode(identityId, recoveryCode);
+            }
+        } catch (ForgeException error) {
+            loginAudits.mfa(
+                    AuditRealm.TENANT, identityId, method, error.errorCode().code());
+            throw error;
+        }
+        loginAudits.mfa(AuditRealm.TENANT, identityId, method, null);
+    }
+
+    // 账号没有登记的标识（如未填手机号）为 null。
+    private void checkIdentifiers(AuditRealm realm, String... identifiers) {
+        for (String identifier : identifiers) {
+            if (identifier != null) lockout.check(LockoutTarget.identifier(realm, identifier));
+        }
     }
 
     // 已被吊销或过期的 Access Token 找不到授权，此时全部吊销。

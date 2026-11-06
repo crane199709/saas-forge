@@ -27,17 +27,21 @@ class TenantSecurityController {
 
     @Operation(summary = "当前租户的安全设置")
     @GetMapping
-    ApiResponse<SecuritySettings> settings(@AuthenticationPrincipal Jwt jwt) {
-        return ApiResponse.ok(new SecuritySettings(security.mfaRequired(TenantActor.of(jwt))));
+    ApiResponse<SecuritySettingsResponse> settings(@AuthenticationPrincipal Jwt jwt) {
+        return ApiResponse.ok(new SecuritySettingsResponse(security.mfaRequired(TenantActor.of(jwt))));
     }
 
     @Operation(summary = "修改当前租户的安全设置；开启 MFA Requirement 后未完成 MFA 的成员在下一次刷新 Token 时被拦")
     @PutMapping
-    ApiResponse<SecuritySettings> update(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody SecuritySettings body) {
+    ApiResponse<SecuritySettingsResponse> update(
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody UpdateSecuritySettingsRequest body) {
         return ApiResponse.ok(
-                new SecuritySettings(security.updateMfaRequired(TenantActor.of(jwt), body.mfaRequired())));
+                new SecuritySettingsResponse(security.updateMfaRequired(TenantActor.of(jwt), body.mfaRequired())));
     }
 
     /** @param mfaRequired 是否要求进入本租户的授权已完成 MFA */
-    record SecuritySettings(@NotNull Boolean mfaRequired) {}
+    record UpdateSecuritySettingsRequest(@NotNull Boolean mfaRequired) {}
+
+    /** @param mfaRequired 是否要求进入本租户的授权已完成 MFA */
+    record SecuritySettingsResponse(boolean mfaRequired) {}
 }

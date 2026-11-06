@@ -6,6 +6,7 @@ import io.saasforge.iam.identity.service.IdentityService;
 import io.saasforge.iam.lockout.model.LockoutTarget;
 import io.saasforge.iam.lockout.service.LoginLockoutService;
 import io.saasforge.iam.mfa.service.IdentityMfaService;
+import io.saasforge.iam.security.service.LoginSessionRegistry;
 import io.saasforge.iam.security.service.MfaAuthority;
 import io.saasforge.iam.session.model.PendingMfa;
 import io.saasforge.iam.verification.model.CodeDelivery;
@@ -35,6 +36,7 @@ public class TenantSessionService {
     private final PasswordEncoder passwords;
     private final LoginAudit audits;
     private final LoginLockoutService lockout;
+    private final LoginSessionRegistry loginSessions;
     private final String dummyHash;
 
     TenantSessionService(
@@ -43,14 +45,21 @@ public class TenantSessionService {
             VerificationCodeService verifications,
             PasswordEncoder passwords,
             LoginAudit audits,
-            LoginLockoutService lockout) {
+            LoginLockoutService lockout,
+            LoginSessionRegistry loginSessions) {
         this.identities = identities;
         this.mfa = mfa;
         this.verifications = verifications;
         this.passwords = passwords;
         this.audits = audits;
         this.lockout = lockout;
+        this.loginSessions = loginSessions;
         dummyHash = passwords.encode(UUID.randomUUID().toString());
+    }
+
+    /** 登录成功、会话中已存入认证主体后调用，改密码时据此终止会话。 */
+    public void registerLoginSession(String identityId, String sessionId) {
+        loginSessions.register(identityId, sessionId);
     }
 
     // 只认证全局身份；没有或有多个有效 Membership 由调用方在密码校验通过后再处理。

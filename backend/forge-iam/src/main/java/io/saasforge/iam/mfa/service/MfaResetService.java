@@ -30,9 +30,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Service
 public class MfaResetService {
     private static final String RESET = "mfa.reset";
-    // 与 IdentityMfaService、OperatorMfaService 的进行中绑定同一键：重置时一并作废，免得重置前开始的绑定在重置后被确认。
-    private static final String IDENTITY_BINDING = "iam:global:mfa:binding:identity:";
-    private static final String OPERATOR_BINDING = "iam:global:mfa:binding:operator:";
 
     private final IdentityAuthenticatorMapper identityAuthenticators;
     private final IdentityRecoveryCodeMapper identityRecoveryCodes;
@@ -98,7 +95,8 @@ public class MfaResetService {
             if (identityAuthenticators.deleteByIdentity(identityId, actor) == 0) throw notBound();
             identityRecoveryCodes.deleteByIdentity(identityId, actor);
         });
-        redis.delete(IDENTITY_BINDING + identityId);
+        // 进行中的绑定一并作废，免得重置前开始的绑定在重置后被确认。
+        redis.delete(IdentityMfaService.pendingKey(identityId));
         audits.record(event(actor, "identity", identityId));
     }
 
@@ -114,7 +112,7 @@ public class MfaResetService {
             if (operatorAuthenticators.deleteByOperator(operatorId, actor) == 0) throw notBound();
             operatorRecoveryCodes.deleteByOperator(operatorId, actor);
         });
-        redis.delete(OPERATOR_BINDING + operatorId);
+        redis.delete(OperatorMfaService.pendingKey(operatorId));
         audits.record(event(actor, "operator", operatorId));
     }
 

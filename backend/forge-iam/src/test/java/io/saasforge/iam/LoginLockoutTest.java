@@ -52,6 +52,10 @@ class LoginLockoutTest {
     static final String PASSWORD = "Demo-password-123!";
     static final String OPERATOR_PASSWORD = PlatformMfaClient.PASSWORD;
     static final UUID LOCK_MFA = UUID.fromString("019a0110-0000-7000-8000-000000000503");
+    static final UUID LOCK_MFA_TOKEN = UUID.fromString("019a0110-0000-7000-8000-000000000504");
+    static final UUID LOCK_REGEN = UUID.fromString("019a0110-0000-7000-8000-000000000508");
+    static final UUID LOCK_UNBIND = UUID.fromString("019a0110-0000-7000-8000-000000000509");
+    static final UUID OP_LOCK_AUDIT = UUID.fromString("019a0110-0000-7000-8000-000000000525");
     static final AtomicInteger IPS = new AtomicInteger();
     static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -186,6 +190,95 @@ class LoginLockoutTest {
         Response locked =
                 post("/auth/mfa/bind/confirm", Map.of("code", PlatformMfaClient.code(secret, 0)), session, null, ip);
         assertThat(locked.code()).isEqualTo("auth.locked");
+        assertThat(lockAudits()).anySatisfy(event -> assertThat(event.actorId()).isEqualTo(LOCK_MFA_TOKEN));
+    }
+
+    @Test
+    void lockingThroughRegenerateLeavesBothTheLockAndTheAudit() {
+        lockThroughCodeEntry("lock-regen", "/auth/mfa/recovery-codes/regenerate", LOCK_REGEN);
+    }
+
+    @Test
+    void lockingThroughUnbindLeavesBothTheLockAndTheAudit() {
+        lockThroughCodeEntry("lock-unbind", "/auth/mfa/unbind", LOCK_UNBIND);
+    }
+
+    private void lockThroughCodeEntry(String account, String path, UUID identity) {
+        String ip = newIp();
+        String token = tenantAccessToken(
+                post("/auth/login", login(account, PASSWORD), null, null, ip).cookie());
+        byte[] secret = PlatformMfaClient.secretOf((String)
+                post("/auth/mfa/bind/start", null, null, token, ip).data().get("otpauthUri"));
+        assertThat(post("/auth/mfa/bind/confirm", Map.of("code", PlatformMfaClient.code(secret, 0)), null, token, ip)
+                        .status())
+                .isEqualTo(201);
+        for (int i = 0; i < 3; i++) {
+            assertThat(post(path, Map.of("code", PlatformMfaClient.wrongCode(secret)), null, token, ip)
+                            .code())
+                    .isEqualTo("mfa.codeInvalid");
+        }
+        assertThat(post(path, Map.of("code", PlatformMfaClient.code(secret, 1)), null, token, ip)
+                        .code())
+                .isEqualTo("auth.locked");
+        assertThat(lockAudits()).anySatisfy(event -> assertThat(event.actorId()).isEqualTo(identity));
+    }
+
+    @Test
+    void lockingAnOperatorThroughBindConfirmLeavesBothTheLockAndTheAudit() {
+        String ip = newIp();
+        String token = platform.accessToken(
+                post("/platform/auth/login", login("op-lock-audit", OPERATOR_PASSWORD), null, null, ip)
+                        .cookie());
+        byte[] secret = PlatformMfaClient.secretOf((String) post("/platform/auth/mfa/bind/start", null, null, token, ip)
+                .data()
+                .get("otpauthUri"));
+        for (int i = 0; i < 3; i++) {
+            assertThat(post(
+                                    "/platform/auth/mfa/bind/confirm",
+                                    Map.of("code", PlatformMfaClient.wrongCode(secret)),
+                                    null,
+                                    token,
+                                    ip)
+                            .code())
+                    .isEqualTo("mfa.codeInvalid");
+        }
+        assertThat(post(
+                                "/platform/auth/mfa/bind/confirm",
+                                Map.of("code", PlatformMfaClient.code(secret, 0)),
+                                null,
+                                token,
+                                ip)
+                        .code())
+                .isEqualTo("auth.locked");
+        assertThat(lockAudits()).anySatisfy(event -> assertThat(event.actorId()).isEqualTo(OP_LOCK_AUDIT));
+    }
+
+    @Test
+    void aLockedLoginIdentifierAlsoBlocksThePasswordChangeOfItsOwner() {
+        String ip = newIp();
+        String token = tenantAccessToken(post("/auth/login", login("lock-id-change", PASSWORD), null, null, ip)
+                .cookie());
+        for (int i = 0; i < 3; i++) {
+            post("/auth/login", login("lock-id-change", "Wrong-password-1"), null, null, ip);
+        }
+        var change = Map.of("currentPassword", PASSWORD, "newPassword", "Another-password-456!");
+        assertThat(post("/auth/password/change", change, null, token, ip).code())
+                .isEqualTo("auth.locked");
+    }
+
+    @Test
+    void aLockedLoginIdentifierAlsoBlocksThePasswordChangeOfItsOperator() {
+        String ip = newIp();
+        String token = platform.accessToken(
+                post("/platform/auth/login", login("op-lock-id-change", OPERATOR_PASSWORD), null, null, ip)
+                        .cookie());
+        for (int i = 0; i < 3; i++) {
+            post("/platform/auth/login", login("op-lock-id-change", "Wrong-password-1"), null, null, ip);
+        }
+        var change = Map.of("currentPassword", OPERATOR_PASSWORD, "newPassword", "Another-password-456!");
+        assertThat(post("/platform/auth/password/change", change, null, token, ip)
+                        .code())
+                .isEqualTo("auth.locked");
     }
 
     @Test

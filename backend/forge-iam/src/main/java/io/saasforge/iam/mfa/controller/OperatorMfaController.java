@@ -1,5 +1,6 @@
 package io.saasforge.iam.mfa.controller;
 
+import io.saasforge.iam.mfa.model.BindingStartResponse;
 import io.saasforge.iam.mfa.service.OperatorMfaService;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -68,13 +69,6 @@ class OperatorMfaController {
         @Override
         public String toString() {
             return "CodeRequest[redacted]";
-        }
-    }
-
-    record BindingStartResponse(String otpauthUri) {
-        @Override
-        public String toString() {
-            return "BindingStartResponse[redacted]";
         }
     }
 

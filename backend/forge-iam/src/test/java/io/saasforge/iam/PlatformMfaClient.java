@@ -12,6 +12,7 @@ import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -113,7 +114,7 @@ final class PlatformMfaClient {
 
     private RestClient.RequestHeadersSpec<?> authorizeRequest(String cookie) {
         try {
-            String challenge = java.util.Base64.getUrlEncoder()
+            String challenge = Base64.getUrlEncoder()
                     .withoutPadding()
                     .encodeToString(
                             MessageDigest.getInstance("SHA-256").digest(VERIFIER.getBytes(StandardCharsets.US_ASCII)));

@@ -10,10 +10,13 @@ import io.saasforge.iam.mfa.service.OperatorMfaService;
 import io.saasforge.iam.operator.model.OperatorCredential;
 import io.saasforge.iam.operator.service.OperatorService;
 import io.saasforge.iam.security.config.IamProperties;
+import io.saasforge.iam.security.service.LoginSessionRegistry;
 import io.saasforge.iam.security.service.TokenEndpointClient;
 import io.saasforge.sdk.core.api.ForgeException;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 class OperatorSessionServiceTest {
@@ -40,6 +43,12 @@ class OperatorSessionServiceTest {
                         error -> assertThat(error.errorCode()).isEqualTo(SessionErrorCode.AUTH_FAILED));
     }
 
+    @Test
+    void aBoundLoginKeepsRecoveryCodesOutOfItsStringForm() {
+        var login = new OperatorSessionService.BoundLogin(mock(Authentication.class), List.of("AAAA-BBBB-CCCC-DDDD"));
+        assertThat(login.toString()).doesNotContain("AAAA-BBBB-CCCC-DDDD");
+    }
+
     private OperatorSessionService service() {
         var properties = new IamProperties(
                 "http://localhost:5174/",
@@ -54,6 +63,7 @@ class OperatorSessionServiceTest {
                 mock(LoginAudit.class),
                 mock(OperatorMfaService.class),
                 properties,
-                mock(LoginLockoutService.class));
+                mock(LoginLockoutService.class),
+                mock(LoginSessionRegistry.class));
     }
 }

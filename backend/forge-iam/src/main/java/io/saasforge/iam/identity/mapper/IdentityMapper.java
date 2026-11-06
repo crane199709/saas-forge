@@ -59,8 +59,11 @@ public interface IdentityMapper {
     /** 未删除的 active 身份的登录标识与密码哈希，供改密码与重设密码；不存在时为 null。没有租户上下文，不受 Data Policy 过滤。 */
     IdentityPassword findActivePassword(@Param("identityId") UUID identityId);
 
-    /** 替换未删除的 active 身份的密码哈希，返回受影响行数；操作人为身份本人。没有租户上下文，不受 Data Policy 过滤。 */
-    int changePassword(@Param("identityId") UUID identityId, @Param("passwordHash") String passwordHash);
+    /** 替换未删除的 active 身份的密码哈希，返回受影响行数；{@code actor} 没有认证上下文时为 null。没有租户上下文，不受 Data Policy 过滤。 */
+    int changePassword(
+            @Param("identityId") UUID identityId,
+            @Param("passwordHash") String passwordHash,
+            @Param("actor") UUID actor);
 
     /**
      * 按登录标识精确定位未删除的身份（不论状态）：账号区分大小写，邮箱不区分大小写，手机号原样比较；供平台查找身份以重置 MFA，

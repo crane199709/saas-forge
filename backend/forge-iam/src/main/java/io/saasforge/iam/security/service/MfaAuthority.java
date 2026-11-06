@@ -37,12 +37,30 @@ public final class MfaAuthority {
      */
     public static Authentication grant(Authentication principal) {
         if (completed(principal)) return principal;
+        return withAuthorities(
+                principal,
+                Stream.concat(
+                        principal.getAuthorities().stream().map(GrantedAuthority::getAuthority), Stream.of(AUTHORITY)));
+    }
+
+    /**
+     * 去掉主体上的已完成 MFA，用于解绑 Authenticator 之后：解绑者不再持有第二因素，现存授权不能继续凭旧记录进入有 MFA Requirement 的租户。
+     *
+     * @param principal 授权中保存的主体
+     * @return 不带 {@link #AUTHORITY} 的新主体
+     */
+    public static Authentication revoke(Authentication principal) {
+        return withAuthorities(
+                principal,
+                principal.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .filter(authority -> !AUTHORITY.equals(authority)));
+    }
+
+    private static Authentication withAuthorities(Authentication principal, Stream<String> authorities) {
         var user = User.withUsername(principal.getName())
                 .password("")
-                .authorities(Stream.concat(
-                                principal.getAuthorities().stream().map(GrantedAuthority::getAuthority),
-                                Stream.of(AUTHORITY))
-                        .toArray(String[]::new))
+                .authorities(authorities.toArray(String[]::new))
                 .build();
         return UsernamePasswordAuthenticationToken.authenticated(user, null, user.getAuthorities());
     }

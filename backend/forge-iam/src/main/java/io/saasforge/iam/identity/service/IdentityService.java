@@ -91,9 +91,13 @@ public class IdentityService {
         return Optional.ofNullable(identities.findActivePassword(identityId));
     }
 
-    /** 替换密码哈希，操作人为身份本人；身份已删除或不再 active 时返回 false。 */
-    public boolean changePassword(UUID identityId, String passwordHash) {
-        return identities.changePassword(identityId, passwordHash) > 0;
+    /**
+     * 替换密码哈希；身份已删除或不再 active 时返回 false。
+     *
+     * @param actor 操作人：自助改密码为身份本人，忘记密码没有认证上下文，为 null
+     */
+    public boolean changePassword(UUID identityId, String passwordHash, UUID actor) {
+        return identities.changePassword(identityId, passwordHash, actor) > 0;
     }
 
     public ActiveMembership findForRefresh(UUID identityId, UUID membershipId, UUID tenantId) {
