@@ -37,6 +37,54 @@
 - Schema 变更写在 Flyway 迁移 `.sql` 文件中。
 - 测试数据通过 `@Sql` 引用 `.sql` 文件准备，不在测试代码中内联 SQL 字符串。
 
+## SQL 写法与表注释
+
+### SQL-99 与 PostgreSQL 白名单
+
+适用于 Flyway 迁移、mapper XML、SDK 的 `schema.sql`、测试与种子 SQL。「豁免」一节列出的 SDK 基础设施生成或执行的 SQL，以及 `deploy/` 下的数据库初始化脚本不适用。多库适配暂不实施，原因见 ADR-0020。
+
+有标准写法时一律用标准写法：
+
+| 改用 | 代替 |
+|---|---|
+| `CAST(x AS uuid)` | `x::uuid` |
+| `CURRENT_TIMESTAMP` | `now()` |
+| `TIMESTAMP WITH TIME ZONE` | `timestamptz` |
+| `INTERVAL '1' DAY` | `interval '1 day'` |
+| `POSITION(a IN b)` | `strpos(b, a)` |
+
+没有等价写法时只能使用以下 PostgreSQL 能力，需要其他能力先修改本节：
+
+| 类别 | 允许 |
+|---|---|
+| 元数据 | `COMMENT ON` |
+| 索引 | `CREATE INDEX`、部分索引与表达式索引、`USING gist` |
+| 租户隔离 | `ENABLE`/`FORCE ROW LEVEL SECURITY`、`CREATE POLICY`、`current_setting`、`set_config` |
+| 写入与并发 | `ON CONFLICT`、`RETURNING`、`FOR UPDATE`、`pg_advisory_xact_lock` 与 `hashtext` |
+| 分页 | `LIMIT`、`OFFSET` |
+| 分区 | 声明式分区及其 PL/pgSQL 维护函数 |
+| 类型及其运算 | `uuid`、`jsonb`、`ltree`（含 `<@`、`\|\|`、`subpath`、`nlevel`）、`text`、`text[]`、`bytea`、`jsonb_typeof`、CHECK 中的 `~` 正则 |
+| 生成值 | `GENERATED ALWAYS AS ... STORED`、`CREATE SEQUENCE` 与 `nextval`、迁移回填时拼接 UUIDv7 的函数（ADR-0014） |
+
+测试专用的探针查询可以使用系统目录（`pg_class`、`obj_description` 等）与 `encode`。
+
+### 表与字段的中文描述
+
+- `CREATE TABLE` 必须在同一迁移文件中用 `COMMENT ON TABLE` 和 `COMMENT ON COLUMN` 写表和全部字段的中文描述，包括 `id`、`created_at` 等通用字段。
+- `ADD COLUMN` 必须写新字段的中文描述。字段含义变化时同步更新描述。
+- 分区子表只注释父表。SDK 的 `schema.sql` 同样带注释，服务复制时一并复制。
+- 每个服务的 `SchemaCommentTest` 在迁移后检查，表或字段缺描述时失败。SQL-99 写法不做自动检查，由代码审查把关。
+
+```sql
+CREATE TABLE order_categories (
+    id uuid PRIMARY KEY,
+    name varchar(120) NOT NULL
+);
+COMMENT ON TABLE order_categories IS '示例订单分类';
+COMMENT ON COLUMN order_categories.id IS '分类 ID，UUIDv7';
+COMMENT ON COLUMN order_categories.name IS '分类名称';
+```
+
 ## 建表与标准列
 
 租户业务表带 `tenant_id` 并启用 RLS（ADR-0001），主键使用应用侧生成的 UUIDv7（ADR-0014）。标准表另须带标准列并使用逻辑删除（ADR-0016），完整定义见 [建表标准列规格](../../.scratch/standard-table-columns/spec.md)。
@@ -53,15 +101,15 @@
 ### 标准列
 
 ```sql
-created_at timestamptz NOT NULL DEFAULT now(),
-updated_at timestamptz NOT NULL DEFAULT now(),
+created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
 created_by uuid,
 updated_by uuid,
-deleted    boolean     NOT NULL DEFAULT false
+deleted    boolean NOT NULL DEFAULT false
 ```
 
 - `*_by` 不建外键：操作人可能在其他 schema，或属于 Platform Realm。存当前请求已验证 JWT 的 `sub`，无认证上下文（MQ 消费者、定时任务、Outbox 投递器、登录流程、租户清理）时为 NULL，表示「系统」。
-- 时间列的 `DEFAULT now()` 供迁移回填与 seed SQL 使用；经 MyBatis-Plus 写入时由 SDK 覆盖。
+- 时间列的 `DEFAULT CURRENT_TIMESTAMP` 供迁移回填与 seed SQL 使用；经 MyBatis-Plus 写入时由 SDK 覆盖。
 - 不设 `deleted_by`、`deleted_at`：删除时刷新 `updated_at`、`updated_by`。乐观锁 `version` 不属于标准列，需要的表自行添加。
 - 实体继承 SDK 的 `AuditableEntity`，不自行声明标准列字段，也不手写赋值：SDK 在 INSERT 时填 `created_*` 与 `updated_*`，UPDATE 时填 `updated_*`，调用方传入的值一律被覆盖。`tenant_id` 仍不在实体中声明。
 
@@ -76,7 +124,7 @@ CREATE UNIQUE INDEX identity_account_key ON identity (account) WHERE NOT deleted
 ### 逻辑删除
 
 - 标准表上的删除一律是逻辑删除（`deleted = true`），不物理删除。`status` 继续表达业务状态，`deleted` 只表示该行对常规查询不可见，两者不混用。
-- 租户冷静期结束后的清理同样是逻辑删除：服务实现 SDK 的 `TenantDataCleaner`，由 SDK 在 `CurrentTenant.run(tenantId, ...)` 中调用，用 mapper XML 批量 `UPDATE ... SET deleted = true, updated_at = now(), updated_by = NULL`。
+- 租户冷静期结束后的清理同样是逻辑删除：服务实现 SDK 的 `TenantDataCleaner`，由 SDK 在 `CurrentTenant.run(tenantId, ...)` 中调用，用 mapper XML 批量 `UPDATE ... SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = NULL`。
 - 不用 RLS 过滤已删除行，RLS 只负责租户隔离。
 
 ### 自动处理覆盖不到的写法

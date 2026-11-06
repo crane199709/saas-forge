@@ -28,15 +28,15 @@ Status: resolved
 ## 3. 标准列
 
 ```sql
-created_at timestamptz NOT NULL DEFAULT now(),
-updated_at timestamptz NOT NULL DEFAULT now(),
+created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
 created_by uuid,
 updated_by uuid,
 deleted    boolean     NOT NULL DEFAULT false
 ```
 
 - `*_by` 不建外键：操作人可能在其他 schema，或属于 Platform Realm。
-- 两个时间列都带 `DEFAULT now()`，供迁移回填和 seed SQL 使用；经 MyBatis-Plus 写入时由 SDK 覆盖。
+- 两个时间列都带 `DEFAULT CURRENT_TIMESTAMP`，供迁移回填和 seed SQL 使用；经 MyBatis-Plus 写入时由 SDK 覆盖。
 - 乐观锁 `version` 不放进标准列，需要的表自行添加，例如 `membership.version`。
 - 不设 `deleted_by`、`deleted_at`：删除时刷新 `updated_at`、`updated_by`，可以据此知道是谁、在什么时候删除的。
 
@@ -54,7 +54,7 @@ deleted    boolean     NOT NULL DEFAULT false
 
 - 所有标准表都带 `deleted`，SDK 全局配置 MyBatis-Plus 逻辑删除（`logic-delete-field: deleted`）。标准表上的删除一律是逻辑删除。
 - `status` 继续表达业务状态（停用、过期、归档、Tenant 生命周期中的 deleted 状态）；`deleted = true` 只表示该行对常规查询不可见。Tenant 处于 deleted 状态的冷静期内，tenant 行仍然可见，以便撤回。
-- **租户冷静期结束后的清理也是逻辑删除**：各服务在 `CurrentTenant.run(tenantId, ...)` 中，把该租户的数据批量标记为已删除。这条批量更新写在 mapper XML 中：`UPDATE ... SET deleted = true, updated_at = now()`，`updated_by` 保持 NULL。本期不支持物理清除租户数据；如果以后有合规擦除或存储方面的需求，另行决策。
+- **租户冷静期结束后的清理也是逻辑删除**：各服务在 `CurrentTenant.run(tenantId, ...)` 中，把该租户的数据批量标记为已删除。这条批量更新写在 mapper XML 中：`UPDATE ... SET deleted = true, updated_at = CURRENT_TIMESTAMP`，`updated_by` 保持 NULL。本期不支持物理清除租户数据；如果以后有合规擦除或存储方面的需求，另行决策。
 - 不用 RLS 过滤已删除行：RLS 只负责租户隔离，否则恢复、后台查看与清理都需要绕过 RLS。
 
 ## 7. 唯一约束
