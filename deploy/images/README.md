@@ -30,7 +30,7 @@ docker pull ghcr.io/crane199709/saas-forge-v2/forge-iam:0.1.0
 
 | 服务 | 必须提供的属性 |
 | --- | --- |
-| gateway | forge.security.issuer/jwk-set-uri、forge.security.platform.issuer/jwk-set-uri、forge.gateway.services 和 Spring Cloud Gateway 路由 |
+| gateway | forge.security.issuer/jwk-set-uri、forge.security.platform.issuer/jwk-set-uri、forge.gateway.services 和 Spring Cloud Gateway 路由；网关前有反向代理（如 Shell 镜像的 nginx）时，spring.cloud.gateway.server.webflux.trusted-proxies 须包含代理地址，否则全部用户共用代理的 IP，会一起触发 Login Lockout 的 IP 限速 |
 | iam | forge.security.issuer、forge.security.platform.issuer、forge.iam.signing-key-file、forge.iam.platform.signing-key-file、forge.iam.mfa.encryption-key（Base64 编码的 256 位密钥，可用 `openssl rand -base64 32` 生成，多实例一致，更换后已绑定的 Authenticator 失效）、forge.iam.invitation.accept-url、forge.iam.sub-app.environment、forge.iam.manifest.tokens |
 | platform | forge.security.realm=platform、forge.security.platform.issuer/jwk-set-uri、forge.manifest.iam-uri/token/version、forge.platform.iam.uri/token、forge.platform.provisioning.services、forge.tenant.ignore-tables |
 | demo-service | forge.security.issuer/jwk-set-uri、forge.manifest.iam-uri/token/version、forge.reference-data.iam-uri/token、forge.storage.endpoint/bucket/access-key/secret-key |

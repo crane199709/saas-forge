@@ -11,7 +11,7 @@
 - [x] Identity 与 Operator 自助改密码（需原密码）
 - [x] Identity 忘记密码：`VerificationCodeService` 新增用途发码，未注册目标响应一致；已绑定 Authenticator 时还须完成 MFA
 - [x] 改密码或重设后吊销该账号其他会话与 Refresh Token，并使已签发 Access Token 失效：Operator 沿用管理员重置的机制，Identity 侧机制在本工单确认并记录
-- [ ] 上述入口的失败计入 Login Lockout（工单 06 完成后接入）
+- [x] 上述入口的失败计入 Login Lockout（工单 06 完成后接入）
 - [x] 审计 `password.change`、`password.reset`
 - [x] 测试覆盖：四个入口一致校验、弱密码被拒、存量密码仍可登录、改密码后旧 Refresh Token 失效、忘记密码在已绑定时要求 MFA
 

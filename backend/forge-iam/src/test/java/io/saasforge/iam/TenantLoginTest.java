@@ -40,7 +40,12 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {"server.address=${forge.test.iam-bind-address:127.0.0.1}", "server.servlet.context-path=/iam-test"
+        properties = {
+            "server.address=${forge.test.iam-bind-address:127.0.0.1}",
+            "server.servlet.context-path=/iam-test",
+            // 多个用例共用 unknown、demo 等账号验证失败响应，不应互相触发 Login Lockout（LoginLockoutTest 专门覆盖）。
+            "forge.iam.lockout.tenant.max-failures=1000",
+            "forge.iam.lockout.tenant.ip-max-failures=1000"
         })
 class TenantLoginTest {
     static final SharedContainers.Postgres postgres = SharedContainers.postgres();

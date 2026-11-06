@@ -1,6 +1,8 @@
 package io.saasforge.iam.session.service;
 
 import com.nimbusds.jwt.SignedJWT;
+import io.saasforge.iam.lockout.model.LockoutTarget;
+import io.saasforge.iam.lockout.service.LoginLockoutService;
 import io.saasforge.iam.mfa.service.OperatorMfaService;
 import io.saasforge.iam.operator.model.ActiveOperator;
 import io.saasforge.iam.operator.model.OperatorCredential;
@@ -40,6 +42,7 @@ public class OperatorSessionService {
     private final LoginAudit audits;
     private final String redirectUri;
     private final OperatorMfaService mfa;
+    private final LoginLockoutService lockout;
     private final String dummyHash;
 
     OperatorSessionService(
@@ -48,13 +51,15 @@ public class OperatorSessionService {
             TokenEndpointClient tokenEndpoint,
             LoginAudit audits,
             OperatorMfaService mfa,
-            IamProperties properties) {
+            IamProperties properties,
+            LoginLockoutService lockout) {
         this.operators = operators;
         this.passwords = passwords;
         this.tokenEndpoint = tokenEndpoint;
         this.audits = audits;
         this.redirectUri = properties.platform().redirectUri();
         this.mfa = mfa;
+        this.lockout = lockout;
         dummyHash = passwords.encode(UUID.randomUUID().toString());
     }
 
@@ -62,7 +67,10 @@ public class OperatorSessionService {
         return redirectUri;
     }
 
+    // 与 Tenant Realm 相同：不存在的账号同样计数；Operator 因动态码等失败被锁定时，密码正确也被拒。
     public Authentication authenticate(String account, String password) {
+        LockoutTarget target = LockoutTarget.identifier(AuditRealm.PLATFORM, account);
+        lockout.check(target);
         OperatorCredential credential = operators.findCredential(account);
         String hash = credential == null ? dummyHash : credential.passwordHash();
         boolean valid = passwords.matches(password, hash);
@@ -73,8 +81,11 @@ public class OperatorSessionService {
                     credential == null ? null : credential.operatorId(),
                     account,
                     SessionErrorCode.AUTH_FAILED.code());
+            lockout.failed(target);
             throw ForgeException.withErrorMessage(SessionErrorCode.AUTH_FAILED, "Bad credentials");
         }
+        lockout.succeeded(target);
+        lockout.check(LockoutTarget.operator(credential.operatorId()));
         return authenticated(credential.operatorId(), false);
     }
 

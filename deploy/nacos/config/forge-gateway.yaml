@@ -4,7 +4,8 @@ spring:
       server:
         webflux:
           # 只有来自可信代理的请求才会追加 X-Forwarded-*。这里只信任本机，适用于浏览器在本机直连网关的本地开发；
-          # 网关前面另有代理或从其他机器访问时需改成对应地址，否则 springdoc 的 servers 会退回服务本机端口
+          # 网关前面另有代理或从其他机器访问时需改成对应地址，否则 springdoc 的 servers 会退回服务本机端口；
+          # 客户端 IP 也据此还原：漏配代理地址时所有用户共用代理的 IP，会一起触发 Login Lockout 的 IP 限速
           trusted-proxies: '127\.0\.0\.1|0:0:0:0:0:0:0:1'
           routes:
             - id: forge-iam
