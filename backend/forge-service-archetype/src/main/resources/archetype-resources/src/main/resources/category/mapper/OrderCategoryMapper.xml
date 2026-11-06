@@ -5,6 +5,6 @@
 <mapper namespace="${package}.category.mapper.OrderCategoryMapper">
     <!-- 租户清理（ADR-0016）：在 TenantDeleted 的消费事务中执行，没有操作人，updated_by 写 NULL；手写 SQL 自行维护标准列。 -->
     <update id="markTenantDeleted">
-        UPDATE order_categories SET deleted = true, updated_at = now(), updated_by = NULL WHERE NOT deleted
+        UPDATE order_categories SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = NULL WHERE NOT deleted
     </update>
 </mapper>

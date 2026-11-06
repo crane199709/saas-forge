@@ -11,13 +11,13 @@
     </select>
     <!-- 改为给定 Plan 并递增 Plan 版本；即使 Plan 不变也递增，用于广播 Plan 内容的修改。 -->
     <select id="assignPlan" flushCache="true" resultType="long">
-        UPDATE tenant SET plan_id = #{planId}, plan_version = plan_version + 1, updated_at = now(), updated_by = #{actor}
+        UPDATE tenant SET plan_id = #{planId}, plan_version = plan_version + 1, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE id = #{tenantId} AND NOT deleted
         RETURNING plan_version
     </select>
     <!-- 单条语句定位并更新：与并发更换 Plan 的事务冲突时，按提交后的 plan_id 重新判断，已换走的租户不再递增。 -->
     <select id="touchPlan" flushCache="true" resultType="io.saasforge.platform.tenant.entity.Tenant">
-        UPDATE tenant SET plan_version = plan_version + 1, updated_at = now(), updated_by = #{actor}
+        UPDATE tenant SET plan_version = plan_version + 1, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE plan_id = #{planId} AND NOT deleted
         RETURNING id, plan_version
     </select>

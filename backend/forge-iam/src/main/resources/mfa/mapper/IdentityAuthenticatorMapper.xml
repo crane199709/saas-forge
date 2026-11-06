@@ -8,14 +8,14 @@
     <insert id="insert">
         INSERT INTO identity_authenticator
             (id, identity_id, secret_ciphertext, last_used_step, created_at, updated_at, created_by, updated_by)
-        VALUES (#{id}, #{identityId}, #{secretCiphertext}, #{lastUsedStep}, now(), now(), #{actor}, #{actor})
+        VALUES (#{id}, #{identityId}, #{secretCiphertext}, #{lastUsedStep}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
     </insert>
     <update id="advanceStep">
-        UPDATE identity_authenticator SET last_used_step = #{step}, updated_at = now(), updated_by = #{actor}
+        UPDATE identity_authenticator SET last_used_step = #{step}, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE id = #{id} AND last_used_step &lt; #{step} AND NOT deleted
     </update>
     <update id="deleteByIdentity">
-        UPDATE identity_authenticator SET deleted = true, updated_at = now(), updated_by = #{actor}
+        UPDATE identity_authenticator SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE identity_id = #{identityId} AND NOT deleted
     </update>
 </mapper>

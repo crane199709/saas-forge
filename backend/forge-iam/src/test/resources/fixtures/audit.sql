@@ -6,9 +6,9 @@ ON CONFLICT DO NOTHING;
 INSERT INTO identity (id, account, email, display_name, password_hash)
 SELECT v.id, v.account, v.email, v.display_name, i.password_hash
 FROM identity i CROSS JOIN (VALUES
-    ('019a0110-0000-7000-8000-000000000211'::uuid, 'auditadmina', 'auditadmina@example.com', '审计管理员甲'),
-    ('019a0110-0000-7000-8000-000000000213'::uuid, 'auditmember', 'auditmember@example.com', '审计普通成员'),
-    ('019a0110-0000-7000-8000-000000000221'::uuid, 'auditadminb', 'auditadminb@example.com', '审计管理员乙')
+    (CAST('019a0110-0000-7000-8000-000000000211' AS uuid), 'auditadmina', 'auditadmina@example.com', '审计管理员甲'),
+    (CAST('019a0110-0000-7000-8000-000000000213' AS uuid), 'auditmember', 'auditmember@example.com', '审计普通成员'),
+    (CAST('019a0110-0000-7000-8000-000000000221' AS uuid), 'auditadminb', 'auditadminb@example.com', '审计管理员乙')
 ) AS v (id, account, email, display_name)
 WHERE i.account = 'demo' ON CONFLICT DO NOTHING;
 INSERT INTO membership (id, identity_id, tenant_id) VALUES

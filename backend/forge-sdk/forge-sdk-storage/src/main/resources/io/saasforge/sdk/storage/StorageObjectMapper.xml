@@ -39,7 +39,7 @@
     </select>
 
     <update id="markStored">
-        UPDATE forge_storage_object SET status = 'STORED', stored_at = now() WHERE id = #{id} AND status = 'PENDING'
+        UPDATE forge_storage_object SET status = 'STORED', stored_at = CURRENT_TIMESTAMP WHERE id = #{id} AND status = 'PENDING'
     </update>
 
     <delete id="delete">

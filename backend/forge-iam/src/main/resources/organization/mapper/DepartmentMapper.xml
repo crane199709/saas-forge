@@ -7,12 +7,12 @@
         SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtext('organization:' || #{tenantId}))) AS locked
     </select>
     <select id="list" resultType="io.saasforge.iam.organization.model.DepartmentRow">
-        SELECT id, parent_id, name, path::text AS path FROM department
+        SELECT id, parent_id, name, CAST(path AS text) AS path FROM department
         WHERE tenant_id = #{tenantId} AND NOT deleted
         ORDER BY path
     </select>
     <select id="find" resultType="io.saasforge.iam.organization.model.DepartmentRow">
-        SELECT id, parent_id, name, path::text AS path FROM department
+        SELECT id, parent_id, name, CAST(path AS text) AS path FROM department
         WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT deleted
     </select>
     <select id="countExisting" resultType="long">
@@ -22,10 +22,10 @@
     </select>
     <insert id="insert">
         INSERT INTO department (id, tenant_id, parent_id, name, path, created_at, updated_at, created_by, updated_by)
-        VALUES (#{id}, #{tenantId}, #{parentId}, #{name}, CAST(#{path} AS ltree), now(), now(), #{actor}, #{actor})
+        VALUES (#{id}, #{tenantId}, #{parentId}, #{name}, CAST(#{path} AS ltree), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
     </insert>
     <update id="rename">
-        UPDATE department SET name = #{name}, updated_at = now(), updated_by = #{actor}
+        UPDATE department SET name = #{name}, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT deleted
     </update>
     <!-- subpath 的偏移等于层数时报错而不是返回空路径，子树根自身单独取 newPath。 -->
@@ -34,14 +34,14 @@
             path = CASE WHEN id = #{id} THEN CAST(#{newPath} AS ltree)
                         ELSE CAST(#{newPath} AS ltree) || subpath(path, nlevel(CAST(#{oldPath} AS ltree))) END,
             parent_id = CASE WHEN id = #{id} THEN CAST(#{parentId} AS uuid) ELSE parent_id END,
-            updated_at = now(), updated_by = #{actor}
+            updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE tenant_id = #{tenantId} AND path &lt;@ CAST(#{oldPath} AS ltree) AND NOT deleted
     </update>
     <select id="countChildren" resultType="long">
         SELECT count(*) FROM department WHERE tenant_id = #{tenantId} AND parent_id = #{id} AND NOT deleted
     </select>
     <update id="delete">
-        UPDATE department SET deleted = true, updated_at = now(), updated_by = #{actor}
+        UPDATE department SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT deleted
     </update>
 </mapper>

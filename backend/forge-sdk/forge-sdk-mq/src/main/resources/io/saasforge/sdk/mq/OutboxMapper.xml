@@ -14,25 +14,25 @@
 
     <insert id="insert">
         INSERT INTO forge_outbox (id, tenant_id, topic, tag, payload)
-        VALUES (#{id}, #{tenantId}, #{topic}, #{tag}, #{payload}::jsonb)
+        VALUES (#{id}, #{tenantId}, #{topic}, #{tag}, CAST(#{payload} AS jsonb))
     </insert>
 
     <select id="lockDue" resultMap="entry">
-        SELECT id, tenant_id, topic, tag, payload::text AS payload, attempts FROM forge_outbox
-        WHERE sent_at IS NULL AND next_attempt_at &lt;= now()
+        SELECT id, tenant_id, topic, tag, CAST(payload AS text) AS payload, attempts FROM forge_outbox
+        WHERE sent_at IS NULL AND next_attempt_at &lt;= CURRENT_TIMESTAMP
         ORDER BY next_attempt_at, id
         LIMIT #{limit}
         FOR UPDATE SKIP LOCKED
     </select>
 
     <update id="markSent">
-        UPDATE forge_outbox SET sent_at = now(), last_error = NULL WHERE id = #{id}
+        UPDATE forge_outbox SET sent_at = CURRENT_TIMESTAMP, last_error = NULL WHERE id = #{id}
     </update>
 
     <update id="markFailed">
         UPDATE forge_outbox
         SET attempts = attempts + 1,
-            next_attempt_at = now() + #{backoffMillis} * interval '1 millisecond',
+            next_attempt_at = CURRENT_TIMESTAMP + #{backoffMillis} * INTERVAL '0.001' SECOND,
             last_error = #{error}
         WHERE id = #{id}
     </update>

@@ -5,7 +5,7 @@ INSERT INTO tenant (id, name) VALUES
 ('019a0110-0000-7000-8000-000000000012', '停用租户测试租户')
 ON CONFLICT DO NOTHING;
 INSERT INTO identity (id, account, email, display_name, password_hash)
-SELECT v.id::uuid, v.account, v.account || '@example.com', v.account, i.password_hash
+SELECT CAST(v.id AS uuid), v.account, v.account || '@example.com', v.account, i.password_hash
 FROM identity i, (VALUES
     ('019a0110-0000-7000-8000-00000000000d', 'rev-version'),
     ('019a0110-0000-7000-8000-00000000000f', 'rev-deactivate'),

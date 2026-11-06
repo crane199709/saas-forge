@@ -3,11 +3,11 @@ INSERT INTO tenant (id, name) VALUES ('019a0110-0000-7000-8000-0000000000d0', '�
 INSERT INTO identity (id, account, email, display_name, password_hash)
 SELECT v.id, v.account, v.email, v.display_name, i.password_hash
 FROM identity i CROSS JOIN (VALUES
-    ('019a0110-0000-7000-8000-0000000000d1'::uuid, 'memberowner', 'memberowner@example.com', '成员测试所有者'),
-    ('019a0110-0000-7000-8000-0000000000d3'::uuid, 'memberadmin', 'memberadmin@example.com', '成员测试管理员'),
-    ('019a0110-0000-7000-8000-0000000000d5'::uuid, 'membersuspend', 'membersuspend@example.com', '待停用成员'),
-    ('019a0110-0000-7000-8000-0000000000d7'::uuid, 'memberleave', 'memberleave@example.com', '主动退出成员'),
-    ('019a0110-0000-7000-8000-0000000000d9'::uuid, 'membertarget', 'membertarget@example.com', '受让成员')
+    (CAST('019a0110-0000-7000-8000-0000000000d1' AS uuid), 'memberowner', 'memberowner@example.com', '成员测试所有者'),
+    (CAST('019a0110-0000-7000-8000-0000000000d3' AS uuid), 'memberadmin', 'memberadmin@example.com', '成员测试管理员'),
+    (CAST('019a0110-0000-7000-8000-0000000000d5' AS uuid), 'membersuspend', 'membersuspend@example.com', '待停用成员'),
+    (CAST('019a0110-0000-7000-8000-0000000000d7' AS uuid), 'memberleave', 'memberleave@example.com', '主动退出成员'),
+    (CAST('019a0110-0000-7000-8000-0000000000d9' AS uuid), 'membertarget', 'membertarget@example.com', '受让成员')
 ) AS v (id, account, email, display_name)
 WHERE i.account = 'demo' ON CONFLICT DO NOTHING;
 INSERT INTO membership (id, identity_id, tenant_id) VALUES

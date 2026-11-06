@@ -3,8 +3,8 @@ INSERT INTO tenant (id, name) VALUES ('019a0120-0000-7000-8000-0000000000a0', '�
 INSERT INTO identity (id, account, email, display_name, password_hash)
 SELECT v.id, v.account, v.email, v.display_name, i.password_hash
 FROM identity i CROSS JOIN (VALUES
-    ('019a0120-0000-7000-8000-0000000000a1'::uuid, 'planadmin', 'planadmin@example.com', '套餐测试管理员'),
-    ('019a0120-0000-7000-8000-0000000000a3'::uuid, 'planmember', 'planmember@example.com', '套餐测试成员')
+    (CAST('019a0120-0000-7000-8000-0000000000a1' AS uuid), 'planadmin', 'planadmin@example.com', '套餐测试管理员'),
+    (CAST('019a0120-0000-7000-8000-0000000000a3' AS uuid), 'planmember', 'planmember@example.com', '套餐测试成员')
 ) AS v (id, account, email, display_name)
 WHERE i.account = 'demo' ON CONFLICT DO NOTHING;
 INSERT INTO membership (id, identity_id, tenant_id) VALUES
@@ -22,7 +22,7 @@ INSERT INTO tenant (id, name) VALUES ('019a0120-0000-7000-8000-0000000000a6', '�
 INSERT INTO identity (id, account, email, display_name, password_hash)
 SELECT v.id, v.account, v.email, v.display_name, i.password_hash
 FROM identity i CROSS JOIN (VALUES
-    ('019a0120-0000-7000-8000-0000000000a7'::uuid, 'quotaadmin', 'quotaadmin@example.com', '配额测试管理员')
+    (CAST('019a0120-0000-7000-8000-0000000000a7' AS uuid), 'quotaadmin', 'quotaadmin@example.com', '配额测试管理员')
 ) AS v (id, account, email, display_name)
 WHERE i.account = 'demo' ON CONFLICT DO NOTHING;
 INSERT INTO membership (id, identity_id, tenant_id) VALUES
@@ -38,7 +38,7 @@ ON CONFLICT DO NOTHING;
 -- Sub-App 加载用例使用另一个租户：其 Plan 不影响上面租户「未登记 Plan 时不受限」的断言。
 INSERT INTO tenant (id, name) VALUES ('019a0120-0000-7000-8000-0000000000c0', 'Sub-App 测试租户') ON CONFLICT DO NOTHING;
 INSERT INTO identity (id, account, email, display_name, password_hash)
-SELECT '019a0120-0000-7000-8000-0000000000c1'::uuid, 'appadmin', 'appadmin@example.com', 'Sub-App 测试管理员', password_hash
+SELECT CAST('019a0120-0000-7000-8000-0000000000c1' AS uuid), 'appadmin', 'appadmin@example.com', 'Sub-App 测试管理员', password_hash
 FROM identity WHERE account = 'demo' ON CONFLICT DO NOTHING;
 INSERT INTO membership (id, identity_id, tenant_id)
 VALUES ('019a0120-0000-7000-8000-0000000000c2', '019a0120-0000-7000-8000-0000000000c1', '019a0120-0000-7000-8000-0000000000c0')

@@ -5,15 +5,15 @@
         INSERT INTO operator_recovery_code (id, operator_id, code_hash, created_at, updated_at, created_by, updated_by)
         VALUES
         <foreach collection="codes" item="code" separator=",">
-            (#{code.id}, #{operatorId}, #{code.codeHash}, now(), now(), #{actor}, #{actor})
+            (#{code.id}, #{operatorId}, #{code.codeHash}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
         </foreach>
     </insert>
     <update id="consume">
-        UPDATE operator_recovery_code SET deleted = true, updated_at = now(), updated_by = #{actor}
+        UPDATE operator_recovery_code SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE operator_id = #{operatorId} AND code_hash = #{codeHash} AND NOT deleted
     </update>
     <update id="deleteByOperator">
-        UPDATE operator_recovery_code SET deleted = true, updated_at = now(), updated_by = #{actor}
+        UPDATE operator_recovery_code SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE operator_id = #{operatorId} AND NOT deleted
     </update>
 </mapper>

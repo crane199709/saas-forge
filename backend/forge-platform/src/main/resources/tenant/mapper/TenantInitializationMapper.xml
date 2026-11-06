@@ -4,8 +4,8 @@
     <!-- 先查后改会与预建或另一条回报并发冲突；ON CONFLICT 命中 (tenant_id, service) 的部分唯一索引，一条语句完成。 -->
     <insert id="report">
         INSERT INTO tenant_initialization (id, tenant_id, service, status, error, created_at, updated_at, created_by, updated_by)
-        VALUES (#{id}, #{tenantId}, #{service}, #{status}, #{error}, now(), now(), NULL, NULL)
+        VALUES (#{id}, #{tenantId}, #{service}, #{status}, #{error}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL)
         ON CONFLICT (tenant_id, service) WHERE NOT deleted DO UPDATE
-        SET status = EXCLUDED.status, error = EXCLUDED.error, updated_at = now(), updated_by = NULL
+        SET status = EXCLUDED.status, error = EXCLUDED.error, updated_at = CURRENT_TIMESTAMP, updated_by = NULL
     </insert>
 </mapper>

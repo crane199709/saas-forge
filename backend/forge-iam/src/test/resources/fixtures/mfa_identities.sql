@@ -2,7 +2,7 @@
 -- mfa-login 另属第二租户，用于验证 switch 沿用授权上的 MFA 记录。
 INSERT INTO tenant (id, name) VALUES ('019a0110-0000-7000-8000-000000000004', '第二租户') ON CONFLICT DO NOTHING;
 INSERT INTO identity (id, account, email, display_name, password_hash)
-SELECT v.id::uuid, v.account, v.account || '@example.com', v.account, i.password_hash
+SELECT CAST(v.id AS uuid), v.account, v.account || '@example.com', v.account, i.password_hash
 FROM identity i CROSS JOIN (VALUES
     ('019a0110-0000-7000-8000-000000000301', 'mfa-bind'),
     ('019a0110-0000-7000-8000-000000000302', 'mfa-session'),

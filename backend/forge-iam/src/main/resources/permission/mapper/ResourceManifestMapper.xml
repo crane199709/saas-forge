@@ -10,17 +10,17 @@
         WHERE service = #{service} AND version = #{version} AND NOT deleted
     </select>
     <update id="clearCurrent">
-        UPDATE resource_manifest SET current = false, updated_at = now(), updated_by = NULL
+        UPDATE resource_manifest SET current = false, updated_at = CURRENT_TIMESTAMP, updated_by = NULL
         WHERE service = #{service} AND current AND NOT deleted
     </update>
     <insert id="insertCurrent">
         INSERT INTO resource_manifest (id, service, version, content, current, created_at, updated_at, created_by, updated_by)
-        VALUES (#{id}, #{service}, #{version}, CAST(#{content} AS jsonb), true, now(), now(), NULL, NULL)
+        VALUES (#{id}, #{service}, #{version}, CAST(#{content} AS jsonb), true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL)
     </insert>
     <select id="currentContents" resultType="string">
-        SELECT content::text FROM resource_manifest WHERE current AND NOT deleted ORDER BY service
+        SELECT CAST(content AS text) FROM resource_manifest WHERE current AND NOT deleted ORDER BY service
     </select>
     <select id="previousContents" resultType="string">
-        SELECT content::text FROM resource_manifest WHERE NOT current AND NOT deleted ORDER BY created_at DESC, id DESC
+        SELECT CAST(content AS text) FROM resource_manifest WHERE NOT current AND NOT deleted ORDER BY created_at DESC, id DESC
     </select>
 </mapper>

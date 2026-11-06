@@ -1,7 +1,7 @@
 -- 仅供 MFA Reset 集成测试：每个用例一个独立身份或运营账号；密码与演示身份、演示运营相同。插入须可重复执行。
 -- 被重置的身份同时有账号、邮箱与手机号，供按三种登录标识查找；均为演示租户成员。
 INSERT INTO identity (id, account, email, phone, display_name, password_hash)
-SELECT v.id::uuid, v.account, v.account || '@example.com', v.phone, v.name, i.password_hash
+SELECT CAST(v.id AS uuid), v.account, v.account || '@example.com', v.phone, v.name, i.password_hash
 FROM identity i CROSS JOIN (VALUES
     ('019a0110-0000-7000-8000-000000000501', 'reset-lookup', '13900000501', '查找身份'),
     ('019a0110-0000-7000-8000-000000000502', 'reset-target', '13900000502', '重置身份')) AS v (id, account, phone, name)
@@ -13,7 +13,7 @@ INSERT INTO membership (id, identity_id, tenant_id, status) VALUES
 ON CONFLICT DO NOTHING;
 -- op-reset-holder 持有只含 platform:identity-mfa:reset 的平台角色；op-reset-plain 没有任何平台角色；op-reset-target 是被重置的运营账号。
 INSERT INTO operator (id, account, display_name, password_hash)
-SELECT v.id::uuid, v.account, v.account, o.password_hash
+SELECT CAST(v.id AS uuid), v.account, v.account, o.password_hash
 FROM operator o CROSS JOIN (VALUES
     ('019a0110-0000-7000-8000-000000000521', 'op-reset-holder'),
     ('019a0110-0000-7000-8000-000000000522', 'op-reset-plain'),

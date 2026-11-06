@@ -4,7 +4,7 @@
 <mapper namespace="io.saasforge.iam.organization.mapper.AssignmentMapper">
     <!-- 关联表本身不带标准列；JOIN 进来的部门、岗位须带 NOT deleted。 -->
     <select id="departmentsOf" resultType="io.saasforge.iam.organization.model.DepartmentAssignmentRow">
-        SELECT md.membership_id, md.department_id, d.path::text AS path, md.is_primary AS "primary"
+        SELECT md.membership_id, md.department_id, CAST(d.path AS text) AS path, md.is_primary AS "primary"
         FROM membership_department md JOIN department d ON d.tenant_id = md.tenant_id AND d.id = md.department_id
         WHERE md.tenant_id = #{tenantId} AND NOT d.deleted
           AND md.membership_id IN <foreach collection="membershipIds" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>

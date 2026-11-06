@@ -23,7 +23,7 @@
     </select>
     <!-- 返回文本：开启按参数名构造映射后，MyBatis 无法直接把单列映射为 UUID。 -->
     <select id="findActiveIdByContact" resultType="string">
-        SELECT id::text FROM identity
+        SELECT CAST(id AS text) FROM identity
         WHERE NOT deleted AND status = 'active' AND (lower(email) = lower(#{target}) OR phone = #{target})
     </select>
     <select id="findLoginName" resultType="string">
@@ -41,12 +41,12 @@
     </select>
     <insert id="insertPending">
         INSERT INTO identity (id, email, phone, display_name, status, created_at, updated_at, created_by, updated_by)
-        VALUES (#{id}, #{email}, #{phone}, #{displayName}, 'pending', now(), now(), NULL, NULL)
+        VALUES (#{id}, #{email}, #{phone}, #{displayName}, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL)
     </insert>
     <update id="activatePending">
         UPDATE identity
         SET account = #{account}, display_name = #{displayName}, password_hash = #{passwordHash}, status = 'active',
-            updated_at = now(), updated_by = NULL
+            updated_at = CURRENT_TIMESTAMP, updated_by = NULL
         WHERE id = #{id} AND status = 'pending' AND NOT deleted
     </update>
     <select id="findActivePassword" resultType="io.saasforge.iam.identity.model.IdentityPassword">
@@ -54,7 +54,7 @@
         WHERE id = #{identityId} AND status = 'active' AND NOT deleted
     </select>
     <update id="changePassword">
-        UPDATE identity SET password_hash = #{passwordHash}, updated_at = now(), updated_by = #{actor}
+        UPDATE identity SET password_hash = #{passwordHash}, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE id = #{identityId} AND status = 'active' AND NOT deleted
     </update>
     <select id="findByLoginIdentifier" resultType="io.saasforge.iam.identity.model.IdentitySummary">
@@ -63,6 +63,6 @@
     </select>
     <insert id="insert">
         INSERT INTO identity (id, account, email, phone, display_name, password_hash, created_at, updated_at)
-        VALUES (#{id}, #{account}, #{email}, #{phone}, #{displayName}, #{passwordHash}, now(), now())
+        VALUES (#{id}, #{account}, #{email}, #{phone}, #{displayName}, #{passwordHash}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     </insert>
 </mapper>

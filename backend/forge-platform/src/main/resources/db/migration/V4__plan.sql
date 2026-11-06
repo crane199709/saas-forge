@@ -9,12 +9,25 @@ CREATE TABLE plan (
     -- Quota，NULL 表示不限
     member_quota integer CHECK (member_quota > 0),
     storage_quota_mb bigint CHECK (storage_quota_mb > 0),
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by uuid,
     updated_by uuid,
     deleted boolean NOT NULL DEFAULT false
 );
+COMMENT ON TABLE plan IS '套餐：Feature Pack（权限码与 Sub-App）与 Quota（成员数、存储容量）';
+COMMENT ON COLUMN plan.id IS 'Plan ID，UUIDv7';
+COMMENT ON COLUMN plan.code IS 'Plan 编码，未删除的编码唯一';
+COMMENT ON COLUMN plan.name IS 'Plan 名称';
+COMMENT ON COLUMN plan.permissions IS 'Feature Pack 中的权限码';
+COMMENT ON COLUMN plan.sub_apps IS 'Feature Pack 中的 Sub-App 编码';
+COMMENT ON COLUMN plan.member_quota IS '成员数上限，NULL 表示不限';
+COMMENT ON COLUMN plan.storage_quota_mb IS '存储容量上限，单位 MB，NULL 表示不限';
+COMMENT ON COLUMN plan.created_at IS '创建时间';
+COMMENT ON COLUMN plan.updated_at IS '最后更新时间';
+COMMENT ON COLUMN plan.created_by IS '创建人 ID，系统写入时为 NULL';
+COMMENT ON COLUMN plan.updated_by IS '最后更新人 ID，系统写入时为 NULL';
+COMMENT ON COLUMN plan.deleted IS '逻辑删除标记，true 表示对常规查询不可见';
 CREATE UNIQUE INDEX plan_code_key ON plan (code) WHERE NOT deleted;
 
 ALTER TABLE tenant
@@ -22,4 +35,6 @@ ALTER TABLE tenant
     ADD COLUMN plan_id uuid REFERENCES plan(id),
     -- 每次 Plan 变更（更换 Plan，或所用 Plan 的内容被修改）加 1，随 TenantPlanChanged 发布，订阅方据此丢弃乱序送达的旧变更
     ADD COLUMN plan_version bigint NOT NULL DEFAULT 0;
+COMMENT ON COLUMN tenant.plan_id IS '当前 Plan ID，套餐上线前创建的租户为 NULL，不受套餐限制';
+COMMENT ON COLUMN tenant.plan_version IS 'Plan 版本，每次 Plan 变更加 1，随 TenantPlanChanged 发布';
 CREATE INDEX tenant_plan_idx ON tenant (plan_id) WHERE NOT deleted;

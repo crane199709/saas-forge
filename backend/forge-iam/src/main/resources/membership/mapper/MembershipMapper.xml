@@ -4,17 +4,17 @@
     <!-- RETURNING 在同一语句内取得递增后的版本，避免先改后查之间被并发变更插入。
          目前没有经认证接口发起的调用，都是系统操作，因此 updated_by 写 NULL。 -->
     <select id="deactivate" flushCache="true" resultType="io.saasforge.iam.membership.model.MembershipChange">
-        UPDATE membership SET status = 'suspended', version = version + 1, updated_at = now(), updated_by = NULL
+        UPDATE membership SET status = 'suspended', version = version + 1, updated_at = CURRENT_TIMESTAMP, updated_by = NULL
         WHERE id = #{membershipId} AND NOT deleted
         RETURNING tenant_id, version
     </select>
     <select id="incrementVersion" flushCache="true" resultType="io.saasforge.iam.membership.model.MembershipChange">
-        UPDATE membership SET version = version + 1, updated_at = now(), updated_by = NULL
+        UPDATE membership SET version = version + 1, updated_at = CURRENT_TIMESTAMP, updated_by = NULL
         WHERE id = #{membershipId} AND NOT deleted
         RETURNING tenant_id, version
     </select>
     <select id="incrementActiveVersions" flushCache="true" resultType="io.saasforge.iam.membership.model.MembershipVersion">
-        UPDATE membership SET version = version + 1, updated_at = now(), updated_by = NULL
+        UPDATE membership SET version = version + 1, updated_at = CURRENT_TIMESTAMP, updated_by = NULL
         WHERE tenant_id = #{tenantId} AND status = 'active' AND NOT deleted
         RETURNING id AS membership_id, version
     </select>
@@ -25,11 +25,11 @@
     <!-- ON CONFLICT 命中 (identity_id, tenant_id) 的部分唯一索引：重复开通不产生第二个 Membership，也不改写已接受的状态。 -->
     <insert id="insertInvited">
         INSERT INTO membership (id, identity_id, tenant_id, status, created_at, updated_at, created_by, updated_by)
-        VALUES (#{id}, #{identityId}, #{tenantId}, 'invited', now(), now(), #{actor}, #{actor})
+        VALUES (#{id}, #{identityId}, #{tenantId}, 'invited', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
         ON CONFLICT (identity_id, tenant_id) WHERE NOT deleted DO NOTHING
     </insert>
     <update id="reinvite">
-        UPDATE membership SET status = 'invited', updated_at = now(), updated_by = #{actor}
+        UPDATE membership SET status = 'invited', updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE tenant_id = #{tenantId} AND id = #{membershipId} AND status = 'left' AND NOT deleted
     </update>
     <select id="status" resultType="string">
@@ -37,13 +37,13 @@
     </select>
     <!-- 版本随状态一起递增：停用使旧 Token 立即失效；恢复后旧 Token 仍失效，刷新得到新版本。 -->
     <select id="transition" flushCache="true" resultType="io.saasforge.iam.membership.model.MembershipChange">
-        UPDATE membership SET status = #{to}, version = version + 1, updated_at = now(), updated_by = #{actor}
+        UPDATE membership SET status = #{to}, version = version + 1, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE tenant_id = #{tenantId} AND id = #{membershipId} AND status = #{from} AND NOT deleted
         RETURNING tenant_id, version
     </select>
     <!-- Extended Attribute 值属于本租户内的资料，离开时一并清空，再次邀请加入时不带回旧值。 -->
     <select id="leave" flushCache="true" resultType="io.saasforge.iam.membership.model.MembershipChange">
-        UPDATE membership SET status = 'left', attributes = '{}', version = version + 1, updated_at = now(),
+        UPDATE membership SET status = 'left', attributes = '{}', version = version + 1, updated_at = CURRENT_TIMESTAMP,
             updated_by = #{actor}
         WHERE tenant_id = #{tenantId} AND id = #{membershipId} AND status &lt;&gt; 'left' AND NOT deleted
         RETURNING tenant_id, version
@@ -65,7 +65,7 @@
         WHERE m.id = #{membershipId} AND NOT m.deleted AND NOT i.deleted AND NOT t.deleted
     </select>
     <update id="activateInvited">
-        UPDATE membership SET status = 'active', updated_at = now(), updated_by = NULL
+        UPDATE membership SET status = 'active', updated_at = CURRENT_TIMESTAMP, updated_by = NULL
         WHERE id = #{membershipId} AND status = 'invited' AND NOT deleted
     </update>
     <!-- FOR SHARE：分配角色或组织的事务持有共享锁至提交，移除成员的 UPDATE 须等待其完成后再清除分配；
@@ -78,7 +78,7 @@
     </select>
     <!-- 管理界面展示成员需要 Identity 的账号与昵称；Identity 是全局表，只读取展示字段。 -->
     <select id="page" resultType="io.saasforge.iam.membership.model.MemberRow">
-        SELECT m.id AS membership_id, i.account, i.display_name, m.status, m.attributes::text AS attributes
+        SELECT m.id AS membership_id, i.account, i.display_name, m.status, CAST(m.attributes AS text) AS attributes
         FROM membership m JOIN identity i ON i.id = m.identity_id
         WHERE m.tenant_id = #{tenantId} AND m.status &lt;&gt; 'left' AND NOT m.deleted AND NOT i.deleted
         ORDER BY m.id
@@ -94,10 +94,10 @@
         WHERE m.tenant_id = #{tenantId} AND NOT m.deleted AND NOT i.deleted
         <if test="status != null">AND m.status = #{status}</if>
         <if test="keyword != null">
-            AND (strpos(lower(coalesce(i.account, '')), lower(#{keyword})) &gt; 0
-                OR strpos(lower(i.display_name), lower(#{keyword})) &gt; 0
-                OR strpos(lower(coalesce(i.email, '')), lower(#{keyword})) &gt; 0
-                OR strpos(coalesce(i.phone, ''), #{keyword}) &gt; 0)
+            AND (POSITION(lower(#{keyword}) IN lower(coalesce(i.account, ''))) &gt; 0
+                OR POSITION(lower(#{keyword}) IN lower(i.display_name)) &gt; 0
+                OR POSITION(lower(#{keyword}) IN lower(coalesce(i.email, ''))) &gt; 0
+                OR POSITION(#{keyword} IN coalesce(i.phone, '')) &gt; 0)
         </if>
     </sql>
     <select id="search" resultType="io.saasforge.iam.membership.model.MemberContactRow">
@@ -110,16 +110,16 @@
         SELECT count(*) <include refid="searchCondition"/>
     </select>
     <select id="attributes" resultType="string">
-        SELECT attributes::text FROM membership WHERE tenant_id = #{tenantId} AND id = #{membershipId} AND NOT deleted
+        SELECT CAST(attributes AS text) FROM membership WHERE tenant_id = #{tenantId} AND id = #{membershipId} AND NOT deleted
     </select>
     <update id="updateAttributes">
-        UPDATE membership SET attributes = CAST(#{attributes} AS jsonb), updated_at = now(), updated_by = #{actor}
+        UPDATE membership SET attributes = CAST(#{attributes} AS jsonb), updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE tenant_id = #{tenantId} AND id = #{membershipId} AND NOT deleted
     </update>
     <!-- 单列 UUID 结果按 UUID 类型映射会被当作构造器自动映射而失败；按 Object 取驱动返回的 UUID。 -->
     <!-- JDBC 把单个 ? 当作参数占位符，jsonb 的「含键」运算符按 pgjdbc 约定写成 ??。 -->
     <select id="removeAttribute" flushCache="true" resultType="java.lang.Object">
-        UPDATE membership SET attributes = attributes - #{code}, updated_at = now(), updated_by = #{actor}
+        UPDATE membership SET attributes = attributes - #{code}, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE tenant_id = #{tenantId} AND attributes ?? #{code} AND NOT deleted
         RETURNING id
     </select>

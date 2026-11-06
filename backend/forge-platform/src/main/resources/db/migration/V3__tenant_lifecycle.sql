@@ -3,18 +3,24 @@ ALTER TABLE tenant
     -- 每次状态变更加 1，随 TenantStatusChanged 发布，订阅方据此丢弃乱序送达的旧变更；也用作迁移的乐观锁
     ADD COLUMN status_version bigint NOT NULL DEFAULT 0,
     -- 试用或订购的到期时间；到期提醒在此之前的提醒窗口内发送一次，expiry_reminded_at 记录已发送
-    ADD COLUMN expires_at timestamptz,
-    ADD COLUMN expiry_reminded_at timestamptz,
+    ADD COLUMN expires_at TIMESTAMP WITH TIME ZONE,
+    ADD COLUMN expiry_reminded_at TIMESTAMP WITH TIME ZONE,
     -- 删除进入冷静期时记录：删除前的状态用于撤回，purge_at 为冷静期结束时间，purged_at 为已发布 TenantDeleted 的时间
     ADD COLUMN status_before_deletion varchar(20),
-    ADD COLUMN purge_at timestamptz,
-    ADD COLUMN purged_at timestamptz,
+    ADD COLUMN purge_at TIMESTAMP WITH TIME ZONE,
+    ADD COLUMN purged_at TIMESTAMP WITH TIME ZONE,
     ADD CONSTRAINT tenant_status_check
         CHECK (status IN ('pending', 'trial', 'active', 'suspended', 'expired', 'archived', 'deleted')),
     ADD CONSTRAINT tenant_purge_at_check CHECK ((status = 'deleted') = (purge_at IS NOT NULL)),
     ADD CONSTRAINT tenant_status_before_deletion_check
         CHECK ((status = 'deleted') = (status_before_deletion IS NOT NULL)),
     ADD CONSTRAINT tenant_purged_at_check CHECK (purged_at IS NULL OR status = 'deleted');
+COMMENT ON COLUMN tenant.status_version IS '状态版本，每次状态变更加 1，随 TenantStatusChanged 发布，也用作乐观锁';
+COMMENT ON COLUMN tenant.expires_at IS '试用或订购的到期时间';
+COMMENT ON COLUMN tenant.expiry_reminded_at IS '已发送到期提醒的时间';
+COMMENT ON COLUMN tenant.status_before_deletion IS '进入删除冷静期前的状态，用于撤回删除';
+COMMENT ON COLUMN tenant.purge_at IS '删除冷静期结束时间';
+COMMENT ON COLUMN tenant.purged_at IS '已发布 TenantDeleted 的时间';
 
 -- 定时扫描冷静期到期与即将到期的租户
 CREATE INDEX tenant_purge_due_idx ON tenant (purge_at) WHERE purged_at IS NULL AND NOT deleted;
@@ -29,6 +35,14 @@ CREATE TABLE tenant_status_change (
     reason varchar(500),
     -- 执行变更的 Operator，系统发起的变更为 NULL
     changed_by uuid,
-    changed_at timestamptz NOT NULL DEFAULT now()
+    changed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+COMMENT ON TABLE tenant_status_change IS '租户状态变更历史：只追加不修改，创建租户也记一条';
+COMMENT ON COLUMN tenant_status_change.id IS '主键，UUIDv7';
+COMMENT ON COLUMN tenant_status_change.tenant_id IS '租户 ID';
+COMMENT ON COLUMN tenant_status_change.from_status IS '变更前状态，创建租户时为 NULL';
+COMMENT ON COLUMN tenant_status_change.to_status IS '变更后状态';
+COMMENT ON COLUMN tenant_status_change.reason IS '变更原因';
+COMMENT ON COLUMN tenant_status_change.changed_by IS '执行变更的 Operator ID，系统发起时为 NULL';
+COMMENT ON COLUMN tenant_status_change.changed_at IS '变更时间';
 CREATE INDEX tenant_status_change_tenant_idx ON tenant_status_change (tenant_id, changed_at);

@@ -1,7 +1,7 @@
 -- 仅供 Login Lockout 集成测试：每个用例一个独立账号，失败计数与锁定互不影响。插入须可重复执行。
 -- 身份均为演示租户成员、密码与演示身份相同；运营账号的密码与演示运营相同。
 INSERT INTO identity (id, account, email, display_name, password_hash)
-SELECT v.id::uuid, v.account, v.account || '@example.com', v.account, i.password_hash
+SELECT CAST(v.id AS uuid), v.account, v.account || '@example.com', v.account, i.password_hash
 FROM identity i CROSS JOIN (VALUES
     ('019a0110-0000-7000-8000-000000000501', 'lock-known'),
     ('019a0110-0000-7000-8000-000000000502', 'lock-expiry'),
@@ -28,7 +28,7 @@ INSERT INTO membership (id, identity_id, tenant_id, status) VALUES
 ('019a0110-0000-7000-8000-00000000051a', '019a0110-0000-7000-8000-00000000050a', '019a0110-0000-7000-8000-000000000001', 'active')
 ON CONFLICT DO NOTHING;
 INSERT INTO operator (id, account, display_name, password_hash)
-SELECT v.id::uuid, v.account, v.account, o.password_hash
+SELECT CAST(v.id AS uuid), v.account, v.account, o.password_hash
 FROM operator o CROSS JOIN (VALUES
     ('019a0110-0000-7000-8000-000000000521', 'op-lock-password'),
     ('019a0110-0000-7000-8000-000000000522', 'op-lock-mfa'),

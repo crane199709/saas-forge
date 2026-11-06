@@ -6,7 +6,7 @@
          ON CONFLICT 命中 (tenant_id, code) 的部分唯一索引，重复开通不产生重复角色。 -->
     <insert id="insertBuiltin">
         INSERT INTO role (id, tenant_id, code, name, builtin, created_at, updated_at, created_by, updated_by)
-        VALUES (#{id}, #{tenantId}, #{code}, #{name}, true, now(), now(), NULL, NULL)
+        VALUES (#{id}, #{tenantId}, #{code}, #{name}, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL)
         ON CONFLICT (tenant_id, code) WHERE NOT deleted DO NOTHING
     </insert>
     <!-- owner 列取自角色本身以满足复合外键；ON CONFLICT 覆盖主键与「每个租户一个 Owner」的部分唯一索引，重复开通不报错。 -->
@@ -64,15 +64,15 @@
     <!-- ON CONFLICT 命中 (tenant_id, code) 的部分唯一索引：编码被占用时返回 0，由调用方报告冲突；按模板重复开通也不产生重复角色。 -->
     <insert id="insertCustom">
         INSERT INTO role (id, tenant_id, code, name, builtin, created_at, updated_at, created_by, updated_by)
-        VALUES (#{id}, #{tenantId}, #{code}, #{name}, false, now(), now(), #{actor}, #{actor})
+        VALUES (#{id}, #{tenantId}, #{code}, #{name}, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
         ON CONFLICT (tenant_id, code) WHERE NOT deleted DO NOTHING
     </insert>
     <update id="rename">
-        UPDATE role SET name = #{name}, updated_at = now(), updated_by = #{actor}
+        UPDATE role SET name = #{name}, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT builtin AND NOT deleted
     </update>
     <update id="delete">
-        UPDATE role SET deleted = true, updated_at = now(), updated_by = #{actor}
+        UPDATE role SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT builtin AND NOT deleted
     </update>
     <!-- 单列 UUID 结果按 UUID 类型映射会被当作构造器自动映射而失败；按 Object 取驱动返回的 UUID。 -->

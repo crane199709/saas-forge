@@ -12,7 +12,7 @@ INSERT INTO tenant_plan (tenant_id, plan_id, plan_version)
 VALUES ('019a0130-0000-7000-8000-000000000001', '019a0130-0000-7000-8000-0000000000f1', 1)
 ON CONFLICT DO NOTHING;
 INSERT INTO identity (id, account, email, display_name, password_hash)
-SELECT v.id::uuid, v.account, v.account || '@example.com', v.account, i.password_hash
+SELECT CAST(v.id AS uuid), v.account, v.account || '@example.com', v.account, i.password_hash
 FROM identity i CROSS JOIN (VALUES
     ('019a0130-0000-7000-8000-000000000011', 'secadmin'),
     ('019a0130-0000-7000-8000-000000000012', 'secmember'),

@@ -1,6 +1,6 @@
 -- 仅供 Operator MFA 集成测试：每个用例一个独立运营账号，Authenticator 状态互不影响；密码与演示运营相同。插入须可重复执行。
 INSERT INTO operator (id, account, display_name, password_hash)
-SELECT v.id::uuid, v.account, v.account, o.password_hash
+SELECT CAST(v.id AS uuid), v.account, v.account, o.password_hash
 FROM operator o CROSS JOIN (VALUES
     ('019a0110-0000-7000-8000-000000000401', 'op-mfa-unbound'),
     ('019a0110-0000-7000-8000-000000000402', 'op-mfa-login'),

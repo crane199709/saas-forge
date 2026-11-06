@@ -4,12 +4,12 @@
     <!-- 手写 SQL 自行维护标准列；冲突目标带 WHERE NOT deleted 以匹配部分唯一索引 -->
     <insert id="insertIfAbsent">
         INSERT INTO forge_business_number (id, tenant_id, rule, period, value, created_at, updated_at, created_by, updated_by)
-        VALUES (#{id}, #{tenantId}, #{rule}, #{period}, 0, now(), now(), #{actor}, #{actor})
+        VALUES (#{id}, #{tenantId}, #{rule}, #{period}, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
         ON CONFLICT (tenant_id, rule, period) WHERE NOT deleted DO NOTHING
     </insert>
 
     <update id="increment">
-        UPDATE forge_business_number SET value = value + 1, updated_at = now(), updated_by = #{actor}
+        UPDATE forge_business_number SET value = value + 1, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE rule = #{rule} AND period = #{period} AND NOT deleted
     </update>
 
@@ -19,6 +19,6 @@
 
     <!-- 租户清理（ADR-0016）：在 TenantDeleted 的消费事务中执行，没有操作人，updated_by 写 NULL -->
     <update id="markTenantDeleted">
-        UPDATE forge_business_number SET deleted = true, updated_at = now(), updated_by = NULL WHERE NOT deleted
+        UPDATE forge_business_number SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = NULL WHERE NOT deleted
     </update>
 </mapper>

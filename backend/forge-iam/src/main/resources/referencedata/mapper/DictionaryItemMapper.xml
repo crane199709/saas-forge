@@ -14,27 +14,27 @@
         INSERT INTO dictionary_item (id, tenant_id, service, dictionary, code, custom, name, sort_order, enabled,
             created_at, updated_at, created_by, updated_by)
         VALUES (#{id}, #{tenantId}, #{service}, #{dictionary}, #{code}, true, #{name}, #{sortOrder}, true,
-            now(), now(), #{actor}, #{actor})
+            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
         ON CONFLICT (tenant_id, service, dictionary, code) WHERE NOT deleted DO NOTHING
     </insert>
     <insert id="saveSettings">
         INSERT INTO dictionary_item (id, tenant_id, service, dictionary, code, custom, name, sort_order, enabled,
             created_at, updated_at, created_by, updated_by)
         VALUES (#{id}, #{tenantId}, #{service}, #{dictionary}, #{code}, #{custom}, #{name}, #{sortOrder}, true,
-            now(), now(), #{actor}, #{actor})
+            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
         ON CONFLICT (tenant_id, service, dictionary, code) WHERE NOT deleted DO UPDATE
-        SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order, updated_at = now(), updated_by = #{actor}
+        SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
     </insert>
     <insert id="saveEnabled">
         INSERT INTO dictionary_item (id, tenant_id, service, dictionary, code, custom, name, sort_order, enabled,
             created_at, updated_at, created_by, updated_by)
         VALUES (#{id}, #{tenantId}, #{service}, #{dictionary}, #{code}, #{custom}, #{name}, #{sortOrder}, #{enabled},
-            now(), now(), #{actor}, #{actor})
+            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
         ON CONFLICT (tenant_id, service, dictionary, code) WHERE NOT deleted DO UPDATE
-        SET enabled = EXCLUDED.enabled, updated_at = now(), updated_by = #{actor}
+        SET enabled = EXCLUDED.enabled, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
     </insert>
     <update id="deleteTenant">
-        UPDATE dictionary_item SET deleted = true, updated_at = now(), updated_by = NULL
+        UPDATE dictionary_item SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = NULL
         WHERE tenant_id = #{tenantId} AND NOT deleted
     </update>
 </mapper>

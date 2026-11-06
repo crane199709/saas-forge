@@ -9,9 +9,9 @@
         SELECT code_hash FROM identity_recovery_code WHERE identity_id = #{identityId} AND NOT deleted ORDER BY code_hash
     </select>
     <select id="identityUpdatedBy" resultType="string">
-        SELECT updated_by::text FROM identity WHERE id = #{identityId} AND NOT deleted
+        SELECT CAST(updated_by AS text) FROM identity WHERE id = #{identityId} AND NOT deleted
     </select>
     <select id="operatorAuthenticatorCreatedBy" resultType="string">
-        SELECT created_by::text FROM operator_authenticator WHERE operator_id = #{operatorId} AND NOT deleted
+        SELECT CAST(created_by AS text) FROM operator_authenticator WHERE operator_id = #{operatorId} AND NOT deleted
     </select>
 </mapper>

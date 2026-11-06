@@ -4,9 +4,9 @@ INSERT INTO tenant (id, name) VALUES ('019a0110-0000-7000-8000-0000000002c1', '�
 INSERT INTO identity (id, account, email, display_name, password_hash)
 SELECT v.id, v.account, v.email, v.display_name, i.password_hash
 FROM identity i CROSS JOIN (VALUES
-    ('019a0110-0000-7000-8000-0000000002c2'::uuid, 'refadmin', 'refadmin@example.com', '参考数据管理员'),
-    ('019a0110-0000-7000-8000-0000000002c4'::uuid, 'refmember', 'refmember@example.com', '参考数据成员'),
-    ('019a0110-0000-7000-8000-0000000002c6'::uuid, 'refadminb', 'refadminb@example.com', '租户 B 管理员')
+    (CAST('019a0110-0000-7000-8000-0000000002c2' AS uuid), 'refadmin', 'refadmin@example.com', '参考数据管理员'),
+    (CAST('019a0110-0000-7000-8000-0000000002c4' AS uuid), 'refmember', 'refmember@example.com', '参考数据成员'),
+    (CAST('019a0110-0000-7000-8000-0000000002c6' AS uuid), 'refadminb', 'refadminb@example.com', '租户 B 管理员')
 ) AS v (id, account, email, display_name)
 WHERE i.account = 'demo' ON CONFLICT DO NOTHING;
 INSERT INTO membership (id, identity_id, tenant_id) VALUES
@@ -31,7 +31,7 @@ VALUES ('019a0110-0000-7000-8000-0000000002d1', 'refdata-service', '1',
   "dictionaries":[{"code":"customer-source","name":"客户来源","extensible":true,"items":[
     {"code":"online","name":"线上"},{"code":"legacy","name":"旧渠道"},{"code":"referral","name":"转介绍"}]}],
   "parameters":[{"code":"order.removed","name":"已删除的参数","type":"integer","default":1,"tenantEditable":true}]}',
-false, now() - interval '1 day')
+false, CURRENT_TIMESTAMP - INTERVAL '1' DAY)
 ON CONFLICT DO NOTHING;
 INSERT INTO resource_manifest (id, service, version, content, current)
 VALUES ('019a0110-0000-7000-8000-0000000002d2', 'refdata-service', '2',

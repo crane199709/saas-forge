@@ -7,3 +7,7 @@ CREATE TABLE role_data_policy (
     scope varchar(32) NOT NULL CHECK (scope IN ('self', 'department', 'department_and_below', 'all')),
     PRIMARY KEY (role_id, resource)
 );
+COMMENT ON TABLE role_data_policy IS '角色的 Data Policy：每个角色在每个 Data Resource 上至多一条';
+COMMENT ON COLUMN role_data_policy.role_id IS '角色 ID';
+COMMENT ON COLUMN role_data_policy.resource IS 'Data Resource 编码，取自业务服务清单';
+COMMENT ON COLUMN role_data_policy.scope IS 'Data Scope：self、department、department_and_below、all 或 custom';

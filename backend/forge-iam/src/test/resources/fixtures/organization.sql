@@ -3,9 +3,9 @@ INSERT INTO tenant (id, name) VALUES ('019a0110-0000-7000-8000-0000000000b1', '�
 INSERT INTO identity (id, account, email, display_name, password_hash)
 SELECT v.id, v.account, v.email, v.display_name, i.password_hash
 FROM identity i CROSS JOIN (VALUES
-    ('019a0110-0000-7000-8000-0000000000b2'::uuid, 'orgadmin', 'orgadmin@example.com', '组织管理员'),
-    ('019a0110-0000-7000-8000-0000000000b4'::uuid, 'orgmember', 'orgmember@example.com', '组织成员'),
-    ('019a0110-0000-7000-8000-0000000000b6'::uuid, 'orgadminb', 'orgadminb@example.com', '租户 B 管理员')
+    (CAST('019a0110-0000-7000-8000-0000000000b2' AS uuid), 'orgadmin', 'orgadmin@example.com', '组织管理员'),
+    (CAST('019a0110-0000-7000-8000-0000000000b4' AS uuid), 'orgmember', 'orgmember@example.com', '组织成员'),
+    (CAST('019a0110-0000-7000-8000-0000000000b6' AS uuid), 'orgadminb', 'orgadminb@example.com', '租户 B 管理员')
 ) AS v (id, account, email, display_name)
 WHERE i.account = 'demo' ON CONFLICT DO NOTHING;
 INSERT INTO membership (id, identity_id, tenant_id) VALUES

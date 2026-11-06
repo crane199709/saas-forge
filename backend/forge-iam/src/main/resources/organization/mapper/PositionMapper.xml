@@ -12,14 +12,14 @@
     </select>
     <insert id="insert">
         INSERT INTO position (id, tenant_id, name, created_at, updated_at, created_by, updated_by)
-        VALUES (#{id}, #{tenantId}, #{name}, now(), now(), #{actor}, #{actor})
+        VALUES (#{id}, #{tenantId}, #{name}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
     </insert>
     <update id="rename">
-        UPDATE position SET name = #{name}, updated_at = now(), updated_by = #{actor}
+        UPDATE position SET name = #{name}, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT deleted
     </update>
     <update id="delete">
-        UPDATE position SET deleted = true, updated_at = now(), updated_by = #{actor}
+        UPDATE position SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT deleted
     </update>
 </mapper>
