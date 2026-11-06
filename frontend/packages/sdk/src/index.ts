@@ -24,6 +24,8 @@ export type {
   InvitationAcceptance,
   InvitationPreview,
   MfaFactor,
+  PasswordReset,
+  PasswordResetTicket,
   PlatformClient,
   PlatformLoginResult,
   PlatformSession,

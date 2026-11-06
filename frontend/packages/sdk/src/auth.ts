@@ -63,13 +63,16 @@ export interface TenantMembership {
 }
 
 /**
- * 账号密码校验通过后的结果：唯一的有效 Membership 自动进入；多个时须调用 `selectTenant`；
- * 没有时应展示无租户页，不会签发 Token。
+ * First Factor 校验通过后的结果：唯一的有效 Membership 自动进入；多个时须调用 `selectTenant`；
+ * 没有时应展示无租户页，不会签发 Token。已绑定 Authenticator 时为 `mfa`，须调用 `submitMfa`；
+ * 唯一的租户要求 MFA 而本次认证未完成 MFA 时为 `mfaBindRequired`，凭登录会话当场绑定后再 `selectTenant` 该 Membership。
  */
 export type TenantLoginResult =
   | { status: 'signedIn'; session: TenantSession }
   | { status: 'selectTenant'; memberships: TenantMembership[] }
   | { status: 'noTenant' }
+  | { status: 'mfa' }
+  | { status: 'mfaBindRequired'; membershipId: string }
 
 /** MFA 步骤提交动态码或 Recovery Code，二者恰好一个。 */
 export type MfaFactor = { code: string } | { recoveryCode: string }
@@ -77,6 +80,20 @@ export type MfaFactor = { code: string } | { recoveryCode: string }
 /** 只在本次响应中返回的一组 Recovery Code，服务端只存哈希，无法再次取得。 */
 export interface RecoveryCodes {
   recoveryCodes: string[]
+}
+
+/** 忘记密码校验验证码后的重设凭证；`mfaRequired` 为 true 时重设须同时提交动态码或 Recovery Code。 */
+export interface PasswordResetTicket {
+  resetToken: string
+  mfaRequired: boolean
+}
+
+/** 以重设凭证设置新密码；已绑定 Authenticator 时 `code` 与 `recoveryCode` 提供一个。 */
+export interface PasswordReset {
+  resetToken: string
+  password: string
+  code?: string
+  recoveryCode?: string
 }
 
 /**
@@ -209,16 +226,33 @@ export function createTenantClient(storage: Storage) {
     return core.post(`${tenantRealm.authPath}/invitations/accept`, input)
   }
 
+  /**
+   * 在待 MFA 状态下提交动态码或 Recovery Code；通过后与 `login` 相同：自动进入、选择租户或无租户。
+   * 错误时以 `mfa.codeInvalid`、`mfa.recoveryCodeInvalid` 失败，可重试；待 MFA 已过期时以 `auth.mfaExpired` 失败，须重新登录。
+   */
+  function submitMfa(factor: MfaFactor): Promise<TenantLoginResult> {
+    return enter('login/mfa', factor)
+  }
+
   async function enter(path: string, body: object): Promise<TenantLoginResult> {
     const settings = await core.authenticate<{ memberships?: TenantMembership[] }>(
       path,
       body,
       (value) => (value.memberships ?? []).length > 0,
     )
+    if (settings.nextStep === 'mfa') return { status: 'mfa' }
     const memberships = settings.memberships ?? []
     if (memberships.length === 0) return { status: 'noTenant' }
     if (memberships.length > 1) return { status: 'selectTenant', memberships }
-    return { status: 'signedIn', session: await selectTenant(memberships[0]!.membershipId) }
+    const membershipId = memberships[0]!.membershipId
+    try {
+      return { status: 'signedIn', session: await selectTenant(membershipId) }
+    } catch (error) {
+      // 被拒的授权码不能重试；授权参数仍保留，当场绑定后重新 selectTenant 即走一次新的授权码流程。
+      if (error instanceof ApiError && error.code === 'auth.mfaRequired')
+        return { status: 'mfaBindRequired', membershipId }
+      throw error
+    }
   }
 
   /** 以 `login` 建立的 IAM 登录会话进入指定 Membership 所在租户，签发绑定该租户的 Token。 */
@@ -239,10 +273,83 @@ export function createTenantClient(storage: Storage) {
     return core.rebind(`${tenantRealm.authPath}/switch`, { membershipId })
   }
 
+  /** 已登录时以 Access Token 调用，否则凭 IAM 登录会话（被 MFA Requirement 拦下、尚无 Token 时）。 */
+  function bindingCall<T>(path: string, body: object): Promise<T> {
+    if (core.session()) return core.api<T>(path, jsonPost(body))
+    return core.sessionPost<T>(path, body)
+  }
+
+  /** 开始绑定 Authenticator，返回供渲染二维码的 `otpauth://` URI；已绑定时以 `mfa.alreadyBound` 失败。 */
+  function startMfaBinding(): Promise<{ otpauthUri: string }> {
+    return bindingCall(`${tenantRealm.authPath}/mfa/bind/start`, {})
+  }
+
+  /**
+   * 以首个动态码确认绑定，返回只此一次的 Recovery Code。确认后当前授权（已登录时）或登录会话视为已完成 MFA：
+   * 被 `auth.mfaRequired` 拒绝的进入可重新 `selectTenant`，被拒绝的切换可直接重试。
+   */
+  function confirmMfaBinding(code: string): Promise<RecoveryCodes> {
+    return bindingCall(`${tenantRealm.authPath}/mfa/bind/confirm`, { code })
+  }
+
+  /** 当前身份是否已绑定 Authenticator。 */
+  function mfaStatus(): Promise<{ bound: boolean }> {
+    return core.api(`${tenantRealm.authPath}/mfa`)
+  }
+
+  /** 验证动态码后重新生成 Recovery Code，旧的一组全部作废。 */
+  function regenerateRecoveryCodes(code: string): Promise<RecoveryCodes> {
+    return core.api(`${tenantRealm.authPath}/mfa/recovery-codes/regenerate`, jsonPost({ code }))
+  }
+
+  /** 验证动态码后解绑 Authenticator，Recovery Code 一并作废。 */
+  async function unbindMfa(code: string): Promise<void> {
+    await core.api(`${tenantRealm.authPath}/mfa/unbind`, jsonPost({ code }))
+  }
+
+  /**
+   * 凭原密码修改密码；违反 Password Policy 时以 `password.*` 失败。成功后其他会话失效，
+   * 当前 Access Token 随之被拒，下次请求遇到 401 时自动刷新并继续使用。
+   */
+  async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await core.api(
+      `${tenantRealm.authPath}/password/change`,
+      jsonPost({ currentPassword, newPassword }),
+    )
+  }
+
+  /** 忘记密码：向已登记的邮箱或手机号发送验证码，目标未注册时响应相同但不发送。 */
+  function sendPasswordResetCode(target: string): Promise<CodeDelivery> {
+    return core.post<CodeDelivery>(`${tenantRealm.authPath}/password/forgot/send-code`, { target })
+  }
+
+  /** 忘记密码：校验验证码，换取一次性的重设凭证。 */
+  function verifyPasswordReset(target: string, code: string): Promise<PasswordResetTicket> {
+    return core.post<PasswordResetTicket>(`${tenantRealm.authPath}/password/forgot/verify`, {
+      target,
+      code,
+    })
+  }
+
+  /** 忘记密码：以重设凭证设置新密码，该身份的全部会话与 Token 随即失效。 */
+  async function resetPassword(input: PasswordReset): Promise<void> {
+    await core.post(`${tenantRealm.authPath}/password/forgot/reset`, input)
+  }
+
   return {
     api: core.api,
     page: core.page,
     login,
+    submitMfa,
+    startMfaBinding,
+    confirmMfaBinding,
+    mfaStatus,
+    regenerateRecoveryCodes,
+    unbindMfa,
+    changePassword,
+    sendPasswordResetCode,
+    verifyPasswordReset,
+    resetPassword,
     sendLoginCode,
     loginWithCode,
     sendRegistrationCode,
@@ -669,6 +776,14 @@ function createRealmClient<S extends RealmSession>(
     request,
     session,
     clear,
+  }
+}
+
+function jsonPost(body: object): RequestInit {
+  return {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   }
 }
 

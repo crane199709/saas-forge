@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { inject, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { tenantClientKey } from '@crane199709/sdk'
 import { signOut } from './login-flow'
 
 const { t } = useI18n()
+const router = useRouter()
 const providedClient = inject(tenantClientKey)
 if (!providedClient) throw new Error('Shell must provide a TenantClient')
 const client = providedClient
@@ -18,6 +20,7 @@ onUnmounted(
 // 会话清除后路由守卫离开当前页面回到登录页，IAM 退出失败由登录页提示重试。
 function command(name: string) {
   if (name === 'logout') void signOut(client)
+  else if (name === 'accountSecurity') void router.push('/account/security')
 }
 </script>
 
@@ -26,6 +29,9 @@ function command(name: string) {
     <el-button link data-testid="user-menu">{{ session.identityName }}</el-button>
     <template #dropdown>
       <el-dropdown-menu>
+        <el-dropdown-item command="accountSecurity" data-testid="user-account-security">{{
+          t('account.nav')
+        }}</el-dropdown-item>
         <el-dropdown-item command="logout" data-testid="user-logout">{{
           t('auth.logout')
         }}</el-dropdown-item>
