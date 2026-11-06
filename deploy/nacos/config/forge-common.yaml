@@ -3,6 +3,12 @@ forge:
   # 代码中不设默认值，用到业务日期的服务漏配时启动失败
   business-zone: Asia/Shanghai
 
+spring:
+  cloud:
+    refresh:
+      # 租户包装后的数据源不再匹配 Hikari 默认排除项，重新绑定会与原工厂方法的返回类型冲突。
+      never-refreshable: com.zaxxer.hikari.HikariDataSource,io.saasforge.sdk.tenant.TenantSessionDataSource
+
 server:
   # 经网关访问时按 X-Forwarded-* 还原外部地址，springdoc 生成的 servers 才会指向网关而不是服务本机端口
   forward-headers-strategy: framework

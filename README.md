@@ -87,6 +87,8 @@ java -jar backend/forge-gateway/target/forge-gateway-0.1.0.jar
 
 服务启动时以迁移账号执行本服务的 Flyway 迁移，再以运行账号连接数据库；配置通过 `spring.config.import` 从 Nacos 读取（共享的 `forge-common.yaml`，网关另有 `forge-gateway.yaml`）。
 
+连接池及租户会话数据源不参与配置热刷新；修改数据库连接或连接池参数后，需重启对应服务。
+
 验证：
 
 - Nacos 控制台 <http://localhost:18080> 的服务列表中可见四个服务
