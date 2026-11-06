@@ -24,7 +24,9 @@
       "password": "密码登录",
       "code": "验证码登录",
       "register": "注册"
-    }
+    },
+    "forgotPassword": "忘记密码",
+    "backToLogin": "返回登录"
   },
   "code": {
     "target": "邮箱或手机号",
@@ -339,6 +341,76 @@
       "empty": "没有可修改的参数",
       "true": "是",
       "false": "否"
+    }
+  },
+  "mfa": {
+    "code": "动态码",
+    "recoveryCode": "恢复码",
+    "useRecoveryCode": "改用恢复码",
+    "useCode": "改用动态码",
+    "bindTitle": "绑定验证器",
+    "bindRequired": "该租户要求两步验证。请先绑定验证器，完成后将自动进入。",
+    "bindScan": "用验证器应用（如 Google Authenticator、Microsoft Authenticator）扫描二维码，或手动输入密钥：",
+    "qrAlt": "验证器绑定二维码",
+    "secret": "密钥",
+    "bindCode": "验证器显示的首个动态码",
+    "bindConfirm": "确认绑定",
+    "cancel": "取消",
+    "reloginRequired": "请重新登录以完成两步验证"
+  },
+  "forgot": {
+    "title": "找回密码",
+    "target": "已登记的邮箱或手机号",
+    "code": "验证码",
+    "next": "下一步",
+    "password": "新密码（至少 8 位）",
+    "mfaHint": "该账号已绑定验证器，请同时输入动态码或恢复码。",
+    "submit": "重设密码",
+    "done": "密码已重设，所有设备上的登录已失效，请用新密码登录。"
+  },
+  "account": {
+    "nav": "账号安全",
+    "title": "账号安全",
+    "password": {
+      "title": "修改密码",
+      "current": "原密码",
+      "new": "新密码（至少 8 位）",
+      "submit": "修改密码",
+      "done": "密码已修改，其他设备上的登录已失效。"
+    },
+    "mfa": {
+      "title": "两步验证",
+      "bound": "已绑定验证器，登录时需输入动态码。",
+      "unbound": "未绑定验证器。绑定后登录时需输入动态码；部分租户要求绑定后才能进入。",
+      "bind": "绑定验证器",
+      "code": "当前动态码",
+      "regenerate": "重新生成恢复码",
+      "regenerateHint": "重新生成后，原有恢复码全部作废。",
+      "unbind": "解绑验证器",
+      "unbindHint": "解绑后将无法进入要求两步验证的租户。"
+    }
+  },
+  "securitySettings": {
+    "nav": "安全设置",
+    "title": "安全设置",
+    "mfaRequired": "要求两步验证",
+    "mfaRequiredHint": "开启后，成员须绑定验证器并在登录时完成两步验证才能进入本租户；已登录但未完成两步验证的成员在下次刷新登录状态时被拦下，须当场绑定。",
+    "saved": "已保存"
+  },
+  "errorCode": {
+    "auth": {
+      "locked": "登录失败次数过多，已临时锁定，请稍后再试",
+      "lockedFor": "登录失败次数过多，已临时锁定，请 {minutes} 分钟后再试",
+      "mfaRequired": "该租户要求两步验证，请先绑定验证器"
+    },
+    "password": {
+      "tooShort": "密码太短",
+      "tooLong": "密码太长",
+      "tooCommon": "该密码过于常见，容易被猜中，请换一个",
+      "sameAsIdentifier": "密码不能与账号、邮箱或手机号相同",
+      "currentInvalid": "原密码错误",
+      "resetExpired": "重设已超时或已完成，请重新获取验证码",
+      "mfaRequired": "该账号已绑定验证器，请输入动态码或恢复码"
     }
   }
 }

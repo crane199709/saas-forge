@@ -39,7 +39,6 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.MountableFile;
 import tools.jackson.databind.json.JsonMapper;
 
 /** 租户对 Extensible Dictionary 与 Parameter 的修改、成员可读的字典接口、变更事件与租户清理（参考数据工单 02）。 */
@@ -64,8 +63,7 @@ class ReferenceDataTest {
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
             .withDatabaseName("forge")
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath("../../deploy/postgres/init"), "/docker-entrypoint-initdb.d/");
+            .withCopyFileToContainer(SharedContainers.postgresInitScripts(), "/docker-entrypoint-initdb.d/");
 
     @Container
     static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);

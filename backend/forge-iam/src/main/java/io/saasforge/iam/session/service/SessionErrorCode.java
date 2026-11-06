@@ -9,7 +9,10 @@ public enum SessionErrorCode implements ErrorCode {
     TENANT_ACCESS_DENIED("auth.tenantAccessDenied", 403),
     /** 提交 MFA 时没有有效的待 MFA 状态：未通过 First Factor、已超时或已完成，须重新提交 First Factor。 */
     MFA_EXPIRED("auth.mfaExpired", 401),
-    /** 配置要求 Operator 登录必须经过 MFA，而第一期尚未实现 MFA，因此拒绝全部 Operator 登录。 */
+    /**
+     * 需要 MFA 而本次认证未完成：目标 Tenant 提出了 MFA Requirement 而授权未完成 MFA，拒绝签发进入该租户的 Token（可当场绑定后重试）。
+     * Operator 侧不用此码：要求 MFA 时未绑定者在登录中当场绑定。
+     */
     MFA_REQUIRED("auth.mfaRequired", 403);
 
     private final String code;

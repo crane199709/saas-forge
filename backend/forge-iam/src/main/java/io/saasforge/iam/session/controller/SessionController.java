@@ -1,5 +1,6 @@
 package io.saasforge.iam.session.controller;
 
+import io.saasforge.iam.mfa.model.RecoveryCodeFormat;
 import io.saasforge.iam.security.config.IamProperties;
 import io.saasforge.iam.session.model.PendingMfa;
 import io.saasforge.iam.session.model.TokenResponse;
@@ -103,6 +104,8 @@ class SessionController {
         SecurityContextHolder.setContext(context);
         new HttpSessionSecurityContextRepository().saveContext(context, request, response);
         request.getSession().removeAttribute(PendingMfa.SESSION_ATTRIBUTE);
+        sessions.registerLoginSession(
+                authentication.getName(), request.getSession().getId());
         // 认证完成后才返回可进入的租户，由前端决定自动进入、选择租户或展示无租户页。
         var memberships = toMembershipResponses(UUID.fromString(authentication.getName()));
         return new LoginResponse(LoginResponse.NEXT_AUTHORIZE, "tenant-app", redirectUri, memberships);
@@ -185,9 +188,7 @@ class SessionController {
     /** 动态码与 Recovery Code 恰好提供一个；Recovery Code 忽略大小写、空格与连字符。 */
     record MfaRequest(
             @Pattern(regexp = "\\d{6}") String code,
-
-            @Size(min = 16, max = 64) @Pattern(regexp = "[0-9A-Za-z\\s-]+")
-            String recoveryCode) {
+            @RecoveryCodeFormat String recoveryCode) {
         @AssertTrue
         public boolean isExactlyOneFactor() {
             return (code == null) != (recoveryCode == null);

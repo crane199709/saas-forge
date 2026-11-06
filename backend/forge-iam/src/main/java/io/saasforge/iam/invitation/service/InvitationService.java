@@ -8,6 +8,7 @@ import io.saasforge.iam.invitation.model.InvitationPreview;
 import io.saasforge.iam.membership.model.Invitation;
 import io.saasforge.iam.membership.model.MembershipStatus;
 import io.saasforge.iam.membership.service.MembershipService;
+import io.saasforge.iam.password.service.PasswordPolicy;
 import io.saasforge.iam.registration.service.RegistrationErrorCode;
 import io.saasforge.iam.verification.service.ContactSender;
 import io.saasforge.iam.verification.service.InvitationMessage;
@@ -44,6 +45,7 @@ public class InvitationService {
     private final StringRedisTemplate redis;
     private final TransactionTemplate transaction;
     private final InvitationProperties properties;
+    private final PasswordPolicy policy;
     private final SecureRandom random = new SecureRandom();
 
     InvitationService(
@@ -53,7 +55,8 @@ public class InvitationService {
             PasswordEncoder passwords,
             StringRedisTemplate redis,
             TransactionTemplate transaction,
-            InvitationProperties properties) {
+            InvitationProperties properties,
+            PasswordPolicy policy) {
         this.memberships = memberships;
         this.identities = identities;
         this.sender = sender;
@@ -61,6 +64,7 @@ public class InvitationService {
         this.redis = redis;
         this.transaction = transaction;
         this.properties = properties;
+        this.policy = policy;
     }
 
     /**
@@ -90,7 +94,7 @@ public class InvitationService {
     /**
      * 接受邀请。待激活身份必须提供账号与密码，已有凭证的身份忽略这些参数。成功后令牌作废，被邀请人照常登录进入该租户。
      *
-     * @throws ForgeException 404 {@code invitation.invalid}；400 {@code invitation.credentialsRequired}；
+     * @throws ForgeException 404 {@code invitation.invalid}；400 {@code invitation.credentialsRequired} 或 {@code password.*}；
      *     409 {@code registration.accountTaken}
      */
     public AcceptedInvitation accept(String token, String account, String password, String displayName) {
@@ -101,6 +105,8 @@ public class InvitationService {
                     InvitationErrorCode.CREDENTIALS_REQUIRED, "Pending identity must set account and password");
         }
         if (activateIdentity && identities.existsAccount(account)) throw accountTaken();
+        // 为待激活身份设置密码等同注册，执行同一 Password Policy。
+        if (activateIdentity) policy.checkIdentity(password, account);
         try {
             transaction.executeWithoutResult(status -> {
                 // 两步都以原状态为条件：并发接受同一邀请时只有一方成功，另一方整体回滚。

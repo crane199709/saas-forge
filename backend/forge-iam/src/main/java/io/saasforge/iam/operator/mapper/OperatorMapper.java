@@ -3,6 +3,7 @@ package io.saasforge.iam.operator.mapper;
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import io.saasforge.iam.operator.model.ActiveOperator;
 import io.saasforge.iam.operator.model.OperatorCredential;
+import io.saasforge.iam.operator.model.OperatorPassword;
 import io.saasforge.iam.operator.model.OperatorRow;
 import java.util.List;
 import java.util.UUID;
@@ -18,6 +19,9 @@ public interface OperatorMapper {
 
     /** 签发与刷新 Platform Realm Token 时重新确认 Operator 未删除且仍为 active，并取得当前版本与负责区域。Operator 不属于租户，不受 Data Policy 过滤。 */
     ActiveOperator findActive(@Param("operatorId") UUID operatorId);
+
+    /** 未删除的 active Operator 的账号与密码哈希，供自助改密码；不存在时为 null。Operator 不属于租户，不受 Data Policy 过滤。 */
+    OperatorPassword findActivePassword(@Param("operatorId") UUID operatorId);
 
     /** 全部未删除的 Operator，按账号排序。Operator 不属于租户，不受 Data Policy 过滤。 */
     List<OperatorRow> list();

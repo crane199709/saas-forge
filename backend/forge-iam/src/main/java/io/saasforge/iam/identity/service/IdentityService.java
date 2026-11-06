@@ -3,7 +3,9 @@ package io.saasforge.iam.identity.service;
 import io.saasforge.iam.identity.mapper.IdentityMapper;
 import io.saasforge.iam.identity.model.ActiveMembership;
 import io.saasforge.iam.identity.model.ContactIdentity;
+import io.saasforge.iam.identity.model.IdentityPassword;
 import io.saasforge.iam.identity.model.IdentityStatus;
+import io.saasforge.iam.identity.model.IdentitySummary;
 import io.saasforge.iam.identity.model.LoginCredential;
 import io.saasforge.iam.verification.service.VerificationCodeService;
 import io.saasforge.sdk.core.UuidV7;
@@ -45,6 +47,11 @@ public class IdentityService {
         return Optional.ofNullable(identities.findLoginName(identityId));
     }
 
+    /** 按账号、邮箱或手机号精确查找未删除的身份（不论状态）；查不到时为空。 */
+    public Optional<IdentitySummary> findByLoginIdentifier(String identifier) {
+        return Optional.ofNullable(identities.findByLoginIdentifier(identifier));
+    }
+
     public boolean existsAccount(String account) {
         return identities.existsAccount(account);
     }
@@ -77,6 +84,20 @@ public class IdentityService {
     /** 为待激活身份设置凭证并激活；身份已激活时返回 false。账号重复时抛出 Spring 的 {@code DuplicateKeyException}。 */
     public boolean activatePending(UUID identityId, String account, String displayName, String passwordHash) {
         return identities.activatePending(identityId, account, displayName, passwordHash) > 0;
+    }
+
+    /** 未删除的 active 身份的登录标识与密码哈希；不存在时为空。 */
+    public Optional<IdentityPassword> findActivePassword(UUID identityId) {
+        return Optional.ofNullable(identities.findActivePassword(identityId));
+    }
+
+    /**
+     * 替换密码哈希；身份已删除或不再 active 时返回 false。
+     *
+     * @param actor 操作人：自助改密码为身份本人，忘记密码没有认证上下文，为 null
+     */
+    public boolean changePassword(UUID identityId, String passwordHash, UUID actor) {
+        return identities.changePassword(identityId, passwordHash, actor) > 0;
     }
 
     public ActiveMembership findForRefresh(UUID identityId, UUID membershipId, UUID tenantId) {

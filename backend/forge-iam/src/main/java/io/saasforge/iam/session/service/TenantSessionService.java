@@ -3,7 +3,10 @@ package io.saasforge.iam.session.service;
 import io.saasforge.iam.identity.model.ActiveMembership;
 import io.saasforge.iam.identity.model.LoginCredential;
 import io.saasforge.iam.identity.service.IdentityService;
+import io.saasforge.iam.lockout.model.LockoutTarget;
+import io.saasforge.iam.lockout.service.LoginLockoutService;
 import io.saasforge.iam.mfa.service.IdentityMfaService;
+import io.saasforge.iam.security.service.LoginSessionRegistry;
 import io.saasforge.iam.security.service.MfaAuthority;
 import io.saasforge.iam.session.model.PendingMfa;
 import io.saasforge.iam.verification.model.CodeDelivery;
@@ -32,6 +35,8 @@ public class TenantSessionService {
     private final VerificationCodeService verifications;
     private final PasswordEncoder passwords;
     private final LoginAudit audits;
+    private final LoginLockoutService lockout;
+    private final LoginSessionRegistry loginSessions;
     private final String dummyHash;
 
     TenantSessionService(
@@ -39,17 +44,29 @@ public class TenantSessionService {
             IdentityMfaService mfa,
             VerificationCodeService verifications,
             PasswordEncoder passwords,
-            LoginAudit audits) {
+            LoginAudit audits,
+            LoginLockoutService lockout,
+            LoginSessionRegistry loginSessions) {
         this.identities = identities;
         this.mfa = mfa;
         this.verifications = verifications;
         this.passwords = passwords;
         this.audits = audits;
+        this.lockout = lockout;
+        this.loginSessions = loginSessions;
         dummyHash = passwords.encode(UUID.randomUUID().toString());
     }
 
+    /** 登录成功、会话中已存入认证主体后调用，改密码时据此终止会话。 */
+    public void registerLoginSession(String identityId, String sessionId) {
+        loginSessions.register(identityId, sessionId);
+    }
+
     // 只认证全局身份；没有或有多个有效 Membership 由调用方在密码校验通过后再处理。
+    // 不存在的账号同样计数与锁定，锁定提示不泄露账号是否存在（账号安全规格第 3 节）。
     public Authentication authenticate(String account, String password) {
+        LockoutTarget target = LockoutTarget.identifier(AuditRealm.TENANT, account);
+        lockout.check(target);
         LoginCredential credential = identities.findCredential(account);
         String hash = credential == null ? dummyHash : credential.passwordHash();
         boolean valid = passwords.matches(password, hash);
@@ -60,9 +77,17 @@ public class TenantSessionService {
                     credential == null ? null : credential.identityId(),
                     account,
                     SessionErrorCode.AUTH_FAILED.code());
+            lockout.failed(target);
             throw ForgeException.withErrorMessage(SessionErrorCode.AUTH_FAILED, "Bad credentials");
         }
-        return authenticated(credential.identityId(), false);
+        return firstFactorPassed(target, credential.identityId());
+    }
+
+    // 登录标识的计数清零；身份因动态码等失败被锁定时，换个标识通过 First Factor 同样被拒。
+    private Authentication firstFactorPassed(LockoutTarget target, UUID identityId) {
+        lockout.succeeded(target);
+        lockout.check(LockoutTarget.identity(identityId));
+        return authenticated(identityId, false);
     }
 
     // 未注册的目标同样生成验证码、计入发送间隔，只是不发送，响应与校验结果因此与已注册目标一致。
@@ -73,14 +98,16 @@ public class TenantSessionService {
 
     // 与密码登录建立同样的会话主体，之后的授权码与 Token 流程完全相同。
     public Authentication authenticateByCode(String target, String code) {
+        LockoutTarget lockoutTarget = LockoutTarget.identifier(AuditRealm.TENANT, target);
+        lockout.check(lockoutTarget);
+        UUID identityId;
         try {
             verifications.verify(VerificationPurpose.LOGIN, target, code);
             // 发码后身份被停用或删除时才会找不到。
-            UUID identityId = identities
+            identityId = identities
                     .findActiveIdByContact(target)
                     .orElseThrow(() ->
                             ForgeException.withErrorMessage(SessionErrorCode.AUTH_FAILED, "Identity unavailable"));
-            return authenticated(identityId, false);
         } catch (ForgeException error) {
             audits.failed(
                     AuditRealm.TENANT,
@@ -88,8 +115,10 @@ public class TenantSessionService {
                     null,
                     target,
                     error.errorCode().code());
+            lockout.failed(lockoutTarget);
             throw error;
         }
+        return firstFactorPassed(lockoutTarget, identityId);
     }
 
     /**

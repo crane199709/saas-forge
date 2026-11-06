@@ -44,6 +44,7 @@ export function createOperatorApi(client: Pick<PlatformClient, 'api'>) {
     enable: (id: string) => send<null>('POST', `/${id}/enable`),
     resetPassword: (id: string, password: string) =>
       send<null>('PUT', `/${id}/password`, { password }),
+    resetMfa: (id: string) => send<null>('POST', `/${id}/mfa/reset`),
     assignRoles: (id: string, roleIds: string[]) => send<null>('PUT', `/${id}/roles`, { roleIds }),
   }
 }

@@ -127,6 +127,14 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- 测试的签名密钥写在工作目录下的相对路径，不存在时生成；并行的 fork 共用路径会竞争创建，因此各用各的工作目录。 -->
+                    <workingDirectory>${project.build.directory}/surefire-fork-${surefire.forkNumber}</workingDirectory>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>

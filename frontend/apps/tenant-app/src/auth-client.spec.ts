@@ -639,3 +639,210 @@ describe('注册与验证码登录', () => {
     })
   })
 })
+
+describe('账号安全', () => {
+  it('已绑定 Authenticator 时登录先进入 MFA 步骤，提交动态码后再按 Membership 进入', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(ok({ nextStep: 'mfa' }))
+      .mockResolvedValueOnce(
+        ok({
+          nextStep: 'authorize',
+          clientId: 'tenant-app',
+          redirectUri: location.origin + '/',
+          memberships: [membershipA],
+        }),
+      )
+      .mockImplementationOnce(authorizeRedirect)
+      .mockResolvedValueOnce(tokens('access-1', 'refresh-1'))
+    vi.stubGlobal('fetch', fetcher)
+    const client = createTenantClient(sessionStorage)
+    expect(await client.login('demo', 'password')).toEqual({ status: 'mfa' })
+    expect(client.session()).toBeNull()
+    expect((await client.submitMfa({ code: '123456' })).status).toBe('signedIn')
+    expect(fetcher.mock.calls[1]?.[0]).toBe('/iam/auth/login/mfa')
+    expect(fetcher.mock.calls[1]?.[1]).toMatchObject({ credentials: 'same-origin' })
+    expect(JSON.parse(fetcher.mock.calls[1]?.[1]?.body)).toEqual({ code: '123456' })
+    expect(client.session()?.accessToken).toBe('access-1')
+  })
+
+  it('唯一租户要求 MFA 时返回强制绑定，凭登录会话绑定后可重新进入', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(loginSettings([membershipA]))
+      .mockImplementationOnce(authorizeRedirect)
+      .mockResolvedValueOnce(fail('auth.mfaRequired', 403))
+      .mockResolvedValueOnce(ok({ otpauthUri: 'otpauth://totp/x?secret=ABC' }))
+      .mockResolvedValueOnce(ok({ recoveryCodes: ['AAAA-BBBB-CCCC-DDDD'] }))
+      .mockImplementationOnce(authorizeRedirect)
+      .mockResolvedValueOnce(tokens('access-1', 'refresh-1'))
+    vi.stubGlobal('fetch', fetcher)
+    const client = createTenantClient(sessionStorage)
+    expect(await client.login('demo', 'password')).toEqual({
+      status: 'mfaBindRequired',
+      membershipId: 'membership-a',
+    })
+    expect(await client.startMfaBinding()).toEqual({ otpauthUri: 'otpauth://totp/x?secret=ABC' })
+    expect(fetcher.mock.calls[3]?.[1]).toMatchObject({ credentials: 'same-origin' })
+    expect(await client.confirmMfaBinding('654321')).toEqual({
+      recoveryCodes: ['AAAA-BBBB-CCCC-DDDD'],
+    })
+    expect(fetcher.mock.calls[4]?.[0]).toBe('/iam/auth/mfa/bind/confirm')
+    await client.selectTenant('membership-a')
+    expect(client.session()?.accessToken).toBe('access-1')
+  })
+
+  it('刷新被 auth.mfaRequired 拒绝时保留会话并通知；绑定改凭登录会话，之后重新走授权码流程进入原 Membership', async () => {
+    sessionStorage.setItem(
+      'forge.tenant.session',
+      JSON.stringify({
+        accessToken: 'expired',
+        refreshToken: 'refresh-a',
+        membershipId: 'membership-a',
+      }),
+    )
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(fail('auth.unauthenticated', 401))
+      .mockResolvedValueOnce(fail('auth.mfaRequired', 403))
+      .mockResolvedValueOnce(
+        ok({
+          recoveryCodes: ['AAAA-BBBB-CCCC-DDDD'],
+          clientId: 'tenant-app',
+          redirectUri: location.origin + '/',
+        }),
+      )
+      .mockImplementationOnce(authorizeRedirect)
+      .mockResolvedValueOnce(tokens('access-1', 'refresh-1'))
+    vi.stubGlobal('fetch', fetcher)
+    const client = createTenantClient(sessionStorage)
+    const blocked = vi.fn()
+    client.onMfaRequired(blocked)
+
+    expect(await client.confirmMfaBinding('654321')).toEqual({
+      recoveryCodes: ['AAAA-BBBB-CCCC-DDDD'],
+    })
+    expect(blocked).toHaveBeenCalled()
+    // 被拦时会话保留；刷新失败后凭登录会话绑定：不带 Token，带 Cookie。
+    expect(client.session()?.accessToken).toBe('expired')
+    expect(fetcher.mock.calls[2]?.[0]).toBe('/iam/auth/mfa/bind/confirm')
+    expect(fetcher.mock.calls[2]?.[1]).toMatchObject({ credentials: 'same-origin' })
+
+    await client.resumeEntry()
+    expect(client.session()?.accessToken).toBe('access-1')
+    expect(JSON.parse(fetcher.mock.calls[4]?.[1]?.body)).toMatchObject({
+      membershipId: 'membership-a',
+    })
+    // 得到新会话后不再处于被拦状态，新的订阅不会立即回调。
+    const late = vi.fn()
+    client.onMfaRequired(late)
+    expect(late).not.toHaveBeenCalled()
+  })
+
+  it('订阅早于被拦或晚于被拦都能得到通知', async () => {
+    signedIn()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(fail('auth.mfaRequired', 403)))
+    const client = createTenantClient(sessionStorage)
+    await expect(client.refresh()).rejects.toBeInstanceOf(ApiError)
+    const late = vi.fn()
+    client.onMfaRequired(late)
+    expect(late).toHaveBeenCalledOnce()
+  })
+
+  it('凭 Access Token 绑定后，resumeEntry 用原 Refresh Token 重试切换', async () => {
+    sessionStorage.setItem(
+      'forge.tenant.session',
+      JSON.stringify({
+        accessToken: 'access-a',
+        refreshToken: 'refresh-a',
+        membershipId: 'membership-a',
+      }),
+    )
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(ok({ recoveryCodes: ['A'] }))
+      .mockResolvedValueOnce(tokens('access-b', 'refresh-b', membershipB))
+    vi.stubGlobal('fetch', fetcher)
+    const client = createTenantClient(sessionStorage)
+    await client.confirmMfaBinding('654321')
+    await client.resumeEntry('membership-b')
+    expect(fetcher.mock.calls[1]?.[0]).toBe('/iam/auth/switch')
+    expect(JSON.parse(fetcher.mock.calls[1]?.[1]?.body)).toEqual({
+      refreshToken: 'refresh-a',
+      membershipId: 'membership-b',
+    })
+    expect(client.session()?.membershipId).toBe('membership-b')
+  })
+
+  it('已登录时账号安全接口携带 Access Token', async () => {
+    signedIn()
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(ok({ bound: true }))
+      .mockResolvedValueOnce(ok({ recoveryCodes: ['A'] }))
+      .mockResolvedValueOnce(ok())
+      .mockResolvedValueOnce(ok())
+    vi.stubGlobal('fetch', fetcher)
+    const client = createTenantClient(sessionStorage)
+    expect(await client.mfaStatus()).toEqual({ bound: true })
+    expect(await client.regenerateRecoveryCodes('111111')).toEqual({ recoveryCodes: ['A'] })
+    await client.unbindMfa('222222')
+    await client.changePassword('old-password', 'new-password')
+    expect(fetcher.mock.calls.map(([path]) => new URL(path).pathname)).toEqual([
+      '/iam/auth/mfa',
+      '/iam/auth/mfa/recovery-codes/regenerate',
+      '/iam/auth/mfa/unbind',
+      '/iam/auth/password/change',
+    ])
+    for (const call of fetcher.mock.calls) {
+      expect(new Headers(call[1]?.headers).get('Authorization')).toBe('Bearer access-a')
+    }
+    expect(JSON.parse(fetcher.mock.calls[3]?.[1]?.body)).toEqual({
+      currentPassword: 'old-password',
+      newPassword: 'new-password',
+    })
+  })
+
+  it('锁定时 ApiError 带上 Retry-After 的剩余秒数', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ code: 'auth.locked', httpStatus: 429, userTip: '已锁定' }), {
+          status: 429,
+          headers: { 'Retry-After': '600' },
+        }),
+      ),
+    )
+    const client = createTenantClient(sessionStorage)
+    await expect(client.login('demo', 'password')).rejects.toMatchObject({
+      code: 'auth.locked',
+      retryAfter: 600,
+    })
+  })
+
+  it('忘记密码：验证码换取重设凭证后设置新密码', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(ok({ expiresIn: 300, resendIn: 60 }))
+      .mockResolvedValueOnce(ok({ resetToken: 'reset-1', mfaRequired: true }))
+      .mockResolvedValueOnce(ok())
+    vi.stubGlobal('fetch', fetcher)
+    const client = createTenantClient(sessionStorage)
+    await client.sendPasswordResetCode('a@example.com')
+    expect(await client.verifyPasswordReset('a@example.com', '123456')).toEqual({
+      resetToken: 'reset-1',
+      mfaRequired: true,
+    })
+    await client.resetPassword({ resetToken: 'reset-1', password: 'new-password', code: '654321' })
+    expect(fetcher.mock.calls.map(([path]) => path)).toEqual([
+      '/iam/auth/password/forgot/send-code',
+      '/iam/auth/password/forgot/verify',
+      '/iam/auth/password/forgot/reset',
+    ])
+    expect(JSON.parse(fetcher.mock.calls[2]?.[1]?.body)).toEqual({
+      resetToken: 'reset-1',
+      password: 'new-password',
+      code: '654321',
+    })
+  })
+})

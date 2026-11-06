@@ -1,6 +1,6 @@
 # 账号安全规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-11-04 的设计拷问逐条确认（Q3–Q22），MFA 模型由 [ADR-0019](../../docs/adr/0019-mfa-per-identity-enforced-at-token-issuance.md) 记录。
 
@@ -50,7 +50,7 @@ Status: ready-for-agent
 ### 2.5 MFA Reset
 
 - Identity：持有新增平台权限码 `platform:identity-mfa:reset` 的 Operator 执行。Operator：由 Super Admin 执行。
-- 清除 Authenticator 与全部 Recovery Code，写审计事件；不提供凭邮箱或短信验证码的自助重置。
+- 清除 Authenticator 与全部 Recovery Code，撤销现存授权上的 MFA 记录并终止登录会话，写审计事件；不提供凭邮箱或短信验证码的自助重置。
 - 平台提供按登录标识（账号、手机号、邮箱）精确查找 Identity 的接口，只返回 Identity 标识、展示名与是否已绑定 Authenticator，不列表浏览、不返回 Membership。
 
 ## 3. Login Lockout

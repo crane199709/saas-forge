@@ -6,11 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.time.Duration;
-import java.util.List;
-import java.util.UUID;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientAuthenticationToken;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -50,9 +46,9 @@ public final class TokenGrantLockFilter extends OncePerRequestFilter {
         // 同一授权的正常消费互斥；重放撤销通过授权记录的原子更新条件阻止复活。
         String key = authorizationId == null
                 ? RedisAuthorizationService.tokenKey(value) + ":lock"
-                : "iam:global:oauth-grant-lock:" + authorizationId;
-        String owner = UUID.randomUUID().toString();
-        if (!Boolean.TRUE.equals(redis.opsForValue().setIfAbsent(key, owner, Duration.ofSeconds(30)))) {
+                : RedisAuthorizationService.grantLockKey(authorizationId);
+        String owner = authorizations.tryLock(key);
+        if (owner == null) {
             // 等待锁的短暂窗口内也可能发生轮换，重新确认旧凭证是否已经被消费。
             if ("refresh_token".equals(grant)) authorizations.revokeUsedRefreshToken(value);
             invalidGrant(response);
@@ -61,12 +57,7 @@ public final class TokenGrantLockFilter extends OncePerRequestFilter {
         try {
             chain.doFilter(request, response);
         } finally {
-            redis.execute(
-                    new DefaultRedisScript<Long>(
-                            "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
-                            Long.class),
-                    List.of(key),
-                    owner);
+            authorizations.unlock(key, owner);
         }
     }
 
