@@ -74,7 +74,7 @@ public class LoginAudit {
      * @param method {@link #MFA_TOTP} 或 {@link #MFA_RECOVERY_CODE}
      * @param errorCode 失败时的错误码，成功时为 null
      */
-    void mfa(AuditRealm realm, UUID actor, String method, String errorCode) {
+    public void mfa(AuditRealm realm, UUID actor, String method, String errorCode) {
         var event =
                 AuditEvent.builder(realm, AuditCategory.LOGIN, MFA).actor(actor).detail("method", method);
         if (errorCode != null) event.failure(errorCode);

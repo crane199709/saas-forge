@@ -45,6 +45,8 @@ class TenantMfaRequirementTest {
     static final UUID SECADMIN = UUID.fromString("019a0130-0000-7000-8000-000000000011");
     static final UUID SWITCH_IN_FREE_TENANT = UUID.fromString("019a0130-0000-7000-8000-000000000024");
     static final UUID SWITCH_IN_REQUIRING_TENANT = UUID.fromString("019a0130-0000-7000-8000-000000000034");
+    static final UUID UNBIND_IN_FREE_TENANT = UUID.fromString("019a0130-0000-7000-8000-000000000027");
+    static final UUID UNBIND_IN_REQUIRING_TENANT = UUID.fromString("019a0130-0000-7000-8000-000000000037");
 
     static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -159,6 +161,77 @@ class TenantMfaRequirementTest {
     }
 
     @Test
+    void aLoginSessionBindingReturnsTheAuthorizationParametersButAnAccessTokenBindingDoesNot() {
+        // Token 被拒后页面可能早已刷新，内存里没有授权参数；凭登录会话绑定的响应要带上，才能重新走授权码流程。
+        Session bound = bindWith(null, login("req-params"));
+        assertThat(bound.confirmed())
+                .containsEntry("clientId", "tenant-app")
+                .containsEntry("redirectUri", "http://localhost:5174/");
+        assertThat(exchange(authorizationCode(bound.cookie()), null).status()).isEqualTo(200);
+
+        Map<?, ?> tokens = enter("req-params-token", null);
+        Session byToken = bindWith((String) tokens.get("accessToken"), null);
+        assertThat(byToken.confirmed()).containsEntry("clientId", null).containsEntry("redirectUri", null);
+    }
+
+    @Test
+    void aLoginSessionUpgradedByBindingIsStillTerminatedByAPasswordChange() {
+        String accessToken = (String) enter("req-session", null).get("accessToken");
+        Session bound = bindWith(null, login("req-session"));
+        assertThat(authorizeStatus(bound.cookie())).isEqualTo(302);
+
+        Response changed = call(
+                new Session(accessToken, null),
+                "/auth/password/change",
+                Map.of("currentPassword", PASSWORD, "newPassword", "Fresh-passphrase-2026"));
+        assertThat(changed.status()).isEqualTo(200);
+
+        assertThat(authorizeStatus(bound.cookie())).isNotEqualTo(302);
+    }
+
+    @Test
+    void unbindingClearsTheMfaMarkOfExistingAuthorizationsAndLoginSessions() {
+        Response entered = exchange(authorizationCode(login("req-unbind")), UNBIND_IN_FREE_TENANT);
+        Session bound = bindWith((String) entered.data().get("accessToken"), null);
+        Response switched = post(
+                "/auth/switch",
+                Map.of("refreshToken", entered.data().get("refreshToken"), "membershipId", UNBIND_IN_REQUIRING_TENANT),
+                null);
+        assertThat(switched.status()).isEqualTo(200);
+        String refreshToken = (String) switched.data().get("refreshToken");
+        String accessToken = (String) switched.data().get("accessToken");
+
+        // 另一处以 Recovery Code 完成 MFA 的登录会话，解绑前可以签发新授权。
+        String pending = post("/auth/login", Map.of("account", "req-unbind", "password", PASSWORD), null)
+                .cookie();
+        @SuppressWarnings("unchecked")
+        List<String> recoveryCodes = (List<String>) bound.confirmed().get("recoveryCodes");
+        String otherSession = post("/auth/login/mfa", Map.of("recoveryCode", recoveryCodes.get(0)), pending)
+                .cookie();
+        assertThat(authorizeStatus(otherSession)).isEqualTo(302);
+
+        Response unbound = call(
+                new Session(accessToken, null),
+                "/auth/mfa/unbind",
+                Map.of("code", Totp.code(bound.secret(), Totp.step(Instant.now()) + 1)));
+        assertThat(unbound.status()).isEqualTo(200);
+
+        Response refreshed = post("/auth/refresh", Map.of("refreshToken", refreshToken), null);
+        assertThat(refreshed.status()).isEqualTo(403);
+        assertThat(refreshed.code()).isEqualTo("auth.mfaRequired");
+        Response rejected = post(
+                "/auth/switch", Map.of("refreshToken", refreshToken, "membershipId", UNBIND_IN_REQUIRING_TENANT), null);
+        assertThat(rejected.code()).isEqualTo("auth.mfaRequired");
+        assertThat(authorizeStatus(otherSession)).isNotEqualTo(302);
+
+        // 重新绑定后，当前授权恢复为已完成 MFA。
+        bindWith(accessToken, null);
+        assertThat(post("/auth/refresh", Map.of("refreshToken", refreshToken), null)
+                        .status())
+                .isEqualTo(200);
+    }
+
+    @Test
     void tenantsWithoutTheRequirementAreUnaffected() {
         Map<?, ?> tokens = enter("req-free", null);
         assertThat(tokens.get("tenantId")).isEqualTo(FREE_TENANT.toString());
@@ -178,7 +251,12 @@ class TenantMfaRequirementTest {
         }
     }
 
-    record Session(String bearer, String cookie) {}
+    /** 绑定用的凭证；{@code confirmed} 与 {@code secret} 仅绑定完成后有值。 */
+    record Session(String bearer, String cookie, Map<String, Object> confirmed, byte[] secret) {
+        Session(String bearer, String cookie) {
+            this(bearer, cookie, null, null);
+        }
+    }
 
     /** 未绑定的身份登录并进入其唯一或指定的 Membership，返回 Token 响应。 */
     private Map<?, ?> enter(String account, UUID membershipId) {
@@ -206,7 +284,7 @@ class TenantMfaRequirementTest {
                 "/auth/mfa/bind/confirm",
                 Map.of("code", Totp.code(secret, Totp.step(Instant.now()))));
         assertThat(confirmed.status()).isEqualTo(201);
-        return new Session(bearer, confirmed.cookie());
+        return new Session(bearer, confirmed.cookie(), confirmed.data(), secret);
     }
 
     private Response call(Session session, String path) {
@@ -268,12 +346,25 @@ class TenantMfaRequirementTest {
     }
 
     private String authorizationCode(String cookie) {
+        var response = authorizeRequest(cookie).retrieve().toBodilessEntity();
+        return UriComponentsBuilder.fromUri(response.getHeaders().getLocation())
+                .build()
+                .getQueryParams()
+                .getFirst("code");
+    }
+
+    private int authorizeStatus(String cookie) {
+        return authorizeRequest(cookie)
+                .exchange((req, res) -> res.getStatusCode().value());
+    }
+
+    private RestClient.RequestHeadersSpec<?> authorizeRequest(String cookie) {
         try {
             String challenge = Base64.getUrlEncoder()
                     .withoutPadding()
                     .encodeToString(
                             MessageDigest.getInstance("SHA-256").digest(VERIFIER.getBytes(StandardCharsets.US_ASCII)));
-            var response = client().get()
+            return client().get()
                     .uri(builder -> builder.path("/oauth2/authorize")
                             .queryParam("response_type", "code")
                             .queryParam("client_id", "tenant-app")
@@ -283,13 +374,7 @@ class TenantMfaRequirementTest {
                             .queryParam("code_challenge_method", "S256")
                             .queryParam("code_challenge", challenge)
                             .build())
-                    .header("Cookie", cookie)
-                    .retrieve()
-                    .toBodilessEntity();
-            return UriComponentsBuilder.fromUri(response.getHeaders().getLocation())
-                    .build()
-                    .getQueryParams()
-                    .getFirst("code");
+                    .header("Cookie", cookie);
         } catch (Exception error) {
             throw new IllegalStateException(error);
         }

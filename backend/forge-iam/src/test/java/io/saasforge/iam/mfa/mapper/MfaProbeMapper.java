@@ -25,4 +25,20 @@ public interface MfaProbeMapper {
      * @return 落库值
      */
     List<String> activeRecoveryCodeHashes(@Param("identityId") UUID identityId);
+
+    /**
+     * 身份的 {@code updated_by}，没有操作人时为 null。不受 Data Policy 过滤。
+     *
+     * @param identityId 身份
+     * @return 操作人
+     */
+    String identityUpdatedBy(@Param("identityId") UUID identityId);
+
+    /**
+     * Operator 未删除的 Authenticator 的 {@code created_by}，没有操作人时为 null。不受 Data Policy 过滤。
+     *
+     * @param operatorId Operator
+     * @return 操作人
+     */
+    String operatorAuthenticatorCreatedBy(@Param("operatorId") UUID operatorId);
 }

@@ -54,7 +54,7 @@
         WHERE id = #{identityId} AND status = 'active' AND NOT deleted
     </select>
     <update id="changePassword">
-        UPDATE identity SET password_hash = #{passwordHash}, updated_at = now(), updated_by = #{identityId}
+        UPDATE identity SET password_hash = #{passwordHash}, updated_at = now(), updated_by = #{actor}
         WHERE id = #{identityId} AND status = 'active' AND NOT deleted
     </update>
     <select id="findByLoginIdentifier" resultType="io.saasforge.iam.identity.model.IdentitySummary">

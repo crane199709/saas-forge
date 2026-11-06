@@ -1,4 +1,4 @@
-import type { TenantClient, TenantMembership } from '@crane199709/sdk'
+import { ApiError, type TenantClient, type TenantMembership } from '@crane199709/sdk'
 import { reactive } from 'vue'
 import type { ErrorTip } from './error-tip'
 
@@ -18,6 +18,20 @@ export const loginFlow = reactive({
 export function safeRedirect(value: unknown): string {
   if (typeof value !== 'string' || !value.startsWith('/')) return '/'
   return value.startsWith('//') || value.startsWith('/\\') ? '/' : value
+}
+
+/**
+ * 当场绑定（或绑定后重试进入）失败的原因是否只能靠完整登录解决：Token 与登录会话都已失效；身份已在别处绑定，
+ * 当前授权却没有完成 MFA，只有重新登录并完成 MFA 才能记下；绑定后重试仍被拒绝。
+ */
+export function needsFullLogin(cause: unknown): boolean {
+  if (cause instanceof ApiError) {
+    return (
+      cause.httpStatus === 401 ||
+      ['auth.failed', 'auth.mfaRequired', 'mfa.alreadyBound'].includes(cause.code)
+    )
+  }
+  return cause instanceof Error && cause.message === 'auth.failed'
 }
 
 /** 退出登录。本地凭证先被清除，IAM 退出失败时记入 `logoutFailed`，由登录页提示重试。 */

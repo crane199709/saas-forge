@@ -1,8 +1,5 @@
 package io.saasforge.iam;
 
-import static io.saasforge.iam.PlatformMfaClient.code;
-import static io.saasforge.iam.PlatformMfaClient.secretOf;
-import static io.saasforge.iam.PlatformMfaClient.wrongCode;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.saasforge.iam.PlatformMfaClient.Login;
@@ -86,10 +83,10 @@ class OperatorMfaTest {
                 .isEqualTo("auth.mfaExpired");
 
         // 绑定时用掉的动态码不能再用于登录；失败后待 MFA 状态保留，可以重试。
-        Login replayed = submitMfa(first.cookie(), Map.of("code", code(secret, 0)));
+        Login replayed = submitMfa(first.cookie(), Map.of("code", PlatformMfaClient.code(secret, 0)));
         assertThat(replayed.response().status()).isEqualTo(400);
         assertThat(replayed.response().code()).isEqualTo("mfa.codeInvalid");
-        Login passed = submitMfa(first.cookie(), Map.of("code", code(secret, 1)));
+        Login passed = submitMfa(first.cookie(), Map.of("code", PlatformMfaClient.code(secret, 1)));
         assertThat(passed.response().status()).isEqualTo(200);
         assertThat(passed.response().data())
                 .containsEntry("nextStep", "authorize")
@@ -97,7 +94,7 @@ class OperatorMfaTest {
         assertThat(passed.cookie()).isNotEqualTo(first.cookie());
         assertThat(http.tokens(passed.cookie()).get("operatorName")).isEqualTo("op-mfa-login");
 
-        assertThat(submitMfa(passed.cookie(), Map.of("code", code(secret, 1)))
+        assertThat(submitMfa(passed.cookie(), Map.of("code", PlatformMfaClient.code(secret, 1)))
                         .response()
                         .code())
                 .isEqualTo("auth.mfaExpired");
@@ -134,13 +131,17 @@ class OperatorMfaTest {
                 .cookie());
 
         Response regenerated = http.withToken(
-                token, "/platform/auth/mfa/recovery-codes/regenerate", Map.of("code", code(bound.secret(), 0)));
+                token,
+                "/platform/auth/mfa/recovery-codes/regenerate",
+                Map.of("code", PlatformMfaClient.code(bound.secret(), 0)));
         assertThat(regenerated.status()).isEqualTo(201);
         assertThat(regenerated.recoveryCodes()).hasSize(10).doesNotContainAnyElementsOf(bound.recoveryCodes());
 
-        Response wrong = http.withToken(token, "/platform/auth/mfa/unbind", Map.of("code", wrongCode(bound.secret())));
+        Response wrong = http.withToken(
+                token, "/platform/auth/mfa/unbind", Map.of("code", PlatformMfaClient.wrongCode(bound.secret())));
         assertThat(wrong.code()).isEqualTo("mfa.codeInvalid");
-        Response unbound = http.withToken(token, "/platform/auth/mfa/unbind", Map.of("code", code(bound.secret(), 1)));
+        Response unbound = http.withToken(
+                token, "/platform/auth/mfa/unbind", Map.of("code", PlatformMfaClient.code(bound.secret(), 1)));
         assertThat(unbound.status()).isEqualTo(200);
         // 解绑后登录不再要求 MFA。
         assertThat(http.login("op-mfa-unbind").response().data()).containsEntry("nextStep", "authorize");
@@ -180,9 +181,9 @@ class OperatorMfaTest {
         assertThat(started.status()).isEqualTo(200);
         String uri = (String) started.data().get("otpauthUri");
         assertThat(uri).startsWith("otpauth://totp/SaaS%20Forge:" + account + "?secret=");
-        byte[] secret = secretOf(uri);
-        Response confirmed =
-                http.withToken(token, "/platform/auth/mfa/bind/confirm", Map.of("code", code(secret, offset)));
+        byte[] secret = PlatformMfaClient.secretOf(uri);
+        Response confirmed = http.withToken(
+                token, "/platform/auth/mfa/bind/confirm", Map.of("code", PlatformMfaClient.code(secret, offset)));
         assertThat(confirmed.status()).isEqualTo(201);
         assertThat(confirmed.recoveryCodes()).hasSize(10);
         return new Bound(secret, confirmed.recoveryCodes());

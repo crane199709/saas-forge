@@ -1,7 +1,5 @@
 package io.saasforge.iam;
 
-import static io.saasforge.iam.PlatformMfaClient.code;
-import static io.saasforge.iam.PlatformMfaClient.secretOf;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.saasforge.iam.PlatformMfaClient.Login;
@@ -91,6 +89,7 @@ class MfaResetTest {
             Response missing = call(holder, "/platform/identities/lookup", Map.of("identifier", identifier));
             assertThat(missing.status()).as(identifier).isEqualTo(404);
             assertThat(missing.code()).as(identifier).isEqualTo("mfa.identityNotFound");
+            assertThat(missing.body().get("userTip")).as(identifier).isEqualTo("未找到该登录标识对应的身份");
         }
     }
 
@@ -127,7 +126,10 @@ class MfaResetTest {
         String uri = (String) http.withToken(token, "/platform/auth/mfa/bind/start", null)
                 .data()
                 .get("otpauthUri");
-        assertThat(http.withToken(token, "/platform/auth/mfa/bind/confirm", Map.of("code", code(secretOf(uri), 0)))
+        assertThat(http.withToken(
+                                token,
+                                "/platform/auth/mfa/bind/confirm",
+                                Map.of("code", PlatformMfaClient.code(PlatformMfaClient.secretOf(uri), 0)))
                         .status())
                 .isEqualTo(201);
         assertThat(http.login("op-reset-target").response().data()).containsEntry("nextStep", "mfa");
@@ -202,8 +204,8 @@ class MfaResetTest {
         String cookie = identityLogin(account).cookie();
         Response started = http.post("/auth/mfa/bind/start", null, cookie, null).response();
         assertThat(started.status()).isEqualTo(200);
-        byte[] secret = secretOf((String) started.data().get("otpauthUri"));
-        assertThat(http.post("/auth/mfa/bind/confirm", Map.of("code", code(secret, 0)), cookie, null)
+        byte[] secret = PlatformMfaClient.secretOf((String) started.data().get("otpauthUri"));
+        assertThat(http.post("/auth/mfa/bind/confirm", Map.of("code", PlatformMfaClient.code(secret, 0)), cookie, null)
                         .response()
                         .status())
                 .isEqualTo(201);

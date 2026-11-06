@@ -9,6 +9,7 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
@@ -23,11 +24,17 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class RedisAuthorizationService implements OAuth2AuthorizationService {
+    private static final Duration GRANT_LOCK_TTL = Duration.ofSeconds(30);
     // 主体到授权标识的索引，供改密码后吊销该主体的全部授权；索引只延长不缩短，覆盖其中最晚过期的授权。
     private static final DefaultRedisScript<Long> INDEX_PRINCIPAL = new DefaultRedisScript<>(
             "redis.call('sadd', KEYS[1], ARGV[1]) "
                     + "if redis.call('pttl', KEYS[1]) < tonumber(ARGV[2]) then redis.call('pexpire', KEYS[1], ARGV[2]) end "
                     + "return 1",
+            Long.class);
+
+    // 只释放自己持有的锁：持有者超时后锁可能已被别人取得。
+    private static final DefaultRedisScript<Long> UNLOCK = new DefaultRedisScript<>(
+            "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
             Long.class);
 
     private final StringRedisTemplate redis;
@@ -104,6 +111,17 @@ public class RedisAuthorizationService implements OAuth2AuthorizationService {
         }
     }
 
+    /**
+     * 主体现存的授权标识，可能包含已过期的授权。
+     *
+     * @param principalName Identity 或 Operator 标识
+     * @return 授权标识
+     */
+    public Set<String> authorizationIdsOf(String principalName) {
+        Set<String> ids = redis.opsForSet().members(principalKey(principalName));
+        return ids == null ? Set.of() : ids;
+    }
+
     @Override
     public void remove(OAuth2Authorization authorization) {
         redis.delete(authorizationKey(authorization.getId()));
@@ -159,6 +177,22 @@ public class RedisAuthorizationService implements OAuth2AuthorizationService {
     /** 同一授权上换码、刷新与改写的互斥锁，由 {@code TokenGrantLockFilter} 与 {@link MfaCompletionService} 共用。 */
     public static String grantLockKey(String authorizationId) {
         return "iam:global:oauth-grant-lock:" + authorizationId;
+    }
+
+    /**
+     * 试取互斥锁，不等待。
+     *
+     * @param key 锁键，如 {@link #grantLockKey}
+     * @return 持有者标识，供 {@link #unlock} 使用；锁已被占用时为 null
+     */
+    public String tryLock(String key) {
+        String owner = UUID.randomUUID().toString();
+        return Boolean.TRUE.equals(redis.opsForValue().setIfAbsent(key, owner, GRANT_LOCK_TTL)) ? owner : null;
+    }
+
+    /** 释放 {@link #tryLock} 取得的锁。 */
+    public void unlock(String key, String owner) {
+        redis.execute(UNLOCK, List.of(key), owner);
     }
 
     static String usedRefreshKey(String token) {

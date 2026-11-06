@@ -1,5 +1,6 @@
 package io.saasforge.iam.password.controller;
 
+import io.saasforge.iam.mfa.model.RecoveryCodeFormat;
 import io.saasforge.iam.password.model.ResetTicket;
 import io.saasforge.iam.password.service.PasswordService;
 import io.saasforge.iam.verification.model.CodeDelivery;
@@ -95,8 +96,7 @@ class PasswordController {
             @NotNull @Size(max = 256) String password,
             @Pattern(regexp = "\\d{6}") String code,
 
-            @Size(min = 16, max = 64) @Pattern(regexp = "[0-9A-Za-z\\s-]+")
-            String recoveryCode) {
+            @RecoveryCodeFormat String recoveryCode) {
         @AssertTrue
         public boolean isAtMostOneFactor() {
             return code == null || recoveryCode == null;

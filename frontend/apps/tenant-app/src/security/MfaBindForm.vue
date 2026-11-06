@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import QRCode from 'qrcode'
 import { useTenantClient } from '@crane199709/sdk'
-import RecoveryCodeList from './RecoveryCodeList.vue'
+import { RecoveryCodeList } from '@crane199709/ui'
 
 /**
  * 绑定验证器的三步：扫码、提交首个动态码、保存恢复码。已登录时凭 Access Token、尚无 Token 时凭登录会话调用，由 SDK 选择。
@@ -11,6 +11,8 @@ import RecoveryCodeList from './RecoveryCodeList.vue'
  */
 const emit = defineEmits<{
   bound: []
+  // 恢复码已生成、只展示这一次：父组件不应再允许关闭。
+  confirmed: []
   error: [cause: unknown]
   // 提交前通知父组件清除上一次的错误提示。
   submitting: []
@@ -40,6 +42,7 @@ async function confirm() {
   busy.value = true
   try {
     recoveryCodes.value = (await client.confirmMfaBinding(code.value)).recoveryCodes
+    emit('confirmed')
   } catch (cause) {
     emit('error', cause)
   } finally {

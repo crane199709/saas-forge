@@ -692,6 +692,88 @@ describe('账号安全', () => {
     expect(client.session()?.accessToken).toBe('access-1')
   })
 
+  it('刷新被 auth.mfaRequired 拒绝时保留会话并通知；绑定改凭登录会话，之后重新走授权码流程进入原 Membership', async () => {
+    sessionStorage.setItem(
+      'forge.tenant.session',
+      JSON.stringify({
+        accessToken: 'expired',
+        refreshToken: 'refresh-a',
+        membershipId: 'membership-a',
+      }),
+    )
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(fail('auth.unauthenticated', 401))
+      .mockResolvedValueOnce(fail('auth.mfaRequired', 403))
+      .mockResolvedValueOnce(
+        ok({
+          recoveryCodes: ['AAAA-BBBB-CCCC-DDDD'],
+          clientId: 'tenant-app',
+          redirectUri: location.origin + '/',
+        }),
+      )
+      .mockImplementationOnce(authorizeRedirect)
+      .mockResolvedValueOnce(tokens('access-1', 'refresh-1'))
+    vi.stubGlobal('fetch', fetcher)
+    const client = createTenantClient(sessionStorage)
+    const blocked = vi.fn()
+    client.onMfaRequired(blocked)
+
+    expect(await client.confirmMfaBinding('654321')).toEqual({
+      recoveryCodes: ['AAAA-BBBB-CCCC-DDDD'],
+    })
+    expect(blocked).toHaveBeenCalled()
+    // 被拦时会话保留；刷新失败后凭登录会话绑定：不带 Token，带 Cookie。
+    expect(client.session()?.accessToken).toBe('expired')
+    expect(fetcher.mock.calls[2]?.[0]).toBe('/iam/auth/mfa/bind/confirm')
+    expect(fetcher.mock.calls[2]?.[1]).toMatchObject({ credentials: 'same-origin' })
+
+    await client.resumeEntry()
+    expect(client.session()?.accessToken).toBe('access-1')
+    expect(JSON.parse(fetcher.mock.calls[4]?.[1]?.body)).toMatchObject({
+      membershipId: 'membership-a',
+    })
+    // 得到新会话后不再处于被拦状态，新的订阅不会立即回调。
+    const late = vi.fn()
+    client.onMfaRequired(late)
+    expect(late).not.toHaveBeenCalled()
+  })
+
+  it('订阅早于被拦或晚于被拦都能得到通知', async () => {
+    signedIn()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(fail('auth.mfaRequired', 403)))
+    const client = createTenantClient(sessionStorage)
+    await expect(client.refresh()).rejects.toBeInstanceOf(ApiError)
+    const late = vi.fn()
+    client.onMfaRequired(late)
+    expect(late).toHaveBeenCalledOnce()
+  })
+
+  it('凭 Access Token 绑定后，resumeEntry 用原 Refresh Token 重试切换', async () => {
+    sessionStorage.setItem(
+      'forge.tenant.session',
+      JSON.stringify({
+        accessToken: 'access-a',
+        refreshToken: 'refresh-a',
+        membershipId: 'membership-a',
+      }),
+    )
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(ok({ recoveryCodes: ['A'] }))
+      .mockResolvedValueOnce(tokens('access-b', 'refresh-b', membershipB))
+    vi.stubGlobal('fetch', fetcher)
+    const client = createTenantClient(sessionStorage)
+    await client.confirmMfaBinding('654321')
+    await client.resumeEntry('membership-b')
+    expect(fetcher.mock.calls[1]?.[0]).toBe('/iam/auth/switch')
+    expect(JSON.parse(fetcher.mock.calls[1]?.[1]?.body)).toEqual({
+      refreshToken: 'refresh-a',
+      membershipId: 'membership-b',
+    })
+    expect(client.session()?.membershipId).toBe('membership-b')
+  })
+
   it('已登录时账号安全接口携带 Access Token', async () => {
     signedIn()
     const fetcher = vi

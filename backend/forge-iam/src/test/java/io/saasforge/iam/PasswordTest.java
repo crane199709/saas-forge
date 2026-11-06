@@ -2,12 +2,14 @@ package io.saasforge.iam;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.saasforge.iam.mfa.mapper.MfaProbeMapper;
 import io.saasforge.iam.mfa.service.Totp;
 import io.saasforge.iam.provisioning.mapper.OutboxAuditMapper;
 import io.saasforge.iam.verification.service.EmailSender;
 import io.saasforge.iam.verification.service.VerificationMessage;
 import io.saasforge.iam.verification.service.VerificationPurpose;
 import io.saasforge.sdk.audit.AuditEvent;
+import io.saasforge.sdk.audit.AuditOutcome;
 import io.saasforge.sdk.audit.AuditRealm;
 import io.saasforge.sdk.core.MembershipStateKeys;
 import io.saasforge.sdk.core.OperatorStateKeys;
@@ -99,6 +101,9 @@ class PasswordTest {
 
     @Autowired
     OutboxAuditMapper outbox;
+
+    @Autowired
+    MfaProbeMapper probe;
 
     @Autowired
     StringRedisTemplate redisTemplate;
@@ -193,6 +198,7 @@ class PasswordTest {
         assertThat(tenantLoginStatus("pwd-change", PASSWORD)).isEqualTo(401);
         assertThat(tenantLoginStatus("pwd-change", NEW_PASSWORD)).isEqualTo(200);
         assertThat(passwordAudits(CHANGE)).containsExactly("password.change");
+        assertThat(probe.identityUpdatedBy(CHANGE)).isEqualTo(CHANGE.toString());
     }
 
     @Test
@@ -296,6 +302,11 @@ class PasswordTest {
         assertThat(tenantLoginStatus("pwd-forgot-mfa", PASSWORD)).isEqualTo(401);
         assertThat(tenantLoginStatus("pwd-forgot-mfa", NEW_PASSWORD)).isEqualTo(200);
         assertThat(passwordAudits(FORGOT_MFA)).containsExactly("password.reset");
+        // MFA 步骤与登录第二步一样留痕，并区分动态码与 Recovery Code。
+        assertThat(mfaAudits(FORGOT_MFA))
+                .containsExactly("totp:" + AuditOutcome.FAILURE, "recoveryCode:" + AuditOutcome.SUCCESS);
+        // 忘记密码没有认证上下文，标准列操作人为系统。
+        assertThat(probe.identityUpdatedBy(FORGOT_MFA)).isNull();
     }
 
     // ---- 辅助 ----
@@ -366,6 +377,14 @@ class PasswordTest {
     }
 
     /** 该账号产出的 password.* 审计动作，按发生顺序；凭证变更不属于任何租户。 */
+    private List<String> mfaAudits(UUID actor) {
+        return outbox.payloadsOf(AuditEvent.class.getSimpleName()).stream()
+                .map(payload -> JSON.readValue(payload, AuditEvent.class))
+                .filter(event -> actor.equals(event.actorId()) && event.action().equals("auth.mfa"))
+                .map(event -> event.detail().get("method") + ":" + event.outcome())
+                .toList();
+    }
+
     private List<String> passwordAudits(UUID actor) {
         return passwordAudits(actor, AuditRealm.TENANT);
     }
