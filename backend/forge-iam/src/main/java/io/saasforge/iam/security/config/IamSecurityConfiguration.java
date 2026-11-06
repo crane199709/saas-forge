@@ -376,8 +376,12 @@ class IamSecurityConfiguration {
     @Order(4)
     SecurityFilterChain manifestSecurity(
             HttpSecurity http, ManifestProperties manifest, EnvelopeSecurityErrorHandler errors) throws Exception {
-        // 业务服务以上报令牌调用（上报清单、读取权限码目录、读取租户参考数据），无状态、不使用 Cookie，因此无需 CSRF 防护。
-        http.securityMatcher("/internal/manifests", "/internal/permissions", "/internal/reference-data/**")
+        // 业务服务以上报令牌调用（上报清单、读取权限码目录、读取租户参考数据与租户目录），无状态、不使用 Cookie，因此无需 CSRF 防护。
+        http.securityMatcher(
+                        "/internal/manifests",
+                        "/internal/permissions",
+                        "/internal/reference-data/**",
+                        "/internal/tenants")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.disable())
                 .addFilterBefore(new ServiceTokenFilter(manifest), AuthorizationFilter.class)
