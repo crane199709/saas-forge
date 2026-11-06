@@ -392,6 +392,15 @@ class GatewaySecurityTest {
     }
 
     @Test
+    void tenantDirectoryIsNotExposedByGateway() throws Exception {
+        String path = "/iam/internal/tenants?status=trial,active&page=1&size=100";
+        assertUnauthenticatedAt(path, null);
+        assertUnauthenticatedAt(path, "local-demo-manifest-token");
+        assertEnvelope(
+                call(HttpMethod.GET, path, token(KEY, ISSUER, Instant.now().plusSeconds(900))), 403, "auth.forbidden");
+    }
+
+    @Test
     void registrationAndCodeLoginEndpointsAreAnonymous() throws Exception {
         // 测试未配置 IAM 路由：通过安全规则后得到路由 404，被拦截则为 401。
         for (String path : List.of(

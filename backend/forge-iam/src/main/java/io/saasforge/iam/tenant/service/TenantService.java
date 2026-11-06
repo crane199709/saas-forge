@@ -1,6 +1,7 @@
 package io.saasforge.iam.tenant.service;
 
 import io.saasforge.iam.tenant.mapper.TenantMapper;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,16 @@ public class TenantService {
      */
     public void register(UUID tenantId, String name, String status) {
         tenants.insertIfAbsent(tenantId, name, status);
+    }
+
+    /** 按状态列出未删除的租户 ID，供受信任服务发现任务目标。 */
+    public List<UUID> idsByStatus(List<String> statuses, long offset, int limit) {
+        return tenants.findIdsByStatus(statuses, offset, limit);
+    }
+
+    /** 未删除且匹配状态的租户总数，用于内部租户目录分页。 */
+    public long countByStatus(List<String> statuses) {
+        return tenants.countByStatus(statuses);
     }
 
     /** 租户名称，用于邀请等发给成员的通知；租户须已登记。 */
