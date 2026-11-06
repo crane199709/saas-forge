@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import QRCode from 'qrcode'
 import type { RecoveryCodes } from '@crane199709/sdk'
-import RecoveryCodeList from './RecoveryCodeList.vue'
+import { RecoveryCodeList } from '@crane199709/ui'
 
 /**
  * 绑定或更换验证器的后半程：扫码、提交首个动态码、保存恢复码。登录中与登录后走不同接口，由调用方提供。

@@ -2,12 +2,11 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@crane199709/sdk'
-import { ErrorAlert, type ErrorTip } from '@crane199709/ui'
+import { ErrorAlert, RecoveryCodeList, type ErrorTip } from '@crane199709/ui'
 import { errorTip } from '../error-tip'
 import { usePlatformClient } from '../shell'
 import { createAccountSecurityApi } from './account-security-api'
 import MfaBindForm from './MfaBindForm.vue'
-import RecoveryCodeList from './RecoveryCodeList.vue'
 
 const { t } = useI18n()
 const api = createAccountSecurityApi(usePlatformClient())

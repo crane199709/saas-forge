@@ -273,10 +273,19 @@ export function createTenantClient(storage: Storage) {
     return core.rebind(`${tenantRealm.authPath}/switch`, { membershipId })
   }
 
-  /** 已登录时以 Access Token 调用，否则凭 IAM 登录会话（被 MFA Requirement 拦下、尚无 Token 时）。 */
-  function bindingCall<T>(path: string, body: object): Promise<T> {
-    if (core.session()) return core.api<T>(path, jsonPost(body))
-    return core.sessionPost<T>(path, body)
+  /**
+   * 已登录时以 Access Token 调用，否则凭 IAM 登录会话（被 MFA Requirement 拦下、尚无 Token 时）。Access Token 已过期且刷新被
+   * `auth.mfaRequired` 拒绝时，Token 这条路走不通，同样改凭登录会话；登录会话也失效时以 401 失败，调用方须回到登录页走完整流程。
+   */
+  async function bindingCall<T>(path: string, body: object): Promise<T> {
+    if (!core.session()) return core.sessionPost<T>(path, body)
+    try {
+      return await core.api<T>(path, jsonPost(body))
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'auth.mfaRequired')
+        return core.sessionPost<T>(path, body)
+      throw error
+    }
   }
 
   /** 开始绑定 Authenticator，返回供渲染二维码的 `otpauth://` URI；已绑定时以 `mfa.alreadyBound` 失败。 */
@@ -286,10 +295,28 @@ export function createTenantClient(storage: Storage) {
 
   /**
    * 以首个动态码确认绑定，返回只此一次的 Recovery Code。确认后当前授权（已登录时）或登录会话视为已完成 MFA：
-   * 被 `auth.mfaRequired` 拒绝的进入可重新 `selectTenant`，被拒绝的切换可直接重试。
+   * 登录中被 `auth.mfaRequired` 拒绝的进入可重新 `selectTenant`；已登录时被拒绝的刷新或切换调用 `resumeEntry` 重试。
    */
-  function confirmMfaBinding(code: string): Promise<RecoveryCodes> {
-    return bindingCall(`${tenantRealm.authPath}/mfa/bind/confirm`, { code })
+  async function confirmMfaBinding(code: string): Promise<RecoveryCodes> {
+    const { recoveryCodes, clientId, redirectUri } = await bindingCall<
+      RecoveryCodes & { clientId?: string; redirectUri?: string }
+    >(`${tenantRealm.authPath}/mfa/bind/confirm`, { code })
+    if (clientId && redirectUri) core.rememberAuthorization(clientId, redirectUri)
+    return { recoveryCodes }
+  }
+
+  /**
+   * 已登录的身份当场绑定后重试进入：凭 Access Token 绑定时当前授权已记下 MFA，用原 Refresh Token 刷新或切换；凭登录会话绑定时
+   * 只有会话记下了 MFA，须重新走授权码流程。失败时调用方应回到登录页走完整流程。
+   *
+   * @param membershipId 要进入的 Membership，缺省为当前会话所在的
+   */
+  function resumeEntry(membershipId?: string): Promise<TenantSession> {
+    const current = core.session()
+    if (!current) return Promise.reject(new Error('auth.failed'))
+    const target = membershipId ?? current.membershipId
+    if (core.canAuthorize()) return core.authorize({ membershipId: target })
+    return target === current.membershipId ? core.refresh() : switchTenant(target)
   }
 
   /** 当前身份是否已绑定 Authenticator。 */
@@ -343,6 +370,8 @@ export function createTenantClient(storage: Storage) {
     submitMfa,
     startMfaBinding,
     confirmMfaBinding,
+    resumeEntry,
+    onMfaRequired: core.onMfaRequired,
     mfaStatus,
     regenerateRecoveryCodes,
     unbindMfa,
@@ -448,12 +477,16 @@ function createRealmClient<S extends RealmSession>(
   // 登录会话已建立、尚未签发 Token 时的授权参数；只在同一 generation 内有效。
   let authorization: { clientId: string; redirectUri: string; generation: number } | undefined
   const listeners = new Set<(session: S | null, change: SessionChange) => void>()
+  // 当前授权的刷新被 MFA Requirement 拒绝：会话保留，等待当场绑定；得到新会话或会话结束后作废。
+  let mfaBlocked = false
+  const mfaListeners = new Set<() => void>()
 
   function notify(value: S | null, crossTab: boolean) {
     for (const listener of listeners) listener(value, { crossTab })
   }
 
   function store(value: S | null) {
+    mfaBlocked = false
     if (value) storage.setItem(realm.storageKey, JSON.stringify(value))
     else storage.removeItem(realm.storageKey)
     notify(value, false)
@@ -482,6 +515,16 @@ function createRealmClient<S extends RealmSession>(
   ): () => void {
     listeners.add(listener)
     return () => listeners.delete(listener)
+  }
+
+  /**
+   * 订阅刷新被 `auth.mfaRequired` 拒绝，Shell 据此进入强制绑定步骤。订阅时已被拒绝则立即回调：Shell 首屏读取权限早于路由守卫安装。
+   * 返回取消订阅函数。
+   */
+  function onMfaRequired(listener: () => void): () => void {
+    mfaListeners.add(listener)
+    if (mfaBlocked) listener()
+    return () => mfaListeners.delete(listener)
   }
 
   function parse(raw: string | null): S | null {
@@ -582,6 +625,18 @@ function createRealmClient<S extends RealmSession>(
     if (canAuthorize(settings))
       authorization = { clientId: settings.clientId, redirectUri: settings.redirectUri, generation }
     return settings
+  }
+
+  /** 保留授权参数以便随后 `authorize`，用于没有经过 `authenticate` 而有了登录会话的场合（如已登录时凭登录会话当场绑定）。 */
+  function rememberAuthorization(clientId: string, redirectUri: string) {
+    // 回调必须与 Shell 同源；fetch 跟随标准授权重定向，不执行回调 HTML。
+    if (new URL(redirectUri).origin !== location.origin) throw new Error('auth.invalidRedirect')
+    authorization = { clientId, redirectUri, generation }
+  }
+
+  /** 是否保留着可用于 `authorize` 的授权参数。 */
+  function canAuthorize(): boolean {
+    return authorization?.generation === generation
   }
 
   /** 调用不需要凭证与登录会话的匿名信封接口（如发送验证码、注册），失败抛出 `ApiError`。 */
@@ -717,6 +772,14 @@ function createRealmClient<S extends RealmSession>(
           (error.httpStatus === 401 ||
             ['auth.failed', 'auth.tenantAccessDenied'].includes(error.code))
         if (rejected && started === generation) clear()
+        if (
+          error instanceof ApiError &&
+          error.code === 'auth.mfaRequired' &&
+          started === generation
+        ) {
+          mfaBlocked = true
+          for (const listener of mfaListeners) listener()
+        }
         throw error
       })
       .finally(() => {
@@ -767,10 +830,13 @@ function createRealmClient<S extends RealmSession>(
     page,
     authenticate,
     authorize,
+    rememberAuthorization,
+    canAuthorize,
     post,
     sessionPost,
     rebind,
     onSessionChange,
+    onMfaRequired,
     logout,
     refresh,
     request,

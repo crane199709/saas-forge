@@ -91,7 +91,7 @@ it('未绑定的身份不提供重置', async () => {
 it('查不到时提示未找到并清除上一次的结果', async () => {
   const responses = [
     ok({ identityId: 'i1', displayName: '张三', mfaBound: true }),
-    fail('mfa.identityNotFound', 404),
+    fail('mfa.identityNotFound', 404, '未找到该登录标识对应的身份'),
   ]
   vi.stubGlobal(
     'fetch',

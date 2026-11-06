@@ -2,10 +2,9 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTenantClient } from '@crane199709/sdk'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, RecoveryCodeList } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import MfaBindForm from './MfaBindForm.vue'
-import RecoveryCodeList from './RecoveryCodeList.vue'
 
 // 当前 Identity 的个人安全设置：与租户无关，进入任何租户都看到同一份。
 const { t } = useI18n()

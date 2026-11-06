@@ -4,11 +4,10 @@ import type { ErrorTip } from '@crane199709/ui'
 // SDK 在本地判定、没有服务端 userTip 的错误码，例如授权回调 state 不匹配时的 auth.failed。
 const localKeys = ['auth.failed']
 
-// 账号安全相关错误码的前端文案（locales 的 errorCode 下），服务端没有给出 userTip 时使用（如 mfa.identityNotFound）。
+// 账号安全相关错误码的前端文案（locales 的 errorCode 下），服务端没有给出 userTip 时使用（如经网关拦截的响应）。
 const codeKeys = [
   'auth.mfaExpired',
   'mfa.notBound',
-  'mfa.identityNotFound',
   'mfa.codeInvalid',
   'mfa.recoveryCodeInvalid',
   'mfa.bindingExpired',

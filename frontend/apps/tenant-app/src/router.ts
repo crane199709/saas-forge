@@ -44,6 +44,12 @@ export function createShellRouter(history: RouterHistory) {
         component: () => import('./ForgotPasswordPage.vue'),
         meta: { public: true, standalone: true },
       },
+      // 刷新 Token 被 MFA Requirement 拦下时的强制绑定步骤。此时 Token 可能已不可用，不能走需要权限的 Shell 布局。
+      {
+        path: '/mfa-bind',
+        component: () => import('./security/MfaBindPage.vue'),
+        meta: { public: true, standalone: true },
+      },
       {
         path: '/no-tenant',
         component: () => import('./NoTenantPage.vue'),
@@ -135,12 +141,15 @@ function loginLocation(path: string) {
  */
 export function installGuard(
   router: Router,
-  client: Pick<TenantClient, 'session' | 'onSessionChange'>,
+  client: Pick<TenantClient, 'session' | 'onSessionChange' | 'onMfaRequired'>,
   access: Pick<AccessControl, 'has'>,
   ready: () => Promise<unknown>,
 ) {
   router.beforeEach(async (to) => {
-    if (!client.session()) return requiresAuth(to) ? loginLocation(to.fullPath) : true
+    if (!client.session()) {
+      if (to.path === '/mfa-bind') return { path: '/login', query: to.query }
+      return requiresAuth(to) ? loginLocation(to.fullPath) : true
+    }
     if (to.path === '/login') return '/'
     await ready()
     // 登录前解析的 Sub-App 地址落在兜底路由上；权限读取完成、路由已注册后重新解析。
@@ -149,6 +158,12 @@ export function installGuard(
     }
     if (to.meta.permission && !access.has(to.meta.permission)) return '/403'
     return true
+  })
+  // 刷新被 MFA Requirement 拒绝：进入强制绑定步骤，绑定后回到原页面（账号安全规格 2.4）。
+  client.onMfaRequired(() => {
+    const current = router.currentRoute.value
+    if (current.path === '/mfa-bind') return
+    void router.replace({ path: '/mfa-bind', query: { redirect: current.fullPath } })
   })
   // 其他标签页引起的变化由 Shell 整页重载处理。
   client.onSessionChange((session, change) => {
