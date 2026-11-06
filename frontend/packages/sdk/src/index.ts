@@ -27,6 +27,7 @@ export type {
   PasswordReset,
   PasswordResetTicket,
   PlatformClient,
+  PlatformLoginResult,
   PlatformSession,
   PlatformSessionListener,
   RealmConfig,

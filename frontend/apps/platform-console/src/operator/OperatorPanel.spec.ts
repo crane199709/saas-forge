@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createPlatformClient } from '@crane199709/sdk'
 import { i18n } from '../i18n'
 import { createPlatformRoleApi } from '../role/platform-role-api'
@@ -43,14 +43,14 @@ function route(url: string, init?: RequestInit) {
   return `${init?.method ?? 'GET'} ${new URL(url, location.origin).pathname}`
 }
 
-function mountPanel() {
+function mountPanel(canResetMfa = false) {
   localStorage.setItem(
     'forge.platform.session',
     JSON.stringify({ accessToken: 'access', refreshToken: 'r', operatorName: '运营' }),
   )
   const client = createPlatformClient(localStorage)
   return mount(OperatorPanel, {
-    props: { api: createOperatorApi(client), roleApi: createPlatformRoleApi(client) },
+    props: { api: createOperatorApi(client), roleApi: createPlatformRoleApi(client), canResetMfa },
     global: { plugins: [i18n, ElementPlus] },
     attachTo: document.body,
   })
@@ -142,4 +142,68 @@ it('停用运营账号，最后一位超级管理员被拒时显示服务端提�
     'POST /iam/platform/operators/o1/disable',
   )
   expect(wrapper.get('[role="alert"]').text()).toContain('至少需要保留一位状态正常的超级管理员')
+})
+
+describe('重置 MFA', () => {
+  function backend(reset: () => Response) {
+    const fetcher = vi.fn((url: string, init?: RequestInit) => {
+      const key = route(url, init)
+      if (key === 'GET /iam/platform/roles') return Promise.resolve(ok([superAdmin]))
+      if (key === 'POST /iam/platform/operators/o1/mfa/reset') return Promise.resolve(reset())
+      return Promise.resolve(ok([admin]))
+    })
+    vi.stubGlobal('fetch', fetcher)
+    return fetcher
+  }
+
+  const confirmButton = () =>
+    document.body.querySelector('[data-testid="operator-mfa-reset-confirm"]') as HTMLElement
+
+  it('非超级管理员看不到入口', async () => {
+    backend(() => ok(null))
+    const wrapper = mountPanel(false)
+    await flushPromises()
+    expect(wrapper.find('[data-testid="operator-mfa-reset-operator"]').exists()).toBe(false)
+  })
+
+  it('超级管理员确认后重置，取消确认前不发请求', async () => {
+    const fetcher = backend(() => ok(null))
+    const wrapper = mountPanel(true)
+    await flushPromises()
+    await wrapper.get('[data-testid="operator-mfa-reset-operator"]').trigger('click')
+    await flushPromises()
+    const resets = () =>
+      fetcher.mock.calls.filter(
+        (call) => route(...call) === 'POST /iam/platform/operators/o1/mfa/reset',
+      )
+    expect(resets()).toHaveLength(0)
+
+    confirmButton().click()
+    await flushPromises()
+    expect(resets()).toHaveLength(1)
+    expect(wrapper.text()).toContain('已重置 演示运营 的 MFA')
+  })
+
+  it('对方未绑定时展示服务端提示', async () => {
+    backend(
+      () =>
+        new Response(
+          JSON.stringify({
+            code: 'mfa.notBound',
+            httpStatus: 409,
+            userTip: '尚未绑定验证器',
+            traceId: 't',
+          }),
+          { status: 409 },
+        ),
+    )
+    const wrapper = mountPanel(true)
+    await flushPromises()
+    await wrapper.get('[data-testid="operator-mfa-reset-operator"]').trigger('click')
+    await flushPromises()
+    confirmButton().click()
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('尚未绑定验证器')
+    expect(wrapper.text()).not.toContain('已重置')
+  })
 })

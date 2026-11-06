@@ -85,6 +85,29 @@ describe('路由守卫', () => {
     expect(wrapper.find('.shell-header').exists()).toBe(false)
   })
 
+  it('身份查询页与菜单按 platform:identity-mfa:reset 显示', async () => {
+    signedIn()
+    vi.stubGlobal('fetch', fakeFetch({ '/iam/platform/access': [grants(permissions.tenantRead)] }))
+    const denied = await mountConsole('/identities')
+    expect(denied.router.currentRoute.value.fullPath).toBe('/403')
+    denied.wrapper.unmount()
+
+    vi.stubGlobal(
+      'fetch',
+      fakeFetch({ '/iam/platform/access': [grants(permissions.identityMfaReset)] }),
+    )
+    const { wrapper, router } = await mountConsole('/identities')
+    expect(router.currentRoute.value.fullPath).toBe('/identities')
+    expect(wrapper.find('.shell-menu').text()).toContain('身份查询')
+  })
+
+  it('账号安全页无需页面权限码，任何已登录的运营人员都可进入', async () => {
+    signedIn()
+    vi.stubGlobal('fetch', fakeFetch({ '/iam/platform/access': [grants()] }))
+    const { router } = await mountConsole('/account/security')
+    expect(router.currentRoute.value.fullPath).toBe('/account/security')
+  })
+
   it('不存在的路径显示 404 页，无需登录', async () => {
     const { wrapper, router } = await mountConsole('/no-such-page')
     expect(router.currentRoute.value.fullPath).toBe('/no-such-page')

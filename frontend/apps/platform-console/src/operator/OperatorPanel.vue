@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ApiError } from '@crane199709/sdk'
 import { ErrorAlert, type ErrorTip } from '@crane199709/ui'
+import { errorTip } from '../error-tip'
 import type { PlatformRole, PlatformRoleApi } from '../role/platform-role-api'
 import type { Operator, OperatorApi } from './operator-api'
 
 // roleApi 只用于读取可分配的平台角色；角色本身在平台角色面板中维护
-const props = defineProps<{ api: OperatorApi; roleApi: PlatformRoleApi }>()
+// canResetMfa：「重置 MFA」只对超级管理员开放，接口仍由服务端校验
+const props = defineProps<{ api: OperatorApi; roleApi: PlatformRoleApi; canResetMfa: boolean }>()
 const { t } = useI18n()
 const operators = ref<Operator[]>([])
 const roles = ref<PlatformRole[]>([])
@@ -29,6 +30,9 @@ const draft = ref(emptyDraft())
 const passwordTarget = ref<Operator | null>(null)
 const newPassword = ref('')
 
+const mfaTarget = ref<Operator | null>(null)
+const mfaResetName = ref<string | null>(null)
+
 const roleNames = (ids: string[]) =>
   ids
     .map((id) => roles.value.find((role) => role.id === id)?.name)
@@ -42,10 +46,7 @@ async function run(action: () => Promise<void>) {
     await action()
     return true
   } catch (cause) {
-    error.value = {
-      message: cause instanceof ApiError && cause.userTip ? cause.userTip : t('error.unknown'),
-      traceId: cause instanceof ApiError ? cause.traceId : undefined,
-    }
+    error.value = errorTip(cause, t)
     return false
   } finally {
     busy.value = false
@@ -113,6 +114,20 @@ async function resetPassword() {
   if (done) passwordTarget.value = null
 }
 
+function openMfaReset(operator: Operator) {
+  error.value = null
+  mfaResetName.value = null
+  mfaTarget.value = operator
+}
+
+async function resetMfa() {
+  const operator = mfaTarget.value
+  if (!operator) return
+  const done = await run(() => props.api.resetMfa(operator.id).then(() => undefined))
+  if (done) mfaResetName.value = operator.displayName
+  mfaTarget.value = null
+}
+
 onMounted(() =>
   run(async () => {
     const [list, roleList] = await Promise.all([props.api.list(), props.roleApi.list()])
@@ -131,6 +146,12 @@ onMounted(() =>
       }}</el-button>
     </header>
     <ErrorAlert v-if="error && !dialogOpen && !passwordTarget" :tip="error" />
+    <el-alert
+      v-if="mfaResetName"
+      type="success"
+      :closable="false"
+      :title="t('operator.resetMfaDone', { name: mfaResetName })"
+    />
 
     <el-table :data="operators" :empty-text="t('operator.empty')">
       <el-table-column prop="account" :label="t('operator.account')" />
@@ -148,7 +169,7 @@ onMounted(() =>
           }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column :label="t('operator.actions')" min-width="200">
+      <el-table-column :label="t('operator.actions')" min-width="280">
         <template #default="{ row }">
           <el-button
             link
@@ -173,6 +194,15 @@ onMounted(() =>
             :data-testid="`operator-password-${row.account}`"
             @click="openPassword(row as Operator)"
             >{{ t('operator.resetPassword') }}</el-button
+          >
+          <el-button
+            v-if="canResetMfa"
+            link
+            type="danger"
+            :disabled="busy"
+            :data-testid="`operator-mfa-reset-${row.account}`"
+            @click="openMfaReset(row as Operator)"
+            >{{ t('operator.resetMfa') }}</el-button
           >
         </template>
       </el-table-column>
@@ -259,6 +289,22 @@ onMounted(() =>
           t('operator.resetPassword')
         }}</el-button>
       </el-form>
+    </el-dialog>
+
+    <el-dialog
+      :model-value="mfaTarget !== null"
+      width="min(420px, 92vw)"
+      :title="t('operator.resetMfaTitle', { name: mfaTarget?.displayName ?? '' })"
+      @close="mfaTarget = null"
+    >
+      <p>{{ t('operator.resetMfaHint') }}</p>
+      <el-button
+        type="danger"
+        :loading="busy"
+        data-testid="operator-mfa-reset-confirm"
+        @click="resetMfa"
+        >{{ t('operator.resetMfa') }}</el-button
+      >
     </el-dialog>
   </section>
 </template>
