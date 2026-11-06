@@ -28,7 +28,7 @@ public interface TenantMapper {
     List<UUID> findIdsByStatus(
             @Param("statuses") List<String> statuses, @Param("offset") long offset, @Param("limit") int limit);
 
-    /** 匹配状态的未删除租户总数；与分页查询使用相同条件。 */
+    /** 匹配状态的未删除租户总数，与分页查询使用相同条件；租户目录是全局表，不受 Data Policy 过滤。 */
     long countByStatus(@Param("statuses") List<String> statuses);
 
     /** 租户名称；未登记或已删除时为 null。租户表是全局表，不受 Data Policy 过滤。 */

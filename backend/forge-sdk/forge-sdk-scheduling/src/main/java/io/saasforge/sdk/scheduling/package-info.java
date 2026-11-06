@@ -20,7 +20,7 @@
  * <p>声明 Tenant Task 时须配置 {@code forge.scheduling.iam-uri} 与 {@code forge.scheduling.token}，
  * 分别为 IAM 内部地址和本服务的 manifest 服务令牌；可配置为 {@code ${forge.manifest.iam-uri}} 与
  * {@code ${forge.manifest.token}}，复用已有服务配置。地址与令牌无默认值，漏配时启动失败；
- * 仅声明 Global Task 时不绑定或要求这两项，也不依赖 manifest starter。
+ * 配置统一绑定为 Spring Bean，仅声明 Global Task 时允许这两项缺省，也不依赖 manifest starter。
  *
  * <p>Micrometer 指标以 {@code name} 为标签：{@code forge.task.executions} 为执行次数，
  * {@code forge.task.duration} 为执行耗时，{@code forge.task.skipped} 为锁被占用的跳过次数，

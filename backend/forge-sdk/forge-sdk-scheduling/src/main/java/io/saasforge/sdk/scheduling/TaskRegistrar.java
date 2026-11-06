@@ -14,11 +14,11 @@ import java.util.concurrent.ScheduledFuture;
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.EmbeddedValueResolver;
-import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.convert.DurationStyle;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.annotation.AnnotatedElementUtils;
@@ -31,13 +31,18 @@ import org.springframework.util.ReflectionUtils;
 final class TaskRegistrar implements BeanPostProcessor, SmartInitializingSingleton, DisposableBean {
     private final ConfigurableListableBeanFactory beans;
     private final Environment environment;
+    private final ObjectProvider<SchedulingProperties> properties;
     private final List<Task> tasks = new ArrayList<>();
     private final List<ScheduledFuture<?>> schedules = new ArrayList<>();
     private TaskRunner runner;
 
-    TaskRegistrar(ConfigurableListableBeanFactory beans, Environment environment) {
+    TaskRegistrar(
+            ConfigurableListableBeanFactory beans,
+            Environment environment,
+            ObjectProvider<SchedulingProperties> properties) {
         this.beans = beans;
         this.environment = environment;
+        this.properties = properties;
     }
 
     @Override
@@ -106,8 +111,7 @@ final class TaskRegistrar implements BeanPostProcessor, SmartInitializingSinglet
         MeterRegistry metrics = beans.getBeanProvider(MeterRegistry.class).getIfAvailable(SimpleMeterRegistry::new);
         TenantTaskExecutor tenantExecutor = tasks.stream().anyMatch(Task::tenant)
                 ? new TenantTaskExecutor(
-                        new TenantDirectoryClient(
-                                Binder.get(environment).bindOrCreate("forge.scheduling", SchedulingProperties.class)),
+                        new TenantDirectoryClient(properties.getObject()),
                         beans.getBean(TenantStatusLookup.class),
                         metrics)
                 : null;
