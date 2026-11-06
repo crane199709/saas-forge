@@ -525,8 +525,8 @@ function createRealmClient<S extends RealmSession>(
         authenticated,
       )
     ).data!
-    // 待 MFA：尚未认证，没有授权参数可保留。
-    if (settings.nextStep === 'mfa') return settings
+    // 待 MFA 或待绑定（Platform Realm）：尚未认证，没有授权参数可保留。
+    if (settings.nextStep && settings.nextStep !== 'authorize') return settings
     // 回调必须与 Shell 同源；fetch 跟随标准授权重定向，不执行回调 HTML。
     if (new URL(settings.redirectUri).origin !== location.origin)
       throw new Error('auth.invalidRedirect')

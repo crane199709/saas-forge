@@ -116,6 +116,10 @@ class GatewaySecurityConfiguration {
                                     "/iam/auth/mfa/bind/start",
                                     "/iam/auth/mfa/bind/confirm",
                                     "/iam/platform/auth/login",
+                                    // Operator 登录第二步（待 MFA、必须绑定）的状态保存在 iam 登录会话中，由 iam 校验
+                                    "/iam/platform/auth/login/mfa",
+                                    "/iam/platform/auth/login/bind/start",
+                                    "/iam/platform/auth/login/bind/confirm",
                                     "/iam/platform/auth/logout",
                                     "/iam/platform/auth/exchange",
                                     "/iam/platform/auth/refresh")

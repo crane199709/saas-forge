@@ -202,8 +202,10 @@ class IamSecurityConfiguration {
         return context -> {
             // 两个 Realm 共用授权端点与登录会话：客户端决定 Realm，会话主体必须属于同一 Realm，否则拒绝签发。
             if (PLATFORM_CLIENT.equals(context.getRegisteredClient().getClientId())) {
-                // MFA 尚未实现：开启强制 MFA 后，已有的登录会话与 Refresh Token 也不能再换发 Token。
-                if (mfaRequired || !hasAuthority(context.getPrincipal(), "OPERATOR")) {
+                // 要求 Operator 使用 MFA 时，签发与刷新都按授权上记录的认证结果判断（ADR-0019）：开启前仅凭密码建立的登录会话与
+                // Refresh Token 不能再换发 Token。
+                if (!hasAuthority(context.getPrincipal(), "OPERATOR")
+                        || (mfaRequired && !MfaAuthority.completed(context.getPrincipal()))) {
                     throw new OAuth2AuthenticationException("invalid_grant");
                 }
                 // 签发与刷新都重新确认 Operator 仍为 active。
@@ -339,7 +341,8 @@ class IamSecurityConfiguration {
             PlatformSigningKey platformKey,
             RealmIssuerProperties issuers)
             throws Exception {
-        // Operator 管理 Operator 账号与平台角色、读取自己的平台权限、改密码、查看平台审计；只接受 Platform Realm 的 Access Token，不使用登录会话 Cookie。
+        // Operator 管理 Operator 账号与平台角色、读取自己的平台权限、改密码、查看平台审计、管理自己的 Authenticator；只接受 Platform Realm 的 Access Token，
+        // 不使用登录会话 Cookie。
         // 解码器不注册为 Bean：标准资源服务器配置按类型取唯一的 JwtDecoder，那是 Tenant Realm 的 accessTokenDecoder。
         var decoder = NimbusJwtDecoder.withPublicKey(platformKey.key().toRSAPublicKey())
                 .build();
@@ -354,7 +357,8 @@ class IamSecurityConfiguration {
                         "/platform/roles/**",
                         "/platform/access",
                         "/platform/audit/**",
-                        "/platform/auth/password/change")
+                        "/platform/auth/password/change",
+                        "/platform/auth/mfa/**")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
@@ -422,6 +426,9 @@ class IamSecurityConfiguration {
                         "/auth/invitations/preview",
                         "/auth/invitations/accept",
                         "/platform/auth/login",
+                        "/platform/auth/login/mfa",
+                        "/platform/auth/login/bind/start",
+                        "/platform/auth/login/bind/confirm",
                         "/platform/auth/logout",
                         "/platform/auth/exchange",
                         "/platform/auth/refresh"))
@@ -445,6 +452,9 @@ class IamSecurityConfiguration {
                                 "/auth/invitations/preview",
                                 "/auth/invitations/accept",
                                 "/platform/auth/login",
+                                "/platform/auth/login/mfa",
+                                "/platform/auth/login/bind/start",
+                                "/platform/auth/login/bind/confirm",
                                 "/platform/auth/logout",
                                 "/platform/auth/exchange",
                                 "/platform/auth/refresh",
