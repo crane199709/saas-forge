@@ -3,7 +3,11 @@
 <mapper namespace="io.saasforge.demo.order.mapper.OrderAuditMapper">
     <select id="selectIncludingDeleted" resultType="io.saasforge.demo.order.entity.Order">
         <!-- 有意不排除已删除的行：测试要读出逻辑删除后的 deleted 与 updated_* -->
-        SELECT id, title, amount, created_at, updated_at, created_by, updated_by, deleted FROM orders
+        SELECT id, title, amount, status, created_at, updated_at, created_by, updated_by, deleted FROM orders
         WHERE id = #{id}
     </select>
+    <update id="setCreatedAt">
+        UPDATE orders SET created_at = #{createdAt}, updated_at = CURRENT_TIMESTAMP, updated_by = NULL
+        WHERE id = #{id} AND NOT deleted
+    </update>
 </mapper>

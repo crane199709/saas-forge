@@ -43,6 +43,42 @@ class ForgeArchitectureRulesTest {
 
     static Stream<Arguments> examples() {
         return Stream.of(
+                Arguments.of(ForgeArchitectureRules.scheduling(), "fixtures.scheduling.DirectScheduled", false),
+                Arguments.of(
+                        ForgeArchitectureRules.scheduling(),
+                        "fixtures.scheduling.SchedulingExamples$EverySecond",
+                        false),
+                Arguments.of(
+                        ForgeArchitectureRules.scheduling(),
+                        "fixtures.scheduling.SchedulingExamples$RepeatedEverySecond",
+                        false),
+                Arguments.of(
+                        ForgeArchitectureRules.scheduling(),
+                        "fixtures.scheduling.SchedulingExamples$DirectEnable",
+                        false),
+                Arguments.of(
+                        ForgeArchitectureRules.scheduling(),
+                        "fixtures.scheduling.SchedulingExamples$ComposedEnable",
+                        false),
+                Arguments.of(
+                        ForgeArchitectureRules.scheduling(),
+                        "fixtures.scheduling.SchedulingExamples$ComposedScheduled",
+                        false),
+                Arguments.of(
+                        ForgeArchitectureRules.scheduling(),
+                        "fixtures.scheduling.SchedulingExamples$RepeatedScheduled",
+                        false),
+                Arguments.of(
+                        ForgeArchitectureRules.scheduling(),
+                        "fixtures.scheduling.SchedulingExamples$ContainerScheduled",
+                        false),
+                Arguments.of(
+                        ForgeArchitectureRules.scheduling(),
+                        "fixtures.scheduling.SchedulingExamples$ComposedContainerScheduled",
+                        false),
+                Arguments.of(
+                        ForgeArchitectureRules.scheduling(), "fixtures.scheduling.SchedulingExamples$PlainTask", true),
+                Arguments.of(ForgeArchitectureRules.scheduling(), "io.saasforge.sdk.fixture.AllowedScheduling", true),
                 Arguments.of(ForgeArchitectureRules.persistence(), "fixtures.sql.BadReference", false),
                 Arguments.of(ForgeArchitectureRules.persistence(), "fixtures.sql.BadSelectAnnotation", false),
                 Arguments.of(ForgeArchitectureRules.persistence(), "fixtures.sql.BadInsert", false),

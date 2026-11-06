@@ -307,7 +307,9 @@ class ArchitectureTest extends ForgeArchitectureTest {}
 ```
 
 规则覆盖 SQL 注解、字符串 Wrapper、SQL 片段调用及方法引用、业务服务 JDBC 依赖、
-SDK 依赖方向与包循环、服务分层与功能包循环、IAM Mapper 的 tenantLine 标注和 REST 接口响应信封。
+SDK 依赖方向与包循环、服务分层与功能包循环、IAM Mapper 的 tenantLine 标注、REST 接口响应信封，
+以及 SDK 包之外的 `@Scheduled` / `@EnableScheduling`（含组合注解与重复任务容器）。
+业务定时任务使用 `forge-sdk-scheduling` 的 `@GlobalTask` 或 `@TenantTask`。
 JDBC 基础设施仅在 SDK 包中豁免；SQL 注解与 Wrapper 限制对 SDK 同样生效。
 Mapper XML 的 SQL 语义不属于字节码检查范围，仍需代码审查。
 

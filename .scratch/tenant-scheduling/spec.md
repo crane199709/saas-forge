@@ -1,6 +1,6 @@
 # 租户感知的定时任务规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准（「定时任务」一节）。本规格的决策经 2026-11-04 的设计拷问逐条确认（Q42–Q56），未单独记录 ADR。
 
@@ -66,3 +66,19 @@ void scanLifecycle() { ... }
 - 两个实例同时运行时同一任务只有一个执行；上一轮未结束时下一次触发被跳过。
 - 一个租户抛出异常时其他租户照常执行；停用、过期租户不被执行，执行中途被停用的租户被跳过。
 - 存在 cron 任务而漏配 `forge.business-zone` 时启动失败；SDK 之外使用 `@Scheduled` 时架构测试失败。
+
+## 7. 实现与验收记录
+
+五张工单均已完成并关闭，集成分支为 `codex/tenant-scheduling`：
+
+- [01：IAM 内部租户名单](issues/01-iam-internal-tenants.md)
+- [02：Global Task 与 Redis 互斥调度](issues/02-sdk-global-task.md)
+- [03：Tenant Task 与失败隔离](issues/03-sdk-tenant-task.md)
+- [04：架构约束与 platform 生命周期迁移](issues/04-arch-rule-and-platform-migration.md)
+- [05：demo 自动关闭超时订单](issues/05-demo-order-auto-close.md)
+
+验证通过：IAM 188 项、网关 38 项、架构规则 53 项、platform 全量 20 项、demo 全量 52 项；全后端 23 模块架构检查通过。审查修正后的最终联合验证通过调度 SDK 37 项、tenant 3 项、platform 生命周期与架构 5 项，相关 Spotless 检查通过；发布版本一致性检查通过。
+
+双轴审查及两项 P3 规范问题的修复见 [审查记录](review.md)，无遗留发现。
+
+部署时须注意：V11 将存量 demo 订单默认设为 `unpaid`，之后按租户的 `order.auto-close` 参数自动关闭。Redis 锁不能替代业务幂等性；租户名单采用现有 offset 分页，不提供跨页快照。

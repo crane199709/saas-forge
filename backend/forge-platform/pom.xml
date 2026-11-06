@@ -38,6 +38,10 @@
             <groupId>io.saasforge</groupId>
             <artifactId>forge-sdk-openapi</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-scheduling</artifactId>
+        </dependency>
         <!-- 作为 Platform Realm 服务上报 Resource Manifest，接口按 Operator 的平台角色校验功能权限与数据权限（工单 22） -->
         <dependency>
             <groupId>io.saasforge</groupId>

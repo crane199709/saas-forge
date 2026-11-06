@@ -3,7 +3,7 @@
 <mapper namespace="io.saasforge.demo.order.mapper.OrderMapper">
     <select id="selectPage" resultType="io.saasforge.demo.order.entity.Order">
         <!-- 手写查询不经过 MyBatis-Plus 的逻辑删除条件，须自行排除已删除的行 -->
-        SELECT id, number, title, amount, customer_source, owner_id, department_path, created_at, updated_at, created_by, updated_by, deleted
+        SELECT id, number, title, amount, customer_source, status, owner_id, department_path, created_at, updated_at, created_by, updated_by, deleted
         FROM orders
         WHERE NOT deleted
         ORDER BY
@@ -14,6 +14,10 @@
         id
         LIMIT #{limit} OFFSET #{offset}
     </select>
+    <update id="closeExpiredUnpaid">
+        UPDATE orders SET status = 'closed', updated_at = CURRENT_TIMESTAMP, updated_by = NULL
+        WHERE NOT deleted AND status = 'unpaid' AND created_at &lt; #{cutoff}
+    </update>
     <!-- 租户清理（ADR-0016）：在 TenantDeleted 的消费事务中执行，没有操作人，updated_by 写 NULL；手写 SQL 自行维护标准列。 -->
     <update id="markTenantDeleted">
         UPDATE orders SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = NULL WHERE NOT deleted
