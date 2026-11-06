@@ -83,4 +83,4 @@ TOTP、密钥加密、Recovery Code 与 Identity 相同（[ADR-0019](adr/0019-mf
 
 ## 验收
 
-后端 `cd backend && ./mvnw verify`：`PlatformLoginTest`（Operator 登录、独立 issuer 与密钥、跨 Realm 签发被拒、元数据）、`OperatorSessionServiceTest`（密码校验）、`OperatorMfaTest` 与 `RequiredOperatorMfaTest`（MFA 两步登录、强制绑定、解绑与更换）、`GatewaySecurityTest`（Tenant Token 访问平台路由与 Platform Token 访问租户路由均 401）、forge-platform `OperatorContextTest`（SDK 验签并读取 Operator）。前端 `pnpm test` 中 platform-console 的 `LoginPage.spec.ts`、`router.spec.ts`。
+后端 `cd backend && ./mvnw verify`：`PlatformLoginTest`（Operator 登录、独立 issuer 与密钥、跨 Realm 签发被拒、元数据）、`OperatorSessionServiceTest`（密码校验）、`OperatorMfaTest` 与 `RequiredOperatorMfaTest`（MFA 两步登录、强制绑定、解绑与更换）、`GatewaySecurityTest`（Tenant Token 访问平台路由与 Platform Token 访问租户路由均 401）、forge-platform `OperatorContextTest`（SDK 验签并读取 Operator）。前端 `pnpm test` 中 platform-console 的 `LoginPage.spec.ts`（两步登录与强制绑定）、`router.spec.ts`、`security/AccountSecurityPage.spec.ts`、`identity/IdentityPanel.spec.ts`。

@@ -71,6 +71,21 @@ export type TenantLoginResult =
   | { status: 'selectTenant'; memberships: TenantMembership[] }
   | { status: 'noTenant' }
 
+/** MFA 步骤提交动态码或 Recovery Code，二者恰好一个。 */
+export type MfaFactor = { code: string } | { recoveryCode: string }
+
+/** 只在本次响应中返回的一组 Recovery Code，服务端只存哈希，无法再次取得。 */
+export interface RecoveryCodes {
+  recoveryCodes: string[]
+}
+
+/**
+ * Operator First Factor 校验通过后的结果：无需第二步时直接进入；已绑定 Authenticator 时为 `mfa`，须调用 `submitMfa`；
+ * `mfa-required` 且未绑定时为 `bind`，须 `startLoginBinding`、`confirmLoginBinding`，再 `completeLogin`。
+ */
+export type PlatformLoginResult =
+  { status: 'signedIn'; session: PlatformSession } | { status: 'mfa' } | { status: 'bind' }
+
 /** 验证码已受理：有效期与可再次获取前的等待时间，单位秒。 */
 export interface CodeDelivery {
   expiresIn: number
@@ -251,9 +266,46 @@ export function createPlatformClient(storage: Storage) {
   // 没有租户上下文，其他标签页的刷新始终沿用同一会话。
   const core = createRealmClient<PlatformSession>(platformRealm, storage, () => true)
 
-  /** 校验 Operator 账号密码后经标准授权码 + PKCE 流程签发 Platform Realm Token。 */
-  async function login(account: string, password: string): Promise<PlatformSession> {
-    await core.authenticate('login', { account, password }, () => true)
+  /** 校验 Operator 账号密码；无需第二步时经标准授权码 + PKCE 流程签发 Platform Realm Token，否则返回待完成的步骤。 */
+  function login(account: string, password: string): Promise<PlatformLoginResult> {
+    return enter('login', { account, password })
+  }
+
+  /**
+   * 在待 MFA 状态下提交动态码或 Recovery Code，通过后签发 Token。错误时以 `mfa.codeInvalid`、`mfa.recoveryCodeInvalid` 失败，可重试；
+   * 待 MFA 已过期时以 `auth.mfaExpired` 失败，须重新登录。
+   */
+  function submitMfa(factor: MfaFactor): Promise<PlatformLoginResult> {
+    return enter('login/mfa', factor)
+  }
+
+  async function enter(path: string, body: object): Promise<PlatformLoginResult> {
+    const settings = await core.authenticate<object>(path, body, () => true)
+    if (settings.nextStep === 'mfa' || settings.nextStep === 'bind')
+      return { status: settings.nextStep }
+    return { status: 'signedIn', session: await core.authorize({}) }
+  }
+
+  /** 在必须绑定状态下开始绑定 Authenticator，返回供渲染二维码的 `otpauth://` URI。 */
+  function startLoginBinding(): Promise<{ otpauthUri: string }> {
+    return core.sessionPost(`${platformRealm.authPath}/login/bind/start`, {})
+  }
+
+  /**
+   * 在必须绑定状态下以首个动态码确认绑定，IAM 登录会话随之建立。Recovery Code 只此一次，
+   * 因此这里不签发 Token：保存后调用 `completeLogin`，避免登录导航使其来不及保存。
+   */
+  async function confirmLoginBinding(code: string): Promise<RecoveryCodes> {
+    const { recoveryCodes } = await core.authenticate<RecoveryCodes>(
+      'login/bind/confirm',
+      { code },
+      () => true,
+    )
+    return { recoveryCodes }
+  }
+
+  /** 以 `confirmLoginBinding` 建立的 IAM 登录会话签发 Platform Realm Token。 */
+  function completeLogin(): Promise<PlatformSession> {
     return core.authorize({})
   }
 
@@ -261,6 +313,10 @@ export function createPlatformClient(storage: Storage) {
     api: core.api,
     page: core.page,
     login,
+    submitMfa,
+    startLoginBinding,
+    confirmLoginBinding,
+    completeLogin,
     onSessionChange: core.onSessionChange,
     logout: core.logout,
     refresh: core.refresh,
@@ -396,7 +452,7 @@ function createRealmClient<S extends RealmSession>(
     path: string,
     credentials: object,
     canAuthorize: (settings: T) => boolean,
-  ): Promise<T> {
+  ): Promise<T & { nextStep?: string }> {
     clear()
     const started = generation
     const authenticated = await fetch(`${realm.authPath}/${path}`, {
@@ -406,8 +462,12 @@ function createRealmClient<S extends RealmSession>(
       body: JSON.stringify(credentials),
     })
     const settings = (
-      await readEnvelope<T & { clientId: string; redirectUri: string }>(authenticated)
+      await readEnvelope<T & { nextStep?: string; clientId: string; redirectUri: string }>(
+        authenticated,
+      )
     ).data!
+    // 待 MFA 或待绑定（Platform Realm）：尚未认证，没有授权参数可保留。
+    if (settings.nextStep && settings.nextStep !== 'authorize') return settings
     // 回调必须与 Shell 同源；fetch 跟随标准授权重定向，不执行回调 HTML。
     if (new URL(settings.redirectUri).origin !== location.origin)
       throw new Error('auth.invalidRedirect')
@@ -422,6 +482,17 @@ function createRealmClient<S extends RealmSession>(
     const response = await fetch(path, {
       method: 'POST',
       credentials: 'omit',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    return (await readEnvelope<T>(response)).data as T
+  }
+
+  /** 凭 IAM 登录会话 Cookie 调用信封接口（如尚无 Token 时当场绑定 Authenticator），失败抛出 `ApiError`。 */
+  async function sessionPost<T>(path: string, body: object): Promise<T> {
+    const response = await fetch(path, {
+      method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
@@ -590,6 +661,7 @@ function createRealmClient<S extends RealmSession>(
     authenticate,
     authorize,
     post,
+    sessionPost,
     rebind,
     onSessionChange,
     logout,

@@ -11,7 +11,8 @@
     "login": "登录",
     "logout": "退出登录",
     "logoutFailed": "本地凭证已清除，但 IAM 退出失败，浏览器仍可能保持登录。",
-    "failed": "登录会话已失效，请重新登录"
+    "failed": "登录会话已失效，请重新登录",
+    "backToLogin": "返回登录"
   },
   "error": {
     "unknown": "请求失败，请稍后重试"
@@ -156,7 +157,11 @@
     "resetPasswordTitle": "重置密码：{name}",
     "resetPasswordHint": "重置后该运营人员需用新密码登录；需要立即踢出时请停用账号。",
     "newPassword": "新密码",
-    "save": "保存"
+    "save": "保存",
+    "resetMfa": "重置 MFA",
+    "resetMfaTitle": "重置 MFA：{name}",
+    "resetMfaHint": "重置后该运营人员的验证器与恢复码全部作废，下次登录可重新绑定。请先核实对方身份。",
+    "resetMfaDone": "已重置 {name} 的 MFA。"
   },
   "platformRole": {
     "title": "平台角色",
@@ -216,6 +221,92 @@
     "outcome": {
       "success": "成功",
       "failure": "失败"
+    }
+  },
+  "mfa": {
+    "title": "两步验证",
+    "codeHint": "请输入验证器应用上的 6 位动态码。",
+    "code": "动态码",
+    "recoveryCode": "恢复码",
+    "recoveryHint": "无法使用验证器时，可输入一个未用过的恢复码，每个恢复码只能使用一次。",
+    "useRecoveryCode": "改用恢复码",
+    "useCode": "改用动态码",
+    "verify": "验证",
+    "bindTitle": "绑定验证器",
+    "bindRequired": "平台要求运营账号使用两步验证。请先绑定验证器，完成后将自动进入。",
+    "bindScan": "用验证器应用（如 Google Authenticator、Microsoft Authenticator）扫描二维码，或手动输入密钥：",
+    "qrAlt": "验证器绑定二维码",
+    "secret": "密钥",
+    "bindCode": "验证器显示的首个动态码",
+    "bindConfirm": "确认绑定"
+  },
+  "recoveryCodes": {
+    "title": "恢复码",
+    "hint": "恢复码只显示这一次，请立即复制或下载并妥善保存。无法使用验证器时，可用其中任意一个完成验证，每个只能用一次。",
+    "copy": "复制",
+    "copied": "已复制",
+    "download": "下载",
+    "done": "我已保存，继续",
+    "fileName": "saas-forge-recovery-codes.txt"
+  },
+  "errorCode": {
+    "auth": {
+      "locked": "登录失败次数过多，已临时锁定，请稍后再试",
+      "lockedFor": "登录失败次数过多，已临时锁定，请 {minutes} 分钟后再试",
+      "mfaExpired": "验证已超时，请重新登录"
+    },
+    "mfa": {
+      "notBound": "尚未绑定验证器",
+      "identityNotFound": "未找到该登录标识对应的身份",
+      "codeInvalid": "动态码错误或已使用，请输入验证器上的最新动态码",
+      "recoveryCodeInvalid": "恢复码错误或已使用",
+      "bindingExpired": "绑定已超时，请重新开始"
+    },
+    "password": {
+      "tooShort": "密码太短",
+      "tooLong": "密码太长",
+      "tooCommon": "该密码过于常见，容易被猜中，请换一个",
+      "sameAsIdentifier": "密码不能与账号、邮箱或手机号相同",
+      "currentInvalid": "原密码错误"
+    }
+  },
+  "identity": {
+    "title": "身份查询",
+    "hint": "按登录标识（账号、邮箱或手机号）精确查找身份。",
+    "identifier": "登录标识",
+    "search": "查找",
+    "displayName": "昵称",
+    "mfa": "验证器",
+    "bound": "已绑定",
+    "unbound": "未绑定",
+    "reset": "重置 MFA",
+    "resetTitle": "重置 MFA：{name}",
+    "resetHint": "重置后该身份的验证器与恢复码全部作废，下次登录可重新绑定。请先核实对方身份。",
+    "resetDone": "已重置该身份的 MFA。"
+  },
+  "account": {
+    "title": "账号安全",
+    "password": {
+      "title": "修改密码",
+      "current": "原密码",
+      "new": "新密码（至少 8 位）",
+      "submit": "修改密码",
+      "done": "密码已修改，其他设备上的登录已失效。"
+    },
+    "mfa": {
+      "title": "验证器",
+      "changeHint": "更换验证器后，原验证器与恢复码全部作废。尚未绑定时可在此绑定。",
+      "change": "绑定或更换验证器",
+      "verifyHint": "已绑定验证器。请输入当前动态码以确认是你本人。",
+      "code": "当前动态码",
+      "next": "下一步",
+      "cancel": "取消",
+      "updated": "验证器已更新。"
+    },
+    "recovery": {
+      "title": "恢复码",
+      "hint": "重新生成后，原有恢复码全部作废。",
+      "submit": "重新生成恢复码"
     }
   }
 }
