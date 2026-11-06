@@ -341,7 +341,8 @@ class IamSecurityConfiguration {
             PlatformSigningKey platformKey,
             RealmIssuerProperties issuers)
             throws Exception {
-        // Operator 管理 Operator 账号与平台角色、读取自己的平台权限、改密码、查看平台审计、管理自己的 Authenticator；只接受 Platform Realm 的 Access Token，
+        // Operator 管理 Operator 账号与平台角色、查找身份并重置其 MFA、读取自己的平台权限、改密码、查看平台审计、管理自己的 Authenticator；只接受 Platform Realm 的
+        // Access Token，
         // 不使用登录会话 Cookie。
         // 解码器不注册为 Bean：标准资源服务器配置按类型取唯一的 JwtDecoder，那是 Tenant Realm 的 accessTokenDecoder。
         var decoder = NimbusJwtDecoder.withPublicKey(platformKey.key().toRSAPublicKey())
@@ -355,6 +356,7 @@ class IamSecurityConfiguration {
         http.securityMatcher(
                         "/platform/operators/**",
                         "/platform/roles/**",
+                        "/platform/identities/**",
                         "/platform/access",
                         "/platform/audit/**",
                         "/platform/auth/password/change",

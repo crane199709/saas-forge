@@ -57,6 +57,10 @@
         UPDATE identity SET password_hash = #{passwordHash}, updated_at = now(), updated_by = #{identityId}
         WHERE id = #{identityId} AND status = 'active' AND NOT deleted
     </update>
+    <select id="findByLoginIdentifier" resultType="io.saasforge.iam.identity.model.IdentitySummary">
+        SELECT id AS identity_id, display_name FROM identity
+        WHERE NOT deleted AND (account = #{identifier} OR lower(email) = lower(#{identifier}) OR phone = #{identifier})
+    </select>
     <insert id="insert">
         INSERT INTO identity (id, account, email, phone, display_name, password_hash, created_at, updated_at)
         VALUES (#{id}, #{account}, #{email}, #{phone}, #{displayName}, #{passwordHash}, now(), now())
