@@ -15,6 +15,14 @@
     "order:delete": {
       "name": "删除订单",
       "group": "订单"
+    },
+    "order:import": {
+      "name": "导入订单",
+      "group": "订单"
+    },
+    "order:export": {
+      "name": "导出订单",
+      "group": "订单"
     }
   },
   "menus": [
@@ -29,7 +37,13 @@
           "app": "demo",
           "path": "overview",
           "permission": "order:read",
-          "actions": ["order:create", "order:update", "order:delete"]
+          "actions": [
+            "order:create",
+            "order:update",
+            "order:delete",
+            "order:import",
+            "order:export"
+          ]
         },
         {
           "code": "demo.attachments",

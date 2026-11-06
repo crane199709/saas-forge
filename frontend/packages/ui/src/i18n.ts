@@ -3,6 +3,26 @@ import { useI18n } from 'vue-i18n'
 // 组件文案随组件打包，经 local scope 使用 Shell 已安装的 i18n 的当前语言，不另建全局实例。
 const messages = {
   'zh-CN': {
+    io: {
+      import: '导入',
+      export: '导出',
+      template: '下载模板',
+      file: '选择 Excel 文件',
+      recent: '最近任务',
+      empty: '暂无任务',
+      download: '下载结果',
+      errorReport: '下载错误报告',
+      uploading: '正在上传',
+      failed: '处理失败，请稍后重试',
+      xlsxOnly: '仅支持 .xlsx 文件',
+      WAITING: '等待中',
+      RUNNING: '执行中',
+      SUCCEEDED: '成功',
+      FAILED: '失败',
+      IMPORT: '导入',
+      EXPORT: '导出',
+      rows: '{count} 行',
+    },
     traceId: '追踪 ID',
     copyTraceId: '复制',
     total: '共 {total} 条',

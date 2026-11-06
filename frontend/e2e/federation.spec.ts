@@ -347,3 +347,104 @@ test('菜单中没有的 Sub-App 不注册路由', async ({ page }) => {
   await expect(page.getByRole('link', { name: '示例子应用', exact: true })).toHaveCount(0)
   await expect(page.getByRole('heading', { name: '概览', exact: true })).toHaveCount(0)
 })
+
+test('订单导入导出组件展示任务进度与错误报告', async ({ page }) => {
+  await resignIn(page, ['order:read', 'order:import', 'order:export'])
+  await page.addInitScript(() => {
+    window.open = (url) => {
+      ;(window as unknown as { ioDownloads: string[] }).ioDownloads ??= []
+      ;(window as unknown as { ioDownloads: string[] }).ioDownloads.push(String(url))
+      return null
+    }
+  })
+  let exported = false
+  let imported = false
+  const exportTask = {
+    id: 'export-1',
+    type: 'EXPORT',
+    status: 'SUCCEEDED',
+    rowCount: 3,
+    resultAvailable: true,
+    finishedAt: '2026-11-07T01:00:00Z',
+  }
+  const importTask = {
+    id: 'import-1',
+    type: 'IMPORT',
+    status: 'FAILED',
+    rowCount: 2,
+    failureReason: '校验未通过，未写入任何数据',
+    resultAvailable: true,
+    finishedAt: '2026-11-07T01:00:00Z',
+  }
+  await page.route('**/demo/io/tasks?*', (route) =>
+    route.fulfill({
+      json: {
+        code: 'ok',
+        httpStatus: 200,
+        data: [...(exported ? [exportTask] : []), ...(imported ? [importTask] : [])],
+        meta: { page: { number: 1, size: 10, totalElements: 2, totalPages: 1 } },
+      },
+    }),
+  )
+  await page.route('**/demo/orders/export?*', (route) => {
+    exported = true
+    return route.fulfill(ok({ ...exportTask, status: 'WAITING' }))
+  })
+  await page.route('**/demo/io/tasks/export-1', (route) => route.fulfill(ok(exportTask)))
+  await page.route('**/demo/io/tasks/import-1', (route) => route.fulfill(ok(importTask)))
+  await page.route('**/demo/io/tasks/*/download', (route) =>
+    route.fulfill(ok({ url: 'http://127.0.0.1:5174/mock-storage/result' })),
+  )
+  await page.route('**/demo/orders/import/template', (route) =>
+    route.fulfill(ok({ filename: '订单模板.xlsx', base64: 'eGxzeA==' })),
+  )
+  await page.route('**/demo/orders/import/upload', (route) =>
+    route.fulfill(
+      ok({
+        objectId: 'source',
+        url: 'http://127.0.0.1:5174/mock-storage/upload',
+        headers: { 'Content-Type': 'application/octet-stream' },
+      }),
+    ),
+  )
+  await page.route('**/mock-storage/upload', (route) => {
+    expect(route.request().headers()['authorization']).toBeUndefined()
+    return route.fulfill({ status: 200, body: '' })
+  })
+  await page.route('**/demo/orders/import', (route) => {
+    expect(route.request().postDataJSON()).toEqual({ objectId: 'source' })
+    imported = true
+    return route.fulfill(ok({ ...importTask, status: 'WAITING' }))
+  })
+  await page.goto('/apps/demo/overview')
+  await expect(page.getByRole('heading', { name: '订单', exact: true })).toBeVisible()
+  await page.getByTestId('export-submit').click()
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (window as unknown as { ioDownloads?: string[] }).ioDownloads?.length ?? 0,
+      ),
+    )
+    .toBe(1)
+  await expect(page.getByText('导出 · 成功 · 3 行')).toBeVisible()
+  await page.screenshot({ path: '/tmp/io-desktop.png', fullPage: false })
+  await page.getByRole('button', { name: '导入订单' }).click()
+  const dialog = page.getByRole('dialog', { name: '导入', exact: true })
+  await expect(dialog).toBeVisible()
+  const download = page.waitForEvent('download')
+  await dialog.getByRole('button', { name: '下载模板' }).click()
+  expect((await download).suggestedFilename()).toBe('订单模板.xlsx')
+  await dialog
+    .getByLabel('选择 Excel 文件')
+    .setInputFiles({
+      name: 'orders.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: Buffer.from('xlsx'),
+    })
+  await dialog.getByTestId('import-submit').click()
+  await expect(dialog.getByText('校验未通过，未写入任何数据')).toBeVisible()
+  await expect(dialog.getByRole('button', { name: '下载错误报告' })).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.screenshot({ path: '/tmp/io-mobile.png', fullPage: false })
+  await expect(dialog).toBeVisible()
+})

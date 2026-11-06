@@ -18,7 +18,7 @@ import tools.jackson.databind.json.JsonMapper;
  */
 final class TestGrants {
     static final List<String> ALL_ORDER_PERMISSIONS =
-            List.of("order:read", "order:create", "order:update", "order:delete");
+            List.of("order:read", "order:create", "order:update", "order:delete", "order:import", "order:export");
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
 

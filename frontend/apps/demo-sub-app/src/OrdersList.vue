@@ -2,8 +2,17 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElButton, ElTableColumn } from 'element-plus'
-import { ApiError, useTenantClient, type Page } from '@crane199709/sdk'
-import { ErrorAlert, ListPage, type ErrorTip } from '@crane199709/ui'
+import { ApiError, useAccessControl, useTenantClient, type Page } from '@crane199709/sdk'
+import {
+  ErrorAlert,
+  ListPage,
+  ImportDialog,
+  ExportButton,
+  type IoTaskApi,
+  type IoTask,
+  type IoUploadTicket,
+  type ErrorTip,
+} from '@crane199709/ui'
 
 interface Order {
   id: string
@@ -12,6 +21,43 @@ interface Order {
 }
 
 const client = useTenantClient()
+const access = useAccessControl()
+const importOpen = ref(false)
+const ioTasks: IoTaskApi = {
+  list: async () => (await client.page<IoTask>('/demo/io/tasks?size=10')).items,
+  get: (id) => client.api<IoTask>(`/demo/io/tasks/${id}`),
+  download: (id) => client.api<{ url: string }>(`/demo/io/tasks/${id}/download`),
+}
+const post = <T,>(url: string, body: unknown) =>
+  client.api<T>(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+const submitExport = () => post<IoTask>('/demo/orders/export?sort=createdAt,asc', {})
+const prepareImport = (file: File) =>
+  post<IoUploadTicket>('/demo/orders/import/upload', {
+    filename: file.name,
+    contentType: file.type || 'application/octet-stream',
+    size: file.size,
+  })
+const submitImport = (objectId: string) => post<IoTask>('/demo/orders/import', { objectId })
+async function downloadTemplate() {
+  const data = await client.api<{ filename: string; base64: string }>(
+    '/demo/orders/import/template',
+  )
+  const bytes = Uint8Array.from(atob(data.base64), (char) => char.charCodeAt(0))
+  const url = URL.createObjectURL(
+    new Blob([bytes], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    }),
+  )
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = data.filename
+  anchor.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
 const orders = ref<Page<Order> | null>(null)
 const busy = ref(false)
 const error = ref<ErrorTip | null>(null)
@@ -21,6 +67,7 @@ const { t } = useI18n({
     'zh-CN': {
       title: '订单',
       refresh: '刷新订单',
+      import: '导入订单',
       name: '标题',
       amount: '金额',
       empty: '暂无订单',
@@ -53,9 +100,20 @@ onMounted(() => load())
   <section :aria-label="t('title')">
     <h3>{{ t('title') }}</h3>
     <ErrorAlert v-if="error" :tip="error" />
+    <ImportDialog
+      v-if="access.has('order:import')"
+      v-model="importOpen"
+      :tasks="ioTasks"
+      :download-template="downloadTemplate"
+      :prepare-upload="prepareImport"
+      :submit="submitImport"
+      @completed="load()"
+    />
     <ListPage :page="orders" :loading="busy" :empty-text="t('empty')" @page-change="load">
       <template #search>
         <el-button :disabled="busy" @click="load()">{{ t('refresh') }}</el-button>
+        <el-button v-perm="'order:import'" @click="importOpen = true">{{ t('import') }}</el-button>
+        <ExportButton v-if="access.has('order:export')" :tasks="ioTasks" :submit="submitExport" />
       </template>
       <el-table-column :label="t('name')">
         <template #default="{ row }">

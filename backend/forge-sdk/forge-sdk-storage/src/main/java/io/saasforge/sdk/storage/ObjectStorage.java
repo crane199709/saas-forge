@@ -4,6 +4,7 @@ import io.saasforge.sdk.core.CurrentTenant;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -19,6 +20,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
@@ -180,6 +182,69 @@ public class ObjectStorage {
      */
     public StoredObject get(UUID objectId) {
         return requireStored(objectId).toStoredObject();
+    }
+
+    /**
+     * 打开当前租户已确认对象的内容流。调用方负责关闭流，内容不会整体载入内存。
+     *
+     * @param objectId 对象 ID
+     * @return 对象内容
+     * @throws ForgeException 对象不存在、未确认或前缀不属于当前租户时为 OBJECT_NOT_FOUND
+     */
+    public InputStream open(UUID objectId) {
+        StorageObjectRecord object = requireStored(objectId);
+        if (!object.objectKey().startsWith(prefix(CurrentTenant.require()))) throw notFound(objectId);
+        try {
+            return s3.getObject(request -> request.bucket(properties.bucket()).key(object.objectKey()));
+        } catch (NoSuchKeyException error) {
+            throw notFound(objectId);
+        }
+    }
+
+    /**
+     * 服务端流式写入对象。大小须提前确定；调用方负责关闭输入流。
+     * Quota 检查、登记与确认在同一事务内，失败或外层事务回滚时清理存储对象，不留下计费登记。
+     *
+     * @param filename 下载文件名
+     * @param contentType 内容类型
+     * @param size 内容字节数
+     * @param content 内容流
+     * @return 已确认对象，可直接申请下载票据
+     * @throws ForgeException 超出容量时为 QUOTA_EXCEEDED
+     */
+    public StoredObject write(String filename, String contentType, long size, InputStream content) {
+        requireName(filename, "filename");
+        String type = contentType == null || contentType.isBlank() ? DEFAULT_CONTENT_TYPE : contentType;
+        requireName(type, "contentType");
+        if (size <= 0 || size > MAX_OBJECT_SIZE) {
+            throw ForgeException.withErrorMessage(FrameworkErrorCode.REQUEST_INVALID, "Invalid object size");
+        }
+        UUID id = UuidV7.generate();
+        String key = prefix(CurrentTenant.require()) + id;
+        return transaction.execute(status -> {
+            var now = OffsetDateTime.now(clock);
+            Long quota = mapper.lockQuota();
+            if (quota != null && mapper.usedBytes(now, null) + size > quota) throw quotaExceeded(quota);
+            mapper.insertPending(id, key, filename, type, size, now.plus(properties.uploadUrlTtl()));
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int completion) {
+                    if (completion != STATUS_COMMITTED) {
+                        try {
+                            s3.deleteObject(request ->
+                                    request.bucket(properties.bucket()).key(key));
+                        } catch (SdkException error) {
+                            log.warn("Failed to clean rolled-back object {}", key, error);
+                        }
+                    }
+                }
+            });
+            s3.putObject(
+                    request -> request.bucket(properties.bucket()).key(key).contentType(type),
+                    RequestBody.fromInputStream(content, size));
+            mapper.markStored(id);
+            return get(id);
+        });
     }
 
     /**

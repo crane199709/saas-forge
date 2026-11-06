@@ -1,22 +1,43 @@
 package io.saasforge.demo;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.saasforge.demo.order.model.OrderImportRow;
+import io.saasforge.demo.order.service.OrderService;
+import io.saasforge.sdk.abac.DataScope;
+import io.saasforge.sdk.abac.data.DataPermission;
 import io.saasforge.sdk.core.CurrentTenant;
+import io.saasforge.sdk.core.MembershipStateKeys;
+import io.saasforge.sdk.core.SubjectAttributes;
 import io.saasforge.sdk.core.api.ForgeException;
+import io.saasforge.sdk.io.ExcelIo;
+import io.saasforge.sdk.io.IoMaintenance;
+import io.saasforge.sdk.io.IoTasks;
 import io.saasforge.sdk.mq.EventHandler;
 import io.saasforge.sdk.provisioning.TenantPlanChanged;
 import io.saasforge.sdk.storage.ObjectStorage;
 import io.saasforge.sdk.storage.StorageErrorCode;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,8 +48,12 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 import org.testcontainers.containers.GenericContainer;
@@ -43,7 +68,17 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 
 /** 订单附件经 SDK 对象存储上传、下载与删除（工单 24）：key 前缀由 SDK 强制、跨租户访问被拒、超出存储容量 Quota 的上传被拒。 */
 @Testcontainers
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {
+            "forge.io.workers=1",
+            "forge.io.queue-capacity=1",
+            "forge.io.import-limit=3",
+            "forge.io.export-limit=3",
+            "forge.io.heartbeat-interval=100ms",
+            "forge.io.heartbeat-timeout=1s",
+            "forge.io.retention=2s"
+        })
 class ObjectStorageTest {
     private static final String BUCKET = "forge-test";
     private static final String ACCESS_KEY = "storage-test";
@@ -99,12 +134,432 @@ class ObjectStorageTest {
     @Autowired
     ObjectStorage storage;
 
+    @Autowired
+    IoTasks ioTasks;
+
+    @Autowired
+    ExcelIo excel;
+
+    @Autowired
+    IoMaintenance maintenance;
+
     private UUID tenant;
 
     @BeforeEach
     void newTenant() {
         tenant = UUID.randomUUID();
         TestGrants.publishAll(redisTemplate, tenant, TestTokens.MEMBERSHIP_ID);
+    }
+
+    @Test
+    void serverWriteFailureRollsBackRegistrationAndQuotaIsEnforced() throws Exception {
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThatThrownBy(() -> storage.write("failed.xlsx", "application/octet-stream", 10, new InputStream() {
+                        @Override
+                        public int read() throws IOException {
+                            throw new IOException("test stream failure");
+                        }
+                    }))
+                    .isInstanceOf(RuntimeException.class);
+            assertThat(storage.usage().usedBytes()).isZero();
+        }
+        deliver(planChanged(0L, 1));
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThatThrownBy(() -> storage.write(
+                            "quota.xlsx", "application/octet-stream", 1, new ByteArrayInputStream(new byte[] {1})))
+                    .isInstanceOfSatisfying(
+                            ForgeException.class,
+                            error -> assertThat(error.errorCode()).isEqualTo(StorageErrorCode.QUOTA_EXCEEDED));
+            assertThat(storage.usage().usedBytes()).isZero();
+        }
+    }
+
+    @Test
+    void queuedExportKeepsSubmissionPolicyWhenGrantStoreMovesToAnotherVersion() throws Exception {
+        createOrder(tenant);
+        var started = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        var blocker = asMember(() -> ioTasks.submit("EXPORT", null, "blocker", progress -> {
+            started.countDown();
+            release.await(5, TimeUnit.SECONDS);
+            return null;
+        }));
+        assertThat(started.await(2, TimeUnit.SECONDS)).isTrue();
+        String queued;
+        try {
+            queued = (String) ((Map<?, ?>) exchange(tenant, HttpMethod.POST, "/orders/export", Map.of())
+                            .get("data"))
+                    .get("id");
+            TestGrants.publish(
+                    redisTemplate,
+                    tenant,
+                    TestTokens.MEMBERSHIP_ID,
+                    2,
+                    TestGrants.ALL_ORDER_PERMISSIONS,
+                    SubjectAttributes.NONE,
+                    List.of());
+            asMemberVersion(2, () -> dataPermission.currentSubject());
+            redisTemplate.delete(MembershipStateKeys.grants(tenant, TestTokens.MEMBERSHIP_ID, 1));
+        } finally {
+            release.countDown();
+        }
+        assertThat(awaitTask(blocker.id().toString()).get("status")).isEqualTo("SUCCEEDED");
+        assertThat(awaitTask(queued).get("status")).isEqualTo("SUCCEEDED");
+        assertThat(awaitTask(queued).get("rowCount")).isEqualTo(1);
+    }
+
+    @Autowired
+    DataPermission dataPermission;
+
+    @Test
+    void duplicateSelectableNamesAreReportedWithoutGuessing() throws Exception {
+        TestReferenceData.conflict(tenant);
+        TestReferenceData.referral(tenant, "enabled");
+        var task = awaitTask(submitImport(uploadWorkbook(new String[][] {{"重名", "1", "线上"}})));
+        assertThat(task.get("errorCode")).isEqualTo("io.validationFailed");
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .isEmpty();
+    }
+
+    @Test
+    void exportHonorsOwnDataScopeAndTranslatesDisabledNames() throws Exception {
+        UUID own = UUID.randomUUID();
+        TestGrants.publish(
+                redisTemplate,
+                tenant,
+                own,
+                1,
+                TestGrants.ALL_ORDER_PERMISSIONS,
+                SubjectAttributes.NONE,
+                List.of(DataScope.SELF));
+        exchangeAs(own, HttpMethod.POST, "/orders", Map.of("title", "本人的订单", "amount", 1));
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            orderService.create("其他成员看不到", new BigDecimal("5"), "referral");
+        }
+        String id = (String) ((Map<?, ?>) exchangeAs(own, HttpMethod.POST, "/orders/export", Map.of())
+                        .get("data"))
+                .get("id");
+        assertThat(awaitTask(own, id).get("rowCount")).isEqualTo(1);
+        var ticket = (Map<?, ?>) exchangeAs(own, HttpMethod.GET, "/io/tasks/" + id + "/download", null)
+                .get("data");
+        byte[] file = HTTP.send(
+                        HttpRequest.newBuilder(URI.create((String) ticket.get("url")))
+                                .build(),
+                        HttpResponse.BodyHandlers.ofByteArray())
+                .body();
+        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(file))) {
+            assertThat(workbook.getSheetAt(0).getLastRowNum()).isEqualTo(1);
+        }
+        // 以管理员提交时，停用项也按名称导出。
+        UUID admin = UUID.randomUUID();
+        TestGrants.publishAll(redisTemplate, tenant, admin);
+        var response = exchangeAs(admin, HttpMethod.POST, "/orders/export", Map.of());
+        String all = (String) ((Map<?, ?>) response.get("data")).get("id");
+        Map<?, ?> task = null;
+        for (int attempt = 0; attempt < 100; attempt++) {
+            task = (Map<?, ?>)
+                    exchangeAs(admin, HttpMethod.GET, "/io/tasks/" + all, null).get("data");
+            if ("SUCCEEDED".equals(task.get("status"))) break;
+            Thread.sleep(50);
+        }
+        assertThat(task.get("rowCount")).isEqualTo(2);
+        ticket = (Map<?, ?>) exchangeAs(admin, HttpMethod.GET, "/io/tasks/" + all + "/download", null)
+                .get("data");
+        file = HTTP.send(
+                        HttpRequest.newBuilder(URI.create((String) ticket.get("url")))
+                                .build(),
+                        HttpResponse.BodyHandlers.ofByteArray())
+                .body();
+        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(file))) {
+            var names = new ArrayList<String>();
+            for (var row : workbook.getSheetAt(0))
+                if (row.getRowNum() > 0) names.add(row.getCell(3).getStringCellValue());
+            assertThat(names).contains("转介绍");
+        }
+        assertThat(exchangeAs(admin, HttpMethod.GET, "/io/tasks/" + id, null).get("httpStatus"))
+                .isEqualTo(404);
+        assertThat(exchangeAs(admin, HttpMethod.GET, "/io/tasks/" + id + "/download", null)
+                        .get("httpStatus"))
+                .isEqualTo(404);
+    }
+
+    @Test
+    void exportFailsWhenQuotaOrRowLimitIsExceeded() throws Exception {
+        for (int i = 0; i < 4; i++) createOrder(tenant);
+        String id = (String) ((Map<?, ?>) exchange(tenant, HttpMethod.POST, "/orders/export", Map.of())
+                        .get("data"))
+                .get("id");
+        assertThat(awaitTask(id).get("errorCode")).isEqualTo("io.rowLimit");
+        tenant = UUID.randomUUID();
+        TestGrants.publishAll(redisTemplate, tenant, TestTokens.MEMBERSHIP_ID);
+        createOrder(tenant);
+        deliver(planChanged(0L, 1));
+        id = (String) ((Map<?, ?>) exchange(tenant, HttpMethod.POST, "/orders/export", Map.of())
+                        .get("data"))
+                .get("id");
+        assertThat(awaitTask(id).get("errorCode")).isEqualTo("storage.quotaExceeded");
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(storage.usage().usedBytes()).isZero();
+        }
+    }
+
+    @Test
+    void expiredResultsAreDeletedButTaskHistoryRemains() throws Exception {
+        createOrder(tenant);
+        String id = (String) ((Map<?, ?>) exchange(tenant, HttpMethod.POST, "/orders/export", Map.of())
+                        .get("data"))
+                .get("id");
+        assertThat(awaitTask(id).get("status")).isEqualTo("SUCCEEDED");
+        Thread.sleep(2200);
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            maintenance.expire();
+            assertThat(storage.usage().usedBytes()).isZero();
+        }
+        assertThat(exchange(tenant, HttpMethod.GET, "/io/tasks/" + id + "/download", null)
+                        .get("code"))
+                .isEqualTo("io.resultUnavailable");
+        assertThat(((Map<?, ?>) exchange(tenant, HttpMethod.GET, "/io/tasks/" + id, null)
+                                .get("data"))
+                        .get("status"))
+                .isEqualTo("SUCCEEDED");
+    }
+
+    @Test
+    @Sql("/fixtures/io-interrupted.sql")
+    void interruptedInstanceTasksAreFailedByGlobalRecovery() throws Exception {
+        tenant = UUID.fromString("019a0110-0000-7000-8000-000000000099");
+        TestGrants.publishAll(redisTemplate, tenant, TestTokens.MEMBERSHIP_ID);
+        asMember(() -> ioTasks.submit("EXPORT", null, "register recovery", progress -> null));
+        maintenance.interrupt();
+        var task = (Map<?, ?>) exchange(tenant, HttpMethod.GET, "/io/tasks/019a0110-0000-7000-8000-000000000098", null)
+                .get("data");
+        assertThat(task.get("status")).isEqualTo("FAILED");
+        assertThat(task.get("failureReason")).isEqualTo("执行中断，请重新提交");
+    }
+
+    @Test
+    void busyPoolKeepsQueuedTaskAliveAndRejectsExcessSubmissions() throws Exception {
+        var started = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        String first;
+        String second;
+        try {
+            first = asMember(() -> ioTasks.submit("EXPORT", null, "test", progress -> {
+                        started.countDown();
+                        release.await(5, TimeUnit.SECONDS);
+                        return null;
+                    }))
+                    .id()
+                    .toString();
+            assertThat(started.await(3, TimeUnit.SECONDS)).isTrue();
+            second = asMember(() -> ioTasks.submit("EXPORT", null, "test", progress -> null))
+                    .id()
+                    .toString();
+            assertThatThrownBy(() -> asMember(() -> ioTasks.submit("EXPORT", null, "test", progress -> null)))
+                    .isInstanceOfSatisfying(
+                            ForgeException.class,
+                            error -> assertThat(error.errorCode().code()).isEqualTo("io.busy"));
+            Thread.sleep(1200);
+            maintenance.interrupt();
+            assertThat(((Map<?, ?>) exchange(tenant, HttpMethod.GET, "/io/tasks/" + second, null)
+                                    .get("data"))
+                            .get("status"))
+                    .isEqualTo("WAITING");
+        } finally {
+            release.countDown();
+        }
+        assertThat(awaitTask(first).get("status")).isEqualTo("SUCCEEDED");
+        assertThat(awaitTask(second).get("status")).isEqualTo("SUCCEEDED");
+    }
+
+    @Test
+    void importOverLimitAndWriteFailureLeaveNoBusinessRows() throws Exception {
+        String source =
+                uploadWorkbook(new String[][] {{"a", "1", "线上"}, {"b", "1", "线上"}, {"c", "1", "线上"}, {"d", "1", "线上"}});
+        assertThat(awaitTask(submitImport(source)).get("errorCode")).isEqualTo("io.rowLimit");
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .isEmpty();
+        String rollback = uploadWorkbook(new String[][] {{"先写入", "1", "线上"}, {"写入失败", "2", "线上"}});
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            storage.completeUpload(UUID.fromString(rollback));
+        }
+        var task = asMember(() ->
+                excel.importFile(OrderImportRow.class, UUID.fromString(rollback), row -> List.of(), row -> {
+                    if (row.title().equals("写入失败")) throw new IllegalStateException("test rollback");
+                    orderService.create(row.title(), row.amount(), row.customerSource());
+                }));
+        assertThat(awaitTask(task.id().toString()).get("status")).isEqualTo("FAILED");
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .isEmpty();
+    }
+
+    @Autowired
+    OrderService orderService;
+
+    private <T> T asMember(Supplier<T> action) {
+        return asMemberVersion(1, action);
+    }
+
+    private <T> T asMemberVersion(long version, Supplier<T> action) {
+        var previous = SecurityContextHolder.getContext();
+        var context = SecurityContextHolder.createEmptyContext();
+        var jwt = Jwt.withTokenValue("test")
+                .header("alg", "RS256")
+                .subject(TestTokens.IDENTITY_ID.toString())
+                .claim("tenant_id", tenant.toString())
+                .claim("membership_id", TestTokens.MEMBERSHIP_ID.toString())
+                .claim("ver", version)
+                .build();
+        context.setAuthentication(new JwtAuthenticationToken(jwt));
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            SecurityContextHolder.setContext(context);
+            return action.get();
+        } finally {
+            SecurityContextHolder.setContext(previous);
+        }
+    }
+
+    @Test
+    void importMatchesNamesAndWritesAllRowsWhileInvalidNamesWriteNothing() throws Exception {
+        String object = uploadWorkbook(new String[][] {{"第一笔", "12.50", "线上"}, {"第二笔", "20", "展会"}});
+        var task = awaitTask(submitImport(object));
+        assertThat(task.get("status")).isEqualTo("SUCCEEDED");
+        var rows = (List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data");
+        assertThat(rows).hasSize(2);
+        assertThat(rows.stream().map(row -> (String) ((Map<?, ?>) row).get("customerSource")))
+                .containsExactlyInAnyOrder("online", "custom.fair");
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThatThrownBy(() -> storage.get(UUID.fromString(object))).isInstanceOf(ForgeException.class);
+        }
+        String invalid =
+                uploadWorkbook(new String[][] {{"本不应写入", "1", "线上"}, {"无效编码", "2", "online"}, {"无效名称", "3", "不存在"}});
+        var failed = awaitTask(submitImport(invalid));
+        assertThat(failed.get("status")).isEqualTo("FAILED");
+        assertThat(failed.get("errorCode")).isEqualTo("io.validationFailed");
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .hasSize(2);
+        var download = (Map<?, ?>) exchange(tenant, HttpMethod.GET, "/io/tasks/" + failed.get("id") + "/download", null)
+                .get("data");
+        byte[] report = HTTP.send(
+                        HttpRequest.newBuilder(URI.create((String) download.get("url")))
+                                .build(),
+                        HttpResponse.BodyHandlers.ofByteArray())
+                .body();
+        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(report))) {
+            assertThat(workbook.getSheetAt(0).getLastRowNum()).isEqualTo(3);
+            assertThat(workbook.getSheetAt(0).getRow(2).getCell(3).getStringCellValue())
+                    .contains("不是可选项名称");
+        }
+    }
+
+    private String uploadWorkbook(String[][] rows) throws Exception {
+        byte[] bytes;
+        try (var workbook = new XSSFWorkbook();
+                var output = new ByteArrayOutputStream()) {
+            var sheet = workbook.createSheet("订单");
+            var header = sheet.createRow(0);
+            String[] headers = {"标题 *", "金额 *", "客户来源"};
+            for (int i = 0; i < headers.length; i++) header.createCell(i).setCellValue(headers[i]);
+            for (int i = 0; i < rows.length; i++) {
+                var row = sheet.createRow(i + 1);
+                for (int c = 0; c < rows[i].length; c++) row.createCell(c).setCellValue(rows[i][c]);
+            }
+            workbook.write(output);
+            bytes = output.toByteArray();
+        }
+        var ticket = (Map<?, ?>) exchange(
+                        tenant,
+                        HttpMethod.POST,
+                        "/orders/import/upload",
+                        Map.of(
+                                "filename",
+                                "订单.xlsx",
+                                "contentType",
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                "size",
+                                bytes.length))
+                .get("data");
+        assertThat(put(ticket, bytes)).isEqualTo(200);
+        return (String) ticket.get("objectId");
+    }
+
+    private String submitImport(String object) throws Exception {
+        var response = exchange(tenant, HttpMethod.POST, "/orders/import", Map.of("objectId", object));
+        assertThat(response.get("httpStatus")).isEqualTo(201);
+        return (String) ((Map<?, ?>) response.get("data")).get("id");
+    }
+
+    private Map<?, ?> awaitTask(String id) throws Exception {
+        for (int attempt = 0; attempt < 200; attempt++) {
+            var task = (Map<?, ?>)
+                    exchange(tenant, HttpMethod.GET, "/io/tasks/" + id, null).get("data");
+            if (List.of("SUCCEEDED", "FAILED").contains(task.get("status"))) return task;
+            Thread.sleep(50);
+        }
+        throw new AssertionError("Task did not complete: " + id);
+    }
+
+    @Test
+    void importTemplateCanBeDownloaded() throws Exception {
+        var response = exchange(tenant, HttpMethod.GET, "/orders/import/template", null);
+        assertThat(response.get("httpStatus")).isEqualTo(200);
+        var data = (Map<?, ?>) response.get("data");
+        byte[] bytes = Base64.getDecoder().decode((String) data.get("base64"));
+        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            assertThat(workbook.getSheetAt(0).getRow(0).getCell(0).getStringCellValue())
+                    .isEqualTo("标题 *");
+            assertThat(workbook.getSheetAt(0).getDataValidations()).hasSize(1);
+            assertThat(workbook.getSheetAt(1).getRow(0).getCell(2).getStringCellValue())
+                    .isEqualTo("线上");
+        }
+    }
+
+    @Test
+    void orderExportRunsAsynchronouslyAndOnlyItsSubmitterCanSeeTheResult() throws Exception {
+        createOrder(tenant);
+        var submitted = exchange(tenant, HttpMethod.POST, "/orders/export", Map.of());
+        assertThat(submitted.get("httpStatus")).isEqualTo(201);
+        String id = (String) ((Map<?, ?>) submitted.get("data")).get("id");
+        Map<?, ?> task = null;
+        for (int attempt = 0; attempt < 100; attempt++) {
+            task = (Map<?, ?>)
+                    exchange(tenant, HttpMethod.GET, "/io/tasks/" + id, null).get("data");
+            if (List.of("SUCCEEDED", "FAILED").contains(task.get("status"))) break;
+            Thread.sleep(100);
+        }
+        assertThat(task.get("status")).isEqualTo("SUCCEEDED");
+        assertThat(task.get("rowCount")).isEqualTo(1);
+        assertThat(exchange(tenant, HttpMethod.GET, "/io/tasks/" + id + "/download", null)
+                        .get("code"))
+                .isEqualTo("ok");
+        UUID other = UUID.randomUUID();
+        TestGrants.publishAll(redisTemplate, other, TestTokens.MEMBERSHIP_ID);
+        assertThat(exchange(other, HttpMethod.GET, "/io/tasks/" + id, null).get("httpStatus"))
+                .isEqualTo(404);
+    }
+
+    @Test
+    void serverWrittenObjectCanBeStreamedAndDownloadedOnlyByItsTenant() throws Exception {
+        byte[] content = "服务端文件".getBytes(StandardCharsets.UTF_8);
+        UUID object;
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            object = storage.write(
+                            "导出.xlsx", "application/octet-stream", content.length, new ByteArrayInputStream(content))
+                    .id();
+            try (var input = storage.open(object)) {
+                assertThat(input.readAllBytes()).isEqualTo(content);
+            }
+            var ticket = storage.prepareDownload(object);
+            assertThat(HTTP.send(HttpRequest.newBuilder(ticket.url()).build(), HttpResponse.BodyHandlers.ofByteArray())
+                            .body())
+                    .isEqualTo(content);
+        }
+        try (var ignored = CurrentTenant.bind(UUID.randomUUID())) {
+            assertThatThrownBy(() -> storage.open(object))
+                    .isInstanceOfSatisfying(
+                            ForgeException.class,
+                            error -> assertThat(error.errorCode()).isEqualTo(StorageErrorCode.OBJECT_NOT_FOUND));
+        }
     }
 
     @Test
@@ -406,5 +861,25 @@ class ObjectStorageTest {
                     .isEqualTo(response.getStatusCode().value());
             return envelope;
         });
+    }
+
+    private Map<String, Object> exchangeAs(UUID member, HttpMethod method, String path, Object body) throws Exception {
+        var request = RestClient.create("http://localhost:" + port)
+                .method(method)
+                .uri(path)
+                .header("Authorization", "Bearer " + TestTokens.forMembership(tenant, member));
+        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        return request.exchange(
+                (req, response) -> response.bodyTo(new ParameterizedTypeReference<Map<String, Object>>() {}));
+    }
+
+    private Map<?, ?> awaitTask(UUID member, String id) throws Exception {
+        for (int attempt = 0; attempt < 200; attempt++) {
+            var task = (Map<?, ?>)
+                    exchangeAs(member, HttpMethod.GET, "/io/tasks/" + id, null).get("data");
+            if (List.of("SUCCEEDED", "FAILED").contains(task.get("status"))) return task;
+            Thread.sleep(50);
+        }
+        throw new AssertionError("Task did not finish");
     }
 }

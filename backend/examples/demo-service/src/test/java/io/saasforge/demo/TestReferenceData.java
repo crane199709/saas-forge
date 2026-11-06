@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -20,6 +21,12 @@ final class TestReferenceData {
     private static final Map<UUID, String> REFERRAL = new ConcurrentHashMap<>();
     private static final Map<UUID, Duration> AUTO_CLOSE = new ConcurrentHashMap<>();
     private static final Map<UUID, Integer> FAILURES = new ConcurrentHashMap<>();
+    private static final Set<UUID> CONFLICTS = ConcurrentHashMap.newKeySet();
+
+    static void conflict(UUID tenant) {
+        CONFLICTS.add(tenant);
+    }
+
     private static volatile List<UUID> tenants = List.of();
     private static final HttpServer IAM;
 
@@ -34,8 +41,9 @@ final class TestReferenceData {
                 int status = authorized ? FAILURES.getOrDefault(tenant, 200) : 401;
                 byte[] body = (status == 200
                                 ? body(
-                                        REFERRAL.getOrDefault(tenant, "disabled"),
-                                        AUTO_CLOSE.getOrDefault(tenant, Duration.ofMinutes(30)))
+                                                REFERRAL.getOrDefault(tenant, "disabled"),
+                                                AUTO_CLOSE.getOrDefault(tenant, Duration.ofMinutes(30)))
+                                        .replace("\"转介绍\"", CONFLICTS.contains(tenant) ? "\"线上\"" : "\"转介绍\"")
                                 : "{}")
                         .getBytes(StandardCharsets.UTF_8);
                 exchange.getResponseHeaders().add("Content-Type", "application/json");

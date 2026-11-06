@@ -24,6 +24,7 @@
         <module>forge-sdk-provisioning</module>
         <module>forge-sdk-audit</module>
         <module>forge-sdk-storage</module>
+        <module>forge-sdk-io</module>
         <module>forge-sdk-numbering</module>
         <module>forge-sdk-referencedata</module>
         <module>forge-sdk-openapi</module>

@@ -51,6 +51,29 @@ public final class DataPermission {
     private final Map<String, DataResourceDefinition> byTable;
     private final MembershipGrantStore grants;
     private final Map<String, Expression> parsed = new ConcurrentHashMap<>();
+    private final ThreadLocal<Subject> capturedSubject = new ThreadLocal<>();
+
+    /**
+     * 捕获提交时的主体属性、环境与 Data Policy，在异步任务中使用同一授权快照。
+     * 调用方仍须传递租户与认证上下文；结束时恢复线程原状态，避免线程池串用身份。
+     *
+     * @param task 异步任务
+     * @return 使用提交时数据范围执行的任务
+     */
+    public Runnable wrap(Runnable task) {
+        Subject snapshot = currentSubjectOf();
+        return () -> {
+            Subject previous = capturedSubject.get();
+            try {
+                if (snapshot == null) capturedSubject.remove();
+                else capturedSubject.set(snapshot);
+                task.run();
+            } finally {
+                if (previous == null) capturedSubject.remove();
+                else capturedSubject.set(previous);
+            }
+        };
+    }
 
     /**
      * 创建数据权限。
@@ -121,6 +144,8 @@ public final class DataPermission {
      * @throws IllegalStateException 已认证请求但服务没有明细来源（未配置 Redis）：以 500 暴露配置错误，不静默放行
      */
     Subject currentSubjectOf() {
+        Subject snapshot = capturedSubject.get();
+        if (snapshot != null) return snapshot;
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken jwt)) return null;
         if (grants == null) throw new IllegalStateException("Data permissions require Redis for grants");

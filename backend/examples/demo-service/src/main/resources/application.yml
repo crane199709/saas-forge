@@ -36,7 +36,7 @@ forge:
   # 启动时向 iam 上报 Resource Manifest；改动权限码、名称、菜单、角色模板或 Data Resource 时升级 version。iam-uri 是直连 iam 的内部地址，
   # token 须与 iam forge.iam.manifest.tokens.demo-service 一致
   manifest:
-    version: 6
+    version: 7
     iam-uri: http://localhost:8101
     token: ${FORGE_DEMO_MANIFEST_TOKEN:local-demo-manifest-token}
   # 从 iam 内部接口读取租户生效的字典与参数，令牌与清单上报相同（iam 按服务识别）；缓存过期时间缺省 10 分钟
