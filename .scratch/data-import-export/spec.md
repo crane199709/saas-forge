@@ -1,6 +1,6 @@
 # 导入导出规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准（「导入导出」一节）。本规格的决策经 2026-11-04 的设计拷问逐条确认（Q57–Q71），未单独记录 ADR。依赖 [reference-data](../reference-data/spec.md)（字典校验与名称）与 [tenant-scheduling](../tenant-scheduling/spec.md)（中断任务收尾、结果文件清理）。
 
@@ -76,3 +76,14 @@ B 端业务普遍需要 Excel 批量导入与导出，SDK 目前只有对象存�
 - 订单导出带 Data Policy：导出范围与列表一致；字典列输出名称。
 - 他人无法查看或下载任务结果；配额不足时导出失败；线程池满时提交返回 `io.busy`。
 - 实例中断后心跳超时的任务被标记为失败；结果文件到期后被删除。
+
+## 实现与验收
+
+5 个工单已实现，含 SDK、业务服务迁移、订单接口、前端组件与示例页面。实现约定及库选择见各工单 Answer 和 docs/business-service-guide.md。
+
+验证：
+
+- 后端执行完整 `./mvnw -o verify`；发现旧权限清单断言固定为 4 项，更新为含导入/导出的 6 项，并验证只读成员被拒后，从 `demo-service` 续跑完成；所有模块通过，含架构、格式、数据库、S3 与 RocketMQ 测试。IO 公开边界 20 项回归通过。
+- 前端 `pnpm test` 共 238 项通过，`pnpm typecheck` 与 `pnpm build:spike` 通过。
+- Playwright 完整 20 项通过。Browser 插件不可用，项目所需 Chromium 未安装，使用本机 Chrome；新增浏览器用例使用模拟接口，真实后端行为由集成测试覆盖，未运行部署主流程。
+- 两轴审查：规范 1 项、需求 3 项发现均已修复并复核，无遗留发现。修正包含后台标准列系统身份、逐行类型转换错误报告、已完成任务的源文件清理、按事务合并 Outbox 唤醒。

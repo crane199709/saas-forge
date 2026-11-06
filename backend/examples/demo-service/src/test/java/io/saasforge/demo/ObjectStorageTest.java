@@ -7,15 +7,18 @@ import io.saasforge.demo.order.model.OrderImportRow;
 import io.saasforge.demo.order.service.OrderService;
 import io.saasforge.sdk.abac.DataScope;
 import io.saasforge.sdk.abac.data.DataPermission;
+import io.saasforge.sdk.core.CurrentActorProvider;
 import io.saasforge.sdk.core.CurrentTenant;
 import io.saasforge.sdk.core.MembershipStateKeys;
 import io.saasforge.sdk.core.SubjectAttributes;
 import io.saasforge.sdk.core.api.ForgeException;
+import io.saasforge.sdk.io.ExcelColumn;
 import io.saasforge.sdk.io.ExcelIo;
 import io.saasforge.sdk.io.IoMaintenance;
 import io.saasforge.sdk.io.IoTasks;
 import io.saasforge.sdk.mq.EventHandler;
 import io.saasforge.sdk.provisioning.TenantPlanChanged;
+import io.saasforge.sdk.security.TenantContext;
 import io.saasforge.sdk.storage.ObjectStorage;
 import io.saasforge.sdk.storage.StorageErrorCode;
 import java.io.ByteArrayInputStream;
@@ -28,6 +31,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -149,6 +153,45 @@ class ObjectStorageTest {
     void newTenant() {
         tenant = UUID.randomUUID();
         TestGrants.publishAll(redisTemplate, tenant, TestTokens.MEMBERSHIP_ID);
+    }
+
+    @Autowired
+    CurrentActorProvider actors;
+
+    @Test
+    void backgroundTaskKeepsMembershipWhileStandardColumnsUseSystemActor() throws Exception {
+        var task = asMember(() -> ioTasks.submit("EXPORT", null, "actor semantics", progress -> {
+            assertThat(TenantContext.current().membershipId()).isEqualTo(TestTokens.MEMBERSHIP_ID);
+            assertThat(actors.currentActor()).isEmpty();
+            return null;
+        }));
+        assertThat(awaitTask(task.id().toString()).get("status")).isEqualTo("SUCCEEDED");
+    }
+
+    public record TypedImportRow(
+            @ExcelColumn(value = "标题", order = 0, required = true)
+            Integer title,
+
+            @ExcelColumn(value = "金额", order = 1, required = true)
+            LocalDate amount,
+
+            @ExcelColumn(value = "客户来源", order = 2) String customerSource) {}
+
+    @Test
+    void integerOverflowAndInvalidDateBecomeRowErrors() throws Exception {
+        String source =
+                uploadWorkbook(new String[][] {{"1.5", "2026-99-99", ""}, {"99999999999999999", "2026-11-07", ""}});
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            storage.completeUpload(UUID.fromString(source));
+        }
+        var task = asMember(
+                () -> excel.importFile(TypedImportRow.class, UUID.fromString(source), row -> List.of(), row -> {
+                    throw new AssertionError("Invalid rows must not be written");
+                }));
+        assertThat(awaitTask(task.id().toString()).get("errorCode")).isEqualTo("io.validationFailed");
+        assertThat(exchange(tenant, HttpMethod.GET, "/io/tasks/" + task.id() + "/download", null)
+                        .get("code"))
+                .isEqualTo("ok");
     }
 
     @Test
@@ -410,7 +453,7 @@ class ObjectStorageTest {
                 .claim("membership_id", TestTokens.MEMBERSHIP_ID.toString())
                 .claim("ver", version)
                 .build();
-        context.setAuthentication(new JwtAuthenticationToken(jwt));
+        context.setAuthentication(new JwtAuthenticationToken(jwt, List.of()));
         try (var ignored = CurrentTenant.bind(tenant)) {
             SecurityContextHolder.setContext(context);
             return action.get();

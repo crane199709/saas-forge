@@ -16,12 +16,13 @@ public final class JwtCurrentActorProvider implements CurrentActorProvider {
     /**
      * 读取当前线程的认证信息。
      *
-     * @return 已认证 {@link JwtAuthenticationToken} 的 {@code sub}；不存在或未认证时为空
+     * @return 已认证请求的 {@code sub}；不存在、未认证或后台授权身份时为空
      */
     @Override
     public Optional<UUID> currentActor() {
         if (SecurityContextHolder.getContext().getAuthentication() instanceof JwtAuthenticationToken authentication
-                && authentication.isAuthenticated()) {
+                && authentication.isAuthenticated()
+                && !(authentication instanceof BackgroundJwtAuthentication)) {
             return Optional.of(UUID.fromString(authentication.getToken().getSubject()));
         }
         return Optional.empty();

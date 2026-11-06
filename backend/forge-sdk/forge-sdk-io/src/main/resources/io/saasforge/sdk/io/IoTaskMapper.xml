@@ -14,4 +14,6 @@
 <update id="interrupt">UPDATE forge_io_task SET status='FAILED',error_code='io.interrupted',failure_reason='执行中断，请重新提交',finished_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,updated_by=NULL WHERE NOT deleted AND status IN ('WAITING','RUNNING') AND heartbeat_at &lt; #{cutoff}</update>
 <select id="expired" resultType="io.saasforge.sdk.io.IoTask">SELECT <include refid="columns"/> FROM forge_io_task WHERE NOT deleted AND result_object_id IS NOT NULL AND finished_at &lt; #{cutoff} ORDER BY id LIMIT 100</select>
 <update id="clearResult">UPDATE forge_io_task SET result_object_id=NULL,updated_at=CURRENT_TIMESTAMP,updated_by=NULL WHERE NOT deleted AND id=#{id}</update>
+<select id="completedSources" resultType="io.saasforge.sdk.io.IoRecoveryTask">SELECT id,type,source_object_id,created_by,row_count,query_summary FROM forge_io_task WHERE NOT deleted AND status IN ('SUCCEEDED','FAILED') AND source_object_id IS NOT NULL ORDER BY id LIMIT 100</select>
+<update id="clearSource">UPDATE forge_io_task SET source_object_id=NULL,updated_at=CURRENT_TIMESTAMP,updated_by=NULL WHERE NOT deleted AND id=#{id}</update>
 </mapper>

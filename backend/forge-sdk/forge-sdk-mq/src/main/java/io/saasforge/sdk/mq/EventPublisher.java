@@ -51,11 +51,22 @@ public final class EventPublisher {
         UUID tenantId = CurrentTenant.find().orElse(null);
         mapper.insert(
                 UuidV7.generate(), tenantId, topic, event.getClass().getSimpleName(), json.writeValueAsString(event));
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                afterCommit.run();
-            }
-        });
+        // 批量导入可能在一个事务中发布上万条事件；只保留一次唤醒，不能为每行累计提交回调。
+        boolean registered = TransactionSynchronizationManager.getSynchronizations().stream()
+                .anyMatch(sync -> sync instanceof OutboxWakeup wakeup && wakeup.publisher == this);
+        if (!registered) TransactionSynchronizationManager.registerSynchronization(new OutboxWakeup(this));
+    }
+
+    private static final class OutboxWakeup implements TransactionSynchronization {
+        private final EventPublisher publisher;
+
+        private OutboxWakeup(EventPublisher publisher) {
+            this.publisher = publisher;
+        }
+
+        @Override
+        public void afterCommit() {
+            publisher.afterCommit.run();
+        }
     }
 }

@@ -8,6 +8,7 @@ import io.saasforge.sdk.audit.AuditRecorder;
 import io.saasforge.sdk.core.CurrentTenant;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
+import io.saasforge.sdk.security.BackgroundJwtAuthentication;
 import io.saasforge.sdk.security.TenantContext;
 import io.saasforge.sdk.storage.DownloadTicket;
 import io.saasforge.sdk.storage.ObjectStorage;
@@ -30,6 +31,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /** 本服务的异步任务入口；仅接收已认证 Membership 的提交，不使用 MQ 或自动重试。 */
@@ -103,7 +105,8 @@ public final class IoTasks implements AutoCloseable {
         if (!List.of("IMPORT", "EXPORT").contains(type)) throw new IllegalArgumentException("Unknown IO type");
         TenantContext owner = TenantContext.current();
         if (!owner.tenantId().equals(CurrentTenant.require())) throw new IllegalStateException("Tenant mismatch");
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        var authentication = new BackgroundJwtAuthentication(
+                (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication());
         var locale = LocaleContextHolder.getLocale();
         UUID id = UuidV7.generate();
         var progress = new Progress();
@@ -142,24 +145,25 @@ public final class IoTasks implements AutoCloseable {
         UUID result = null;
         String code = IoErrorCode.FAILED.code();
         try {
-            if (mapper.start(id, owner.identityId()) != 1) return;
+            if (mapper.start(id, null) != 1) return;
             result = work.execute(progress);
             code = progress.errorCode;
         } catch (Exception error) {
             LOG.warn("IO task {} failed", id, error);
             code = error instanceof ForgeException forge ? forge.errorCode().code() : IoErrorCode.FAILED.code();
         } finally {
-            pending.remove(id);
             try {
-                if (source != null) TenantWriteGuard.exempt(() -> storage.delete(source));
+                if (source != null)
+                    TenantWriteGuard.exempt(() -> transaction.executeWithoutResult(status -> {
+                        storage.delete(source);
+                        mapper.clearSource(id);
+                    }));
             } catch (ForgeException error) {
                 if (!"storage.objectNotFound".equals(error.errorCode().code())) {
                     LOG.warn("Could not delete import source {}", source, error);
-                    if (code == null) code = IoErrorCode.FAILED.code();
                 }
             } catch (RuntimeException error) {
                 LOG.warn("Could not delete import source {}", source, error);
-                if (code == null) code = IoErrorCode.FAILED.code();
             }
             try {
                 String reason = code == null
@@ -175,7 +179,7 @@ public final class IoTasks implements AutoCloseable {
                         finalCode,
                         reason,
                         finalResult,
-                        owner.identityId())));
+                        null)));
                 int changed = changedHolder.get();
                 if (changed == 0 && result != null) storage.delete(result);
                 var event = AuditEvent.builder(
@@ -190,6 +194,7 @@ public final class IoTasks implements AutoCloseable {
                 if (code != null) event.failure(code);
                 audit.record(event.build());
             } finally {
+                pending.remove(id);
                 slots.release();
             }
         }

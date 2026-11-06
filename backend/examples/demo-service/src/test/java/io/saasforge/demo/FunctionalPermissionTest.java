@@ -71,6 +71,19 @@ class FunctionalPermissionTest {
                 .value();
         assertThat(created).isEqualTo(403);
 
+        assertThat(get("/orders/import/template", READER).getStatusCode().value())
+                .isEqualTo(403);
+        assertThat(client(READER)
+                        .post()
+                        .uri("/orders/export")
+                        .body(Map.of())
+                        .retrieve()
+                        .onStatus(HttpStatusCode::isError, (request, response) -> {})
+                        .toBodilessEntity()
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(403);
+
         // 未声明权限码的接口只要求已认证。
         assertThat(get("/context", OUTSIDER).getStatusCode().value()).isEqualTo(200);
     }
@@ -84,6 +97,8 @@ class FunctionalPermissionTest {
                 .containsExactly(
                         new Permission("order:create", "创建订单", "订单"),
                         new Permission("order:delete", "删除订单", "订单"),
+                        new Permission("order:export", "导出订单", "订单"),
+                        new Permission("order:import", "导入订单", "订单"),
                         new Permission("order:read", "查看订单", "订单"),
                         new Permission("order:update", "修改订单", "订单"));
         var leaf = manifest.menus().get(0).children().get(0);

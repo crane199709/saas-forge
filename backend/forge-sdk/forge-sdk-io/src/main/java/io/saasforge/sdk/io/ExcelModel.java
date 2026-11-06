@@ -6,6 +6,7 @@ import io.saasforge.sdk.referencedata.TenantDictionaryItem;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -113,14 +114,14 @@ final class ExcelModel<T> {
             }
             try {
                 args[column.index] = convert(value, column.component.getType());
-            } catch (IllegalArgumentException error) {
+            } catch (IllegalArgumentException | ArithmeticException | DateTimeException error) {
                 errors.add(column.annotation.value() + "：格式不正确");
             }
         }
         if (!errors.isEmpty()) return null;
         try {
             return constructor.newInstance(args);
-        } catch (ReflectiveOperationException error) {
+        } catch (ReflectiveOperationException | IllegalArgumentException error) {
             errors.add("数据格式不正确");
             return null;
         }

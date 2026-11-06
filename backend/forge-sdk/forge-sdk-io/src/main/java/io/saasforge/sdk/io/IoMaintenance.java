@@ -52,7 +52,10 @@ public final class IoMaintenance {
                 .scan(tasks.tenantKey(), ScanOptions.scanOptions().count(100).build())) {
             tenants.forEachRemaining(tenant -> CurrentTenant.run(UUID.fromString(tenant), () -> {
                 try {
-                    TenantWriteGuard.exempt(this::interruptTenant);
+                    TenantWriteGuard.exempt(() -> {
+                        interruptTenant();
+                        cleanSources();
+                    });
                 } catch (RuntimeException error) {
                     LOG.warn("IO recovery failed for tenant {}", tenant, error);
                 }
@@ -66,7 +69,10 @@ public final class IoMaintenance {
             var stale = mapper.staleTasks(cutoff);
             mapper.interrupt(cutoff);
             for (var task : stale) {
-                if (task.sourceObjectId() != null) delete(task.sourceObjectId());
+                if (task.sourceObjectId() != null) {
+                    delete(task.sourceObjectId());
+                    mapper.clearSource(task.id());
+                }
                 audit.record(AuditEvent.builder(
                                 AuditRealm.TENANT,
                                 AuditCategory.OPERATION,
@@ -80,6 +86,15 @@ public final class IoMaintenance {
                         .build());
             }
         });
+    }
+
+    private void cleanSources() {
+        for (var task : mapper.completedSources()) {
+            transaction.executeWithoutResult(status -> {
+                delete(task.sourceObjectId());
+                mapper.clearSource(task.id());
+            });
+        }
     }
     /** 删除过期结果，任务记录保留；分批处理避免把任务历史整体加载。 */
     @TenantTask(name = "forge-io-expired-results", fixedDelay = "1h")

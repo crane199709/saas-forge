@@ -42,4 +42,8 @@ interface IoTaskMapper {
     List<IoTask> expired(@Param("cutoff") OffsetDateTime cutoff);
     /** 删除结果登记引用，保留任务；不受 Data Policy 过滤。 */
     void clearResult(@Param("id") UUID id);
+    /** 查出已完成但源文件尚未清理的任务；不受 Data Policy 过滤。 */
+    List<IoRecoveryTask> completedSources();
+    /** 确认源文件清理完成；不受 Data Policy 过滤。 */
+    void clearSource(@Param("id") UUID id);
 }
