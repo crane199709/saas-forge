@@ -22,6 +22,11 @@ final class SharedContainers {
 
     private SharedContainers() {}
 
+    /** 部署用的初始化脚本目录。forge-iam 的测试 JVM 工作目录是按 fork 隔离的（见 pom），因此从模块目录定位；IDE 里没有 basedir，工作目录就是模块目录。 */
+    static MountableFile postgresInitScripts() {
+        return MountableFile.forHostPath(System.getProperty("basedir", ".") + "/../../deploy/postgres/init");
+    }
+
     /** 为调用的测试类新建一个已执行初始化脚本的数据库。 */
     static Postgres postgres() {
         String name = "forge_" + DATABASES.incrementAndGet();
@@ -82,8 +87,7 @@ final class SharedContainers {
     private static final class PostgresHolder {
         static final PostgreSQLContainer CONTAINER = new PostgreSQLContainer("postgres:17-alpine")
                 .withDatabaseName("forge")
-                .withCopyFileToContainer(
-                        MountableFile.forHostPath("../../deploy/postgres/init"), "/docker-entrypoint-initdb.d/");
+                .withCopyFileToContainer(postgresInitScripts(), "/docker-entrypoint-initdb.d/");
 
         static {
             CONTAINER.start();
