@@ -12,7 +12,11 @@
     <name>${serviceName}</name>
     <description>基于 Forge SDK 的 Business Service</description>
 
-    <properties><java.version>17</java.version></properties>
+    <properties>
+        <java.version>17</java.version>
+        <!-- 测试类按 2 个 JVM 并行，每个 JVM 共享一套容器（见 SharedContainers）；可用 -DforkCount 调整。 -->
+        <forkCount>2</forkCount>
+    </properties>
 
     <dependencies>
         <dependency>

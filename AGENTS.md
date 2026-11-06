@@ -27,3 +27,10 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/ag
 - 注释写「为什么」，不设占比指标，SDK public API 与 Mapper 方法必须有文档注释。
 
 完整规则见 `docs/agents/coding-standards.md`。
+
+## 测试
+
+- 集成测试不自行声明 PostgreSQL、Redis 容器：forge-platform 继承 `PlatformIntegrationTest`（共享容器与 Spring 上下文，测试类共用一个库，不能假设库中只有本类数据）；其他模块用模块内的 `SharedContainers`（共享容器，每个测试类独立建库、独立 Redis 库，属性注册须带 `spring.data.redis.database`）。模块只有一个测试类用容器、或容器只有一个类用到（如 RocketMQ、S3）时，可留在类内。
+- 用容器的模块默认 `forkCount=2`，可用 `-DforkCount=N` 调整。
+- 迭代时用 `./mvnw -o -pl <模块> test -Dtest=<测试类>` 只跑受影响的测试；模块全量只在交付前跑一次。
+- 本地 `~/.m2` 中的 SDK 制品可能落后于源码，单模块测试前先执行 `./mvnw -o -pl <模块> -am install -DskipTests`。

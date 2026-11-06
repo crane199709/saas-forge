@@ -32,18 +32,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.MountableFile;
 
 /**
  * Business Number（字典、参数与编号规格第 5 节）：在业务事务内加锁递增，连续不跳号，日期段与计数周期按 Business Time Zone 计算。
  *
  * <p>测试配置的 Business Time Zone 为 {@code Asia/Shanghai}；时钟由测试控制，以便跨越计数周期。
  */
-@Testcontainers
 @SpringBootTest
 @Import(BusinessNumberTest.Clocks.class)
 class BusinessNumberTest {
@@ -52,20 +46,16 @@ class BusinessNumberTest {
     // 北京时间 2026-11-04 10:00
     static final Instant MORNING = Instant.parse("2026-11-04T02:00:00Z");
 
-    @Container
-    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
-            .withDatabaseName("forge")
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath("../../../deploy/postgres/init"), "/docker-entrypoint-initdb.d/");
+    static final SharedContainers.Postgres postgres = SharedContainers.postgres();
 
-    @Container
-    static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+    static final SharedContainers.Redis redis = SharedContainers.redis();
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        registry.add("spring.data.redis.database", redis::database);
         TestTokens.register(registry);
     }
 

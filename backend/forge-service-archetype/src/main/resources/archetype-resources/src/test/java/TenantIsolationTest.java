@@ -36,18 +36,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.RestClient;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.MountableFile;
 
 /**
  * 两道防线分别验证：经 SDK 的业务接口按 Token 中的 Active Tenant 隔离；绕过 SDK 直接执行 SQL 时 RLS 仍然隔离。
  *
  * <p>绕过场景必须用原生 JDBC 才能模拟「有人不经 MyBatis-Plus 执行 SQL」，因此这里是编码规范中原生 JDBC 禁令的测试例外。
  */
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class TenantIsolationTest {
     static final UUID TENANT_A = UUID.fromString("019a0110-0000-7000-8000-0000000000aa");
@@ -56,20 +50,16 @@ class TenantIsolationTest {
     static final UUID MEMBERSHIP_B = UUID.fromString("019a0110-0000-7000-8000-0000000000b1");
     static final PageQuery FIRST_PAGE = new PageQuery(1, PageQuery.MAX_SIZE, List.of());
 
-    @Container
-    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
-            .withDatabaseName("forge")
-            .withCopyFileToContainer(
-                    MountableFile.forClasspathResource("postgres"), "/docker-entrypoint-initdb.d/");
+    static final SharedContainers.Postgres postgres = SharedContainers.postgres();
 
-    @Container
-    static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+    static final SharedContainers.Redis redis = SharedContainers.redis();
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        registry.add("spring.data.redis.database", redis::database);
         TestTokens.register(registry);
     }
 

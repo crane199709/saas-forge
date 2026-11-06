@@ -16,12 +16,8 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /** Platform Realm 服务上的 {@code @RequiresPermission} 按当前 Operator 当前版本的平台角色明细判断（工单 22）。 */
-@Testcontainers
 @SpringBootTest(
         properties = {
             "forge.security.realm=platform",
@@ -30,13 +26,13 @@ import org.testcontainers.junit.jupiter.Testcontainers;
         })
 @AutoConfigureMockMvc
 class PlatformRequiresPermissionTest {
-    @Container
-    static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+    static final SharedContainers.Redis redis = SharedContainers.redis();
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        registry.add("spring.data.redis.database", redis::database);
     }
 
     @Autowired

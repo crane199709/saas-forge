@@ -44,9 +44,6 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -61,7 +58,6 @@ import tools.jackson.databind.json.JsonMapper;
             "spring.cloud.gateway.server.webflux.routes[0].id=demo",
                     "spring.cloud.gateway.server.webflux.routes[0].predicates[0]=Path=/orders/**"
         })
-@Testcontainers
 class GatewaySecurityTest {
     static final String ISSUER = "http://tenant-realm.test";
     static final String PLATFORM_ISSUER = "http://platform-realm.test";
@@ -73,8 +69,7 @@ class GatewaySecurityTest {
     static final JsonMapper JSON = JsonMapper.builder().build();
     static final AtomicReference<String> RECEIVED_TRACEPARENT = new AtomicReference<>();
 
-    @Container
-    static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+    static final SharedContainers.Redis redis = SharedContainers.redis();
 
     static final RSAKey KEY;
     static final RSAKey PLATFORM_KEY;
@@ -134,6 +129,7 @@ class GatewaySecurityTest {
         registry.add("spring.cloud.gateway.server.webflux.routes[3].uri", () -> downstream);
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        registry.add("spring.data.redis.database", redis::database);
         registry.add("forge.security.issuer", () -> ISSUER);
         registry.add("forge.security.jwk-set-uri", () -> downstream + "/jwks");
         registry.add("forge.security.platform.issuer", () -> PLATFORM_ISSUER);

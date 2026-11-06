@@ -33,9 +33,6 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.RestClient;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -49,15 +46,13 @@ import tools.jackson.databind.json.JsonMapper;
             "forge.gateway.services[0].prefix=/orders",
             "forge.gateway.services[0].realm=tenant"
         })
-@Testcontainers
 class TenantRateLimitTest {
     static final String ISSUER = "http://tenant-realm.test";
     static final UUID NOISY_TENANT = UUID.fromString("019a0110-0000-7000-8000-00000000000a");
     static final UUID QUIET_TENANT = UUID.fromString("019a0110-0000-7000-8000-00000000000b");
     static final UUID MEMBERSHIP_ID = UUID.fromString("019a0110-0000-7000-8000-000000000003");
 
-    @Container
-    static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+    static final SharedContainers.Redis redis = SharedContainers.redis();
 
     static final RSAKey KEY;
     // 同时充当 JWKS 端点与下游业务服务
@@ -84,6 +79,7 @@ class TenantRateLimitTest {
         registry.add("spring.cloud.gateway.server.webflux.routes[0].uri", () -> downstream);
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        registry.add("spring.data.redis.database", redis::database);
         registry.add("forge.security.issuer", () -> ISSUER);
         registry.add("forge.security.jwk-set-uri", () -> downstream + "/jwks");
     }

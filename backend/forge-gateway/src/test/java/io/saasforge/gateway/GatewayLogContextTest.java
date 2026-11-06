@@ -36,9 +36,6 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -46,15 +43,13 @@ import reactor.core.scheduler.Schedulers;
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"spring.cloud.nacos.config.enabled=false", "spring.cloud.nacos.discovery.enabled=false"})
-@Testcontainers
 @ExtendWith(OutputCaptureExtension.class)
 class GatewayLogContextTest {
     static final String ISSUER = "http://tenant-realm.test";
     static final UUID TENANT_ID = UUID.fromString("019a0110-0000-7000-8000-00000000000c");
     static final UUID MEMBERSHIP_ID = UUID.fromString("019a0110-0000-7000-8000-00000000000d");
 
-    @Container
-    static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+    static final SharedContainers.Redis redis = SharedContainers.redis();
 
     static final RSAKey KEY;
     static final HttpServer JWKS;
@@ -85,6 +80,7 @@ class GatewayLogContextTest {
         registry.add("spring.cloud.gateway.server.webflux.routes[0].uri", () -> "http://127.0.0.1:1");
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        registry.add("spring.data.redis.database", redis::database);
         registry.add("forge.security.issuer", () -> ISSUER);
         registry.add(
                 "forge.security.jwk-set-uri",

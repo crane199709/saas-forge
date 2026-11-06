@@ -18,26 +18,22 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers
 class MembershipGrantStoreTest {
     static final UUID IDENTITY_ID = UUID.fromString("019a0110-0000-7000-8000-000000000002");
     static final UUID TENANT_ID = UUID.fromString("019a0110-0000-7000-8000-000000000001");
     static final UUID MEMBERSHIP_ID = UUID.fromString("019a0110-0000-7000-8000-000000000003");
 
-    @Container
-    static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+    static final SharedContainers.Redis redis = SharedContainers.redis();
 
     static LettuceConnectionFactory factory;
     static StringRedisTemplate template;
 
     @BeforeAll
     static void connect() {
-        factory = new LettuceConnectionFactory(
-                new RedisStandaloneConfiguration(redis.getHost(), redis.getMappedPort(6379)));
+        var configuration = new RedisStandaloneConfiguration(redis.getHost(), redis.getMappedPort(6379));
+        configuration.setDatabase(redis.database());
+        factory = new LettuceConnectionFactory(configuration);
         factory.afterPropertiesSet();
         template = new StringRedisTemplate(factory);
     }
