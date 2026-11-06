@@ -162,13 +162,14 @@ class OrderAutoCloseTest {
                 .timer();
         long completed = timer == null ? 0 : timer.count();
         scheduler.trigger.run();
-        Awaitility.await()
-                .atMost(Duration.ofSeconds(10))
-                .untilAsserted(() -> assertThat(metrics.get("forge.task.duration")
-                                .tag("name", "order.auto-close")
-                                .timer()
-                                .count())
-                        .isEqualTo(completed + 1));
+        Awaitility.await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            // 计时器在任务结束时才注册，首次执行尚未完成时应继续等待。
+            var completedTimer = metrics.find("forge.task.duration")
+                    .tag("name", "order.auto-close")
+                    .timer();
+            assertThat(completedTimer).isNotNull();
+            assertThat(completedTimer.count()).isEqualTo(completed + 1);
+        });
     }
 
     private Audit audit(UUID tenant, UUID id) {

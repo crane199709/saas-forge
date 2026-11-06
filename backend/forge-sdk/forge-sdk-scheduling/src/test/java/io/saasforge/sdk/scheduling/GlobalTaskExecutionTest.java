@@ -228,11 +228,11 @@ class GlobalTaskExecutionTest {
         runner(scheduler, metrics, task).run(context -> {
             scheduler.fire();
             Awaitility.await().atMost(Duration.ofSeconds(3)).untilAsserted(() -> {
-                assertThat(metrics.get("forge.task.duration")
-                                .tag("name", "failing")
-                                .timer()
-                                .count())
-                        .isEqualTo(1);
+                var timer = metrics.find("forge.task.duration")
+                        .tag("name", "failing")
+                        .timer();
+                assertThat(timer).isNotNull();
+                assertThat(timer.count()).isEqualTo(1);
                 assertThat(redis.hasKey("forge:task:execution-test:failing")).isFalse();
             });
             scheduler.fire();
