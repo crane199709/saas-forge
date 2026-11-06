@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import io.saasforge.demo.order.entity.Order;
 import io.saasforge.demo.order.model.OrderSort;
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -22,6 +23,12 @@ public interface OrderMapper extends BaseMapper<Order> {
      */
     List<Order> selectPage(
             @Param("sorts") List<OrderSort> sorts, @Param("limit") int limit, @Param("offset") long offset);
+
+    /**
+     * 条件关闭当前租户超时的未支付订单，返回受影响行数；租户与 Data Policy 条件由 SDK 注入，系统任务无成员限制。
+     * 已关闭及已删除订单不刷新审计列，重复执行无副作用。
+     */
+    int closeExpiredUnpaid(@Param("cutoff") OffsetDateTime cutoff);
 
     /**
      * 冷静期结束后把当前租户的订单全部标记删除，返回受影响行数。租户条件由 SDK 注入；清理针对整个租户，不受 Data Policy 过滤。

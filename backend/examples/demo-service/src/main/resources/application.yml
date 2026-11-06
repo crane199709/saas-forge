@@ -43,6 +43,9 @@ forge:
   reference-data:
     iam-uri: http://localhost:8101
     token: ${FORGE_DEMO_MANIFEST_TOKEN:local-demo-manifest-token}
+  scheduling:
+    iam-uri: ${forge.manifest.iam-uri}
+    token: ${forge.manifest.token}
   # 本地 compose 的 S3 兼容存储；预签名 URL 指向 endpoint，须是浏览器能访问的地址
   storage:
     endpoint: ${FORGE_S3_ENDPOINT:http://localhost:9000}

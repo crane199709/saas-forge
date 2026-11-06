@@ -57,6 +57,7 @@ class OrderApiTest {
         assertThat(created).doesNotContainKeys("errorMessage", "userTip", "meta", "errors");
         Map<?, ?> order = (Map<?, ?>) created.get("data");
         assertThat(order.get("title")).isEqualTo("办公用品");
+        assertThat(order.get("status")).isEqualTo("unpaid");
         assertThat(order.get("createdAt")).isNotNull();
         // Business Number 与订单同一事务生成，日期段按 Business Time Zone
         assertThat(order.get("number")).asString().matches("SO-\\d{8}-\\d{4}");
@@ -88,7 +89,10 @@ class OrderApiTest {
 
         Map<?, ?> first = exchange(HttpMethod.GET, "/orders", null);
         assertThat(first.get("httpStatus")).isEqualTo(200);
-        assertThat((List<?>) first.get("data")).hasSize(3);
+        assertThat((List<?>) first.get("data"))
+                .hasSize(3)
+                .<Object>extracting(order -> ((Map<?, ?>) order).get("status"))
+                .containsOnly("unpaid");
         assertThat(first.get("meta"))
                 .isEqualTo(Map.of("page", Map.of("number", 1, "size", 20, "totalElements", 3, "totalPages", 1)));
 
