@@ -16,3 +16,4 @@
 ## Comments
 
 - 2026-11-05（工单 03 实现时记录）：后端错误码为 `auth.mfaRequired`（403，即规格中的 `auth.mfa_required`），i18n key 用这个。exchange 被拒时：凭登录会话调用 `/auth/mfa/bind/start`、`/auth/mfa/bind/confirm`，确认成功后会话标识会换发（浏览器自动处理 Cookie），须重新发起 `/oauth2/authorize` 取新授权码再 exchange，原授权码不可重试。switch/refresh 被拒时：凭当前 Access Token 绑定，成功后用原 Refresh Token 直接重试。安全设置接口为 `GET/PUT /iam/security-settings`，体为 `{"mfaRequired": boolean}`。
+- 2026-11-05（工单 06 实现时记录）：Login Lockout 锁定时返回 HTTP 429，信封 `code` 为 `auth.locked`（i18n key 用这个），剩余等待秒数在 `Retry-After` 响应头（整数秒），`userTip` 已含秒数；信封 `data` 为空。可能出现在 `/auth/login`、`/auth/code-login`、`/auth/login/mfa`、`/auth/mfa/{bind/confirm,recovery-codes/regenerate,unbind}`、`/auth/password/change`、`/auth/password/forgot/{verify,reset}`。达到阈值的那次仍返回原错误码（如 `auth.failed`、`mfa.codeInvalid`），下一次才返回 `auth.locked`；锁定期内正确凭证同样被拒，到期自动解除。

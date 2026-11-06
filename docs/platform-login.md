@@ -53,7 +53,7 @@ TOTP、密钥加密、Recovery Code 与 Identity 相同（[ADR-0019](adr/0019-mf
 | `/iam/platform/auth/mfa/recovery-codes/regenerate` | 201 新的 `recoveryCodes`，旧组作废 |
 | `/iam/platform/auth/mfa/unbind` | 解绑；`mfa-required=true` 时 403 `mfa.unbindForbidden`，只能更换 |
 
-审计 `auth.mfa`（`detail.method` 为 `totp` 或 `recoveryCode`）、`mfa.bind`（更换时 `detail.replaced=true`）、`mfa.unbind`、`mfa.recoveryCodesRegenerate`，Realm 为 `PLATFORM`。账号不存在、密码错误、账号属于另一个 Realm 都返回同一个 401 `auth.failed`。
+审计 `auth.mfa`（`detail.method` 为 `totp` 或 `recoveryCode`）、`mfa.bind`（更换时 `detail.replaced=true`）、`mfa.unbind`、`mfa.recoveryCodesRegenerate`，Realm 为 `PLATFORM`。账号不存在、密码错误、账号属于另一个 Realm 都返回同一个 401 `auth.failed`。密码、动态码、Recovery Code 与原密码错误计入 Login Lockout（`forge.iam.lockout.platform.*`），锁定时 429 `auth.locked`，见 [Tenant Realm 登录](tenant-login.md#login-lockout)。
 
 ## 隔离边界
 

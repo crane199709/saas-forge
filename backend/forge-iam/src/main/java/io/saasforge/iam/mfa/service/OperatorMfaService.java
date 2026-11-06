@@ -1,5 +1,7 @@
 package io.saasforge.iam.mfa.service;
 
+import io.saasforge.iam.lockout.model.LockoutTarget;
+import io.saasforge.iam.lockout.service.LoginLockoutService;
 import io.saasforge.iam.mfa.mapper.OperatorAuthenticatorMapper;
 import io.saasforge.iam.mfa.mapper.OperatorRecoveryCodeMapper;
 import io.saasforge.iam.mfa.model.RecoveryCodeHash;
@@ -18,6 +20,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
+import java.util.OptionalLong;
 import java.util.UUID;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -51,6 +54,7 @@ public class OperatorMfaService {
     private final StringRedisTemplate redis;
     private final AuditRecorder audits;
     private final boolean required;
+    private final LoginLockoutService lockout;
 
     OperatorMfaService(
             OperatorAuthenticatorMapper authenticators,
@@ -59,7 +63,8 @@ public class OperatorMfaService {
             SecretCipher cipher,
             StringRedisTemplate redis,
             AuditRecorder audits,
-            IamProperties properties) {
+            IamProperties properties,
+            LoginLockoutService lockout) {
         this.authenticators = authenticators;
         this.recoveryCodes = recoveryCodes;
         this.operators = operators;
@@ -67,6 +72,7 @@ public class OperatorMfaService {
         this.redis = redis;
         this.audits = audits;
         this.required = properties.platform().mfaRequired();
+        this.lockout = lockout;
     }
 
     /** 是否要求所有 Operator 使用 MFA（{@code forge.iam.platform.mfa-required}）。 */
@@ -113,8 +119,14 @@ public class OperatorMfaService {
             if (replaces.isEmpty()) throw alreadyBound();
             throw ForgeException.withErrorMessage(MfaErrorCode.BINDING_EXPIRED, "Replaced authenticator changed");
         }
-        long step = Totp.match(cipher.decrypt(ciphertext, owner(operatorId)), code, Instant.now(), -1)
-                .orElseThrow(OperatorMfaService::invalidCode);
+        LockoutTarget target = LockoutTarget.operator(operatorId);
+        lockout.check(target);
+        OptionalLong matched = Totp.match(cipher.decrypt(ciphertext, owner(operatorId)), code, Instant.now(), -1);
+        if (matched.isEmpty()) {
+            lockout.failed(target);
+            throw invalidCode();
+        }
+        long step = matched.getAsLong();
         if (current != null) {
             authenticators.deleteByOperator(operatorId, operatorId);
             recoveryCodes.deleteByOperator(operatorId, operatorId);
@@ -147,9 +159,13 @@ public class OperatorMfaService {
         if (!isBound(operatorId)) {
             throw ForgeException.withErrorMessage(MfaErrorCode.NOT_BOUND, "No authenticator bound");
         }
+        LockoutTarget target = LockoutTarget.operator(operatorId);
+        lockout.check(target);
         if (recoveryCodes.consume(operatorId, RecoveryCodes.hash(recoveryCode), null) == 0) {
+            lockout.failed(target);
             throw ForgeException.withErrorMessage(MfaErrorCode.RECOVERY_CODE_INVALID, "Recovery code rejected");
         }
+        lockout.succeeded(target);
     }
 
     /** 验证一次动态码后作废全部旧 Recovery Code，另发一组；明文只在本次返回。 */
@@ -190,15 +206,21 @@ public class OperatorMfaService {
         return Totp.otpauthUri(IdentityMfaService.ISSUER, operator.account(), secret);
     }
 
+    // 登录第二步、更换、重新生成与解绑都经过这里，动态码错误一并计入该 Operator 的 Login Lockout。
     private StoredAuthenticator verifyCode(UUID operatorId, String code, UUID actor) {
         StoredAuthenticator authenticator = authenticators.findByOperator(operatorId);
         if (authenticator == null) {
             throw ForgeException.withErrorMessage(MfaErrorCode.NOT_BOUND, "No authenticator bound");
         }
+        LockoutTarget target = LockoutTarget.operator(operatorId);
+        lockout.check(target);
         byte[] secret = cipher.decrypt(authenticator.secretCiphertext(), owner(operatorId));
-        long step = Totp.match(secret, code, Instant.now(), authenticator.lastUsedStep())
-                .orElseThrow(OperatorMfaService::invalidCode);
-        if (authenticators.advanceStep(authenticator.id(), step, actor) == 0) throw invalidCode();
+        OptionalLong step = Totp.match(secret, code, Instant.now(), authenticator.lastUsedStep());
+        if (step.isEmpty() || authenticators.advanceStep(authenticator.id(), step.getAsLong(), actor) == 0) {
+            lockout.failed(target);
+            throw invalidCode();
+        }
+        lockout.succeeded(target);
         return authenticator;
     }
 

@@ -14,3 +14,4 @@
 
 ## Comments
 - 2026-11-05（工单 04 实现时记录）：`/iam/platform/auth/login` 响应新增 `nextStep`（`authorize`/`mfa`/`bind`），`mfa` 与 `bind` 时 `clientId`、`redirectUri` 为空；第二步接口为 `/iam/platform/auth/login/mfa`、`/iam/platform/auth/login/bind/{start,confirm}`（后者 201 并带只展示一次的 `recoveryCodes`），已登录后的「更换 Authenticator」为 `/iam/platform/auth/mfa/replace/start` 加 `/iam/platform/auth/mfa/bind/confirm`，详见 docs/platform-login.md。`auth.mfaRequired` 已改为 Tenant Realm 的「租户要求 MFA」语义，Operator 登录不再返回它；`LoginPage.spec.ts` 中以它为样例的错误展示用例宜改用其他错误码。
+- 2026-11-05（工单 06 实现时记录）：Login Lockout 锁定时返回 HTTP 429，信封 `code` 为 `auth.locked`（i18n key 用这个），剩余等待秒数在 `Retry-After` 响应头（整数秒），`userTip` 已含秒数；信封 `data` 为空。可能出现在 `/iam/platform/auth/login`、`/iam/platform/auth/login/{mfa,bind/confirm}`、`/iam/platform/auth/mfa/{bind/confirm,replace/start,recovery-codes/regenerate,unbind}`、`/iam/platform/auth/password/change`。达到阈值的那次仍返回原错误码（如 `auth.failed`、`mfa.codeInvalid`），下一次才返回 `auth.locked`；锁定期内正确凭证同样被拒，到期自动解除。

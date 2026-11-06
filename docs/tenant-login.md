@@ -114,7 +114,24 @@ SDK 监听 `storage` 事件跟随其他标签页（决策见 [ADR-0017](adr/0017
 - **Refresh Token**：`RedisAuthorizationService` 按主体维护授权索引（`iam:global:oauth-principal:{id}`），删除该账号的全部授权；自助改密码保留发起请求的 Access Token 所属授权，客户端刷新后按新版本继续使用，忘记密码重设不保留。
 - **登录会话**：登录成功时在 `iam:global:principal-sessions:{id}` 登记会话标识，改密码后全部终止，不能再借授权码流程签发新 Token。
 
-审计 `password.change`（Realm 按账号所属）、`password.reset`，资源为 `identity` 或 `operator`，不属于任何租户。原密码、验证码、动态码错误计入 Login Lockout 待工单 06 接入。
+审计 `password.change`（Realm 按账号所属）、`password.reset`，资源为 `identity` 或 `operator`，不属于任何租户。原密码、验证码、动态码错误计入 Login Lockout，见下节。
+
+## Login Lockout
+
+[账号安全规格](../.scratch/account-security/spec.md) 第 3 节，工单 [06](../.scratch/account-security/issues/06-login-lockout.md)。两个 Realm 规则相同、分别计数与配置，实现在 `io.saasforge.iam.lockout`。
+
+- **按登录标识**：密码登录、验证码登录（Platform Realm 只有密码登录）与忘记密码的 `verify` 失败，按规范化（去首尾空白、忽略大小写）后的账号、邮箱或手机号计数，不论标识是否存在；三个入口共用同一计数。First Factor 通过后清零该标识的计数。
+- **按 Identity / Operator**：动态码与 Recovery Code 错误（登录第二步、绑定确认、重新生成、解绑、Operator 更换、忘记密码重设）以及自助改密码的原密码错误，计在对应 Identity 或 Operator 上；动态码或 Recovery Code 通过后清零，原密码通过不清零。Identity / Operator 被锁定时，即使换一个登录标识通过 First Factor 也被拒。
+- **按客户端 IP**：上述失败同时按客户端 IP 计数，阈值另配；IP 计数不因认证成功清零。客户端 IP 由网关确定并写入 `X-Forge-Client-Ip`（覆盖客户端自带的值）：连接来自 `trusted-proxies` 时取 `X-Forwarded-For` 从右往左第一个不可信的地址，否则取连接地址。**网关前有反向代理（如 Shell 镜像的 nginx）时必须把代理地址配进 `trusted-proxies`**，否则所有用户共用代理的 IP，失败累计到 `ip-max-failures` 后该 Realm 的全部认证被拒。
+- 窗口内失败达到阈值即锁定，达到阈值的那次仍返回原错误；锁定期内该对象的全部认证（含正确凭证）返回 **429 `auth.locked`**，`Retry-After` 响应头为剩余秒数，`userTip` 也带剩余秒数（文案参数 `{0}`）；到期自动解除。触发锁定时审计 `auth.locked`：`detail.account`（按登录标识）或 `detail.ip`，按 Identity / Operator 时 `actorId` 为其标识，`detail.lockSeconds` 为锁定时长。
+- 计数与锁定只在 Redis：`iam:global:lockout:{tenant|platform}:failures:{对象}` 与 `iam:global:lockout:{tenant|platform}:locked:{对象}`，以 TTL 表达窗口与锁定时长。
+
+| 配置（`forge.iam.lockout.{tenant,platform}.*`） | 默认值 | 说明 |
+| --- | --- | --- |
+| `max-failures` | `5` | 窗口内同一对象的失败次数达到此值即锁定 |
+| `window` | `15m` | 计数窗口，从窗口内第一次失败起算 |
+| `lock-duration` | `15m` | 锁定时长，登录标识、Identity / Operator 与 IP 共用 |
+| `ip-max-failures` | `100` | 窗口内同一客户端 IP 的失败次数达到此值即锁定该 IP；须远大于 `max-failures`，避免误伤共用出口 IP 的用户 |
 
 ## 多租户
 

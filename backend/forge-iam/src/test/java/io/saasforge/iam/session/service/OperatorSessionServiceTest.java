@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.saasforge.iam.lockout.service.LoginLockoutService;
 import io.saasforge.iam.mfa.service.OperatorMfaService;
 import io.saasforge.iam.operator.model.OperatorCredential;
 import io.saasforge.iam.operator.service.OperatorService;
@@ -52,6 +53,7 @@ class OperatorSessionServiceTest {
                 mock(TokenEndpointClient.class),
                 mock(LoginAudit.class),
                 mock(OperatorMfaService.class),
-                properties);
+                properties,
+                mock(LoginLockoutService.class));
     }
 }

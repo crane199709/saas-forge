@@ -1,6 +1,8 @@
 package io.saasforge.iam.mfa.service;
 
 import io.saasforge.iam.identity.service.IdentityService;
+import io.saasforge.iam.lockout.model.LockoutTarget;
+import io.saasforge.iam.lockout.service.LoginLockoutService;
 import io.saasforge.iam.mfa.mapper.IdentityAuthenticatorMapper;
 import io.saasforge.iam.mfa.mapper.IdentityRecoveryCodeMapper;
 import io.saasforge.iam.mfa.model.RecoveryCodeHash;
@@ -18,6 +20,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
+import java.util.OptionalLong;
 import java.util.UUID;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -54,6 +57,7 @@ public class IdentityMfaService {
     private final StringRedisTemplate redis;
     private final AuditRecorder audits;
     private final MfaCompletionService completions;
+    private final LoginLockoutService lockout;
 
     IdentityMfaService(
             IdentityAuthenticatorMapper authenticators,
@@ -62,7 +66,8 @@ public class IdentityMfaService {
             SecretCipher cipher,
             StringRedisTemplate redis,
             AuditRecorder audits,
-            MfaCompletionService completions) {
+            MfaCompletionService completions,
+            LoginLockoutService lockout) {
         this.authenticators = authenticators;
         this.recoveryCodes = recoveryCodes;
         this.identities = identities;
@@ -70,6 +75,7 @@ public class IdentityMfaService {
         this.redis = redis;
         this.audits = audits;
         this.completions = completions;
+        this.lockout = lockout;
     }
 
     /** 开始绑定：生成新密钥并暂存，覆盖未完成的上一次绑定；返回供验证器 App 扫码的 {@code otpauth://} URI。 */
@@ -99,8 +105,14 @@ public class IdentityMfaService {
             throw ForgeException.withErrorMessage(MfaErrorCode.BINDING_EXPIRED, "No pending authenticator binding");
         }
         byte[] ciphertext = Base64.getDecoder().decode(sealed);
-        long step = Totp.match(cipher.decrypt(ciphertext, owner(identityId)), code, Instant.now(), -1)
-                .orElseThrow(IdentityMfaService::invalidCode);
+        LockoutTarget target = LockoutTarget.identity(identityId);
+        lockout.check(target);
+        OptionalLong matched = Totp.match(cipher.decrypt(ciphertext, owner(identityId)), code, Instant.now(), -1);
+        if (matched.isEmpty()) {
+            lockout.failed(target);
+            throw invalidCode();
+        }
+        long step = matched.getAsLong();
         try {
             // 记下确认用的步长：首个动态码同样不能再用于随后的操作。
             authenticators.insert(UuidV7.generate(), identityId, ciphertext, step, identityId);
@@ -147,10 +159,14 @@ public class IdentityMfaService {
         if (!isBound(identityId)) {
             throw ForgeException.withErrorMessage(MfaErrorCode.NOT_BOUND, "No authenticator bound");
         }
+        LockoutTarget target = LockoutTarget.identity(identityId);
+        lockout.check(target);
         // 条件更新保证同一码并发提交时只有一个通过。
         if (recoveryCodes.consume(identityId, RecoveryCodes.hash(recoveryCode), null) == 0) {
+            lockout.failed(target);
             throw ForgeException.withErrorMessage(MfaErrorCode.RECOVERY_CODE_INVALID, "Recovery code rejected");
         }
+        lockout.succeeded(target);
     }
 
     /** 验证一次动态码后作废全部旧 Recovery Code，另发一组；明文只在本次返回。 */
@@ -172,16 +188,22 @@ public class IdentityMfaService {
         record(UNBIND, identityId);
     }
 
+    // 登录第二步、重新生成、解绑与忘记密码重设都经过这里，动态码错误一并计入该 Identity 的 Login Lockout。
     private void verifyCode(UUID identityId, String code, UUID actor) {
         StoredAuthenticator authenticator = authenticators.findByIdentity(identityId);
         if (authenticator == null) {
             throw ForgeException.withErrorMessage(MfaErrorCode.NOT_BOUND, "No authenticator bound");
         }
+        LockoutTarget target = LockoutTarget.identity(identityId);
+        lockout.check(target);
         byte[] secret = cipher.decrypt(authenticator.secretCiphertext(), owner(identityId));
-        long step = Totp.match(secret, code, Instant.now(), authenticator.lastUsedStep())
-                .orElseThrow(IdentityMfaService::invalidCode);
+        OptionalLong step = Totp.match(secret, code, Instant.now(), authenticator.lastUsedStep());
         // 条件更新保证并发提交同一动态码时只有一个通过。
-        if (authenticators.advanceStep(authenticator.id(), step, actor) == 0) throw invalidCode();
+        if (step.isEmpty() || authenticators.advanceStep(authenticator.id(), step.getAsLong(), actor) == 0) {
+            lockout.failed(target);
+            throw invalidCode();
+        }
+        lockout.succeeded(target);
     }
 
     private void requireUnbound(UUID identityId) {

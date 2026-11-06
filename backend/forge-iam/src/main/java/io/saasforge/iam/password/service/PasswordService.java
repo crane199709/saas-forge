@@ -3,6 +3,8 @@ package io.saasforge.iam.password.service;
 import io.saasforge.iam.identity.model.ActiveMembership;
 import io.saasforge.iam.identity.model.IdentityPassword;
 import io.saasforge.iam.identity.service.IdentityService;
+import io.saasforge.iam.lockout.model.LockoutTarget;
+import io.saasforge.iam.lockout.service.LoginLockoutService;
 import io.saasforge.iam.membership.service.MembershipStateService;
 import io.saasforge.iam.mfa.service.IdentityMfaService;
 import io.saasforge.iam.operator.model.OperatorPassword;
@@ -46,7 +48,9 @@ import org.springframework.stereotype.Service;
  *   <li>iam 登录会话：全部终止，不能再借授权码流程签发新 Token。
  * </ul>
  *
- * <p>原密码错误、验证码错误与动态码错误将计入 Login Lockout（工单 06 接入）。
+ * <p>原密码错误、验证码错误与动态码错误计入 Login Lockout，锁定期内这些入口一并拒绝：原密码计在 Identity 或 Operator 上，验证码计在规范化后的
+ * 邮箱或手机号上（与登录共用计数，未注册目标同样计数），动态码与 Recovery Code 由 MFA 服务计在 Identity 上。原密码正确不清零计数：该计数也承载
+ * 动态码失败，不能借改密码重置。
  */
 @Service
 public class PasswordService {
@@ -71,6 +75,7 @@ public class PasswordService {
     private final PasswordEncoder passwords;
     private final StringRedisTemplate redis;
     private final AuditRecorder audits;
+    private final LoginLockoutService lockout;
     private final SecureRandom random = new SecureRandom();
 
     PasswordService(
@@ -85,7 +90,8 @@ public class PasswordService {
             PasswordPolicy policy,
             PasswordEncoder passwords,
             StringRedisTemplate redis,
-            AuditRecorder audits) {
+            AuditRecorder audits,
+            LoginLockoutService lockout) {
         this.identities = identities;
         this.operators = operators;
         this.operatorStates = operatorStates;
@@ -98,6 +104,7 @@ public class PasswordService {
         this.passwords = passwords;
         this.redis = redis;
         this.audits = audits;
+        this.lockout = lockout;
     }
 
     /**
@@ -109,8 +116,12 @@ public class PasswordService {
     public void changeIdentityPassword(
             UUID identityId, String currentPassword, String newPassword, String accessToken) {
         IdentityPassword identity = identities.findActivePassword(identityId).orElseThrow(() -> currentInvalid());
-        // 原密码错误计入 Login Lockout：工单 06 在此接入。
-        if (!passwords.matches(currentPassword, identity.passwordHash())) throw currentInvalid();
+        LockoutTarget target = LockoutTarget.identity(identityId);
+        lockout.check(target);
+        if (!passwords.matches(currentPassword, identity.passwordHash())) {
+            lockout.failed(target);
+            throw currentInvalid();
+        }
         policy.checkIdentity(newPassword, identity.account(), identity.email(), identity.phone());
         if (!identities.changePassword(identityId, passwords.encode(newPassword))) throw currentInvalid();
         revokeIdentity(identityId, authorizationOf(accessToken));
@@ -127,8 +138,12 @@ public class PasswordService {
             UUID operatorId, String currentPassword, String newPassword, String accessToken) {
         OperatorPassword operator = operators.findActivePassword(operatorId);
         if (operator == null) throw currentInvalid();
-        // 原密码错误计入 Login Lockout：工单 06 在此接入。
-        if (!passwords.matches(currentPassword, operator.passwordHash())) throw currentInvalid();
+        LockoutTarget target = LockoutTarget.operator(operatorId);
+        lockout.check(target);
+        if (!passwords.matches(currentPassword, operator.passwordHash())) {
+            lockout.failed(target);
+            throw currentInvalid();
+        }
         policy.checkOperator(newPassword, operator.account());
         operators.changePassword(operatorId, newPassword, operatorId);
         // 与管理员重置密码相同：递增版本使已签发的 Access Token 失效。
@@ -153,13 +168,21 @@ public class PasswordService {
      * @throws ForgeException 400 {@code verification.*}
      */
     public ResetTicket verifyResetCode(String target, String code) {
-        // 验证码错误计入 Login Lockout：工单 06 在此接入。
-        verifications.verify(VerificationPurpose.PASSWORD_RESET, target, code);
-        // 未注册的目标从未收到验证码，能走到这里只可能是猜中；与验证码错误同样处理，不暴露目标是否注册。
-        UUID identityId = identities
-                .findActiveIdByContact(target)
-                .orElseThrow(() -> ForgeException.withErrorMessage(
-                        VerificationErrorCode.CODE_INVALID, "Verification code rejected"));
+        LockoutTarget lockoutTarget = LockoutTarget.identifier(AuditRealm.TENANT, target);
+        lockout.check(lockoutTarget);
+        UUID identityId;
+        try {
+            verifications.verify(VerificationPurpose.PASSWORD_RESET, target, code);
+            // 未注册的目标从未收到验证码，能走到这里只可能是猜中；与验证码错误同样处理，不暴露目标是否注册。
+            identityId = identities
+                    .findActiveIdByContact(target)
+                    .orElseThrow(() -> ForgeException.withErrorMessage(
+                            VerificationErrorCode.CODE_INVALID, "Verification code rejected"));
+        } catch (ForgeException error) {
+            lockout.failed(lockoutTarget);
+            throw error;
+        }
+        lockout.succeeded(lockoutTarget);
         byte[] bytes = new byte[32];
         random.nextBytes(bytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
@@ -180,9 +203,10 @@ public class PasswordService {
         UUID identityId = UUID.fromString(stored);
         IdentityPassword identity =
                 identities.findActivePassword(identityId).orElseThrow(PasswordService::resetExpired);
+        lockout.check(LockoutTarget.identity(identityId));
         policy.checkIdentity(newPassword, identity.account(), identity.email(), identity.phone());
         if (mfa.isBound(identityId)) {
-            // 动态码或 Recovery Code 错误计入 Login Lockout：工单 06 在此接入。
+            // 动态码或 Recovery Code 错误由 MFA 服务计入该 Identity 的 Login Lockout。
             if (code != null) {
                 mfa.verifyLoginCode(identityId, code);
             } else if (recoveryCode != null) {
