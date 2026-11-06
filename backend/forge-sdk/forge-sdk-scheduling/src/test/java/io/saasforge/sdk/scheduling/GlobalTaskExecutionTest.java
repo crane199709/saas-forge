@@ -26,23 +26,19 @@ import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactor
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /** 通过 Spring 注解注册与真实 Redis 验证 Global Task；仅将触发时间替换为手动时钟。 */
-@Testcontainers
 class GlobalTaskExecutionTest {
-    @Container
-    static final GenericContainer<?> redisServer = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+    static final SharedContainers.Redis redisServer = SharedContainers.redis();
 
     static LettuceConnectionFactory factory;
     static StringRedisTemplate redis;
 
     @BeforeAll
     static void connect() {
-        factory = new LettuceConnectionFactory(
-                new RedisStandaloneConfiguration(redisServer.getHost(), redisServer.getMappedPort(6379)));
+        var configuration = new RedisStandaloneConfiguration(redisServer.getHost(), redisServer.getMappedPort(6379));
+        configuration.setDatabase(redisServer.database());
+        factory = new LettuceConnectionFactory(configuration);
         factory.afterPropertiesSet();
         redis = new StringRedisTemplate(factory);
     }
@@ -290,7 +286,9 @@ class GlobalTaskExecutionTest {
                 .withBean(MeterRegistry.class, () -> metrics)
                 .withBean(StringRedisTemplate.class, () -> redis)
                 .withBean(BlockingTask.class, () -> new BlockingTask(probe))
-                .withPropertyValues("spring.application.name=execution-test")
+                .withPropertyValues(
+                        "spring.application.name=execution-test",
+                        "spring.data.redis.database=" + redisServer.database())
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     try {
@@ -322,7 +320,9 @@ class GlobalTaskExecutionTest {
                 .withBean(MeterRegistry.class, () -> metrics)
                 .withBean(StringRedisTemplate.class, () -> template)
                 .withBean("task", Object.class, () -> task)
-                .withPropertyValues("spring.application.name=execution-test");
+                .withPropertyValues(
+                        "spring.application.name=execution-test",
+                        "spring.data.redis.database=" + redisServer.database());
     }
 
     static class BlockingTask {
