@@ -124,6 +124,7 @@ class IdentityMfaTest {
     @Test
     void bindingTakesEffectOnlyAfterTheFirstCodeAndReturnsRecoveryCodesOnce() {
         Auth auth = accessToken("mfa-bind");
+        assertThat(bound(auth)).isFalse();
         Response started = call(auth, "/auth/mfa/bind/start", null);
         assertThat(started.status()).isEqualTo(200);
         String uri = (String) started.data().get("otpauthUri");
@@ -139,8 +140,11 @@ class IdentityMfaTest {
         assertThat(wrong.code()).isEqualTo("mfa.codeInvalid");
         assertThat(probe.activeSecretHex(BIND)).isNull();
 
+        assertThat(bound(auth)).isFalse();
+
         Response confirmed = call(auth, "/auth/mfa/bind/confirm", Map.of("code", currentCode(secret)));
         assertThat(confirmed.status()).isEqualTo(201);
+        assertThat(bound(auth)).isTrue();
         List<String> codes = recoveryCodes(confirmed);
         assertThat(codes).hasSize(10).doesNotHaveDuplicates();
         assertThat(codes).allMatch(code -> code.matches("[2-9A-HJ-NP-Z]{4}(-[2-9A-HJ-NP-Z]{4}){3}"));
@@ -547,6 +551,17 @@ class IdentityMfaTest {
                     assertThat(res.getHeaders().getCacheControl()).isEqualTo("no-store");
                     return new Response(res.getStatusCode().value(), res.bodyTo(Map.class));
                 });
+    }
+
+    /** 账号安全页读取的绑定状态，只接受 Access Token。 */
+    private boolean bound(Auth auth) {
+        Map<?, ?> body = RestClient.create(baseUrl())
+                .get()
+                .uri("/auth/mfa")
+                .headers(headers -> headers.setBearerAuth(auth.bearer()))
+                .retrieve()
+                .body(Map.class);
+        return (Boolean) ((Map<?, ?>) body.get("data")).get("bound");
     }
 
     private Auth accessToken(String account) {

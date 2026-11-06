@@ -38,6 +38,7 @@ Vite 将 `/iam` 与 `/demo` 代理到本地网关 `http://localhost:8080`。部�
 | `POST /iam/auth/refresh` | JSON `refreshToken` | 新的一对 Token；旧 Refresh Token 重放会撤销同一授权的后续刷新能力 |
 | `POST /iam/auth/switch` | JSON `refreshToken`、`membershipId` | 绑定目标 Membership 的新一对 Token；目标不可进入时 403 `auth.tenantAccessDenied` |
 | `GET /iam/auth/memberships` | `Authorization: Bearer …` | 当前身份的有效 Membership：`membershipId`、`tenantId`、`tenantName` |
+| `GET /iam/auth/mfa` | `Authorization: Bearer …` | `bound`：当前身份是否已绑定 Authenticator，供账号安全页使用 |
 | `POST /iam/auth/password/change` | `Authorization: Bearer …` + JSON `currentPassword`、`newPassword` | 200；见下文「密码」 |
 | `POST /iam/auth/password/forgot/send-code` | JSON `target` | `expiresIn`、`resendIn`；目标未注册时响应相同但不发送 |
 | `POST /iam/auth/password/forgot/verify` | JSON `target`、`code` | `resetToken`（10 分钟、一次性）、`mfaRequired` |

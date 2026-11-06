@@ -45,8 +45,10 @@ export class ApiError extends Error {
   readonly userTip?: string
   readonly traceId?: string
   readonly errors?: FieldError[]
+  /** 响应头 `Retry-After` 给出的等待秒数，如 `auth.locked` 的剩余锁定时间；没有该头时缺省。 */
+  readonly retryAfter?: number
 
-  constructor(body: Omit<ApiResponse<unknown>, 'data' | 'meta'>) {
+  constructor(body: Omit<ApiResponse<unknown>, 'data' | 'meta'>, retryAfter?: number) {
     super(body.code)
     this.name = 'ApiError'
     this.code = body.code
@@ -55,6 +57,7 @@ export class ApiError extends Error {
     this.userTip = body.userTip
     this.traceId = body.traceId
     this.errors = body.errors
+    this.retryAfter = retryAfter
   }
 }
 
@@ -69,7 +72,7 @@ export async function readEnvelope<T>(response: Response): Promise<ApiResponse<T
   if (!isEnvelope(body)) {
     throw invalidResponse(response, 'Response is not an API envelope')
   }
-  if (body.code !== 'ok') throw new ApiError(body)
+  if (body.code !== 'ok') throw new ApiError(body, retryAfter(response))
   return body as ApiResponse<T>
 }
 
@@ -81,6 +84,12 @@ export async function readPage<T>(response: Response): Promise<Page<T>> {
     throw invalidResponse(response, 'Response has no page metadata', body.traceId)
   }
   return { items: body.data, page }
+}
+
+// 只接受秒数形式；HTTP 日期形式的 Retry-After 本项目不使用。
+function retryAfter(response: Response): number | undefined {
+  const value = response.headers.get('Retry-After')
+  return value !== null && /^\d+$/.test(value) ? Number(value) : undefined
 }
 
 function invalidResponse(response: Response, errorMessage: string, traceId?: string) {

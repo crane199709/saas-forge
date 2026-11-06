@@ -305,11 +305,13 @@ class IamSecurityConfiguration {
     @Bean
     @Order(2)
     SecurityFilterChain accessTokenSecurity(HttpSecurity http, EnvelopeSecurityErrorHandler errors) throws Exception {
-        // 已持有 Access Token 的身份读取自己的 Membership 与权限、管理自己的 Recovery Code 与解绑 Authenticator、改密码、管理本租户成员、组织与角色、
+        // 已持有 Access Token 的身份读取自己的 Membership 与权限、读取自己的 Authenticator 绑定状态、管理自己的 Recovery Code 与解绑
+        // Authenticator、改密码、管理本租户成员、组织与角色、
         // 查看本租户审计、读取与管理本租户的字典与参数、管理本租户的安全设置；无状态、不使用登录会话 Cookie。
         http.securityMatcher(
                         "/auth/memberships",
                         "/auth/access",
+                        "/auth/mfa",
                         "/auth/mfa/recovery-codes/**",
                         "/auth/mfa/unbind",
                         "/auth/password/change",

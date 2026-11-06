@@ -2,13 +2,15 @@
 import { inject, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { tenantClientKey } from '@crane199709/sdk'
-import type { TenantLoginResult } from '@crane199709/sdk'
+import { ApiError, tenantClientKey } from '@crane199709/sdk'
+import type { MfaFactor, TenantLoginResult } from '@crane199709/sdk'
 import AuthCard from './AuthCard.vue'
 import { ErrorAlert } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from './error-tip'
 import { loginFlow, safeRedirect, signOut } from './login-flow'
+import MfaLoginForm from './MfaLoginForm.vue'
 import RegisterForm from './RegisterForm.vue'
+import MfaBindForm from './security/MfaBindForm.vue'
 import SendCodeButton from './SendCodeButton.vue'
 
 const { t } = useI18n()
@@ -24,6 +26,9 @@ const mode = ref<'password' | 'code' | 'register'>('password')
 const target = ref('')
 const code = ref('')
 const busy = ref(false)
+// First Factor 通过后的步骤：已绑定验证器时输入动态码；唯一的租户要求 MFA 时当场绑定后重新进入该 Membership。
+const step = ref<'credentials' | 'mfa' | 'bind'>('credentials')
+let bindMembershipId = ''
 const error = ref<ErrorTip | null>(loginFlow.error)
 loginFlow.error = null
 
@@ -32,6 +37,20 @@ function login() {
 }
 function codeLogin() {
   return enter(() => client.loginWithCode(target.value, code.value))
+}
+function submitMfa(factor: MfaFactor) {
+  return enter(() => client.submitMfa(factor))
+}
+// 确认绑定后登录会话已补记 MFA，被拒的授权码不能重试，重新走一次授权码流程。
+function bound() {
+  return enter(async () => ({
+    status: 'signedIn',
+    session: await client.selectTenant(bindMembershipId),
+  }))
+}
+function backToCredentials() {
+  step.value = 'credentials'
+  clearError()
 }
 // 注册后用同一账号密码登录，新身份没有 Membership，因此进入无租户页。
 function registered(newAccount: string, newPassword: string) {
@@ -57,7 +76,12 @@ async function enter(authenticate: () => Promise<TenantLoginResult>) {
     const result = await authenticate()
     password.value = ''
     code.value = ''
-    if (result.status === 'selectTenant') {
+    if (result.status === 'mfa') {
+      step.value = 'mfa'
+    } else if (result.status === 'mfaBindRequired') {
+      bindMembershipId = result.membershipId
+      step.value = 'bind'
+    } else if (result.status === 'selectTenant') {
       loginFlow.memberships = result.memberships
       await router.push({ path: '/select-tenant', query: route.query })
     } else if (result.status === 'noTenant') {
@@ -67,9 +91,15 @@ async function enter(authenticate: () => Promise<TenantLoginResult>) {
     }
   } catch (cause) {
     error.value = errorTip(cause, t)
+    // 待 MFA 已过期或登录会话已失效：只能重新输入 First Factor。
+    if (step.value !== 'credentials' && isSessionLost(cause)) step.value = 'credentials'
   } finally {
     busy.value = false
   }
+}
+function isSessionLost(cause: unknown) {
+  if (cause instanceof ApiError) return ['auth.mfaExpired', 'auth.failed'].includes(cause.code)
+  return cause instanceof Error && cause.message === 'auth.failed'
 }
 async function retryLogout() {
   busy.value = true
@@ -85,75 +115,93 @@ async function retryLogout() {
       <ErrorAlert :tip="{ message: t('auth.logoutFailed') }" />
       <el-button :loading="busy" @click="retryLogout">{{ t('auth.retryLogout') }}</el-button>
     </template>
-    <nav class="modes">
-      <el-button
-        v-for="item in ['password', 'code', 'register'] as const"
-        :key="item"
-        link
-        :type="mode === item ? 'primary' : 'default'"
-        :data-testid="`mode-${item}`"
-        @click="switchMode(item)"
-        >{{ t(`auth.mode.${item}`) }}</el-button
-      >
-    </nav>
-    <RegisterForm
-      v-if="mode === 'register'"
-      @registered="registered"
-      @submitting="clearError"
-      @error="showError"
+    <MfaLoginForm
+      v-if="step === 'mfa'"
+      :busy="busy"
+      @submit="submitMfa"
+      @cancel="backToCredentials"
     />
-    <el-form v-else-if="mode === 'code'" label-position="top" @submit.prevent="codeLogin">
-      <el-form-item :label="t('code.target')" for="code-target">
-        <el-input
-          id="code-target"
-          v-model="target"
-          name="code-target"
-          autocomplete="username"
-          required
-        />
-      </el-form-item>
-      <el-form-item :label="t('code.code')" for="code">
-        <div class="code-row">
+    <section v-else-if="step === 'bind'" :aria-label="t('mfa.bindTitle')">
+      <h3>{{ t('mfa.bindTitle') }}</h3>
+      <p>{{ t('mfa.bindRequired') }}</p>
+      <MfaBindForm @bound="bound" @submitting="clearError" @error="showError" />
+    </section>
+    <template v-else>
+      <nav class="modes">
+        <el-button
+          v-for="item in ['password', 'code', 'register'] as const"
+          :key="item"
+          link
+          :type="mode === item ? 'primary' : 'default'"
+          :data-testid="`mode-${item}`"
+          @click="switchMode(item)"
+          >{{ t(`auth.mode.${item}`) }}</el-button
+        >
+      </nav>
+      <RegisterForm
+        v-if="mode === 'register'"
+        @registered="registered"
+        @submitting="clearError"
+        @error="showError"
+      />
+      <el-form v-else-if="mode === 'code'" label-position="top" @submit.prevent="codeLogin">
+        <el-form-item :label="t('code.target')" for="code-target">
           <el-input
-            id="code"
-            v-model="code"
-            name="code"
-            autocomplete="one-time-code"
-            inputmode="numeric"
+            id="code-target"
+            v-model="target"
+            name="code-target"
+            autocomplete="username"
             required
           />
-          <SendCodeButton :target="target" :send="client.sendLoginCode" @error="showError" />
+        </el-form-item>
+        <el-form-item :label="t('code.code')" for="code">
+          <div class="code-row">
+            <el-input
+              id="code"
+              v-model="code"
+              name="code"
+              autocomplete="one-time-code"
+              inputmode="numeric"
+              required
+            />
+            <SendCodeButton :target="target" :send="client.sendLoginCode" @error="showError" />
+          </div>
+        </el-form-item>
+        <el-button native-type="submit" type="primary" :loading="busy">{{
+          t('auth.login')
+        }}</el-button>
+      </el-form>
+      <el-form v-else label-position="top" @submit.prevent="login">
+        <el-form-item :label="t('auth.account')" for="tenant-account">
+          <el-input
+            id="tenant-account"
+            v-model="account"
+            name="account"
+            autocomplete="username"
+            required
+          />
+        </el-form-item>
+        <el-form-item :label="t('auth.password')" for="tenant-password">
+          <el-input
+            id="tenant-password"
+            v-model="password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+            show-password
+          />
+        </el-form-item>
+        <div class="submit-row">
+          <el-button native-type="submit" type="primary" :loading="busy">{{
+            t('auth.login')
+          }}</el-button>
+          <router-link to="/forgot-password" data-testid="forgot-password">{{
+            t('auth.forgotPassword')
+          }}</router-link>
         </div>
-      </el-form-item>
-      <el-button native-type="submit" type="primary" :loading="busy">{{
-        t('auth.login')
-      }}</el-button>
-    </el-form>
-    <el-form v-else label-position="top" @submit.prevent="login">
-      <el-form-item :label="t('auth.account')" for="tenant-account">
-        <el-input
-          id="tenant-account"
-          v-model="account"
-          name="account"
-          autocomplete="username"
-          required
-        />
-      </el-form-item>
-      <el-form-item :label="t('auth.password')" for="tenant-password">
-        <el-input
-          id="tenant-password"
-          v-model="password"
-          name="password"
-          type="password"
-          autocomplete="current-password"
-          required
-          show-password
-        />
-      </el-form-item>
-      <el-button native-type="submit" type="primary" :loading="busy">{{
-        t('auth.login')
-      }}</el-button>
-    </el-form>
+      </el-form>
+    </template>
   </AuthCard>
 </template>
 
@@ -162,6 +210,11 @@ async function retryLogout() {
   display: flex;
   gap: 16px;
   margin: 12px 0;
+}
+.submit-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
 }
 .code-row {
   display: flex;
