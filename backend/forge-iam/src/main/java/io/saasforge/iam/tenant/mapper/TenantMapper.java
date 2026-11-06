@@ -1,6 +1,7 @@
 package io.saasforge.iam.tenant.mapper;
 
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
+import java.util.List;
 import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -22,6 +23,13 @@ public interface TenantMapper {
 
     /** 登记 platform 创建的租户，已存在时不做修改。租户表是全局表，不受 Data Policy 过滤。 */
     void insertIfAbsent(@Param("tenantId") UUID tenantId, @Param("name") String name, @Param("status") String status);
+
+    /** 按状态和 ID 升序查询未删除的租户 ID；租户目录是全局表，不受 Data Policy 过滤。 */
+    List<UUID> findIdsByStatus(
+            @Param("statuses") List<String> statuses, @Param("offset") long offset, @Param("limit") int limit);
+
+    /** 匹配状态的未删除租户总数；与分页查询使用相同条件。 */
+    long countByStatus(@Param("statuses") List<String> statuses);
 
     /** 租户名称；未登记或已删除时为 null。租户表是全局表，不受 Data Policy 过滤。 */
     String findName(@Param("tenantId") UUID tenantId);

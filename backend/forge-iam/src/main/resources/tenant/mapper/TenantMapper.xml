@@ -16,6 +16,15 @@
         VALUES (#{tenantId}, #{name}, #{status}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL)
         ON CONFLICT (id) DO NOTHING
     </insert>
+    <select id="findIdsByStatus" resultType="java.util.UUID">
+        SELECT id FROM tenant WHERE NOT deleted AND status IN
+        <foreach collection="statuses" item="status" open="(" separator="," close=")">#{status}</foreach>
+        ORDER BY id ASC LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(*) FROM tenant WHERE NOT deleted AND status IN
+        <foreach collection="statuses" item="status" open="(" separator="," close=")">#{status}</foreach>
+    </select>
     <select id="findName" resultType="string">
         SELECT name FROM tenant WHERE id = #{tenantId} AND NOT deleted
     </select>
