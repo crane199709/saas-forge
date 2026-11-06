@@ -39,6 +39,8 @@ Vite 将 `/iam` 与 `/demo` 代理到本地网关 `http://localhost:8080`。部�
 | `POST /iam/auth/switch` | JSON `refreshToken`、`membershipId` | 绑定目标 Membership 的新一对 Token；目标不可进入时 403 `auth.tenantAccessDenied` |
 | `GET /iam/auth/memberships` | `Authorization: Bearer …` | 当前身份的有效 Membership：`membershipId`、`tenantId`、`tenantName` |
 | `GET /iam/auth/mfa` | `Authorization: Bearer …` | `bound`：当前身份是否已绑定 Authenticator，供账号安全页使用 |
+| `POST /iam/auth/mfa/bind/start` | `Authorization: Bearer …` 或 IAM 会话 Cookie | `otpauthUri`，提交首个动态码后才生效 |
+| `POST /iam/auth/mfa/bind/confirm` | JSON `code` + `Authorization: Bearer …` 或 IAM 会话 Cookie | 201，`recoveryCodes`；当前授权或会话视为已完成 MFA。凭会话调用时另返回 `clientId`、`redirectUri`，供重新走授权码流程；见下文「被 MFA Requirement 拦下时」 |
 | `POST /iam/auth/password/change` | `Authorization: Bearer …` + JSON `currentPassword`、`newPassword` | 200；见下文「密码」 |
 | `POST /iam/auth/password/forgot/send-code` | JSON `target` | `expiresIn`、`resendIn`；目标未注册时响应相同但不发送 |
 | `POST /iam/auth/password/forgot/verify` | JSON `target`、`code` | `resetToken`（10 分钟、一次性）、`mfaRequired` |
@@ -47,6 +49,10 @@ Vite 将 `/iam` 与 `/demo` 代理到本地网关 `http://localhost:8080`。部�
 | `GET /demo/context` | `Authorization: Bearer …` | `identityId`、`tenantId`、`membershipId`、`version` |
 
 **两步登录**（[账号安全规格](../.scratch/account-security/spec.md) 2.3、[ADR-0019](adr/0019-mfa-per-identity-enforced-at-token-issuance.md)）：未绑定 Authenticator 时 `nextStep` 为 `authorize`，直接走授权码流程。已绑定时 First Factor（密码或验证码）通过后返回 `nextStep: "mfa"`，其余字段为空，登录会话只进入「待 MFA」状态：会话中没有已认证主体，`/oauth2/authorize` 不认可它。须在 5 分钟内向 `/auth/login/mfa` 提交动态码或 Recovery Code（用后作废）；错误时（`mfa.codeInvalid`、`mfa.recoveryCodeInvalid`）可重试，超时或没有待 MFA 状态时返回 401 `auth.mfaExpired`，须重新提交 First Factor。通过后换发会话标识并建立登录会话，会话主体带 `MFA` 权限；授权码流程把主体存入授权，Refresh Token 链（refresh 与 switch）沿用这条记录。每次提交都写 `auth.mfa` 审计，`detail.method` 为 `totp` 或 `recoveryCode`。
+
+**被 MFA Requirement 拦下时**（规格 2.4）：登录中被拒沿用 `selectTenant` 重试。已登录时 refresh 或 switch 被 `auth.mfaRequired` 拒绝，会话保留，tenant-app 进入当场绑定（refresh 走 `/mfa-bind` 页，switch 在切换器的对话框中）。SDK 先凭 Access Token 调用绑定接口，确认后当前授权记下 MFA，用原 Refresh Token 重试；Access Token 已过期时改凭登录会话，确认后只有会话记下 MFA，须凭响应中的 `clientId`、`redirectUri` 重新走授权码流程。登录会话也失效（401），或身份已在别处绑定（`mfa.alreadyBound`，当前授权无从补记）时，清除本地会话回到登录页走完整流程。
+
+**解绑**后清除该 Identity 现存授权上的 MFA 标记并终止其全部登录会话（会话带着 MFA 标记，能走授权码流程换到新授权）：refresh、switch 进入有要求的 Tenant 随即被拒，没有要求的 Tenant 不受影响；授权正在换码或刷新、取不到互斥锁时直接删除该授权，须重新登录。
 
 登录使用标准授权码 + S256 PKCE：JSON 凭证入口建立登录会话；SDK 生成 verifier 和 state，经 `/oauth2/authorize` 获取授权码，并校验回调 state。首版 scope 为 `tenant`，不签发 OIDC ID Token，也不启用 password grant。
 
@@ -122,7 +128,7 @@ SDK 监听 `storage` 事件跟随其他标签页（决策见 [ADR-0017](adr/0017
 [账号安全规格](../.scratch/account-security/spec.md) 第 3 节，工单 [06](../.scratch/account-security/issues/06-login-lockout.md)。两个 Realm 规则相同、分别计数与配置，实现在 `io.saasforge.iam.lockout`。
 
 - **按登录标识**：密码登录、验证码登录（Platform Realm 只有密码登录）与忘记密码的 `verify` 失败，按规范化（去首尾空白、忽略大小写）后的账号、邮箱或手机号计数，不论标识是否存在；三个入口共用同一计数。First Factor 通过后清零该标识的计数。
-- **按 Identity / Operator**：动态码与 Recovery Code 错误（登录第二步、绑定确认、重新生成、解绑、Operator 更换、忘记密码重设）以及自助改密码的原密码错误，计在对应 Identity 或 Operator 上；动态码或 Recovery Code 通过后清零，原密码通过不清零。Identity / Operator 被锁定时，即使换一个登录标识通过 First Factor 也被拒。
+- **按 Identity / Operator**：动态码与 Recovery Code 错误（登录第二步、绑定确认、重新生成、解绑、Operator 更换、忘记密码重设）以及自助改密码的原密码错误，计在对应 Identity 或 Operator 上；动态码或 Recovery Code 通过后清零，原密码通过不清零。Identity / Operator 被锁定时，即使换一个登录标识通过 First Factor 也被拒。自助改密码另外检查账号自身各登录标识的锁，账号被锁时不能凭手中的 Access Token 绕过。
 - **按客户端 IP**：上述失败同时按客户端 IP 计数，阈值另配；IP 计数不因认证成功清零。客户端 IP 由网关确定并写入 `X-Forge-Client-Ip`（覆盖客户端自带的值）：连接来自 `trusted-proxies` 时取 `X-Forwarded-For` 从右往左第一个不可信的地址，否则取连接地址。**网关前有反向代理（如 Shell 镜像的 nginx）时必须把代理地址配进 `trusted-proxies`**，否则所有用户共用代理的 IP，失败累计到 `ip-max-failures` 后该 Realm 的全部认证被拒。
 - 窗口内失败达到阈值即锁定，达到阈值的那次仍返回原错误；锁定期内该对象的全部认证（含正确凭证）返回 **429 `auth.locked`**，`Retry-After` 响应头为剩余秒数，`userTip` 也带剩余秒数（文案参数 `{0}`）；到期自动解除。触发锁定时审计 `auth.locked`：`detail.account`（按登录标识）或 `detail.ip`，按 Identity / Operator 时 `actorId` 为其标识，`detail.lockSeconds` 为锁定时长。
 - 计数与锁定只在 Redis：`iam:global:lockout:{tenant|platform}:failures:{对象}` 与 `iam:global:lockout:{tenant|platform}:locked:{对象}`，以 TTL 表达窗口与锁定时长。

@@ -17,3 +17,4 @@
 ## Comments
 
 - 2026-11-05（工单 03 实现时记录）：`auth.mfaRequired`（`SessionErrorCode.MFA_REQUIRED`）已被 Tenant Realm 用于「目标租户要求 MFA 而授权未完成」，文案改为通用的「需要先完成多因素认证：请绑定验证器后重试」；删除 Operator 旧语义时保留该错误码。`MfaAuthority.grant(Authentication)` 可为会话主体补记 MFA，可供「必须绑定」完成后复用。
+- 2026-11-06（code-review 修复）：登录中当场绑定改走 `OperatorMfaService.confirmLoginBinding`，标准列操作人为 null（登录流程无认证上下文，与 `verifyLoginCode` 一致）；自助绑定与更换仍为本人。`BoundLogin` 覆写 `toString` 排除明文 Recovery Code。
