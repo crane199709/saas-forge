@@ -3,22 +3,26 @@ package io.saasforge.platform;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.saasforge.platform.tenant.mapper.CoolingOffMapper;
 import io.saasforge.platform.tenant.mapper.OutboxAuditMapper;
 import io.saasforge.platform.tenant.service.TenantLifecycleService;
 import io.saasforge.sdk.provisioning.TenantDeleted;
 import io.saasforge.sdk.provisioning.TenantExpiryApproached;
 import io.saasforge.sdk.provisioning.TenantStatusChanged;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
@@ -42,6 +46,40 @@ class TenantLifecycleTest extends PlatformIntegrationTest {
 
     @Autowired
     CoolingOffMapper coolingOff;
+
+    @Autowired
+    PlatformTaskScheduler scheduler;
+
+    @Autowired
+    MeterRegistry metrics;
+
+    @Autowired
+    Environment environment;
+
+    @Test
+    void globalScanUsesBoundDefaultIntervalWithoutBusinessZoneAndPublishesLifecycleEvents() {
+        assertThat(environment.getProperty("forge.business-zone")).isNull();
+        assertThat(environment.getProperty("forge.platform.lifecycle.scan-interval"))
+                .isNull();
+        assertThat(scheduler.interval).isEqualTo(Duration.ofMinutes(1));
+        assertThat(scheduler.scan).isNotNull();
+        UUID deleted = create(Map.of("name", "扫描删除", "adminContact", "scan-delete@example.com"));
+        transition(deleted, Map.of("status", "deleted"));
+        coolingOff.endCoolingOff(deleted);
+        UUID expiring = create(Map.of(
+                "name", "扫描提醒", "adminContact", "scan-remind@example.com", "status", "trial", "expiresAt", future(3)));
+
+        scheduler.scan.run();
+
+        Awaitility.await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            assertThat(events(deleted, TenantDeleted.class)).containsExactly(new TenantDeleted(deleted));
+            assertThat(events(expiring, TenantExpiryApproached.class)).hasSize(1);
+        });
+        assertThat(metrics.find("forge.task.executions")
+                        .tag("name", "tenant.lifecycle-scan")
+                        .counter())
+                .isNotNull();
+    }
 
     @Test
     void illegalTransitionsAreRejectedAndLegalOnesAreBroadcastAndRecorded() {

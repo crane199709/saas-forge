@@ -96,6 +96,29 @@ public final class ForgeArchitectureRules {
         });
     }
 
+    /** 服务通过 SDK 声明任务，避免绕开分布式互斥与租户上下文。 */
+    public static ArchRule scheduling() {
+        return classes().should(new ArchCondition<>("SDK 之外不使用 Spring 原生定时任务") {
+            @Override
+            public void check(JavaClass type, ConditionEvents events) {
+                if (type.getPackageName().startsWith(SDK)) return;
+                for (String annotation : Set.of(
+                        "org.springframework.scheduling.annotation.EnableScheduling",
+                        "org.springframework.scheduling.annotation.Scheduled",
+                        "org.springframework.scheduling.annotation.Schedules")) {
+                    if (type.isAnnotatedWith(annotation) || type.isMetaAnnotatedWith(annotation)) {
+                        reject(events, type, type.getName() + " 使用 Spring 原生调度注解 " + annotation);
+                    }
+                    type.getMethods().stream()
+                            .filter(method ->
+                                    method.isAnnotatedWith(annotation) || method.isMetaAnnotatedWith(annotation))
+                            .forEach(method ->
+                                    reject(events, type, method.getFullName() + " 使用 Spring 原生调度注解 " + annotation));
+                }
+            }
+        });
+    }
+
     /** SDK 不能反向依赖服务，core 不能依赖其他能力包。 */
     public static ArchRule sdkDependencies() {
         return classes().should(new ArchCondition<>("保持 SDK 依赖方向") {

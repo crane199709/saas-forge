@@ -1,6 +1,13 @@
 package io.saasforge.platform;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.ScheduledFuture;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -14,7 +21,8 @@ import org.testcontainers.utility.MountableFile;
  *
  * <p>容器不随测试类停止，JVM 退出后由 Testcontainers 回收。测试类共用同一个库，须自行避免依赖库中只有本类数据。
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(classes = PlatformApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(PlatformIntegrationTest.SchedulingClock.class)
 abstract class PlatformIntegrationTest {
     private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17-alpine")
             .withDatabaseName("forge")
@@ -23,6 +31,32 @@ abstract class PlatformIntegrationTest {
 
     static {
         POSTGRES.start();
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class SchedulingClock {
+        @Bean("forgeTaskScheduler")
+        PlatformTaskScheduler scheduler() {
+            return new PlatformTaskScheduler();
+        }
+    }
+
+    /** 测试显式推进时间，避免生命周期后台扫描干扰共享数据库中的业务断言。 */
+    static class PlatformTaskScheduler extends ThreadPoolTaskScheduler {
+        Runnable scan;
+        Duration interval;
+
+        @Override
+        public ScheduledFuture<?> scheduleWithFixedDelay(Runnable task, Duration delay) {
+            scan = task;
+            interval = delay;
+            return null;
+        }
+
+        @Override
+        public ScheduledFuture<?> scheduleWithFixedDelay(Runnable task, Instant startTime, Duration delay) {
+            return scheduleWithFixedDelay(task, delay);
+        }
     }
 
     @DynamicPropertySource

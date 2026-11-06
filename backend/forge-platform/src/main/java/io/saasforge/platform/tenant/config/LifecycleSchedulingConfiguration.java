@@ -1,30 +1,25 @@
 package io.saasforge.platform.tenant.config;
 
 import io.saasforge.platform.tenant.service.TenantLifecycleService;
+import io.saasforge.sdk.scheduling.GlobalTask;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.annotation.SchedulingConfigurer;
-import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 
-/** 定时处理冷静期到期与到期提醒。多实例同时扫描是安全的：每个租户只有条件更新成功的实例发布事件。 */
+/** Redis 互斥减少多实例重复扫描，业务条件更新仍保证每个租户只发布一次事件。 */
 @Configuration(proxyBeanMethods = false)
-@EnableScheduling
-class LifecycleSchedulingConfiguration implements SchedulingConfigurer {
+class LifecycleSchedulingConfiguration {
     private final TenantLifecycleService lifecycle;
-    private final LifecycleProperties properties;
 
-    LifecycleSchedulingConfiguration(TenantLifecycleService lifecycle, LifecycleProperties properties) {
+    LifecycleSchedulingConfiguration(TenantLifecycleService lifecycle) {
         this.lifecycle = lifecycle;
-        this.properties = properties;
     }
 
-    @Override
-    public void configureTasks(ScheduledTaskRegistrar registrar) {
-        registrar.addFixedDelayTask(
-                () -> {
-                    lifecycle.purgeDue();
-                    lifecycle.remindDue();
-                },
-                properties.scanInterval());
+    // 从已绑定配置读取间隔，让 @DefaultValue 保持唯一默认值来源。
+    @GlobalTask(
+            name = "tenant.lifecycle-scan",
+            fixedDelay =
+                    "#{@'forge.platform.lifecycle-io.saasforge.platform.tenant.config.LifecycleProperties'.scanInterval()}")
+    void scanLifecycle() {
+        lifecycle.purgeDue();
+        lifecycle.remindDue();
     }
 }

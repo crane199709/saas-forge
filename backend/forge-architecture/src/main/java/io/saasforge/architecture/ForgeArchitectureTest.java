@@ -14,6 +14,7 @@ public abstract class ForgeArchitectureTest {
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages(root, "io.saasforge.sdk");
         ForgeArchitectureRules.persistence().check(classes);
+        ForgeArchitectureRules.scheduling().check(classes);
         ForgeArchitectureRules.sdkDependencies().check(classes);
         ForgeArchitectureRules.sdkCycles().check(classes);
         ForgeArchitectureRules.iamMappers().check(classes);
