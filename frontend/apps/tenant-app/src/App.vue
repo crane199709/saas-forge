@@ -34,6 +34,12 @@ const menu = computed<MenuItem[]>(() => [
       title: t('referenceData.parameter.nav'),
       permission: 'iam:reference-data:manage',
     },
+    {
+      key: 'security-settings',
+      path: '/security-settings',
+      title: t('securitySettings.nav'),
+      permission: 'iam:security:manage',
+    },
   ].filter((page) => access.has(page.permission)),
   // 导航只列出已注册的 Sub-App：菜单可见、套餐允许且在当前环境登记了入口地址
   ...menuSections(access.menus(), host?.codes() ?? new Set()).map((section) => ({

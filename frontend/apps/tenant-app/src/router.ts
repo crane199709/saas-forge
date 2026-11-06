@@ -40,6 +40,11 @@ export function createShellRouter(history: RouterHistory) {
         beforeEnter: (to) => (loginFlow.memberships ? true : { path: '/login', query: to.query }),
       },
       {
+        path: '/forgot-password',
+        component: () => import('./ForgotPasswordPage.vue'),
+        meta: { public: true, standalone: true },
+      },
+      {
         path: '/no-tenant',
         component: () => import('./NoTenantPage.vue'),
         meta: { public: true, standalone: true },
@@ -50,7 +55,17 @@ export function createShellRouter(history: RouterHistory) {
         component: () => import('./invitation/AcceptInvitationPage.vue'),
         meta: { public: true, standalone: true },
       },
+      // 当前 Identity 的个人安全设置，任何已登录成员都可进入。
+      {
+        path: '/account/security',
+        component: () => import('./security/AccountSecurityPage.vue'),
+      },
       // Shell 自带的租户管理页，不来自 Sub-App 菜单。
+      {
+        path: '/security-settings',
+        component: () => import('./security/SecuritySettingsPage.vue'),
+        meta: { permission: 'iam:security:manage' },
+      },
       {
         path: '/members',
         component: () => import('./member/MemberPage.vue'),

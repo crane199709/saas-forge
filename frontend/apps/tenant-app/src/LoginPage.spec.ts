@@ -220,3 +220,156 @@ it('没有有效 Membership 时进入无租户页，重新登录先退出 IAM �
   expect(fetcher.mock.calls.at(-1)?.[0]).toBe('/iam/auth/logout')
   expect(router.currentRoute.value.path).toBe('/login')
 })
+
+const signedInTokens = ok({
+  accessToken: 'a',
+  refreshToken: 'r',
+  tokenType: 'Bearer',
+  expiresIn: 900,
+  identityName: '安全身份',
+  tenantName: '租户 A',
+  membershipId: 'membership-a',
+})
+
+it('已绑定 Authenticator 时进入 MFA 步骤，可改用 Recovery Code 后进入租户', async () => {
+  const fetcher = vi.fn(
+    fakeFetch({
+      '/iam/auth/login': ok({ nextStep: 'mfa' }),
+      '/iam/auth/login/mfa': [
+        fail('mfa.codeInvalid', 400, '动态码错误或已使用', 'trace-mfa'),
+        loginSettings([memberships[0]!]),
+      ],
+      '/iam/oauth2/authorize': authorizeRedirect,
+      '/iam/auth/exchange': signedInTokens,
+      '/iam/auth/memberships': ok([memberships[0]]),
+      '/demo/context': ok({}),
+    }),
+  )
+  vi.stubGlobal('fetch', fetcher)
+  const { wrapper, router } = await mountShell('/login')
+  await submit(wrapper)
+  expect(wrapper.find('input[name="password"]').exists()).toBe(false)
+  await wrapper.get('input[name="mfa-code"]').setValue('123456')
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  expect(wrapper.get('[role="alert"]').text()).toContain('动态码错误或已使用')
+
+  await wrapper.get('[data-testid="use-recovery-code"]').trigger('click')
+  await wrapper.get('input[name="recovery-code"]').setValue('AAAA-BBBB-CCCC-DDDD')
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/'))
+  const mfaCalls = fetcher.mock.calls.filter(([path]) => path === '/iam/auth/login/mfa')
+  expect(JSON.parse((mfaCalls[1] as unknown as [string, RequestInit])[1].body as string)).toEqual({
+    recoveryCode: 'AAAA-BBBB-CCCC-DDDD',
+  })
+})
+
+it('待 MFA 超时后回到账号密码表单', async () => {
+  vi.stubGlobal(
+    'fetch',
+    fakeFetch({
+      '/iam/auth/login': ok({ nextStep: 'mfa' }),
+      '/iam/auth/login/mfa': fail('auth.mfaExpired', 401, '验证已超时，请重新登录', 'trace-exp'),
+    }),
+  )
+  const { wrapper } = await mountShell('/login')
+  await submit(wrapper)
+  await wrapper.get('input[name="mfa-code"]').setValue('123456')
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  expect(wrapper.get('[role="alert"]').text()).toContain('验证已超时，请重新登录')
+  expect(wrapper.find('input[name="password"]').exists()).toBe(true)
+})
+
+it('租户要求 MFA 时当场绑定：扫码、输入首个动态码、保存 Recovery Code 后重新进入', async () => {
+  const fetcher = vi.fn(
+    fakeFetch({
+      '/iam/auth/login': loginSettings([memberships[0]!]),
+      '/iam/oauth2/authorize': authorizeRedirect,
+      '/iam/auth/exchange': [
+        fail('auth.mfaRequired', 403, '需要先完成多因素认证', 'trace-mfa-required'),
+        signedInTokens,
+      ],
+      '/iam/auth/mfa/bind/start': ok({
+        otpauthUri: 'otpauth://totp/SaaS%20Forge:multi?secret=JBSWY3DPEHPK3PXP&issuer=SaaS%20Forge',
+      }),
+      '/iam/auth/mfa/bind/confirm': ok({
+        recoveryCodes: ['AAAA-BBBB-CCCC-DDDD', 'EEEE-FFFF-GGGG-HHHH'],
+      }),
+      '/iam/auth/memberships': ok([memberships[0]]),
+      '/demo/context': ok({}),
+    }),
+  )
+  vi.stubGlobal('fetch', fetcher)
+  const { wrapper, router } = await mountShell('/login')
+  await submit(wrapper)
+  await vi.waitFor(() => expect(wrapper.find('[data-testid="mfa-qr"]').exists()).toBe(true))
+  expect(wrapper.text()).toContain('JBSWY3DPEHPK3PXP')
+  await wrapper.get('input[name="bind-code"]').setValue('654321')
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  expect(wrapper.get('[data-testid="recovery-codes"]').text()).toContain('EEEE-FFFF-GGGG-HHHH')
+  expect(router.currentRoute.value.path).toBe('/login')
+
+  await wrapper.get('[data-testid="recovery-codes-done"]').trigger('click')
+  await flushPromises()
+  await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/'))
+  expect(fetcher.mock.calls.filter(([path]) => path === '/iam/auth/exchange')).toHaveLength(2)
+})
+
+it('账号被临时锁定时提示剩余等待时间', async () => {
+  vi.stubGlobal(
+    'fetch',
+    fakeFetch({
+      '/iam/auth/login': new Response(
+        JSON.stringify({
+          code: 'auth.locked',
+          httpStatus: 429,
+          userTip: '已锁定',
+          traceId: 'trace-locked',
+        }),
+        { status: 429, headers: { 'Retry-After': '540' } },
+      ),
+    }),
+  )
+  const { wrapper } = await mountShell('/login')
+  await submit(wrapper)
+  const alert = wrapper.get('[role="alert"]')
+  expect(alert.text()).toContain('登录失败次数过多，已临时锁定，请 9 分钟后再试')
+  expect(alert.text()).toContain('trace-locked')
+})
+
+it('选择的租户要求 MFA 时在选择页当场绑定，保存 Recovery Code 后进入该租户', async () => {
+  const fetcher = vi.fn(
+    fakeFetch({
+      '/iam/auth/login': loginSettings(memberships),
+      '/iam/oauth2/authorize': authorizeRedirect,
+      '/iam/auth/exchange': [
+        fail('auth.mfaRequired', 403, '需要先完成多因素认证', 'trace-mfa-required'),
+        signedInTokens,
+      ],
+      '/iam/auth/mfa/bind/start': ok({ otpauthUri: 'otpauth://totp/x?secret=ABCDEF' }),
+      '/iam/auth/mfa/bind/confirm': ok({ recoveryCodes: ['AAAA-BBBB-CCCC-DDDD'] }),
+      '/iam/auth/memberships': ok(memberships),
+      '/demo/context': ok({}),
+    }),
+  )
+  vi.stubGlobal('fetch', fetcher)
+  const { wrapper, router } = await mountShell('/login')
+  await submit(wrapper)
+  await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/select-tenant'))
+  await wrapper.get('[data-testid="tenant-option-membership-b"]').trigger('click')
+  await flushPromises()
+  await vi.waitFor(() => expect(wrapper.find('[data-testid="mfa-qr"]').exists()).toBe(true))
+  await wrapper.get('input[name="bind-code"]').setValue('654321')
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  await wrapper.get('[data-testid="recovery-codes-done"]').trigger('click')
+  await flushPromises()
+  await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/'))
+  const exchanges = fetcher.mock.calls.filter(([path]) => path === '/iam/auth/exchange')
+  expect(
+    JSON.parse((exchanges[1] as unknown as [string, RequestInit])[1].body as string),
+  ).toMatchObject({ membershipId: 'membership-b' })
+})
