@@ -8,6 +8,7 @@ FROM operator o CROSS JOIN (VALUES
     ('019a0110-0000-7000-8000-000000000404', 'op-mfa-unbind'),
     ('019a0110-0000-7000-8000-000000000405', 'op-mfa-forced'),
     ('019a0110-0000-7000-8000-000000000406', 'op-mfa-keep'),
-    ('019a0110-0000-7000-8000-000000000407', 'op-mfa-replace')) AS v (id, account)
+    ('019a0110-0000-7000-8000-000000000407', 'op-mfa-replace'),
+    ('019a0110-0000-7000-8000-000000000408', 'op-mfa-reset')) AS v (id, account)
 WHERE o.account = 'operator'
 ON CONFLICT DO NOTHING;

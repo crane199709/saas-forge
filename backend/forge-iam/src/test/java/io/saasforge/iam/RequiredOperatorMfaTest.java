@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.saasforge.iam.PlatformMfaClient.Login;
 import io.saasforge.iam.PlatformMfaClient.Response;
 import io.saasforge.iam.mfa.mapper.MfaProbeMapper;
+import io.saasforge.iam.mfa.service.MfaResetService;
 import io.saasforge.iam.provisioning.mapper.OutboxAuditMapper;
 import java.util.Map;
 import java.util.UUID;
@@ -28,6 +29,8 @@ import org.springframework.test.context.jdbc.Sql;
 class RequiredOperatorMfaTest {
     static final UUID FORCED = UUID.fromString("019a0110-0000-7000-8000-000000000405");
     static final UUID REPLACE = UUID.fromString("019a0110-0000-7000-8000-000000000407");
+    static final UUID RESET = UUID.fromString("019a0110-0000-7000-8000-000000000408");
+    static final UUID SUPER_ADMIN = UUID.fromString("019a0110-0000-7000-8000-0000000000f1");
 
     static final SharedContainers.Postgres postgres = SharedContainers.postgres();
 
@@ -52,6 +55,9 @@ class RequiredOperatorMfaTest {
 
     @Autowired
     MfaProbeMapper probe;
+
+    @Autowired
+    MfaResetService mfaReset;
 
     PlatformMfaClient http;
 
@@ -109,6 +115,27 @@ class RequiredOperatorMfaTest {
         // 之后的登录走待 MFA。
         assertThat(http.login("op-mfa-forced").response().data()).containsEntry("nextStep", "mfa");
         assertThat(http.audits(FORCED)).containsExactly("mfa.bind");
+    }
+
+    @Test
+    void anMfaResetStopsExistingAuthorizationsAndSessionsAndRequiresBindingAgain() {
+        byte[] secret = forcedBind("op-mfa-reset", -1);
+        String session = http.post(
+                        "/platform/auth/login/mfa",
+                        Map.of("code", PlatformMfaClient.code(secret, 0)),
+                        http.login("op-mfa-reset").cookie(),
+                        null)
+                .cookie();
+        Map<?, ?> tokens = http.tokens(session);
+
+        mfaReset.resetOperator(SUPER_ADMIN, RESET);
+
+        assertThat(http.post("/platform/auth/refresh", Map.of("refreshToken", tokens.get("refreshToken")), null, null)
+                        .response()
+                        .status())
+                .isNotEqualTo(200);
+        assertThat(http.authorizeStatus(session)).isNotEqualTo(302);
+        assertThat(http.login("op-mfa-reset").response().data()).containsEntry("nextStep", "bind");
     }
 
     @Test

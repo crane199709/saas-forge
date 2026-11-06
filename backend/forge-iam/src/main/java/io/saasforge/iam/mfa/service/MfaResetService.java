@@ -10,6 +10,7 @@ import io.saasforge.iam.mfa.model.IdentityMfaStatus;
 import io.saasforge.iam.operator.service.OperatorService;
 import io.saasforge.iam.permission.service.PlatformPermissions;
 import io.saasforge.iam.platformrole.service.PlatformRoleService;
+import io.saasforge.iam.security.service.MfaCompletionService;
 import io.saasforge.sdk.audit.AuditCategory;
 import io.saasforge.sdk.audit.AuditEvent;
 import io.saasforge.sdk.audit.AuditRealm;
@@ -21,7 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Operator 执行的 MFA Reset（账号安全规格 2.5）：清除 Authenticator 与全部 Recovery Code，被重置者下次登录不再要求 MFA，可重新绑定。
+ * Operator 执行的 MFA Reset（账号安全规格 2.5）：清除 Authenticator 与全部 Recovery Code，并撤销现存授权与登录会话上的 MFA 记录，被重置者下次登录不再要求 MFA，可重新绑定。
  * Identity 由持有 {@value PlatformPermissions#IDENTITY_MFA_RESET} 的 Operator 重置，Operator 只能由超级管理员重置；
  * 租户侧不提供重置他人 MFA 的入口，也不提供自助重置。
  *
@@ -40,6 +41,7 @@ public class MfaResetService {
     private final PlatformRoleService roles;
     private final TransactionTemplate transactions;
     private final StringRedisTemplate redis;
+    private final MfaCompletionService completions;
     private final AuditRecorder audits;
 
     MfaResetService(
@@ -52,6 +54,7 @@ public class MfaResetService {
             PlatformRoleService roles,
             TransactionTemplate transactions,
             StringRedisTemplate redis,
+            MfaCompletionService completions,
             AuditRecorder audits) {
         this.identityAuthenticators = identityAuthenticators;
         this.identityRecoveryCodes = identityRecoveryCodes;
@@ -62,6 +65,7 @@ public class MfaResetService {
         this.roles = roles;
         this.transactions = transactions;
         this.redis = redis;
+        this.completions = completions;
         this.audits = audits;
     }
 
@@ -97,6 +101,8 @@ public class MfaResetService {
         });
         // 进行中的绑定一并作废，免得重置前开始的绑定在重置后被确认。
         redis.delete(IdentityMfaService.pendingKey(identityId));
+        // 重置常因设备丢失或泄露，已完成 MFA 的记录不能继续生效，否则被重置者的旧授权仍能进入有 MFA Requirement 的 Tenant。
+        completions.revokeCompletions(identityId);
         audits.record(event(actor, "identity", identityId));
     }
 
@@ -113,6 +119,7 @@ public class MfaResetService {
             operatorRecoveryCodes.deleteByOperator(operatorId, actor);
         });
         redis.delete(OperatorMfaService.pendingKey(operatorId));
+        completions.revokeCompletions(operatorId);
         audits.record(event(actor, "operator", operatorId));
     }
 

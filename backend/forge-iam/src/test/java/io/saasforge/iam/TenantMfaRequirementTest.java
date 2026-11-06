@@ -2,6 +2,7 @@ package io.saasforge.iam;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.saasforge.iam.mfa.service.MfaResetService;
 import io.saasforge.iam.mfa.service.Totp;
 import io.saasforge.iam.provisioning.mapper.OutboxAuditMapper;
 import io.saasforge.sdk.audit.AuditEvent;
@@ -47,6 +48,10 @@ class TenantMfaRequirementTest {
     static final UUID SWITCH_IN_REQUIRING_TENANT = UUID.fromString("019a0130-0000-7000-8000-000000000034");
     static final UUID UNBIND_IN_FREE_TENANT = UUID.fromString("019a0130-0000-7000-8000-000000000027");
     static final UUID UNBIND_IN_REQUIRING_TENANT = UUID.fromString("019a0130-0000-7000-8000-000000000037");
+    static final UUID RESET_IDENTITY = UUID.fromString("019a0130-0000-7000-8000-00000000001a");
+    static final UUID RESET_IN_FREE_TENANT = UUID.fromString("019a0130-0000-7000-8000-00000000002a");
+    static final UUID RESET_IN_REQUIRING_TENANT = UUID.fromString("019a0130-0000-7000-8000-00000000003a");
+    static final UUID SUPER_ADMIN = UUID.fromString("019a0110-0000-7000-8000-0000000000f1");
 
     static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -70,6 +75,9 @@ class TenantMfaRequirementTest {
 
     @Autowired
     OutboxAuditMapper outbox;
+
+    @Autowired
+    MfaResetService mfaReset;
 
     @Test
     void anAdminEnablesTheRequirementAndUnboundMembersAreStoppedAtTheirNextRefresh() {
@@ -229,6 +237,34 @@ class TenantMfaRequirementTest {
         assertThat(post("/auth/refresh", Map.of("refreshToken", refreshToken), null)
                         .status())
                 .isEqualTo(200);
+    }
+
+    @Test
+    void anMfaResetClearsTheMfaMarkOfExistingAuthorizationsAndLoginSessions() {
+        Response entered = exchange(authorizationCode(login("req-reset")), RESET_IN_FREE_TENANT);
+        Session bound = bindWith((String) entered.data().get("accessToken"), null);
+        Response switched = post(
+                "/auth/switch",
+                Map.of("refreshToken", entered.data().get("refreshToken"), "membershipId", RESET_IN_REQUIRING_TENANT),
+                null);
+        assertThat(switched.status()).isEqualTo(200);
+        String refreshToken = (String) switched.data().get("refreshToken");
+
+        // 另一处以 Recovery Code 完成 MFA 的登录会话，重置前可以签发新授权。
+        String pending = post("/auth/login", Map.of("account", "req-reset", "password", PASSWORD), null)
+                .cookie();
+        @SuppressWarnings("unchecked")
+        List<String> recoveryCodes = (List<String>) bound.confirmed().get("recoveryCodes");
+        String otherSession = post("/auth/login/mfa", Map.of("recoveryCode", recoveryCodes.get(0)), pending)
+                .cookie();
+        assertThat(authorizeStatus(otherSession)).isEqualTo(302);
+
+        mfaReset.resetIdentity(SUPER_ADMIN, RESET_IDENTITY);
+
+        Response refreshed = post("/auth/refresh", Map.of("refreshToken", refreshToken), null);
+        assertThat(refreshed.status()).isEqualTo(403);
+        assertThat(refreshed.code()).isEqualTo("auth.mfaRequired");
+        assertThat(authorizeStatus(otherSession)).isNotEqualTo(302);
     }
 
     @Test

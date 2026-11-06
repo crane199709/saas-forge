@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * 改写授权上的 MFA 记录（ADR-0019）：被 MFA Requirement 拦下的身份凭 Access Token 当场绑定 Authenticator 后，该 Token 所属授权（含 Refresh
- * Token 链）视为已完成 MFA，随后的 switch 与 refresh 据此放行；解绑后撤销现存的记录，之后进不了有 MFA Requirement 的 Tenant（账号安全规格 2.2）。
+ * Token 链）视为已完成 MFA，随后的 switch 与 refresh 据此放行；解绑或 MFA Reset 后撤销现存的记录，之后进不了有 MFA Requirement 的 Tenant（账号安全规格 2.2、2.5）。
  */
 @Service
 public class MfaCompletionService {
@@ -60,10 +60,10 @@ public class MfaCompletionService {
     }
 
     /**
-     * 撤销 Identity 现存的全部 MFA 记录，解绑 Authenticator 后调用：授权上的标记逐条清除，保留授权以便继续使用没有要求的 Tenant；
+     * 撤销 Identity 或 Operator 现存的全部 MFA 记录，解绑 Authenticator 或 MFA Reset 后调用：授权上的标记逐条清除，保留授权以便继续使用没有要求的 Tenant（Operator 在 {@code mfa-required=true} 时则不能再刷新）；
      * 登录会话直接终止，否则它随后走授权码流程仍会得到记为已完成 MFA 的新授权。
      *
-     * @param identityId 解绑的 Identity
+     * @param identityId 解绑或被重置的 Identity 或 Operator
      */
     public void revokeCompletions(UUID identityId) {
         String principalName = identityId.toString();
