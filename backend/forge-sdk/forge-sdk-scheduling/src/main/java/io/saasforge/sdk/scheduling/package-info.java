@@ -22,6 +22,18 @@
  * {@code ${forge.manifest.token}}，复用已有服务配置。地址与令牌无默认值，漏配时启动失败；
  * 配置统一绑定为 Spring Bean，仅声明 Global Task 时允许这两项缺省，也不依赖 manifest starter。
  *
+ * <p>实际执行产生 {@link io.saasforge.sdk.scheduling.TaskRun}，抢锁跳过不产生记录。
+ * 通过 {@link io.saasforge.sdk.scheduling.TaskRunHistory} 查询本服务的当前运行、最近结束与最近非成功运行；
+ * 键前缀为 {@code forge:task-run:<service>:<name>:}，沿用锁的全局 Redis 模板，不需要数据库迁移。
+ * 当前运行最多一条，两个结束列表分别最多 100 条，写入与裁剪原子完成，每次写入刷新已有键的 90 天 TTL。
+ * Tenant Task 保留准确的成功与失败总数，但失败租户明细最多 100 个；错误摘要只含异常类型与
+ * {@link io.saasforge.sdk.core.api.ForgeException} 的错误码，不保存异常消息或参数，完整异常仍在服务日志中。
+ *
+ * <p>读取当前运行时按同一快照比较锁令牌，不再持锁的记录显示为已中断；下一次持锁执行将遗留记录归档。
+ * 结束时只处理本次令牌对应的 current，旧执行不会清理接替者的记录。
+ * 运行记录读写失败只记 WARN，不影响任务执行和锁释放，查询失败返回空结果。
+ * 运行记录只用于最近故障排查，不保证长期留存；生产 Redis 必须保证带 TTL 的任务锁和运行记录不被淘汰。
+ *
  * <p>Micrometer 指标以 {@code name} 为标签：{@code forge.task.executions} 为执行次数，
  * {@code forge.task.duration} 为执行耗时，{@code forge.task.skipped} 为锁被占用的跳过次数，
  * {@code forge.task.lock.failures} 为 Redis 抢锁失败次数；{@code forge.task.tenant.successes} 与

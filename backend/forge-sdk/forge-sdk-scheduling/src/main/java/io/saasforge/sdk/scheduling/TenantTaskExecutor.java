@@ -18,15 +18,17 @@ final class TenantTaskExecutor {
         this.metrics = metrics;
     }
 
-    void execute(String name, Runnable invocation) {
+    void execute(String name, Runnable invocation, TaskRunOutcome outcome) {
         for (var tenant : directory.tenants()) {
             CurrentTenant.run(tenant, () -> {
                 try {
                     String status = statuses.status(tenant);
                     if (!"trial".equals(status) && !"active".equals(status)) return;
                     invocation.run();
+                    outcome.succeeded();
                     metrics.counter("forge.task.tenant.successes", "name", name).increment();
                 } catch (Exception error) {
+                    outcome.tenantFailed(tenant, error);
                     metrics.counter("forge.task.tenant.failures", "name", name).increment();
                     // 在租户绑定释放前记录，确保日志 MDC 保留失败租户。
                     LOG.error("Tenant Task {} failed for tenant {}", name, tenant, error);

@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
+import java.util.function.Consumer;
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.DisposableBean;
@@ -119,14 +120,18 @@ final class TaskRegistrar implements BeanPostProcessor, SmartInitializingSinglet
                 new RedisTaskLock(
                         beans.getBean(StringRedisTemplate.class),
                         environment.getRequiredProperty("spring.application.name")),
-                metrics);
+                metrics,
+                beans.getBean(TaskRunHistory.class));
         TaskScheduler scheduler = beans.getBean("forgeTaskScheduler", TaskScheduler.class);
         for (Registration registration : registrations) {
             Task task = registration.task();
             ReflectionUtils.makeAccessible(task.method());
             Runnable method = () -> ReflectionUtils.invokeMethod(task.method(), task.bean());
-            Runnable body = task.tenant() ? () -> tenantExecutor.execute(registration.name(), method) : method;
-            Runnable invocation = () -> runner.trigger(registration.name(), body);
+            Consumer<TaskRunOutcome> body = task.tenant()
+                    ? outcome -> tenantExecutor.execute(registration.name(), method, outcome)
+                    : outcome -> method.run();
+            Runnable invocation = () -> runner.trigger(
+                    registration.name(), task.tenant() ? TaskRun.Type.TENANT : TaskRun.Type.GLOBAL, body);
             if (registration.cron() != null) {
                 schedules.add(scheduler.schedule(invocation, registration.cron()));
             } else {
