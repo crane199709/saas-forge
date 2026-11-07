@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.announcement.mapper.AnnouncementMapper">
+    <select id="bindTenant" resultType="String">SELECT set_config('app.tenant_id', CAST(#{tenantId} AS text), true)</select>
+    <insert id="publishTenant">
+        INSERT INTO tenant_announcement (id, tenant_id, title, body, sub_app, route, expires_at, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{tenantId}, #{title}, #{body}, #{subApp}, #{route}, #{expiresAt}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
+    </insert>
+    <select id="visible" resultType="io.saasforge.iam.announcement.model.AnnouncementView">
+        SELECT visible.*, EXISTS (SELECT 1 FROM announcement_read r
+        WHERE r.tenant_id = #{tenantId} AND r.membership_id = #{membershipId}
+        AND r.announcement_id = visible.id AND NOT r.deleted) AS read
+        FROM (
+        SELECT a.id, 'tenant' AS source, a.title, a.body, a.sub_app, a.route, a.expires_at, a.created_at AS published_at, a.revoked
+        FROM tenant_announcement a WHERE a.tenant_id = #{tenantId} AND NOT a.deleted AND NOT a.revoked
+        AND (a.expires_at IS NULL OR a.expires_at > CURRENT_TIMESTAMP)
+        UNION ALL
+        SELECT a.id, 'platform' AS source, a.title, a.body, a.sub_app, a.route, a.expires_at, a.created_at AS published_at, a.revoked
+        FROM platform_announcement a WHERE NOT a.deleted AND NOT a.revoked
+        AND (a.expires_at IS NULL OR a.expires_at > CURRENT_TIMESTAMP)
+        AND (a.all_tenants OR EXISTS (SELECT 1 FROM platform_announcement_target t
+        WHERE t.announcement_id = a.id AND t.tenant_id = #{tenantId}))
+        ) visible ORDER BY visible.published_at DESC, visible.id DESC
+    </select>
+    <insert id="markRead">
+        INSERT INTO announcement_read (id, tenant_id, membership_id, announcement_id, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{tenantId}, #{membershipId}, #{announcementId}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
+        ON CONFLICT (tenant_id, membership_id, announcement_id) WHERE NOT deleted DO NOTHING
+    </insert>
+    <insert id="publishPlatform">
+        INSERT INTO platform_announcement (id, title, body, sub_app, route, expires_at, all_tenants, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{title}, #{body}, #{subApp}, #{route}, #{expiresAt}, #{allTenants}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
+    </insert>
+    <insert id="target">
+        INSERT INTO platform_announcement_target (announcement_id, tenant_id) VALUES (#{announcementId}, #{tenantId})
+        ON CONFLICT DO NOTHING
+    </insert>
+    <select id="platformList" resultType="io.saasforge.iam.announcement.model.PlatformAnnouncementRow">
+        SELECT id, title, body, sub_app, route, expires_at, created_at AS published_at, revoked, all_tenants
+        FROM platform_announcement WHERE NOT deleted ORDER BY created_at DESC, id DESC
+    </select>
+    <select id="targets" resultType="java.util.UUID">
+        SELECT tenant_id FROM platform_announcement_target WHERE announcement_id = #{id} ORDER BY tenant_id
+    </select>
+    <select id="tenantList" resultType="io.saasforge.iam.announcement.model.AnnouncementView">
+        SELECT id, 'tenant' AS source, title, body, sub_app, route, expires_at, created_at AS published_at, revoked, false AS read
+        FROM tenant_announcement WHERE tenant_id = #{tenantId} AND NOT deleted ORDER BY created_at DESC, id DESC
+    </select>
+    <update id="revokeTenant">
+        UPDATE tenant_announcement SET revoked = true, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT deleted AND NOT revoked
+    </update>
+    <update id="revokePlatform">
+        UPDATE platform_announcement SET revoked = true, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
+        WHERE id = #{id} AND NOT deleted AND NOT revoked
+    </update>
+    <update id="deleteTenantAnnouncements">
+        UPDATE tenant_announcement SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = NULL
+        WHERE tenant_id = #{tenantId} AND NOT deleted
+    </update>
+    <update id="deleteTenantReads">
+        UPDATE announcement_read SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = NULL
+        WHERE tenant_id = #{tenantId} AND NOT deleted
+    </update>
+    <delete id="deleteTenantTargets">
+        DELETE FROM platform_announcement_target WHERE tenant_id = #{tenantId}
+    </delete>
+</mapper>

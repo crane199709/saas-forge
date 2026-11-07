@@ -21,10 +21,13 @@ public final class PlatformPermissions {
     /** 查看 Platform Realm 的审计记录。 */
     public static final String AUDIT_READ = "platform:audit:read";
 
+    /** 发布和撤回全租户或指定租户公告。 */
+    public static final String ANNOUNCEMENT_MANAGE = "platform:announcement:manage";
+
     /** 登记清单使用的服务名。 */
     public static final String SERVICE = "forge-iam-platform";
     // 同 IamPermissions：改动权限码、名称或分组时必须升级版本。
-    private static final String VERSION = "3";
+    private static final String VERSION = "4";
     private static final String GROUP = "平台管理";
 
     private PlatformPermissions() {}
@@ -37,7 +40,8 @@ public final class PlatformPermissions {
                         new Permission(OPERATOR_MANAGE, "管理运营账号", GROUP),
                         new Permission(ROLE_MANAGE, "管理平台角色", GROUP),
                         new Permission(AUDIT_READ, "查看平台审计", GROUP),
-                        new Permission(IDENTITY_MFA_RESET, "重置身份 MFA", GROUP)),
+                        new Permission(IDENTITY_MFA_RESET, "重置身份 MFA", GROUP),
+                        new Permission(ANNOUNCEMENT_MANAGE, "管理平台公告", GROUP)),
                 List.of(),
                 List.of(),
                 List.of(),
