@@ -16,8 +16,11 @@ import io.saasforge.sdk.numbering.DateSegment;
 import io.saasforge.sdk.numbering.NumberingRule;
 import io.saasforge.sdk.provisioning.TenantDataCleaner;
 import io.saasforge.sdk.provisioning.TenantDeleted;
+import io.saasforge.sdk.security.TenantContext;
 import io.saasforge.sdk.web.PageQuery;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +84,13 @@ public class OrderService implements TenantDataCleaner {
         orderMapper.insert(order);
         eventPublisher.publish(OrderCreated.TOPIC, new OrderCreated(order.getId(), title, amount));
         if (order.getOwnerId() != null) {
+            notifications.openTodo(
+                    "order:" + order.getId(),
+                    NotificationTarget.memberships(List.of(order.getOwnerId())),
+                    "处理订单 " + order.getNumber(),
+                    title,
+                    new NotificationLink("demo", "/overview"),
+                    Instant.now());
             notifications.send(
                     NotificationTarget.memberships(List.of(order.getOwnerId())),
                     "订单已创建",
@@ -120,10 +130,32 @@ public class OrderService implements TenantDataCleaner {
         return get(id);
     }
 
+    /** 订单状态与关闭待办事件同一事务提交，重复关单不产生新状态或刷新审计。 */
+    @Transactional
+    public Order close(UUID id) {
+        get(id);
+        if (orderMapper.closeUnpaid(id, TenantContext.current().identityId()) > 0) {
+            notifications.closeTodo("order:" + id, Instant.now());
+        }
+        return get(id);
+    }
+
+    /** 超时关单和待办关闭同事务，条件更新排除并发已完成的关单。 */
+    @Transactional
+    public void closeExpired(OffsetDateTime cutoff) {
+        for (UUID id : orderMapper.expiredUnpaid(cutoff)) {
+            if (orderMapper.closeUnpaid(id, null) > 0) {
+                notifications.closeTodo("order:" + id, Instant.now());
+            }
+        }
+    }
+
+    @Transactional
     public void delete(UUID id) {
         if (orderMapper.deleteById(id) == 0) {
             throw notFound(id);
         }
+        notifications.closeTodo("order:" + id, Instant.now());
     }
 
     private static Map<String, Object> attributes(Order order) {

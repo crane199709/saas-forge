@@ -6,6 +6,7 @@
 
 ### 新增
 
+- IAM 新增共享 Todo 状态索引与当前成员分页查询：按业务发生时间抵御重复、乱序事件，实时按数据库角色权限与 Plan 裁剪；demo-service 创建订单开启待办，关单、删单及超时关闭同步结束待办。
 - IAM 新增按月分区的 Notification 收件箱，支持创建时 Permission 收件快照、分页、已读与未读计数，按 180 天整月清理；demo 订单创建事务发送真实站内通知。
 
 - 新增 `forge-sdk-notification`：在业务事务内发送 Notification、开启和关闭 Todo，提供目标、站内链接与发生时间事件契约；经既有 Outbox 投递到 `forge-notification`，无需新增 SDK 表。

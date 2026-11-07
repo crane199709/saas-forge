@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.todo.mapper.TodoMapper">
+    <select id="open" resultType="java.util.UUID" affectData="true" flushCache="true">
+        INSERT INTO todo (id, tenant_id, service, business_key, opened, occurred_at, occurred_at_nanos, title, body,
+        permission_code, app_code, route, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{event.tenantId}, #{event.service}, #{event.businessKey}, true, #{second}, #{nanos},
+        #{event.title}, #{event.body}, #{event.target.permissionCode}, #{event.link.appCode}, #{event.link.route},
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL)
+        ON CONFLICT (tenant_id, service, business_key) WHERE NOT deleted
+        DO UPDATE SET opened = true, occurred_at = EXCLUDED.occurred_at, occurred_at_nanos = EXCLUDED.occurred_at_nanos,
+        title = EXCLUDED.title, body = EXCLUDED.body, permission_code = EXCLUDED.permission_code,
+        app_code = EXCLUDED.app_code, route = EXCLUDED.route,
+        updated_at = CURRENT_TIMESTAMP, updated_by = NULL
+        WHERE NOT todo.deleted AND (todo.occurred_at &lt; EXCLUDED.occurred_at
+        OR (todo.occurred_at = EXCLUDED.occurred_at AND todo.occurred_at_nanos &lt; EXCLUDED.occurred_at_nanos))
+        RETURNING id
+    </select>
+    <insert id="close">
+        INSERT INTO todo (id, tenant_id, service, business_key, opened, occurred_at, occurred_at_nanos,
+        created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{event.tenantId}, #{event.service}, #{event.businessKey}, false, #{second}, #{nanos},
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL)
+        ON CONFLICT (tenant_id, service, business_key) WHERE NOT deleted
+        DO UPDATE SET opened = false, occurred_at = EXCLUDED.occurred_at, occurred_at_nanos = EXCLUDED.occurred_at_nanos,
+        updated_at = CURRENT_TIMESTAMP, updated_by = NULL
+        WHERE NOT todo.deleted AND (todo.occurred_at &lt; EXCLUDED.occurred_at
+        OR (todo.occurred_at = EXCLUDED.occurred_at AND todo.occurred_at_nanos &lt; EXCLUDED.occurred_at_nanos))
+    </insert>
+    <delete id="clearMemberships">
+        DELETE FROM todo_membership WHERE tenant_id = #{tenantId} AND todo_id = #{todoId}
+    </delete>
+    <insert id="addMemberships">
+        INSERT INTO todo_membership (tenant_id, todo_id, membership_id) VALUES
+        <foreach collection="ids" item="id" separator=",">(#{tenantId}, #{todoId}, #{id})</foreach>
+    </insert>
+    <sql id="visible">
+        t.tenant_id = #{visibility.tenantId} AND NOT t.deleted AND t.opened
+        AND ((t.permission_code IS NULL AND EXISTS (SELECT 1 FROM todo_membership m
+        WHERE m.tenant_id = #{visibility.tenantId} AND m.todo_id = t.id AND m.membership_id = #{visibility.membershipId}))
+        <if test="!visibility.permissions.isEmpty()">
+            OR t.permission_code IN
+            <foreach collection="visibility.permissions" item="permission" open="(" separator="," close=")">#{permission}</foreach>
+        </if>
+        )
+        <if test="visibility.subApps != null">
+            AND (t.app_code IS NULL
+            <if test="!visibility.subApps.isEmpty()">
+                OR t.app_code IN
+                <foreach collection="visibility.subApps" item="app" open="(" separator="," close=")">#{app}</foreach>
+            </if>
+            )
+        </if>
+    </sql>
+    <select id="page" resultType="io.saasforge.iam.todo.model.TodoRow">
+        SELECT t.id, t.service, t.business_key, t.title, t.body, t.app_code, t.route, t.occurred_at, t.occurred_at_nanos
+        FROM todo t WHERE
+        <include refid="visible"/>
+        ORDER BY t.occurred_at DESC, t.occurred_at_nanos DESC, t.id DESC LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM todo t WHERE
+        <include refid="visible"/>
+    </select>
+    <delete id="clearTenantMemberships">
+        DELETE FROM todo_membership WHERE tenant_id = #{tenantId}
+    </delete>
+    <update id="markTenantDeleted">
+        UPDATE todo SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = NULL
+        WHERE tenant_id = #{tenantId} AND NOT deleted
+    </update>
+</mapper>
