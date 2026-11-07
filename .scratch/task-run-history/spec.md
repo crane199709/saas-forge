@@ -1,6 +1,6 @@
 # 定时任务运行记录规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-11-07 的设计拷问逐条确认；运行记录的存储方案其后由数据库改为 Redis。
 
@@ -70,3 +70,7 @@ Status: ready-for-agent
 - 遵守 `docs/agents/coding-standards.md`。
 - 不新增数据库表，接入调度的服务不需要新迁移。
 - 同步更新 `forge-sdk-scheduling` 的 `package-info`、`docs/business-service-guide.md` 与 `CHANGELOG.md`。
+
+## 实现与验收
+
+三个工单均已完成，集成于 `codex/task-run-history`。交付检查与覆盖范围见 [集成验收](validation.md)，双轴审查及修复见 [审查记录](review.md)。
