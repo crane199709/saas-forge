@@ -16,7 +16,7 @@ Status: resolved
 
 ## Demo真实业务触发契约
 
-与票03共用现有订单创建事务。`POST /orders`（网关 `POST /demo/orders`）带 Tenant Token，创建订单后 NotificationClient.send 发给订单 ownerId（创建者 Membership）；系统创建无 owner 时跳过。标题 `订单已创建`，正文 `订单 <number> 已创建`，链接 `{appCode:"demo",route:"/overview"}`。事件 Topic `forge-notification`、Tag `NotificationSent`，来源 service `demo-service`，通知写入Outbox与订单同事务。票03的 `POST /orders/{id}/close`（网关 `/demo/orders/{id}/close`） 关闭同一订单Todo。无 IAM 测试入口。
+与票03共用现有订单创建事务。`POST /orders`（网关 `POST /demo/orders`）带 Tenant Token，创建订单后 NotificationClient.send 发给订单 ownerId（创建者 Membership）；系统创建无 owner 时跳过。标题 `订单已创建`，正文 `订单 <number> 已创建`，链接 `{appCode:"demo",route:"/overview"}`。事件 Topic `forge-notification`、Tag `NotificationSent`，来源 service `demo-service`，通知写入Outbox与订单同事务。票03的 `POST /orders/{id}/close`（网关 `/demo/orders/{id}/close`）关闭同一订单Todo。无 IAM 测试入口。
 
 ## 验证进度
 
@@ -50,8 +50,18 @@ Status: resolved
 ./mvnw -o -pl examples/demo-service spotless:apply test -Dtest=NotificationOrderTest
 ```
 
-IAM第一条命令9/9通过，0失败/错误/跳过，日志`/private/tmp/notification-inbox-final-iam.log`。Demo第二条中OrderApiTest 4/4和ArchitectureTest 1/1通过；NotificationOrderTest的一条辅助失败创建断言原先假设空标题受校验，随后又碰到同版本权限缓存，均未改生产验证规则，改用已核实的BigDecimal反序列化错误；第三条最终1/1通过，日志`/private/tmp/notification-inbox-green-7b.log`。不把中间失败运行计为通过。
+IAM第一条命令9/9通过，0失败/错误/跳过，日志`/private/tmp/notification-inbox-final-iam.log`。Demo第二条中OrderApiTest 4/4和ArchitectureTest 1/1通过；NotificationOrderTest的一条辅助失败创建断言原先假设空标题受校验，后续权限变动辅助断言也与观察结果不符，未据此改生产验证规则；最终把失败创建案例限定为已核实的BigDecimal反序列化错误；第三条最终1/1通过，日志`/private/tmp/notification-inbox-green-7b.log`。不把中间失败运行计为通过。
 
 实现边界：V25只新增notification与notification_recipient两张非标准分区表，全部中文COMMENT ON；幂等主记录保留首次收件快照，包括空收件集合。每小时GlobalTask预建当前/下月分区，仅删除整月已满180天的分区；租户最终清理按event.tenantId限定两表，不删除任何其他Tenant记录。IAM表按ADR-0001显式租户SQL，不依赖消费线程租户上下文改写。无新增SDK表，因此无需更新archetype表结构。
 
 未运行模块全量（root统一交付执行）；真实MQ与浏览器闭环延后至票05，不能把本票EventHandler/Outbox集成测试当作Broker已验证。
+
+## 合并后确认
+
+实现提交`a188b43`；已将集成分支`8cb431e`合入本分支，合并提交`dd37fc0`，无冲突。共享Tenant Token链同时保留`/notifications/**`与`/announcements/**`。
+
+```sh
+./mvnw -o -pl forge-iam spotless:check test -Dtest=NotificationInboxTest,AnnouncementTest,ArchitectureTest
+```
+
+结果14/14通过（NotificationInboxTest 7、AnnouncementTest 6、ArchitectureTest 1），0失败/错误/跳过；日志`/private/tmp/notification-inbox-after-merge.log`。此轮也重新验证了最终标准INTERVAL写法的V25与实际分区删除路径。工作树仅包含本票必要实现、验证及已合入的公告改动。
