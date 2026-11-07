@@ -297,8 +297,8 @@ class IdentityMfaTest {
         assertThat(first.response().data().get("memberships")).isNull();
         assertThat(authorizeStatus(first.cookie())).isIn(401, 403);
 
-        // 绑定时用掉的动态码不能再用于登录；失败后待 MFA 状态保留，可以重试。
-        Login replayed = submitMfa(first.cookie(), Map.of("code", currentCode(bound.secret())));
+        // 重放绑定时实际提交的码，避免跨过时间步后重新生成的是新码；失败后待 MFA 状态保留，可以重试。
+        Login replayed = submitMfa(first.cookie(), Map.of("code", bound.bindingCode()));
         assertThat(replayed.response().status()).isEqualTo(400);
         assertThat(replayed.response().code()).isEqualTo("mfa.codeInvalid");
         Login passed = submitMfa(first.cookie(), Map.of("code", nextCode(bound.secret())));
@@ -595,7 +595,7 @@ class IdentityMfaTest {
         return login.getHeaders().getFirst("Set-Cookie").split(";")[0];
     }
 
-    record Bound(byte[] secret, List<String> recoveryCodes) {}
+    record Bound(byte[] secret, String bindingCode, List<String> recoveryCodes) {}
 
     record Login(Response response, String cookie) {}
 
@@ -603,9 +603,10 @@ class IdentityMfaTest {
     private Bound bind(String account) {
         Auth session = loginSession(account);
         byte[] secret = start(session);
-        Response confirmed = call(session, "/auth/mfa/bind/confirm", Map.of("code", currentCode(secret)));
+        String bindingCode = currentCode(secret);
+        Response confirmed = call(session, "/auth/mfa/bind/confirm", Map.of("code", bindingCode));
         assertThat(confirmed.status()).isEqualTo(201);
-        return new Bound(secret, recoveryCodes(confirmed));
+        return new Bound(secret, bindingCode, recoveryCodes(confirmed));
     }
 
     private Login passwordLogin(String account, String cookie) {
