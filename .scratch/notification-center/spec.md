@@ -1,6 +1,6 @@
 # 通知、公告与待办规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-11-07 的设计拷问逐条确认。
 
@@ -48,3 +48,9 @@ Status: ready-for-agent
 - 遵守 `docs/agents/coding-standards.md`；新表用 `COMMENT ON` 写中文描述。
 - 新增 SDK 表时，同步更新服务迁移、`forge-service-archetype`、`docs/business-service-guide.md` 与 `CHANGELOG.md`。
 - 带租户数据的新表接入租户清理流程（`TenantDataCleaner`）。
+
+## 实现与验收
+
+五张票均已解决，全部实现汇总于 `codex/notification-center-integration`。通知、公告与待办的后端、两端界面、租户隔离和真实 MQ 业务闭环已验收；规范审查的两个必修项已修复并复核关闭，规格审查无遗留项。
+
+完整结果见 [集成验收](validation.md)，接口与逐票红绿记录见 [01](validation-01.md)、[02](validation-02.md)、[03](validation-03.md)、[04](validation-04.md)、[05](validation-05.md)；另有 [通知 RLS 验收](validation-rls.md) 和 [审查处理](review-resolution.md)。
