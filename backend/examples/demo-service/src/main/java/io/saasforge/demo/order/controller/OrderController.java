@@ -71,6 +71,14 @@ class OrderController {
                 orderService.update(id, request.title(), request.amount(), request.customerSource())));
     }
 
+    @Operation(summary = "关闭未支付订单，并结束所有处理人的待办")
+    @PostMapping("/{id}/close")
+    @RequiresPermission("order:update")
+    @AuditLog(action = "order.close", resourceType = "order", resourceId = "#id")
+    ApiResponse<OrderResponse> close(@PathVariable UUID id) {
+        return ApiResponse.ok(OrderResponse.from(orderService.close(id)));
+    }
+
     @Operation(summary = "删除当前租户的订单")
     @DeleteMapping("/{id}")
     @RequiresPermission("order:delete")

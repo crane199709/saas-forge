@@ -3,10 +3,12 @@ package io.saasforge.demo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.saasforge.demo.category.mapper.OutboxAuditMapper;
 import io.saasforge.demo.order.entity.Order;
 import io.saasforge.demo.order.mapper.OrderAuditMapper;
 import io.saasforge.sdk.core.CurrentTenant;
 import io.saasforge.sdk.core.MembershipStateKeys;
+import io.saasforge.sdk.notification.TodoClosed;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -36,6 +38,7 @@ import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.json.JsonMapper;
 
 /** 经 Spring 注册、真实 Redis 与订单 HTTP 接口验收 Tenant Task 的业务结果。 */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -69,6 +72,12 @@ class OrderAutoCloseTest {
     @Autowired
     MeterRegistry metrics;
 
+    @Autowired
+    OutboxAuditMapper outbox;
+
+    @Autowired
+    JsonMapper json;
+
     @AfterEach
     void clearDirectory() {
         TestReferenceData.tenants(List.of());
@@ -97,6 +106,7 @@ class OrderAutoCloseTest {
         runTask();
 
         assertThat(get(TENANT, expired).get("status")).isEqualTo("closed");
+        assertThat(closedTodoKeys(TENANT)).containsExactly("order:" + deleted, "order:" + expired);
         assertThat(get(TENANT, fresh).get("status")).isEqualTo("unpaid");
         assertThat(get(TENANT, boundary).get("status")).isEqualTo("unpaid");
         assertThat(get(outside, unlisted).get("status")).isEqualTo("unpaid");
@@ -112,6 +122,7 @@ class OrderAutoCloseTest {
         runTask();
 
         assertThat(audit(TENANT, expired)).isEqualTo(closed);
+        assertThat(closedTodoKeys(TENANT)).containsExactly("order:" + deleted, "order:" + expired);
         assertThat(audit(TENANT, fresh)).isEqualTo(freshBefore);
         assertThat(audit(TENANT, boundary)).isEqualTo(boundaryBefore);
         assertThat(audit(TENANT, deleted)).isEqualTo(deletedBefore);
@@ -142,6 +153,12 @@ class OrderAutoCloseTest {
         assertThat(get(longTimeout, longOrder).get("status")).isEqualTo("unpaid");
         assertThat(get(later, lastOrder).get("status")).isEqualTo("closed");
         assertThat(failures()).isEqualTo(failuresBefore + 1);
+    }
+
+    private List<String> closedTodoKeys(UUID tenant) {
+        return outbox.payloads(tenant, "TodoClosed").stream()
+                .map(payload -> json.readValue(payload, TodoClosed.class).businessKey())
+                .toList();
     }
 
     private void active(UUID tenant) {

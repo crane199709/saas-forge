@@ -319,6 +319,7 @@ class IamSecurityConfiguration {
                         "/roles/**",
                         "/members/**",
                         "/audit/**",
+                        "/todos/**",
                         "/reference-data/**",
                         "/security-settings")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

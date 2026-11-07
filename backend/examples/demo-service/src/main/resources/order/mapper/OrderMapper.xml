@@ -14,10 +14,15 @@
         id
         LIMIT #{limit} OFFSET #{offset}
     </select>
-    <update id="closeExpiredUnpaid">
-        UPDATE orders SET status = 'closed', updated_at = CURRENT_TIMESTAMP, updated_by = NULL
-        WHERE NOT deleted AND status = 'unpaid' AND created_at &lt; #{cutoff}
+    <update id="closeUnpaid">
+        UPDATE orders SET status = 'closed', updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
+        WHERE id = #{id} AND NOT deleted AND status = 'unpaid'
     </update>
+    <select id="expiredUnpaid" resultType="java.util.UUID">
+        SELECT id FROM orders
+        WHERE NOT deleted AND status = 'unpaid' AND created_at &lt; #{cutoff}
+        ORDER BY id
+    </select>
     <!-- 租户清理（ADR-0016）：在 TenantDeleted 的消费事务中执行，没有操作人，updated_by 写 NULL；手写 SQL 自行维护标准列。 -->
     <update id="markTenantDeleted">
         UPDATE orders SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = NULL WHERE NOT deleted
