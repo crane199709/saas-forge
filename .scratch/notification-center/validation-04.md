@@ -1,6 +1,6 @@
 # 04：Announcement 验证与 API 契约
 
-实现分支：`codex/notification-announcement`。迁移：`backend/forge-iam/src/main/resources/db/migration/V24__announcement.sql`。
+实现分支：`codex/notification-announcement`。实现提交：`5f2d83c`；已通过 `0e2294c` 合并 integration 快照 `f504a17`。迁移：`backend/forge-iam/src/main/resources/db/migration/V24__announcement.sql`。
 
 ## HTTP 契约
 
@@ -52,6 +52,8 @@
 - 绿 04：`./mvnw -o -pl forge-iam test -Dtest=AnnouncementTest`，4 个用例通过；日志 `/private/tmp/announcement-green-04.log`。
 - 验收补充与门禁：`./mvnw -o -pl forge-iam test -Dtest=AnnouncementTest,ArchitectureTest,SchemaCommentTest`，6 个公告用例与 2 个门禁共 8 项通过；日志 `/private/tmp/announcement-gates.log`。新增验收覆盖无权 Operator、非 active Membership、非法目标组合及空标题。
 - `git diff --check` 通过。
+- 合并后重新执行 `./mvnw -o -pl forge-iam -am install -DskipTests`，成功（16.075 秒），日志 `/private/tmp/announcement-install-after-merge.log`。
+- 合并后执行 `./mvnw -o -pl forge-iam test -Dtest=AnnouncementTest`，6 个公告用例全部通过，耗时 20.192 秒；日志 `/private/tmp/announcement-after-merge.log`。
 
 按协调顺序执行过 `./mvnw -o -pl forge-iam -am install -DskipTests`，构建成功；每轮变更先运行 `./mvnw -o -pl forge-iam spotless:apply`。
 
