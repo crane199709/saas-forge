@@ -49,6 +49,8 @@ spring:
 - [ ] **在哪里配**：IAM 的 `forge.iam.manifest.tokens.<服务名>` 与服务的 `forge.manifest.token` 使用同一密钥。服务配置 `forge.manifest.iam-uri` 为 IAM 内部直连地址、`forge.manifest.version` 为清单版本。参考 `backend/forge-iam/src/main/resources/application.yml` 与 demo-service 配置；使用受控部署配置或服务实际导入的 Nacos 配置覆盖，不能只创建一个未被导入的 dataId。重启相关服务。
 - [ ] **怎么确认**：服务启动后向 IAM 的 `POST /internal/manifests` 上报成功，平台套餐的权限目录出现该服务的权限码；错误令牌上报被拒。该内部接口不能经网关访问。权限、菜单、角色模板或 Data Resource 改动时递增 version，否则不能按新内容更新。
 
+运维通道另用独立令牌：服务的 `forge.ops.token`（脚手架环境变量 `FORGE_OPS_TOKEN`）与平台 `forge.platform.ops.tokens.<服务名>` 配成同一个随机密钥，不能复用 Manifest 令牌。令牌不设默认值；漏配须启动失败。平台从 IAM 的已上报清单目录取实际服务名，经服务发现调用 `/internal/ops`；运维令牌不会向浏览器或网关暴露。确认正确令牌直连探针返回 200、错误令牌返回 401，经网关访问内部路径仍被拒；Operator 没有 `platform:ops:read` 时不能读取运维服务列表。
+
 ## 3. RocketMQ 与租户开通
 
 - [ ] **做什么**：列出服务生产、消费的 Topic，确认共享 Topic `forge-tenant`、`forge-app`、`forge-audit`，再创建服务专属 Topic（demo 的例子是 `demo-order`）。

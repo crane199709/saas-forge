@@ -22,6 +22,14 @@
     <dependencies>
         <dependency>
             <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-ops</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.saasforge</groupId>
             <artifactId>forge-architecture</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>

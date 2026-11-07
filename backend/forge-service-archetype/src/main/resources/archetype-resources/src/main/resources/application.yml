@@ -33,6 +33,8 @@ spring:
       host: ${dollar}{FORGE_REDIS_HOST}
       port: ${dollar}{FORGE_REDIS_PORT}
 forge:
+  ops:
+    token: ${dollar}{FORGE_OPS_TOKEN}
   security:
     ${hash} Tenant Realm 签发者（网关公开地址）与直连 IAM JWKS 地址：平台运维
     issuer: ${dollar}{FORGE_SECURITY_ISSUER}

@@ -51,7 +51,12 @@ final class PlatformTokens {
             """;
     /** 清单中声明的全部平台权限码，即超级管理员的权限。 */
     static final List<String> ALL_PERMISSIONS = List.of(
-            "platform:tenant:read", "platform:tenant:manage", "platform:plan:manage", "platform:sub-app:manage");
+            "platform:tenant:read",
+            "platform:tenant:manage",
+            "platform:plan:manage",
+            "platform:sub-app:manage",
+            "platform:ops:read",
+            "platform:ops:manage");
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final RSAKey KEY;
@@ -81,6 +86,65 @@ final class PlatformTokens {
                     stream.write(body);
                 }
             });
+            JWKS.createContext("/internal/services", exchange -> {
+                boolean authorized = ("Bearer " + IAM_TOKEN)
+                        .equals(exchange.getRequestHeaders().getFirst("Authorization"));
+                byte[] body =
+                        "{\"code\":\"ok\",\"httpStatus\":200,\"data\":[\"demo-service\",\"offline-service\",\"unsupported-service\",\"unreachable-service\",\"unconfigured-service\"]}"
+                                .getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().add("Content-Type", "application/json");
+                exchange.sendResponseHeaders(authorized ? 200 : 401, authorized ? body.length : -1);
+                if (authorized) exchange.getResponseBody().write(body);
+                exchange.close();
+            });
+            JWKS.createContext("/internal/ops", exchange -> {
+                String token = exchange.getRequestHeaders().getFirst("Authorization");
+                int status = "Bearer demo-ops-token".equals(token)
+                        ? 200
+                        : "Bearer unsupported-ops-token".equals(token) ? 404 : 401;
+                byte[] body = "{\"code\":\"ok\",\"httpStatus\":200,\"data\":true}".getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().add("Content-Type", "application/json");
+                exchange.sendResponseHeaders(status, body.length);
+                exchange.getResponseBody().write(body);
+                exchange.close();
+            });
+            JWKS.createContext("/internal/ops/command-rejected", exchange -> {
+                byte[] body =
+                        "{\"code\":\"deadEvent.alreadyHandled\",\"httpStatus\":409,\"errorMessage\":\"Already handled\"}"
+                                .getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().add("Content-Type", "application/json");
+                exchange.sendResponseHeaders(409, body.length);
+                exchange.getResponseBody().write(body);
+                exchange.close();
+            });
+            JWKS.createContext("/internal/ops/page", exchange -> {
+                boolean valid = "GET".equals(exchange.getRequestMethod())
+                        && "size=2".equals(exchange.getRequestURI().getRawQuery())
+                        && "Bearer demo-ops-token"
+                                .equals(exchange.getRequestHeaders().getFirst("Authorization"));
+                byte[] body =
+                        "{\"code\":\"ok\",\"httpStatus\":200,\"data\":[\"event-a\",\"event-b\"],\"meta\":{\"page\":{\"number\":1,\"size\":2,\"totalElements\":3,\"totalPages\":2}}}"
+                                .getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().add("Content-Type", "application/json");
+                exchange.sendResponseHeaders(valid ? 200 : 400, body.length);
+                exchange.getResponseBody().write(body);
+                exchange.close();
+            });
+            JWKS.createContext("/internal/ops/command", exchange -> {
+                boolean valid = "POST".equals(exchange.getRequestMethod())
+                        && "Bearer demo-ops-token"
+                                .equals(exchange.getRequestHeaders().getFirst("Authorization"))
+                        && "重放已修复的事件"
+                                .equals(JSON.readTree(exchange.getRequestBody())
+                                        .path("reason")
+                                        .asString());
+                byte[] body = "{\"code\":\"ok\",\"httpStatus\":200,\"data\":true}".getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().add("Content-Type", "application/json");
+                exchange.sendResponseHeaders(valid ? 200 : 400, body.length);
+                exchange.getResponseBody().write(body);
+                exchange.close();
+            });
+            JWKS.createContext("/internal/ops/dead-events", DeadEventOpsFixture::handle);
             JWKS.start();
             REDIS.start();
             var factory = new LettuceConnectionFactory(
@@ -103,6 +167,19 @@ final class PlatformTokens {
                 "forge.platform.iam.uri",
                 () -> "http://127.0.0.1:" + JWKS.getAddress().getPort());
         registry.add("forge.platform.iam.token", () -> IAM_TOKEN);
+        registry.add("forge.platform.ops.tokens.demo-service", () -> "demo-ops-token");
+        registry.add("forge.platform.ops.tokens.unsupported-service", () -> "unsupported-ops-token");
+        registry.add("forge.platform.ops.tokens.offline-service", () -> "offline-ops-token");
+        registry.add(
+                "spring.cloud.discovery.client.simple.instances.demo-service[0].uri",
+                () -> "http://127.0.0.1:" + JWKS.getAddress().getPort());
+        registry.add(
+                "spring.cloud.discovery.client.simple.instances.unsupported-service[0].uri",
+                () -> "http://127.0.0.1:" + JWKS.getAddress().getPort());
+        registry.add("forge.platform.ops.tokens.unreachable-service", () -> "unreachable-ops-token");
+        registry.add(
+                "spring.cloud.discovery.client.simple.instances.unreachable-service[0].uri",
+                () -> "http://127.0.0.1:1");
         registry.add("spring.data.redis.host", REDIS::getHost);
         registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
     }

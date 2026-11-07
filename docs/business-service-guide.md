@@ -18,7 +18,7 @@ mvn verify
 
 `serviceName` 是注册名和 Manifest 上报身份；`pathPrefix` 不带 `/`，是网关前缀及示例 Sub-App 编码。根包用 `package`。业务工程版本独立于 SDK 版本；BOM 的 forge.version 锁定 SDK 发布版本，升级时调整父 POM 版本。
 
-工程继承发布的 `forge-dependencies`，包含十个 SDK starter、Boot 插件、共享架构规则，以及真实 PostgreSQL/Redis 容器测试。测试使用自身 classpath 的数据库初始化脚本与测试签名密钥，不要求克隆平台仓库，也不连接共享数据库。`verify` 包含 HTTP 租户隔离、功能权限、Data Policy 及 ArchUnit；MQ/Nacos/Manifest 远程连接在测试配置关闭，因此该验证不替代平台联调。
+工程继承发布的 `forge-dependencies`，包含十一个 SDK starter、Boot 插件、共享架构规则，以及真实 PostgreSQL/Redis 容器测试。测试使用自身 classpath 的数据库初始化脚本与测试签名密钥，不要求克隆平台仓库，也不连接共享数据库。`verify` 包含 HTTP 租户隔离、功能权限、Data Policy 及 ArchUnit；MQ/Nacos/Manifest 远程连接在测试配置关闭，因此该验证不替代平台联调。
 
 示例复用 demo-service 的订单 CRUD、分类 Provisioning、Outbox 通知和统一信封；不默认引入 storage。订单接口在服务内为 `/orders`，网关 StripPrefix 后外部为 `/orders/orders`。上线前把示例领域、全局权限码 `order:*`、Data Resource `order`、菜单、角色模板替换为本服务领域，避免与已有服务声明冲突。
 
@@ -49,6 +49,7 @@ mvn verify
 | FORGE_SECURITY_JWK_SET_URI | IAM JWKS 的服务直连 URL / 平台运维 |
 | FORGE_ROCKETMQ_ENDPOINTS | RocketMQ Proxy gRPC 地址 / 清单第 3 步 |
 | FORGE_IAM_URI、FORGE_MANIFEST_TOKEN | IAM 内部地址及专属令牌 / 清单第 2 步 |
+| FORGE_OPS_TOKEN | 服务专属运维令牌，与平台 `forge.platform.ops.tokens.<serviceName>` 一致 / 平台运维 |
 
 环境如启用 Redis/Nacos/MQ 的认证，另按平台配置提供其凭证；本模板不内置任何共享环境凭证。`forge.manifest.version` 初始为 1，是清单版本，不是 Maven 版本。
 
@@ -58,7 +59,46 @@ mvn verify
 
 `OrderCategoryService` 实现 `TenantInitializer`，SDK 订阅 TenantCreated、恢复 CurrentTenant 并在初始化事务中调用它；业务层不自行处理租户 ID。初始化只补齐缺少的分类，部分唯一索引兜底并发，SDK 的消费去重与事务确保重投不会产生重复结果。失败时让异常传播以触发重试，不吞掉错误；已有初始化数据不得被重试覆盖。清理实现 `TenantDataCleaner`，保持逻辑删除。用平台测试租户确认初始化状态成功，纯 HTTP 测试不能证明真实 MQ 投递。
 
+`forge-sdk-ops` 为 `/internal/ops` 及其子路径建立独立运维令牌认证，`forge.ops.token` 无默认值，漏配即启动失败；普通业务接口继续验证本服务 Realm 的 JWT。平台通过已上报 Manifest 的服务目录及 `lb://<serviceName>` 直连服务，Operator 须有 `platform:ops:read` 或 `platform:ops:manage` 才能使用对应功能。服务未引入能力、无实例、令牌未配或不一致时，仅标记该服务不可用。
+
+本仓库本地启动 IAM、platform 与 demo-service 前，须分别设置独立随机值；平台和服务从同名环境变量读取对应令牌。以下变量只在当前终端生成，不写入版本库；其他终端启动时应使用同一组值：
+
+```sh
+export FORGE_IAM_OPS_TOKEN="$(openssl rand -hex 32)"
+export FORGE_PLATFORM_OPS_TOKEN="$(openssl rand -hex 32)"
+export FORGE_DEMO_OPS_TOKEN="$(openssl rand -hex 32)"
+```
+
+新业务服务在自己的部署中提供 `FORGE_OPS_TOKEN`，并在平台的 `forge.platform.ops.tokens.<serviceName>` 配置同一个值；不要复用 Manifest 上报令牌。E2E runner 会为隔离运行自动生成随机运维令牌。
+
 内部 HTTP 接口必须放在 `/internal/` 下，网关拒绝该前缀；网络访问控制与服务自身认证仍由部署和实现保障。不要把内部接口改成其他路径绕过网关限制。
+
+## MQ 重试耗尽与指标
+
+升级 `forge-sdk-mq` 时，须在服务自己的 Flyway 迁移中增加 SDK `io/saasforge/sdk/mq/schema.sql` 中的 `forge_dead_event` 建表语句；新生成工程已包含该表。与 Outbox 一样，死信表是服务级基础设施表，不启用 RLS；`tenant_id` 仅用于恢复上下文和展示，原始消息体只在服务内部保存。
+
+`forge.mq.max-delivery-attempts` 默认为 16，必须为正整数。失败投递未达到上限时继续重试；达到上限时，SDK 在业务事务回滚后独立提交 Dead Event，再确认 MQ 消息。捕获写入失败则继续返回失败，JSON 解析失败同样捕获。没有对应 Handler 的事件仍跳过并告警。Outbox 发送失败继续无限退避重试。
+
+消费组的 RocketMQ `retryMaxTimes` 须不小于 SDK 上限。RocketMQ 5.3.2 默认重试 16 次，Proxy 下发的总投递上限为 `retryMaxTimes + 1`（[官方实现](https://github.com/apache/rocketmq/blob/rocketmq-all-5.3.2/proxy/src/main/java/org/apache/rocketmq/proxy/grpc/v2/common/GrpcClientSettingsManager.java#L134)）。本地 `deploy/rocketmq/create-topics.sh` 显式配置并回读 `forge-iam`、`forge-platform`、`demo-service` 的消费组；新增服务时用 `CONSUMER_GROUPS` 加入服务消费组，或在目标环境执行 `mqadmin updateSubGroup -n <namesrv> -c <cluster> -g <consumer-group> -r <retry-count>` 并用 `getConsumerConfig` 验证。提高 SDK 上限时同时提高消费组重试次数；初始化脚本接受 `FORGE_MQ_MAX_DELIVERY_ATTEMPTS` 与 `RETRY_MAX_TIMES`，低于 SDK 上限即失败。Compose 分别从 `FORGE_MQ_MAX_DELIVERY_ATTEMPTS`、`FORGE_ROCKETMQ_RETRY_MAX_TIMES` 与 `FORGE_ROCKETMQ_CONSUMER_GROUPS` 传入这些值。
+
+Micrometer 提供 `forge.mq.dead.events` Counter（标签 `consumer.group`，只计新捕获并成功提交的记录）与 `forge.mq.outbox.pending` Gauge（全部未发送事件，含退避中的事件）。关闭 `forge.mq.enabled` 后仍可观察 Outbox 积压；接入 Actuator 后通过服务现有指标出口采集。
+
+## Dead Event 查询与处置
+
+同时引入 `forge-sdk-mq`、`forge-sdk-ops` 和 `forge-sdk-web` 的 Servlet 服务会提供以下内部接口，全部由独立运维令牌保护；平台通过 `/ops/services/{service}/dead-events` 转发，网关外部路径为 `/platform/ops/services/{service}/dead-events`。
+
+| 方法与内部路径 | 行为 |
+| --- | --- |
+| `GET /internal/ops/dead-events?status=PENDING&page=1&size=20` | 按状态分页，状态为 `PENDING`、`REPLAYED`、`ABANDONED`；默认待处置，页码从 1 开始，每页上限 100，按捕获时间倒序 |
+| `GET /internal/ops/dead-events/{id}` | 单条元数据和最近错误 |
+| `POST /internal/ops/dead-events/{id}/replay` | 请求体 `{ "reason": "修复后的重放原因" }`，在所属服务内重放 |
+| `POST /internal/ops/dead-events/{id}/abandon` | 同样要求非空原因，将待处置事件标为已放弃 |
+
+查询要求 `platform:ops:read`，两种处置要求 `platform:ops:manage`。响应遵循统一信封，成功处置返回 200 及元数据；分页放在 `meta.page`。元数据包括 ID、原事件 ID、消费组、主题、Tag、租户、尝试次数、错误、状态、捕获/处置时间和处置原因；不含原始消息体与原租户头。首次捕获和失败重放的错误摘要仅保留异常类型，不保存可能包含 payload 值的异常消息或根因消息；完整异常写入所属服务日志。平台命令的原因为空返回 400 `ops.reasonRequired`，事件不存在返回 404 `ops.deadEventNotFound`，已处置返回 409 `ops.deadEventAlreadyHandled`，重放失败返回 409 `ops.deadEventReplayFailed`；服务不可用返回 503 `ops.serviceUnavailable`。内部处置错误使用对应的 `deadEvent.*` 错误码。
+
+重放保留原消费组、事件 ID 和原租户头，先恢复租户，再在同一事务内条件处置、登记去重并直接执行 Handler；不重新发布到 MQ。成功只生效一次，失败则回滚业务与处置标记，独立更新最近错误，仍为待处置。已下线 Handler、非法 JSON 或非法原租户头都不会被误标为成功。关闭 `forge.mq.enabled` 不影响查询和服务内重放。平台记录 `ops.deadEventReplay`、`ops.deadEventAbandon` 的成功或失败审计，包含 Operator、所属服务、死信 ID、处置原因及成功时的原事件 ID。
+
+SDK 在启动后及每隔一天清理处置时间超过 90 天的已重放/已放弃事件，不按捕获时间清理待处置记录。该基础设施维护使用 SDK 自有线程和幂等条件删除，不新增 scheduling/Redis 运行依赖；多实例并发执行同样安全。引入 provisioning 的服务自动将死信接入 `TenantDataCleaner`，租户最终删除时只清理该租户的死信记录，保留其他租户和无租户事件。
 
 ## 按需启用 storage 与镜像
 

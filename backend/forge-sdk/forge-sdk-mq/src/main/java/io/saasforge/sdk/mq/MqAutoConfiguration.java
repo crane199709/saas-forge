@@ -1,5 +1,8 @@
 package io.saasforge.sdk.mq;
 
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import org.apache.rocketmq.client.apis.ClientConfiguration;
 import org.mybatis.spring.SqlSessionTemplate;
@@ -7,6 +10,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,10 +22,14 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * 业务服务引入 starter 即可发布与订阅事件。
  *
- * <p>服务须在自己的 Flyway 迁移中创建 {@code forge_outbox} 与 {@code forge_consumed_message} 两张表，建表语句见
- * {@code io/saasforge/sdk/mq/schema.sql}。两张表都不带租户隔离：投递器与去重都需要跨租户访问。
+ * <p>服务须在自己的 Flyway 迁移中创建 {@code forge_outbox}、{@code forge_consumed_message} 与 {@code forge_dead_event} 三张表，建表语句见
+ * {@code io/saasforge/sdk/mq/schema.sql}。三张表都不带租户隔离：投递器与去重都需要跨租户访问。
  */
-@AutoConfiguration(afterName = "com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration")
+@AutoConfiguration(
+        afterName = {
+            "com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration",
+            "io.saasforge.sdk.ops.OpsAutoConfiguration"
+        })
 @EnableConfigurationProperties(MqProperties.class)
 public final class MqAutoConfiguration {
     // 消息体是跨服务契约，不跟随服务对 Spring 管理的 JsonMapper 的定制
@@ -37,6 +45,38 @@ public final class MqAutoConfiguration {
     EventPublisher eventPublisher(SqlSessionTemplate sqlSession, ObjectProvider<OutboxDispatcher> dispatcher) {
         return new EventPublisher(
                 mapper(sqlSession, OutboxMapper.class), JSON, () -> dispatcher.ifAvailable(OutboxDispatcher::wakeUp));
+    }
+
+    /** MQ 关闭或不可用时仍可观察待发积压，指标包含退避中的事件。 */
+    @Bean
+    Gauge forgeOutboxPending(SqlSessionTemplate sqlSession, ObjectProvider<MeterRegistry> metrics) {
+        return Gauge.builder(
+                        "forge.mq.outbox.pending", mapper(sqlSession, OutboxMapper.class), OutboxMapper::countPending)
+                .description("Outbox events awaiting successful delivery")
+                .strongReference(true)
+                .register(metrics.getIfAvailable(SimpleMeterRegistry::new));
+    }
+
+    /** 死信查询与处置独立于 MQ 连接，故不受 enabled 开关影响。 */
+    @Bean
+    DeadEventOperations deadEventOperations(
+            SqlSessionTemplate session, PlatformTransactionManager manager, ObjectProvider<EventConsumer> consumers) {
+        return new DeadEventOperations(mapper(session, DeadEventMapper.class), manager, consumers);
+    }
+
+    @Bean
+    DeadEventMaintenance deadEventMaintenance(DeadEventOperations events) {
+        return new DeadEventMaintenance(events);
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+    @ConditionalOnBean(type = "io.saasforge.sdk.ops.OpsProperties")
+    static class OpsConfiguration {
+        @Bean
+        DeadEventController forgeDeadEventController(DeadEventOperations events) {
+            return new DeadEventController(events);
+        }
     }
 
     /** 投递器与消费端，可在测试等不连接 MQ 的环境中关闭。 */
@@ -64,27 +104,31 @@ public final class MqAutoConfiguration {
                     new RocketMqSender(configuration),
                     properties);
         }
+    }
 
-        @Bean
-        @ConditionalOnBean(EventHandler.class)
-        EventConsumer eventConsumer(
-                SqlSessionTemplate sqlSession,
-                PlatformTransactionManager transactionManager,
-                ClientConfiguration configuration,
-                MqProperties properties,
-                List<EventHandler<?>> handlers,
-                Environment environment) {
-            String consumerGroup = properties.consumerGroup() != null
-                    ? properties.consumerGroup()
-                    : environment.getRequiredProperty("spring.application.name");
-            return new EventConsumer(
-                    configuration,
-                    consumerGroup,
-                    handlers,
-                    mapper(sqlSession, ConsumedMessageMapper.class),
-                    new TransactionTemplate(transactionManager),
-                    JSON);
-        }
+    @Bean
+    @ConditionalOnBean(EventHandler.class)
+    EventConsumer eventConsumer(
+            SqlSessionTemplate sqlSession,
+            PlatformTransactionManager transactionManager,
+            ObjectProvider<ClientConfiguration> configuration,
+            MqProperties properties,
+            List<EventHandler<?>> handlers,
+            Environment environment,
+            ObjectProvider<MeterRegistry> metrics) {
+        String consumerGroup = properties.consumerGroup() != null
+                ? properties.consumerGroup()
+                : environment.getRequiredProperty("spring.application.name");
+        return new EventConsumer(
+                configuration.getIfAvailable(),
+                consumerGroup,
+                handlers,
+                mapper(sqlSession, ConsumedMessageMapper.class),
+                new TransactionTemplate(transactionManager),
+                JSON,
+                mapper(sqlSession, DeadEventMapper.class),
+                properties.maxDeliveryAttempts(),
+                metrics.getIfAvailable(SimpleMeterRegistry::new));
     }
 
     /**

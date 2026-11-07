@@ -17,6 +17,10 @@
         VALUES (#{id}, #{tenantId}, #{topic}, #{tag}, CAST(#{payload} AS jsonb))
     </insert>
 
+    <select id="countPending" resultType="long">
+        SELECT COUNT(*) FROM forge_outbox WHERE sent_at IS NULL
+    </select>
+
     <select id="lockDue" resultMap="entry">
         SELECT id, tenant_id, topic, tag, CAST(payload AS text) AS payload, attempts FROM forge_outbox
         WHERE sent_at IS NULL AND next_attempt_at &lt;= CURRENT_TIMESTAMP

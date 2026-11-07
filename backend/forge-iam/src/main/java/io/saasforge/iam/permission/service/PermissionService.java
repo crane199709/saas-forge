@@ -79,6 +79,15 @@ public class PermissionService {
         return true;
     }
 
+    /** 已上报当前 Resource Manifest 的服务，跨 Realm、按服务名排序；配置了令牌但尚未上报的服务不在目录中。 */
+    public List<String> reportedServices() {
+        // forge-iam-platform 只为分开登记 Platform Realm 权限而存在，部署实例仍注册为 forge-iam。
+        return currentManifests().stream()
+                .map(ResourceManifest::service)
+                .filter(service -> !PlatformPermissions.SERVICE.equals(service))
+                .toList();
+    }
+
     /** Tenant Realm 全部 active 的 Permission Code。 */
     public List<String> activeCodes() {
         return permissions.activeCodes(ResourceManifest.TENANT_REALM);

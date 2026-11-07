@@ -1,6 +1,9 @@
 package io.saasforge.sdk.mq;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.saasforge.sdk.core.CurrentTenant;
+import io.saasforge.sdk.core.UuidV7;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -19,6 +22,7 @@ import org.apache.rocketmq.client.apis.message.MessageView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -37,6 +41,10 @@ final class EventConsumer implements SmartLifecycle {
     private final ConsumedMessageMapper consumed;
     private final TransactionTemplate transaction;
     private final JsonMapper json;
+    private final DeadEventMapper deadEvents;
+    private final TransactionTemplate deadTransaction;
+    private final int maxDeliveryAttempts;
+    private final Counter deadEventsCounter;
     private volatile PushConsumer consumer;
 
     EventConsumer(
@@ -45,7 +53,10 @@ final class EventConsumer implements SmartLifecycle {
             List<EventHandler<?>> handlers,
             ConsumedMessageMapper consumed,
             TransactionTemplate transaction,
-            JsonMapper json) {
+            JsonMapper json,
+            DeadEventMapper deadEvents,
+            int maxDeliveryAttempts,
+            MeterRegistry metrics) {
         this.configuration = configuration;
         this.consumerGroup = consumerGroup;
         for (EventHandler<?> handler : handlers) {
@@ -57,6 +68,16 @@ final class EventConsumer implements SmartLifecycle {
         this.consumed = consumed;
         this.transaction = transaction;
         this.json = json;
+        this.deadEvents = deadEvents;
+        this.maxDeliveryAttempts = maxDeliveryAttempts;
+        this.deadEventsCounter = metrics.counter("forge.mq.dead.events", "consumer.group", consumerGroup);
+        this.deadTransaction = new TransactionTemplate(transaction.getTransactionManager());
+        this.deadTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    @Override
+    public boolean isAutoStartup() {
+        return configuration != null;
     }
 
     @Override
@@ -86,6 +107,7 @@ final class EventConsumer implements SmartLifecycle {
     public void stop() {
         PushConsumer current = consumer;
         consumer = null;
+        if (current == null) return;
         try {
             current.close();
         } catch (IOException e) {
@@ -98,7 +120,7 @@ final class EventConsumer implements SmartLifecycle {
         return consumer != null;
     }
 
-    private ConsumeResult consume(MessageView message) {
+    ConsumeResult consume(MessageView message) {
         String tag = message.getTag().orElse("");
         EventHandler<?> handler = handlers.get(key(message.getTopic(), tag));
         if (handler == null) {
@@ -115,29 +137,75 @@ final class EventConsumer implements SmartLifecycle {
         String messageId = properties.getOrDefault(
                 EventPublisher.EVENT_ID_PROPERTY, message.getMessageId().toString());
         String tenantId = properties.get(EventPublisher.TENANT_ID_PROPERTY);
-        Runnable work = () -> transaction.executeWithoutResult(status -> {
-            if (consumed.insertIfAbsent(consumerGroup, messageId) == 1) {
-                dispatch(handler, message.getBody());
-            }
-        });
+        ByteBuffer body = message.getBody().duplicate();
+        byte[] payload = new byte[body.remaining()];
+        body.get(payload);
         try {
-            // 先绑定租户再开启事务：连接在事务开始时取得，RLS 会话变量随之设置
-            if (tenantId == null) {
-                work.run();
-            } else {
-                CurrentTenant.run(UUID.fromString(tenantId), work);
-            }
+            handle(consumerGroup, messageId, tenantId, message.getTopic(), tag, payload);
             return ConsumeResult.SUCCESS;
         } catch (RuntimeException e) {
             log.error("Failed to handle message {} of topic {} tag {}", messageId, message.getTopic(), tag, e);
-            return ConsumeResult.FAILURE;
+            if (message.getDeliveryAttempt() < maxDeliveryAttempts) {
+                return ConsumeResult.FAILURE;
+            }
+            try {
+                // Handler 的事务已退出并回滚；即使调用方还有事务，死信也必须独立提交后才能确认 MQ 消息。
+                Integer inserted = deadTransaction.execute(status -> deadEvents.insertIfAbsent(
+                        UuidV7.generate(),
+                        consumerGroup,
+                        messageId,
+                        tenant(tenantId),
+                        tenantId,
+                        message.getTopic(),
+                        tag,
+                        payload,
+                        message.getDeliveryAttempt(),
+                        DeadEventErrorSummary.of(e)));
+                if (Integer.valueOf(1).equals(inserted)) {
+                    deadEventsCounter.increment();
+                }
+                return ConsumeResult.SUCCESS;
+            } catch (RuntimeException captureFailure) {
+                log.error(
+                        "Failed to persist dead event {} for consumer group {}",
+                        messageId,
+                        consumerGroup,
+                        captureFailure);
+                return ConsumeResult.FAILURE;
+            }
         }
     }
 
-    private <T> void dispatch(EventHandler<T> handler, ByteBuffer body) {
-        byte[] bytes = new byte[body.remaining()];
-        body.get(bytes);
-        handler.handle(json.readValue(bytes, handler.eventType()));
+    /** 原始消费与服务内重放共用去重、租户恢复和 Handler 事务；处理器被移除时重放必须失败。 */
+    void handle(String group, String eventId, String tenantId, String topic, String tag, byte[] payload) {
+        EventHandler<?> handler = handlers.get(key(topic, tag));
+        if (handler == null) {
+            throw new IllegalStateException("No EventHandler for topic " + topic + " tag " + tag);
+        }
+        Runnable work = () -> transaction.executeWithoutResult(status -> {
+            if (consumed.insertIfAbsent(group, eventId) == 1) {
+                dispatch(handler, payload);
+            }
+        });
+        // 先绑定租户再开启事务：连接在事务开始时取得，RLS 会话变量随之设置。
+        if (tenantId == null) {
+            work.run();
+        } else {
+            CurrentTenant.run(UUID.fromString(tenantId), work);
+        }
+    }
+
+    private <T> void dispatch(EventHandler<T> handler, byte[] payload) {
+        handler.handle(json.readValue(payload, handler.eventType()));
+    }
+
+    private static UUID tenant(String tenantId) {
+        try {
+            return tenantId == null ? null : UUID.fromString(tenantId);
+        } catch (IllegalArgumentException ignored) {
+            // 非法租户头本身也会造成消费失败，不能因此再拒绝保存死信。
+            return null;
+        }
     }
 
     private static String key(String topic, String tag) {

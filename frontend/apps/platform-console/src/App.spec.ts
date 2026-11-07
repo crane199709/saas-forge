@@ -47,6 +47,7 @@ describe('App 布局', () => {
       '身份查询',
       '平台角色',
       '平台审计',
+      '死信事件',
     ])
     expect(wrapper.get('.shell-menu .is-active').text()).toBe('套餐')
     expect(wrapper.find('[aria-label="套餐"]').exists()).toBe(true)

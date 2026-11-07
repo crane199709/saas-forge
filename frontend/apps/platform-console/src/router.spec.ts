@@ -101,6 +101,40 @@ describe('路由守卫', () => {
     expect(wrapper.find('.shell-menu').text()).toContain('身份查询')
   })
 
+  it('死信入口需要 read，只有 read 时可以查看但没有处置按钮', async () => {
+    signedIn()
+    vi.stubGlobal('fetch', fakeFetch({ '/iam/platform/access': [grants('platform:ops:manage')] }))
+    const denied = await mountConsole('/dead-events')
+    expect(denied.router.currentRoute.value.fullPath).toBe('/403')
+    denied.wrapper.unmount()
+
+    vi.stubGlobal(
+      'fetch',
+      fakeFetch({
+        '/iam/platform/access': [grants('platform:ops:read')],
+        '/platform/ops/services': [[{ service: 'orders', available: true }]],
+        '/platform/ops/services/orders/dead-events': () =>
+          new Response(
+            JSON.stringify({
+              code: 'ok',
+              httpStatus: 200,
+              traceId: 't',
+              data: [{ id: 'd1', topic: 'order-created', status: 'PENDING' }],
+              meta: { page: { number: 1, size: 20, totalElements: 1, totalPages: 1 } },
+            }),
+          ),
+      }),
+    )
+    const { wrapper, router } = await mountConsole('/dead-events')
+    expect(router.currentRoute.value.fullPath).toBe('/dead-events')
+    expect(wrapper.get('.shell-menu').text()).toContain('死信事件')
+    expect(wrapper.text()).toContain('order-created')
+    expect(wrapper.findAll('button').some((item) => item.text() === '查看')).toBe(true)
+    expect(wrapper.findAll('button').some((item) => ['重放', '放弃'].includes(item.text()))).toBe(
+      false,
+    )
+  })
+
   it('账号安全页无需页面权限码，任何已登录的运营人员都可进入', async () => {
     signedIn()
     vi.stubGlobal('fetch', fakeFetch({ '/iam/platform/access': [grants()] }))

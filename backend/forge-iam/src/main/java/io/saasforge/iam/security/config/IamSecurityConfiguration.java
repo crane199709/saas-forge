@@ -380,6 +380,7 @@ class IamSecurityConfiguration {
         http.securityMatcher(
                         "/internal/manifests",
                         "/internal/permissions",
+                        "/internal/services",
                         "/internal/reference-data/**",
                         "/internal/tenants")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

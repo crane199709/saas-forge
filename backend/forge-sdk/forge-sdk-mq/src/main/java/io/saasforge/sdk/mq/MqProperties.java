@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 /**
  * 消息配置，前缀 {@code forge.mq}。
  *
- * @param enabled 是否启动投递器与消费端；关闭时发布事件仍写入 Outbox，待开启后补发
+ * @param enabled 是否启动投递器与 MQ 订阅；关闭时仍写入 Outbox，且死信查询与服务内重放可用
  * @param endpoints RocketMQ proxy 的 gRPC 地址，如 {@code 127.0.0.1:8081}
  * @param ssl 是否以 TLS 连接 proxy；客户端默认开启，而本地 compose 与测试容器中的 proxy 只提供明文端口
  * @param consumerGroup 消费组，未配置时取 {@code spring.application.name}
@@ -16,6 +16,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param batchSize 每次扫描最多取出的事件数
  * @param initialBackoff 首次发送失败后的重试间隔，之后每次翻倍
  * @param maxBackoff 重试间隔上限
+ * @param maxDeliveryAttempts 消费失败形成 Dead Event 的投递次数上限，消费组重试上限不得更小
  */
 @ConfigurationProperties("forge.mq")
 public record MqProperties(
@@ -27,7 +28,15 @@ public record MqProperties(
         @DefaultValue("1s") Duration pollInterval,
         @DefaultValue("100") int batchSize,
         @DefaultValue("1s") Duration initialBackoff,
-        @DefaultValue("5m") Duration maxBackoff) {
+        @DefaultValue("5m") Duration maxBackoff,
+        @DefaultValue("16") int maxDeliveryAttempts) {
+
+    /** 拒绝无有效投递机会的配置，避免事件首次失败就被误判为重试耗尽。 */
+    public MqProperties {
+        if (maxDeliveryAttempts < 1) {
+            throw new IllegalArgumentException("forge.mq.max-delivery-attempts must be positive");
+        }
+    }
 
     /**
      * 第 {@code attempts + 1} 次发送失败后的重试间隔：从 {@link #initialBackoff} 起指数增长，不超过 {@link #maxBackoff}。
