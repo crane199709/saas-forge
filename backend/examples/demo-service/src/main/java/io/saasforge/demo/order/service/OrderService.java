@@ -8,6 +8,9 @@ import io.saasforge.demo.order.model.OrderSort;
 import io.saasforge.sdk.abac.data.DataPermission;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.mq.EventPublisher;
+import io.saasforge.sdk.notification.NotificationClient;
+import io.saasforge.sdk.notification.NotificationLink;
+import io.saasforge.sdk.notification.NotificationTarget;
 import io.saasforge.sdk.numbering.BusinessNumbers;
 import io.saasforge.sdk.numbering.DateSegment;
 import io.saasforge.sdk.numbering.NumberingRule;
@@ -39,16 +42,19 @@ public class OrderService implements TenantDataCleaner {
     private final EventPublisher eventPublisher;
     private final DataPermission dataPermission;
     private final BusinessNumbers businessNumbers;
+    private final NotificationClient notifications;
 
     public OrderService(
             OrderMapper orderMapper,
             EventPublisher eventPublisher,
             DataPermission dataPermission,
-            BusinessNumbers businessNumbers) {
+            BusinessNumbers businessNumbers,
+            NotificationClient notifications) {
         this.orderMapper = orderMapper;
         this.eventPublisher = eventPublisher;
         this.dataPermission = dataPermission;
         this.businessNumbers = businessNumbers;
+        this.notifications = notifications;
     }
 
     /**
@@ -74,6 +80,13 @@ public class OrderService implements TenantDataCleaner {
         order.setNumber(businessNumbers.next(NUMBERING));
         orderMapper.insert(order);
         eventPublisher.publish(OrderCreated.TOPIC, new OrderCreated(order.getId(), title, amount));
+        if (order.getOwnerId() != null) {
+            notifications.send(
+                    NotificationTarget.memberships(List.of(order.getOwnerId())),
+                    "订单已创建",
+                    "订单 " + order.getNumber() + " 已创建",
+                    new NotificationLink("demo", "/overview"));
+        }
         // 创建时间由数据库生成，重新读取才能返回与之后查询一致的值
         return get(order.getId());
     }
