@@ -64,6 +64,12 @@ export const consolePages = [
     permission: permissions.auditRead,
     component: () => import('./audit/AuditPage.vue'),
   },
+  {
+    path: '/dead-events',
+    title: 'deadEvent.title',
+    permission: permissions.opsRead,
+    component: () => import('./ops/DeadEventPage.vue'),
+  },
 ] as const
 
 /** 兜底路由名：不存在的路径。 */

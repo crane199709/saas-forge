@@ -15,6 +15,12 @@ export default defineConfig({
   },
   webServer: [
     {
+      command:
+        'pnpm --filter @forge/platform-console preview --host 127.0.0.1 --port 5173 --strictPort',
+      url: 'http://127.0.0.1:5173',
+      reuseExistingServer: false,
+    },
+    {
       command: 'pnpm --filter @forge/tenant-app preview --host 127.0.0.1 --port 5174',
       url: 'http://127.0.0.1:5174',
       reuseExistingServer: false,

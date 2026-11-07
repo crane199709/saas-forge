@@ -290,5 +290,41 @@
       "hint": "重新生成后，原有恢复码全部作废。",
       "submit": "重新生成恢复码"
     }
+  },
+  "deadEvent": {
+    "title": "死信事件",
+    "service": "服务",
+    "status": "状态",
+    "statuses": {
+      "PENDING": "待处置",
+      "REPLAYED": "已重放",
+      "ABANDONED": "已放弃"
+    },
+    "empty": "暂无符合条件的死信事件",
+    "refresh": "刷新",
+    "topic": "主题",
+    "tag": "Tag",
+    "tenantId": "租户",
+    "lastError": "最近错误",
+    "deliveryAttempt": "尝试次数",
+    "createdAt": "形成时间",
+    "serviceUnavailable": "服务 {service} 当前不可用，请选择其他服务或稍后刷新页面重试",
+    "unavailableOption": "{service}（不可用）",
+    "actions": "操作",
+    "replay": "重放",
+    "reason": "处置原因",
+    "confirmReplay": "确认重放",
+    "replayDone": "已重放该死信事件",
+    "view": "查看",
+    "abandon": "放弃",
+    "confirmAbandon": "确认放弃",
+    "abandonDone": "已放弃该死信事件",
+    "detail": "死信事件详情",
+    "id": "死信 ID",
+    "eventId": "事件 ID",
+    "consumerGroup": "消费组",
+    "resolvedAt": "处置时间",
+    "loading": "正在读取死信事件",
+    "close": "关闭"
   }
 }
