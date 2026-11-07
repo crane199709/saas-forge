@@ -9,10 +9,12 @@ import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-/** Notification非标准表，所有租户条件由SQL显式限定，不受Data Policy过滤。 */
+/** Notification 非标准表通过显式租户条件与事务内 RLS 绑定隔离，不受 Data Policy 过滤。 */
 @Mapper
 @InterceptorIgnore(tenantLine = "true")
 public interface NotificationMapper {
+    /** 在当前事务绑定可信租户，事务结束后自动清除，防止连接复用残留租户。 */
+    String bindTenant(@Param("tenantId") UUID tenantId);
     /** 确保UTC月份的内容与收件分区存在。 */
     void ensurePartition(@Param("month") LocalDate month);
     /** 首次收件时保存内容，重复事件返回0，防止重投改变收件快照。 */

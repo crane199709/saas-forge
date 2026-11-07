@@ -20,3 +20,8 @@
 ## Answer
 
 已实现 Notification 事件幂等收件快照、Permission 创建时展开、active Membership收件箱分页/已读/全读/计数、180天整月分区维护及按租户最终清理。Demo订单创建经真实NotificationClient发送，链接demo:/overview；网关动作POST /demo/orders。接口契约与红绿证据见[validation-02.md](../validation-02.md)。真实MQ跨服务及浏览器最终验收按分工由票05完成，本票不宣称已验证Broker。
+
+
+## 验收修复
+
+2026-11-07：补齐Notification父表、自动月分区的强制RLS与可信租户事务绑定；既有HTTP契约不变。红绿门禁、实际iam_app直接分区探针、回滚切租户及并发首建记录见[validation-rls.md](../validation-rls.md)。

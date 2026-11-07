@@ -19,4 +19,25 @@
         AND col_description(c.oid, a.attnum) IS NULL
         ORDER BY 1
     </select>
+    <sql id="notificationTables">
+        FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = current_schema() AND c.relkind IN ('r', 'p')
+        AND (c.relname IN ('notification', 'notification_recipient')
+        OR EXISTS (SELECT 1 FROM pg_inherits i JOIN pg_class parent ON parent.oid = i.inhparent
+        WHERE i.inhrelid = c.oid AND parent.relnamespace = c.relnamespace
+        AND parent.relname IN ('notification', 'notification_recipient')))
+    </sql>
+    <select id="selectNotificationTables" resultType="string">
+        SELECT c.relname
+        <include refid="notificationTables"/>
+        ORDER BY c.relname
+    </select>
+    <select id="selectUnprotectedNotificationTables" resultType="string">
+        SELECT c.relname
+        <include refid="notificationTables"/>
+        AND (NOT c.relrowsecurity OR NOT c.relforcerowsecurity
+        OR NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid
+        AND p.polcmd = '*' AND p.polqual IS NOT NULL AND p.polwithcheck IS NOT NULL))
+        ORDER BY c.relname
+    </select>
 </mapper>

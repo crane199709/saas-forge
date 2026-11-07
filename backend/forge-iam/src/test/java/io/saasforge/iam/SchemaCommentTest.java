@@ -9,7 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
-/** 编码规范要求每张表和每个字段都有中文描述：新增表或字段漏写注释时，迁移后在这里失败。 */
+/** Schema 标准门禁：检查中文注释，以及通知父表和月分区的强制租户 RLS。 */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "server.address=127.0.0.1")
 class SchemaCommentTest {
     static final SharedContainers.Postgres postgres = SharedContainers.postgres();
@@ -27,6 +27,14 @@ class SchemaCommentTest {
 
     @Autowired
     SchemaCommentMapper mapper;
+
+    @Test
+    void notificationParentsAndMonthlyPartitionsRequireForcedTenantRls() {
+        assertThat(mapper.selectNotificationTables())
+                .contains("notification", "notification_recipient")
+                .hasSizeGreaterThanOrEqualTo(6);
+        assertThat(mapper.selectUnprotectedNotificationTables()).isEmpty();
+    }
 
     @Test
     void everyTableAndColumnHasComment() {
