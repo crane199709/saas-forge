@@ -28,6 +28,9 @@ interface OutboxMapper {
             @Param("tag") String tag,
             @Param("payload") String payload);
 
+    /** 返回全部尚未发送的 Outbox 事件数，包括退避中的事件；不受租户或 Data Policy 过滤。 */
+    long countPending();
+
     /**
      * 锁定并取出已到期、未发送的事件，跳过其他实例已锁定的行，多实例并发投递时互不重复。不受 Data Policy 过滤。
      *

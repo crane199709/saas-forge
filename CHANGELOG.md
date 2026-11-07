@@ -6,6 +6,8 @@
 
 ### 新增
 
+- MQ 消费重试耗尽时独立事务捕获 Dead Event，按消费组与事件 ID 幂等保存；增加死信新增计数与 Outbox 未发送积压指标。已有服务升级时须添加 `forge_dead_event` 迁移，并保证 RocketMQ 消费组重试次数不小于 `forge.mq.max-delivery-attempts`（默认 16）。
+
 - 首次交付 Forge BOM、按能力拆分的 SDK starter 与共享架构规则，Java 模块附带源码包。
 - 发布 `@crane199709/sdk`、`@crane199709/ui`、`@crane199709/sub-app-kit`；提供类型声明与编译后的 CLI。
 - 提供统一版本命令、标签发布质量门和临时 Maven/npm 仓库消费自检。

@@ -60,6 +60,16 @@ mvn verify
 
 内部 HTTP 接口必须放在 `/internal/` 下，网关拒绝该前缀；网络访问控制与服务自身认证仍由部署和实现保障。不要把内部接口改成其他路径绕过网关限制。
 
+## MQ 重试耗尽与指标
+
+升级 `forge-sdk-mq` 时，须在服务自己的 Flyway 迁移中增加 SDK `io/saasforge/sdk/mq/schema.sql` 中的 `forge_dead_event` 建表语句；新生成工程已包含该表。与 Outbox 一样，死信表是服务级基础设施表，不启用 RLS；`tenant_id` 仅用于恢复上下文和展示，原始消息体只在服务内部保存。
+
+`forge.mq.max-delivery-attempts` 默认为 16，必须为正整数。失败投递未达到上限时继续重试；达到上限时，SDK 在业务事务回滚后独立提交 Dead Event，再确认 MQ 消息。捕获写入失败则继续返回失败，JSON 解析失败同样捕获。没有对应 Handler 的事件仍跳过并告警。Outbox 发送失败继续无限退避重试。
+
+消费组的 RocketMQ `retryMaxTimes` 须不小于 SDK 上限。RocketMQ 5.3.2 默认重试 16 次，Proxy 下发的总投递上限为 `retryMaxTimes + 1`（[官方实现](https://github.com/apache/rocketmq/blob/rocketmq-all-5.3.2/proxy/src/main/java/org/apache/rocketmq/proxy/grpc/v2/common/GrpcClientSettingsManager.java#L134)）。本地 `deploy/rocketmq/create-topics.sh` 显式配置并回读 `forge-iam`、`forge-platform`、`demo-service` 的消费组；新增服务时用 `CONSUMER_GROUPS` 加入服务消费组，或在目标环境执行 `mqadmin updateSubGroup -n <namesrv> -c <cluster> -g <consumer-group> -r <retry-count>` 并用 `getConsumerConfig` 验证。提高 SDK 上限时同时提高消费组重试次数；初始化脚本接受 `FORGE_MQ_MAX_DELIVERY_ATTEMPTS` 与 `RETRY_MAX_TIMES`，低于 SDK 上限即失败。Compose 分别从 `FORGE_MQ_MAX_DELIVERY_ATTEMPTS`、`FORGE_ROCKETMQ_RETRY_MAX_TIMES` 与 `FORGE_ROCKETMQ_CONSUMER_GROUPS` 传入这些值。
+
+Micrometer 提供 `forge.mq.dead.events` Counter（标签 `consumer.group`，只计新捕获并成功提交的记录）与 `forge.mq.outbox.pending` Gauge（全部未发送事件，含退避中的事件）。关闭 `forge.mq.enabled` 后仍可观察 Outbox 积压；接入 Actuator 后通过服务现有指标出口采集。
+
 ## 按需启用 storage 与镜像
 
 需要附件时在 POM 添加同版本 `io.saasforge:forge-sdk-storage`，由平台提供 `forge.storage.endpoint`、`bucket`、`access-key`、`secret-key`；endpoint 必须供浏览器访问。参考 demo-service 的 attachment 功能及 V8 迁移，不应只添加依赖却遗漏配置和存储表。
