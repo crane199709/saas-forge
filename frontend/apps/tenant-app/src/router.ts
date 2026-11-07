@@ -66,6 +66,12 @@ export function createShellRouter(history: RouterHistory) {
         path: '/account/security',
         component: () => import('./security/AccountSecurityPage.vue'),
       },
+      { path: '/notifications', component: () => import('./notification/NotificationCenter.vue') },
+      {
+        path: '/announcements',
+        component: () => import('./announcement/AnnouncementPage.vue'),
+        meta: { permission: 'announcement:manage' },
+      },
       // Shell 自带的租户管理页，不来自 Sub-App 菜单。
       {
         path: '/security-settings',

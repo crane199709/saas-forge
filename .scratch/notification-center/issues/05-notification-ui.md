@@ -4,7 +4,7 @@
 
 **Blocked by:** 02, 03, 04
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] `tenant-app` 铃铛显示未读数，60 秒轮询，页面不可见时暂停
 - [ ] 列表页包含通知、公告和待办，可标记已读
@@ -13,3 +13,5 @@
 - [ ] Playwright 覆盖收到通知、处理待办和发布公告
 
 ## Comments
+
+- 2026-11-07：票05由 `codex/notification-ui` 认领，基线 `8cb9607`。测试边界沿用用户确认的 Playwright 与公开HTTP；Browser plugin not available，使用项目 Playwright。

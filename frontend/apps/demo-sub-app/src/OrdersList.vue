@@ -18,6 +18,7 @@ interface Order {
   id: string
   title: string
   amount: number
+  status: 'unpaid' | 'closed'
 }
 
 const client = useTenantClient()
@@ -61,6 +62,7 @@ async function downloadTemplate() {
 }
 const orders = ref<Page<Order> | null>(null)
 const busy = ref(false)
+const closing = ref<string | null>(null)
 const error = ref<ErrorTip | null>(null)
 const { t } = useI18n({
   useScope: 'local',
@@ -72,6 +74,11 @@ const { t } = useI18n({
       name: '标题',
       amount: '金额',
       empty: '暂无订单',
+      status: '状态',
+      unpaid: '未支付',
+      closed: '已关闭',
+      closeOrder: '关闭订单',
+      closeFailed: '关闭订单失败，请稍后重试',
       failed: '订单加载失败，请稍后重试',
     },
   },
@@ -91,6 +98,23 @@ async function load(page = orders.value?.page.number ?? 1) {
     }
   } finally {
     busy.value = false
+  }
+}
+
+async function closeOrder(id: string) {
+  if (closing.value) return
+  closing.value = id
+  error.value = null
+  try {
+    await client.api<Order>(`/demo/orders/${id}/close`, { method: 'POST' })
+    await load()
+  } catch (cause) {
+    error.value = {
+      message: cause instanceof ApiError && cause.userTip ? cause.userTip : t('closeFailed'),
+      traceId: cause instanceof ApiError ? cause.traceId : undefined,
+    }
+  } finally {
+    closing.value = null
   }
 }
 
@@ -122,6 +146,23 @@ onMounted(() => load())
         </template>
       </el-table-column>
       <el-table-column prop="amount" :label="t('amount')" />
+      <el-table-column :label="t('status')">
+        <template #default="{ row }">{{
+          row.status === 'closed' ? t('closed') : t('unpaid')
+        }}</template>
+      </el-table-column>
+      <el-table-column v-if="access.has('order:update')" :label="t('closeOrder')">
+        <template #default="{ row }">
+          <el-button
+            v-if="row.status === 'unpaid'"
+            :disabled="closing !== null || busy"
+            :loading="closing === row.id"
+            :data-testid="`order-close-${row.id}`"
+            @click="closeOrder(row.id)"
+            >{{ t('closeOrder') }}</el-button
+          >
+        </template>
+      </el-table-column>
     </ListPage>
   </section>
 </template>
