@@ -7,7 +7,7 @@
     </select>
     <insert id="insert">
         INSERT INTO operator_authenticator
-            (id, operator_id, secret_ciphertext, last_used_step, created_at, updated_at, created_by, updated_by)
+        (id, operator_id, secret_ciphertext, last_used_step, created_at, updated_at, created_by, updated_by)
         VALUES (#{id}, #{operatorId}, #{secretCiphertext}, #{lastUsedStep}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
     </insert>
     <update id="advanceStep">

@@ -6,7 +6,7 @@
         INSERT INTO tenant_plan (tenant_id, plan_id, plan_version, member_quota, created_at, updated_at, created_by, updated_by)
         VALUES (#{tenantId}, #{planId}, #{version}, #{memberQuota}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL)
         ON CONFLICT (tenant_id) DO UPDATE SET plan_id = EXCLUDED.plan_id, plan_version = EXCLUDED.plan_version,
-            member_quota = EXCLUDED.member_quota, updated_at = CURRENT_TIMESTAMP, updated_by = NULL
+        member_quota = EXCLUDED.member_quota, updated_at = CURRENT_TIMESTAMP, updated_by = NULL
         WHERE tenant_plan.plan_version &lt; EXCLUDED.plan_version AND NOT tenant_plan.deleted
     </insert>
     <delete id="clearPermissions">

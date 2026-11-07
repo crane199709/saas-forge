@@ -8,14 +8,15 @@
         VALUES (#{id}, #{code}, #{service}, #{name}, #{group}, #{realm}, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL)
         ON CONFLICT (code) WHERE NOT deleted DO UPDATE
         SET name = EXCLUDED.name, group_name = EXCLUDED.group_name, realm = EXCLUDED.realm, status = 'active',
-            updated_at = CURRENT_TIMESTAMP, updated_by = NULL
+        updated_at = CURRENT_TIMESTAMP, updated_by = NULL
         WHERE permission.service = EXCLUDED.service
     </insert>
     <update id="deactivateMissing">
         UPDATE permission SET status = 'inactive', updated_at = CURRENT_TIMESTAMP, updated_by = NULL
         WHERE service = #{service} AND status = 'active' AND NOT deleted
         <if test="!codes.isEmpty()">
-            AND code NOT IN <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
+            AND code NOT IN
+            <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
         </if>
     </update>
     <select id="activeCodes" resultType="string">

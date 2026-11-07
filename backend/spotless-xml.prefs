@@ -1,0 +1,8 @@
+indentationChar=space
+indentationSize=4
+lineWidth=10000
+formatCommentText=false
+formatCommentJoinLines=false
+clearBlankLines=false
+splitMultiAttrs=false
+spaceBeforeEmptyCloseTag=false

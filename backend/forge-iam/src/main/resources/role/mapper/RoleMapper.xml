@@ -19,7 +19,7 @@
     <delete id="revokeOwner">
         DELETE FROM membership_role mr USING role r
         WHERE mr.role_id = r.id AND mr.membership_id = #{membershipId} AND mr.owner
-          AND r.tenant_id = #{tenantId} AND NOT r.deleted
+        AND r.tenant_id = #{tenantId} AND NOT r.deleted
     </delete>
     <insert id="grantTenantAdmin">
         INSERT INTO membership_role (membership_id, role_id, owner)
@@ -35,9 +35,9 @@
     <select id="ownerContacts" resultType="io.saasforge.iam.role.model.OwnerContact">
         SELECT i.email, i.phone
         FROM role r JOIN membership_role mr ON mr.role_id = r.id
-            JOIN membership m ON m.id = mr.membership_id JOIN identity i ON i.id = m.identity_id
+        JOIN membership m ON m.id = mr.membership_id JOIN identity i ON i.id = m.identity_id
         WHERE r.tenant_id = #{tenantId} AND r.code = 'owner' AND NOT r.deleted AND NOT m.deleted AND NOT i.deleted
-          AND m.status IN ('active', 'invited')
+        AND m.status IN ('active', 'invited')
     </select>
     <select id="roleCodes" resultType="string">
         SELECT r.code FROM membership_role mr JOIN role r ON r.id = mr.role_id
@@ -50,15 +50,19 @@
     <sql id="roleColumns">
         r.id, r.code, r.name, r.builtin, r.owner,
         (SELECT count(*) FROM membership_role mr JOIN membership m ON m.id = mr.membership_id
-         WHERE mr.role_id = r.id AND NOT m.deleted) AS member_count
+        WHERE mr.role_id = r.id AND NOT m.deleted) AS member_count
     </sql>
     <select id="list" resultType="io.saasforge.iam.role.model.RoleRow">
-        SELECT <include refid="roleColumns"/> FROM role r
+        SELECT
+        <include refid="roleColumns"/>
+        FROM role r
         WHERE r.tenant_id = #{tenantId} AND NOT r.deleted
         ORDER BY r.owner DESC, r.builtin DESC, r.code
     </select>
     <select id="find" resultType="io.saasforge.iam.role.model.RoleRow">
-        SELECT <include refid="roleColumns"/> FROM role r
+        SELECT
+        <include refid="roleColumns"/>
+        FROM role r
         WHERE r.tenant_id = #{tenantId} AND r.id = #{id} AND NOT r.deleted
     </select>
     <!-- ON CONFLICT 命中 (tenant_id, code) 的部分唯一索引：编码被占用时返回 0，由调用方报告冲突；按模板重复开通也不产生重复角色。 -->
@@ -84,18 +88,21 @@
     <select id="rolesOf" resultType="io.saasforge.iam.role.model.MembershipRoleRow">
         SELECT mr.membership_id, mr.role_id FROM membership_role mr JOIN role r ON r.id = mr.role_id
         WHERE r.tenant_id = #{tenantId} AND NOT r.deleted
-          AND mr.membership_id IN <foreach collection="membershipIds" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+        AND mr.membership_id IN
+        <foreach collection="membershipIds" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
         ORDER BY r.owner DESC, r.builtin DESC, r.code
     </select>
     <select id="countAssignable" resultType="long">
         SELECT count(*) FROM role
         WHERE tenant_id = #{tenantId} AND NOT owner AND NOT deleted
-          AND id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+        AND id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
     </select>
     <delete id="revokeExcept">
         DELETE FROM membership_role WHERE membership_id = #{membershipId} AND NOT owner
         <if test="!keep.isEmpty()">
-            AND role_id NOT IN <foreach collection="keep" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+            AND role_id NOT IN
+            <foreach collection="keep" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
         </if>
     </delete>
     <!-- owner 列取自角色本身以满足复合外键。 -->
@@ -103,7 +110,8 @@
         INSERT INTO membership_role (membership_id, role_id, owner)
         SELECT #{membershipId}, id, owner FROM role
         WHERE tenant_id = #{tenantId} AND NOT owner AND NOT deleted
-          AND id IN <foreach collection="roleIds" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+        AND id IN
+        <foreach collection="roleIds" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
         ON CONFLICT DO NOTHING
     </insert>
 </mapper>

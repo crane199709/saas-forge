@@ -18,7 +18,8 @@
     <select id="countExisting" resultType="long">
         SELECT count(*) FROM department
         WHERE tenant_id = #{tenantId} AND NOT deleted
-          AND id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+        AND id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
     </select>
     <insert id="insert">
         INSERT INTO department (id, tenant_id, parent_id, name, path, created_at, updated_at, created_by, updated_by)
@@ -31,10 +32,10 @@
     <!-- subpath 的偏移等于层数时报错而不是返回空路径，子树根自身单独取 newPath。 -->
     <update id="move">
         UPDATE department SET
-            path = CASE WHEN id = #{id} THEN CAST(#{newPath} AS ltree)
-                        ELSE CAST(#{newPath} AS ltree) || subpath(path, nlevel(CAST(#{oldPath} AS ltree))) END,
-            parent_id = CASE WHEN id = #{id} THEN CAST(#{parentId} AS uuid) ELSE parent_id END,
-            updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
+        path = CASE WHEN id = #{id} THEN CAST(#{newPath} AS ltree)
+        ELSE CAST(#{newPath} AS ltree) || subpath(path, nlevel(CAST(#{oldPath} AS ltree))) END,
+        parent_id = CASE WHEN id = #{id} THEN CAST(#{parentId} AS uuid) ELSE parent_id END,
+        updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE tenant_id = #{tenantId} AND path &lt;@ CAST(#{oldPath} AS ltree) AND NOT deleted
     </update>
     <select id="countChildren" resultType="long">

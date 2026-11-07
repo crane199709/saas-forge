@@ -7,7 +7,7 @@
         INSERT INTO tenant (id, name, status, status_version, created_at, updated_at, created_by, updated_by)
         VALUES (#{tenantId}, #{name}, #{status}, #{version}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL)
         ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, status_version = EXCLUDED.status_version,
-            updated_at = CURRENT_TIMESTAMP, updated_by = NULL
+        updated_at = CURRENT_TIMESTAMP, updated_by = NULL
         WHERE tenant.status_version &lt; EXCLUDED.status_version AND NOT tenant.deleted
     </insert>
     <!-- Tenant 主数据属于 platform，iam 在开通时登记副本供登录与签发使用；由 TenantCreated 消费者写入，没有操作人。 -->

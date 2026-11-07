@@ -43,6 +43,25 @@
                             <version>${palantir-java-format.version}</version>
                         </palantirJavaFormat>
                     </java>
+                    <formats>
+                        <format>
+                            <includes>
+                                <include>src/main/resources/**/*.xml</include>
+                                <include>src/test/resources/**/*.xml</include>
+                            </includes>
+                            <excludes>
+                                <!-- 脚手架模板含 Velocity 占位符，不是待格式化的成品 -->
+                                <exclude>src/main/resources/archetype-resources/**</exclude>
+                            </excludes>
+                            <eclipseWtp>
+                                <type>XML</type>
+                                <!-- mapper 正文是手写 SQL：配置为不限行宽，否则格式化器会把 SQL 重新折行 -->
+                                <files>
+                                    <file>${maven.multiModuleProjectDirectory}/spotless-xml.prefs</file>
+                                </files>
+                            </eclipseWtp>
+                        </format>
+                    </formats>
                     <pom>
                         <!-- BOM 不继承本 POM，由根模块代为检查；子模块中该路径不存在，不会误匹配 -->
                         <includes>

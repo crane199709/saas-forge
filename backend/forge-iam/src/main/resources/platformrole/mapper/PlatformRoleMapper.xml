@@ -9,14 +9,18 @@
     <sql id="roleColumns">
         r.id, r.code, r.name, r.builtin,
         (SELECT count(*) FROM operator_role orl JOIN operator o ON o.id = orl.operator_id
-         WHERE orl.role_id = r.id AND NOT o.deleted) AS operator_count
+        WHERE orl.role_id = r.id AND NOT o.deleted) AS operator_count
     </sql>
     <select id="list" resultType="io.saasforge.iam.platformrole.model.PlatformRoleRow">
-        SELECT <include refid="roleColumns"/> FROM platform_role r
+        SELECT
+        <include refid="roleColumns"/>
+        FROM platform_role r
         WHERE NOT r.deleted ORDER BY r.builtin DESC, r.code
     </select>
     <select id="find" resultType="io.saasforge.iam.platformrole.model.PlatformRoleRow">
-        SELECT <include refid="roleColumns"/> FROM platform_role r
+        SELECT
+        <include refid="roleColumns"/>
+        FROM platform_role r
         WHERE r.id = #{id} AND NOT r.deleted
     </select>
     <!-- ON CONFLICT 命中编码的部分唯一索引：编码被占用时返回 0，由调用方报告冲突。 -->
@@ -47,22 +51,24 @@
     <select id="grantedCodes" resultType="string">
         SELECT DISTINCT p.code
         FROM operator_role orl JOIN platform_role r ON r.id = orl.role_id
-            JOIN platform_role_permission rp ON rp.role_id = r.id JOIN permission p ON p.id = rp.permission_id
+        JOIN platform_role_permission rp ON rp.role_id = r.id JOIN permission p ON p.id = rp.permission_id
         WHERE orl.operator_id = #{operatorId} AND NOT r.deleted
-          AND p.realm = 'platform' AND p.status = 'active' AND NOT p.deleted
+        AND p.realm = 'platform' AND p.status = 'active' AND NOT p.deleted
         ORDER BY p.code
     </select>
     <insert id="grant">
         INSERT INTO platform_role_permission (role_id, permission_id)
         SELECT #{roleId}, id FROM permission
         WHERE realm = 'platform' AND status = 'active' AND NOT deleted
-          AND code IN <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
+        AND code IN
+        <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
         ON CONFLICT DO NOTHING
     </insert>
     <delete id="revoke">
         DELETE FROM platform_role_permission rp USING permission p
         WHERE rp.role_id = #{roleId} AND p.id = rp.permission_id
-          AND p.code IN <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
+        AND p.code IN
+        <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
     </delete>
     <delete id="deletePermissions">
         DELETE FROM platform_role_permission WHERE role_id = #{roleId}
@@ -91,7 +97,8 @@
     </insert>
     <delete id="deletePolicies">
         DELETE FROM platform_role_data_policy WHERE role_id = #{roleId}
-          AND resource IN <foreach collection="resources" item="resource" open="(" separator="," close=")">#{resource}</foreach>
+        AND resource IN
+        <foreach collection="resources" item="resource" open="(" separator="," close=")">#{resource}</foreach>
     </delete>
     <delete id="deleteAllPolicies">
         DELETE FROM platform_role_data_policy WHERE role_id = #{roleId}
@@ -110,18 +117,21 @@
     </select>
     <select id="countRoles" resultType="long">
         SELECT count(*) FROM platform_role WHERE NOT deleted
-          AND id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+        AND id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
     </select>
     <delete id="revokeExcept">
         DELETE FROM operator_role WHERE operator_id = #{operatorId}
         <if test="!keep.isEmpty()">
-            AND role_id NOT IN <foreach collection="keep" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+            AND role_id NOT IN
+            <foreach collection="keep" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
         </if>
     </delete>
     <insert id="assign">
         INSERT INTO operator_role (operator_id, role_id)
         SELECT #{operatorId}, id FROM platform_role WHERE NOT deleted
-          AND id IN <foreach collection="roleIds" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+        AND id IN
+        <foreach collection="roleIds" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
         ON CONFLICT DO NOTHING
     </insert>
     <select id="countActiveSuperAdmins" resultType="long">

@@ -25,7 +25,8 @@
     </insert>
     <delete id="deleteResources">
         DELETE FROM role_data_policy WHERE role_id = #{roleId}
-          AND resource IN <foreach collection="resources" item="resource" open="(" separator="," close=")">#{resource}</foreach>
+        AND resource IN
+        <foreach collection="resources" item="resource" open="(" separator="," close=")">#{resource}</foreach>
     </delete>
     <delete id="deleteByRole">
         DELETE FROM role_data_policy WHERE role_id = #{roleId}

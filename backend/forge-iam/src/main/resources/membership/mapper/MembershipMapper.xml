@@ -44,15 +44,15 @@
     <!-- Extended Attribute 值属于本租户内的资料，离开时一并清空，再次邀请加入时不带回旧值。 -->
     <select id="leave" flushCache="true" resultType="io.saasforge.iam.membership.model.MembershipChange">
         UPDATE membership SET status = 'left', attributes = '{}', version = version + 1, updated_at = CURRENT_TIMESTAMP,
-            updated_by = #{actor}
+        updated_by = #{actor}
         WHERE tenant_id = #{tenantId} AND id = #{membershipId} AND status &lt;&gt; 'left' AND NOT deleted
         RETURNING tenant_id, version
     </select>
     <select id="lockActive" resultType="boolean">
         SELECT EXISTS (
-            SELECT 1 FROM membership
-            WHERE tenant_id = #{tenantId} AND id = #{membershipId} AND status = 'active' AND NOT deleted
-            FOR SHARE)
+        SELECT 1 FROM membership
+        WHERE tenant_id = #{tenantId} AND id = #{membershipId} AND status = 'active' AND NOT deleted
+        FOR SHARE)
     </select>
     <select id="findStatus" resultType="io.saasforge.iam.membership.model.MembershipStatus">
         SELECT id AS membership_id, status FROM membership
@@ -60,7 +60,7 @@
     </select>
     <select id="findInvitation" resultType="io.saasforge.iam.membership.model.Invitation">
         SELECT m.id AS membership_id, m.status AS membership_status, t.id AS tenant_id, t.name AS tenant_name,
-               i.id AS identity_id, i.status AS identity_status
+        i.id AS identity_id, i.status AS identity_status
         FROM membership m JOIN identity i ON i.id = m.identity_id JOIN tenant t ON t.id = m.tenant_id
         WHERE m.id = #{membershipId} AND NOT m.deleted AND NOT i.deleted AND NOT t.deleted
     </select>
@@ -72,9 +72,9 @@
          反过来，移除先提交时这里重新判断为已离开，不会把分配写给已离开的成员。 -->
     <select id="exists" resultType="boolean">
         SELECT EXISTS (
-            SELECT 1 FROM membership
-            WHERE tenant_id = #{tenantId} AND id = #{membershipId} AND status &lt;&gt; 'left' AND NOT deleted
-            FOR SHARE)
+        SELECT 1 FROM membership
+        WHERE tenant_id = #{tenantId} AND id = #{membershipId} AND status &lt;&gt; 'left' AND NOT deleted
+        FOR SHARE)
     </select>
     <!-- 管理界面展示成员需要 Identity 的账号与昵称；Identity 是全局表，只读取展示字段。 -->
     <select id="page" resultType="io.saasforge.iam.membership.model.MemberRow">
@@ -95,9 +95,9 @@
         <if test="status != null">AND m.status = #{status}</if>
         <if test="keyword != null">
             AND (POSITION(lower(#{keyword}) IN lower(coalesce(i.account, ''))) &gt; 0
-                OR POSITION(lower(#{keyword}) IN lower(i.display_name)) &gt; 0
-                OR POSITION(lower(#{keyword}) IN lower(coalesce(i.email, ''))) &gt; 0
-                OR POSITION(#{keyword} IN coalesce(i.phone, '')) &gt; 0)
+            OR POSITION(lower(#{keyword}) IN lower(i.display_name)) &gt; 0
+            OR POSITION(lower(#{keyword}) IN lower(coalesce(i.email, ''))) &gt; 0
+            OR POSITION(#{keyword} IN coalesce(i.phone, '')) &gt; 0)
         </if>
     </sql>
     <select id="search" resultType="io.saasforge.iam.membership.model.MemberContactRow">
@@ -107,7 +107,8 @@
         LIMIT #{limit} OFFSET #{offset}
     </select>
     <select id="countSearch" resultType="long">
-        SELECT count(*) <include refid="searchCondition"/>
+        SELECT count(*)
+        <include refid="searchCondition"/>
     </select>
     <select id="attributes" resultType="string">
         SELECT CAST(attributes AS text) FROM membership WHERE tenant_id = #{tenantId} AND id = #{membershipId} AND NOT deleted

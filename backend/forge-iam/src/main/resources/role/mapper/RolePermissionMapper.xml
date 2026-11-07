@@ -10,7 +10,7 @@
     <select id="grantedCodes" resultType="string">
         SELECT DISTINCT p.code
         FROM membership_role mr JOIN role r ON r.id = mr.role_id
-            JOIN role_permission rp ON rp.role_id = r.id JOIN permission p ON p.id = rp.permission_id
+        JOIN role_permission rp ON rp.role_id = r.id JOIN permission p ON p.id = rp.permission_id
         WHERE mr.membership_id = #{membershipId} AND NOT r.deleted AND p.status = 'active' AND NOT p.deleted
         ORDER BY p.code
     </select>
@@ -18,13 +18,15 @@
         INSERT INTO role_permission (role_id, permission_id)
         SELECT #{roleId}, id FROM permission
         WHERE status = 'active' AND NOT deleted
-          AND code IN <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
+        AND code IN
+        <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
         ON CONFLICT DO NOTHING
     </insert>
     <delete id="revoke">
         DELETE FROM role_permission rp USING permission p
         WHERE rp.role_id = #{roleId} AND p.id = rp.permission_id
-          AND p.code IN <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
+        AND p.code IN
+        <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
     </delete>
     <delete id="deleteByRole">
         DELETE FROM role_permission WHERE role_id = #{roleId}

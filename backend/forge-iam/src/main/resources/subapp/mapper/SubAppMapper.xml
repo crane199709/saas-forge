@@ -6,7 +6,7 @@
         INSERT INTO sub_app (code, name, version, revision, created_at, updated_at, created_by, updated_by, deleted)
         VALUES (#{code}, #{name}, #{version}, #{revision}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, #{deleted})
         ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, version = EXCLUDED.version,
-            revision = EXCLUDED.revision, deleted = EXCLUDED.deleted, updated_at = CURRENT_TIMESTAMP, updated_by = NULL
+        revision = EXCLUDED.revision, deleted = EXCLUDED.deleted, updated_at = CURRENT_TIMESTAMP, updated_by = NULL
         WHERE sub_app.revision &lt; EXCLUDED.revision
     </insert>
     <delete id="clearEntries">

@@ -3,7 +3,7 @@
 <mapper namespace="io.saasforge.platform.tenant.mapper.TenantMapper">
     <select id="page" resultType="io.saasforge.platform.tenant.entity.Tenant">
         SELECT id, name, status, admin_contact, region, status_version, expires_at, expiry_reminded_at,
-               status_before_deletion, purge_at, purged_at, plan_id, plan_version, created_at, updated_at, created_by, updated_by, deleted
+        status_before_deletion, purge_at, purged_at, plan_id, plan_version, created_at, updated_at, created_by, updated_by, deleted
         FROM tenant
         WHERE NOT deleted
         ORDER BY id DESC

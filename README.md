@@ -145,7 +145,7 @@ deploy/e2e/run.sh
 
 ## 代码格式化
 
-后端使用 Spotless：Java 用 palantir-java-format 并移除未使用的 import，POM 统一排序与缩进。格式不合规时 `verify` 失败。
+后端使用 Spotless：Java 用 palantir-java-format 并移除未使用的 import，POM 统一排序与缩进，`src/{main,test}/resources` 下的 XML 用 Eclipse WTP 统一缩进（规则见 `backend/spotless-xml.prefs`，保留 SQL 的手写换行，脚手架模板除外）。格式不合规时 `verify` 失败。
 
 ```bash
 cd backend && ./mvnw spotless:apply

@@ -32,8 +32,8 @@
     <update id="markFailed">
         UPDATE forge_outbox
         SET attempts = attempts + 1,
-            next_attempt_at = CURRENT_TIMESTAMP + #{backoffMillis} * INTERVAL '0.001' SECOND,
-            last_error = #{error}
+        next_attempt_at = CURRENT_TIMESTAMP + #{backoffMillis} * INTERVAL '0.001' SECOND,
+        last_error = #{error}
         WHERE id = #{id}
     </update>
 </mapper>

@@ -3,7 +3,7 @@
 <mapper namespace="io.saasforge.iam.referencedata.mapper.DictionaryItemMapper">
     <select id="lockDictionary" resultType="int">
         SELECT 1 FROM (SELECT pg_advisory_xact_lock(
-            hashtext('dictionary_item:' || #{tenantId} || ':' || #{service} || ':' || #{dictionary}))) AS locked
+        hashtext('dictionary_item:' || #{tenantId} || ':' || #{service} || ':' || #{dictionary}))) AS locked
     </select>
     <select id="list" resultType="io.saasforge.iam.referencedata.model.DictionaryItemRow">
         SELECT service, dictionary, code, custom, name, sort_order AS sortOrder, enabled FROM dictionary_item
@@ -12,24 +12,24 @@
     <!-- ON CONFLICT 命中部分唯一索引，编码冲突时返回 0 而不是抛异常回滚。 -->
     <insert id="insertCustom">
         INSERT INTO dictionary_item (id, tenant_id, service, dictionary, code, custom, name, sort_order, enabled,
-            created_at, updated_at, created_by, updated_by)
+        created_at, updated_at, created_by, updated_by)
         VALUES (#{id}, #{tenantId}, #{service}, #{dictionary}, #{code}, true, #{name}, #{sortOrder}, true,
-            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
         ON CONFLICT (tenant_id, service, dictionary, code) WHERE NOT deleted DO NOTHING
     </insert>
     <insert id="saveSettings">
         INSERT INTO dictionary_item (id, tenant_id, service, dictionary, code, custom, name, sort_order, enabled,
-            created_at, updated_at, created_by, updated_by)
+        created_at, updated_at, created_by, updated_by)
         VALUES (#{id}, #{tenantId}, #{service}, #{dictionary}, #{code}, #{custom}, #{name}, #{sortOrder}, true,
-            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
         ON CONFLICT (tenant_id, service, dictionary, code) WHERE NOT deleted DO UPDATE
         SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
     </insert>
     <insert id="saveEnabled">
         INSERT INTO dictionary_item (id, tenant_id, service, dictionary, code, custom, name, sort_order, enabled,
-            created_at, updated_at, created_by, updated_by)
+        created_at, updated_at, created_by, updated_by)
         VALUES (#{id}, #{tenantId}, #{service}, #{dictionary}, #{code}, #{custom}, #{name}, #{sortOrder}, #{enabled},
-            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
         ON CONFLICT (tenant_id, service, dictionary, code) WHERE NOT deleted DO UPDATE
         SET enabled = EXCLUDED.enabled, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
     </insert>

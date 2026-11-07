@@ -8,9 +8,9 @@
     <!-- audit_event 只追加，没有标准列 -->
     <insert id="insert">
         INSERT INTO audit_event (id, occurred_at, realm, tenant_id, actor_id, category, action, resource_type, resource_id,
-            outcome, error_code, detail, service, trace_id)
+        outcome, error_code, detail, service, trace_id)
         VALUES (#{id}, #{occurredAt}, #{realm}, #{tenantId}, #{actorId}, #{category}, #{action}, #{resourceType},
-            #{resourceId}, #{outcome}, #{errorCode}, CAST(#{detail} AS jsonb), #{service}, #{traceId})
+        #{resourceId}, #{outcome}, #{errorCode}, CAST(#{detail} AS jsonb), #{service}, #{traceId})
         ON CONFLICT DO NOTHING
     </insert>
 
@@ -34,14 +34,14 @@
         <if test="query.resourceId != null">AND a.resource_id = #{query.resourceId}</if>
         <if test="query.actor != null">
             AND (POSITION(lower(#{query.actor}) IN lower(coalesce(p.account, ''))) &gt; 0
-                OR POSITION(lower(#{query.actor}) IN lower(coalesce(p.display_name, ''))) &gt; 0)
+            OR POSITION(lower(#{query.actor}) IN lower(coalesce(p.display_name, ''))) &gt; 0)
         </if>
     </sql>
 
     <select id="search" resultType="io.saasforge.iam.audit.model.AuditRecord">
         SELECT a.id, a.occurred_at, a.category, a.action, a.actor_id, p.account AS actor_account,
-            p.display_name AS actor_name, a.resource_type, a.resource_id, a.outcome, a.error_code, CAST(a.detail AS text) AS detail,
-            a.service, a.trace_id
+        p.display_name AS actor_name, a.resource_type, a.resource_id, a.outcome, a.error_code, CAST(a.detail AS text) AS detail,
+        a.service, a.trace_id
         <include refid="searchCondition"/>
         ORDER BY a.occurred_at DESC, a.id DESC
         LIMIT #{limit} OFFSET #{offset}

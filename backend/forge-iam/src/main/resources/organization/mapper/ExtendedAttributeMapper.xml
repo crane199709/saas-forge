@@ -3,10 +3,14 @@
 <mapper namespace="io.saasforge.iam.organization.mapper.ExtendedAttributeMapper">
     <sql id="columns">id, code, name, type, required</sql>
     <select id="list" resultType="io.saasforge.iam.organization.model.ExtendedAttributeRow">
-        SELECT <include refid="columns"/> FROM extended_attribute WHERE tenant_id = #{tenantId} AND NOT deleted ORDER BY code
+        SELECT
+        <include refid="columns"/>
+        FROM extended_attribute WHERE tenant_id = #{tenantId} AND NOT deleted ORDER BY code
     </select>
     <select id="find" resultType="io.saasforge.iam.organization.model.ExtendedAttributeRow">
-        SELECT <include refid="columns"/> FROM extended_attribute
+        SELECT
+        <include refid="columns"/>
+        FROM extended_attribute
         WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT deleted
     </select>
     <!-- ON CONFLICT 命中 (tenant_id, code) 的部分唯一索引，编码冲突时返回 0 而不是抛异常回滚。 -->

@@ -4,19 +4,19 @@
     <select id="countTables" resultType="int">
         SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE n.nspname = current_schema() AND c.relkind IN ('r', 'p') AND NOT c.relispartition
-            AND c.relname &lt;&gt; 'flyway_schema_history'
+        AND c.relname &lt;&gt; 'flyway_schema_history'
     </select>
     <select id="selectUncommented" resultType="string">
         SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE n.nspname = current_schema() AND c.relkind IN ('r', 'p') AND NOT c.relispartition
-            AND c.relname &lt;&gt; 'flyway_schema_history' AND obj_description(c.oid, 'pg_class') IS NULL
+        AND c.relname &lt;&gt; 'flyway_schema_history' AND obj_description(c.oid, 'pg_class') IS NULL
         UNION ALL
         SELECT c.relname || '.' || a.attname FROM pg_class c
         JOIN pg_namespace n ON n.oid = c.relnamespace
         JOIN pg_attribute a ON a.attrelid = c.oid
         WHERE n.nspname = current_schema() AND c.relkind IN ('r', 'p') AND NOT c.relispartition
-            AND c.relname &lt;&gt; 'flyway_schema_history' AND a.attnum &gt; 0 AND NOT a.attisdropped
-            AND col_description(c.oid, a.attnum) IS NULL
+        AND c.relname &lt;&gt; 'flyway_schema_history' AND a.attnum &gt; 0 AND NOT a.attisdropped
+        AND col_description(c.oid, a.attnum) IS NULL
         ORDER BY 1
     </select>
 </mapper>
