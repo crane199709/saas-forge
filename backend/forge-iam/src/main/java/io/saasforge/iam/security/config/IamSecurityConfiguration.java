@@ -320,8 +320,10 @@ class IamSecurityConfiguration {
                         "/members/**",
                         "/audit/**",
                         "/todos/**",
+                        "/notifications/**",
                         "/reference-data/**",
-                        "/security-settings")
+                        "/security-settings",
+                        "/announcements/**")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
@@ -360,6 +362,7 @@ class IamSecurityConfiguration {
                         "/platform/identities/**",
                         "/platform/access",
                         "/platform/audit/**",
+                        "/platform/announcements/**",
                         "/platform/auth/password/change",
                         "/platform/auth/mfa/**")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -91,6 +91,11 @@ public class OrderService implements TenantDataCleaner {
                     title,
                     new NotificationLink("demo", "/overview"),
                     Instant.now());
+            notifications.send(
+                    NotificationTarget.memberships(List.of(order.getOwnerId())),
+                    "订单已创建",
+                    "订单 " + order.getNumber() + " 已创建",
+                    new NotificationLink("demo", "/overview"));
         }
         // 创建时间由数据库生成，重新读取才能返回与之后查询一致的值
         return get(order.getId());
