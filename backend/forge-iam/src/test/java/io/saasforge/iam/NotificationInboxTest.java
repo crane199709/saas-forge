@@ -1,6 +1,7 @@
 package io.saasforge.iam;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
@@ -8,6 +9,8 @@ import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import io.saasforge.iam.notification.mapper.NotificationIsolationProbe;
+import io.saasforge.iam.schema.mapper.SchemaCommentMapper;
 import io.saasforge.sdk.core.CurrentTenant;
 import io.saasforge.sdk.mq.EventHandler;
 import io.saasforge.sdk.notification.NotificationLink;
@@ -26,7 +29,10 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +42,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -43,11 +50,12 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.context.jdbc.SqlConfig;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "server.address=127.0.0.1")
-@Sql("/fixtures/notifications.sql")
+@Sql(scripts = "/fixtures/notifications.sql", config = @SqlConfig(transactionMode = SqlConfig.TransactionMode.ISOLATED))
 @Import(NotificationInboxTest.Clocks.class)
 class NotificationInboxTest {
     static final String KEY_FILE = "target/test-notification-signing.jwk";
@@ -86,6 +94,12 @@ class NotificationInboxTest {
     @Autowired
     MutableClock clock;
 
+    @Autowired
+    NotificationIsolationProbe isolation;
+
+    @Autowired
+    SchemaCommentMapper schema;
+
     @BeforeEach
     void resetClock() {
         clock.now = Instant.now();
@@ -107,6 +121,121 @@ class NotificationInboxTest {
         assertThat(object(object(response.getBody().get("meta")).get("page"))).containsEntry("totalElements", 1);
         assertThat(items(call(TENANT_B, ADMIN_B, "GET", "/notifications"))).isEmpty();
         assertThat(items(call(TENANT_A, MEMBER_A, "GET", "/notifications"))).isEmpty();
+    }
+
+    @Test
+    void rlsProtectsParentsAndDirectMonthlyAccessOnTheApplicationAccount() {
+        clock.now = Instant.parse("2026-02-15T12:00:00Z");
+        deliver(event(NotificationTarget.memberships(List.of(ADMIN_A)), "甲租户通知", clock.instant()));
+        deliver(new NotificationSent(
+                UUID.randomUUID(),
+                TENANT_B,
+                "demo-service",
+                NotificationTarget.memberships(List.of(ADMIN_B)),
+                "乙租户通知",
+                "乙正文",
+                null,
+                clock.instant()));
+        assertThat(isolation.isRestrictedRuntimeRole()).isTrue();
+        assertThat(schema.selectUnprotectedNotificationTables()).isEmpty();
+        for (boolean directPartition : List.of(false, true)) {
+            assertThat(isolation.notificationTenants(directPartition)).isEmpty();
+            assertThat(isolation.recipientTenants(directPartition)).isEmpty();
+            for (UUID tenant : List.of(TENANT_A, TENANT_B)) {
+                transaction.executeWithoutResult(status -> {
+                    isolation.bindTenant(tenant);
+                    assertThat(isolation.notificationTenants(directPartition)).containsExactly(tenant);
+                    assertThat(isolation.recipientTenants(directPartition)).containsExactly(tenant);
+                });
+            }
+            assertThatThrownBy(() -> transaction.executeWithoutResult(status -> {
+                        isolation.bindTenant(TENANT_A);
+                        isolation.insertNotification(UUID.randomUUID(), TENANT_B, clock.instant(), directPartition);
+                    }))
+                    .isInstanceOf(DataAccessException.class)
+                    .hasMessageContaining("row-level security policy");
+            assertThatThrownBy(() -> transaction.executeWithoutResult(status -> {
+                        isolation.bindTenant(TENANT_A);
+                        isolation.insertRecipient(
+                                UUID.randomUUID(), TENANT_B, ADMIN_B, clock.instant(), directPartition);
+                    }))
+                    .isInstanceOf(DataAccessException.class)
+                    .hasMessageContaining("row-level security policy");
+            assertThat(isolation.notificationTenants(directPartition)).isEmpty();
+            assertThat(isolation.recipientTenants(directPartition)).isEmpty();
+        }
+    }
+
+    @Test
+    void rolledBackDeliveryAndFailedReadDoNotAffectTheNextTenantsInbox() throws Exception {
+        NotificationSent rolledBack = event(NotificationTarget.memberships(List.of(ADMIN_A)), "回滚通知", Instant.now());
+        transaction.executeWithoutResult(status -> {
+            deliver(rolledBack);
+            status.setRollbackOnly();
+        });
+        NotificationSent b = new NotificationSent(
+                UUID.randomUUID(),
+                TENANT_B,
+                "demo-service",
+                NotificationTarget.memberships(List.of(ADMIN_B)),
+                "乙租户通知",
+                "乙正文",
+                null,
+                Instant.now());
+        deliver(b);
+        assertThat(items(call(TENANT_A, ADMIN_A, "GET", "/notifications"))).isEmpty();
+        assertThat(call(TENANT_A, ADMIN_A, "POST", "/notifications/" + b.id() + "/read")
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(404);
+        assertThat(items(call(TENANT_B, ADMIN_B, "GET", "/notifications")))
+                .singleElement()
+                .satisfies(item ->
+                        assertThat(item).containsEntry("id", b.id().toString()).containsEntry("read", false));
+        assertThat(object(call(TENANT_B, ADMIN_B, "GET", "/notifications/unread-count")
+                        .getBody()
+                        .get("data")))
+                .containsEntry("count", 1);
+        assertThat(call(TENANT_B, ADMIN_B, "POST", "/notifications/" + b.id() + "/read")
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(200);
+        deliver(rolledBack);
+        assertThat(items(call(TENANT_A, ADMIN_A, "GET", "/notifications")))
+                .extracting(item -> item.get("id"))
+                .containsExactly(rolledBack.id().toString());
+        assertThat(items(call(TENANT_B, ADMIN_B, "GET", "/notifications")))
+                .singleElement()
+                .satisfies(item -> assertThat(item).containsEntry("read", true));
+    }
+
+    @Test
+    void concurrentFirstDeliveriesCanShareANewMonthlyPartition() throws Exception {
+        clock.now = Instant.parse("2026-03-15T12:00:00Z");
+        NotificationSent first = event(NotificationTarget.memberships(List.of(ADMIN_A)), "并发甲", clock.instant());
+        NotificationSent second = event(NotificationTarget.memberships(List.of(ADMIN_A)), "并发乙", clock.instant());
+        var executor = Executors.newFixedThreadPool(2);
+        var ready = new CountDownLatch(2);
+        var start = new CountDownLatch(1);
+        try {
+            var futures = List.of(first, second).stream()
+                    .map(event -> executor.submit(() -> {
+                        ready.countDown();
+                        assertThat(start.await(10, TimeUnit.SECONDS)).isTrue();
+                        deliver(event);
+                        return null;
+                    }))
+                    .toList();
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            for (var future : futures) future.get(30, TimeUnit.SECONDS);
+        } finally {
+            executor.shutdownNow();
+        }
+        assertThat(items(call(TENANT_A, ADMIN_A, "GET", "/notifications")))
+                .extracting(item -> item.get("id"))
+                .containsExactlyInAnyOrder(first.id().toString(), second.id().toString());
+        assertThat(schema.selectUnprotectedNotificationTables()).isEmpty();
     }
 
     @Test

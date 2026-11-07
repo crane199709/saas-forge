@@ -1,6 +1,11 @@
 DELETE FROM membership_role WHERE membership_id = '019a0110-0000-7000-8000-000000000214';
-DELETE FROM notification_recipient;
-DELETE FROM notification;
+-- 夹具在独立事务内按租户清理；与运行账号相同，不能绕过通知 RLS。
+SELECT set_config('app.tenant_id', '019a0110-0000-7000-8000-000000000210', true);
+DELETE FROM notification_recipient WHERE tenant_id = '019a0110-0000-7000-8000-000000000210';
+DELETE FROM notification WHERE tenant_id = '019a0110-0000-7000-8000-000000000210';
+SELECT set_config('app.tenant_id', '019a0110-0000-7000-8000-000000000220', true);
+DELETE FROM notification_recipient WHERE tenant_id = '019a0110-0000-7000-8000-000000000220';
+DELETE FROM notification WHERE tenant_id = '019a0110-0000-7000-8000-000000000220';
 UPDATE membership SET status = 'active' WHERE id IN ('019a0110-0000-7000-8000-000000000212', '019a0110-0000-7000-8000-000000000214', '019a0110-0000-7000-8000-000000000222');
 -- 收件箱集成测试：同一Identity在两个Tenant各有Membership，甲租户另有普通成员；逐例恢复夹具。
 INSERT INTO tenant (id, name) VALUES

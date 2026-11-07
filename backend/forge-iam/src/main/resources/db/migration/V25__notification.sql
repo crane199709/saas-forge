@@ -1,4 +1,4 @@
--- Notification 按 ADR-0022 使用非标准分区表。IAM 与既有表一致，由 SQL 显式限定租户（ADR-0001）。
+-- Notification 按 ADR-0022 使用非标准分区表；租户隔离仍遵守 ADR-0001 的显式条件与强制 RLS。
 -- 主记录先幂等占位，再固定收件人；重投时不会按变化后的权限增加收件人。
 CREATE TABLE notification (
     id uuid NOT NULL,
@@ -40,12 +40,24 @@ COMMENT ON COLUMN notification_recipient.membership_id IS '创建时展开的收
 COMMENT ON COLUMN notification_recipient.read_at IS '首次已读时间，NULL表示未读';
 CREATE INDEX notification_recipient_inbox_idx ON notification_recipient (tenant_id, membership_id, occurred_at DESC);
 
+ALTER TABLE notification ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification FORCE ROW LEVEL SECURITY;
+CREATE POLICY notification_tenant_isolation ON notification
+    USING (tenant_id = CAST(nullif(current_setting('app.tenant_id', true), '') AS uuid))
+    WITH CHECK (tenant_id = CAST(nullif(current_setting('app.tenant_id', true), '') AS uuid));
+ALTER TABLE notification_recipient ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_recipient FORCE ROW LEVEL SECURITY;
+CREATE POLICY notification_recipient_tenant_isolation ON notification_recipient
+    USING (tenant_id = CAST(nullif(current_setting('app.tenant_id', true), '') AS uuid))
+    WITH CHECK (tenant_id = CAST(nullif(current_setting('app.tenant_id', true), '') AS uuid));
+
 -- 运行账号不拥有DDL权限；固定search_path的迁移账号函数只维护通知自己的分区。
 CREATE FUNCTION notification_ensure_partition(month_start date) RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path FROM CURRENT AS $$
 DECLARE
     first_day date := CAST(date_trunc('month', month_start) AS date);
     table_name text;
+    partition_name text;
 BEGIN
     IF to_regclass('notification_' || to_char(first_day, 'YYYY_MM')) IS NOT NULL
         AND to_regclass('notification_recipient_' || to_char(first_day, 'YYYY_MM')) IS NOT NULL THEN
@@ -53,10 +65,24 @@ BEGIN
     END IF;
     PERFORM pg_advisory_xact_lock(hashtext('notification_partition'));
     FOREACH table_name IN ARRAY ARRAY['notification', 'notification_recipient'] LOOP
+        partition_name := table_name || '_' || to_char(first_day, 'YYYY_MM');
+        -- 锁等待后的目录预查不足以保证 DDL 幂等，重复建表仍由 IF NOT EXISTS 兜底。
         EXECUTE format('CREATE TABLE IF NOT EXISTS %I PARTITION OF %I FOR VALUES FROM (%L) TO (%L)',
-            table_name || '_' || to_char(first_day, 'YYYY_MM'), table_name,
+            partition_name, table_name,
             CAST(first_day AS timestamp) AT TIME ZONE 'UTC',
             CAST(first_day + INTERVAL '1' MONTH AS timestamp) AT TIME ZONE 'UTC');
+        -- 父表策略不覆盖对子表的直接访问，运行账号仍可能直接查询月分区。
+        EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', partition_name);
+        EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', partition_name);
+        BEGIN
+            EXECUTE format('CREATE POLICY %I ON %I '
+                'USING (tenant_id = CAST(nullif(current_setting(''app.tenant_id'', true), '''') AS uuid)) '
+                'WITH CHECK (tenant_id = CAST(nullif(current_setting(''app.tenant_id'', true), '''') AS uuid))',
+                table_name || '_tenant_isolation', partition_name);
+        EXCEPTION WHEN duplicate_object THEN
+            -- CREATE POLICY 没有 IF NOT EXISTS；只允许已存在策略，其他错误继续中止事务。
+            NULL;
+        END;
     END LOOP;
 END;
 $$;

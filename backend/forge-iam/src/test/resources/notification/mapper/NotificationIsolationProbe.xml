@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.notification.mapper.NotificationIsolationProbe">
+    <select id="isRestrictedRuntimeRole" resultType="boolean">
+        SELECT current_user = 'iam_app' AND NOT r.rolsuper AND NOT r.rolbypassrls
+        FROM pg_roles r WHERE r.rolname = current_user
+    </select>
+    <select id="bindTenant" resultType="string">SELECT set_config('app.tenant_id', CAST(#{tenantId} AS text), true)</select>
+    <!-- 测试时钟固定在 2026-02，字面量表名防止通过动态 SQL 标识符绕过约束。 -->
+    <sql id="contentTable">
+        <choose>
+            <when test="directPartition">notification_2026_02</when>
+            <otherwise>notification</otherwise>
+        </choose>
+    </sql>
+    <sql id="recipientTable">
+        <choose>
+            <when test="directPartition">notification_recipient_2026_02</when>
+            <otherwise>notification_recipient</otherwise>
+        </choose>
+    </sql>
+    <select id="notificationTenants" resultType="java.util.UUID">
+        SELECT tenant_id FROM
+        <include refid="contentTable"/>
+    </select>
+    <select id="recipientTenants" resultType="java.util.UUID">
+        SELECT tenant_id FROM
+        <include refid="recipientTable"/>
+    </select>
+    <insert id="insertNotification">
+        INSERT INTO
+        <include refid="contentTable"/>
+        (id, occurred_at, tenant_id, service, title, body)
+        VALUES (#{id}, #{occurredAt}, #{tenantId}, 'probe', '跨租户探针', '验证 RLS 拒绝写入')
+    </insert>
+    <insert id="insertRecipient">
+        INSERT INTO
+        <include refid="recipientTable"/>
+        (notification_id, occurred_at, tenant_id, membership_id)
+        VALUES (#{id}, #{occurredAt}, #{tenantId}, #{membershipId})
+    </insert>
+</mapper>
