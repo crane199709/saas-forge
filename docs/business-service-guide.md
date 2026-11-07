@@ -94,7 +94,7 @@ Micrometer 提供 `forge.mq.dead.events` Counter（标签 `consumer.group`，只
 | `POST /internal/ops/dead-events/{id}/replay` | 请求体 `{ "reason": "修复后的重放原因" }`，在所属服务内重放 |
 | `POST /internal/ops/dead-events/{id}/abandon` | 同样要求非空原因，将待处置事件标为已放弃 |
 
-查询要求 `platform:ops:read`，两种处置要求 `platform:ops:manage`。响应遵循统一信封，成功处置返回 200 及元数据；分页放在 `meta.page`。元数据包括 ID、原事件 ID、消费组、主题、Tag、租户、尝试次数、错误、状态、捕获/处置时间和处置原因；不含原始消息体与原租户头。平台命令的原因为空返回 400 `ops.reasonRequired`，事件不存在返回 404 `ops.deadEventNotFound`，已处置返回 409 `ops.deadEventAlreadyHandled`，重放失败返回 409 `ops.deadEventReplayFailed`；服务不可用返回 503 `ops.serviceUnavailable`。内部处置错误使用对应的 `deadEvent.*` 错误码。
+查询要求 `platform:ops:read`，两种处置要求 `platform:ops:manage`。响应遵循统一信封，成功处置返回 200 及元数据；分页放在 `meta.page`。元数据包括 ID、原事件 ID、消费组、主题、Tag、租户、尝试次数、错误、状态、捕获/处置时间和处置原因；不含原始消息体与原租户头。首次捕获和失败重放的错误摘要仅保留异常类型，不保存可能包含 payload 值的异常消息或根因消息；完整异常写入所属服务日志。平台命令的原因为空返回 400 `ops.reasonRequired`，事件不存在返回 404 `ops.deadEventNotFound`，已处置返回 409 `ops.deadEventAlreadyHandled`，重放失败返回 409 `ops.deadEventReplayFailed`；服务不可用返回 503 `ops.serviceUnavailable`。内部处置错误使用对应的 `deadEvent.*` 错误码。
 
 重放保留原消费组、事件 ID 和原租户头，先恢复租户，再在同一事务内条件处置、登记去重并直接执行 Handler；不重新发布到 MQ。成功只生效一次，失败则回滚业务与处置标记，独立更新最近错误，仍为待处置。已下线 Handler、非法 JSON 或非法原租户头都不会被误标为成功。关闭 `forge.mq.enabled` 不影响查询和服务内重放。平台记录 `ops.deadEventReplay`、`ops.deadEventAbandon` 的成功或失败审计，包含 Operator、所属服务、死信 ID、处置原因及成功时的原事件 ID。
 

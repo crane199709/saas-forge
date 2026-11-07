@@ -1,20 +1,31 @@
 package io.saasforge.sdk.mq;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import io.saasforge.sdk.core.CurrentTenant;
+import java.math.BigDecimal;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.ibatis.annotations.Param;
+import org.apache.rocketmq.client.apis.consumer.ConsumeResult;
+import org.apache.rocketmq.client.apis.message.MessageId;
+import org.apache.rocketmq.client.apis.message.MessageView;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
@@ -87,6 +98,38 @@ class DeadEventDisposalTest {
                 .doesNotContain("payload", "SECRET_PAYLOAD", "originalTenantId");
     }
 
+    @Autowired
+    EventConsumer consumer;
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+            {"value":"ignored","amount":"SECRET_AMOUNT_CAPTURE"} | SECRET_AMOUNT_CAPTURE | InvalidFormatException
+            {"value":"ignored","orderId":"SECRET_UUID_CAPTURE"} | SECRET_UUID_CAPTURE | InvalidFormatException
+            {"value":"fail_SECRET_HANDLER_CAPTURE"} | SECRET_HANDLER_CAPTURE | IllegalStateException
+            """)
+    void capturedErrorsExposeTheirTypeWithoutPayloadValues(String payload, String secret, String errorType) {
+        String eventId = UUID.randomUUID().toString();
+        var message = mock(MessageView.class);
+        var messageId = mock(MessageId.class);
+        when(messageId.toString()).thenReturn(eventId);
+        when(message.getMessageId()).thenReturn(messageId);
+        when(message.getTopic()).thenReturn("orders");
+        when(message.getTag()).thenReturn(Optional.of("Created"));
+        when(message.getProperties())
+                .thenReturn(Map.of(
+                        EventPublisher.EVENT_ID_PROPERTY,
+                        eventId,
+                        EventPublisher.TENANT_ID_PROPERTY,
+                        UUID.randomUUID().toString()));
+        when(message.getDeliveryAttempt()).thenReturn(16);
+        when(message.getBody()).thenReturn(ByteBuffer.wrap(payload.getBytes(StandardCharsets.UTF_8)));
+
+        assertThat(consumer.consume(message)).isEqualTo(ConsumeResult.SUCCESS);
+        Reply reply = get("/internal/ops/dead-events?status=PENDING&page=1&size=100");
+        assertThat(reply.status()).isEqualTo(200);
+        assertThat(reply.body()).contains(eventId, errorType).doesNotContain(secret);
+    }
+
     @Test
     void replayRestoresTheOriginalTenantAndCommitsTheHandlerWithItsTerminalState() {
         UUID target = UUID.randomUUID();
@@ -110,8 +153,26 @@ class DeadEventDisposalTest {
         Reply detail = get("/internal/ops/dead-events/" + id);
         assertThat(detail.status()).isEqualTo(200);
         assertThat(detail.body())
-                .contains("PENDING", "new handler failure", "\"resolvedAt\":null", "\"resolutionReason\":null")
+                .contains("PENDING", "IllegalStateException", "\"resolvedAt\":null", "\"resolutionReason\":null")
                 .doesNotContain("payload");
+        assertThat(values(tenant)).isEmpty();
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+            {"value":"ignored","amount":"SECRET_AMOUNT_REPLAY"} | SECRET_AMOUNT_REPLAY | InvalidFormatException
+            {"value":"ignored","orderId":"SECRET_UUID_REPLAY"} | SECRET_UUID_REPLAY | InvalidFormatException
+            {"value":"fail_SECRET_HANDLER_REPLAY"} | SECRET_HANDLER_REPLAY | IllegalStateException
+            """)
+    void failedReplayExposesItsErrorTypeWithoutPayloadValues(String payload, String secret, String errorType) {
+        UUID tenant = UUID.randomUUID();
+        UUID id = seed(tenant, UUID.randomUUID().toString(), "Created", payload);
+        Reply replay = post(id, "replay", "验证隐私修复");
+        assertThat(replay.status()).isEqualTo(409);
+        assertThat(replay.body()).doesNotContain(secret);
+        Reply detail = get("/internal/ops/dead-events/" + id);
+        assertThat(detail.status()).isEqualTo(200);
+        assertThat(detail.body()).contains("PENDING", errorType).doesNotContain(secret);
         assertThat(values(tenant)).isEmpty();
     }
 
@@ -171,7 +232,7 @@ class DeadEventDisposalTest {
                         16,
                         "previous");
         assertThat(post(id, "replay", "验证租户").status()).isEqualTo(409);
-        assertThat(get("/internal/ops/dead-events/" + id).body()).contains("PENDING", "Invalid UUID");
+        assertThat(get("/internal/ops/dead-events/" + id).body()).contains("PENDING", "IllegalArgumentException");
     }
 
     @Test
@@ -272,7 +333,8 @@ class DeadEventDisposalTest {
                             throw new IllegalStateException(error);
                         }
                     }
-                    if (event.value().startsWith("fail")) throw new IllegalStateException("new handler failure");
+                    if (event.value().startsWith("fail"))
+                        throw new IllegalStateException("new handler failure: " + event.value());
                 }
             };
         }
@@ -283,7 +345,7 @@ class DeadEventDisposalTest {
         final CountDownLatch release = new CountDownLatch(1);
     }
 
-    record Created(String value) {}
+    record Created(String value, BigDecimal amount, UUID orderId) {}
 
     @InterceptorIgnore(tenantLine = "true")
     interface BusinessProbe {

@@ -26,3 +26,9 @@
 - 已核对 [RocketMQ 5.3.2 SubscriptionGroupConfig](https://github.com/apache/rocketmq/blob/rocketmq-all-5.3.2/remoting/src/main/java/org/apache/rocketmq/remoting/protocol/subscription/SubscriptionGroupConfig.java#L35) 默认重试 16 次，[GrpcClientSettingsManager](https://github.com/apache/rocketmq/blob/rocketmq-all-5.3.2/proxy/src/main/java/org/apache/rocketmq/proxy/grpc/v2/common/GrpcClientSettingsManager.java#L134) 将总投递次数设为 retryMaxTimes + 1。部署脚本保守要求重试次数本身不低于 SDK 上限。
 - 供票 03：同包 `EventConsumer.handle(String consumerGroup, String eventId, String tenantId, String topic, String tag, byte[] payload)` 复用原消费的去重/租户恢复/事务，失败抛出；无 Handler 也抛出，不能误记 REPLAYED。必须传 `original_tenant_id`，不能把非法原始头替换为 NULL 后执行。数据库 `tenant_id` 为可解析 UUID，供展示/清理；原始头与 payload 都仅限内部使用。
 - 表已提供 PENDING/REPLAYED/ABANDONED 状态与 resolved_at/resolution_reason；票 03 负责条件处置、90 天清理和 provisioning 的 TenantDataCleaner 适配（provisioning 已依赖 mq，mq 不反向依赖以免成环）。模块全量验证由集成分支交付前统一执行。
+
+### 2026-11-07 最终审查修正
+
+- 首次捕获的 `lastError` 改为仅保存静态异常类型；异常消息与根因消息可能包含 payload 值，不进入运维元数据。捕获和失败重放共用同一小型摘要，完整异常继续写入所属服务日志；接入指南同步说明。
+- 经真实消费入口投递数字解析、UUID 解析、带 payload 值的 Handler 异常，再通过 HTTP 查询：旧实现 3 项均因独特 SECRET 值泄露而红灯，最小修复后 3 项全部通过。
+- 定向回归 `DeadEventCaptureTest` 11 项、`DeadEventDisposalTest` 13 项全部通过；未重复模块全量。`DeadEventMapper` 接口统一说明不受 Data Policy 过滤。

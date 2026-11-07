@@ -30,3 +30,9 @@
 - provisioning 上层注册 MQ 的 `TenantDataCleaner`，显式按 tenant_id 清理基础设施记录，MQ 不反向依赖 provisioning。租户删除死信重放时可能清理自身，响应使用同事务取得的成功元数据快照，避免业务已提交后误报404。
 - 执行 `./mvnw -o -pl forge-platform -am install -DskipTests` 刷新本地依赖。最终目标验证通过：MQ `DeadEventDisposalTest,DeadEventCaptureTest,ArchitectureTest` 19项；provisioning `ArchitectureTest` 1项；platform `DeadEventOpsTest,OpsChannelTest,ArchitectureTest` 11项。覆盖真实非超级用户 PostgreSQL RLS、并发重放/放弃、失败回滚/错误刷新、无 Handler/非法JSON/非法租户头、保留期、租户清理隔离和幂等、平台权限/Realm拒绝与成功失败审计。
 - MQ PostgreSQL 测试已改为模块共享容器、各测试类独立库；平台继承共享集成基类且使用唯一ID筛选审计，不假设数据库只有本类数据。Spotless 与 `git diff --check` 通过。接入指南、SDK包说明、配置说明和 CHANGELOG 同步更新；本票不改表结构，01/02的迁移及模板继续适用。模块全量由集成分支交付前统一验证，本票不新增前端。
+
+### 2026-11-07 最终审查修正
+
+- 失败重放通过与首次捕获共用的安全摘要更新 `lastError`，只包含异常类型；完整 Throwable 写入服务日志。保持 409、PENDING、业务回滚与既有公共接口不变。
+- HTTP 重放/详情回归覆盖数字解析、UUID 解析和 Handler 抛出带 payload 值的异常：旧实现 3 项全部真实红灯，修复后 3 项全部通过；详情不含各场景的独特 SECRET 值。
+- 同轮修正测试 RLS SQL 为 `CAST(... AS uuid)`、OpsHttpTest 显式 import 及 Mapper Data Policy 文档。定向验证共 28 项通过：捕获 11 项、处置 13 项、ops HTTP 4 项；MQ/ops Spotless 与 `git diff --check` 通过，不重复已完成的全量验证。
