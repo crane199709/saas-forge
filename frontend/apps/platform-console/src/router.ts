@@ -65,6 +65,12 @@ export const consolePages = [
     component: () => import('./audit/AuditPage.vue'),
   },
   {
+    path: '/task-runs',
+    title: 'taskRun.title',
+    permission: permissions.opsRead,
+    component: () => import('./ops/TaskRunPage.vue'),
+  },
+  {
     path: '/dead-events',
     title: 'deadEvent.title',
     permission: permissions.opsRead,
