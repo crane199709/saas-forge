@@ -30,17 +30,13 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.json.JsonMapper;
 
 /** 直接投递 MQ 消息到消费入口，用真实 PostgreSQL 验证事务边界与幂等结果。 */
-@Testcontainers
 class DeadEventCaptureTest {
-    @Container
-    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
+    static final SharedContainers.Database postgres = SharedContainers.database();
 
     final SimpleMeterRegistry metrics = new SimpleMeterRegistry();
     TransactionTemplate transaction;
@@ -121,6 +117,7 @@ class DeadEventCaptureTest {
         new ApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(MqAutoConfiguration.class))
                 .withBean(SqlSessionTemplate.class, () -> session)
+                .withBean(PlatformTransactionManager.class, () -> transaction.getTransactionManager())
                 .withBean(MeterRegistry.class, () -> metrics)
                 .withPropertyValues("forge.mq.enabled=false")
                 .run(context -> {
@@ -221,6 +218,7 @@ class DeadEventCaptureTest {
         var runner = new ApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(MqAutoConfiguration.class))
                 .withBean(SqlSessionTemplate.class, () -> session)
+                .withBean(PlatformTransactionManager.class, () -> transaction.getTransactionManager())
                 .withPropertyValues("forge.mq.enabled=false");
         runner.run(context -> assertThat(context.getBean(MqProperties.class).maxDeliveryAttempts())
                 .isEqualTo(16));
