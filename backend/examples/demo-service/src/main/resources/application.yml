@@ -27,6 +27,8 @@ spring:
       host: ${FORGE_REDIS_HOST:127.0.0.1}
       port: ${FORGE_REDIS_PORT:6379}
 forge:
+  ops:
+    token: ${FORGE_DEMO_OPS_TOKEN}
   # 本地开发地址；代码中不设默认值，部署时以 Nacos 或环境变量覆盖，漏配则启动失败
   security:
     issuer: http://localhost:8080/iam

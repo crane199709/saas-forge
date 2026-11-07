@@ -16,6 +16,14 @@
     "platform:sub-app:manage": {
       "name": "管理应用注册表",
       "group": "套餐与应用"
+    },
+    "platform:ops:read": {
+      "name": "查看运维数据",
+      "group": "平台运维"
+    },
+    "platform:ops:manage": {
+      "name": "处置运维事件与任务",
+      "group": "平台运维"
     }
   },
   "dataResources": [

@@ -8,8 +8,16 @@ spring:
         enabled: false
 # 不连接 MQ 的测试关闭投递器与消费端；发布的事件照常写入 Outbox
 forge:
+  ops:
+    token: test-forge-platform-ops-token
   mq:
     enabled: false
   # 测试不连接 iam；清单内容由 PlatformPermissionTest 直接生成校验
   manifest:
     enabled: false
+  platform:
+    ops:
+      tokens:
+        forge-iam: test-iam-ops-token
+        forge-platform: test-platform-ops-token
+        demo-service: test-demo-ops-token

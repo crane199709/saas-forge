@@ -456,10 +456,17 @@ class GatewaySecurityTest {
     void declaredServicesDenyInternalPathsAndUndeclaredPrefixes() throws Exception {
         String tenant = token(KEY, ISSUER, Instant.now().plusSeconds(900));
         String platform = platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "platform-console");
-        for (String path : List.of("/orders/internal", "/orders/internal/secrets", "/iam/internal/secrets")) {
+        for (String path : List.of(
+                "/orders/internal",
+                "/orders/internal/secrets",
+                "/iam/internal/secrets",
+                "/orders/internal/ops",
+                "/orders/internal/ops/dead-events",
+                "/iam/internal/ops")) {
             assertEnvelope(call(HttpMethod.GET, path, tenant), 403, "auth.forbidden");
         }
         assertEnvelope(call(HttpMethod.GET, "/platform/internal/secrets", platform), 403, "auth.forbidden");
+        assertEnvelope(call(HttpMethod.GET, "/platform/internal/ops/dead-events", platform), 403, "auth.forbidden");
         for (String path : List.of("/demo/context", "/unknown/context", "/orders-extra/context")) {
             assertEnvelope(call(HttpMethod.GET, path, tenant), 403, "auth.forbidden");
             assertUnauthenticatedAt(path, null);

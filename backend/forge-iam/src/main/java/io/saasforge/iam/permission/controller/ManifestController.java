@@ -40,6 +40,12 @@ class ManifestController {
                 .toList());
     }
 
+    @Operation(summary = "已上报 Resource Manifest 的服务目录，供平台运维按服务访问内部接口")
+    @GetMapping("/internal/services")
+    ApiResponse<List<String>> services() {
+        return ApiResponse.ok(permissions.reportedServices());
+    }
+
     record ManifestReportResponse(String service, String version) {}
 
     record PermissionResponse(String code, String name, String service, String group) {}
