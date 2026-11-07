@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 /** 平台公告管理结果，全部租户公告不展开目标租户。 */
-public record PlatformAnnouncementView(
+public record PlatformAnnouncementResponse(
         UUID id,
         String source,
         String title,
@@ -17,8 +17,8 @@ public record PlatformAnnouncementView(
         boolean revoked,
         boolean allTenants,
         List<UUID> tenantIds) {
-    public static PlatformAnnouncementView from(PlatformAnnouncementRow row, List<UUID> targets) {
-        return new PlatformAnnouncementView(
+    public static PlatformAnnouncementResponse from(PlatformAnnouncementRow row, List<UUID> targets) {
+        return new PlatformAnnouncementResponse(
                 row.id(),
                 "platform",
                 row.title(),

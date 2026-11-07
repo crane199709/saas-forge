@@ -11,7 +11,11 @@ import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-/** SQL 显式限定租户；RLS 仍使用事件或已验证请求的租户上下文兜底。 */
+/**
+ * 待办持久化，所有方法均不受 Data Policy 过滤。
+ *
+ * <p>SQL 显式限定租户；RLS 仍使用事件或已验证请求的租户上下文兜底。
+ */
 @Mapper
 @InterceptorIgnore(tenantLine = "true")
 public interface TodoMapper {
