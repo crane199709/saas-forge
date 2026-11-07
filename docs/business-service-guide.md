@@ -100,6 +100,18 @@ Micrometer 提供 `forge.mq.dead.events` Counter（标签 `consumer.group`，只
 
 SDK 在启动后及每隔一天清理处置时间超过 90 天的已重放/已放弃事件，不按捕获时间清理待处置记录。该基础设施维护使用 SDK 自有线程和幂等条件删除，不新增 scheduling/Redis 运行依赖；多实例并发执行同样安全。引入 provisioning 的服务自动将死信接入 `TenantDataCleaner`，租户最终删除时只清理该租户的死信记录，保留其他租户和无租户事件。
 
+## 定时任务与最近运行
+
+需要调度时添加同版本 `io.saasforge:forge-sdk-scheduling`，在 Spring Bean 的无参 `void` 方法上声明 `@GlobalTask` 或 `@TenantTask`，并指定唯一 `name` 与 `cron`/`fixedDelay` 中的一项。服务必须配置 `spring.application.name`；cron 另须配置 `forge.business-zone`。Tenant Task 还须配置 `forge.scheduling.iam-uri` 与 `forge.scheduling.token`，可分别引用 `${forge.manifest.iam-uri}` 与 `${forge.manifest.token}`。每轮拉取试用/正常租户并逐个复查状态、绑定 `CurrentTenant`，单租户失败不会阻止后续租户。
+
+多实例使用 `forge:task:<服务名>:<任务名>` 互斥，租期 30 秒、每 10 秒按持有者令牌续期；锁被占用或 Redis 不可用时跳过本次触发。业务任务须保持幂等。任务执行次数、耗时、跳过与租户成功/失败等原有 Micrometer 指标继续提供，标签仅含任务名。
+
+SDK 自动将实际执行保存为 Task Run，不需要新增数据库表或迁移。注入 `TaskRunHistory` 后可通过 `current(name)` 查询当前运行（`Optional<TaskRun>`），通过 `recent(name)` 与 `problems(name)` 分别查询最近结束和最近非成功运行（`List<TaskRun>`，按结束顺序倒序）。`TaskRun` 包含任务类型、触发方式、运行状态与起止时间；Tenant Task 另有准确的租户成功/失败总数及最多 100 个失败租户，超出明细上限的租户请查服务日志。摘要只包含异常类型与 `ForgeException` 错误码，不包含异常 message 或参数；完整异常保留在日志。
+
+运行记录沿用调度锁的全局 `StringRedisTemplate`，键前缀为 `forge:task-run:<服务名>:<任务名>:`。`current` 最多一条，`recent` 与 `problems` 各自最多 100 条；问题记录不会被后续成功挤掉。列表写入和裁剪原子完成，每次写入刷新已有记录键的 90 天 TTL。生产 Redis 的淘汰策略须保证带 TTL 的任务锁和运行记录不会被淘汰。这些记录只用于最近运行排查，Redis 数据丢失后不恢复历史，不作为长期审计存储，也不接入租户清理。
+
+进程退出或失锁后，读取遗留 `current` 会显示 `INTERRUPTED`，下一次成功持锁执行会将其归档。旧运行结束不能清除接替者的 `current`。记录读写失败只记 WARN，不影响任务执行与释放锁；查询失败返回空结果，应结合 WARN 和服务日志排查。
+
 ## 按需启用 storage 与镜像
 
 需要附件时在 POM 添加同版本 `io.saasforge:forge-sdk-storage`，由平台提供 `forge.storage.endpoint`、`bucket`、`access-key`、`secret-key`；endpoint 必须供浏览器访问。参考 demo-service 的 attachment 功能及 V8 迁移，不应只添加依赖却遗漏配置和存储表。

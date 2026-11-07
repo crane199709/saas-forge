@@ -8,6 +8,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
@@ -16,18 +17,20 @@ final class TaskRunner implements AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(TaskRunner.class);
     private final RedisTaskLock locks;
     private final MeterRegistry metrics;
+    private final TaskRunHistory history;
     private final ExecutorService workers =
             Executors.newCachedThreadPool(new CustomizableThreadFactory("forge-task-worker-"));
 
     private final ScheduledExecutorService renewals =
             Executors.newSingleThreadScheduledExecutor(new CustomizableThreadFactory("forge-task-renew-"));
 
-    TaskRunner(RedisTaskLock locks, MeterRegistry metrics) {
+    TaskRunner(RedisTaskLock locks, MeterRegistry metrics, TaskRunHistory history) {
         this.locks = locks;
         this.metrics = metrics;
+        this.history = history;
     }
 
-    void trigger(String name, Runnable invocation) {
+    void trigger(String name, TaskRun.Type type, Consumer<TaskRunOutcome> invocation) {
         String token = UUID.randomUUID().toString();
         try {
             if (!locks.acquire(name, token)) {
@@ -41,24 +44,30 @@ final class TaskRunner implements AutoCloseable {
             return;
         }
         try {
-            workers.execute(() -> execute(name, token, invocation));
+            workers.execute(() -> execute(name, type, token, invocation));
         } catch (RuntimeException error) {
             release(name, token);
             throw error;
         }
     }
 
-    private void execute(String name, String token, Runnable invocation) {
+    private void execute(String name, TaskRun.Type type, String token, Consumer<TaskRunOutcome> invocation) {
         long started = System.nanoTime();
+        TaskRun run = history.start(name, type, token);
+        var outcome = new TaskRunOutcome();
         metrics.counter("forge.task.executions", "name", name).increment();
         LOG.info("Task {} started", name);
         ScheduledFuture<?> renewal = null;
         try {
             // 周期取 30 秒租约（RedisTaskLock.LEASE）的三分之一：错过一次续约，租约也不会到期。
             renewal = renewals.scheduleAtFixedRate(() -> renew(name, token), 10, 10, TimeUnit.SECONDS);
-            invocation.run();
+            invocation.accept(outcome);
         } catch (Exception error) {
+            outcome.failed(error);
             LOG.error("Task {} failed", name, error);
+        } catch (Error error) {
+            outcome.failed(error);
+            throw error;
         } finally {
             if (renewal != null) {
                 renewal.cancel(false);
@@ -69,6 +78,7 @@ final class TaskRunner implements AutoCloseable {
                     .register(metrics)
                     .record(elapsed, TimeUnit.NANOSECONDS);
             LOG.info("Task {} ended in {} ms", name, TimeUnit.NANOSECONDS.toMillis(elapsed));
+            history.finish(outcome.complete(run), token);
             release(name, token);
         }
     }
