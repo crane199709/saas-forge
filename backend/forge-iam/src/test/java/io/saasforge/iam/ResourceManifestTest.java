@@ -85,6 +85,31 @@ class ResourceManifestTest {
     StringRedisTemplate redisTemplate;
 
     @Test
+    void serviceDirectoryContainsOnlyReportedServicesAndRequiresAServiceToken() {
+        assertThat(report(TOKEN, manifest("ops-directory", List.of("order:read")))
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(201);
+        var response = client().get()
+                .uri("/internal/services")
+                .headers(headers -> headers.setBearerAuth(TOKEN))
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, result) -> {})
+                .toEntity(Map.class);
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat((List<String>) response.getBody().get("data"))
+                .contains("demo-service", "forge-iam")
+                .doesNotContain("other-service", "forge-iam-platform");
+        var rejected = client().get()
+                .uri("/internal/services")
+                .headers(headers -> headers.setBearerAuth("wrong-token"))
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, result) -> {})
+                .toEntity(Map.class);
+        assertThat(rejected.getStatusCode().value()).isEqualTo(401);
+    }
+
+    @Test
     void manifestVersionsAreImmutableAndOnlyTheOwningServiceCanReport() {
         Map<String, Object> v1 = manifest("1", List.of("order:read", "order:approve"));
         assertThat(report(TOKEN, v1).getStatusCode().value()).isEqualTo(201);

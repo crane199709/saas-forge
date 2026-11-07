@@ -37,10 +37,15 @@ import xml.etree.ElementTree as ET
 print(ET.parse('backend/forge-dependencies/pom.xml').findtext('{http://maven.apache.org/POM/4.0.0}version'))
 PYVERSION
 )
+# 每次隔离运行生成独立运维令牌；不继承开发凭据，也不把随机值写入日志。
+OPS_IAM_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
+OPS_PLATFORM_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
+OPS_DEMO_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
 start() {
   local module=$1 port=$2 probe=$3
   # 不继承开发环境的 Spring/数据库覆盖项，防止 Flyway 或服务误连共享资源。
-  env -i PATH="$PATH" HOME="$HOME" JAVA_HOME="${JAVA_HOME:-}" java -Xms64m -Xmx256m -XX:ActiveProcessorCount=2 -jar "backend/$module/target/${module##*/}-$FORGE_VERSION.jar" \
+  env -i PATH="$PATH" HOME="$HOME" JAVA_HOME="${JAVA_HOME:-}" \
+    FORGE_IAM_OPS_TOKEN="$OPS_IAM_TOKEN" FORGE_PLATFORM_OPS_TOKEN="$OPS_PLATFORM_TOKEN" FORGE_DEMO_OPS_TOKEN="$OPS_DEMO_TOKEN" java -Xms64m -Xmx256m -XX:ActiveProcessorCount=2 -jar "backend/$module/target/${module##*/}-$FORGE_VERSION.jar" \
     "--spring.config.additional-location=file:$E2E_CONFIG" \
     "--server.port=$port" ${TEMPLATE_ARGS[@]+"${TEMPLATE_ARGS[@]}"} \
     "--forge.iam.signing-key-file=$RUN_DIR/tenant.jwk" \

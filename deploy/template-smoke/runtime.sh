@@ -7,7 +7,7 @@ start_template() {
     FORGE_DB_MIGRATOR_USER=smoke_migrator FORGE_DB_MIGRATOR_PASSWORD=smoke_migrator FORGE_DB_SCHEMA=smoke \
     FORGE_REDIS_HOST=127.0.0.1 FORGE_REDIS_PORT=16379 FORGE_SECURITY_ISSUER=http://127.0.0.1:18000/iam \
     FORGE_SECURITY_JWK_SET_URI=http://127.0.0.1:18101/oauth2/jwks FORGE_ROCKETMQ_ENDPOINTS=127.0.0.1:18081 \
-    FORGE_IAM_URI=http://127.0.0.1:18101 FORGE_MANIFEST_TOKEN=template-smoke-token \
+    FORGE_IAM_URI=http://127.0.0.1:18101 FORGE_MANIFEST_TOKEN=template-smoke-token FORGE_OPS_TOKEN="$OPS_DEMO_TOKEN" \
     java -Xms64m -Xmx256m -XX:ActiveProcessorCount=2 -jar "$FORGE_TEMPLATE_SERVICE" \
     "--spring.config.additional-location=file:$ROOT/deploy/e2e/application.yml" >"$RUN_DIR/smoke-service.log" 2>&1 &
   local pid=$!

@@ -29,6 +29,8 @@ spring:
       port: ${FORGE_REDIS_PORT:6379}
 
 forge:
+  ops:
+    token: ${FORGE_PLATFORM_OPS_TOKEN}
   security:
     # 平台服务只接受 Platform Realm Token（ADR-0003），issuer 与 JWKS 读取 forge.security.platform.*
     realm: platform
@@ -41,7 +43,7 @@ forge:
   # 启动时向 iam 上报 Platform Realm 的 Resource Manifest（realm 写在清单文件中）；改动权限码、名称或 Data Resource 时升级 version。
   # token 与读取权限码目录的 forge.platform.iam.token 相同，须与 iam forge.iam.manifest.tokens.forge-platform 一致
   manifest:
-    version: 1
+    version: 2
     iam-uri: http://localhost:8101
     token: ${FORGE_PLATFORM_MANIFEST_TOKEN:local-platform-manifest-token}
   # 平台数据不属于任何租户。消费各服务的初始化回报时 SDK 会恢复该租户的上下文，这些表也不能被注入租户条件
@@ -55,6 +57,11 @@ forge:
       - sub_app_entry
       - sub_app_requirement
   platform:
+    ops:
+      tokens:
+        forge-iam: ${FORGE_IAM_OPS_TOKEN}
+        forge-platform: ${FORGE_PLATFORM_OPS_TOKEN}
+        demo-service: ${FORGE_DEMO_OPS_TOKEN}
     provisioning:
       # 创建租户时预建 pending 初始化状态的服务，名称为各服务的 spring.application.name。
       # 未列出的服务回报时照常记录，只是在回报前平台不知道它需要初始化
