@@ -20,6 +20,10 @@ import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.ss.util.CellReference;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -28,6 +32,7 @@ import tools.jackson.databind.json.JsonMapper;
 /** Excel 导入导出门面，record 为列模型，数据行经回调流式传递。 */
 public final class ExcelIo {
     static final String CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    private static final String ERROR_REASON_HEADER = "错误原因";
     private final IoTasks tasks;
     private final ObjectStorage storage;
     private final ReferenceData reference;
@@ -92,44 +97,68 @@ public final class ExcelIo {
             workbook.setCompressTempFiles(true);
             var sheet = workbook.createSheet("数据");
             columns.header(sheet, true);
-            var choices = workbook.createSheet("选项");
-            var lists = columns.columns.stream()
-                    .map(column -> column.items().stream()
-                            .filter(TenantDictionaryItem::selectable)
-                            .map(TenantDictionaryItem::name)
-                            .distinct()
-                            .toList())
-                    .toList();
-            int max = lists.stream().mapToInt(List::size).max().orElse(0);
-            for (int row = 0; row < max; row++) {
-                var choice = choices.createRow(row);
-                for (int column = 0; column < lists.size(); column++)
-                    if (row < lists.get(column).size())
-                        choice.createCell(column).setCellValue(lists.get(column).get(row));
-            }
-            for (int column = 0; column < lists.size(); column++) {
-                var names = lists.get(column);
-                if (names.isEmpty()) continue;
-                String letter = CellReference.convertNumToColString(column);
-                var name = workbook.createName();
-                name.setNameName("choices_" + column);
-                name.setRefersToFormula("'选项'!$" + letter + "$1:$" + letter + "$" + names.size());
-                var helper = sheet.getDataValidationHelper();
-                var validation = helper.createValidation(
-                        helper.createFormulaListConstraint(name.getNameName()),
-                        new CellRangeAddressList(1, Math.min(properties.importLimit(), 1048575), column, column));
-                validation.setShowErrorBox(true);
-                validation.createErrorBox("无效选项", "请选择下拉列表中的名称");
-                sheet.addValidationData(validation);
-            }
-            workbook.setSheetHidden(1, true);
+            addDictionaryValidation(workbook, sheet, columns);
             workbook.write(output);
         }
+    }
+
+    // 模板与错误报告共用同一份当前租户选项，下载报告后可继续使用下拉修正数据。
+    private void addDictionaryValidation(StreamingWorkbook workbook, Sheet sheet, ExcelModel<?> columns) {
+        var choices = workbook.createSheet("选项");
+        var lists = columns.columns.stream()
+                .map(column -> column.items().stream()
+                        .filter(TenantDictionaryItem::selectable)
+                        .map(TenantDictionaryItem::name)
+                        .distinct()
+                        .toList())
+                .toList();
+        int max = lists.stream().mapToInt(List::size).max().orElse(0);
+        for (int row = 0; row < max; row++) {
+            var choice = choices.createRow(row);
+            for (int column = 0; column < lists.size(); column++)
+                if (row < lists.get(column).size())
+                    choice.createCell(column).setCellValue(lists.get(column).get(row));
+        }
+        for (int column = 0; column < lists.size(); column++) {
+            var names = lists.get(column);
+            if (names.isEmpty()) continue;
+            String letter = CellReference.convertNumToColString(column);
+            var name = workbook.createName();
+            name.setNameName("choices_" + column);
+            name.setRefersToFormula("'选项'!$" + letter + "$1:$" + letter + "$" + names.size());
+            var helper = sheet.getDataValidationHelper();
+            var validation = helper.createValidation(
+                    helper.createFormulaListConstraint(name.getNameName()),
+                    new CellRangeAddressList(1, Math.min(properties.importLimit(), 1048575), column, column));
+            validation.setShowErrorBox(true);
+            validation.createErrorBox("无效选项", "请选择下拉列表中的名称");
+            sheet.addValidationData(validation);
+        }
+        workbook.setSheetHidden(workbook.getSheetIndex(choices), true);
+    }
+
+    private static void formatReportRow(Sheet sheet, Row row, CellStyle style) {
+        int lines = 1;
+        for (var cell : row) {
+            cell.setCellStyle(style);
+            int width = Math.max(1, sheet.getColumnWidth(cell.getColumnIndex()) / 256 - 2);
+            int cellLines = 0;
+            for (String line : cell.getStringCellValue().split("\\R", -1)) {
+                // 中文与全角字符按双宽估算，为不自动计算行高的查看器预留显示空间。
+                int characters = line.codePoints()
+                        .map(codePoint -> codePoint >= 0x2E80 ? 2 : 1)
+                        .sum();
+                cellLines += Math.max(1, (characters + width - 1) / width);
+            }
+            lines = Math.max(lines, cellLines);
+        }
+        row.setHeightInPoints(Math.min(409.0f, sheet.getDefaultRowHeightInPoints() * lines));
     }
 
     /**
      * 异步导入：先校验全部行并将转换后的 record 写入磁盘，再在单一事务中逐行调用 writer。
      * 业务校验不得写数据；writer 抛异常会回滚所有行，源对象在任务结束后删除。
+     * 错误报告保留字典下拉，可修改后直接重传；末尾“错误原因”列的旧说明不参与业务校验。
      *
      * @param model 导入 record 类型
      * @param source 已确认上传的 xlsx 对象 ID
@@ -152,19 +181,34 @@ public final class ExcelIo {
                 }
                 var sheet = workbook.createSheet("错误报告");
                 columns.header(sheet, true);
-                sheet.getRow(0).createCell(columns.columns.size()).setCellValue("错误原因");
+                addDictionaryValidation(workbook, sheet, columns);
+                sheet.getRow(0).createCell(columns.columns.size()).setCellValue(ERROR_REASON_HEADER);
+                sheet.setColumnWidth(columns.columns.size(), 60 * 256);
+                var reportStyle = workbook.createCellStyle();
+                reportStyle.setWrapText(true);
+                reportStyle.setVerticalAlignment(VerticalAlignment.TOP);
+                formatReportRow(sheet, sheet.getRow(0), reportStyle);
                 var hasErrors = new AtomicBoolean();
                 var headerSeen = new AtomicBoolean();
+                var hasPreviousErrors = new AtomicBoolean();
                 try (var spool = Files.newBufferedWriter(valid)) {
-                    XlsxRows.read(original, columns.columns.size(), (number, values) -> {
+                    XlsxRows.read(original, columns.columns.size() + 1, (number, cells) -> {
+                        var values = cells.subList(0, columns.columns.size());
+                        String previousError = cells.get(columns.columns.size());
                         if (!headerSeen.getAndSet(true)) {
                             for (int i = 0; i < values.size(); i++)
                                 if (!values.get(i).equals(columns.columns.get(i).header(true))
                                         && !values.get(i)
                                                 .equals(columns.columns.get(i).header(false)))
                                     throw new ForgeException(IoErrorCode.INVALID_FILE);
+                            if (!previousError.isBlank() && !ERROR_REASON_HEADER.equals(previousError))
+                                throw new ForgeException(IoErrorCode.INVALID_FILE);
+                            hasPreviousErrors.set(ERROR_REASON_HEADER.equals(previousError));
                             return;
                         }
+                        // 只忽略明确标为错误说明的末列，避免修正报告重传时把旧错误当作业务数据。
+                        if (!hasPreviousErrors.get() && !previousError.isBlank())
+                            throw new ForgeException(IoErrorCode.INVALID_FILE);
                         if (values.stream().allMatch(String::isBlank)) return;
                         if (progress.next() > properties.importLimit()) throw new ForgeException(IoErrorCode.ROW_LIMIT);
                         var errors = new ArrayList<String>();
@@ -179,7 +223,8 @@ public final class ExcelIo {
                         var row = sheet.createRow((int) progress.rows());
                         for (int i = 0; i < values.size(); i++)
                             row.createCell(i).setCellValue(values.get(i));
-                        row.createCell(values.size()).setCellValue(String.join("；", errors));
+                        row.createCell(values.size()).setCellValue(String.join("\n", errors));
+                        formatReportRow(sheet, row, reportStyle);
                         if (!errors.isEmpty()) hasErrors.set(true);
                         else
                             try {

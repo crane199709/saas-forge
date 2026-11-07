@@ -72,6 +72,8 @@ mvn verify
 
 SDK 自动提供 `/io/tasks`、`/io/tasks/{id}` 和 `/io/tasks/{id}/download`，均只允许提交人访问。业务提交和模板接口须挂自己的权限码；前端的 `ImportDialog`、`ExportButton` 通过回调绑定同一服务的任务接口。参考 demo-service 的 `OrderIoService`、V12 迁移及 demo-sub-app 订单页。
 
+导入错误报告保留当前租户的字典下拉，并提示填写名称而非编码。错误列加宽、文本自动换行并按内容估算行高。修正数据后可以直接重新上传报告，末尾“错误原因”列无需删除或清空，其旧说明不会参与校验；其他多余列仍视为格式错误。
+
 `forge.io` 默认值：`workers=2`、`queue-capacity=8`、`import-limit=10000`、`export-limit=100000`、`heartbeat-interval=10s`、`heartbeat-timeout=2m`、`retention=7d`。异步执行保留提交时 JWT 授权身份与 ABAC 主体、策略、环境快照；标准列按后台系统写入记 NULL，发起人由 Audit Event 记录；无需在业务回调手工绑定。Redis 的 `forge:io:<服务名>:tenants` 集合保留提交过任务的租户 ID，供 Global Task 在进程重启后逐租户收尾，不绕过 RLS；停机或迁移时须保留这个键。已提交的导入不会因源文件清理失败而改报失败，清理失败由维护任务继续处理；SDK 不自动重试业务任务。
 
 镜像统一采用 Spring Boot build-image：生成工程中运行 `mvn spring-boot:build-image -DskipTests`，默认镜像标签为 artifactId:version；用 `-Dspring-boot.build-image.imageName=命名空间/服务:版本` 覆盖。需要 Docker，首次下载 buildpack builder/run image。生成配置只引用必填环境变量，不内置地址或密钥；运行时注入上表变量。平台与 Shell 镜像参见 [镜像说明](../deploy/images/README.md)。

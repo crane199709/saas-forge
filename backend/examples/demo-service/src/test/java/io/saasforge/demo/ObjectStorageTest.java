@@ -41,6 +41,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import org.apache.poi.ss.SpreadsheetVersion;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
+import org.apache.poi.ss.util.AreaReference;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -495,6 +498,119 @@ class ObjectStorageTest {
         }
     }
 
+    @Test
+    void errorReportKeepsSelectableDictionaryDropdown() throws Exception {
+        var task = awaitTask(submitImport(uploadWorkbook(new String[][] {{"测试订单", "123", "customer-source"}})));
+        assertThat(task.get("errorCode")).isEqualTo("io.validationFailed");
+        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(downloadTaskFile(task)))) {
+            var validations = workbook.getSheetAt(0).getDataValidations();
+            assertThat(validations).hasSize(1);
+            var validation = validations.get(0);
+            assertThat(validation.getRegions().getCellRangeAddresses()[0].isInRange(1, 2))
+                    .isTrue();
+            var name = workbook.getName(validation.getValidationConstraint().getFormula1());
+            assertThat(name).isNotNull();
+            var range = new AreaReference(name.getRefersToFormula(), SpreadsheetVersion.EXCEL2007);
+            var choices = new ArrayList<String>();
+            for (var cell : range.getAllReferencedCells()) {
+                choices.add(workbook.getSheet(cell.getSheetName())
+                        .getRow(cell.getRow())
+                        .getCell(cell.getCol())
+                        .getStringCellValue());
+            }
+            assertThat(choices).containsExactly("线上", "展会");
+        }
+    }
+
+    @Test
+    void errorReportExplainsDictionaryNamesAndWrapsLongText() throws Exception {
+        var task = awaitTask(submitImport(uploadWorkbook(
+                new String[][] {{"很长的测试订单标题".repeat(6), "123", "customer-source"}})));
+        assertThat(task.get("errorCode")).isEqualTo("io.validationFailed");
+        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(downloadTaskFile(task)))) {
+            var sheet = workbook.getSheetAt(0);
+            var row = sheet.getRow(1);
+            var reason = row.getCell(3);
+            assertThat(reason.getStringCellValue())
+                    .contains("下拉列表", "名称", "线上", "展会", "字典编码", "选项编码")
+                    .doesNotContain("转介绍");
+            assertThat(sheet.getColumnWidth(3)).isGreaterThanOrEqualTo(60 * 256);
+            assertThat(sheet.getColumnWidth(0)).isEqualTo(24 * 256);
+            assertThat(sheet.getRow(0).getCell(3).getCellStyle().getWrapText()).isTrue();
+            for (var cell : row) {
+                assertThat(cell.getCellStyle().getWrapText()).isTrue();
+                assertThat(cell.getCellStyle().getVerticalAlignment()).isEqualTo(VerticalAlignment.TOP);
+            }
+            assertThat(row.getHeightInPoints()).isGreaterThan(sheet.getDefaultRowHeightInPoints());
+        }
+    }
+
+    private byte[] downloadTaskFile(Map<?, ?> task) throws Exception {
+        var ticket = (Map<?, ?>) exchange(tenant, HttpMethod.GET, "/io/tasks/" + task.get("id") + "/download", null)
+                .get("data");
+        var file = HTTP.send(
+                HttpRequest.newBuilder(URI.create((String) ticket.get("url"))).build(),
+                HttpResponse.BodyHandlers.ofByteArray());
+        assertThat(file.statusCode()).isEqualTo(200);
+        return file.body();
+    }
+
+    @Test
+    void errorReportCanBeCorrectedAndImportedWithItsPreviousErrorsIntact() throws Exception {
+        var failed = awaitTask(submitImport(
+                uploadWorkbook(new String[][] {{"有效订单", "1", "线上"}, {"待修正订单", "123", "customer-source"}})));
+        assertThat(failed.get("errorCode")).isEqualTo("io.validationFailed");
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .isEmpty();
+
+        var stillInvalid = awaitTask(submitImport(uploadWorkbook(downloadTaskFile(failed))));
+        assertThat(stillInvalid.get("errorCode")).isEqualTo("io.validationFailed");
+        byte[] corrected;
+        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(downloadTaskFile(stillInvalid)));
+                var output = new ByteArrayOutputStream()) {
+            var sheet = workbook.getSheetAt(0);
+            assertThat(sheet.getRow(0).getLastCellNum()).isEqualTo((short) 4);
+            assertThat(sheet.getDataValidations()).hasSize(1);
+            assertThat(sheet.getRow(2).getCell(3).getStringCellValue()).isNotBlank();
+            // POI 修改 inlineStr 时会保留旧 is 节点，先清空以生成与 Excel 编辑结果一致的单一文本值。
+            sheet.getRow(2).getCell(2).setBlank();
+            sheet.getRow(2).getCell(2).setCellValue("展会");
+            workbook.write(output);
+            corrected = output.toByteArray();
+        }
+
+        var completed = awaitTask(submitImport(uploadWorkbook(corrected)));
+        assertThat(completed.get("status")).isEqualTo("SUCCEEDED");
+        assertThat(completed.get("rowCount")).isEqualTo(2);
+        var rows = (List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data");
+        assertThat(rows).hasSize(2);
+        assertThat(rows.stream().map(row -> (String) ((Map<?, ?>) row).get("customerSource")))
+                .containsExactlyInAnyOrder("online", "custom.fair");
+    }
+
+    @Test
+    void importOnlyIgnoresTrailingColumnNamedErrorReason() throws Exception {
+        var unknownData = awaitTask(submitImport(uploadWorkbook(new String[][] {{"额外数据", "1", "线上", "备注"}})));
+        assertThat(unknownData.get("errorCode")).isEqualTo("io.invalidFile");
+
+        var failed = awaitTask(submitImport(uploadWorkbook(new String[][] {{"测试订单", "123", "customer-source"}})));
+        byte[] unknownHeader;
+        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(downloadTaskFile(failed)));
+                var output = new ByteArrayOutputStream()) {
+            var sheet = workbook.getSheetAt(0);
+            sheet.getRow(0).getCell(3).setBlank();
+            sheet.getRow(0).getCell(3).setCellValue("备注");
+            sheet.getRow(1).getCell(2).setBlank();
+            sheet.getRow(1).getCell(2).setCellValue("线上");
+            workbook.write(output);
+            unknownHeader = output.toByteArray();
+        }
+        var rejected = awaitTask(submitImport(uploadWorkbook(unknownHeader)));
+        assertThat(rejected.get("errorCode")).isEqualTo("io.invalidFile");
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .isEmpty();
+    }
+
     private String uploadWorkbook(String[][] rows) throws Exception {
         byte[] bytes;
         try (var workbook = new XSSFWorkbook();
@@ -510,6 +626,10 @@ class ObjectStorageTest {
             workbook.write(output);
             bytes = output.toByteArray();
         }
+        return uploadWorkbook(bytes);
+    }
+
+    private String uploadWorkbook(byte[] bytes) throws Exception {
         var ticket = (Map<?, ?>) exchange(
                         tenant,
                         HttpMethod.POST,

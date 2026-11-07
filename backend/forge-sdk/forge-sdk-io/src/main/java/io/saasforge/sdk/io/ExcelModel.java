@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 
@@ -107,7 +108,20 @@ final class ExcelModel<T> {
                         .filter(item -> item.name().equals(name))
                         .toList();
                 if (matches.size() != 1) {
-                    errors.add(column.annotation.value() + (matches.isEmpty() ? "：不是可选项名称" : "：名称重复，请先修改字典名称"));
+                    if (matches.isEmpty()) {
+                        String examples = column.items.stream()
+                                .filter(TenantDictionaryItem::selectable)
+                                .map(TenantDictionaryItem::name)
+                                .distinct()
+                                .limit(5)
+                                .collect(Collectors.joining("、"));
+                        errors.add(column.annotation.value()
+                                + (examples.isEmpty()
+                                        ? "：当前字典没有可选项，请先维护字典选项后重新导入。"
+                                        : "：不是可选项名称。请从下拉列表选择，例如：" + examples + "。请填写名称，不要填写字典编码或选项编码。"));
+                    } else {
+                        errors.add(column.annotation.value() + "：名称重复，无法唯一匹配。请先修改字典中的重名选项，再从下拉列表选择。");
+                    }
                     continue;
                 }
                 value = matches.get(0).code();
