@@ -4,6 +4,7 @@ import io.saasforge.platform.ops.config.OpsProperties;
 import io.saasforge.platform.ops.model.OpsServiceStatus;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.core.api.ForgeException;
+import java.net.URI;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
@@ -96,10 +97,11 @@ public class OpsClient {
         return "Bearer " + token;
     }
 
-    private static String uri(String service, String path) {
+    private static URI uri(String service, String path) {
         if ((!path.isEmpty() && !path.startsWith("/")) || path.contains("..") || path.contains("#"))
             throw new IllegalArgumentException("Ops path must be relative to /internal/ops");
-        return "lb://" + service + "/internal/ops" + path;
+        // 调用方已按路径段编码任务名，使用 URI 重载避免 RestClient 再次编码百分号。
+        return URI.create("lb://" + service + "/internal/ops" + path);
     }
 
     private static <T> ApiResponse<T> requireResponse(ApiResponse<T> response) {

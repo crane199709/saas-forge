@@ -3,15 +3,20 @@ package io.saasforge.sdk.scheduling;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.saasforge.sdk.core.BusinessZoneProperties;
+import io.saasforge.sdk.core.api.ForgeException;
+import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import io.saasforge.sdk.tenant.TenantStatusLookup;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ScheduledFuture;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.DisposableBean;
@@ -36,6 +41,9 @@ final class TaskRegistrar implements BeanPostProcessor, SmartInitializingSinglet
     private final List<Task> tasks = new ArrayList<>();
     private final List<ScheduledFuture<?>> schedules = new ArrayList<>();
     private TaskRunner runner;
+    private TenantTaskExecutor tenantExecutor;
+    private final Map<String, TaskDefinitionResponse> definitions = new LinkedHashMap<>();
+    private final Map<String, BiConsumer<UUID, TaskRunOutcome>> invocations = new LinkedHashMap<>();
 
     TaskRegistrar(
             ConfigurableListableBeanFactory beans,
@@ -110,7 +118,7 @@ final class TaskRegistrar implements BeanPostProcessor, SmartInitializingSinglet
             return;
         }
         MeterRegistry metrics = beans.getBeanProvider(MeterRegistry.class).getIfAvailable(SimpleMeterRegistry::new);
-        TenantTaskExecutor tenantExecutor = tasks.stream().anyMatch(Task::tenant)
+        tenantExecutor = tasks.stream().anyMatch(Task::tenant)
                 ? new TenantTaskExecutor(
                         new TenantDirectoryClient(properties.getObject()),
                         beans.getBean(TenantStatusLookup.class),
@@ -127,17 +135,77 @@ final class TaskRegistrar implements BeanPostProcessor, SmartInitializingSinglet
             Task task = registration.task();
             ReflectionUtils.makeAccessible(task.method());
             Runnable method = () -> ReflectionUtils.invokeMethod(task.method(), task.bean());
-            Consumer<TaskRunOutcome> body = task.tenant()
-                    ? outcome -> tenantExecutor.execute(registration.name(), method, outcome)
-                    : outcome -> method.run();
+            BiConsumer<UUID, TaskRunOutcome> body = task.tenant()
+                    ? (target, outcome) -> {
+                        if (target == null) tenantExecutor.execute(registration.name(), method, outcome);
+                        else tenantExecutor.retry(registration.name(), target, method, outcome);
+                    }
+                    : (target, outcome) -> method.run();
+            definitions.put(
+                    registration.name(),
+                    new TaskDefinitionResponse(
+                            registration.name(),
+                            task.tenant() ? TaskRun.Type.TENANT : TaskRun.Type.GLOBAL,
+                            registration.cron() == null
+                                    ? null
+                                    : registration.cron().getExpression(),
+                            registration.delay() == null
+                                    ? null
+                                    : registration.delay().toString(),
+                            registration.cron() == null
+                                    ? null
+                                    : beans.getBean(BusinessZoneProperties.class)
+                                            .require("cron task")
+                                            .getId(),
+                            null));
+            invocations.put(registration.name(), body);
             Runnable invocation = () -> runner.trigger(
-                    registration.name(), task.tenant() ? TaskRun.Type.TENANT : TaskRun.Type.GLOBAL, body);
+                    registration.name(),
+                    task.tenant() ? TaskRun.Type.TENANT : TaskRun.Type.GLOBAL,
+                    outcome -> body.accept(null, outcome));
             if (registration.cron() != null) {
                 schedules.add(scheduler.schedule(invocation, registration.cron()));
             } else {
                 schedules.add(scheduler.scheduleWithFixedDelay(invocation, registration.delay()));
             }
         }
+    }
+
+    List<TaskDefinitionResponse> definitions() {
+        TaskRunHistory history = beans.getBean(TaskRunHistory.class);
+        return definitions.values().stream()
+                .map(task -> new TaskDefinitionResponse(
+                        task.name(),
+                        task.type(),
+                        task.cron(),
+                        task.fixedDelay(),
+                        task.zone(),
+                        history.current(task.name())
+                                .orElseGet(() -> history.recent(task.name()).stream()
+                                        .findFirst()
+                                        .orElse(null))))
+                .toList();
+    }
+
+    TaskDefinitionResponse require(String name) {
+        TaskDefinitionResponse task = definitions.get(name);
+        if (task == null) throw new ForgeException(TaskErrorCode.NOT_FOUND);
+        return task;
+    }
+
+    TaskTriggerResponse trigger(String name, UUID operatorId, UUID targetTenantId) {
+        TaskDefinitionResponse task = require(name);
+        if (operatorId == null) throw new ForgeException(FrameworkErrorCode.REQUEST_INVALID);
+        if (targetTenantId != null) {
+            if (task.type() != TaskRun.Type.TENANT) throw new ForgeException(FrameworkErrorCode.REQUEST_INVALID);
+            tenantExecutor.requireEligible(targetTenantId);
+        }
+        return runner.manual(
+                name,
+                task.type(),
+                operatorId,
+                targetTenantId,
+                outcome -> invocations.get(name).accept(targetTenantId, outcome));
     }
 
     @Override
