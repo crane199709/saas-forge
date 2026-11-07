@@ -1,6 +1,6 @@
 # 消费端死信规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-11-07 的设计拷问逐条确认。
 
@@ -47,3 +47,12 @@ Status: ready-for-agent
 - 遵守 `docs/agents/coding-standards.md`；新表用 `COMMENT ON` 写中文描述。
 - 新增 SDK 表时，同步更新服务迁移、`forge-service-archetype`、`docs/business-service-guide.md` 与 `CHANGELOG.md`。
 - 带租户数据的新表接入租户清理流程（`TenantDataCleaner`）。
+
+## Comments
+
+- 2026-11-07：规格已在 `codex/mq-dead-event` 集成分支实现，01—04 票均已 resolved。包含独立令牌运维通道、消费端死信捕获与指标、服务内重放/放弃、保留期与租户清理，以及平台控制台。
+- 后端相关模块完整 `verify` 共 353 项通过，`archetype-it` 生成服务另有 15 项通过。临时 RocketMQ 5.3.2 实跑初始化脚本，三个消费组的 `retryMaxTimes` 均为 16。
+- 规范审查发现的 3 项和规格审查发现的 1 项均已修复，复核后两轴剩余问题均为 0。捕获及重放使用安全异常类型摘要，完整异常只留服务日志；新增 6 个载荷泄露回归场景先红后绿。修复后捕获、处置与 Ops HTTP 定向测试共 28 项通过，相关 Spotless 与差异检查通过。
+- 平台控制台全量单测 65 项、平台构建、全部前端类型检查及本次前端格式检查通过。Chrome Playwright HTTP mock 流程 2 项通过，覆盖查看、重放失败重试、放弃、服务/状态分页、服务故障恢复和权限；页面与控制台无非预期错误。
+- 浏览器验证覆盖 1280×900 与 390×844。390px 的筛选、详情和处置可操作；列表仍受现有 220px 固定侧栏挤压，本次未扩改共享 Shell。
+- 本地启动须按[业务服务接入指南](../../docs/business-service-guide.md)显式配置独立运维令牌。01—03 实现工作树已归档；04 因 Codex 当前主工作树保护保留，并同步最终集成提交。
