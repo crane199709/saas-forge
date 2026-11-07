@@ -4,7 +4,7 @@
 set -u
 
 NAMESRV="${NAMESRV:-rocketmq-namesrv:9876}"
-TOPICS="demo-order forge-tenant forge-app forge-audit"
+TOPICS="demo-order forge-tenant forge-app forge-audit forge-notification"
 MQADMIN="$ROCKETMQ_HOME/bin/mqadmin"
 
 # SDK 在达到此投递次数时先可靠保存 Dead Event，消费组不能更早转入 RocketMQ 死信主题。
