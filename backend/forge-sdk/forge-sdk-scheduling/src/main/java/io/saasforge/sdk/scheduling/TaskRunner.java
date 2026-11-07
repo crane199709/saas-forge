@@ -10,6 +10,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
@@ -44,23 +45,26 @@ final class TaskRunner implements AutoCloseable {
             LOG.warn("Task {} skipped: Redis lock unavailable", name, error);
             return;
         }
-        try {
-            TaskRun run = history.start(name, type, token);
-            workers.execute(() -> execute(run, token, invocation));
-        } catch (RuntimeException error) {
-            release(name, token);
-            throw error;
-        }
+        submit(name, token, () -> history.start(name, type, token), invocation);
     }
 
     TaskTriggerResponse manual(
             String name, TaskRun.Type type, UUID operatorId, UUID targetTenantId, Consumer<TaskRunOutcome> invocation) {
         String token = UUID.randomUUID().toString();
         if (!locks.acquire(name, token)) throw new ForgeException(TaskErrorCode.ALREADY_RUNNING);
+        TaskRun run = submit(
+                name,
+                token,
+                () -> history.start(name, type, token, TaskRun.Trigger.MANUAL, operatorId, targetTenantId),
+                invocation);
+        return new TaskTriggerResponse(run.id());
+    }
+
+    private TaskRun submit(String name, String token, Supplier<TaskRun> startRun, Consumer<TaskRunOutcome> invocation) {
         try {
-            TaskRun run = history.start(name, type, token, TaskRun.Trigger.MANUAL, operatorId, targetTenantId);
+            TaskRun run = startRun.get();
             workers.execute(() -> execute(run, token, invocation));
-            return new TaskTriggerResponse(run.id());
+            return run;
         } catch (RuntimeException error) {
             release(name, token);
             throw error;
