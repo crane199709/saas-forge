@@ -1,6 +1,6 @@
 # 编码规范
 
-格式化交给工具（后端 Spotless + palantir-java-format，前端 Prettier），本文不重复格式规则。术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。
+格式化交给工具（后端 Spotless：Java 用 palantir-java-format，POM 用 sortPom，资源 XML 用 Eclipse WTP；前端 Prettier），本文不重复格式规则。术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。
 
 ## SQL 与持久层
 
@@ -30,6 +30,7 @@
 
 - 文件放在 `src/main/resources/<功能包>/mapper/` 下，如 `identity/mapper/IdentityMapper.xml`，文件名与 Mapper 接口同名，`namespace` 为接口全限定名。MyBatis-Plus 默认只扫描 `classpath*:/mapper/**/*.xml`，服务模块须配置 `mybatis-plus.mapper-locations: classpath*:/*/mapper/**/*.xml`。
 - 参数一律用 `#{}`。`${}` 仅允许用于经白名单校验的排序列名，且必须在旁注释说明白名单出处。
+- SQL 的换行由作者负责：格式化器只统一缩进、不折行，也不限制行宽，长 SQL 按 `SELECT`/`FROM`/`WHERE` 等子句手工分行。不要靠额外缩进对齐续行，格式化器会抹平。
 
 ### 豁免
 
