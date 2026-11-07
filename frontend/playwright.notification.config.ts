@@ -1,12 +1,14 @@
 import { defineConfig } from '@playwright/test'
 import mainFlow from './playwright.main-flow.config'
 
-export default defineConfig(mainFlow, {
+// 多参数 defineConfig 会拼接 webServer；独立模式必须替换原预览入口。
+export default defineConfig({
+  ...mainFlow,
   testMatch: '**/notification-flow.spec.ts',
   timeout: 120_000,
   reporter: [['list']],
   outputDir: '/private/tmp/notification-center-qa/results',
-  use: { viewport: { width: 1440, height: 1000 } },
+  use: { ...mainFlow.use, viewport: { width: 1440, height: 1000 } },
   webServer: [
     {
       command: 'pnpm --filter @forge/tenant-app preview --host 127.0.0.1 --port 15174',

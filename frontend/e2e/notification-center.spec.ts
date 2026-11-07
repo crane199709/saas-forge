@@ -182,10 +182,16 @@ test('通知、公告已读、错误重试与待办进入业务后关单', async
   await expect(page.getByTestId('notification-bell')).toHaveAccessibleName('通知中心，2 条未读')
   await page.getByRole('button', { name: '全部通知标为已读' }).click()
   await expect(page.getByTestId('inbox-n2')).toContainText('已读')
+  await page.getByTestId('open-n1').click()
+  await expect(page).toHaveURL('http://127.0.0.1:5174/apps/demo/overview')
+  await page.getByTestId('notification-bell').click()
   await page.getByTestId('tab-announcements').click()
   await expect(page.getByText('<em>纯文本公告</em>')).toBeVisible()
   await page.getByTestId('mark-read-a1').click()
   await expect(page.getByTestId('notification-bell')).toHaveAccessibleName('通知中心，0 条未读')
+  await page.getByTestId('open-a1').click()
+  await expect(page).toHaveURL('http://127.0.0.1:5174/apps/demo/overview')
+  await page.getByTestId('notification-bell').click()
   await page.getByTestId('tab-todos').click()
   await expect(page.getByTestId('inbox-t1')).toContainText('处理订单')
   await page.screenshot({ path: `${evidence}/notification-desktop.png` })
@@ -200,7 +206,16 @@ test('通知、公告已读、错误重试与待办进入业务后关单', async
   await page.setViewportSize({ width: 390, height: 844 })
   await page.getByTestId('tab-announcements').click()
   await expect(page.getByRole('heading', { name: /^服务公告/ })).toBeVisible()
-  await page.screenshot({ path: `${evidence}/notification-mobile.png` })
+  const overflowingControls = await page.locator('.shell-header').evaluate((header) =>
+    Array.from(header.querySelectorAll('a, button, [role="combobox"]'))
+      .filter((control) => {
+        const box = control.getBoundingClientRect()
+        return box.width > 0 && box.height > 0 && (box.left < 0 || box.right > innerWidth + 1)
+      })
+      .map((control) => control.getAttribute('aria-label') ?? control.textContent),
+  )
+  expect(overflowingControls).toEqual([])
+  await page.screenshot({ path: `${evidence}/notification-mobile-final.png` })
 })
 
 test('租户公告管理按权限显示，发布错误保留输入并可重试、撤回', async ({ page }) => {
