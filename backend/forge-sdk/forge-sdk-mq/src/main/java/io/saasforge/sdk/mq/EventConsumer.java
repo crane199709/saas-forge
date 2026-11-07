@@ -76,6 +76,11 @@ final class EventConsumer implements SmartLifecycle {
     }
 
     @Override
+    public boolean isAutoStartup() {
+        return configuration != null;
+    }
+
+    @Override
     public void start() {
         Map<String, FilterExpression> subscriptions = handlers.values().stream()
                 .collect(Collectors.groupingBy(
@@ -102,6 +107,7 @@ final class EventConsumer implements SmartLifecycle {
     public void stop() {
         PushConsumer current = consumer;
         consumer = null;
+        if (current == null) return;
         try {
             current.close();
         } catch (IOException e) {

@@ -1,2 +1,3 @@
 io.saasforge.sdk.provisioning.ProvisioningAutoConfiguration
 io.saasforge.sdk.provisioning.TenantCleanupAutoConfiguration
+io.saasforge.sdk.provisioning.MqTenantCleanupAutoConfiguration

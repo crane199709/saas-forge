@@ -144,6 +144,7 @@ final class PlatformTokens {
                 exchange.getResponseBody().write(body);
                 exchange.close();
             });
+            JWKS.createContext("/internal/ops/dead-events", DeadEventOpsFixture::handle);
             JWKS.start();
             REDIS.start();
             var factory = new LettuceConnectionFactory(

@@ -10,6 +10,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,7 +25,11 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>服务须在自己的 Flyway 迁移中创建 {@code forge_outbox}、{@code forge_consumed_message} 与 {@code forge_dead_event} 三张表，建表语句见
  * {@code io/saasforge/sdk/mq/schema.sql}。三张表都不带租户隔离：投递器与去重都需要跨租户访问。
  */
-@AutoConfiguration(afterName = "com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration")
+@AutoConfiguration(
+        afterName = {
+            "com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration",
+            "io.saasforge.sdk.ops.OpsAutoConfiguration"
+        })
 @EnableConfigurationProperties(MqProperties.class)
 public final class MqAutoConfiguration {
     // 消息体是跨服务契约，不跟随服务对 Spring 管理的 JsonMapper 的定制
@@ -52,6 +57,28 @@ public final class MqAutoConfiguration {
                 .register(metrics.getIfAvailable(SimpleMeterRegistry::new));
     }
 
+    /** 死信查询与处置独立于 MQ 连接，故不受 enabled 开关影响。 */
+    @Bean
+    DeadEventOperations deadEventOperations(
+            SqlSessionTemplate session, PlatformTransactionManager manager, ObjectProvider<EventConsumer> consumers) {
+        return new DeadEventOperations(mapper(session, DeadEventMapper.class), manager, consumers);
+    }
+
+    @Bean
+    DeadEventMaintenance deadEventMaintenance(DeadEventOperations events) {
+        return new DeadEventMaintenance(events);
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+    @ConditionalOnBean(type = "io.saasforge.sdk.ops.OpsProperties")
+    static class OpsConfiguration {
+        @Bean
+        DeadEventController forgeDeadEventController(DeadEventOperations events) {
+            return new DeadEventController(events);
+        }
+    }
+
     /** 投递器与消费端，可在测试等不连接 MQ 的环境中关闭。 */
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnProperty(prefix = "forge.mq", name = "enabled", matchIfMissing = true)
@@ -77,31 +104,31 @@ public final class MqAutoConfiguration {
                     new RocketMqSender(configuration),
                     properties);
         }
+    }
 
-        @Bean
-        @ConditionalOnBean(EventHandler.class)
-        EventConsumer eventConsumer(
-                SqlSessionTemplate sqlSession,
-                PlatformTransactionManager transactionManager,
-                ClientConfiguration configuration,
-                MqProperties properties,
-                List<EventHandler<?>> handlers,
-                Environment environment,
-                ObjectProvider<MeterRegistry> metrics) {
-            String consumerGroup = properties.consumerGroup() != null
-                    ? properties.consumerGroup()
-                    : environment.getRequiredProperty("spring.application.name");
-            return new EventConsumer(
-                    configuration,
-                    consumerGroup,
-                    handlers,
-                    mapper(sqlSession, ConsumedMessageMapper.class),
-                    new TransactionTemplate(transactionManager),
-                    JSON,
-                    mapper(sqlSession, DeadEventMapper.class),
-                    properties.maxDeliveryAttempts(),
-                    metrics.getIfAvailable(SimpleMeterRegistry::new));
-        }
+    @Bean
+    @ConditionalOnBean(EventHandler.class)
+    EventConsumer eventConsumer(
+            SqlSessionTemplate sqlSession,
+            PlatformTransactionManager transactionManager,
+            ObjectProvider<ClientConfiguration> configuration,
+            MqProperties properties,
+            List<EventHandler<?>> handlers,
+            Environment environment,
+            ObjectProvider<MeterRegistry> metrics) {
+        String consumerGroup = properties.consumerGroup() != null
+                ? properties.consumerGroup()
+                : environment.getRequiredProperty("spring.application.name");
+        return new EventConsumer(
+                configuration.getIfAvailable(),
+                consumerGroup,
+                handlers,
+                mapper(sqlSession, ConsumedMessageMapper.class),
+                new TransactionTemplate(transactionManager),
+                JSON,
+                mapper(sqlSession, DeadEventMapper.class),
+                properties.maxDeliveryAttempts(),
+                metrics.getIfAvailable(SimpleMeterRegistry::new));
     }
 
     /**

@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 /**
  * 消息配置，前缀 {@code forge.mq}。
  *
- * @param enabled 是否启动投递器与消费端；关闭时发布事件仍写入 Outbox，待开启后补发
+ * @param enabled 是否启动投递器与 MQ 订阅；关闭时仍写入 Outbox，且死信查询与服务内重放可用
  * @param endpoints RocketMQ proxy 的 gRPC 地址，如 {@code 127.0.0.1:8081}
  * @param ssl 是否以 TLS 连接 proxy；客户端默认开启，而本地 compose 与测试容器中的 proxy 只提供明文端口
  * @param consumerGroup 消费组，未配置时取 {@code spring.application.name}

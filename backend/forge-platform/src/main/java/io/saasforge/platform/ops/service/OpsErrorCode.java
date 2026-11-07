@@ -5,7 +5,11 @@ import io.saasforge.sdk.core.api.ErrorCode;
 public enum OpsErrorCode implements ErrorCode {
     CATALOG_UNAVAILABLE("ops.catalogUnavailable", 503),
     SERVICE_UNAVAILABLE("ops.serviceUnavailable", 503),
-    SERVICE_NOT_FOUND("ops.serviceNotFound", 404);
+    SERVICE_NOT_FOUND("ops.serviceNotFound", 404),
+    DEAD_EVENT_NOT_FOUND("ops.deadEventNotFound", 404),
+    DEAD_EVENT_ALREADY_HANDLED("ops.deadEventAlreadyHandled", 409),
+    DEAD_EVENT_REPLAY_FAILED("ops.deadEventReplayFailed", 409),
+    REASON_REQUIRED("ops.reasonRequired", 400);
     private final String code;
     private final int status;
 

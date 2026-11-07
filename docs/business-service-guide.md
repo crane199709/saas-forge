@@ -83,6 +83,23 @@ export FORGE_DEMO_OPS_TOKEN="$(openssl rand -hex 32)"
 
 Micrometer 提供 `forge.mq.dead.events` Counter（标签 `consumer.group`，只计新捕获并成功提交的记录）与 `forge.mq.outbox.pending` Gauge（全部未发送事件，含退避中的事件）。关闭 `forge.mq.enabled` 后仍可观察 Outbox 积压；接入 Actuator 后通过服务现有指标出口采集。
 
+## Dead Event 查询与处置
+
+同时引入 `forge-sdk-mq`、`forge-sdk-ops` 和 `forge-sdk-web` 的 Servlet 服务会提供以下内部接口，全部由独立运维令牌保护；平台通过 `/ops/services/{service}/dead-events` 转发，网关外部路径为 `/platform/ops/services/{service}/dead-events`。
+
+| 方法与内部路径 | 行为 |
+| --- | --- |
+| `GET /internal/ops/dead-events?status=PENDING&page=1&size=20` | 按状态分页，状态为 `PENDING`、`REPLAYED`、`ABANDONED`；默认待处置，页码从 1 开始，每页上限 100，按捕获时间倒序 |
+| `GET /internal/ops/dead-events/{id}` | 单条元数据和最近错误 |
+| `POST /internal/ops/dead-events/{id}/replay` | 请求体 `{ "reason": "修复后的重放原因" }`，在所属服务内重放 |
+| `POST /internal/ops/dead-events/{id}/abandon` | 同样要求非空原因，将待处置事件标为已放弃 |
+
+查询要求 `platform:ops:read`，两种处置要求 `platform:ops:manage`。响应遵循统一信封，成功处置返回 200 及元数据；分页放在 `meta.page`。元数据包括 ID、原事件 ID、消费组、主题、Tag、租户、尝试次数、错误、状态、捕获/处置时间和处置原因；不含原始消息体与原租户头。平台命令的原因为空返回 400 `ops.reasonRequired`，事件不存在返回 404 `ops.deadEventNotFound`，已处置返回 409 `ops.deadEventAlreadyHandled`，重放失败返回 409 `ops.deadEventReplayFailed`；服务不可用返回 503 `ops.serviceUnavailable`。内部处置错误使用对应的 `deadEvent.*` 错误码。
+
+重放保留原消费组、事件 ID 和原租户头，先恢复租户，再在同一事务内条件处置、登记去重并直接执行 Handler；不重新发布到 MQ。成功只生效一次，失败则回滚业务与处置标记，独立更新最近错误，仍为待处置。已下线 Handler、非法 JSON 或非法原租户头都不会被误标为成功。关闭 `forge.mq.enabled` 不影响查询和服务内重放。平台记录 `ops.deadEventReplay`、`ops.deadEventAbandon` 的成功或失败审计，包含 Operator、所属服务、死信 ID、处置原因及成功时的原事件 ID。
+
+SDK 在启动后及每隔一天清理处置时间超过 90 天的已重放/已放弃事件，不按捕获时间清理待处置记录。该基础设施维护使用 SDK 自有线程和幂等条件删除，不新增 scheduling/Redis 运行依赖；多实例并发执行同样安全。引入 provisioning 的服务自动将死信接入 `TenantDataCleaner`，租户最终删除时只清理该租户的死信记录，保留其他租户和无租户事件。
+
 ## 按需启用 storage 与镜像
 
 需要附件时在 POM 添加同版本 `io.saasforge:forge-sdk-storage`，由平台提供 `forge.storage.endpoint`、`bucket`、`access-key`、`secret-key`；endpoint 必须供浏览器访问。参考 demo-service 的 attachment 功能及 V8 迁移，不应只添加依赖却遗漏配置和存储表。
