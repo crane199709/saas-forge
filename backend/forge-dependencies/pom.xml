@@ -130,6 +130,12 @@
                 <version>${forge.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>io.saasforge</groupId>
+                <artifactId>forge-sdk-notification</artifactId>
+                <version>${forge.version}</version>
+            </dependency>
+
             <!-- Boot 4 的 Flyway starter 不再自带数据库方言，PostgreSQL 模块必须显式引入 -->
             <dependency>
                 <groupId>org.flywaydb</groupId>

@@ -27,7 +27,7 @@ mvn verify
 ## 从配置到租户菜单
 
 1. 与平台运维按[平台侧接入清单](service-onboarding-checklist.md)第 1 步准备目标数据库、schema、运行与迁移账号。业务开发者只维护 Flyway 迁移，不能用运行账号建表。租户表保留标准列、ENABLE + FORCE RLS、部分唯一索引与 `NOT deleted` 条件。
-2. 按清单第 2 步登记服务专属 Manifest 令牌，第 3 步创建 `forge-tenant`、`forge-app`、`forge-audit` 及 `<serviceName>-order` Topic；platform 的 `forge.platform.provisioning.services` 加入服务注册名。
+2. 按清单第 2 步登记服务专属 Manifest 令牌，第 3 步创建 `forge-tenant`、`forge-app`、`forge-audit`、`forge-notification` 及 `<serviceName>-order` Topic；platform 的 `forge.platform.provisioning.services` 加入服务注册名。
 3. 提供下表配置后执行 `mvn spring-boot:run`。确认 Flyway 成功、Nacos 注册成功、IAM Manifest 上报成功。服务仅导入 `forge-common.yaml`；如使用独立服务配置，必须显式添加其 dataId，不能只在 Nacos 创建文件。
 4. 按清单第 4—5 步追加网关路由和 `forge.gateway.services` 的 `prefix: /orders`、`realm: tenant`，重启网关。匿名访问业务接口得到 401，正确 Tenant Realm Token 按权限得到 200/403，OpenAPI 能访问且 servers 地址正确。
 5. 按清单第 6 步发布对应 Sub-App、登记 App Registry（示例 app 编码为 pathPrefix）、向套餐开放应用和权限，再向成员角色授予权限及 Data Policy。重新登录租户 Shell，确认看到菜单、加载前端资源并成功调用服务。只有后端 Manifest 并不会自动生成可用的前端页面。
@@ -72,6 +72,35 @@ export FORGE_DEMO_OPS_TOKEN="$(openssl rand -hex 32)"
 新业务服务在自己的部署中提供 `FORGE_OPS_TOKEN`，并在平台的 `forge.platform.ops.tokens.<serviceName>` 配置同一个值；不要复用 Manifest 上报令牌。E2E runner 会为隔离运行自动生成随机运维令牌。
 
 内部 HTTP 接口必须放在 `/internal/` 下，网关拒绝该前缀；网络访问控制与服务自身认证仍由部署和实现保障。不要把内部接口改成其他路径绕过网关限制。
+
+## 通知与待办
+
+需要站内 Notification 或 Todo 时添加可选依赖 `io.saasforge:forge-sdk-notification`，版本由 `forge-dependencies` 管理。注入 `NotificationClient`，在修改业务状态的同一 `@Transactional` 方法中调用；事务外明确抛出 `IllegalStateException`，业务回滚时不产生事件。Tenant 取自 `CurrentTenant`，来源服务取自必填且非空的 `spring.application.name`（最长 255 字符），调用方不传租户或服务名。
+
+```java
+import io.saasforge.sdk.notification.NotificationClient;
+import io.saasforge.sdk.notification.NotificationLink;
+import io.saasforge.sdk.notification.NotificationTarget;
+
+// 在「订单提交」业务事务中发送事实通知，并开启待办。
+notifications.send(
+        NotificationTarget.memberships(membershipIds),
+        "订单已提交", "订单 42 已提交", new NotificationLink("orders", "/orders/42"));
+notifications.openTodo(
+        "order:42:approval", NotificationTarget.permission("order:approve"),
+        "审核订单", "订单 42 等待审核", new NotificationLink("orders", "/orders/42"), submittedAt);
+
+// 在之后「订单审核完成」的业务事务中关闭同一业务键。
+notifications.closeTodo("order:42:approval", approvedAt);
+```
+
+`NotificationTarget` 在 Membership 列表与 Permission Code 中二选一，列表不可为空。Notification 的权限目标在 IAM 创建收件记录时展开为当时的持有者，跨 Tenant 的 Membership 被忽略；Todo 的权限目标在读取时判断，权限收回或超出 Plan 后立即隐藏。`send` 返回 Notification UUID，所有收件人共享该 ID。
+
+标题、正文必须为非空纯文本，分别最多 200、10000 个 Unicode 字符；业务键与 Permission Code 最多 255 字符。`NotificationLink` 可为 null；提供链接时，`appCode` 沿用 App Registry 的 `[a-z][a-z0-9-]{0,63}`，`route` 为以单个 `/` 开头、最多 2048 字符的合法 URI 路由，可带查询参数和片段，拒绝外部 URL、`//` 和反斜杠。Todo 的目标 Sub-App 不在当前 Plan 时隐藏。
+
+Todo 按 Tenant、服务、业务键维护一条状态；业务发生时间使用 `Instant`，重试沿用原值。Outbox 不保证顺序，SDK 保留调用方提供的时间；IAM 只采用更晚的状态，关闭先到也保留记录，旧开启不能重开，之后的新开启可以重开。
+
+部署须创建普通消息 Topic `forge-notification`（`deploy/rocketmq/create-topics.sh` 已包含）。消息 Tag 分别为 `NotificationSent`、`TodoOpened`、`TodoClosed`，record 契约位于 `io.saasforge.sdk.notification`，IAM 通过现有 `forge-iam` 消费组处理。SDK 复用既有 Outbox、消费去重和重试，不新增表；已有服务已配置 MQ 表时无需新增迁移。上述示例只说明 SDK 发布入口，IAM 收件箱与 Todo 能力由平台提供。
 
 ## MQ 重试耗尽与指标
 

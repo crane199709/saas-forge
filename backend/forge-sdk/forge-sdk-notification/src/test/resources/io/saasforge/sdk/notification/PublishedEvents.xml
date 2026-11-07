@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.sdk.notification.PublishedEvents">
+    <select id="all" resultType="io.saasforge.sdk.notification.PublishedEvents$Event">
+        SELECT tenant_id, topic, tag, CAST(payload AS varchar) AS payload FROM forge_outbox ORDER BY created_at, id
+    </select>
+</mapper>
