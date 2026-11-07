@@ -4,8 +4,10 @@ import type { ErrorTip } from '@crane199709/ui'
 // SDK 在本地判定、没有服务端 userTip 的错误码，例如授权回调 state 不匹配时的 auth.failed。
 const localKeys = ['auth.failed']
 
-// 账号安全相关错误码的前端文案（locales 的 errorCode 下），服务端没有给出 userTip 时使用（如经网关拦截的响应）。
+// 账号安全与任务运行错误码的前端文案（locales 的 errorCode 下），服务端没有给出 userTip 时使用（如经网关拦截的响应）。
 const codeKeys = [
+  'task.alreadyRunning',
+  'task.tenantNotEligible',
   'auth.mfaExpired',
   'mfa.notBound',
   'mfa.codeInvalid',
@@ -21,7 +23,7 @@ const codeKeys = [
 type Translate = (key: string, named?: Record<string, unknown>) => string
 
 /**
- * 优先展示服务端按语言翻译好的 userTip；SDK 本地错误与账号安全错误码按 i18n key 翻译，
+ * 优先展示服务端按语言翻译好的 userTip；SDK 本地错误、账号安全与任务运行错误码按 i18n key 翻译，
  * 网络故障、非信封响应等其余情况显示通用提示。
  */
 export function errorTip(cause: unknown, t: Translate): ErrorTip {

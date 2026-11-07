@@ -250,6 +250,10 @@
       "tooCommon": "该密码过于常见，容易被猜中，请换一个",
       "sameAsIdentifier": "密码不能与账号、邮箱或手机号相同",
       "currentInvalid": "原密码错误"
+    },
+    "task": {
+      "alreadyRunning": "任务已在运行，请等待当前运行结束后重试",
+      "tenantNotEligible": "该租户不处于试用或正常状态，无法重跑"
     }
   },
   "identity": {
@@ -326,5 +330,66 @@
     "resolvedAt": "处置时间",
     "loading": "正在读取死信事件",
     "close": "关闭"
+  },
+  "taskRun": {
+    "title": "任务运行",
+    "retention": "这里只保留最近的运行记录，不用于长期留存或统计。",
+    "service": "服务",
+    "refresh": "刷新",
+    "empty": "该服务暂无已声明的任务",
+    "name": "任务名",
+    "type": "类型",
+    "types": {
+      "GLOBAL": "全局任务",
+      "TENANT": "按租户任务"
+    },
+    "rule": "调度规则",
+    "fixedDelay": "固定延迟",
+    "latest": "最近一次运行",
+    "neverRun": "尚未运行",
+    "actions": "操作",
+    "history": "运行历史",
+    "historyTitle": "运行历史：{name}",
+    "view": "运行视图",
+    "recent": "最近运行",
+    "problems": "最近非成功运行",
+    "noRuns": "暂无任务运行",
+    "id": "运行 ID",
+    "status": "状态",
+    "statuses": {
+      "RUNNING": "运行中",
+      "SUCCEEDED": "成功",
+      "PARTIALLY_FAILED": "部分失败",
+      "FAILED": "失败",
+      "INTERRUPTED": "已中断"
+    },
+    "trigger": "触发方式",
+    "triggers": {
+      "SCHEDULED": "定时",
+      "MANUAL": "手动"
+    },
+    "startedAt": "开始时间",
+    "finishedAt": "结束时间",
+    "counts": "租户结果",
+    "resultCounts": "成功 {success} / 失败 {failure}",
+    "detail": "详情",
+    "detailTitle": "任务运行详情",
+    "operatorId": "触发 Operator",
+    "targetTenantId": "目标租户",
+    "errorSummary": "错误摘要",
+    "failedTenants": "失败租户",
+    "tenantId": "租户 ID",
+    "noFailedTenants": "没有记录到失败租户",
+    "close": "关闭",
+    "omittedFailures": "已列出 {listed} 个失败租户，另有 {omitted} 个未列出，请查看服务日志或重跑整个任务。",
+    "manualTrigger": "手动触发",
+    "retryTenant": "单独重跑",
+    "confirmTrigger": "确认手动触发",
+    "confirmRetry": "确认单租户重跑",
+    "confirm": "确认触发",
+    "cancel": "取消",
+    "accepted": "已受理，运行 ID：{id}。任务将在后台执行，请刷新查看结果。",
+    "triggerHint": "确认手动执行整个任务？任务将在后台异步执行。",
+    "retryHint": "仅为此租户重跑任务；租户须处于试用或正常状态。"
   }
 }
