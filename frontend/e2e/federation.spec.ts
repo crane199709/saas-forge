@@ -434,13 +434,11 @@ test('订单导入导出组件展示任务进度与错误报告', async ({ page 
   const download = page.waitForEvent('download')
   await dialog.getByRole('button', { name: '下载模板' }).click()
   expect((await download).suggestedFilename()).toBe('订单模板.xlsx')
-  await dialog
-    .getByLabel('选择 Excel 文件')
-    .setInputFiles({
-      name: 'orders.xlsx',
-      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      buffer: Buffer.from('xlsx'),
-    })
+  await dialog.getByLabel('选择 Excel 文件').setInputFiles({
+    name: 'orders.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    buffer: Buffer.from('xlsx'),
+  })
   await dialog.getByTestId('import-submit').click()
   await expect(dialog.getByText('校验未通过，未写入任何数据')).toBeVisible()
   await expect(dialog.getByRole('button', { name: '下载错误报告' })).toBeVisible()

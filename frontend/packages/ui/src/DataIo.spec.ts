@@ -9,15 +9,13 @@ it('提交导出后展示任务进度，并在完成后提供下载', async () =
     .mockResolvedValue({ id: 'e1', type: 'EXPORT', status: 'WAITING', rowCount: 0 })
   const tasks = {
     list: vi.fn().mockResolvedValue([]),
-    get: vi
-      .fn()
-      .mockResolvedValue({
-        id: 'e1',
-        type: 'EXPORT',
-        status: 'SUCCEEDED',
-        rowCount: 3,
-        finishedAt: '2026-11-07T00:00:00Z',
-      }),
+    get: vi.fn().mockResolvedValue({
+      id: 'e1',
+      type: 'EXPORT',
+      status: 'SUCCEEDED',
+      rowCount: 3,
+      finishedAt: '2026-11-07T00:00:00Z',
+    }),
     download: vi.fn().mockResolvedValue({ url: 'https://storage.test/result' }),
   }
   const open = vi.spyOn(window, 'open').mockImplementation(() => null)
@@ -41,17 +39,15 @@ it('导入按票据直传并提交对象 ID，失败后显示可下载的错误�
     .mockResolvedValue({ id: 'i1', type: 'IMPORT', status: 'WAITING', rowCount: 0 })
   const tasks = {
     list: vi.fn().mockResolvedValue([]),
-    get: vi
-      .fn()
-      .mockResolvedValue({
-        id: 'i1',
-        type: 'IMPORT',
-        status: 'FAILED',
-        rowCount: 2,
-        failureReason: '校验未通过',
-        resultAvailable: true,
-        finishedAt: '2026-11-07T00:00:00Z',
-      }),
+    get: vi.fn().mockResolvedValue({
+      id: 'i1',
+      type: 'IMPORT',
+      status: 'FAILED',
+      rowCount: 2,
+      failureReason: '校验未通过',
+      resultAvailable: true,
+      finishedAt: '2026-11-07T00:00:00Z',
+    }),
     download: vi.fn().mockResolvedValue({ url: 'https://storage.test/errors' }),
   }
   const template = vi.fn().mockResolvedValue(undefined)
@@ -61,13 +57,11 @@ it('导入按票据直传并提交对象 ID，失败后显示可下载的错误�
       tasks,
       submit,
       downloadTemplate: template,
-      prepareUpload: vi
-        .fn()
-        .mockResolvedValue({
-          objectId: 'source',
-          url: 'https://storage.test/upload',
-          headers: { 'Content-Type': 'application/octet-stream' },
-        }),
+      prepareUpload: vi.fn().mockResolvedValue({
+        objectId: 'source',
+        url: 'https://storage.test/upload',
+        headers: { 'Content-Type': 'application/octet-stream' },
+      }),
     },
     attachTo: document.body,
   })
