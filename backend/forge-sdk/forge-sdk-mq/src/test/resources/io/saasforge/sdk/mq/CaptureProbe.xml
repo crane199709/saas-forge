@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.sdk.mq.CaptureProbe">
+    <insert id="writeBusiness">INSERT INTO capture_business (value) VALUES ('committed')</insert>
+    <select id="businessWrites" resultType="long">SELECT COUNT(*) FROM capture_business</select>
+    <select id="deadEvents" resultType="long">SELECT COUNT(*) FROM forge_dead_event</select>
+    <select id="deadPayload" resultType="io.saasforge.sdk.mq.CaptureProbe$Payload">SELECT payload FROM forge_dead_event</select>
+    <select id="originalTenantId" resultType="string">SELECT original_tenant_id FROM forge_dead_event</select>
+    <update id="deferOutbox">
+        UPDATE forge_outbox SET next_attempt_at = CURRENT_TIMESTAMP + INTERVAL '1' DAY WHERE sent_at IS NULL
+    </update>
+    <update id="completeOutbox">UPDATE forge_outbox SET sent_at = CURRENT_TIMESTAMP</update>
+</mapper>

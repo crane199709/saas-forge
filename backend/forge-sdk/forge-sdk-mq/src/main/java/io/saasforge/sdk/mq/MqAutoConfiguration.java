@@ -1,5 +1,8 @@
 package io.saasforge.sdk.mq;
 
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import org.apache.rocketmq.client.apis.ClientConfiguration;
 import org.mybatis.spring.SqlSessionTemplate;
@@ -18,8 +21,8 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * 业务服务引入 starter 即可发布与订阅事件。
  *
- * <p>服务须在自己的 Flyway 迁移中创建 {@code forge_outbox} 与 {@code forge_consumed_message} 两张表，建表语句见
- * {@code io/saasforge/sdk/mq/schema.sql}。两张表都不带租户隔离：投递器与去重都需要跨租户访问。
+ * <p>服务须在自己的 Flyway 迁移中创建 {@code forge_outbox}、{@code forge_consumed_message} 与 {@code forge_dead_event} 三张表，建表语句见
+ * {@code io/saasforge/sdk/mq/schema.sql}。三张表都不带租户隔离：投递器与去重都需要跨租户访问。
  */
 @AutoConfiguration(afterName = "com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration")
 @EnableConfigurationProperties(MqProperties.class)
@@ -37,6 +40,16 @@ public final class MqAutoConfiguration {
     EventPublisher eventPublisher(SqlSessionTemplate sqlSession, ObjectProvider<OutboxDispatcher> dispatcher) {
         return new EventPublisher(
                 mapper(sqlSession, OutboxMapper.class), JSON, () -> dispatcher.ifAvailable(OutboxDispatcher::wakeUp));
+    }
+
+    /** MQ 关闭或不可用时仍可观察待发积压，指标包含退避中的事件。 */
+    @Bean
+    Gauge forgeOutboxPending(SqlSessionTemplate sqlSession, ObjectProvider<MeterRegistry> metrics) {
+        return Gauge.builder(
+                        "forge.mq.outbox.pending", mapper(sqlSession, OutboxMapper.class), OutboxMapper::countPending)
+                .description("Outbox events awaiting successful delivery")
+                .strongReference(true)
+                .register(metrics.getIfAvailable(SimpleMeterRegistry::new));
     }
 
     /** 投递器与消费端，可在测试等不连接 MQ 的环境中关闭。 */
@@ -73,7 +86,8 @@ public final class MqAutoConfiguration {
                 ClientConfiguration configuration,
                 MqProperties properties,
                 List<EventHandler<?>> handlers,
-                Environment environment) {
+                Environment environment,
+                ObjectProvider<MeterRegistry> metrics) {
             String consumerGroup = properties.consumerGroup() != null
                     ? properties.consumerGroup()
                     : environment.getRequiredProperty("spring.application.name");
@@ -83,7 +97,10 @@ public final class MqAutoConfiguration {
                     handlers,
                     mapper(sqlSession, ConsumedMessageMapper.class),
                     new TransactionTemplate(transactionManager),
-                    JSON);
+                    JSON,
+                    mapper(sqlSession, DeadEventMapper.class),
+                    properties.maxDeliveryAttempts(),
+                    metrics.getIfAvailable(SimpleMeterRegistry::new));
         }
     }
 
