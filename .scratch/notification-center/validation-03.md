@@ -1,5 +1,7 @@
 # 03 Todo 验证
 
+Status: resolved
+
 工作树：`/Users/liuhuan/.codex/worktrees/notification-todo/saas-forge-v2`；分支：`codex/notification-todo`。开始时 HEAD 为 integration `f504a17`。本票按用户已确认的 SDK 事件消费与 HTTP 集成边界实施 TDD，无 IAM 测试后门。
 
 ## 实现范围
@@ -42,6 +44,15 @@
 
 ## 最终验证与边界
 
-待最终针对性验证后补充结果。
+已将 integration `da270fe25196922d4f747c5a33398cb26fceab19` 合入本分支，合并提交 `85454dc`。解决共享订单接入、IAM POM、认证 matcher 与 CHANGELOG 冲突，保留 Notification send 与 Todo open 同一创建事务、全部 close 路径、三类 IAM 入口及仅一份通知 SDK 依赖。
+
+合并源码再次持有 root 协调的 m2 锁执行 `./mvnw -o -pl forge-iam,examples/demo-service -am install -DskipTests` 成功后立即释放，日志 `/private/tmp/notification-todo-merged-install.log`。随后在工作树 `backend` 目录并行执行两个只读依赖的定向门禁：
+
+```sh
+./mvnw -o -pl forge-iam spotless:check test -Dtest=TodoTest,NotificationInboxTest,AnnouncementTest,ArchitectureTest,SchemaCommentTest
+./mvnw -o -pl examples/demo-service spotless:check test -Dtest=TodoOrderTest,NotificationOrderTest,OrderAutoCloseTest,OrderApiTest,TenantIsolationTest,ArchitectureTest,SchemaCommentTest
+```
+
+IAM `BUILD SUCCESS`：20 tests，0 failures/errors/skips；demo-service `BUILD SUCCESS`：17 tests，0 failures/errors/skips。两模块 Spotless、架构规则与迁移表/字段中文注释检查均通过，合并后的通知/公告路由和 Notification+Todo 订单双事件无回归。日志分别为 `/private/tmp/notification-todo-final-iam.log`、`/private/tmp/notification-todo-final-demo.log`。`git diff --check` 通过。
 
 真实 RocketMQ Broker 跨进程投递、IAM 消费后浏览器展示和点击关单，交由票 05 的新隔离 E2E 模式验收；本票 HTTP + Outbox 传输边界验证不能替代该全链路。模块全量测试由 root 在集成交付时统一执行，本票不重复跑模块全量。
