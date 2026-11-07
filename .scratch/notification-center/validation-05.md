@@ -62,7 +62,7 @@ pnpm exec playwright test -c playwright.config.ts notification-center.spec.ts te
 
 第二轮主日志 `/private/tmp/notification-center-qa/real-mq-run-02.log`；四服务、Compose、Topic、构建与 cleanup 日志，以及失败 trace 已复制 `/private/tmp/notification-center-qa/real-mq-02/`，不依赖工作树 ignored 目录。本轮容器/卷清理完成。主机曾有瞬时负载升高，未终止共享应用/服务；不宣称精确环境根因。
 
-第三轮命令：`FORGE_NOTIFICATION_E2E=1 deploy/e2e/run.sh --grep '真实HTTP'`。**真实公告 PASS（用例21.8秒，总31.0秒）**，租户页、管理员页与平台页的 URL/标题/内容、无框架 overlay、console health、实际交互均通过。主日志 `/private/tmp/notification-center-qa/real-http-run-03.log`；最终四服务、Compose、Topic、构建和 cleanup 日志已复制 `/private/tmp/notification-center-qa/real-http-03/`。runner 退出0，独立 project 容器为0，网络与卷清理完成。没有重复已通过且未受 favicon 影响的 MQ 订单用例。
+第三轮命令：`FORGE_NOTIFICATION_E2E=1 deploy/e2e/run.sh --grep '真实HTTP'`。**真实公告 PASS（用例21.8秒，Playwright 测试阶段31.0秒）**，租户页、管理员页与平台页的 URL/标题/内容、无框架 overlay、console health、实际交互均通过。主日志 `/private/tmp/notification-center-qa/real-http-run-03.log`；最终四服务、Compose、Topic、构建和 cleanup 日志已复制 `/private/tmp/notification-center-qa/real-http-03/`。31.0秒不包含构建与服务启动；未记录整轮 runner 总耗时。runner 退出0，独立 project 容器为0，网络与卷清理完成。没有重复已通过且未受 favicon 影响的 MQ 订单用例。
 
 服务端有 MacOS Netty native DNS 库缺失后回退系统解析器的既有日志；本轮使用回环地址且真实 HTTP/MQ 操作通过，未为此变更后端依赖。
 

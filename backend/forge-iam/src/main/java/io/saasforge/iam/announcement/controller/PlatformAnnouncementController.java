@@ -1,6 +1,6 @@
 package io.saasforge.iam.announcement.controller;
 
-import io.saasforge.iam.announcement.model.PlatformAnnouncementView;
+import io.saasforge.iam.announcement.model.PlatformAnnouncementResponse;
 import io.saasforge.iam.announcement.service.AnnouncementService;
 import io.saasforge.sdk.core.api.ApiResponse;
 import jakarta.validation.Valid;
@@ -29,13 +29,13 @@ class PlatformAnnouncementController {
     }
 
     @GetMapping("/platform/announcements")
-    ApiResponse<List<PlatformAnnouncementView>> list(@AuthenticationPrincipal Jwt jwt) {
+    ApiResponse<List<PlatformAnnouncementResponse>> list(@AuthenticationPrincipal Jwt jwt) {
         return ApiResponse.ok(announcements.platformList(UUID.fromString(jwt.getSubject())));
     }
 
     @PostMapping("/platform/announcements")
     @ResponseStatus(HttpStatus.CREATED)
-    ApiResponse<PlatformAnnouncementView> publish(
+    ApiResponse<PlatformAnnouncementResponse> publish(
             @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PublishRequest request) {
         return ApiResponse.created(announcements.publishPlatform(
                 UUID.fromString(jwt.getSubject()),

@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /** 当前可见公告或管理列表中的公告；正文只作为纯文本显示。 */
-public record AnnouncementView(
+public record AnnouncementResponse(
         UUID id,
         String source,
         String title,

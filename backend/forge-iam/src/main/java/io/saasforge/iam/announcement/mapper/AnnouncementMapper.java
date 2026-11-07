@@ -1,7 +1,7 @@
 package io.saasforge.iam.announcement.mapper;
 
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
-import io.saasforge.iam.announcement.model.AnnouncementView;
+import io.saasforge.iam.announcement.model.AnnouncementResponse;
 import io.saasforge.iam.announcement.model.PlatformAnnouncementRow;
 import java.time.Instant;
 import java.util.List;
@@ -9,7 +9,11 @@ import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-// IAM 同时承载两个 Realm；显式租户条件与事务内 RLS 绑定不依赖租户 HTTP 过滤器。
+/**
+ * 公告持久化，所有方法均不受 Data Policy 过滤。
+ *
+ * <p>IAM 同时承载两个 Realm；显式租户条件与事务内 RLS 绑定不依赖租户 HTTP 过滤器。
+ */
 @Mapper
 @InterceptorIgnore(tenantLine = "true")
 public interface AnnouncementMapper {
@@ -26,7 +30,7 @@ public interface AnnouncementMapper {
             @Param("route") String route,
             @Param("expiresAt") Instant expiresAt);
     /** 当前 Membership 可见的公告；已到期、撤回或删除的公告被排除。 */
-    List<AnnouncementView> visible(@Param("tenantId") UUID tenantId, @Param("membershipId") UUID membershipId);
+    List<AnnouncementResponse> visible(@Param("tenantId") UUID tenantId, @Param("membershipId") UUID membershipId);
     /** 记录当前 Membership 的已读状态，重复读取幂等。 */
     void markRead(
             @Param("id") UUID id,
@@ -51,7 +55,7 @@ public interface AnnouncementMapper {
     /** 指定平台公告的租户目标，全部租户公告为空。 */
     List<UUID> targets(@Param("id") UUID id);
     /** 本租户管理列表，包含已到期和已撤回的公告。 */
-    List<AnnouncementView> tenantList(@Param("tenantId") UUID tenantId);
+    List<AnnouncementResponse> tenantList(@Param("tenantId") UUID tenantId);
     /** 撤回本租户公告，重复调用不重复改变状态或审计。 */
     int revokeTenant(@Param("tenantId") UUID tenantId, @Param("id") UUID id, @Param("actor") UUID actor);
     /** 撤回平台公告，不接受租户公告标识。 */

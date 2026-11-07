@@ -1,6 +1,6 @@
 package io.saasforge.iam.announcement.controller;
 
-import io.saasforge.iam.announcement.model.AnnouncementView;
+import io.saasforge.iam.announcement.model.AnnouncementResponse;
 import io.saasforge.iam.announcement.service.AnnouncementService;
 import io.saasforge.iam.membership.model.TenantActor;
 import io.saasforge.sdk.core.api.ApiResponse;
@@ -29,13 +29,13 @@ class AnnouncementController {
     }
 
     @GetMapping("/announcements")
-    ApiResponse<List<AnnouncementView>> visible(@AuthenticationPrincipal Jwt jwt) {
+    ApiResponse<List<AnnouncementResponse>> visible(@AuthenticationPrincipal Jwt jwt) {
         return ApiResponse.ok(announcements.visible(TenantActor.of(jwt)));
     }
 
     @GetMapping("/announcements/unread-count")
-    ApiResponse<UnreadCount> unread(@AuthenticationPrincipal Jwt jwt) {
-        return ApiResponse.ok(new UnreadCount(announcements.unread(TenantActor.of(jwt))));
+    ApiResponse<UnreadCountResponse> unread(@AuthenticationPrincipal Jwt jwt) {
+        return ApiResponse.ok(new UnreadCountResponse(announcements.unread(TenantActor.of(jwt))));
     }
 
     @PostMapping("/announcements/{id}/read")
@@ -46,7 +46,7 @@ class AnnouncementController {
 
     @PostMapping("/announcements/manage")
     @ResponseStatus(HttpStatus.CREATED)
-    ApiResponse<AnnouncementView> publish(
+    ApiResponse<AnnouncementResponse> publish(
             @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PublishRequest request) {
         return ApiResponse.created(announcements.publish(
                 TenantActor.of(jwt),
@@ -58,12 +58,12 @@ class AnnouncementController {
     }
 
     @GetMapping("/announcements/{id}")
-    ApiResponse<AnnouncementView> get(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+    ApiResponse<AnnouncementResponse> get(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
         return ApiResponse.ok(announcements.get(TenantActor.of(jwt), id));
     }
 
     @GetMapping("/announcements/manage")
-    ApiResponse<List<AnnouncementView>> manage(@AuthenticationPrincipal Jwt jwt) {
+    ApiResponse<List<AnnouncementResponse>> manage(@AuthenticationPrincipal Jwt jwt) {
         return ApiResponse.ok(announcements.tenantList(TenantActor.of(jwt)));
     }
 
@@ -73,7 +73,7 @@ class AnnouncementController {
         return ApiResponse.ok();
     }
 
-    record UnreadCount(long count) {}
+    record UnreadCountResponse(long count) {}
 
     record PublishRequest(
             @NotBlank @Size(max = 200) String title,

@@ -1,8 +1,8 @@
 package io.saasforge.iam.announcement.service;
 
 import io.saasforge.iam.announcement.mapper.AnnouncementMapper;
-import io.saasforge.iam.announcement.model.AnnouncementView;
-import io.saasforge.iam.announcement.model.PlatformAnnouncementView;
+import io.saasforge.iam.announcement.model.AnnouncementResponse;
+import io.saasforge.iam.announcement.model.PlatformAnnouncementResponse;
 import io.saasforge.iam.membership.model.TenantActor;
 import io.saasforge.iam.membership.service.MembershipService;
 import io.saasforge.iam.permission.service.IamPermissions;
@@ -49,7 +49,7 @@ public class AnnouncementService {
         this.tenants = tenants;
     }
     /** 发布到当前租户，并审计发布动作。 */
-    public AnnouncementView publish(
+    public AnnouncementResponse publish(
             TenantActor actor, String title, String body, String subApp, String route, Instant expiresAt) {
         bind(actor);
         roles.requirePermission(actor.membershipId(), IamPermissions.ANNOUNCEMENT_MANAGE);
@@ -66,7 +66,7 @@ public class AnnouncementService {
                 .orElseThrow();
     }
     /** 当前有效 Membership 可见的公告，包含该 Membership 的已读状态。 */
-    public List<AnnouncementView> visible(TenantActor actor) {
+    public List<AnnouncementResponse> visible(TenantActor actor) {
         bind(actor);
         return announcements.visible(actor.tenantId(), actor.membershipId());
     }
@@ -82,7 +82,7 @@ public class AnnouncementService {
     }
 
     /** 发布面向全部或指定租户的平台公告，平台权限不复用租户权限。 */
-    public PlatformAnnouncementView publishPlatform(
+    public PlatformAnnouncementResponse publishPlatform(
             UUID actor,
             String title,
             String body,
@@ -110,22 +110,22 @@ public class AnnouncementService {
                 .orElseThrow();
     }
     /** 平台管理列表包含已到期和已撤回的公告，供运营核对历史发布。 */
-    public List<PlatformAnnouncementView> platformList(UUID actor) {
+    public List<PlatformAnnouncementResponse> platformList(UUID actor) {
         platformRoles.requirePermission(actor, PlatformPermissions.ANNOUNCEMENT_MANAGE);
         return announcements.platformList().stream()
-                .map(a -> PlatformAnnouncementView.from(a, announcements.targets(a.id())))
+                .map(a -> PlatformAnnouncementResponse.from(a, announcements.targets(a.id())))
                 .toList();
     }
 
     /** 读取单个当前可见公告，过期和撤回的内容不再对成员提供。 */
-    public AnnouncementView get(TenantActor actor, UUID id) {
+    public AnnouncementResponse get(TenantActor actor, UUID id) {
         return visible(actor).stream()
                 .filter(a -> a.id().equals(id))
                 .findFirst()
                 .orElseThrow(() -> new ForgeException(AnnouncementErrorCode.NOT_FOUND));
     }
     /** 当前租户自行发布的公告管理列表，不能管理平台公告。 */
-    public List<AnnouncementView> tenantList(TenantActor actor) {
+    public List<AnnouncementResponse> tenantList(TenantActor actor) {
         bind(actor);
         roles.requirePermission(actor.membershipId(), IamPermissions.ANNOUNCEMENT_MANAGE);
         return announcements.tenantList(actor.tenantId());

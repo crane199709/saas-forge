@@ -6,7 +6,7 @@
         INSERT INTO tenant_announcement (id, tenant_id, title, body, sub_app, route, expires_at, created_at, updated_at, created_by, updated_by)
         VALUES (#{id}, #{tenantId}, #{title}, #{body}, #{subApp}, #{route}, #{expiresAt}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
     </insert>
-    <select id="visible" resultType="io.saasforge.iam.announcement.model.AnnouncementView">
+    <select id="visible" resultType="io.saasforge.iam.announcement.model.AnnouncementResponse">
         SELECT visible.*, EXISTS (SELECT 1 FROM announcement_read r
         WHERE r.tenant_id = #{tenantId} AND r.membership_id = #{membershipId}
         AND r.announcement_id = visible.id AND NOT r.deleted) AS read
@@ -42,7 +42,7 @@
     <select id="targets" resultType="java.util.UUID">
         SELECT tenant_id FROM platform_announcement_target WHERE announcement_id = #{id} ORDER BY tenant_id
     </select>
-    <select id="tenantList" resultType="io.saasforge.iam.announcement.model.AnnouncementView">
+    <select id="tenantList" resultType="io.saasforge.iam.announcement.model.AnnouncementResponse">
         SELECT id, 'tenant' AS source, title, body, sub_app, route, expires_at, created_at AS published_at, revoked, false AS read
         FROM tenant_announcement WHERE tenant_id = #{tenantId} AND NOT deleted ORDER BY created_at DESC, id DESC
     </select>
