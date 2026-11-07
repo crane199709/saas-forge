@@ -76,6 +76,12 @@ export const consolePages = [
     permission: permissions.opsRead,
     component: () => import('./ops/DeadEventPage.vue'),
   },
+  {
+    path: '/announcements',
+    title: 'announcement.title',
+    permission: permissions.announcementManage,
+    component: () => import('./announcement/AnnouncementPage.vue'),
+  },
 ] as const
 
 /** 兜底路由名：不存在的路径。 */

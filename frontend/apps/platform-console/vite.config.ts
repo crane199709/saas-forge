@@ -20,8 +20,8 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
-      '/iam': 'http://localhost:8080',
-      '/platform': 'http://localhost:8080',
+      '/iam': process.env.FORGE_DEV_GATEWAY ?? 'http://localhost:8080',
+      '/platform': process.env.FORGE_DEV_GATEWAY ?? 'http://localhost:8080',
     },
   },
   test: {

@@ -2,11 +2,16 @@
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$ROOT"
+if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 && -n "${FORGE_TEMPLATE_SERVICE:-}" ]]; then
+  echo '通知 E2E 与模板 E2E 不能同时启用' >&2; exit 1
+fi
 for tool in docker java pnpm python3 curl; do command -v "$tool" >/dev/null || { echo "缺少 $tool" >&2; exit 1; }; done
 # 不接收外部数据库目标；初始化只经本次创建的容器执行。
 python3 - <<'PY'
-import socket
-for port in (15432,16379,18000,18101,18102,18201,15174,15175):
+import os, socket
+ports = [15432,16379,18000,18101,18102,18201,15174,15175]
+if os.environ.get('FORGE_NOTIFICATION_E2E') == '1': ports += [15173,18081]
+for port in ports:
     with socket.socket() as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
@@ -16,6 +21,9 @@ for port in (15432,16379,18000,18101,18102,18201,15174,15175):
 PY
 RUN_DIR=$(mktemp -d "$ROOT/deploy/e2e/run-XXXXXXXX")
 COMPOSE=(docker compose -p "forge-e2e-$(basename "$RUN_DIR" | tr '[:upper:]' '[:lower:]')" -f "$ROOT/deploy/e2e/compose.yml")
+if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 ]]; then
+  COMPOSE+=(-f "$ROOT/deploy/e2e/compose.notification.yml")
+fi
 # Bash 3.2 的 nounset 会拒绝空数组；下方用条件展开保留零参数语义。
 PIDS=()
 cleanup() {
@@ -23,6 +31,9 @@ cleanup() {
   trap - EXIT INT TERM
   for pid in ${PIDS[@]+"${PIDS[@]}"}; do kill "$pid" 2>/dev/null || true; done
   for pid in ${PIDS[@]+"${PIDS[@]}"}; do wait "$pid" 2>/dev/null || true; done
+  if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 ]]; then
+    "${COMPOSE[@]}" logs --no-color >"$RUN_DIR/compose.log" 2>&1 || true
+  fi
   "${COMPOSE[@]}" down --volumes >"$RUN_DIR/cleanup.log" 2>&1 || true
   echo "E2E 日志：$RUN_DIR"
   exit "$result"
@@ -30,8 +41,25 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT TERM
 (cd frontend && pnpm install --frozen-lockfile && pnpm exec playwright install chromium && pnpm build:spike)
+if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 ]]; then
+  (cd frontend && pnpm --filter @forge/platform-console build)
+fi
 (cd backend && ./mvnw -B -DskipTests package) >"$RUN_DIR/build.log" 2>&1
-"${COMPOSE[@]}" up -d --wait
+if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 ]]; then
+  "${COMPOSE[@]}" up -d --wait postgres redis rocketmq-namesrv rocketmq-broker rocketmq-proxy
+  "${COMPOSE[@]}" run --rm rocketmq-init >"$RUN_DIR/rocketmq-init.log" 2>&1
+  python3 - <<'PYMQ'
+import socket, time
+for attempt in range(120):
+    try:
+        with socket.create_connection(('127.0.0.1',18081), timeout=1): break
+    except OSError:
+        time.sleep(1)
+else: raise SystemExit('通知 E2E RocketMQ Proxy 启动超时')
+PYMQ
+else
+  "${COMPOSE[@]}" up -d --wait
+fi
 FORGE_VERSION=$(python3 - <<'PYVERSION'
 import xml.etree.ElementTree as ET
 print(ET.parse('backend/forge-dependencies/pom.xml').findtext('{http://maven.apache.org/POM/4.0.0}version'))
@@ -47,7 +75,7 @@ start() {
   env -i PATH="$PATH" HOME="$HOME" JAVA_HOME="${JAVA_HOME:-}" \
     FORGE_IAM_OPS_TOKEN="$OPS_IAM_TOKEN" FORGE_PLATFORM_OPS_TOKEN="$OPS_PLATFORM_TOKEN" FORGE_DEMO_OPS_TOKEN="$OPS_DEMO_TOKEN" java -Xms64m -Xmx256m -XX:ActiveProcessorCount=2 -jar "backend/$module/target/${module##*/}-$FORGE_VERSION.jar" \
     "--spring.config.additional-location=file:$E2E_CONFIG" \
-    "--server.port=$port" ${TEMPLATE_ARGS[@]+"${TEMPLATE_ARGS[@]}"} \
+    "--server.port=$port" ${NOTIFICATION_ARGS[@]+"${NOTIFICATION_ARGS[@]}"} ${TEMPLATE_ARGS[@]+"${TEMPLATE_ARGS[@]}"} \
     "--forge.iam.signing-key-file=$RUN_DIR/tenant.jwk" \
     "--forge.iam.platform.signing-key-file=$RUN_DIR/platform.jwk" \
     --forge.iam.sub-app.environment=e2e \
@@ -70,6 +98,10 @@ if [[ -n "${FORGE_TEMPLATE_SERVICE:-}" ]]; then
 else
   TEMPLATE_ARGS=()
 fi
+NOTIFICATION_ARGS=()
+if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 ]]; then
+  NOTIFICATION_ARGS=(--forge.mq.enabled=true --forge.mq.endpoints=127.0.0.1:18081 --forge.mq.ssl=false --forge.iam.platform.redirect-uri=http://127.0.0.1:15173/)
+fi
 start forge-iam 18101 /oauth2/jwks
 if [[ -n "${FORGE_TEMPLATE_SERVICE:-}" ]]; then
   source "$ROOT/deploy/template-smoke/runtime.sh"
@@ -84,4 +116,9 @@ if [[ -n "${FORGE_TEMPLATE_SERVICE:-}" ]]; then
 else
   "${COMPOSE[@]}" exec -T postgres psql -U postgres -d forge -v ON_ERROR_STOP=1 < deploy/e2e/seed.sql
 fi
-(cd frontend && pnpm exec playwright test -c playwright.main-flow.config.ts "$@")
+if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 ]]; then
+  "${COMPOSE[@]}" exec -T postgres psql -U postgres -d forge -v ON_ERROR_STOP=1 < deploy/e2e/seed.notification.sql
+  (cd frontend && pnpm exec playwright test -c playwright.notification.config.ts "$@")
+else
+  (cd frontend && pnpm exec playwright test -c playwright.main-flow.config.ts "$@")
+fi

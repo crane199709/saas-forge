@@ -19,7 +19,8 @@
     "test:e2e": "playwright test",
     "test:e2e:main": "../deploy/e2e/run.sh",
     "typecheck:tools": "tsc --noEmit -p tsconfig.tools.json",
-    "create:sub-app": "node packages/sub-app-kit/bin/create.ts --workspace"
+    "create:sub-app": "node packages/sub-app-kit/bin/create.ts --workspace",
+    "test:e2e:notification": "FORGE_NOTIFICATION_E2E=1 ../deploy/e2e/run.sh"
   },
   "devDependencies": {
     "@module-federation/vite": "1.23.5",

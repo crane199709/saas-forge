@@ -52,6 +52,10 @@ interface Backend {
 }
 
 async function mockBackend(context: BrowserContext): Promise<Backend> {
+  // 多标签页共用同一空收件箱，避免未读轮询落到本机真实后端。
+  await context.route(/\/iam\/(?:notifications|announcements)\/unread-count$/, (route) =>
+    route.fulfill(ok({ count: 0 })),
+  )
   const backend: Backend = {
     access: null,
     refresh: null,

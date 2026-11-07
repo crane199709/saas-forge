@@ -2,6 +2,10 @@ import { expect, test } from '@playwright/test'
 
 // 进入租户后 Shell 读取权限与菜单；这些用例不涉及菜单，返回空权限。
 test.beforeEach(async ({ page }) => {
+  // 这些回归不测试收件箱，铃铛的公开 HTTP 边界返回空未读。
+  await page.route(/\/iam\/(?:notifications|announcements)\/unread-count$/, (route) =>
+    route.fulfill(ok({ count: 0 })),
+  )
   await page.route('**/iam/auth/access', (route) =>
     route.fulfill({
       json: {

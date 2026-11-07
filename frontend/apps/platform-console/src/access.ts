@@ -9,6 +9,7 @@ export interface PlatformAccess {
 
 /** platform-console 按权限码显示的功能，与各服务申报的平台权限码一致。 */
 export const permissions = Object.freeze({
+  announcementManage: 'platform:announcement:manage',
   tenantRead: 'platform:tenant:read',
   tenantManage: 'platform:tenant:manage',
   planManage: 'platform:plan:manage',

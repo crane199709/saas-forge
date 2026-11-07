@@ -75,6 +75,10 @@ async function signIn(
 }
 
 test.beforeEach(async ({ page }) => {
+  // 这些回归不测试收件箱，铃铛的公开 HTTP 边界返回空未读。
+  await page.route(/\/iam\/(?:notifications|announcements)\/unread-count$/, (route) =>
+    route.fulfill(ok({ count: 0 })),
+  )
   const errors: string[] = []
   browserErrors.set(page, errors)
   await signIn(page)
