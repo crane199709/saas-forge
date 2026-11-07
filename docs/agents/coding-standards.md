@@ -282,17 +282,22 @@ WebFlux 的 `ErrorWebExceptionHandler` 归入 `filter` 而不是 `controller`：
 ### 通用
 
 - 注释与文档注释使用中文，标识符使用英文；领域概念沿用 GLOSSARY.md 的术语。
-- 注释说明「为什么」：意图、约束、取舍、非直观的原因。不复述代码在做什么。
+- 行内注释说明「为什么」：意图、约束、取舍、非直观的原因，不复述代码在做什么。文档注释说明用途与调用约定。
+- 所有代码在逻辑不直观时都要写注释，包括 SDK 的非 public 代码。
 - 不保留注释掉的代码，需要时从 git 历史找回。
 - TODO 必须带工单号，如 `TODO(#05): ...`。
 
 ### 必须写文档注释
 
-- `forge-sdk-*` 中所有 public 类、接口与 public 方法（Javadoc）。它们是业务服务使用的 API。
-- Mapper 接口的每个方法：说明用途，以及是否受 Data Policy 过滤。
-- 前端 `@crane199709/sdk`、`@crane199709/ui` 的导出函数与组件 props（TSDoc）。
+范围限于生产代码（`src/main`），测试夹具不强制。
 
-业务服务与前端应用内部的代码不强制文档注释，逻辑不直观时才写。Controller 接口说明使用 springdoc 注解，不再重复写 Javadoc。
+- `forge-sdk-*` 中的 public 类、接口，以及这些类型的 public 方法（Javadoc）。它们是业务服务使用的 API。`@Override` 方法的行为与父类约定一致时沿用父类注释，有额外约束时才写。
+- Mapper 接口的每个方法：说明用途，以及是否受 Data Policy 过滤。同一接口的方法结论相同时，可在接口的 Javadoc 中统一说明。
+- 前端 `@crane199709/sdk`、`@crane199709/ui`、`@crane199709/sub-app-kit` 的导出函数与组件 props（TSDoc）。
+
+业务服务与前端应用内部的代码不强制文档注释。Controller 接口说明使用 springdoc 注解，不再重复写 Javadoc。
+
+以上规则没有自动检查，由代码审查把关。
 
 
 ## 自动架构检查
