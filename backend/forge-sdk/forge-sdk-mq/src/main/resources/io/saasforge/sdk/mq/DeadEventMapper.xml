@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.sdk.mq.DeadEventMapper">
+    <insert id="insertIfAbsent">
+        INSERT INTO forge_dead_event (id, consumer_group, event_id, tenant_id, original_tenant_id, topic, tag, payload, delivery_attempt, last_error)
+        VALUES (#{id}, #{consumerGroup}, #{eventId}, #{tenantId}, #{originalTenantId}, #{topic}, #{tag}, #{payload}, #{deliveryAttempt}, #{lastError})
+        ON CONFLICT (consumer_group, event_id) DO NOTHING
+    </insert>
+</mapper>
