@@ -29,6 +29,7 @@ public record ForgeManifestProperties(
         if (value == null || value.isBlank()) throw new IllegalStateException(property + " must be set");
     }
 
+    /** 不输出 {@code token}：record 默认的 toString 会让上报令牌随配置对象进入日志。 */
     @Override
     public String toString() {
         return "ForgeManifestProperties[enabled=" + enabled + ", version=" + version + ", iamUri=" + iamUri + "]";

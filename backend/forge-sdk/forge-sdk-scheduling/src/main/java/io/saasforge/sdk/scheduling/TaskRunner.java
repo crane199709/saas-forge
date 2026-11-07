@@ -35,6 +35,7 @@ final class TaskRunner implements AutoCloseable {
                 return;
             }
         } catch (RuntimeException error) {
+            // 拿不到锁就无法判断其他实例是否在执行：与抢锁失败一样跳过本轮，不排队补跑，等下次触发。
             metrics.counter("forge.task.lock.failures", "name", name).increment();
             LOG.warn("Task {} skipped: Redis lock unavailable", name, error);
             return;
@@ -53,6 +54,7 @@ final class TaskRunner implements AutoCloseable {
         LOG.info("Task {} started", name);
         ScheduledFuture<?> renewal = null;
         try {
+            // 周期取 30 秒租约（RedisTaskLock.LEASE）的三分之一：错过一次续约，租约也不会到期。
             renewal = renewals.scheduleAtFixedRate(() -> renew(name, token), 10, 10, TimeUnit.SECONDS);
             invocation.run();
         } catch (Exception error) {
@@ -71,6 +73,7 @@ final class TaskRunner implements AutoCloseable {
         }
     }
 
+    // 异常不能逃出：scheduleAtFixedRate 遇异常即取消后续续约，一次 Redis 抖动就会让长任务失去锁。
     private void renew(String name, String token) {
         try {
             if (!locks.renew(name, token)) {

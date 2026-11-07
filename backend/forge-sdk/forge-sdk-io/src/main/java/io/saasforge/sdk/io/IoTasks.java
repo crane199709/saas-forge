@@ -70,6 +70,8 @@ public final class IoTasks implements AutoCloseable {
         this.transaction = transaction;
         this.properties = properties;
         tenantKey = "forge:io:" + service + ":tenants";
+        // 信号量才是容量上限（执行中 + 排队）。槽位在任务收尾时释放，此时工作线程还没回去取下一个任务，
+        // 所以队列按信号量总数开，持有槽位的提交不会被 AbortPolicy 拒绝。
         slots = new Semaphore(properties.workers() + properties.queueCapacity());
         workers = new ThreadPoolExecutor(
                 properties.workers(),
@@ -78,6 +80,7 @@ public final class IoTasks implements AutoCloseable {
                 TimeUnit.SECONDS,
                 new ArrayBlockingQueue<>(properties.workers() + properties.queueCapacity()),
                 new ThreadPoolExecutor.AbortPolicy());
+        // 异常不能逃出：scheduleAtFixedRate 遇异常即取消后续调度，所有任务的心跳会一起停止，随后被判为中断。
         heartbeats.scheduleAtFixedRate(
                 () -> pending.forEach((id, pendingTask) -> CurrentTenant.run(pendingTask.tenant(), () -> {
                     try {
@@ -159,6 +162,7 @@ public final class IoTasks implements AutoCloseable {
                         mapper.clearSource(id);
                     }));
             } catch (ForgeException error) {
+                // 源对象可能已被 IoMaintenance 删除（如心跳超时被判中断），不必告警；未清除的 source_object_id 由它补清。
                 if (!"storage.objectNotFound".equals(error.errorCode().code())) {
                     LOG.warn("Could not delete import source {}", source, error);
                 }

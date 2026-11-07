@@ -89,6 +89,7 @@ final class AuditLogInterceptor implements MethodInterceptor {
                     .getValue(context);
             return value == null ? null : value.toString();
         } catch (RuntimeException e) {
+            // result 为 null（调用失败或方法无返回值）时，引用 #result 的表达式出错属预期，不告警。
             if (result != null) {
                 log.warn("Failed to evaluate audit resourceId '{}' on {}", audit.resourceId(), method, e);
             }

@@ -33,6 +33,7 @@ export const AppLayout = defineComponent({
   props: {
     /** 顶栏左侧的产品名。 */
     title: { type: String, required: true },
+    /** 侧边菜单，按数组顺序展示；`activePath` 在其中所有 `path` 里取最长匹配。 */
     menu: { type: Array as PropType<MenuItem[]>, required: true },
     /** 当前路由路径；高亮与之最长匹配的菜单项，页内的下级路径也归到该项。 */
     activePath: { type: String, required: true },

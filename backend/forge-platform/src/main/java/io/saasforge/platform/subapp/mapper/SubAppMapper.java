@@ -30,7 +30,9 @@ public interface SubAppMapper extends BaseMapper<SubApp> {
     /** 删除某 Sub-App 的全部最低共享依赖版本，随后整体写入新的。 */
     void clearRequirements(@Param("subAppId") UUID subAppId);
 
+    /** 写入某 Sub-App 各环境的入口地址，须先清除旧的；{@code rows} 不能为空。 */
     void insertEntries(@Param("subAppId") UUID subAppId, @Param("rows") Collection<SubAppRow> rows);
 
+    /** 写入某 Sub-App 的最低共享依赖版本，须先清除旧的；{@code rows} 不能为空。 */
     void insertRequirements(@Param("subAppId") UUID subAppId, @Param("rows") Collection<SubAppRow> rows);
 }

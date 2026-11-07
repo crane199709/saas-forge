@@ -32,8 +32,10 @@ public interface SubAppMapper {
     /** 删除某 Sub-App 的全部最低共享依赖版本，随后整体写入新的。 */
     void clearRequirements(@Param("code") String code);
 
+    /** 写入某 Sub-App 各环境的入口地址，须先清除旧的；{@code rows} 不能为空。 */
     void insertEntries(@Param("code") String code, @Param("rows") Collection<SubAppDetailRow> rows);
 
+    /** 写入某 Sub-App 的最低共享依赖版本，须先清除旧的；{@code rows} 不能为空。 */
     void insertRequirements(@Param("code") String code, @Param("rows") Collection<SubAppDetailRow> rows);
 
     /** 给定编码中未删除、且登记了该环境入口地址的 Sub-App，按编码排序。 */

@@ -84,6 +84,7 @@ public final class IoAutoConfiguration {
         return new ExcelIo(tasks, storage, reference, validator, properties, new TransactionTemplate(manager));
     }
 
+    // REQUIRES_NEW：任务行须在交给线程池前提交。工作线程用另一条连接执行 start，读不到调用方事务中未提交的行，任务会被直接跳过。
     private static TransactionTemplate independent(PlatformTransactionManager manager) {
         var transaction = new TransactionTemplate(manager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);

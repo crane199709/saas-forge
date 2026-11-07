@@ -56,6 +56,7 @@ async function downloadTemplate() {
   anchor.href = url
   anchor.download = data.filename
   anchor.click()
+  // 下载由浏览器异步发起，立即撤销可能让下载失败；1 秒只是留足余量。
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 const orders = ref<Page<Order> | null>(null)

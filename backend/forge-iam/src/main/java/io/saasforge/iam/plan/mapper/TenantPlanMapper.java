@@ -27,11 +27,13 @@ public interface TenantPlanMapper {
     /** 删除租户 Feature Pack 中的全部权限码，随后整体写入新的。 */
     void clearPermissions(@Param("tenantId") UUID tenantId);
 
+    /** 写入租户 Feature Pack 的权限码，须先清除旧的；{@code codes} 不能为空。 */
     void insertPermissions(@Param("tenantId") UUID tenantId, @Param("codes") Collection<String> codes);
 
     /** 删除租户 Feature Pack 中的全部 Sub-App 编码，随后整体写入新的。 */
     void clearSubApps(@Param("tenantId") UUID tenantId);
 
+    /** 写入租户 Feature Pack 的 Sub-App 编码，须先清除旧的；{@code codes} 不能为空。 */
     void insertSubApps(@Param("tenantId") UUID tenantId, @Param("codes") Collection<String> codes);
 
     /** 租户 Feature Pack 中的 Sub-App 编码，按编码排序。 */

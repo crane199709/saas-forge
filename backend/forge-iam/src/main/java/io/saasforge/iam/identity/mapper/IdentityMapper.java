@@ -42,7 +42,7 @@ public interface IdentityMapper {
     /** 按邮箱（不区分大小写）或手机号定位未删除的身份（不论状态），供开通时邀请初始管理员，不受 Data Policy 过滤。 */
     ContactIdentity findByContact(@Param("target") String target);
 
-    /** 为尚未注册的邀请对象建立待激活身份，没有账号与密码；由消费者写入，没有操作人。 */
+    /** 为尚未注册的邀请对象建立待激活身份，没有账号与密码；由消费者写入，没有操作人，不受 Data Policy 过滤。 */
     void insertPending(
             @Param("id") UUID id,
             @Param("email") String email,
@@ -71,7 +71,7 @@ public interface IdentityMapper {
      */
     IdentitySummary findByLoginIdentifier(@Param("identifier") String identifier);
 
-    /** 注册新身份；注册时没有认证上下文，created_by、updated_by 为 NULL（系统）。 */
+    /** 注册新身份；注册时没有认证上下文，created_by、updated_by 为 NULL（系统），不受 Data Policy 过滤。 */
     void insert(
             @Param("id") UUID id,
             @Param("account") String account,
