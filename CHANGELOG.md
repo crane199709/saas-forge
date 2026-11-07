@@ -6,6 +6,8 @@
 
 ### 新增
 
+- IAM 新增按月分区的 Notification 收件箱，支持创建时 Permission 收件快照、分页、已读与未读计数，按 180 天整月清理；demo 订单创建事务发送真实站内通知。
+
 - 新增 `forge-sdk-notification`：在业务事务内发送 Notification、开启和关闭 Todo，提供目标、站内链接与发生时间事件契约；经既有 Outbox 投递到 `forge-notification`，无需新增 SDK 表。
 
 - 平台控制台新增任务运行入口，按服务查看规则、最近运行和问题运行；支持确认后手动触发与失败租户单独重跑，并提示历史留存边界、失败明细上限及运行冲突。

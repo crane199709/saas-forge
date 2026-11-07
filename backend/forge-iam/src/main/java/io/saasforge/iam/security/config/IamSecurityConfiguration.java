@@ -319,6 +319,7 @@ class IamSecurityConfiguration {
                         "/roles/**",
                         "/members/**",
                         "/audit/**",
+                        "/notifications/**",
                         "/reference-data/**",
                         "/security-settings",
                         "/announcements/**")

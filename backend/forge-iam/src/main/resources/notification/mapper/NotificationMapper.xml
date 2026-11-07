@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.notification.mapper.NotificationMapper">
+    <select id="ensurePartition" resultType="string">SELECT CAST(notification_ensure_partition(#{month}) AS text)</select>
+    <insert id="insert">
+        INSERT INTO notification (id, occurred_at, tenant_id, service, title, body, app_code, route)
+        VALUES (#{event.id}, #{event.occurredAt}, #{event.tenantId}, #{event.service}, #{event.title}, #{event.body},
+        #{event.link.appCode}, #{event.link.route})
+        ON CONFLICT DO NOTHING
+    </insert>
+    <insert id="addRecipient">
+        INSERT INTO notification_recipient (notification_id, occurred_at, tenant_id, membership_id)
+        VALUES (#{event.id}, #{event.occurredAt}, #{event.tenantId}, #{membershipId}) ON CONFLICT DO NOTHING
+    </insert>
+    <sql id="inbox">
+        FROM notification n
+        INNER JOIN notification_recipient r ON n.id = r.notification_id
+        AND n.occurred_at = r.occurred_at AND n.tenant_id = r.tenant_id
+        WHERE r.tenant_id = #{tenantId} AND r.membership_id = #{membershipId}
+    </sql>
+    <select id="page" resultType="io.saasforge.iam.notification.model.NotificationResponse">
+        SELECT n.id, n.service, n.title, n.body, n.app_code, n.route, n.occurred_at, r.read_at
+        <include refid="inbox"/>
+        ORDER BY n.occurred_at DESC, n.id DESC LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="count" resultType="long">
+        SELECT count(*)
+        <include refid="inbox"/>
+    </select>
+    <select id="unreadCount" resultType="long">
+        SELECT count(*) FROM notification_recipient
+        WHERE tenant_id = #{tenantId} AND membership_id = #{membershipId} AND read_at IS NULL
+    </select>
+    <update id="markRead">
+        UPDATE notification_recipient SET read_at = CURRENT_TIMESTAMP
+        WHERE tenant_id = #{tenantId} AND membership_id = #{membershipId} AND read_at IS NULL
+        <if test="id != null">AND notification_id = #{id}</if>
+    </update>
+    <select id="exists" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM notification_recipient
+        WHERE tenant_id = #{tenantId} AND membership_id = #{membershipId} AND notification_id = #{id})
+    </select>
+    <delete id="deleteRecipients">DELETE FROM notification_recipient WHERE tenant_id = #{tenantId}</delete>
+    <delete id="deleteNotifications">DELETE FROM notification WHERE tenant_id = #{tenantId}</delete>
+    <select id="maintainPartitions" resultType="string">SELECT CAST(notification_maintain_partitions(#{today}) AS text)</select>
+</mapper>

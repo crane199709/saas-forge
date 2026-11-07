@@ -22,6 +22,14 @@
     <dependencies>
         <dependency>
             <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-scheduling</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-notification</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.saasforge</groupId>
             <artifactId>forge-sdk-ops</artifactId>
         </dependency>
         <dependency>
