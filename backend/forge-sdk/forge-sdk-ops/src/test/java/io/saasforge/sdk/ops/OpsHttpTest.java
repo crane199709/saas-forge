@@ -1,12 +1,15 @@
 package io.saasforge.sdk.ops;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.saasforge.sdk.core.api.ApiResponse;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
@@ -45,8 +48,8 @@ class OpsHttpTest {
     @Test
     void wrongOrMissingTokenIsUnauthorizedForEveryOpsRoute() {
         var client = RestClient.create("http://localhost:" + port);
-        for (String path : java.util.List.of("/internal/ops", "/internal/ops/future-resource")) {
-            for (String token : java.util.List.of("wrong-token", "")) {
+        for (String path : List.of("/internal/ops", "/internal/ops/future-resource")) {
+            for (String token : List.of("wrong-token", "")) {
                 var response = client.get()
                         .uri(path)
                         .header("Authorization", "Bearer " + token)
@@ -60,8 +63,8 @@ class OpsHttpTest {
 
     @Test
     void unresolvedEnvironmentTokenPreventsStartup() {
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> {
-                    try (var ignored = new org.springframework.boot.builder.SpringApplicationBuilder(Application.class)
+        assertThatThrownBy(() -> {
+                    try (var ignored = new SpringApplicationBuilder(Application.class)
                             .run(
                                     "--forge.ops.token=${FORGE_MQ01_TEST_MISSING_OPS_TOKEN}",
                                     "--forge.security.issuer=http://tenant.test",
@@ -73,8 +76,8 @@ class OpsHttpTest {
 
     @Test
     void missingOrBlankOpsTokenPreventsStartup() {
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> {
-                    try (var ignored = new org.springframework.boot.builder.SpringApplicationBuilder(Application.class)
+        assertThatThrownBy(() -> {
+                    try (var ignored = new SpringApplicationBuilder(Application.class)
                             .run(
                                     "--forge.ops.token=",
                                     "--forge.security.issuer=http://tenant.test",

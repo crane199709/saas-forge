@@ -160,7 +160,7 @@ final class EventConsumer implements SmartLifecycle {
                         tag,
                         payload,
                         message.getDeliveryAttempt(),
-                        truncate(e.toString())));
+                        DeadEventErrorSummary.of(e)));
                 if (Integer.valueOf(1).equals(inserted)) {
                     deadEventsCounter.increment();
                 }
@@ -206,10 +206,6 @@ final class EventConsumer implements SmartLifecycle {
             // 非法租户头本身也会造成消费失败，不能因此再拒绝保存死信。
             return null;
         }
-    }
-
-    private static String truncate(String error) {
-        return error.length() <= 1000 ? error : error.substring(0, 1000);
     }
 
     private static String key(String topic, String tag) {

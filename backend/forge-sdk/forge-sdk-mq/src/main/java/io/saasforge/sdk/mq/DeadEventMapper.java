@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import org.apache.ibatis.annotations.Param;
 
-/** Dead Event 是服务级基础设施，跨租户保存捕获结果，不启用租户拦截与 RLS。 */
+/** Dead Event 是服务级基础设施，跨租户保存捕获结果，不启用租户拦截与 RLS，不受 Data Policy 过滤。 */
 @InterceptorIgnore(tenantLine = "true")
 interface DeadEventMapper {
     /**

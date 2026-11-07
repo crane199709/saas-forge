@@ -10,6 +10,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -17,6 +19,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** 服务内 Dead Event 运维入口，查询不依赖 MQ 连接。 */
 public final class DeadEventOperations {
+    private static final Logger log = LoggerFactory.getLogger(DeadEventOperations.class);
+
     private final DeadEventMapper mapper;
 
     private final TransactionTemplate transaction;
@@ -73,9 +77,8 @@ public final class DeadEventOperations {
             if (failure instanceof ForgeException business
                     && business.errorCode() == DeadEventErrorCode.ALREADY_HANDLED) throw business;
             // Handler 事务已回滚，再独立记录新错误；并发已处置的记录不能退回待处置。
-            String error = failure.toString();
-            transaction.executeWithoutResult(ignored ->
-                    mapper.updateError(id, error.substring(0, Math.min(error.length(), 1000))));
+            log.error("Failed to replay dead event {} of event {}", id, event.eventId(), failure);
+            transaction.executeWithoutResult(ignored -> mapper.updateError(id, DeadEventErrorSummary.of(failure)));
             throw new ForgeException(DeadEventErrorCode.REPLAY_FAILED);
         }
         return result.get();
