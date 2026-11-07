@@ -135,6 +135,24 @@ _Avoid_: 密码规则、密码复杂度
 账号在一段时间内认证失败过多后被临时拒绝认证的状态，到期自动解除，不存在永久锁定。
 _Avoid_: 账号冻结、封号、停用
 
+**Tenant IP Allowlist（租户 IP 允许列表）**:
+Tenant 限定其 Membership 可从哪些 IP 地址或网段进入该 Tenant 的规则；不限制全局登录，也不影响同一 Identity 进入其他 Tenant。
+_Avoid_: 白名单、IP 策略
+
+## 通知与待办
+
+**Notification（通知）**:
+发给单个 Membership、告知一件已发生事实的记录，可标记已读。
+_Avoid_: 消息、站内信
+
+**Announcement（公告）**:
+Tenant Admin 面向本 Tenant 或 Operator 面向全部或指定 Tenant 发布、可撤回的广播。
+_Avoid_: 系统消息、通告
+
+**Todo（待办）**:
+指向某项待处理业务的索引，其创建与关闭由所属 Business Service 决定；不是工作流，实际处理在对应 Sub-App 中完成。
+_Avoid_: 任务、工单、审批
+
 ## 参考数据
 
 **Dictionary（字典）**:
@@ -175,10 +193,14 @@ _Avoid_: 系统任务、平台任务
 按时间触发、每次触发时对处于试用或正常状态的每个 Tenant 各执行一遍的任务；每遍都在该 Tenant 的上下文中运行，彼此失败隔离。
 _Avoid_: 租户定时任务、多租户任务
 
+**Task Run（任务运行）**:
+Global Task 或 Tenant Task 实际执行的一次记录，由定时触发或 Operator 手动发起；因未抢到锁而跳过的触发不算。
+_Avoid_: 任务日志、执行记录
+
 ## 导入导出
 
 **Import Task（导入任务）**:
-Membership 提交一个 Excel 文件、由 Business Service 异步校验并写入业务数据的一次作业；全部行通过校验才写入，否则一行不写。
+Membership 提交一个 Excel 文件、由 Business Service 异步校验，并经提交人确认后写入业务数据的一次作业；全部行通过校验才可确认，否则一行不写。
 _Avoid_: 批量导入、上传任务
 
 **Export Task（导出任务）**:
@@ -231,3 +253,15 @@ _Avoid_: 操作日志、日志
 **Outbox（发件箱）**:
 服务库中与业务数据同一本地事务写入的待发事件表，由 Forge SDK 在事务提交后投递到消息队列，保证「业务数据落库则事件终将送达」。
 _Avoid_: 消息表、本地消息表
+
+**Dead Event（死信事件）**:
+已送达消费方、但处理重试耗尽后留待 Operator 处置的事件；发送端的 Outbox 事件不会成为 Dead Event。
+_Avoid_: 失败消息、毒消息
+
+**Storage Purpose（存储用途）**:
+Business Service 声明的一类文件用途，规定该类文件可接受的类型与大小以及下载链接时长；Tenant 与 Operator 不能修改。
+_Avoid_: 文件类型、文件分类、业务类型
+
+**Restore（恢复）**:
+使已被逻辑删除的资源重新对常规查询可见的操作；不存在集中回收站，也不提供彻底删除。
+_Avoid_: 还原、回收站、撤销删除
