@@ -1,6 +1,6 @@
 # Operator 运维数据留在各服务，由平台经内部接口聚合
 
-Dead Event 与 Task Run 分别存放在产生它们的服务库中。Forge SDK 在各服务暴露 `/internal/ops/*`，`forge-platform` 经 `lb://<service>` 调用并聚合，由平台校验 Operator 权限并记录审计。每个服务有独立的运维令牌，漏配时启动失败，服务列表取自 IAM 已上报 Manifest 的服务；某个服务不可达时，只把该服务标记为不可用。
+Dead Event 与 Task Run 都留在产生它们的服务一侧：Dead Event 是待处置的事实，存放在服务库；Task Run 只保留最近记录，存放在调度已依赖的 Redis。Forge SDK 在各服务暴露 `/internal/ops/*`，`forge-platform` 经 `lb://<service>` 调用并聚合，由平台校验 Operator 权限并记录审计。每个服务有独立的运维令牌，漏配时启动失败，服务列表取自 IAM 已上报 Manifest 的服务；某个服务不可达时，只把该服务标记为不可用。
 
 选择这种方式，是因为补发和手动重跑必须回到原服务执行：无论查询走哪条路径，这条命令通道都少不了。在此基础上再增加一张中心表，只会多一份需要同步的状态。
 
