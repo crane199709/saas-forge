@@ -47,6 +47,7 @@ public class NotificationService implements TenantDataCleaner {
         if (month.isBefore(LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC)
                 .minusDays(180)
                 .withDayOfMonth(1))) return;
+        notifications.bindTenant(event.tenantId());
         notifications.ensurePartition(month);
         if (notifications.insert(event) == 0) return;
         if (event.target().permissionCode() != null) {
@@ -70,16 +71,19 @@ public class NotificationService implements TenantDataCleaner {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<NotificationResponse> page(TenantActor actor, long offset, int limit) {
         requireActive(actor);
         return notifications.page(actor.tenantId(), actor.membershipId(), offset, limit);
     }
 
+    @Transactional(readOnly = true)
     public long count(TenantActor actor) {
         requireActive(actor);
         return notifications.count(actor.tenantId(), actor.membershipId());
     }
 
+    @Transactional(readOnly = true)
     public long unreadCount(TenantActor actor) {
         requireActive(actor);
         return notifications.unreadCount(actor.tenantId(), actor.membershipId());
@@ -98,11 +102,13 @@ public class NotificationService implements TenantDataCleaner {
                 .status(actor.tenantId(), actor.membershipId())
                 .filter("active"::equals)
                 .isEmpty()) throw new ForgeException(FrameworkErrorCode.AUTH_FORBIDDEN);
+        notifications.bindTenant(actor.tenantId());
     }
 
     @Override
     @Transactional
     public void clean(TenantDeleted event) {
+        notifications.bindTenant(event.tenantId());
         notifications.deleteRecipients(event.tenantId());
         notifications.deleteNotifications(event.tenantId());
     }

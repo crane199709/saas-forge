@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.saasforge.iam.notification.mapper.NotificationMapper">
+    <select id="bindTenant" resultType="string">SELECT set_config('app.tenant_id', CAST(#{tenantId} AS text), true)</select>
     <select id="ensurePartition" resultType="string">SELECT CAST(notification_ensure_partition(#{month}) AS text)</select>
     <insert id="insert">
         INSERT INTO notification (id, occurred_at, tenant_id, service, title, body, app_code, route)
