@@ -112,6 +112,20 @@ SDK 自动将实际执行保存为 Task Run，不需要新增数据库表或迁�
 
 进程退出或失锁后，读取遗留 `current` 会显示 `INTERRUPTED`，下一次成功持锁执行会将其归档。旧运行结束不能清除接替者的 `current`。记录读写失败只记 WARN，不影响任务执行与释放锁；查询失败返回空结果，应结合 WARN 和服务日志排查。
 
+同时引入 `forge-sdk-ops` 并配置既有服务运维令牌后，SDK 才提供任务内部 HTTP 接口；仅使用 scheduling 的服务不注册这些接口。平台继续使用 IAM 已上报服务目录、负载均衡和服务专属运维令牌，不透传 Operator JWT。
+
+平台任务接口位于 `/ops/services/{service}/tasks`（经网关加 `/platform` 前缀）：
+
+| 方法与路径 | 结果 |
+|---|---|
+| `GET /ops/services/{service}/tasks` | 已声明任务数组，包含 `name`、`type`、解析后的 `cron` 或 ISO-8601 `fixedDelay`、cron 的 IANA `zone`，以及 `latestRun`；优先当前运行，再取最近结束运行，无历史仍列任务 |
+| `GET /ops/services/{service}/tasks/{name}/runs?view=recent` | 最近结束运行，`view=problems` 查询最近非成功运行；默认 `recent`，其他值返回 400 |
+| `POST /ops/services/{service}/tasks/{name}/trigger` | 请求体 `{}` 触发整轮任务，`{"targetTenantId":"<UUID>"}` 重跑单个 Tenant；返回 `{"runId":"<UUID>"}`，执行体异步运行 |
+
+以上结果均放在标准 `ApiResponse.data` 中。SDK 内部接口把相同路径前缀替换为 `/internal/ops/tasks`；内部触发体还须携带平台从可信上下文获取的 `operatorId`。查询要求 `platform:ops:read`，触发要求 `platform:ops:manage`；平台记录 `ops.taskTrigger` 或 `ops.taskTenantRetry`，包含 Operator、服务、任务、目标 Tenant、运行 ID 和失败错误码。失败租户直接使用每条 Task Run 的 `failedTenants` 与 `failureCount`，不另查业务数据。
+
+手动与定时触发抢同一把锁，已持锁时同步返回 409 `task.alreadyRunning`。指定 Tenant 时先同步校验 trial/active，资格不符返回 409 `task.tenantNotEligible`；后台执行仍绑定并复查该 Tenant，不绑定发起人的 Membership/Operator 身份。Global Task 传入 Tenant 返回 400 `request.invalid`；未知任务返回 404 `task.notFound`。手动触发不改变任务原有幂等要求。
+
 ## 按需启用 storage 与镜像
 
 需要附件时在 POM 添加同版本 `io.saasforge:forge-sdk-storage`，由平台提供 `forge.storage.endpoint`、`bucket`、`access-key`、`secret-key`；endpoint 必须供浏览器访问。参考 demo-service 的 attachment 功能及 V8 迁移，不应只添加依赖却遗漏配置和存储表。

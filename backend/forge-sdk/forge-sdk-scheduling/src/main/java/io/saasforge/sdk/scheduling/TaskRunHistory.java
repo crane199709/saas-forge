@@ -105,13 +105,23 @@ public final class TaskRunHistory {
     }
 
     TaskRun start(String name, TaskRun.Type type, String token) {
+        return start(name, type, token, TaskRun.Trigger.SCHEDULED, null, null);
+    }
+
+    TaskRun start(
+            String name,
+            TaskRun.Type type,
+            String token,
+            TaskRun.Trigger trigger,
+            UUID operatorId,
+            UUID targetTenantId) {
         var run = new TaskRun(
                 UUID.randomUUID(),
                 name,
                 type,
-                TaskRun.Trigger.SCHEDULED,
-                null,
-                null,
+                trigger,
+                operatorId,
+                targetTenantId,
                 TaskRun.Status.RUNNING,
                 Instant.now(),
                 null,

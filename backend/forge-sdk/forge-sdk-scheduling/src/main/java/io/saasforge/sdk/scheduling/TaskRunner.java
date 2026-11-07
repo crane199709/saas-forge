@@ -2,6 +2,7 @@ package io.saasforge.sdk.scheduling;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import io.saasforge.sdk.core.api.ForgeException;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -44,16 +45,31 @@ final class TaskRunner implements AutoCloseable {
             return;
         }
         try {
-            workers.execute(() -> execute(name, type, token, invocation));
+            TaskRun run = history.start(name, type, token);
+            workers.execute(() -> execute(run, token, invocation));
         } catch (RuntimeException error) {
             release(name, token);
             throw error;
         }
     }
 
-    private void execute(String name, TaskRun.Type type, String token, Consumer<TaskRunOutcome> invocation) {
+    TaskTriggerResponse manual(
+            String name, TaskRun.Type type, UUID operatorId, UUID targetTenantId, Consumer<TaskRunOutcome> invocation) {
+        String token = UUID.randomUUID().toString();
+        if (!locks.acquire(name, token)) throw new ForgeException(TaskErrorCode.ALREADY_RUNNING);
+        try {
+            TaskRun run = history.start(name, type, token, TaskRun.Trigger.MANUAL, operatorId, targetTenantId);
+            workers.execute(() -> execute(run, token, invocation));
+            return new TaskTriggerResponse(run.id());
+        } catch (RuntimeException error) {
+            release(name, token);
+            throw error;
+        }
+    }
+
+    private void execute(TaskRun run, String token, Consumer<TaskRunOutcome> invocation) {
+        String name = run.name();
         long started = System.nanoTime();
-        TaskRun run = history.start(name, type, token);
         var outcome = new TaskRunOutcome();
         metrics.counter("forge.task.executions", "name", name).increment();
         LOG.info("Task {} started", name);

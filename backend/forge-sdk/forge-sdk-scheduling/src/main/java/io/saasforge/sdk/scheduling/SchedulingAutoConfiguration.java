@@ -4,15 +4,22 @@ import io.saasforge.sdk.core.BusinessZoneProperties;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 /** 引入 starter 后自动注册 Spring Bean 上声明的任务，无须 EnableScheduling。 */
-@AutoConfiguration(afterName = "org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration")
+@AutoConfiguration(
+        afterName = {
+            "org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration",
+            "io.saasforge.sdk.ops.OpsAutoConfiguration"
+        })
 @EnableConfigurationProperties({BusinessZoneProperties.class, SchedulingProperties.class})
 public final class SchedulingAutoConfiguration {
     /** 触发器独立于任务执行体；服务可通过同名 TaskScheduler Bean 提供自己的时钟与调度器。 */
@@ -35,6 +42,16 @@ public final class SchedulingAutoConfiguration {
     @Bean
     public TaskRunHistory forgeTaskRunHistory(StringRedisTemplate redis, Environment environment) {
         return new TaskRunHistory(redis, environment.getRequiredProperty("spring.application.name"));
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+    @ConditionalOnBean(type = "io.saasforge.sdk.ops.OpsProperties")
+    static class OpsConfiguration {
+        @Bean
+        TaskOpsController forgeTaskOpsController(TaskRegistrar tasks, TaskRunHistory history) {
+            return new TaskOpsController(tasks, history);
+        }
     }
 
     /** 延迟到所有单例初始化后启动任务，避免执行体访问尚未初始化的服务。 */
