@@ -9,7 +9,13 @@ public enum StorageErrorCode implements ErrorCode {
     /** 上传后租户的已用存储将超出 Plan 的存储容量 Quota。 */
     QUOTA_EXCEEDED("storage.quotaExceeded", 409),
     /** 确认上传时存储中没有该对象，或大小与申请时不一致。 */
-    UPLOAD_INCOMPLETE("storage.uploadIncomplete", 409);
+    UPLOAD_INCOMPLETE("storage.uploadIncomplete", 409),
+    /** 文件扩展名不在用途的白名单中。 */
+    EXTENSION_NOT_ALLOWED("storage.extensionNotAllowed", 400),
+    /** 文件大小超过用途的上限。 */
+    FILE_TOO_LARGE("storage.fileTooLarge", 400),
+    /** 当前租户对象的用途与业务预期用途不同。 */
+    PURPOSE_MISMATCH("storage.purposeMismatch", 400);
 
     private final String code;
     private final int httpStatus;

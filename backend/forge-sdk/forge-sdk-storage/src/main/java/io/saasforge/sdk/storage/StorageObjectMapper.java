@@ -13,11 +13,13 @@ interface StorageObjectMapper {
     /**
      * 登记一个待上传的对象，租户由租户拦截写入。
      *
+     * @param purpose 已校验的用途编码，后续用途检查以登记值为准
      * @param uploadExpiresAt 上传 URL 的失效时间，此后未确认的对象不再占用容量
      */
     void insertPending(
             @Param("id") UUID id,
             @Param("objectKey") String objectKey,
+            @Param("purpose") String purpose,
             @Param("filename") String filename,
             @Param("contentType") String contentType,
             @Param("size") long size,

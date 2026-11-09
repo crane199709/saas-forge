@@ -8,6 +8,7 @@ CREATE TABLE forge_storage_object (
     id uuid PRIMARY KEY,
     tenant_id uuid NOT NULL,
     object_key varchar(512) NOT NULL,
+    purpose varchar(64) NOT NULL,
     filename varchar(255) NOT NULL,
     content_type varchar(255) NOT NULL,
     size bigint NOT NULL,
@@ -20,6 +21,7 @@ COMMENT ON TABLE forge_storage_object IS '对象存储登记：记录本服务�
 COMMENT ON COLUMN forge_storage_object.id IS '对象 ID，UUIDv7';
 COMMENT ON COLUMN forge_storage_object.tenant_id IS '所属租户 ID';
 COMMENT ON COLUMN forge_storage_object.object_key IS '对象存储中的 Key';
+COMMENT ON COLUMN forge_storage_object.purpose IS '存储用途编码，unspecified 表示尚未归类的存量对象';
 COMMENT ON COLUMN forge_storage_object.filename IS '原始文件名';
 COMMENT ON COLUMN forge_storage_object.content_type IS '内容类型';
 COMMENT ON COLUMN forge_storage_object.size IS '对象大小，单位字节';

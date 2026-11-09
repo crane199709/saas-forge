@@ -21,6 +21,7 @@ import io.saasforge.sdk.provisioning.TenantPlanChanged;
 import io.saasforge.sdk.security.TenantContext;
 import io.saasforge.sdk.storage.ObjectStorage;
 import io.saasforge.sdk.storage.StorageErrorCode;
+import io.saasforge.sdk.storage.StoragePurpose;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -31,11 +32,13 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -78,6 +81,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
+            "spring.flyway.locations=classpath:db/migration,classpath:storage-purpose-migration",
             "forge.io.workers=1",
             "forge.io.queue-capacity=1",
             "forge.io.import-limit=3",
@@ -160,6 +164,123 @@ class ObjectStorageTest {
 
     @Autowired
     CurrentActorProvider actors;
+
+    @Test
+    void purposeRejectsDisallowedExtensionsBeforeReservingQuota() {
+        var purpose = new StoragePurpose("test-document", Set.of("pdf"), 4, Duration.ofMinutes(2));
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            for (String filename : List.of("document.exe", "document", "document.pdf.exe", "document.pdf.")) {
+                assertThatThrownBy(() -> storage.prepareUpload(purpose, filename, null, 1))
+                        .isInstanceOfSatisfying(
+                                ForgeException.class,
+                                error -> assertThat(error.errorCode().code()).isEqualTo("storage.extensionNotAllowed"));
+            }
+            assertThat(storage.usage().usedBytes()).isZero();
+        }
+    }
+
+    @Test
+    void purposeRejectsFilesAboveItsLimitBeforeReservingQuota() {
+        var purpose = new StoragePurpose("test-document", Set.of("pdf"), 4, Duration.ofMinutes(2));
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThatThrownBy(() -> storage.prepareUpload(purpose, "document.PDF", null, 5))
+                    .isInstanceOfSatisfying(
+                            ForgeException.class,
+                            error -> assertThat(error.errorCode().code()).isEqualTo("storage.fileTooLarge"));
+            assertThat(storage.usage().usedBytes()).isZero();
+        }
+    }
+
+    @Test
+    void uploadedPurposeControlsDownloadTtlAndDoesNotLeakAcrossTenants() throws Exception {
+        var purpose = new StoragePurpose("test-document", Set.of("pdf"), 4, Duration.ofMinutes(2));
+        var other = new StoragePurpose("test-other", Set.of("pdf"), 4, Duration.ofMinutes(9));
+        UUID id;
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            var upload = storage.prepareUpload(purpose, "合同.PDF", null, 4);
+            id = upload.objectId();
+            var request = HttpRequest.newBuilder(upload.url())
+                    .PUT(HttpRequest.BodyPublishers.ofByteArray(new byte[] {1, 2, 3, 4}));
+            upload.headers().forEach(request::header);
+            assertThat(HTTP.send(request.build(), HttpResponse.BodyHandlers.discarding())
+                            .statusCode())
+                    .isEqualTo(200);
+            storage.completeUpload(id);
+            assertThat(storage.get(purpose, id).filename()).isEqualTo("合同.PDF");
+            var download = storage.prepareDownload(purpose, id);
+            assertThat(download.url().getQuery()).contains("X-Amz-Expires=120");
+            assertThat(HTTP.send(
+                                    HttpRequest.newBuilder(download.url()).build(),
+                                    HttpResponse.BodyHandlers.ofByteArray())
+                            .body())
+                    .containsExactly(1, 2, 3, 4);
+            assertThatThrownBy(() -> storage.get(other, id))
+                    .isInstanceOfSatisfying(
+                            ForgeException.class,
+                            error -> assertThat(error.errorCode().code()).isEqualTo("storage.purposeMismatch"));
+            assertThatThrownBy(() -> storage.prepareDownload(other, id))
+                    .isInstanceOfSatisfying(
+                            ForgeException.class,
+                            error -> assertThat(error.errorCode().code()).isEqualTo("storage.purposeMismatch"));
+        }
+        try (var ignored = CurrentTenant.bind(UUID.randomUUID())) {
+            for (StoragePurpose attempted : List.of(purpose, other)) {
+                assertThatThrownBy(() -> storage.get(attempted, id))
+                        .isInstanceOfSatisfying(
+                                ForgeException.class,
+                                error -> assertThat(error.errorCode()).isEqualTo(StorageErrorCode.OBJECT_NOT_FOUND));
+                assertThatThrownBy(() -> storage.prepareDownload(attempted, id))
+                        .isInstanceOfSatisfying(
+                                ForgeException.class,
+                                error -> assertThat(error.errorCode()).isEqualTo(StorageErrorCode.OBJECT_NOT_FOUND));
+            }
+        }
+    }
+
+    @Test
+    void serverWriteAppliesPurposeRulesAndStoresThePurpose() throws Exception {
+        var purpose = new StoragePurpose("test-document", Set.of("pdf"), 4, Duration.ofMinutes(2));
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThatThrownBy(() -> storage.write(
+                            purpose, "document.exe", null, 4, new ByteArrayInputStream(new byte[] {1, 2, 3, 4})))
+                    .isInstanceOfSatisfying(
+                            ForgeException.class,
+                            error -> assertThat(error.errorCode().code()).isEqualTo("storage.extensionNotAllowed"));
+            assertThatThrownBy(() -> storage.write(
+                            purpose, "document.PDF", null, 5, new ByteArrayInputStream(new byte[] {1, 2, 3, 4, 5})))
+                    .isInstanceOfSatisfying(
+                            ForgeException.class,
+                            error -> assertThat(error.errorCode().code()).isEqualTo("storage.fileTooLarge"));
+            assertThat(storage.usage().usedBytes()).isZero();
+            var object =
+                    storage.write(purpose, "document.PDF", null, 4, new ByteArrayInputStream(new byte[] {1, 2, 3, 4}));
+            assertThat(storage.get(purpose, object.id())).isEqualTo(object);
+            assertThat(storage.prepareDownload(purpose, object.id()).url().getQuery())
+                    .contains("X-Amz-Expires=120");
+            try (var content = storage.open(object.id())) {
+                assertThat(content.readAllBytes()).containsExactly(1, 2, 3, 4);
+            }
+            assertThat(storage.usage().usedBytes()).isEqualTo(4);
+        }
+    }
+
+    @Test
+    void prePurposeObjectRemainsRegisteredButCannotBeDownloadedAsAnExplicitPurpose() {
+        var purpose = new StoragePurpose("test-document", Set.of("pdf"), 4, Duration.ofMinutes(2));
+        UUID legacyTenant = UUID.fromString("019b0110-0000-7000-8000-000000000099");
+        UUID legacyObject = UUID.fromString("019b0110-0000-7000-8000-000000000098");
+        try (var ignored = CurrentTenant.bind(legacyTenant)) {
+            assertThat(storage.get(legacyObject).filename()).isEqualTo("legacy.pdf");
+            assertThatThrownBy(() -> storage.get(purpose, legacyObject))
+                    .isInstanceOfSatisfying(
+                            ForgeException.class,
+                            error -> assertThat(error.errorCode().code()).isEqualTo("storage.purposeMismatch"));
+            assertThatThrownBy(() -> storage.prepareDownload(purpose, legacyObject))
+                    .isInstanceOfSatisfying(
+                            ForgeException.class,
+                            error -> assertThat(error.errorCode().code()).isEqualTo("storage.purposeMismatch"));
+        }
+    }
 
     @Test
     void backgroundTaskKeepsMembershipWhileStandardColumnsUseSystemActor() throws Exception {

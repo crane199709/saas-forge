@@ -5,6 +5,7 @@
         <constructor>
             <idArg column="id" javaType="java.util.UUID"/>
             <arg column="object_key" javaType="string"/>
+            <arg column="purpose" javaType="string"/>
             <arg column="filename" javaType="string"/>
             <arg column="content_type" javaType="string"/>
             <arg column="size" javaType="_long"/>
@@ -15,12 +16,12 @@
     </resultMap>
 
     <insert id="insertPending">
-        INSERT INTO forge_storage_object (id, object_key, filename, content_type, size, status, upload_expires_at)
-        VALUES (#{id}, #{objectKey}, #{filename}, #{contentType}, #{size}, 'PENDING', #{uploadExpiresAt})
+        INSERT INTO forge_storage_object (id, object_key, purpose, filename, content_type, size, status, upload_expires_at)
+        VALUES (#{id}, #{objectKey}, #{purpose}, #{filename}, #{contentType}, #{size}, 'PENDING', #{uploadExpiresAt})
     </insert>
 
     <select id="findById" resultMap="object">
-        SELECT id, object_key, filename, content_type, size, status, upload_expires_at, stored_at
+        SELECT id, object_key, purpose, filename, content_type, size, status, upload_expires_at, stored_at
         FROM forge_storage_object WHERE id = #{id}
     </select>
 

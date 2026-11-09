@@ -9,10 +9,12 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +46,7 @@ public class ObjectStorage {
     private static final Logger log = LoggerFactory.getLogger(ObjectStorage.class);
 
     /** S3 单次 PUT 的大小上限。 */
-    static final long MAX_OBJECT_SIZE = 5L * 1024 * 1024 * 1024;
+    static final long MAX_OBJECT_SIZE = StoragePurpose.MAX_OBJECT_SIZE;
 
     /** 与 {@code forge_storage_object} 的列宽一致。 */
     private static final int MAX_NAME_LENGTH = 255;
@@ -84,7 +86,25 @@ public class ObjectStorage {
     }
 
     /**
+     * 按声明用途校验文件并申请上传，文件内容类型不用于扩展名判定。
+     *
+     * @param purpose 服务声明的用途
+     * @param filename 原文件名，扩展名忽略大小写
+     * @param contentType 内容类型，空值使用 application/octet-stream
+     * @param size 文件大小（字节）
+     * @return 上传凭证
+     * @throws ForgeException 参数非法为 request.invalid；扩展名不符为 {@link StorageErrorCode#EXTENSION_NOT_ALLOWED}；
+     *     超出用途上限为 {@link StorageErrorCode#FILE_TOO_LARGE}；超出 Quota 为 {@link StorageErrorCode#QUOTA_EXCEEDED}
+     */
+    public UploadTicket prepareUpload(StoragePurpose purpose, String filename, String contentType, long size) {
+        requireFile(purpose, filename, size);
+        return prepareUpload(purpose.code(), filename, contentType, size);
+    }
+
+    /**
      * 申请上传：校验存储容量 Quota 后登记对象并签发上传 URL。
+     *
+     * @deprecated 工单 02 迁移调用方后删除，改用带 StoragePurpose 的入口
      *
      * @param filename 文件名，只作为下载时的附件名，不进入对象 key；不超过 255 个字符
      * @param contentType 内容类型，为 null 或空白时为 {@code application/octet-stream}
@@ -92,7 +112,12 @@ public class ObjectStorage {
      * @return 上传凭证
      * @throws ForgeException 参数非法时为 {@code request.invalid}；上传后将超出 Quota 时为 {@link StorageErrorCode#QUOTA_EXCEEDED}
      */
+    @Deprecated(forRemoval = true)
     public UploadTicket prepareUpload(String filename, String contentType, long size) {
+        return prepareUpload("unspecified", filename, contentType, size);
+    }
+
+    private UploadTicket prepareUpload(String purpose, String filename, String contentType, long size) {
         requireName(filename, "filename");
         String type = contentType == null || contentType.isBlank() ? DEFAULT_CONTENT_TYPE : contentType;
         requireName(type, "contentType");
@@ -109,7 +134,7 @@ public class ObjectStorage {
             if (quota != null && mapper.usedBytes(now, null) + size > quota) {
                 throw quotaExceeded(quota);
             }
-            mapper.insertPending(id, key, filename, type, size, expiresAt);
+            mapper.insertPending(id, key, purpose, filename, type, size, expiresAt);
         });
         PresignedPutObjectRequest presigned =
                 presigner.presignPutObject(request -> request.signatureDuration(properties.uploadUrlTtl())
@@ -174,7 +199,7 @@ public class ObjectStorage {
     }
 
     /**
-     * 读取已确认上传的对象。
+     * 读取当前租户已确认上传对象的元数据，供管理与清理使用。业务绑定或处理文件须使用带用途的 {@link #get(StoragePurpose, UUID)}。
      *
      * @param objectId 对象 ID
      * @return 对象
@@ -185,7 +210,23 @@ public class ObjectStorage {
     }
 
     /**
+     * 核对用途后读取当前租户已确认对象，供导入或绑定业务资源之前检查。
+     *
+     * <p>存量 unspecified 对象不匹配任何可声明用途；服务必须先按可信业务关联显式迁移用途。
+     *
+     * @param purpose 业务预期用途
+     * @param objectId 对象 ID
+     * @return 已确认对象
+     * @throws ForgeException 不存在、未确认或跨租户为 {@link StorageErrorCode#OBJECT_NOT_FOUND}；用途不同为
+     *     {@link StorageErrorCode#PURPOSE_MISMATCH}
+     */
+    public StoredObject get(StoragePurpose purpose, UUID objectId) {
+        return requirePurpose(purpose, objectId).toStoredObject();
+    }
+
+    /**
      * 打开当前租户已确认对象的内容流。调用方负责关闭流，内容不会整体载入内存。
+     * 业务处理前须使用 {@link #get(StoragePurpose, UUID)} 核对用途。
      *
      * @param objectId 对象 ID
      * @return 对象内容
@@ -202,7 +243,28 @@ public class ObjectStorage {
     }
 
     /**
+     * 按声明用途校验并流式写入，成功后对象可直接下载。大小须提前确定，调用方负责关闭输入流。
+     * Quota 检查、登记与确认在同一事务内，失败或外层事务回滚时清理存储对象。
+     *
+     * @param purpose 服务声明的用途
+     * @param filename 下载文件名，扩展名忽略大小写
+     * @param contentType 内容类型，空值使用 application/octet-stream
+     * @param size 文件大小（字节），须与内容一致且大于零
+     * @param content 内容流
+     * @return 已确认对象
+     * @throws ForgeException 参数非法为 request.invalid；扩展名不符为 {@link StorageErrorCode#EXTENSION_NOT_ALLOWED}；
+     *     超出用途上限为 {@link StorageErrorCode#FILE_TOO_LARGE}；超出 Quota 为 {@link StorageErrorCode#QUOTA_EXCEEDED}
+     */
+    public StoredObject write(
+            StoragePurpose purpose, String filename, String contentType, long size, InputStream content) {
+        requireFile(purpose, filename, size);
+        return write(purpose.code(), filename, contentType, size, content);
+    }
+
+    /**
      * 服务端流式写入对象。大小须提前确定；调用方负责关闭输入流。
+     *
+     * @deprecated 工单 02 迁移调用方后删除，改用带 StoragePurpose 的入口
      * Quota 检查、登记与确认在同一事务内，失败或外层事务回滚时清理存储对象，不留下计费登记。
      *
      * @param filename 下载文件名
@@ -212,7 +274,12 @@ public class ObjectStorage {
      * @return 已确认对象，可直接申请下载票据
      * @throws ForgeException 超出容量时为 QUOTA_EXCEEDED
      */
+    @Deprecated(forRemoval = true)
     public StoredObject write(String filename, String contentType, long size, InputStream content) {
+        return write("unspecified", filename, contentType, size, content);
+    }
+
+    private StoredObject write(String purpose, String filename, String contentType, long size, InputStream content) {
         requireName(filename, "filename");
         String type = contentType == null || contentType.isBlank() ? DEFAULT_CONTENT_TYPE : contentType;
         requireName(type, "contentType");
@@ -225,7 +292,7 @@ public class ObjectStorage {
             var now = OffsetDateTime.now(clock);
             Long quota = mapper.lockQuota();
             if (quota != null && mapper.usedBytes(now, null) + size > quota) throw quotaExceeded(quota);
-            mapper.insertPending(id, key, filename, type, size, now.plus(properties.uploadUrlTtl()));
+            mapper.insertPending(id, key, purpose, filename, type, size, now.plus(properties.uploadUrlTtl()));
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCompletion(int completion) {
@@ -248,25 +315,47 @@ public class ObjectStorage {
     }
 
     /**
+     * 核对当前租户对象用途后签发下载 URL，有效期由用途声明决定。
+     *
+     * <p>用途编码只用于防止业务选错文件规则；业务资源的权限仍由调用方在申请下载前校验。
+     * unspecified 存量对象须先按业务关联迁移用途，不能以未知用途下载。
+     *
+     * @param purpose 业务预期用途
+     * @param objectId 对象 ID
+     * @return 下载凭证
+     * @throws ForgeException 不存在、未确认或跨租户为 {@link StorageErrorCode#OBJECT_NOT_FOUND}；用途不同为
+     *     {@link StorageErrorCode#PURPOSE_MISMATCH}
+     */
+    public DownloadTicket prepareDownload(StoragePurpose purpose, UUID objectId) {
+        return prepareDownload(requirePurpose(purpose, objectId), purpose.downloadUrlTtl());
+    }
+
+    /**
      * 签发下载 URL。
+     *
+     * @deprecated 工单 02 迁移调用方后删除，改用带 StoragePurpose 的入口
      *
      * @param objectId 对象 ID
      * @return 下载凭证
      * @throws ForgeException 对象不存在、未确认上传或属于其他租户时为 {@link StorageErrorCode#OBJECT_NOT_FOUND}
      */
+    @Deprecated(forRemoval = true)
     public DownloadTicket prepareDownload(UUID objectId) {
-        StorageObjectRecord object = requireStored(objectId);
+        return prepareDownload(requireStored(objectId), properties.downloadUrlTtl());
+    }
+
+    private DownloadTicket prepareDownload(StorageObjectRecord object, Duration ttl) {
+        UUID objectId = object.id();
         // 登记已按租户隔离；再核对一次前缀，签名的 key 绝不会落在当前租户之外
         if (!object.objectKey().startsWith(prefix(CurrentTenant.require()))) {
             throw notFound(objectId);
         }
-        OffsetDateTime expiresAt = OffsetDateTime.now(clock).plus(properties.downloadUrlTtl());
-        PresignedGetObjectRequest presigned =
-                presigner.presignGetObject(request -> request.signatureDuration(properties.downloadUrlTtl())
-                        .getObjectRequest(get -> get.bucket(properties.bucket())
-                                .key(object.objectKey())
-                                .responseContentType(object.contentType())
-                                .responseContentDisposition(contentDisposition(object.filename()))));
+        OffsetDateTime expiresAt = OffsetDateTime.now(clock).plus(ttl);
+        PresignedGetObjectRequest presigned = presigner.presignGetObject(request -> request.signatureDuration(ttl)
+                .getObjectRequest(get -> get.bucket(properties.bucket())
+                        .key(object.objectKey())
+                        .responseContentType(object.contentType())
+                        .responseContentDisposition(contentDisposition(object.filename()))));
         return new DownloadTicket(URI.create(presigned.url().toString()), expiresAt);
     }
 
@@ -309,6 +398,16 @@ public class ObjectStorage {
         return new StorageUsage(mapper.usedBytes(OffsetDateTime.now(clock), null), mapper.quota());
     }
 
+    private StorageObjectRecord requirePurpose(StoragePurpose purpose, UUID objectId) {
+        Objects.requireNonNull(purpose, "purpose");
+        StorageObjectRecord object = requireStored(objectId);
+        // 先查当前租户，跨租户时不能泄露该对象存在或用途信息。
+        if (!purpose.code().equals(object.purpose())) {
+            throw new ForgeException(StorageErrorCode.PURPOSE_MISMATCH);
+        }
+        return object;
+    }
+
     private StorageObjectRecord requireStored(UUID objectId) {
         StorageObjectRecord object = mapper.findById(objectId);
         if (object == null || !object.stored()) {
@@ -319,6 +418,19 @@ public class ObjectStorage {
 
     private String prefix(UUID tenantId) {
         return tenantId + "/" + service + "/";
+    }
+
+    private static void requireFile(StoragePurpose purpose, String filename, long size) {
+        Objects.requireNonNull(purpose, "purpose");
+        requireName(filename, "filename");
+        int dot = filename.lastIndexOf('.');
+        if (dot < 0
+                || !purpose.extensions().contains(filename.substring(dot + 1).toLowerCase(Locale.ROOT))) {
+            throw new ForgeException(StorageErrorCode.EXTENSION_NOT_ALLOWED);
+        }
+        if (size > purpose.maxSize()) {
+            throw new ForgeException(StorageErrorCode.FILE_TOO_LARGE);
+        }
     }
 
     private static void requireName(String value, String field) {

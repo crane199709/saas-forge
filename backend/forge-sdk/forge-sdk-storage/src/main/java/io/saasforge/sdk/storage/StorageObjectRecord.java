@@ -12,6 +12,7 @@ import java.util.UUID;
 record StorageObjectRecord(
         UUID id,
         String objectKey,
+        String purpose,
         String filename,
         String contentType,
         long size,
