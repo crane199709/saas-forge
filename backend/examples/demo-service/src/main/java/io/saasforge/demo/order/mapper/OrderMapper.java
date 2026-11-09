@@ -25,6 +25,19 @@ public interface OrderMapper extends BaseMapper<Order> {
     List<Order> selectPage(
             @Param("sorts") List<OrderSort> sorts, @Param("limit") int limit, @Param("offset") long offset);
 
+    /** 分页查询已删除订单；排序白名单与普通列表一致，租户与 Data Policy 条件由 SDK 注入。 */
+    List<Order> selectDeletedPage(
+            @Param("sorts") List<OrderSort> sorts, @Param("limit") int limit, @Param("offset") long offset);
+
+    /** 统计当前租户中当前成员数据范围内的已删除订单，租户与 Data Policy 条件由 SDK 注入。 */
+    long countDeleted();
+
+    /** 锁住当前租户中当前成员可恢复的已删除订单，与删除 UPDATE 共用行锁；租户与 Data Policy 由 SDK 注入。 */
+    Order selectDeletedForUpdate(@Param("id") UUID id);
+
+    /** 恢复已删除订单并刷新审计列；租户与 Data Policy 由 SDK 注入，条件更新防止重复恢复。 */
+    int restoreDeleted(@Param("id") UUID id, @Param("actorId") UUID actorId);
+
     /** 条件关闭未支付订单，重复调用不刷新审计列；租户和 Data Policy 由 SDK 注入。 */
     int closeUnpaid(@Param("id") UUID id, @Param("actor") UUID actor);
 
