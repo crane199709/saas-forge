@@ -1,6 +1,7 @@
 package io.saasforge.iam.role.mapper;
 
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
+import io.saasforge.iam.role.model.MembershipCodeRow;
 import io.saasforge.iam.role.model.RolePermissionRow;
 import java.util.Collection;
 import java.util.List;
@@ -18,6 +19,9 @@ public interface RolePermissionMapper {
 
     /** Membership 经未删除角色获得的有效权限码，多个角色取并集，按编码排序；超出 Plan 的由调用方过滤。 */
     List<String> grantedCodes(@Param("membershipId") UUID membershipId);
+
+    /** 持有该角色的 Membership 经其他未删除角色获得的有效权限码；超出 Plan 的由调用方过滤。 */
+    List<MembershipCodeRow> grantedByOtherRoles(@Param("roleId") UUID roleId);
 
     /** 授予给定编码中 active 的权限码，已授予的不变，返回新增行数。 */
     int grant(@Param("roleId") UUID roleId, @Param("codes") Collection<String> codes);

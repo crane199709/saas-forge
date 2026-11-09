@@ -4,9 +4,11 @@ import io.saasforge.iam.membership.mapper.MembershipMapper;
 import io.saasforge.iam.membership.model.Invitation;
 import io.saasforge.iam.membership.model.Member;
 import io.saasforge.iam.membership.model.MemberContactRow;
+import io.saasforge.iam.membership.model.MemberRow;
 import io.saasforge.iam.membership.model.MembershipChange;
 import io.saasforge.iam.membership.model.MembershipStatus;
 import io.saasforge.sdk.core.UuidV7;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -103,8 +105,15 @@ public class MembershipService {
     /** 一页未离开的成员，按 Membership 标识（UUIDv7，即大致的创建顺序）排序。 */
     public List<Member> page(UUID tenantId, long offset, int limit) {
         return memberships.page(tenantId, offset, limit).stream()
-                .map(row -> new Member(
-                        row.membershipId(), row.account(), row.displayName(), row.status(), parse(row.attributes())))
+                .map(this::toMember)
+                .toList();
+    }
+
+    /** 给定标识中租户内未离开的成员，按 Membership 标识排序。 */
+    public List<Member> findAll(UUID tenantId, Collection<UUID> membershipIds) {
+        if (membershipIds.isEmpty()) return List.of();
+        return memberships.findAll(tenantId, membershipIds).stream()
+                .map(this::toMember)
                 .toList();
     }
 
@@ -132,6 +141,10 @@ public class MembershipService {
     /** 属性定义删除后移除各成员的该属性值，返回被修改的 Membership。 */
     public List<UUID> removeAttribute(UUID tenantId, String code, UUID actor) {
         return memberships.removeAttribute(tenantId, code, actor);
+    }
+
+    private Member toMember(MemberRow row) {
+        return new Member(row.membershipId(), row.account(), row.displayName(), row.status(), parse(row.attributes()));
     }
 
     private Map<String, Object> parse(String value) {

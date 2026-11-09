@@ -10,7 +10,9 @@ import io.saasforge.iam.role.model.DataResourceOption;
 import io.saasforge.iam.role.model.MemberRoles;
 import io.saasforge.iam.role.model.PermissionTreeResponse;
 import io.saasforge.iam.role.model.PolicyPreview;
+import io.saasforge.iam.role.model.RoleDataPolicyImpactResponse;
 import io.saasforge.iam.role.model.RoleDetail;
+import io.saasforge.iam.role.model.RolePermissionImpactResponse;
 import io.saasforge.iam.role.service.PermissionTreeService;
 import io.saasforge.iam.role.service.RoleManagementService;
 import io.saasforge.sdk.core.api.ApiResponse;
@@ -134,6 +136,20 @@ class RoleController {
             @AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @RequestBody DataPoliciesRequest request) {
         roles.replaceDataPolicies(TenantActor.of(jwt), id, toPolicies(request.policies()));
         return ApiResponse.ok();
+    }
+
+    @Operation(summary = "预览替换权限码的净影响，不保存：经其他角色仍持有或本来超出 Plan 的权限码不算失去，只统计状态正常的成员")
+    @PostMapping("/{id}/permissions/impact")
+    ApiResponse<RolePermissionImpactResponse> permissionImpact(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @RequestBody PermissionsRequest request) {
+        return ApiResponse.ok(roles.previewPermissions(TenantActor.of(jwt), id, request.permissions()));
+    }
+
+    @Operation(summary = "预览替换 Data Policy 影响的成员，不保存：只返回持有该角色的状态正常的成员，不判断具体数据行的变化")
+    @PostMapping("/{id}/data-policies/impact")
+    ApiResponse<RoleDataPolicyImpactResponse> dataPolicyImpact(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @RequestBody DataPoliciesRequest request) {
+        return ApiResponse.ok(roles.previewDataPolicies(TenantActor.of(jwt), id, toPolicies(request.policies())));
     }
 
     @Operation(summary = "删除自定义角色；预置角色或仍有成员持有时拒绝")

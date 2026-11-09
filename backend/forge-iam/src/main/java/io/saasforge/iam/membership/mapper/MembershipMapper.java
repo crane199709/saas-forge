@@ -7,6 +7,7 @@ import io.saasforge.iam.membership.model.MemberRow;
 import io.saasforge.iam.membership.model.MembershipChange;
 import io.saasforge.iam.membership.model.MembershipStatus;
 import io.saasforge.iam.membership.model.MembershipVersion;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;
@@ -103,6 +104,9 @@ public interface MembershipMapper {
      * 不受 Data Policy 过滤。
      */
     List<MemberRow> page(@Param("tenantId") UUID tenantId, @Param("offset") long offset, @Param("limit") int limit);
+
+    /** 租户内给定标识的未删除、未离开的 Membership 及其 Identity 资料，按 Membership 标识排序；{@code ids} 不能为空。不受 Data Policy 过滤。 */
+    List<MemberRow> findAll(@Param("tenantId") UUID tenantId, @Param("ids") Collection<UUID> ids);
 
     /** 租户内未删除、未离开的 Membership 数量。不受 Data Policy 过滤。 */
     long count(@Param("tenantId") UUID tenantId);

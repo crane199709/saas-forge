@@ -14,6 +14,14 @@
         WHERE mr.membership_id = #{membershipId} AND NOT r.deleted AND p.status = 'active' AND NOT p.deleted
         ORDER BY p.code
     </select>
+    <select id="grantedByOtherRoles" resultType="io.saasforge.iam.role.model.MembershipCodeRow">
+        SELECT DISTINCT mr.membership_id, p.code
+        FROM membership_role target
+        JOIN membership_role mr ON mr.membership_id = target.membership_id AND mr.role_id &lt;&gt; target.role_id
+        JOIN role r ON r.id = mr.role_id
+        JOIN role_permission rp ON rp.role_id = r.id JOIN permission p ON p.id = rp.permission_id
+        WHERE target.role_id = #{roleId} AND NOT r.deleted AND p.status = 'active' AND NOT p.deleted
+    </select>
     <insert id="grant">
         INSERT INTO role_permission (role_id, permission_id)
         SELECT #{roleId}, id FROM permission
