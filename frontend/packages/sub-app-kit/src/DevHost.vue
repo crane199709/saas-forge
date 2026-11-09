@@ -55,13 +55,13 @@ form {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--forge-space-2);
 }
 .dev-host {
-  padding: 8px 16px;
+  padding: var(--forge-space-2) var(--forge-space-4);
   border-bottom: 1px solid var(--el-border-color);
 }
 main {
-  padding: 16px;
+  padding: var(--forge-space-4);
 }
 </style>

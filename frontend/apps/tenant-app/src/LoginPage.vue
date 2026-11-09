@@ -109,9 +109,9 @@ async function retryLogout() {
 
 <template>
   <AuthCard :title="t('auth.title')">
-    <ErrorAlert v-if="error" :tip="error" />
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
     <template v-if="loginFlow.logoutFailed">
-      <ErrorAlert :tip="{ message: t('auth.logoutFailed') }" />
+      <ErrorAlert class="page-error" :tip="{ message: t('auth.logoutFailed') }" />
       <el-button :loading="busy" @click="retryLogout">{{ t('auth.retryLogout') }}</el-button>
     </template>
     <MfaLoginForm
@@ -205,19 +205,31 @@ async function retryLogout() {
 </template>
 
 <style scoped>
+.page-error {
+  margin-bottom: var(--forge-space-3);
+}
+h3 {
+  margin: 0 0 var(--forge-space-2);
+  font-size: var(--forge-font-size-md);
+  font-weight: 600;
+}
 .modes {
   display: flex;
-  gap: 16px;
-  margin: 12px 0;
+  gap: var(--forge-space-2);
+  margin-bottom: var(--forge-space-3);
 }
 .submit-row {
   display: flex;
-  gap: 16px;
   align-items: center;
+  justify-content: space-between;
+}
+.submit-row a {
+  color: var(--el-color-primary);
+  text-decoration: none;
 }
 .code-row {
   display: flex;
-  gap: 8px;
+  gap: var(--forge-space-2);
   width: 100%;
 }
 </style>

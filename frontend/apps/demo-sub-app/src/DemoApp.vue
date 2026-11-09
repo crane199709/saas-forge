@@ -22,13 +22,13 @@ const { t } = useI18n({
 
 <style scoped>
 section {
-  margin-top: 24px;
-  padding: 20px;
+  margin-top: var(--forge-space-5);
+  padding: var(--forge-space-4);
   border: 1px solid var(--forge-color-primary);
-  border-radius: 8px;
+  border-radius: var(--forge-radius-lg);
 }
 .scope-probe {
   border: 7px solid var(--forge-color-primary);
-  padding: 8px;
+  padding: var(--forge-space-2);
 }
 </style>

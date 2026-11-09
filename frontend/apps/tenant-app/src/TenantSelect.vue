@@ -25,11 +25,24 @@ const { t } = useI18n()
 </template>
 
 <style scoped>
+h3 {
+  margin: 0 0 var(--forge-space-2);
+  font-size: var(--forge-font-size-md);
+  font-weight: 600;
+}
+p {
+  margin: 0 0 var(--forge-space-3);
+  color: var(--el-text-color-secondary);
+}
 ul {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--forge-space-2);
+  margin: 0;
   padding: 0;
   list-style: none;
+}
+li .el-button {
+  width: 100%;
 }
 </style>

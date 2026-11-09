@@ -2,6 +2,7 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { createAccessControl, createTenantClient, tenantClientKey } from '@crane199709/sdk'
+import { applyTheme, themeTokens } from '@crane199709/ui'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import { createI18n } from 'vue-i18n'
@@ -46,6 +47,8 @@ export async function startDevHost(options: DevHostOptions) {
   }
   await refresh()
   client.onSessionChange(() => void refresh())
+  // 与 Shell 一样写入版式 token，否则 Sub-App 样式里的 --forge-* 在开发模式下失效。
+  applyTheme(themeTokens.primary)
   createApp(DevHost, { appCode: options.appCode })
     .provide(tenantClientKey, client)
     .use(access)

@@ -58,7 +58,6 @@
 - 间距的节奏：同组元素 `--forge-space-2`，控件组之间 `--forge-space-3`，区块之间 `--forge-space-4`。
 - 文字颜色用 Element Plus 的 `--el-text-color-*`，主内容 regular，辅助说明 secondary，只有区块标题加粗。
 - `packages/ui` 用 `h()` 的内联样式，lint 覆盖不到，同样只写 `var(--forge-*)`。
-- `stylelint.legacy.json` 列出尚未迁移的文件。清单只减不增：改到其中的文件时顺手迁移并从清单删除。
 
 ## 走查清单
 
