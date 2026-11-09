@@ -11,7 +11,5 @@ const roleApi = createPlatformRoleApi(client)
 </script>
 
 <template>
-  <el-card>
-    <OperatorPanel :api="api" :role-api="roleApi" :can-reset-mfa="access.isSuperAdmin()" />
-  </el-card>
+  <OperatorPanel :api="api" :role-api="roleApi" :can-reset-mfa="access.isSuperAdmin()" />
 </template>

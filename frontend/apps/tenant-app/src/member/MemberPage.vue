@@ -2,7 +2,7 @@
 import { inject, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { tenantClientKey, useAccessControl } from '@crane199709/sdk'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, PageHeader, PageToolbar, overlaySize } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import { createOrganizationApi, type Department } from '../organization/org-api'
 import { createRoleApi, type Role } from '../role/role-api'
@@ -129,16 +129,24 @@ async function invite() {
 }
 
 onMounted(() => void load(1))
+
+const statusTag: Record<MemberStatus, 'success' | 'warning' | 'danger' | 'info'> = {
+  active: 'success',
+  invited: 'warning',
+  suspended: 'danger',
+  left: 'info',
+}
 </script>
 
 <template>
-  <section class="members">
-    <h2>{{ t('member.title') }}</h2>
-    <ErrorAlert v-if="error" :tip="error" />
+  <section>
+    <PageHeader :title="t('member.title')" />
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
     <template v-if="loaded">
-      <div class="toolbar">
+      <PageToolbar>
         <el-input
           v-model="keyword"
+          class="keyword"
           :placeholder="t('member.keyword')"
           clearable
           data-testid="member-keyword"
@@ -147,6 +155,7 @@ onMounted(() => void load(1))
         />
         <el-select
           v-model="status"
+          class="status-filter"
           :placeholder="t('member.allStatuses')"
           clearable
           data-testid="member-status-filter"
@@ -160,51 +169,53 @@ onMounted(() => void load(1))
           />
         </el-select>
         <el-button data-testid="member-search" @click="load(1)">{{ t('member.search') }}</el-button>
-        <el-button type="primary" data-testid="member-invite" @click="openInvite">{{
-          t('member.invite')
-        }}</el-button>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>{{ t('member.name') }}</th>
-            <th>{{ t('member.account') }}</th>
-            <th>{{ t('member.contact') }}</th>
-            <th>{{ t('member.statusLabel') }}</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="member in members"
-            :key="member.membershipId"
-            :data-testid="`member-${member.membershipId}`"
-          >
-            <td>
-              {{ member.displayName }}
-              <el-tag v-if="member.owner" size="small">{{ t('member.owner') }}</el-tag>
-            </td>
-            <td>{{ member.account ?? '' }}</td>
-            <td>{{ contactOf(member) }}</td>
-            <td>{{ t(`member.status.${member.status}`) }}</td>
-            <td>
-              <el-button
-                v-for="action in actionsOf(member)"
-                :key="action"
-                link
-                :type="action === 'remove' ? 'danger' : 'primary'"
-                :data-testid="`member-${action}-${member.membershipId}`"
-                @click="pending = { action, member }"
-              >
-                {{ t(`member.actions.${action}`) }}
-              </el-button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        <template #actions>
+          <el-button type="primary" data-testid="member-invite" @click="openInvite">{{
+            t('member.invite')
+          }}</el-button>
+        </template>
+      </PageToolbar>
+      <el-table :data="members" row-key="membershipId">
+        <el-table-column :label="t('member.name')" min-width="180">
+          <template #default="{ row }">
+            <span class="name" :data-testid="`member-${row.membershipId}`">
+              <span>{{ row.displayName }}</span>
+              <el-tag v-if="row.owner" size="small" type="info">{{ t('member.owner') }}</el-tag>
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column :label="t('member.account')" min-width="160" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.account ?? '—' }}</template>
+        </el-table-column>
+        <el-table-column :label="t('member.contact')" min-width="220" show-overflow-tooltip>
+          <template #default="{ row }">{{ contactOf(row as Member) || '—' }}</template>
+        </el-table-column>
+        <el-table-column :label="t('member.statusLabel')" width="96">
+          <template #default="{ row }">
+            <el-tag size="small" :type="statusTag[row.status as MemberStatus]">
+              {{ t(`member.status.${row.status}`) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column :label="t('common.actions')" width="220" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              v-for="action in actionsOf(row as Member)"
+              :key="action"
+              link
+              :type="action === 'remove' ? 'danger' : 'primary'"
+              :data-testid="`member-${action}-${row.membershipId}`"
+              @click="pending = { action, member: row as Member }"
+            >
+              {{ t(`member.actions.${action}`) }}
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
       <el-pagination
         v-if="total > size"
-        layout="prev, pager, next"
+        class="pagination"
+        layout="total, prev, pager, next"
         :current-page="page"
         :page-size="size"
         :total="total"
@@ -214,6 +225,7 @@ onMounted(() => void load(1))
 
     <el-dialog
       :model-value="pending !== null"
+      :width="overlaySize.dialogSm"
       :title="pending ? t(`member.actions.${pending.action}`) : ''"
       @close="pending = null"
     >
@@ -228,7 +240,7 @@ onMounted(() => void load(1))
       </template>
     </el-dialog>
 
-    <el-dialog v-model="inviting" :title="t('member.invite')">
+    <el-dialog v-model="inviting" :width="overlaySize.dialogSm" :title="t('member.invite')">
       <el-form label-position="top" @submit.prevent>
         <el-form-item :label="t('member.inviteContact')">
           <el-input v-model="contact" data-testid="member-invite-contact" />
@@ -273,19 +285,22 @@ onMounted(() => void load(1))
 </template>
 
 <style scoped>
-.toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
+.page-error {
+  margin-bottom: var(--forge-space-3);
 }
-table {
-  width: 100%;
-  border-collapse: collapse;
+.keyword {
+  width: 280px;
 }
-th,
-td {
-  padding: 6px 8px;
-  text-align: left;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+.status-filter {
+  width: 160px;
+}
+.name {
+  display: inline-flex;
+  gap: var(--forge-space-2);
+  align-items: center;
+}
+.pagination {
+  justify-content: flex-end;
+  margin-top: var(--forge-space-4);
 }
 </style>

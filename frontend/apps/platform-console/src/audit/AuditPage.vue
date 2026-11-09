@@ -7,7 +7,5 @@ const api = createAuditApi(usePlatformClient())
 </script>
 
 <template>
-  <el-card>
-    <AuditPanel :api="api" />
-  </el-card>
+  <AuditPanel :api="api" />
 </template>

@@ -42,6 +42,6 @@ applyTheme(themeTokens.primary)
 
 <style scoped>
 .access-failed {
-  margin-bottom: 16px;
+  margin-bottom: var(--forge-space-3);
 }
 </style>

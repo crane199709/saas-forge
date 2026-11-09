@@ -2,12 +2,24 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Page } from '@crane199709/sdk'
-import { ErrorAlert, ListPage, type ErrorTip } from '@crane199709/ui'
+import {
+  ErrorAlert,
+  ListPage,
+  PageHeader,
+  formatDateTime,
+  overlaySize,
+  type ErrorTip,
+} from '@crane199709/ui'
 import { errorTip } from '../error-tip'
 import type { DeadEvent, DeadEventApi, DeadEventStatus, OpsServiceStatus } from './dead-event-api'
 
 const props = defineProps<{ api: DeadEventApi; canManage: boolean }>()
 const { t } = useI18n()
+const statusTag: Record<DeadEventStatus, 'warning' | 'success' | 'info'> = {
+  PENDING: 'warning',
+  REPLAYED: 'success',
+  ABANDONED: 'info',
+}
 const services = ref<OpsServiceStatus[]>([])
 const service = ref('')
 const status = ref<DeadEventStatus>('PENDING')
@@ -110,9 +122,9 @@ onMounted(async () => {
 
 <template>
   <section :aria-label="t('deadEvent.title')">
-    <h2>{{ t('deadEvent.title') }}</h2>
-    <ErrorAlert v-if="error" :tip="error" />
-    <el-alert v-if="done" type="success" :title="done" :closable="false" />
+    <PageHeader :title="t('deadEvent.title')" />
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
+    <el-alert v-if="done" class="page-error" type="success" :title="done" :closable="false" />
     <ListPage
       :page="page"
       :loading="loading"
@@ -150,23 +162,48 @@ onMounted(async () => {
           }}</el-button>
         </el-form>
       </template>
-      <el-table-column prop="topic" :label="t('deadEvent.topic')" min-width="160" />
-      <el-table-column prop="tag" :label="t('deadEvent.tag')" min-width="100" />
-      <el-table-column prop="tenantId" :label="t('deadEvent.tenantId')" min-width="160">
+      <el-table-column
+        prop="topic"
+        :label="t('deadEvent.topic')"
+        min-width="130"
+        show-overflow-tooltip
+      />
+      <el-table-column
+        prop="tag"
+        :label="t('deadEvent.tag')"
+        min-width="80"
+        show-overflow-tooltip
+      />
+      <el-table-column
+        prop="tenantId"
+        :label="t('deadEvent.tenantId')"
+        min-width="140"
+        show-overflow-tooltip
+      >
         <template #default="{ row }">{{ row.tenantId ?? '—' }}</template>
       </el-table-column>
       <el-table-column
         prop="lastError"
         :label="t('deadEvent.lastError')"
-        min-width="220"
+        min-width="200"
         show-overflow-tooltip
       />
-      <el-table-column prop="deliveryAttempt" :label="t('deadEvent.deliveryAttempt')" width="100" />
-      <el-table-column prop="createdAt" :label="t('deadEvent.createdAt')" min-width="190" />
-      <el-table-column prop="status" :label="t('deadEvent.status')" width="100">
-        <template #default="{ row }">{{
-          row.status ? t(`deadEvent.statuses.${row.status}`) : '—'
-        }}</template>
+      <el-table-column
+        prop="deliveryAttempt"
+        :label="t('deadEvent.deliveryAttempt')"
+        width="90"
+        align="right"
+      />
+      <el-table-column :label="t('deadEvent.createdAt')" min-width="170">
+        <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+      </el-table-column>
+      <el-table-column prop="status" :label="t('deadEvent.status')" width="96">
+        <template #default="{ row }">
+          <el-tag v-if="row.status" size="small" :type="statusTag[row.status as DeadEventStatus]">
+            {{ t(`deadEvent.statuses.${row.status}`) }}
+          </el-tag>
+          <template v-else>—</template>
+        </template>
       </el-table-column>
       <el-table-column :label="t('deadEvent.actions')" :width="canManage ? 190 : 80" fixed="right">
         <template #default="{ row }">
@@ -184,7 +221,7 @@ onMounted(async () => {
         </template>
       </el-table-column>
     </ListPage>
-    <el-dialog v-model="viewing" width="min(720px, 92vw)" :title="t('deadEvent.detail')">
+    <el-dialog v-model="viewing" :width="overlaySize.dialogMd" :title="t('deadEvent.detail')">
       <p>{{ detailService }}</p>
       <p v-if="detailLoading" role="status">{{ t('deadEvent.loading') }}</p>
       <ErrorAlert v-if="detailError" :tip="detailError" />
@@ -213,10 +250,10 @@ onMounted(async () => {
           detail.deliveryAttempt
         }}</el-descriptions-item>
         <el-descriptions-item :label="t('deadEvent.createdAt')">{{
-          detail.createdAt
+          formatDateTime(detail.createdAt)
         }}</el-descriptions-item>
         <el-descriptions-item :label="t('deadEvent.resolvedAt')">{{
-          detail.resolvedAt ?? '—'
+          formatDateTime(detail.resolvedAt)
         }}</el-descriptions-item>
         <el-descriptions-item :label="t('deadEvent.reason')">{{
           detail.resolutionReason ?? '—'
@@ -228,7 +265,7 @@ onMounted(async () => {
     </el-dialog>
     <el-dialog
       v-model="confirming"
-      width="min(480px, 92vw)"
+      :width="overlaySize.dialogSm"
       :title="t(`deadEvent.${target?.action ?? 'replay'}`)"
       :close-on-click-modal="!submitting"
       :close-on-press-escape="!submitting"
@@ -261,6 +298,9 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.page-error {
+  margin-bottom: var(--forge-space-3);
+}
 .detail {
   overflow-wrap: anywhere;
   white-space: pre-wrap;
@@ -269,7 +309,7 @@ onMounted(async () => {
   display: flex;
   align-items: flex-end;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--forge-space-3);
 }
 .filters .el-form-item {
   width: 220px;

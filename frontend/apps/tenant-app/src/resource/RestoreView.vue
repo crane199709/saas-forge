@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, PageToolbar, formatDateTime } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 
 interface DeletedRecord {
@@ -66,7 +66,7 @@ async function confirmRestore() {
 
 <template>
   <section :aria-busy="busy">
-    <div class="toolbar">
+    <PageToolbar>
       <el-button-group role="group" :aria-label="t('restore.view')">
         <el-button
           plain
@@ -87,8 +87,8 @@ async function confirmRestore() {
           >{{ t('restore.deleted') }}</el-button
         >
       </el-button-group>
-      <div v-if="!deleted && $slots.actions" class="toolbar-actions"><slot name="actions" /></div>
-    </div>
+      <template v-if="!deleted && $slots.actions" #actions><slot name="actions" /></template>
+    </PageToolbar>
     <slot v-if="!deleted" />
     <template v-else>
       <ErrorAlert v-if="error" :tip="error" />
@@ -97,9 +97,7 @@ async function confirmRestore() {
         <el-table-column prop="name" :label="t('restore.name')" min-width="140" />
         <el-table-column v-if="showCode" prop="code" :label="t('role.list.code')" min-width="140" />
         <el-table-column :label="t('restore.deletedAt')" min-width="180">
-          <template #default="{ row }">{{
-            row.updatedAt ? new Date(row.updatedAt).toLocaleString() : '—'
-          }}</template>
+          <template #default="{ row }">{{ formatDateTime(row.updatedAt) }}</template>
         </el-table-column>
         <el-table-column :label="t('restore.deletedBy')" min-width="160">
           <template #default="{ row }">{{ row.updatedBy ?? t('restore.system') }}</template>
@@ -141,18 +139,3 @@ async function confirmRestore() {
     </el-dialog>
   </section>
 </template>
-
-<style scoped>
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--forge-space-2);
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--forge-space-3);
-}
-.toolbar-actions {
-  display: flex;
-  gap: var(--forge-space-2);
-}
-</style>

@@ -97,7 +97,7 @@ async function submit() {
 <style scoped>
 .code-row {
   display: flex;
-  gap: 8px;
+  gap: var(--forge-space-2);
   width: 100%;
 }
 </style>

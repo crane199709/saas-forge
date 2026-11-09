@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, PageToolbar } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import type { AttributeType, ExtendedAttribute, OrganizationApi } from './org-api'
 
@@ -36,46 +36,21 @@ function create() {
 
 <template>
   <div>
-    <table class="attributes">
-      <tbody>
-        <tr
-          v-for="attribute in attributes"
-          :key="attribute.id"
-          :data-testid="`attribute-${attribute.code}`"
-        >
-          <td>
-            <code>{{ attribute.code }}</code>
-          </td>
-          <td>{{ attribute.name }}</td>
-          <td>{{ t(`org.attribute.types.${attribute.type}`) }}</td>
-          <td>
-            <el-checkbox
-              :model-value="attribute.required"
-              :disabled="busy"
-              :label="t('org.attribute.required')"
-              @update:model-value="
-                (value: string | number | boolean) =>
-                  run(() => api.updateAttribute(attribute.id, attribute.name, value === true))
-              "
-            />
-          </td>
-          <td>
-            <el-button
-              link
-              type="danger"
-              :disabled="busy"
-              @click="run(() => api.deleteAttribute(attribute.id))"
-            >
-              {{ t('org.attribute.delete') }}
-            </el-button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <div class="row">
-      <el-input v-model="form.code" :placeholder="t('org.attribute.code')" maxlength="64" />
-      <el-input v-model="form.name" :placeholder="t('org.attribute.name')" maxlength="120" />
-      <el-select v-model="form.type" :aria-label="t('org.attribute.type')">
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
+    <PageToolbar>
+      <el-input
+        v-model="form.code"
+        class="code-input"
+        :placeholder="t('org.attribute.code')"
+        maxlength="64"
+      />
+      <el-input
+        v-model="form.name"
+        class="name-input"
+        :placeholder="t('org.attribute.name')"
+        maxlength="120"
+      />
+      <el-select v-model="form.type" class="type-input" :aria-label="t('org.attribute.type')">
         <el-option
           v-for="type in types"
           :key="type"
@@ -84,22 +59,66 @@ function create() {
         />
       </el-select>
       <el-checkbox v-model="form.required" :label="t('org.attribute.required')" />
-      <el-button type="primary" :disabled="busy || !form.code || !form.name.trim()" @click="create">
-        {{ t('org.attribute.create') }}
-      </el-button>
-    </div>
-    <ErrorAlert v-if="error" :tip="error" />
+      <template #actions>
+        <el-button
+          type="primary"
+          :disabled="busy || !form.code || !form.name.trim()"
+          @click="create"
+        >
+          {{ t('org.attribute.create') }}
+        </el-button>
+      </template>
+    </PageToolbar>
+    <el-table :data="attributes" row-key="id">
+      <el-table-column :label="t('org.attribute.codeColumn')" min-width="200">
+        <template #default="{ row }">
+          <code :data-testid="`attribute-${row.code}`">{{ row.code }}</code>
+        </template>
+      </el-table-column>
+      <el-table-column prop="name" :label="t('org.attribute.name')" min-width="200" />
+      <el-table-column :label="t('org.attribute.type')" width="120">
+        <template #default="{ row }">{{ t(`org.attribute.types.${row.type}`) }}</template>
+      </el-table-column>
+      <el-table-column :label="t('org.attribute.required')" width="88">
+        <template #default="{ row }">
+          <el-checkbox
+            :model-value="row.required"
+            :disabled="busy"
+            :aria-label="t('org.attribute.required')"
+            @update:model-value="
+              (value: string | number | boolean) =>
+                run(() => api.updateAttribute(row.id, row.name, value === true))
+            "
+          />
+        </template>
+      </el-table-column>
+      <el-table-column :label="t('common.actions')" width="88" fixed="right">
+        <template #default="{ row }">
+          <el-button
+            link
+            type="danger"
+            :disabled="busy"
+            @click="run(() => api.deleteAttribute(row.id))"
+          >
+            {{ t('org.attribute.delete') }}
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
   </div>
 </template>
 
 <style scoped>
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 8px 0;
+.page-error {
+  margin-bottom: var(--forge-space-3);
 }
-.attributes td {
-  padding: 4px 12px 4px 0;
+.code-input {
+  width: 220px;
+}
+.name-input {
+  width: 180px;
+}
+.type-input {
+  width: 120px;
 }
 </style>

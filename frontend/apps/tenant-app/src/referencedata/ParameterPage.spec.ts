@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { createTenantClient, tenantClientKey } from '@crane199709/sdk'
 import { i18n } from '../i18n'
 import ParameterPage from './ParameterPage.vue'
+import { tableRow } from '../test-table'
 
 afterEach(() => {
   sessionStorage.clear()
@@ -75,16 +76,14 @@ async function mountPage(...writes: Response[]) {
 it('列出参数的当前值、默认值与约束', async () => {
   const { wrapper } = await mountPage()
 
-  const row = wrapper.get('[data-testid="parameter-demo-service/order.max-lines"]')
+  const row = tableRow(wrapper, 'parameter-demo-service/order.max-lines')
   expect(row.text()).toContain('订单最大行数')
   expect(row.text()).toContain('80')
   expect(row.text()).toContain('50')
   expect(row.text()).toContain('最小 1')
   expect(row.text()).toContain('最大 200')
   expect(row.text()).toContain('已覆盖')
-  expect(wrapper.get('[data-testid="parameter-demo-service/order.auto-confirm"]').text()).toContain(
-    '否',
-  )
+  expect(tableRow(wrapper, 'parameter-demo-service/order.auto-confirm').text()).toContain('否')
 })
 
 it('覆盖整数参数时按数字提交，完成后重读', async () => {

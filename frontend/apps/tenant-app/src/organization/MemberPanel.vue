@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, overlaySize } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import type {
   Assignment,
@@ -96,62 +96,68 @@ onMounted(() => void load(1))
 
 <template>
   <div>
-    <table class="members">
-      <thead>
-        <tr>
-          <th>{{ t('org.member.name') }}</th>
-          <th>{{ t('org.member.account') }}</th>
-          <th>{{ t('org.member.status') }}</th>
-          <th>{{ t('org.member.primary') }}</th>
-          <th>{{ t('org.member.concurrent') }}</th>
-          <th>{{ t('org.member.positions') }}</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr
-          v-for="member in members"
-          :key="member.membershipId"
-          :data-testid="`member-${member.membershipId}`"
-        >
-          <td>{{ member.displayName }}</td>
-          <td>{{ member.account }}</td>
-          <td>{{ member.status }}</td>
-          <td>
-            {{
-              member.primaryDepartmentId ? names([member.primaryDepartmentId], departmentNames) : ''
-            }}
-          </td>
-          <td>{{ names(member.departmentIds, departmentNames) }}</td>
-          <td>{{ names(member.positionIds, positionNames) }}</td>
-          <td>
-            <el-button
-              link
-              type="primary"
-              :data-testid="`member-edit-${member.membershipId}`"
-              @click="edit(member)"
-            >
-              {{ t('org.member.edit') }}
-            </el-button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
+    <el-table :data="members" row-key="membershipId">
+      <el-table-column :label="t('org.member.name')" min-width="140">
+        <template #default="{ row }">
+          <span :data-testid="`member-${row.membershipId}`">{{ row.displayName }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column
+        prop="account"
+        :label="t('org.member.account')"
+        min-width="180"
+        show-overflow-tooltip
+      />
+      <el-table-column :label="t('org.member.status')" width="96">
+        <template #default="{ row }">
+          <el-tag size="small" :type="row.status === 'active' ? 'success' : 'info'">
+            {{ t(`member.status.${row.status}`) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column :label="t('org.member.primary')" min-width="140" show-overflow-tooltip>
+        <template #default="{ row }">
+          {{ row.primaryDepartmentId ? names([row.primaryDepartmentId], departmentNames) : '—' }}
+        </template>
+      </el-table-column>
+      <el-table-column :label="t('org.member.concurrent')" min-width="140" show-overflow-tooltip>
+        <template #default="{ row }">
+          {{ names(row.departmentIds, departmentNames) || '—' }}
+        </template>
+      </el-table-column>
+      <el-table-column :label="t('org.member.positions')" min-width="140" show-overflow-tooltip>
+        <template #default="{ row }">{{ names(row.positionIds, positionNames) || '—' }}</template>
+      </el-table-column>
+      <el-table-column :label="t('common.actions')" width="88" fixed="right">
+        <template #default="{ row }">
+          <el-button
+            link
+            type="primary"
+            :data-testid="`member-edit-${row.membershipId}`"
+            @click="edit(row as MemberAssignment)"
+          >
+            {{ t('org.member.edit') }}
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
     <el-pagination
       v-if="total > size"
-      layout="prev, pager, next"
+      class="pagination"
+      layout="total, prev, pager, next"
       :current-page="page"
       :page-size="size"
       :total="total"
       @current-change="load"
     />
-    <ErrorAlert v-if="error" :tip="error" />
-    <el-dialog
+    <el-drawer
       :model-value="editing !== null"
+      :size="overlaySize.drawerMd"
       :title="t('org.member.dialog', { name: editing?.displayName ?? '' })"
       @close="editing = null"
     >
-      <el-form label-width="96px">
+      <el-form label-position="top">
         <el-form-item :label="t('org.member.primary')">
           <el-select v-model="draft.primaryDepartmentId" clearable data-testid="assignment-primary">
             <el-option
@@ -216,19 +222,16 @@ onMounted(() => void load(1))
           {{ t('org.member.save') }}
         </el-button>
       </template>
-    </el-dialog>
+    </el-drawer>
   </div>
 </template>
 
 <style scoped>
-.members {
-  width: 100%;
-  border-collapse: collapse;
+.page-error {
+  margin-bottom: var(--forge-space-3);
 }
-.members th,
-.members td {
-  padding: 6px 8px;
-  text-align: left;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+.pagination {
+  justify-content: flex-end;
+  margin-top: var(--forge-space-4);
 }
 </style>

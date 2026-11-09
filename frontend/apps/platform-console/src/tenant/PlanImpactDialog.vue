@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, overlaySize } from '@crane199709/ui'
 import type { PlanImpactPreview } from './tenant-api'
 
 defineProps<{ planName: string; preview: PlanImpactPreview }>()
@@ -12,7 +12,7 @@ const { t } = useI18n()
   <el-dialog
     :model-value="true"
     append-to-body
-    width="560px"
+    :width="overlaySize.dialogMd"
     :title="t('tenant.planImpact.title', { name: planName })"
     @close="$emit('cancel')"
   >
@@ -61,10 +61,13 @@ const { t } = useI18n()
 .warning {
   color: var(--el-color-warning);
 }
+h4 {
+  margin: var(--forge-space-3) 0 var(--forge-space-1);
+}
 .list {
   max-height: 160px;
-  margin: 0 0 8px;
-  padding-left: 20px;
+  margin: 0 0 var(--forge-space-2);
+  padding-left: var(--forge-space-5);
   overflow-y: auto;
 }
 </style>

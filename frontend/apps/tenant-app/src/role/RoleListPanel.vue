@@ -319,7 +319,7 @@ const scopeSummary = (role: Role) =>
           }}</span>
         </template>
       </el-table-column>
-      <el-table-column :label="t('role.list.actions')" width="112" fixed="right">
+      <el-table-column :label="t('common.actions')" width="112" fixed="right">
         <template #default="{ row }">
           <template v-if="!row.builtin">
             <el-button

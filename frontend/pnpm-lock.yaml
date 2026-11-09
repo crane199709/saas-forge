@@ -358,6 +358,9 @@ importers:
       '@crane199709/sdk':
         specifier: workspace:*
         version: link:../sdk
+      '@crane199709/ui':
+        specifier: workspace:*
+        version: link:../ui
       '@module-federation/vite':
         specifier: 1.23.5
         version: 1.23.5(typescript@5.9.3)(vite@8.3.5(@types/node@24.19.2)(jiti@2.4.2))(vue-tsc@3.3.13(typescript@5.9.3))

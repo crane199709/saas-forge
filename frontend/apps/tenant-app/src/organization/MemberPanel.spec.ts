@@ -5,6 +5,7 @@ import { createTenantClient } from '@crane199709/sdk'
 import { i18n } from '../i18n'
 import MemberPanel from './MemberPanel.vue'
 import { createOrganizationApi } from './org-api'
+import { tableRow } from '../test-table'
 
 afterEach(() => {
   sessionStorage.clear()
@@ -52,7 +53,7 @@ it('列出成员的部门与岗位，保存时整体提交分配', async () => {
   })
   await flushPromises()
 
-  const row = wrapper.get('[data-testid="member-m1"]')
+  const row = tableRow(wrapper, 'member-m1')
   expect(row.text()).toContain('Alice')
   expect(row.text()).toContain('研发')
   expect(row.text()).toContain('经理')

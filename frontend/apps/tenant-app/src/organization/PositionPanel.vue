@@ -43,6 +43,18 @@ function create() {
     :disabled="busy"
     @restored="emit('changed')"
   >
+    <template #actions>
+      <el-input
+        v-model="name"
+        class="create-input"
+        :placeholder="t('org.position.name')"
+        maxlength="120"
+      />
+      <el-button type="primary" :disabled="busy || !name.trim()" @click="create">
+        {{ t('org.position.create') }}
+      </el-button>
+    </template>
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
     <div
       v-for="position in positions"
       :key="position.id"
@@ -62,25 +74,30 @@ function create() {
       >
         {{ t('org.position.rename') }}
       </el-button>
-      <el-button type="danger" :disabled="busy" @click="run(() => api.deletePosition(position.id))">
+      <el-button
+        link
+        type="danger"
+        :disabled="busy"
+        @click="run(() => api.deletePosition(position.id))"
+      >
         {{ t('org.position.delete') }}
       </el-button>
     </div>
-    <div class="row">
-      <el-input v-model="name" :placeholder="t('org.position.name')" maxlength="120" />
-      <el-button type="primary" :disabled="busy || !name.trim()" @click="create">
-        {{ t('org.position.create') }}
-      </el-button>
-    </div>
-    <ErrorAlert v-if="error" :tip="error" />
   </RestoreView>
 </template>
 
 <style scoped>
+.page-error {
+  margin-bottom: var(--forge-space-3);
+}
+.create-input {
+  width: 200px;
+}
 .row {
   display: flex;
-  gap: 8px;
-  margin: 8px 0;
+  gap: var(--forge-space-2);
+  align-items: center;
   max-width: 640px;
+  margin-bottom: var(--forge-space-2);
 }
 </style>

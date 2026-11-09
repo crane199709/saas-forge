@@ -22,7 +22,5 @@ onMounted(async () => {
 </script>
 
 <template>
-  <el-card>
-    <PlanPanel :api="api" :sub-apps="subApps" />
-  </el-card>
+  <PlanPanel :api="api" :sub-apps="subApps" />
 </template>

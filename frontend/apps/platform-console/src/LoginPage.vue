@@ -76,8 +76,12 @@ const bound = () =>
     <el-card class="auth-card">
       <section :aria-label="t('auth.title')">
         <h2>{{ t('auth.title') }}</h2>
-        <ErrorAlert v-if="loginFlow.logoutFailed" :tip="{ message: t('auth.logoutFailed') }" />
-        <ErrorAlert v-if="error" :tip="error" />
+        <ErrorAlert
+          v-if="loginFlow.logoutFailed"
+          class="page-error"
+          :tip="{ message: t('auth.logoutFailed') }"
+        />
+        <ErrorAlert v-if="error" class="page-error" :tip="error" />
         <MfaLoginForm
           v-if="step === 'mfa'"
           :busy="busy"
@@ -129,11 +133,31 @@ const bound = () =>
 <style scoped>
 .auth-page {
   display: flex;
+  box-sizing: border-box;
+  align-items: center;
   justify-content: center;
-  padding: 80px 16px;
+  min-height: 100vh;
+  padding: var(--forge-space-4);
+  color: var(--el-text-color-regular);
+  font-size: var(--forge-font-size-sm);
+  background-color: var(--forge-color-page);
 }
 .auth-card {
   width: 100%;
-  max-width: 480px;
+  max-width: 420px;
+}
+h2 {
+  margin: 0 0 var(--forge-space-4);
+  color: var(--el-text-color-primary);
+  font-size: var(--forge-font-size-lg);
+  font-weight: 600;
+}
+.page-error {
+  margin-bottom: var(--forge-space-3);
+}
+h3 {
+  margin: 0 0 var(--forge-space-2);
+  font-size: var(--forge-font-size-md);
+  font-weight: 600;
 }
 </style>

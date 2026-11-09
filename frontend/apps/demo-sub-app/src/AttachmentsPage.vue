@@ -187,7 +187,7 @@ function formatSize(size: number) {
 <style scoped>
 .upload {
   display: flex;
-  gap: 12px;
+  gap: var(--forge-space-3);
   align-items: center;
 }
 .error {

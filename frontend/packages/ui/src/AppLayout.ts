@@ -154,6 +154,8 @@ export const AppLayout = defineComponent({
                     flex: 1,
                     minWidth: 0,
                     padding: 'var(--forge-space-4)',
+                    color: 'var(--el-text-color-regular)',
+                    fontSize: 'var(--forge-font-size-sm)',
                     backgroundColor: 'var(--el-bg-color)',
                     borderRadius: 'var(--forge-radius-lg)',
                     boxShadow: 'var(--forge-shadow-card)',

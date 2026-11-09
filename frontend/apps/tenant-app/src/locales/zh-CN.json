@@ -1,4 +1,5 @@
 {
+  "common": { "actions": "操作" },
   "app": {
     "title": "SaaS Forge 租户端",
     "welcome": "欢迎使用 SaaS Forge 租户端",
@@ -84,6 +85,7 @@
     },
     "attribute": {
       "code": "编码（小写字母开头）",
+      "codeColumn": "编码",
       "name": "名称",
       "type": "类型",
       "required": "必填",
@@ -133,7 +135,6 @@
       "allPermissions": "套餐内全部权限",
       "edit": "编辑",
       "delete": "删除",
-      "actions": "操作",
       "dataScopes": "数据范围",
       "allData": "全部数据"
     },
@@ -318,6 +319,7 @@
       "code": "编码",
       "name": "显示名",
       "sort": "排序",
+      "source": "来源",
       "status": "状态",
       "statuses": {
         "enabled": "启用",
@@ -333,7 +335,7 @@
       "save": "保存",
       "disable": "停用",
       "enable": "启用",
-      "newCode": "编码（保存时自动加 custom. 前缀）",
+      "newCode": "编码",
       "newName": "显示名",
       "create": "新增自定义项",
       "empty": "暂无字典"

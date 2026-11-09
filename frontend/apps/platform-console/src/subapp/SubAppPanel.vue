@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@crane199709/sdk'
-import { ErrorAlert, type ErrorTip } from '@crane199709/ui'
+import { ErrorAlert, PageHeader, overlaySize, type ErrorTip } from '@crane199709/ui'
 import type { SubApp, SubAppApi } from './sub-app-api'
 
 const props = defineProps<{ api: SubAppApi }>()
@@ -107,27 +107,40 @@ onMounted(() => run(fetchApps))
 
 <template>
   <section :aria-label="t('subApp.title')">
-    <header>
-      <h2>{{ t('subApp.title') }}</h2>
-      <el-button type="primary" :loading="busy" data-testid="sub-app-create" @click="open(null)">{{
-        t('subApp.create')
-      }}</el-button>
-    </header>
-    <ErrorAlert v-if="error && !dialogOpen" :tip="error" />
+    <PageHeader :title="t('subApp.title')">
+      <template #actions>
+        <el-button
+          type="primary"
+          :loading="busy"
+          data-testid="sub-app-create"
+          @click="open(null)"
+          >{{ t('subApp.create') }}</el-button
+        >
+      </template>
+    </PageHeader>
+    <ErrorAlert v-if="error && !dialogOpen" class="page-error" :tip="error" />
 
-    <el-table :data="apps" :empty-text="t('subApp.empty')">
-      <el-table-column prop="name" :label="t('subApp.name')" />
-      <el-table-column prop="code" :label="t('subApp.code')" />
-      <el-table-column prop="version" :label="t('subApp.version')" />
-      <el-table-column :label="t('subApp.entries')" min-width="240">
-        <template #default="{ row }">
-          <span class="wrap">{{ describe(row.remoteEntries, '：') }}</span>
-        </template>
+    <el-table :data="apps" row-key="code" :empty-text="t('subApp.empty')">
+      <el-table-column
+        prop="name"
+        :label="t('subApp.name')"
+        min-width="140"
+        show-overflow-tooltip
+      />
+      <el-table-column
+        prop="code"
+        :label="t('subApp.code')"
+        min-width="120"
+        show-overflow-tooltip
+      />
+      <el-table-column prop="version" :label="t('subApp.version')" width="90" />
+      <el-table-column :label="t('subApp.entries')" min-width="240" show-overflow-tooltip>
+        <template #default="{ row }">{{ describe(row.remoteEntries, '：') }}</template>
       </el-table-column>
-      <el-table-column :label="t('subApp.requirements')">
+      <el-table-column :label="t('subApp.requirements')" min-width="180" show-overflow-tooltip>
         <template #default="{ row }">{{ describe(row.sharedRequirements, ' ≥ ') }}</template>
       </el-table-column>
-      <el-table-column :label="t('subApp.actions')">
+      <el-table-column :label="t('subApp.actions')" width="112" fixed="right">
         <template #default="{ row }">
           <el-button
             link
@@ -149,9 +162,9 @@ onMounted(() => run(fetchApps))
       </el-table-column>
     </el-table>
 
-    <el-dialog
+    <el-drawer
       v-model="dialogOpen"
-      width="min(720px, 92vw)"
+      :size="overlaySize.drawerLg"
       :title="editing ? t('subApp.editTitle', { name: editing.name }) : t('subApp.create')"
     >
       <ErrorAlert v-if="error" :tip="error" />
@@ -231,32 +244,27 @@ onMounted(() => run(fetchApps))
           t('subApp.save')
         }}</el-button>
       </el-form>
-    </el-dialog>
+    </el-drawer>
   </section>
 </template>
 
 <style scoped>
-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.wrap {
-  overflow-wrap: anywhere;
+.page-error {
+  margin-bottom: var(--forge-space-3);
 }
 .hint {
-  margin: 4px 0 0;
+  margin: var(--forge-space-1) 0 0;
   color: var(--el-text-color-secondary);
 }
 .rows {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--forge-space-2);
   width: 100%;
 }
 .pair {
   display: flex;
-  gap: 8px;
+  gap: var(--forge-space-2);
 }
 .pair .key {
   flex: 0 0 160px;

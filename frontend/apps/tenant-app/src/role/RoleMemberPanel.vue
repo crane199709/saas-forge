@@ -84,7 +84,7 @@ onMounted(() => void load(1))
           }}</span>
         </template>
       </el-table-column>
-      <el-table-column :label="t('role.list.actions')" width="96" fixed="right">
+      <el-table-column :label="t('common.actions')" width="96" fixed="right">
         <template #default="{ row }">
           <el-button
             link

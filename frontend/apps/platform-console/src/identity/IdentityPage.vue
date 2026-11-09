@@ -7,7 +7,5 @@ const api = createIdentityApi(usePlatformClient())
 </script>
 
 <template>
-  <el-card>
-    <IdentityPanel :api="api" />
-  </el-card>
+  <IdentityPanel :api="api" />
 </template>

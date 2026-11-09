@@ -24,7 +24,5 @@ onMounted(async () => {
 </script>
 
 <template>
-  <el-card>
-    <TenantPanel :api="api" :plans="plans" :can-manage="access.has(permissions.tenantManage)" />
-  </el-card>
+  <TenantPanel :api="api" :plans="plans" :can-manage="access.has(permissions.tenantManage)" />
 </template>

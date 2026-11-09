@@ -70,7 +70,7 @@ function reset() {
 
 <template>
   <AuthCard :title="t('forgot.title')">
-    <ErrorAlert v-if="error" :tip="error" />
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
     <template v-if="done">
       <el-alert type="success" :closable="false" :title="t('forgot.done')" />
     </template>
@@ -156,15 +156,22 @@ function reset() {
 </template>
 
 <style scoped>
+.page-error {
+  margin-bottom: var(--forge-space-3);
+}
 .code-row {
   display: flex;
-  gap: 8px;
+  gap: var(--forge-space-2);
   width: 100%;
 }
 .actions {
-  margin-top: 16px;
+  margin-top: var(--forge-space-4);
 }
 .back {
-  margin-top: 16px;
+  margin: var(--forge-space-4) 0 0;
+}
+.back a {
+  color: var(--el-color-primary);
+  text-decoration: none;
 }
 </style>

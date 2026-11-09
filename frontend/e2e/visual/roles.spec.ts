@@ -1,16 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-
-function ok(data: unknown, page?: unknown) {
-  return {
-    json: {
-      code: 'ok',
-      httpStatus: 200,
-      data,
-      meta: page ? { page } : undefined,
-      traceId: 'visual',
-    },
-  }
-}
+import { ok, onePage, openAsAdmin, viewports } from './support'
 
 const permissions = [
   ['order:read', '查看订单', '订单'],
@@ -106,62 +95,20 @@ const members = [
 }))
 
 async function openRoles(page: Page) {
-  await page.addInitScript(() =>
-    localStorage.setItem(
-      'forge.tenant.session',
-      JSON.stringify({
-        accessToken: 'tenant-access',
-        refreshToken: 'tenant-refresh',
-        membershipId: 'm',
-        tenantId: 't',
-        tenantName: '示例科技有限公司',
-        identityName: '测试成员',
-      }),
-    ),
-  )
-  await page.route('**/iam/**', (route) => {
-    const path = new URL(route.request().url()).pathname
-    if (path === '/iam/auth/access')
-      return route.fulfill(
-        ok({
-          permissions: [
-            'announcement:manage',
-            'iam:member:manage',
-            'iam:org:manage',
-            'iam:role:manage',
-            'iam:audit:read',
-            'iam:reference-data:manage',
-            'iam:security:manage',
-          ],
-          menus: [],
-          subApps: [],
-        }),
-      )
-    if (path === '/iam/auth/memberships')
-      return route.fulfill(
-        ok([{ membershipId: 'm', tenantId: 't', tenantName: '示例科技有限公司' }]),
-      )
-    if (path.endsWith('/unread-count')) return route.fulfill(ok({ count: 3 }))
+  await openAsAdmin(page, '/roles', (path, route) => {
     if (path === '/iam/roles') return route.fulfill(ok(roles))
-    if (path.endsWith('/memberships'))
-      return route.fulfill(
-        ok(members, { number: 1, size: 20, totalElements: members.length, totalPages: 1 }),
-      )
+    if (path.endsWith('/memberships')) return route.fulfill(onePage(members))
     if (path === '/iam/roles/permission-tree')
       return route.fulfill(ok({ menus: [], others: permissions }))
     if (path === '/iam/roles/data-resources') return route.fulfill(ok(dataResources))
     if (path === '/iam/roles/condition-options')
       return route.fulfill(ok({ subject: [], environment: [], departments: [], positions: [] }))
-    return route.fulfill(ok([]))
+    return undefined
   })
-  await page.goto('/roles')
   await expect(page.getByTestId('role-edit-order-viewer')).toBeVisible()
 }
 
-for (const [label, width, height] of [
-  ['desktop', 1440, 900],
-  ['laptop', 1024, 768],
-] as const) {
+for (const [label, width, height] of viewports) {
   test.describe(label, () => {
     test.use({ viewport: { width, height } })
 

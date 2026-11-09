@@ -2,7 +2,7 @@
 import { inject, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { tenantClientKey } from '@crane199709/sdk'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, PageHeader, PageToolbar, formatDateTime } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import { createAuditApi, type AuditEvent } from './audit-api'
 
@@ -58,13 +58,14 @@ onMounted(() => void load(1))
 </script>
 
 <template>
-  <section class="audit">
-    <h2>{{ t('audit.title') }}</h2>
-    <ErrorAlert v-if="error" :tip="error" />
+  <section>
+    <PageHeader :title="t('audit.title')" />
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
     <template v-if="loaded">
-      <div class="toolbar">
+      <PageToolbar>
         <el-date-picker
           v-model="range"
+          class="range"
           type="datetimerange"
           :start-placeholder="t('audit.from')"
           :end-placeholder="t('audit.to')"
@@ -72,61 +73,75 @@ onMounted(() => void load(1))
         />
         <el-input
           v-model="actor"
+          class="filter"
           :placeholder="t('audit.actor')"
           clearable
           data-testid="audit-actor"
         />
         <el-input
           v-model="action"
+          class="filter"
           :placeholder="t('audit.action')"
           clearable
           data-testid="audit-action"
         />
         <el-input
           v-model="resourceType"
+          class="filter"
           :placeholder="t('audit.resourceType')"
           clearable
           data-testid="audit-resource-type"
         />
         <el-input
           v-model="resourceId"
+          class="filter"
           :placeholder="t('audit.resourceId')"
           clearable
           data-testid="audit-resource-id"
         />
-        <el-button data-testid="audit-search" @click="load(1)">{{ t('audit.search') }}</el-button>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>{{ t('audit.time') }}</th>
-            <th>{{ t('audit.categoryLabel') }}</th>
-            <th>{{ t('audit.actor') }}</th>
-            <th>{{ t('audit.action') }}</th>
-            <th>{{ t('audit.resource') }}</th>
-            <th>{{ t('audit.outcomeLabel') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="event in events" :key="event.id" :data-testid="`audit-${event.id}`">
-            <td>{{ new Date(event.occurredAt).toLocaleString() }}</td>
-            <td>{{ t(`audit.category.${event.category}`) }}</td>
-            <td>{{ actorOf(event) }}</td>
-            <td>{{ event.action }}</td>
-            <td>{{ resourceOf(event) }}</td>
-            <td>
-              <el-tag :type="event.outcome === 'success' ? 'success' : 'danger'" size="small">
-                {{ t(`audit.outcome.${event.outcome}`) }}
-              </el-tag>
-              <span v-if="event.errorCode" class="error-code">{{ event.errorCode }}</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-if="events.length === 0">{{ t('audit.empty') }}</p>
+        <el-button type="primary" data-testid="audit-search" @click="load(1)">{{
+          t('audit.search')
+        }}</el-button>
+      </PageToolbar>
+      <el-table :data="events" row-key="id" :empty-text="t('audit.empty')">
+        <el-table-column :label="t('audit.time')" min-width="170">
+          <template #default="{ row }">
+            <span :data-testid="`audit-${row.id}`">{{ formatDateTime(row.occurredAt) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column :label="t('audit.categoryLabel')" width="96">
+          <template #default="{ row }">{{ t(`audit.category.${row.category}`) }}</template>
+        </el-table-column>
+        <el-table-column :label="t('audit.actor')" min-width="150" show-overflow-tooltip>
+          <template #default="{ row }">{{ actorOf(row as AuditEvent) }}</template>
+        </el-table-column>
+        <el-table-column
+          prop="action"
+          :label="t('audit.action')"
+          min-width="150"
+          show-overflow-tooltip
+        />
+        <el-table-column :label="t('audit.resource')" min-width="160" show-overflow-tooltip>
+          <template #default="{ row }">{{ resourceOf(row as AuditEvent) }}</template>
+        </el-table-column>
+        <el-table-column
+          :label="t('audit.outcomeLabel')"
+          width="220"
+          fixed="right"
+          show-overflow-tooltip
+        >
+          <template #default="{ row }">
+            <el-tag :type="row.outcome === 'success' ? 'success' : 'danger'" size="small">
+              {{ t(`audit.outcome.${row.outcome}`) }}
+            </el-tag>
+            <span v-if="row.errorCode" class="error-code">{{ row.errorCode }}</span>
+          </template>
+        </el-table-column>
+      </el-table>
       <el-pagination
         v-if="total > size"
-        layout="prev, pager, next"
+        class="pagination"
+        layout="total, prev, pager, next"
         :current-page="page"
         :page-size="size"
         :total="total"
@@ -137,28 +152,23 @@ onMounted(() => void load(1))
 </template>
 
 <style scoped>
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+.page-error {
+  margin-bottom: var(--forge-space-3);
 }
-.toolbar .el-input {
-  width: 180px;
+.range.el-date-editor {
+  flex: none;
+  width: 360px;
 }
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-th,
-td {
-  padding: 6px 8px;
-  text-align: left;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+.filter {
+  width: 160px;
 }
 .error-code {
-  margin-left: 6px;
+  margin-left: var(--forge-space-2);
   color: var(--el-text-color-secondary);
-  font-size: 12px;
+  font-size: var(--forge-font-size-xs);
+}
+.pagination {
+  justify-content: flex-end;
+  margin-top: var(--forge-space-4);
 }
 </style>

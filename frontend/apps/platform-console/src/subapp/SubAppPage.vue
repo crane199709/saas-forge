@@ -7,7 +7,5 @@ const api = createSubAppApi(usePlatformClient())
 </script>
 
 <template>
-  <el-card>
-    <SubAppPanel :api="api" />
-  </el-card>
+  <SubAppPanel :api="api" />
 </template>

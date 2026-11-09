@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { tenantClientKey, type InvitationPreview } from '@crane199709/sdk'
 import { ErrorAlert } from '@crane199709/ui'
+import AuthCard from '../AuthCard.vue'
 import { errorTip, type ErrorTip } from '../error-tip'
 
 const { t } = useI18n()
@@ -52,9 +53,8 @@ async function accept() {
 </script>
 
 <template>
-  <section class="invitation" :aria-label="t('invitation.title')">
-    <h2>{{ t('invitation.title') }}</h2>
-    <ErrorAlert v-if="error" :tip="error" />
+  <AuthCard :title="t('invitation.title')">
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
     <p v-if="accepted" data-testid="invitation-accepted">
       {{ t('invitation.accepted', { tenant: preview?.tenantName }) }}
     </p>
@@ -93,11 +93,11 @@ async function accept() {
         t('invitation.accept')
       }}</el-button>
     </el-form>
-  </section>
+  </AuthCard>
 </template>
 
 <style scoped>
-.invitation {
-  max-width: 560px;
+.page-error {
+  margin-bottom: var(--forge-space-3);
 }
 </style>

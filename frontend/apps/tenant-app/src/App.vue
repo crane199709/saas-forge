@@ -96,17 +96,17 @@ applyTheme(themeTokens.primary)
 
   :deep(.shell-header) {
     height: auto;
-    min-height: 60px;
+    min-height: 56px;
     flex-wrap: wrap;
-    gap: 12px;
-    padding: 12px 20px;
+    gap: var(--forge-space-3);
+    padding: var(--forge-space-3) var(--forge-space-4);
   }
   :deep(.brand) {
     white-space: nowrap;
   }
   :deep(.shell-actions) {
     flex-wrap: wrap;
-    gap: 8px !important;
+    gap: var(--forge-space-2) !important;
     max-width: 100%;
   }
   :deep(.tenant-switcher .el-select) {
