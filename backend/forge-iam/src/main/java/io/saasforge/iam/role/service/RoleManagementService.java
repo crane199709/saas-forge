@@ -12,14 +12,18 @@ import io.saasforge.iam.permission.service.PermissionService;
 import io.saasforge.iam.role.mapper.RoleDataPolicyMapper;
 import io.saasforge.iam.role.mapper.RoleMapper;
 import io.saasforge.iam.role.mapper.RolePermissionMapper;
+import io.saasforge.iam.role.model.AffectedMember;
 import io.saasforge.iam.role.model.ConditionOptions;
 import io.saasforge.iam.role.model.DataPolicy;
 import io.saasforge.iam.role.model.DataResourceOption;
 import io.saasforge.iam.role.model.MemberRoles;
+import io.saasforge.iam.role.model.MembershipCodeRow;
 import io.saasforge.iam.role.model.MembershipRoleRow;
 import io.saasforge.iam.role.model.PolicyPreview;
+import io.saasforge.iam.role.model.RoleDataPolicyImpactResponse;
 import io.saasforge.iam.role.model.RoleDataPolicyRow;
 import io.saasforge.iam.role.model.RoleDetail;
+import io.saasforge.iam.role.model.RolePermissionImpactResponse;
 import io.saasforge.iam.role.model.RolePermissionRow;
 import io.saasforge.iam.role.model.RoleRow;
 import io.saasforge.sdk.audit.AuditCategory;
@@ -32,11 +36,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -51,6 +57,8 @@ import tools.jackson.databind.json.JsonMapper;
  */
 @Service
 public class RoleManagementService {
+    private static final int IMPACT_MEMBER_LIMIT = 20;
+
     private final RoleMapper roles;
     private final RolePermissionMapper grants;
     private final RoleDataPolicyMapper dataPolicies;
@@ -215,6 +223,74 @@ public class RoleManagementService {
         audits.record(audit(actor, "role.permissionsReplace", "role", id)
                 .detail("permissions", sorted(granted))
                 .build());
+    }
+
+    /**
+     * 预览 {@link #replacePermissions} 的净影响，校验与修改相同，不写任何数据。成员经其他角色仍持有，或本来就超出 Plan 而未生效的
+     * 权限码都不算失去。只统计 active 的 Membership；不取租户锁，预览只作提示，与并发修改之间不要求一致。
+     */
+    public RolePermissionImpactResponse previewPermissions(TenantActor actor, UUID id, Collection<String> codes) {
+        requireManager(actor);
+        Set<String> requested = requireGrantable(actor.tenantId(), codes);
+        requireCustom(actor, id);
+        Set<String> grantable = grantableCodes(actor.tenantId());
+        Set<String> current = new HashSet<>();
+        for (RolePermissionRow row : grants.listByTenant(actor.tenantId())) {
+            if (row.roleId().equals(id)) current.add(row.code());
+        }
+        Map<UUID, Set<String>> otherGrants = new HashMap<>();
+        for (MembershipCodeRow row : grants.grantedByOtherRoles(id)) {
+            otherGrants
+                    .computeIfAbsent(row.membershipId(), key -> new HashSet<>())
+                    .add(row.code());
+        }
+        List<UUID> affected = new ArrayList<>();
+        Set<String> lost = new TreeSet<>();
+        activeHolderRoles(actor.tenantId(), id).forEach((membershipId, roleCodes) -> {
+            Set<String> others = otherGrants.getOrDefault(membershipId, Set.of());
+            Set<String> lostByMember =
+                    new HashSet<>(RoleService.effectivePermissions(roleCodes, union(others, current), grantable));
+            lostByMember.removeAll(RoleService.effectivePermissions(roleCodes, union(others, requested), grantable));
+            if (lostByMember.isEmpty()) return;
+            affected.add(membershipId);
+            lost.addAll(lostByMember);
+        });
+        return new RolePermissionImpactResponse(
+                affected.size(), firstMembers(actor.tenantId(), affected), List.copyOf(lost));
+    }
+
+    /** 预览 {@link #replaceDataPolicies} 影响的成员，校验与修改相同，不写任何数据。只列出持有该角色的 active Membership，不判断具体数据行的变化。 */
+    public RoleDataPolicyImpactResponse previewDataPolicies(
+            TenantActor actor, UUID id, Collection<DataPolicy> policies) {
+        requireManager(actor);
+        conditions.requireValid(actor.tenantId(), policies);
+        requireCustom(actor, id);
+        List<UUID> holders = List.copyOf(activeHolderRoles(actor.tenantId(), id).keySet());
+        return new RoleDataPolicyImpactResponse(holders.size(), firstMembers(actor.tenantId(), holders));
+    }
+
+    // 按 Membership 标识保持查询顺序，影响预览的「前 20 名」因此是确定的。
+    private Map<UUID, List<String>> activeHolderRoles(UUID tenantId, UUID roleId) {
+        Map<UUID, List<String>> holders = new LinkedHashMap<>();
+        for (MembershipCodeRow row : roles.activeHolderRoleCodes(tenantId, roleId)) {
+            holders.computeIfAbsent(row.membershipId(), key -> new ArrayList<>())
+                    .add(row.code());
+        }
+        return holders;
+    }
+
+    private List<AffectedMember> firstMembers(UUID tenantId, List<UUID> membershipIds) {
+        return memberships
+                .findAll(tenantId, membershipIds.subList(0, Math.min(IMPACT_MEMBER_LIMIT, membershipIds.size())))
+                .stream()
+                .map(member -> new AffectedMember(member.membershipId(), member.account(), member.displayName()))
+                .toList();
+    }
+
+    private static Set<String> union(Set<String> first, Set<String> second) {
+        Set<String> result = new HashSet<>(first);
+        result.addAll(second);
+        return result;
     }
 
     /** 仍有成员持有时拒绝删除；与成员分配在同一把租户锁下判断，避免删除的同时被分配。 */
