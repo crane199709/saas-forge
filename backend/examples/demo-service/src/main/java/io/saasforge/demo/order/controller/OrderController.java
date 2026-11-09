@@ -47,12 +47,22 @@ class OrderController {
     }
 
     @Operation(summary = "分页列出当前租户中当前成员数据范围内的订单")
-    @GetMapping
+    @GetMapping(params = "deleted!=true")
     @RequiresPermission("order:read")
     ApiResponse<List<OrderResponse>> list(@SortableFields({"createdAt", "amount"}) PageQuery query) {
         List<OrderResponse> items =
                 orderService.list(query).stream().map(OrderResponse::from).toList();
         return ApiResponse.page(items, query.toPageMeta(orderService.count()));
+    }
+
+    @Operation(summary = "分页列出当前租户中当前成员数据范围内的已删除订单")
+    @GetMapping(params = "deleted=true")
+    @RequiresPermission("order:delete")
+    ApiResponse<List<OrderResponse>> listDeleted(@SortableFields({"createdAt", "amount"}) PageQuery query) {
+        List<OrderResponse> items = orderService.listDeleted(query).stream()
+                .map(OrderResponse::from)
+                .toList();
+        return ApiResponse.page(items, query.toPageMeta(orderService.countDeleted()));
     }
 
     @Operation(summary = "读取当前租户的订单")
@@ -88,6 +98,15 @@ class OrderController {
         return ApiResponse.ok();
     }
 
+    @Operation(summary = "恢复当前租户中当前成员数据范围内的已删除订单")
+    @PostMapping("/{id}/restore")
+    @RequiresPermission("order:delete")
+    @AuditLog(action = "order.restore", resourceType = "order", resourceId = "#id")
+    ApiResponse<Void> restore(@PathVariable UUID id) {
+        orderService.restore(id);
+        return ApiResponse.ok();
+    }
+
     /** @param customerSource 客户来源，字典 customer-source 的可选项编码，可不填 */
     record OrderRequest(
             String title,
@@ -100,6 +119,8 @@ class OrderController {
      * @param status 订单状态：unpaid（未支付）、closed（已关闭）
      * @param ownerId 数据归属的 Membership，系统创建的订单为 null
      * @param departmentPath 数据归属部门的路径，归属成员未分配部门时为 null
+     * @param updatedAt 最后更新时间；已删除视图中表示删除时间
+     * @param updatedBy 最后操作人的 Identity ID；系统操作为 null
      */
     record OrderResponse(
             UUID id,
@@ -110,7 +131,9 @@ class OrderController {
             String status,
             UUID ownerId,
             String departmentPath,
-            OffsetDateTime createdAt) {
+            OffsetDateTime createdAt,
+            OffsetDateTime updatedAt,
+            UUID updatedBy) {
         static OrderResponse from(Order order) {
             return new OrderResponse(
                     order.getId(),
@@ -121,7 +144,9 @@ class OrderController {
                     order.getStatus(),
                     order.getOwnerId(),
                     order.getDepartmentPath(),
-                    order.getCreatedAt());
+                    order.getCreatedAt(),
+                    order.getUpdatedAt(),
+                    order.getUpdatedBy());
         }
     }
 }

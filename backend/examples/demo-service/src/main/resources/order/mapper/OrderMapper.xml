@@ -14,6 +14,31 @@
         id
         LIMIT #{limit} OFFSET #{offset}
     </select>
+    <select id="selectDeletedPage" resultType="io.saasforge.demo.order.entity.Order">
+        SELECT id, number, title, amount, customer_source, status, owner_id, department_path, created_at, updated_at, created_by, updated_by, deleted
+        FROM orders
+        WHERE deleted = true
+        ORDER BY
+        <foreach collection="sorts" item="sort">
+            <!-- ${} 白名单：列名由 OrderController 的 @SortableFields 白名单字段经 OrderSort.from 转换，方向取自 PageQuery.Direction 枚举，均不含请求原文 -->
+            ${sort.column} ${sort.direction},
+        </foreach>
+        id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="countDeleted" resultType="long">
+        SELECT COUNT(*) FROM orders WHERE deleted = true
+    </select>
+    <select id="selectDeletedForUpdate" resultType="io.saasforge.demo.order.entity.Order">
+        SELECT id, number, title, amount, customer_source, status, owner_id, department_path, created_at, updated_at, created_by, updated_by, deleted
+        FROM orders
+        WHERE id = #{id} AND deleted = true
+        FOR UPDATE
+    </select>
+    <update id="restoreDeleted">
+        UPDATE orders SET deleted = false, updated_at = CURRENT_TIMESTAMP, updated_by = #{actorId}
+        WHERE id = #{id} AND deleted = true
+    </update>
     <update id="closeUnpaid">
         UPDATE orders SET status = 'closed', updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE id = #{id} AND NOT deleted AND status = 'unpaid'

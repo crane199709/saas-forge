@@ -85,6 +85,10 @@ Restore 由每类资源自行实现。SDK 只提供 `io.saasforge.sdk.core.api.R
 4. 恢复 UPDATE 带目标 ID、当前租户隔离条件和 `deleted = true` 条件，并检查受影响行数；按原有 Data Policy 控制可操作范围。设置 `deleted = false, updated_at = CURRENT_TIMESTAMP, updated_by = #{actorId}`，保留 `created_*`。XML 不触发 SDK 自动填充，`actorId` 从已认证上下文的 `CurrentActorProvider` 取得，无认证上下文时为 NULL，不能从请求体接收。
 5. 在对外入口记录 `@AuditLog(action = "<资源>.restore", ...)`，包含资源 ID 与成功或失败结果；删除时的 `updated_at`、`updated_by` 仅表示最后一次写入，恢复会刷新它们，详细历史由 Audit Event 回答。
 
+可直接参考 demo-service 的 [OrderController](../backend/examples/demo-service/src/main/java/io/saasforge/demo/order/controller/OrderController.java)、[OrderService](../backend/examples/demo-service/src/main/java/io/saasforge/demo/order/service/OrderService.java) 与 [OrderMapper XML](../backend/examples/demo-service/src/main/resources/order/mapper/OrderMapper.xml)：`GET /orders?deleted=true` 使用 `order:delete`，返回相同分页信封和 `updatedAt`、`updatedBy`；普通列表继续使用 `order:read`。`POST /orders/{id}/restore` 使用 `order:delete`，成功返回 HTTP 200，重复恢复、当前租户外或 Data Policy 范围外的 ID 均返回 `order.notFound` / 404。
+
+订单恢复在事务内以 `SELECT ... FOR UPDATE` 锁住已删除行，与删除的条件 UPDATE 共用数据库行锁；专用查询与恢复 UPDATE 都保留 SDK 租户和 Data Policy 拦截。恢复只修改 `deleted` 和 `updated_*`，保留 Business Number、原有归属与业务状态，不重开 Todo 或重发 Notification；只把现有 `orders_number_key` 部分唯一索引的 23505 冲突映射为 `resource.restoreConflict`。公开 HTTP 行为、跨租户、Data Policy、冲突、并发，以及出站审计和通知契约见 [OrderRestoreTest](../backend/examples/demo-service/src/test/java/io/saasforge/demo/OrderRestoreTest.java)。
+
 两种共享错误都用 `new ForgeException(ResourceErrorCode.<枚举值>)` 抛出，不在服务重新声明同一 code；`userTip` 随 `Accept-Language` 查 SDK 文案（默认中文，支持英文）。
 
 | SDK 枚举值 | Error Code / HTTP | 语义与用户处理 |

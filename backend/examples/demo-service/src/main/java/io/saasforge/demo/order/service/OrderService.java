@@ -6,7 +6,9 @@ import io.saasforge.demo.order.mapper.OrderMapper;
 import io.saasforge.demo.order.model.OrderCreated;
 import io.saasforge.demo.order.model.OrderSort;
 import io.saasforge.sdk.abac.data.DataPermission;
+import io.saasforge.sdk.core.CurrentActorProvider;
 import io.saasforge.sdk.core.api.ForgeException;
+import io.saasforge.sdk.core.api.ResourceErrorCode;
 import io.saasforge.sdk.mq.EventPublisher;
 import io.saasforge.sdk.notification.NotificationClient;
 import io.saasforge.sdk.notification.NotificationLink;
@@ -19,12 +21,14 @@ import io.saasforge.sdk.provisioning.TenantDeleted;
 import io.saasforge.sdk.security.TenantContext;
 import io.saasforge.sdk.web.PageQuery;
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,18 +50,21 @@ public class OrderService implements TenantDataCleaner {
     private final DataPermission dataPermission;
     private final BusinessNumbers businessNumbers;
     private final NotificationClient notifications;
+    private final CurrentActorProvider actors;
 
     public OrderService(
             OrderMapper orderMapper,
             EventPublisher eventPublisher,
             DataPermission dataPermission,
             BusinessNumbers businessNumbers,
-            NotificationClient notifications) {
+            NotificationClient notifications,
+            CurrentActorProvider actors) {
         this.orderMapper = orderMapper;
         this.eventPublisher = eventPublisher;
         this.dataPermission = dataPermission;
         this.businessNumbers = businessNumbers;
         this.notifications = notifications;
+        this.actors = actors;
     }
 
     /**
@@ -110,6 +117,15 @@ public class OrderService implements TenantDataCleaner {
         return orderMapper.selectCount(new LambdaQueryWrapper<>());
     }
 
+    public List<Order> listDeleted(PageQuery query) {
+        List<OrderSort> sorts = query.sorts().stream().map(OrderSort::from).toList();
+        return orderMapper.selectDeletedPage(sorts, query.size(), query.offset());
+    }
+
+    public long countDeleted() {
+        return orderMapper.countDeleted();
+    }
+
     public Order get(UUID id) {
         Order order = orderMapper.selectById(id);
         if (order == null) {
@@ -156,6 +172,31 @@ public class OrderService implements TenantDataCleaner {
             throw notFound(id);
         }
         notifications.closeTodo("order:" + id, Instant.now());
+    }
+
+    /**
+     * 只恢复记录可见性，保留 Business Number 与业务状态，不重开 Todo 或重发 Notification。
+     * 锁住目标行，与删除的条件 UPDATE 共用行锁，重复和并发恢复只允许一次生效。
+     */
+    @Transactional
+    public void restore(UUID id) {
+        if (orderMapper.selectDeletedForUpdate(id) == null) {
+            throw notFound(id);
+        }
+        try {
+            if (orderMapper.restoreDeleted(id, actors.currentActor().orElse(null)) == 0) {
+                throw notFound(id);
+            }
+        } catch (DuplicateKeyException conflict) {
+            // 只映射现有编号部分唯一索引；其他约束错误须保留真实故障语义。
+            if (conflict.getMostSpecificCause() instanceof SQLException sql
+                    && "23505".equals(sql.getSQLState())
+                    && sql.getMessage() != null
+                    && sql.getMessage().contains("\"orders_number_key\"")) {
+                throw new ForgeException(ResourceErrorCode.RESTORE_CONFLICT);
+            }
+            throw conflict;
+        }
     }
 
     private static Map<String, Object> attributes(Order order) {
