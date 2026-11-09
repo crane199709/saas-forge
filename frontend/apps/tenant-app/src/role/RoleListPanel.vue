@@ -6,6 +6,7 @@ import { errorTip, type ErrorTip } from '../error-tip'
 import ConditionGroup from './ConditionGroup.vue'
 import ConditionPreview from './ConditionPreview.vue'
 import PermissionTreeEditor from './PermissionTreeEditor.vue'
+import RoleImpactDialog from './RoleImpactDialog.vue'
 import { menuRows } from './permission-selection'
 import {
   emptyGroup,
@@ -19,9 +20,12 @@ import {
   type DataPolicy,
   type DataResource,
   type DataScopeName,
+  type ImpactPreview,
   type PermissionTree,
   type Role,
   type RoleApi,
+  type RoleDataPolicyImpact,
+  type RolePermissionImpact,
 } from './role-api'
 
 const props = defineProps<{
@@ -69,6 +73,8 @@ const draft = ref({
 })
 // 正在预览的数据资源
 const previewing = ref<string | null>(null)
+// 每次打开编辑框或保存时递增，预览返回时据此丢弃已作废的保存
+let saveAttempt = 0
 
 function scopesOf(policies: DataPolicy[]): Scopes {
   const scopes: Record<string, ScopeChoice> = {}
@@ -112,6 +118,7 @@ const incomplete = computed(() =>
 )
 
 function openCreate() {
+  saveAttempt++
   editing.value = null
   previewing.value = null
   draft.value = { code: '', name: '', permissions: [], ...scopesOf([]) }
@@ -119,6 +126,7 @@ function openCreate() {
 }
 
 function openEdit(role: Role) {
+  saveAttempt++
   editing.value = role
   previewing.value = null
   draft.value = {
@@ -145,28 +153,100 @@ async function run(action: () => Promise<unknown>) {
   }
 }
 
-async function save() {
-  const role = editing.value
-  const name = draft.value.name.trim()
-  const policies = policiesOf(draft.value)
+// 提交时的快照：预览期间编辑框仍可操作，确认后保存的必须是预览过的内容。
+interface RoleChange {
+  name: string
+  permissions: string[]
+  policies: DataPolicy[]
+}
+
+// 待确认的修改；只保留需要提示的预览，没有影响的一项不出现在弹窗中。
+const pendingImpact = ref<{
+  role: Role
+  change: RoleChange
+  permissions: ImpactPreview<RolePermissionImpact> | null
+  dataPolicies: ImpactPreview<RoleDataPolicyImpact> | null
+} | null>(null)
+
+const policiesChanged = (role: Role, policies: DataPolicy[]) =>
+  JSON.stringify(policies) !== JSON.stringify(policiesOf(scopesOf(role.dataPolicies)))
+
+const samePermissions = (role: Role, permissions: string[]) =>
+  role.permissions.length === permissions.length &&
+  permissions.every((code) => role.permissions.includes(code))
+
+const previewOf = async <T,>(load: () => Promise<T>): Promise<ImpactPreview<T>> => {
+  try {
+    return { ok: true, value: await load() }
+  } catch (cause) {
+    return { ok: false, tip: errorTip(cause, t) }
+  }
+}
+
+const needsConfirmation = (preview: ImpactPreview<{ affectedCount: number }> | null) =>
+  preview !== null && (!preview.ok || preview.value.affectedCount > 0)
+
+async function commit(role: Role, change: RoleChange) {
   const done = await run(async () => {
-    if (!role) {
-      // 授权与数据范围随新建一次提交，后端同一事务写入
-      await props.api.createRole(
-        draft.value.code.trim(),
-        name,
-        [...new Set(draft.value.permissions)],
-        policies,
-      )
-      return
-    }
-    if (name !== role.name) await props.api.renameRole(role.id, name)
-    await props.api.replacePermissions(role.id, [...new Set(draft.value.permissions)])
+    if (change.name !== role.name) await props.api.renameRole(role.id, change.name)
+    await props.api.replacePermissions(role.id, change.permissions)
     // 数据范围变化会让持有者的 Token 失效，未改动时不提交
-    if (JSON.stringify(policies) !== JSON.stringify(policiesOf(scopesOf(role.dataPolicies))))
-      await props.api.replaceDataPolicies(role.id, policies)
+    if (policiesChanged(role, change.policies))
+      await props.api.replaceDataPolicies(role.id, change.policies)
   })
   if (done) dialogOpen.value = false
+}
+
+async function save() {
+  const role = editing.value
+  const change: RoleChange = {
+    name: draft.value.name.trim(),
+    permissions: [...new Set(draft.value.permissions)],
+    policies: policiesOf(draft.value),
+  }
+  if (!role) {
+    // 授权与数据范围随新建一次提交，后端同一事务写入
+    const done = await run(() =>
+      props.api.createRole(
+        draft.value.code.trim(),
+        change.name,
+        change.permissions,
+        change.policies,
+      ),
+    )
+    if (done) dialogOpen.value = false
+    return
+  }
+  const attempt = ++saveAttempt
+  busy.value = true
+  error.value = null
+  const [permissions, dataPolicies] = await Promise.all([
+    samePermissions(role, change.permissions)
+      ? null
+      : previewOf(() => props.api.permissionImpact(role.id, change.permissions)),
+    policiesChanged(role, change.policies)
+      ? previewOf(() => props.api.dataPolicyImpact(role.id, change.policies))
+      : null,
+  ])
+  busy.value = false
+  // 预览期间用户可能已关闭编辑框或打开了其他角色，这次保存已作废
+  if (attempt !== saveAttempt || !dialogOpen.value) return
+  if (needsConfirmation(permissions) || needsConfirmation(dataPolicies)) {
+    pendingImpact.value = {
+      role,
+      change,
+      permissions: needsConfirmation(permissions) ? permissions : null,
+      dataPolicies: needsConfirmation(dataPolicies) ? dataPolicies : null,
+    }
+    return
+  }
+  await commit(role, change)
+}
+
+function confirmImpact() {
+  const { role, change } = pendingImpact.value!
+  pendingImpact.value = null
+  return commit(role, change)
 }
 
 const summary = (role: Role) =>
@@ -337,6 +417,15 @@ const scopeSummary = (role: Role) =>
         </el-button>
       </template>
     </el-dialog>
+    <RoleImpactDialog
+      v-if="pendingImpact"
+      :role-name="pendingImpact.role.name"
+      :permissions="pendingImpact.permissions"
+      :data-policies="pendingImpact.dataPolicies"
+      :permission-names="names"
+      @confirm="confirmImpact"
+      @cancel="pendingImpact = null"
+    />
   </div>
 </template>
 

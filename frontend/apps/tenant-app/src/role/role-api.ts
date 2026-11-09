@@ -1,4 +1,5 @@
 import type { Page, TenantClient } from '@crane199709/sdk'
+import type { ErrorTip } from '../error-tip'
 
 /** IAM 角色接口的模型，由 tenant-app 维护，不属于通用 SDK。 */
 export interface Role {
@@ -111,6 +112,29 @@ export interface MemberRoles {
   roleIds: string[]
 }
 
+export interface AffectedMember {
+  membershipId: string
+  account: string
+  displayName: string
+}
+
+/** 替换权限码前的净影响；`members` 只含前 20 名。 */
+export interface RolePermissionImpact {
+  /** 净失去至少一个权限码的成员数，0 表示没有影响。 */
+  affectedCount: number
+  members: AffectedMember[]
+  lostPermissions: string[]
+}
+
+/** 替换数据范围前的影响：只列出持有该角色的成员，不判断具体数据行的变化。 */
+export interface RoleDataPolicyImpact {
+  affectedCount: number
+  members: AffectedMember[]
+}
+
+/** 一次影响预览的结果；预览失败不等于没有影响，必须与 `affectedCount` 为 0 区分开。 */
+export type ImpactPreview<T> = { ok: true; value: T } | { ok: false; tip: ErrorTip }
+
 /** 接口已按服务、分组排序，这里按相邻的服务与分组归并，供权限勾选界面分块展示。 */
 export function groupPermissions(permissions: GrantablePermission[]): PermissionGroup[] {
   const groups: PermissionGroup[] = []
@@ -155,6 +179,10 @@ export function createRoleApi(client: Pick<TenantClient, 'api' | 'page'>) {
       send<null>('PUT', `/${id}/permissions`, { permissions }),
     replaceDataPolicies: (id: string, policies: DataPolicy[]) =>
       send<null>('PUT', `/${id}/data-policies`, { policies }),
+    permissionImpact: (id: string, permissions: string[]) =>
+      send<RolePermissionImpact>('POST', `/${id}/permissions/impact`, { permissions }),
+    dataPolicyImpact: (id: string, policies: DataPolicy[]) =>
+      send<RoleDataPolicyImpact>('POST', `/${id}/data-policies/impact`, { policies }),
     deleteRole: (id: string) => send<null>('DELETE', `/${id}`),
     members: (page: number, size: number): Promise<Page<MemberRoles>> =>
       client.page<MemberRoles>(`${base}/memberships?page=${page}&size=${size}`),

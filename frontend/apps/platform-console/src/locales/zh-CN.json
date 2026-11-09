@@ -76,7 +76,18 @@
     "changePlanHint": "降级后超出新套餐的角色授权随即失效但保留记录，升级后恢复；成员数超出上限时不能再邀请新成员。",
     "region": "区域",
     "regionHint": "如 east；平台角色可按区域限定运营人员可见的租户",
-    "noRegion": "未分配"
+    "noRegion": "未分配",
+    "planImpact": {
+      "title": "确认更换为 {name}",
+      "affected": "{count} 名成员会因本次更换失去能力",
+      "overQuota": "当前 {count} 名成员，新套餐上限 {quota} 名，超出 {over} 名",
+      "lostPermissions": "失去的权限码",
+      "lostSubApps": "失去的 Sub-App",
+      "previewFailed": "无法获取影响预览，不代表没有影响。可以取消后重试，或自行判断是否继续更换。",
+      "cancel": "取消",
+      "confirm": "确认更换",
+      "continue": "仍要更换"
+    }
   },
   "plan": {
     "title": "套餐",

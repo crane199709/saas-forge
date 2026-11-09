@@ -1,5 +1,5 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import ElementPlus, { ElSelect } from 'element-plus'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import ElementPlus, { ElDrawer, ElSelect } from 'element-plus'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createPlatformClient } from '@crane199709/sdk'
 import { i18n } from '../i18n'
@@ -244,6 +244,16 @@ it('在详情中更换套餐', async () => {
     .fn()
     .mockResolvedValueOnce(ok([tenant], page))
     .mockResolvedValueOnce(ok(detail))
+    .mockResolvedValueOnce(
+      ok({
+        lostPermissions: [],
+        lostSubApps: [],
+        memberCount: null,
+        memberQuota: null,
+        membersOverQuota: 0,
+        affectedMemberships: 0,
+      }),
+    )
     .mockResolvedValueOnce(ok(upgraded))
     .mockResolvedValueOnce(ok([upgraded.tenant], page))
   vi.stubGlobal('fetch', fetcher)
@@ -262,9 +272,12 @@ it('在详情中更换套餐', async () => {
   drawer.querySelector('form.change-plan')!.dispatchEvent(new Event('submit'))
   await flushPromises()
 
-  expect(path(fetcher.mock.calls[2][0])).toBe('/platform/tenants/t1/plan')
-  expect(fetcher.mock.calls[2][1].method).toBe('PUT')
-  expect(JSON.parse(fetcher.mock.calls[2][1].body)).toEqual({ planId: 'p2' })
+  // 升级没有影响：预览后直接更换，不打断
+  expect(path(fetcher.mock.calls[2][0])).toBe('/platform/tenants/t1/plan/impact?planId=p2')
+  expect(document.querySelector('[data-testid="plan-impact"]')).toBeNull()
+  expect(path(fetcher.mock.calls[3][0])).toBe('/platform/tenants/t1/plan')
+  expect(fetcher.mock.calls[3][1].method).toBe('PUT')
+  expect(JSON.parse(fetcher.mock.calls[3][1].body)).toEqual({ planId: 'p2' })
   expect(drawer.textContent).toContain('专业版')
   expect(wrapper.text()).toContain('专业版')
 })
@@ -319,4 +332,150 @@ it('展示服务端的错误提示', async () => {
 
   expect(wrapper.get('[role="alert"]').text()).toContain('服务暂不可用')
   expect(wrapper.text()).toContain('trace-1')
+})
+
+const downgrade = {
+  lostPermissions: ['order:approve'],
+  lostSubApps: ['demo'],
+  memberCount: 7,
+  memberQuota: 5,
+  membersOverQuota: 2,
+  affectedMemberships: 3,
+}
+
+// 打开详情并选好新套餐后提交；返回抽屉和记录请求的 fetcher，供各用例断言
+async function submitPlanChange(
+  impact: () => Response | Promise<Response>,
+  mounted?: { current: VueWrapper | null },
+) {
+  const detail = { tenant, initializations: [], ...lifecycle }
+  const fetcher = vi.fn().mockImplementation((url: string, init: RequestInit) => {
+    const target = path(url)
+    if (target.includes('/plan/impact')) return Promise.resolve(impact())
+    if (target === '/platform/tenants/t1' || init.method === 'PUT')
+      return Promise.resolve(ok(detail))
+    return Promise.resolve(ok([tenant], page))
+  })
+  vi.stubGlobal('fetch', fetcher)
+  const wrapper = mountPanel()
+  if (mounted) mounted.current = wrapper
+  await flushPromises()
+  await wrapper.get('tbody button').trigger('click')
+  await flushPromises()
+  const drawer = document.body.querySelector('.el-drawer') as HTMLElement
+  const select = wrapper
+    .findAllComponents(ElSelect)
+    .find((item) => item.attributes('data-testid') === 'tenant-change-plan')!
+  select.vm.$emit('update:modelValue', 'p1')
+  await flushPromises()
+  drawer.querySelector('form.change-plan')!.dispatchEvent(new Event('submit'))
+  await flushPromises()
+  return fetcher
+}
+
+const planWrites = (fetcher: ReturnType<typeof vi.fn>) =>
+  fetcher.mock.calls.filter(([, init]) => init?.method === 'PUT')
+
+const planDialog = () => document.querySelector('[data-testid="plan-impact"]')
+
+async function clickPlan(testid: string) {
+  ;(document.querySelector(`[data-testid="${testid}"]`) as HTMLElement).click()
+  await flushPromises()
+}
+
+it('降级有影响时列出失去的权限、Sub-App 与成员差额，确认后才更换', async () => {
+  const fetcher = await submitPlanChange(() => ok(downgrade))
+
+  expect(planWrites(fetcher)).toEqual([])
+  const text = planDialog()!.textContent!
+  expect(document.querySelector('.el-dialog__title')!.textContent).toBe('确认更换为 基础版')
+  expect(text).toContain('order:approve')
+  expect(text).toContain('demo')
+  expect(text).toContain('当前 7 名成员，新套餐上限 5 名，超出 2 名')
+  expect(text).toContain('3 名成员')
+
+  await clickPlan('plan-impact-confirm')
+
+  expect(planWrites(fetcher)).toHaveLength(1)
+  expect(path(planWrites(fetcher)[0]![0])).toBe('/platform/tenants/t1/plan')
+  expect(planDialog()).toBeNull()
+})
+
+it('取消确认时不更换套餐', async () => {
+  const fetcher = await submitPlanChange(() => ok(downgrade))
+
+  await clickPlan('plan-impact-cancel')
+
+  expect(planWrites(fetcher)).toEqual([])
+  expect(planDialog()).toBeNull()
+})
+
+it('只有配额降低且未超出时不打断更换', async () => {
+  const fetcher = await submitPlanChange(() =>
+    ok({
+      lostPermissions: [],
+      lostSubApps: [],
+      memberCount: 3,
+      memberQuota: 5,
+      membersOverQuota: 0,
+      affectedMemberships: 0,
+    }),
+  )
+
+  expect(planDialog()).toBeNull()
+  expect(planWrites(fetcher)).toHaveLength(1)
+})
+
+it('预览返回 503 时提示失败而不是零影响，由用户决定继续更换', async () => {
+  const fetcher = await submitPlanChange(
+    () =>
+      new Response(
+        JSON.stringify({
+          code: 'plan.impactUnavailable',
+          httpStatus: 503,
+          userTip: '暂时无法读取成员数据',
+          traceId: 'trace-plan',
+        }),
+        { status: 503 },
+      ),
+  )
+
+  expect(planWrites(fetcher)).toEqual([])
+  const text = planDialog()!.textContent!
+  expect(text).toContain('无法获取影响预览')
+  expect(text).toContain('暂时无法读取成员数据')
+  expect(text).toContain('trace-plan')
+  expect(text).not.toContain('0 名成员')
+  const confirm = document.querySelector('[data-testid="plan-impact-confirm"]') as HTMLElement
+  expect(confirm.textContent).toContain('仍要更换')
+
+  await clickPlan('plan-impact-confirm')
+
+  expect(planWrites(fetcher)).toHaveLength(1)
+})
+
+it('预览失败时取消不更换套餐', async () => {
+  const fetcher = await submitPlanChange(() => new Response('oops', { status: 500 }))
+
+  await clickPlan('plan-impact-cancel')
+
+  expect(planWrites(fetcher)).toEqual([])
+})
+
+it('等待预览期间关闭详情后，不再弹出确认也不更换', async () => {
+  let resolve!: (response: Response) => void
+  const wrapper = { current: null as VueWrapper | null }
+  const fetcher = await submitPlanChange(
+    () => new Promise<Response>((done) => (resolve = done)),
+    wrapper,
+  )
+  // 测试环境桩掉了 Transition，抽屉的 close 事件要直接触发
+  wrapper.current!.findComponent(ElDrawer).vm.$emit('close')
+  await flushPromises()
+
+  resolve(ok(downgrade))
+  await flushPromises()
+
+  expect(planDialog()).toBeNull()
+  expect(planWrites(fetcher)).toEqual([])
 })

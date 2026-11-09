@@ -147,7 +147,7 @@ it('预置角色不可编辑或删除，自定义角色展示授权名称', () =
 })
 
 it('编辑角色时整体提交勾选的权限码', async () => {
-  const fetcher = vi.fn().mockResolvedValue(ok(null))
+  const fetcher = noImpact()
   const wrapper = mountPanel(fetcher)
 
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
@@ -160,15 +160,15 @@ it('编辑角色时整体提交勾选的权限码', async () => {
   ;(document.querySelector('[data-testid="role-save"]') as HTMLElement).click()
   await flushPromises()
 
-  expect(fetcher).toHaveBeenCalledTimes(1)
-  const [url, init] = fetcher.mock.calls[0]!
+  expect(fetcher).toHaveBeenCalledTimes(2)
+  const [url, init] = fetcher.mock.calls[1]!
   expect(url).toBe(`${location.origin}/iam/roles/r-viewer/permissions`)
   expect(JSON.parse(init.body)).toEqual({ permissions: ['order:approve'] })
   expect(wrapper.emitted('changed')).toHaveLength(1)
 })
 
 it('编辑角色时提交改动后的数据范围，未配置的数据资源不提交', async () => {
-  const fetcher = vi.fn().mockImplementation(() => Promise.resolve(ok(null)))
+  const fetcher = noImpact()
   const wrapper = mountPanel(fetcher)
 
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
@@ -230,7 +230,7 @@ it('新建角色时授权与数据范围一次提交', async () => {
 })
 
 it('自定义条件读回编辑器，修改取值后整体提交表达式树', async () => {
-  const fetcher = vi.fn().mockImplementation(() => Promise.resolve(ok(null)))
+  const fetcher = noImpact()
   const wrapper = mountPanel(fetcher)
   expect(wrapper.get('[data-testid="role-scopes-large-orders"]').text()).toBe('订单：自定义条件')
 
@@ -360,7 +360,7 @@ it('预览以所选成员对样例数据求值并展示命中情况', async () =
 })
 
 it('编辑树中勾选操作自动授予页面，同码页面同步，取消页面移除操作', async () => {
-  const fetcher = vi.fn().mockResolvedValue(ok(null))
+  const fetcher = noImpact()
   const wrapper = mountPanel(fetcher)
   await wrapper.setProps({
     permissionTree: {
@@ -578,4 +578,287 @@ it('角色页从授权树接口加载菜单及功能权限', async () => {
   expect(document.querySelector('[data-testid="perm-order:read"]')?.textContent).toContain(
     '查看订单',
   )
+})
+
+// 影响预览按 URL 区分：/impact 返回给定结果，其余写操作成功
+function impactFetcher(impacts: { permissions?: Response; dataPolicies?: Response }) {
+  return vi.fn().mockImplementation((url: string) => {
+    if (url.endsWith('/permissions/impact')) return Promise.resolve(impacts.permissions!.clone())
+    if (url.endsWith('/data-policies/impact')) return Promise.resolve(impacts.dataPolicies!.clone())
+    return Promise.resolve(ok(null))
+  })
+}
+
+const noImpact = () =>
+  impactFetcher({
+    permissions: ok({ affectedCount: 0, members: [], lostPermissions: [] }),
+    dataPolicies: ok({ affectedCount: 0, members: [] }),
+  })
+
+const writes = (fetcher: ReturnType<typeof vi.fn>) =>
+  fetcher.mock.calls.filter(([, init]) => init.method === 'PUT').map(([url]) => url as string)
+
+const click = async (selector: string) => {
+  ;(document.querySelector(selector) as HTMLElement).click()
+  await flushPromises()
+}
+
+const impactDialog = () => document.querySelector('[data-testid="role-impact"]')
+
+it('权限变更有净影响时列出成员与失去的权限，确认后才提交', async () => {
+  const fetcher = impactFetcher({
+    permissions: ok({
+      affectedCount: 25,
+      members: [{ membershipId: 'm-1', account: 'alice', displayName: 'Alice' }],
+      lostPermissions: ['order:read', 'legacy:code'],
+    }),
+  })
+  const wrapper = mountPanel(fetcher)
+  await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
+  await flushPromises()
+  await click('[data-testid="perm-order:read"] input')
+  await click('[data-testid="role-save"]')
+
+  const [url, init] = fetcher.mock.calls[0]!
+  expect(url).toBe(`${location.origin}/iam/roles/r-viewer/permissions/impact`)
+  expect(init.method).toBe('POST')
+  expect(JSON.parse(init.body)).toEqual({ permissions: [] })
+  expect(writes(fetcher)).toEqual([])
+  expect(impactDialog()!.textContent).toContain('25')
+  expect(impactDialog()!.textContent).toContain('Alice')
+  expect(impactDialog()!.textContent).toContain('alice')
+  expect(impactDialog()!.textContent).toContain('查看订单')
+  // 已下线的权限码没有名称，直接展示编码
+  expect(impactDialog()!.textContent).toContain('legacy:code')
+  // 只返回前 20 名，总数更大时要说明列表不完整
+  expect(impactDialog()!.textContent).toContain('共 25 名')
+
+  await click('[data-testid="role-impact-confirm"]')
+
+  expect(writes(fetcher)).toEqual([`${location.origin}/iam/roles/r-viewer/permissions`])
+  expect(JSON.parse(fetcher.mock.calls.at(-1)![1].body)).toEqual({ permissions: [] })
+  expect(impactDialog()).toBeNull()
+  expect(wrapper.emitted('changed')).toHaveLength(1)
+})
+
+it('取消确认时不提交，编辑框保留已改动的内容', async () => {
+  const fetcher = impactFetcher({
+    permissions: ok({
+      affectedCount: 1,
+      members: [{ membershipId: 'm-1', account: 'alice', displayName: 'Alice' }],
+      lostPermissions: ['order:read'],
+    }),
+  })
+  const wrapper = mountPanel(fetcher)
+  await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
+  await flushPromises()
+  await click('[data-testid="perm-order:read"] input')
+  await click('[data-testid="role-save"]')
+
+  await click('[data-testid="role-impact-cancel"]')
+
+  expect(writes(fetcher)).toEqual([])
+  expect(impactDialog()).toBeNull()
+  const permission = document.querySelector('[data-testid="perm-order:read"] input')
+  expect((permission as HTMLInputElement).checked).toBe(false)
+  expect(wrapper.emitted('changed')).toBeUndefined()
+})
+
+it('权限净影响为 0 时不打断保存；未修改权限和数据范围时不发预览', async () => {
+  const fetcher = impactFetcher({
+    permissions: ok({ affectedCount: 0, members: [], lostPermissions: [] }),
+  })
+  const wrapper = mountPanel(fetcher)
+  await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
+  await flushPromises()
+  await click('[data-testid="perm-order:approve"] input')
+  await click('[data-testid="role-save"]')
+
+  expect(impactDialog()).toBeNull()
+  expect(writes(fetcher)).toEqual([`${location.origin}/iam/roles/r-viewer/permissions`])
+
+  fetcher.mockClear()
+  await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
+  await flushPromises()
+  await click('[data-testid="role-save"]')
+
+  expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+    `${location.origin}/iam/roles/r-viewer/permissions`,
+  ])
+})
+
+it('数据范围变更列出持有者，并说明不判断具体数据行', async () => {
+  const fetcher = impactFetcher({
+    dataPolicies: ok({
+      affectedCount: 1,
+      members: [{ membershipId: 'm-2', account: 'bob', displayName: 'Bob' }],
+    }),
+  })
+  const wrapper = mountPanel(fetcher)
+  await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
+  await flushPromises()
+  await click('[data-testid="scope-order-self"] input')
+  await click('[data-testid="role-save"]')
+
+  const [url, init] = fetcher.mock.calls[0]!
+  expect(url).toBe(`${location.origin}/iam/roles/r-viewer/data-policies/impact`)
+  expect(JSON.parse(init.body)).toEqual({ policies: [{ resource: 'order', scope: 'self' }] })
+  expect(writes(fetcher)).toEqual([])
+  expect(impactDialog()!.textContent).toContain('Bob')
+  expect(impactDialog()!.textContent).toContain('不判断具体数据行的变化')
+
+  await click('[data-testid="role-impact-confirm"]')
+
+  expect(writes(fetcher)).toEqual([
+    `${location.origin}/iam/roles/r-viewer/permissions`,
+    `${location.origin}/iam/roles/r-viewer/data-policies`,
+  ])
+})
+
+it('数据范围变更没有持有者时不打断保存', async () => {
+  const fetcher = impactFetcher({ dataPolicies: ok({ affectedCount: 0, members: [] }) })
+  const wrapper = mountPanel(fetcher)
+  await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
+  await flushPromises()
+  await click('[data-testid="scope-order-self"] input')
+  await click('[data-testid="role-save"]')
+
+  expect(impactDialog()).toBeNull()
+  expect(writes(fetcher)).toContain(`${location.origin}/iam/roles/r-viewer/data-policies`)
+})
+
+function failure() {
+  return new Response(
+    JSON.stringify({
+      code: 'system.unavailable',
+      httpStatus: 503,
+      userTip: '服务暂不可用',
+      traceId: 'trace-preview',
+    }),
+    { status: 503 },
+  )
+}
+
+it('预览失败时明确提示且不显示零影响，由用户决定继续保存', async () => {
+  const fetcher = impactFetcher({ permissions: failure() })
+  const wrapper = mountPanel(fetcher)
+  await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
+  await flushPromises()
+  await click('[data-testid="perm-order:read"] input')
+  await click('[data-testid="role-save"]')
+
+  expect(writes(fetcher)).toEqual([])
+  const text = impactDialog()!.textContent!
+  expect(text).toContain('无法获取影响预览')
+  expect(text).toContain('服务暂不可用')
+  expect(text).toContain('trace-preview')
+  expect(text).not.toContain('0 名成员')
+  const confirm = document.querySelector('[data-testid="role-impact-confirm"]') as HTMLElement
+  expect(confirm.textContent).toContain('仍要保存')
+
+  confirm.click()
+  await flushPromises()
+
+  expect(writes(fetcher)).toEqual([`${location.origin}/iam/roles/r-viewer/permissions`])
+})
+
+it('预览失败时取消不提交', async () => {
+  const fetcher = impactFetcher({ permissions: failure() })
+  const wrapper = mountPanel(fetcher)
+  await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
+  await flushPromises()
+  await click('[data-testid="perm-order:read"] input')
+  await click('[data-testid="role-save"]')
+
+  await click('[data-testid="role-impact-cancel"]')
+
+  expect(writes(fetcher)).toEqual([])
+  expect(wrapper.emitted('changed')).toBeUndefined()
+})
+
+it('数据范围预览失败时仍说明不判断具体数据行，无影响的权限不出现在弹窗中', async () => {
+  const fetcher = impactFetcher({
+    permissions: ok({ affectedCount: 0, members: [], lostPermissions: [] }),
+    dataPolicies: failure(),
+  })
+  const wrapper = mountPanel(fetcher)
+  await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
+  await flushPromises()
+  await click('[data-testid="perm-order:approve"] input')
+  await click('[data-testid="scope-order-self"] input')
+  await click('[data-testid="role-save"]')
+
+  const text = impactDialog()!.textContent!
+  expect(text).toContain('不判断具体数据行的变化')
+  expect(text).toContain('无法获取影响预览')
+  expect(text).not.toContain('权限影响')
+})
+
+// 让预览停在进行中，用于验证等待期间的操作
+function pendingPreview() {
+  let resolve!: (response: Response) => void
+  const preview = new Promise<Response>((done) => (resolve = done))
+  const fetcher = vi.fn().mockImplementation((url: string) => {
+    if (url.endsWith('/permissions/impact')) return preview
+    return Promise.resolve(ok(null))
+  })
+  return { fetcher, resolve }
+}
+
+const lossOfRead = () =>
+  ok({
+    affectedCount: 1,
+    members: [{ membershipId: 'm-1', account: 'alice', displayName: 'Alice' }],
+    lostPermissions: ['order:read'],
+  })
+
+it('确认后提交的是预览时的内容，不含等待预览期间的改动', async () => {
+  const { fetcher, resolve } = pendingPreview()
+  const wrapper = mountPanel(fetcher)
+  await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
+  await flushPromises()
+  await click('[data-testid="perm-order:read"] input')
+  await click('[data-testid="role-save"]')
+  await click('[data-testid="perm-order:approve"] input')
+
+  resolve(lossOfRead())
+  await flushPromises()
+  await click('[data-testid="role-impact-confirm"]')
+
+  expect(JSON.parse(fetcher.mock.calls.at(-1)![1].body)).toEqual({ permissions: [] })
+})
+
+it('等待预览期间关闭编辑框后，不再弹出确认也不提交', async () => {
+  const { fetcher, resolve } = pendingPreview()
+  const wrapper = mountPanel(fetcher)
+  await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
+  await flushPromises()
+  await click('[data-testid="perm-order:read"] input')
+  await click('[data-testid="role-save"]')
+  const footer = document.querySelector('[data-testid="role-save"]')!.parentElement!
+  footer.querySelector('button')!.click()
+  await flushPromises()
+
+  resolve(lossOfRead())
+  await flushPromises()
+
+  expect(impactDialog()).toBeNull()
+  expect(writes(fetcher)).toEqual([])
+})
+
+it('无影响的保存在等待预览期间关闭编辑框后也不提交', async () => {
+  const { fetcher, resolve } = pendingPreview()
+  const wrapper = mountPanel(fetcher)
+  await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
+  await flushPromises()
+  await click('[data-testid="perm-order:approve"] input')
+  await click('[data-testid="role-save"]')
+  const footer = document.querySelector('[data-testid="role-save"]')!.parentElement!
+  footer.querySelector('button')!.click()
+  await flushPromises()
+
+  resolve(ok({ affectedCount: 0, members: [], lostPermissions: [] }))
+  await flushPromises()
+
+  expect(writes(fetcher)).toEqual([])
 })
