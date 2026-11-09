@@ -17,7 +17,7 @@ Status: ready-for-agent
 - 恢复规则因资源而异，由**各资源自行实现**。SDK 只提供统一错误码、列表的“已删除”视图和接入指南。
 - 沿用各资源原有的管理权限；与删除使用同样的锁。
 - 删除时间取 `updated_at`，操作人取 `updated_by`，详细历史由 Audit Event 回答。
-- 名称或编码与现有部分唯一索引冲突时，返回 `resource.restoreConflict`，提示先改名或处理冲突记录。
+- 恢复与现有部分唯一索引冲突时，返回 `resource.restoreConflict`，提示先处理冲突记录。沿用现有唯一性规则：Role 只检查同租户编码，Department、Position 在同租户内允许重名，不额外增加名称冲突限制；不同租户互不构成冲突。
 
 ## 3. 各资源规则
 
