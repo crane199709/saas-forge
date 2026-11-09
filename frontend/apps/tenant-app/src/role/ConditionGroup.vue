@@ -267,18 +267,18 @@ const literalOf = (rule: RuleNode) => {
 .group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--forge-space-2);
   width: 100%;
 }
 .group.nested {
-  padding: 6px 8px;
+  padding: var(--forge-space-2);
   border-left: 2px solid var(--el-border-color);
 }
 .group-head,
 .rule {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--forge-space-2);
   align-items: center;
 }
 .attr {

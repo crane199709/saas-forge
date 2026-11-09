@@ -66,23 +66,28 @@ async function confirmRestore() {
 
 <template>
   <section :aria-busy="busy">
-    <div role="group" :aria-label="t('restore.view')" class="view-switch">
-      <el-button
-        :type="deleted ? 'default' : 'primary'"
-        :aria-pressed="!deleted"
-        :disabled="busy || disabled"
-        data-testid="restore-view-active"
-        @click="changeView(false)"
-        >{{ t('restore.active') }}</el-button
-      >
-      <el-button
-        :type="deleted ? 'primary' : 'default'"
-        :aria-pressed="deleted"
-        :disabled="busy || disabled"
-        data-testid="restore-view-deleted"
-        @click="changeView(true)"
-        >{{ t('restore.deleted') }}</el-button
-      >
+    <div class="toolbar">
+      <el-button-group role="group" :aria-label="t('restore.view')">
+        <el-button
+          plain
+          :type="deleted ? 'default' : 'primary'"
+          :aria-pressed="!deleted"
+          :disabled="busy || disabled"
+          data-testid="restore-view-active"
+          @click="changeView(false)"
+          >{{ t('restore.active') }}</el-button
+        >
+        <el-button
+          plain
+          :type="deleted ? 'primary' : 'default'"
+          :aria-pressed="deleted"
+          :disabled="busy || disabled"
+          data-testid="restore-view-deleted"
+          @click="changeView(true)"
+          >{{ t('restore.deleted') }}</el-button
+        >
+      </el-button-group>
+      <div v-if="!deleted && $slots.actions" class="toolbar-actions"><slot name="actions" /></div>
     </div>
     <slot v-if="!deleted" />
     <template v-else>
@@ -138,7 +143,16 @@ async function confirmRestore() {
 </template>
 
 <style scoped>
-.view-switch {
-  margin-bottom: 16px;
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--forge-space-2);
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--forge-space-3);
+}
+.toolbar-actions {
+  display: flex;
+  gap: var(--forge-space-2);
 }
 </style>

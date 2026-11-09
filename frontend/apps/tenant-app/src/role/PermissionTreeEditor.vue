@@ -84,23 +84,23 @@ const shared = (permission: TreePermission) =>
   width: 100%;
 }
 .section-title {
-  font-weight: 600;
-  margin: 8px 0;
+  margin: var(--forge-space-2) 0;
+  color: var(--el-text-color-regular);
 }
 .permission-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--forge-space-2);
 }
 .action {
-  margin-left: 20px;
+  margin-left: var(--forge-space-5);
 }
 .hint {
   color: var(--el-text-color-secondary);
-  font-size: 12px;
+  font-size: var(--forge-font-size-xs);
 }
 .permission-group {
-  margin-bottom: 8px;
+  margin-bottom: var(--forge-space-2);
 }
 </style>

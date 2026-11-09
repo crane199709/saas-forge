@@ -2,7 +2,7 @@
 import { inject, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { tenantClientKey } from '@crane199709/sdk'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, PageHeader } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import RoleListPanel from './RoleListPanel.vue'
 import RoleMemberPanel from './RoleMemberPanel.vue'
@@ -52,8 +52,8 @@ onMounted(load)
 </script>
 
 <template>
-  <section class="roles">
-    <h2>{{ t('role.title') }}</h2>
+  <section>
+    <PageHeader :title="t('role.title')" />
     <ErrorAlert v-if="error" :tip="error" />
     <el-tabs v-if="loaded" v-model="tab">
       <el-tab-pane :label="t('role.tabs.roles')" name="roles">

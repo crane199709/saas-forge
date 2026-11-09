@@ -59,7 +59,7 @@ it('Owner 不可分配；保存时提交多选的其余角色', async () => {
     attachTo: document.body,
   })
   await flushPromises()
-  expect(wrapper.get('[data-testid="role-member-m1"]').text()).toContain('所有者、订单查看员')
+  expect(wrapper.get('[data-testid="role-member-roles-m1"]').text()).toContain('所有者、订单查看员')
 
   await wrapper.get('[data-testid="role-member-edit-m1"]').trigger('click')
   await flushPromises()

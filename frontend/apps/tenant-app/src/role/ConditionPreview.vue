@@ -178,12 +178,12 @@ const show = (value: unknown) => (Array.isArray(value) ? value.join('、') : Str
 .preview {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--forge-space-2);
   width: 100%;
 }
 .head {
   display: flex;
-  gap: 8px;
+  gap: var(--forge-space-2);
   align-items: center;
 }
 .member {
@@ -194,13 +194,13 @@ const show = (value: unknown) => (Array.isArray(value) ? value.join('、') : Str
 }
 .samples th,
 .samples td {
-  padding: 2px 4px;
+  padding: var(--forge-space-1);
   text-align: left;
 }
 .context {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 2px 12px;
+  gap: var(--forge-space-1) var(--forge-space-3);
   margin: 0;
   color: var(--el-text-color-secondary);
 }

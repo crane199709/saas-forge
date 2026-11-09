@@ -133,6 +133,7 @@
       "allPermissions": "套餐内全部权限",
       "edit": "编辑",
       "delete": "删除",
+      "actions": "操作",
       "dataScopes": "数据范围",
       "allData": "全部数据"
     },

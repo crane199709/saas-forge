@@ -250,8 +250,8 @@ test('角色同名恢复配置可见，已删除角色不会进入成员分配�
   await expect(page.getByTestId('restore-old')).toHaveCount(0)
   await expect(page.getByRole('status')).toHaveText('恢复成功')
   await page.getByRole('button', { name: '未删除', exact: true }).click()
-  await expect(page.getByTestId('role-old-role')).toContainText('查看订单')
-  await expect(page.getByTestId('role-new-role')).toBeVisible()
+  await expect(page.getByTestId('role-permissions-old-role')).toContainText('查看订单')
+  await expect(page.getByTestId('role-edit-new-role')).toBeVisible()
   await page.screenshot({ path: '/tmp/resource-restore-ui-roles.png', fullPage: false })
 })
 

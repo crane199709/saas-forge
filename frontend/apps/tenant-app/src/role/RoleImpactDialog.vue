@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, overlaySize } from '@crane199709/ui'
 import type { ImpactPreview, RoleDataPolicyImpact, RolePermissionImpact } from './role-api'
 
 const props = defineProps<{
@@ -43,7 +43,7 @@ const anyFailed = computed(
   <el-dialog
     :model-value="true"
     append-to-body
-    width="560px"
+    :width="overlaySize.dialogMd"
     :title="t('role.impact.title', { name: roleName })"
     @close="$emit('cancel')"
   >
@@ -99,8 +99,8 @@ const anyFailed = computed(
 <style scoped>
 .list {
   max-height: 160px;
-  margin: 0 0 8px;
-  padding-left: 20px;
+  margin: 0 0 var(--forge-space-2);
+  padding-left: var(--forge-space-5);
   overflow-y: auto;
 }
 .label,

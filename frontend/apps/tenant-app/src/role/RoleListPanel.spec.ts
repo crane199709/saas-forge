@@ -102,13 +102,14 @@ function ok(data: unknown) {
   return new Response(JSON.stringify({ code: 'ok', httpStatus: 200, data, traceId: 't' }))
 }
 
-function mountPanel(fetcher: ReturnType<typeof vi.fn>) {
+// el-table 在列注册后的下一拍才渲染行，取到的 wrapper 须已完成首屏。
+async function mountPanel(fetcher: ReturnType<typeof vi.fn>) {
   vi.stubGlobal('fetch', fetcher)
   sessionStorage.setItem(
     'forge.tenant.session',
     JSON.stringify({ accessToken: 'access', refreshToken: 'r', membershipId: 'admin' }),
   )
-  return mount(RoleListPanel, {
+  const wrapper = mount(RoleListPanel, {
     props: {
       api: createRoleApi(createTenantClient(sessionStorage)),
       roles,
@@ -119,6 +120,8 @@ function mountPanel(fetcher: ReturnType<typeof vi.fn>) {
     global: { plugins: [i18n, ElementPlus] },
     attachTo: document.body,
   })
+  await flushPromises()
+  return wrapper
 }
 
 it('权限码按服务与分组归并', () => {
@@ -135,20 +138,20 @@ it('权限码按服务与分组归并', () => {
   ])
 })
 
-it('预置角色不可编辑或删除，自定义角色展示授权名称', () => {
-  const wrapper = mountPanel(vi.fn())
+it('预置角色不可编辑或删除，自定义角色展示授权名称', async () => {
+  const wrapper = await mountPanel(vi.fn())
 
-  expect(wrapper.get('[data-testid="role-tenant-admin"]').text()).toContain('全部权限')
+  expect(wrapper.get('[data-testid="role-permissions-tenant-admin"]').text()).toContain('全部权限')
   expect(wrapper.find('[data-testid="role-edit-tenant-admin"]').exists()).toBe(false)
   expect(wrapper.find('[data-testid="role-delete-tenant-admin"]').exists()).toBe(false)
-  expect(wrapper.get('[data-testid="role-order-viewer"]').text()).toContain('查看订单')
+  expect(wrapper.get('[data-testid="role-permissions-order-viewer"]').text()).toContain('查看订单')
   expect(wrapper.get('[data-testid="role-scopes-tenant-admin"]').text()).toBe('全部数据')
   expect(wrapper.get('[data-testid="role-scopes-order-viewer"]').text()).toBe('订单：本部门')
 })
 
 it('编辑角色时整体提交勾选的权限码', async () => {
   const fetcher = noImpact()
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
 
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
@@ -169,7 +172,7 @@ it('编辑角色时整体提交勾选的权限码', async () => {
 
 it('编辑角色时提交改动后的数据范围，未配置的数据资源不提交', async () => {
   const fetcher = noImpact()
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
 
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
@@ -195,7 +198,7 @@ it('编辑角色时提交改动后的数据范围，未配置的数据资源不�
 
 it('新建角色时授权与数据范围一次提交', async () => {
   const fetcher = vi.fn().mockImplementation(() => Promise.resolve(ok(roles[1])))
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
 
   await wrapper.get('[data-testid="role-create"]').trigger('click')
   await flushPromises()
@@ -231,7 +234,7 @@ it('新建角色时授权与数据范围一次提交', async () => {
 
 it('自定义条件读回编辑器，修改取值后整体提交表达式树', async () => {
   const fetcher = noImpact()
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   expect(wrapper.get('[data-testid="role-scopes-large-orders"]').text()).toBe('订单：自定义条件')
 
   await wrapper.get('[data-testid="role-edit-large-orders"]').trigger('click')
@@ -283,7 +286,7 @@ it('自定义条件读回编辑器，修改取值后整体提交表达式树', a
 })
 
 it('新选自定义条件时先填完条件才能保存', async () => {
-  const wrapper = mountPanel(vi.fn())
+  const wrapper = await mountPanel(vi.fn())
 
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
@@ -330,7 +333,7 @@ it('预览以所选成员对样例数据求值并展示命中情况', async () =
       ok({ context: { 'subject.departmentPaths': ['a'], 'env.now': 1 }, matches: [true] }),
     )
   })
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
 
   await wrapper.get('[data-testid="role-edit-large-orders"]').trigger('click')
   await flushPromises()
@@ -361,7 +364,7 @@ it('预览以所选成员对样例数据求值并展示命中情况', async () =
 
 it('编辑树中勾选操作自动授予页面，同码页面同步，取消页面移除操作', async () => {
   const fetcher = noImpact()
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   await wrapper.setProps({
     permissionTree: {
       menus: [
@@ -452,7 +455,7 @@ it('编辑树中勾选操作自动授予页面，同码页面同步，取消页�
 
 it('新建角色按分组全选，跨页面共用的页面及操作权限传递联动并去重提交', async () => {
   const fetcher = vi.fn().mockResolvedValue(ok(roles[1]))
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   await wrapper.setProps({
     permissionTree: {
       menus: [
@@ -613,7 +616,7 @@ it('权限变更有净影响时列出成员与失去的权限，确认后才提�
       lostPermissions: ['order:read', 'legacy:code'],
     }),
   })
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
   await click('[data-testid="perm-order:read"] input')
@@ -649,7 +652,7 @@ it('取消确认时不提交，编辑框保留已改动的内容', async () => {
       lostPermissions: ['order:read'],
     }),
   })
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
   await click('[data-testid="perm-order:read"] input')
@@ -668,7 +671,7 @@ it('权限净影响为 0 时不打断保存；未修改权限和数据范围时�
   const fetcher = impactFetcher({
     permissions: ok({ affectedCount: 0, members: [], lostPermissions: [] }),
   })
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
   await click('[data-testid="perm-order:approve"] input')
@@ -694,7 +697,7 @@ it('数据范围变更列出持有者，并说明不判断具体数据行', asyn
       members: [{ membershipId: 'm-2', account: 'bob', displayName: 'Bob' }],
     }),
   })
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
   await click('[data-testid="scope-order-self"] input')
@@ -717,7 +720,7 @@ it('数据范围变更列出持有者，并说明不判断具体数据行', asyn
 
 it('数据范围变更没有持有者时不打断保存', async () => {
   const fetcher = impactFetcher({ dataPolicies: ok({ affectedCount: 0, members: [] }) })
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
   await click('[data-testid="scope-order-self"] input')
@@ -741,7 +744,7 @@ function failure() {
 
 it('预览失败时明确提示且不显示零影响，由用户决定继续保存', async () => {
   const fetcher = impactFetcher({ permissions: failure() })
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
   await click('[data-testid="perm-order:read"] input')
@@ -764,7 +767,7 @@ it('预览失败时明确提示且不显示零影响，由用户决定继续保�
 
 it('预览失败时取消不提交', async () => {
   const fetcher = impactFetcher({ permissions: failure() })
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
   await click('[data-testid="perm-order:read"] input')
@@ -781,7 +784,7 @@ it('数据范围预览失败时仍说明不判断具体数据行，无影响的�
     permissions: ok({ affectedCount: 0, members: [], lostPermissions: [] }),
     dataPolicies: failure(),
   })
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
   await click('[data-testid="perm-order:approve"] input')
@@ -814,7 +817,7 @@ const lossOfRead = () =>
 
 it('确认后提交的是预览时的内容，不含等待预览期间的改动', async () => {
   const { fetcher, resolve } = pendingPreview()
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
   await click('[data-testid="perm-order:read"] input')
@@ -830,7 +833,7 @@ it('确认后提交的是预览时的内容，不含等待预览期间的改动'
 
 it('等待预览期间关闭编辑框后，不再弹出确认也不提交', async () => {
   const { fetcher, resolve } = pendingPreview()
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
   await click('[data-testid="perm-order:read"] input')
@@ -848,7 +851,7 @@ it('等待预览期间关闭编辑框后，不再弹出确认也不提交', asyn
 
 it('无影响的保存在等待预览期间关闭编辑框后也不提交', async () => {
   const { fetcher, resolve } = pendingPreview()
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
   await click('[data-testid="perm-order:approve"] input')
@@ -874,7 +877,7 @@ it('角色已删除视图保留删除信息，确认恢复后移除记录并通�
     expect(url).toBe(`${location.origin}/iam/roles?deleted=true`)
     return ok(restored ? [] : [deletedRole])
   })
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   await wrapper.get('[data-testid="restore-view-deleted"]').trigger('click')
   await flushPromises()
   expect(wrapper.text()).toContain('删除时间')

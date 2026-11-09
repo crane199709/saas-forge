@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, overlaySize } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import RestoreView from '../resource/RestoreView.vue'
 import ConditionGroup from './ConditionGroup.vue'
@@ -276,79 +276,99 @@ const scopeSummary = (role: Role) =>
     show-code
     @restored="emit('changed')"
   >
-    <el-button type="primary" data-testid="role-create" @click="openCreate">
-      {{ t('role.list.create') }}
-    </el-button>
-    <table class="roles">
-      <thead>
-        <tr>
-          <th>{{ t('role.list.name') }}</th>
-          <th>{{ t('role.list.code') }}</th>
-          <th>{{ t('role.list.members') }}</th>
-          <th>{{ t('role.list.permissions') }}</th>
-          <th>{{ t('role.list.dataScopes') }}</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="role in roles" :key="role.id" :data-testid="`role-${role.code}`">
-          <td>
-            {{ role.name }}
-            <el-tag v-if="role.builtin" size="small">{{ t('role.list.builtin') }}</el-tag>
-          </td>
-          <td>{{ role.code }}</td>
-          <td>{{ role.memberCount }}</td>
-          <td>{{ summary(role) }}</td>
-          <td :data-testid="`role-scopes-${role.code}`">{{ scopeSummary(role) }}</td>
-          <td>
-            <template v-if="!role.builtin">
-              <el-button
-                link
-                type="primary"
-                :data-testid="`role-edit-${role.code}`"
-                @click="openEdit(role)"
-              >
-                {{ t('role.list.edit') }}
-              </el-button>
-              <el-button
-                link
-                type="danger"
-                :disabled="busy"
-                :data-testid="`role-delete-${role.code}`"
-                @click="run(() => api.deleteRole(role.id))"
-              >
-                {{ t('role.list.delete') }}
-              </el-button>
-            </template>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <ErrorAlert v-if="error && !dialogOpen" :tip="error" />
-    <el-dialog
+    <template #actions>
+      <el-button type="primary" data-testid="role-create" @click="openCreate">
+        {{ t('role.list.create') }}
+      </el-button>
+    </template>
+    <ErrorAlert v-if="error && !dialogOpen" class="list-error" :tip="error" />
+    <el-table :data="roles" row-key="id">
+      <el-table-column :label="t('role.list.name')" min-width="160">
+        <template #default="{ row }">
+          <span class="role-name">
+            <span class="role-name-text">{{ row.name }}</span>
+            <el-tag v-if="row.builtin" size="small" type="info">
+              {{ t('role.list.builtin') }}
+            </el-tag>
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column
+        prop="code"
+        :label="t('role.list.code')"
+        min-width="140"
+        show-overflow-tooltip
+      />
+      <el-table-column
+        prop="memberCount"
+        :label="t('role.list.members')"
+        width="88"
+        align="right"
+      />
+      <el-table-column :label="t('role.list.permissions')" min-width="200" show-overflow-tooltip>
+        <template #default="{ row }">
+          <span :data-testid="`role-permissions-${row.code}`">{{
+            summary(row as Role) || '—'
+          }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column :label="t('role.list.dataScopes')" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">
+          <span :data-testid="`role-scopes-${row.code}`">{{
+            scopeSummary(row as Role) || '—'
+          }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column :label="t('role.list.actions')" width="112" fixed="right">
+        <template #default="{ row }">
+          <template v-if="!row.builtin">
+            <el-button
+              link
+              type="primary"
+              :data-testid="`role-edit-${row.code}`"
+              @click="openEdit(row as Role)"
+            >
+              {{ t('role.list.edit') }}
+            </el-button>
+            <el-button
+              link
+              type="danger"
+              :disabled="busy"
+              :data-testid="`role-delete-${row.code}`"
+              @click="run(() => api.deleteRole(row.id))"
+            >
+              {{ t('role.list.delete') }}
+            </el-button>
+          </template>
+        </template>
+      </el-table-column>
+    </el-table>
+    <el-drawer
       v-model="dialogOpen"
-      width="820px"
+      :size="overlaySize.drawerLg"
       :title="editing ? t('role.dialog.edit', { name: editing.name }) : t('role.dialog.create')"
     >
-      <el-form label-width="96px">
-        <el-form-item :label="t('role.list.code')">
-          <el-input
-            v-model="draft.code"
-            :disabled="editing !== null"
-            :placeholder="t('role.dialog.codeHint')"
-            maxlength="64"
-            data-testid="role-code"
-          />
-        </el-form-item>
-        <el-form-item :label="t('role.list.name')">
-          <el-input v-model="draft.name" maxlength="120" data-testid="role-name" />
-        </el-form-item>
+      <el-form class="role-form" label-position="top">
+        <div class="basic-fields">
+          <el-form-item :label="t('role.list.code')">
+            <el-input
+              v-model="draft.code"
+              :disabled="editing !== null"
+              :placeholder="t('role.dialog.codeHint')"
+              maxlength="64"
+              data-testid="role-code"
+            />
+          </el-form-item>
+          <el-form-item :label="t('role.list.name')">
+            <el-input v-model="draft.name" maxlength="120" data-testid="role-name" />
+          </el-form-item>
+        </div>
         <el-form-item :label="t('role.list.permissions')">
           <PermissionTreeEditor v-model="draft.permissions" :tree="permissionTree" />
         </el-form-item>
         <el-form-item v-if="dataResources.length > 0" :label="t('role.dialog.dataScopes')">
           <div class="scopes">
-            <div class="group-title">{{ t('role.dialog.dataScopeHint') }}</div>
+            <div class="hint">{{ t('role.dialog.dataScopeHint') }}</div>
             <div v-for="resource in dataResources" :key="resource.code" class="scope-resource">
               <div class="scope-row">
                 <span class="scope-name">{{ resource.name }}</span>
@@ -384,7 +404,7 @@ const scopeSummary = (role: Role) =>
                   root
                 />
                 <div class="condition-actions">
-                  <span v-if="!isComplete(draft.conditions[resource.code]!)" class="group-title">
+                  <span v-if="!isComplete(draft.conditions[resource.code]!)" class="hint">
                     {{ t('role.condition.incomplete') }}
                   </span>
                   <el-button
@@ -423,7 +443,7 @@ const scopeSummary = (role: Role) =>
           {{ t('role.dialog.save') }}
         </el-button>
       </template>
-    </el-dialog>
+    </el-drawer>
     <RoleImpactDialog
       v-if="pendingImpact"
       :role-name="pendingImpact.role.name"
@@ -437,39 +457,59 @@ const scopeSummary = (role: Role) =>
 </template>
 
 <style scoped>
-.roles {
-  width: 100%;
-  margin-top: 12px;
-  border-collapse: collapse;
+.list-error {
+  margin-bottom: var(--forge-space-3);
 }
-.roles th,
-.roles td {
-  padding: 6px 8px;
-  text-align: left;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+.role-name {
+  display: inline-flex;
+  gap: var(--forge-space-2);
+  align-items: center;
+  max-width: 100%;
 }
-.group-title {
+.role-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.role-form :deep(.el-form-item__label) {
+  font-weight: 600;
+}
+.basic-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  column-gap: var(--forge-space-4);
+}
+.hint {
   color: var(--el-text-color-secondary);
+  font-size: var(--forge-font-size-xs);
 }
 .scopes {
-  display: block;
+  width: 100%;
+}
+.scope-resource {
+  padding: var(--forge-space-2) 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 .scope-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: var(--forge-space-3);
+  align-items: start;
 }
 .scope-name {
-  min-width: 64px;
+  line-height: 32px;
 }
 .condition {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin: 4px 0 8px 76px;
+  gap: var(--forge-space-2);
+  margin-top: var(--forge-space-2);
+  padding: var(--forge-space-3);
+  background-color: var(--el-fill-color-lighter);
+  border-radius: var(--forge-radius-md);
 }
 .condition-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--forge-space-2);
 }
 </style>
