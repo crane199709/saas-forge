@@ -97,6 +97,7 @@ final class PlatformTokens {
                 if (authorized) exchange.getResponseBody().write(body);
                 exchange.close();
             });
+            JWKS.createContext("/internal/tenants/", IamPlanImpactFixture::handle);
             JWKS.createContext("/internal/ops", exchange -> {
                 String token = exchange.getRequestHeaders().getFirst("Authorization");
                 int status = "Bearer demo-ops-token".equals(token)

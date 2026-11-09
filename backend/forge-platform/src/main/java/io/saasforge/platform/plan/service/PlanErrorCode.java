@@ -12,7 +12,9 @@ public enum PlanErrorCode implements ErrorCode {
     /** 仍有未清理的租户使用该 Plan。 */
     IN_USE("plan.inUse", 409),
     /** iam 不可用，暂时无法读取权限码目录。 */
-    CATALOG_UNAVAILABLE("plan.catalogUnavailable", 503);
+    CATALOG_UNAVAILABLE("plan.catalogUnavailable", 503),
+    /** iam 不可用，暂时无法统计 Plan 变更对成员的影响。 */
+    IMPACT_UNAVAILABLE("plan.impactUnavailable", 503);
 
     private final String code;
     private final int httpStatus;
