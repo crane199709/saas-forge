@@ -7,10 +7,12 @@ export function useUnreadCount(client: TenantClient) {
   let generation = 0
   let mounted = false
   let timer: ReturnType<typeof setInterval> | undefined
+  let unsubscribeIp: (() => void) | undefined
   let unsubscribe: (() => void) | undefined
   let membership = client.session()?.membershipId
   async function refresh() {
-    if (!mounted || !client.session() || document.visibilityState === 'hidden') return
+    if (!mounted || !client.session() || client.ipDenial() || document.visibilityState === 'hidden')
+      return
     const started = ++generation
     try {
       const [notifications, announcements] = await Promise.all([
@@ -31,12 +33,14 @@ export function useUnreadCount(client: TenantClient) {
   }
   function resume() {
     stop()
-    if (!mounted || !client.session() || document.visibilityState === 'hidden') return
+    if (!mounted || !client.session() || client.ipDenial() || document.visibilityState === 'hidden')
+      return
     void refresh()
     timer = setInterval(() => void refresh(), 60_000)
   }
   onMounted(() => {
     mounted = true
+    unsubscribeIp = client.onIpNotAllowed(stop)
     document.addEventListener('visibilitychange', resume)
     unsubscribe = client.onSessionChange((session) => {
       if (membership === session?.membershipId) return
@@ -51,6 +55,7 @@ export function useUnreadCount(client: TenantClient) {
     mounted = false
     stop()
     unsubscribe?.()
+    unsubscribeIp?.()
     document.removeEventListener('visibilitychange', resume)
   })
   return { count: readonly(count), failed: readonly(failed), refresh }

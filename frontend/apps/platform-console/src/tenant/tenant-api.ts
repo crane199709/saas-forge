@@ -93,6 +93,12 @@ export function createTenantApi(client: Pick<PlatformClient, 'api' | 'page'>) {
     })
 
   return {
+    clearIpAllowlist: (id: string, reason: string) =>
+      client.api<void>(`/iam/platform/tenants/${id}/ip-allowlist/clear`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      }),
     list: (page: number, size: number): Promise<Page<Tenant>> =>
       client.page<Tenant>(`${base}?page=${page}&size=${size}`),
     get: (id: string) => client.api<TenantDetail>(`${base}/${id}`),

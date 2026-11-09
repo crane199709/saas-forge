@@ -65,7 +65,13 @@ applyTheme(themeTokens.primary)
 
 <template>
   <router-view v-if="route.meta.standalone" />
-  <AppLayout v-else :title="t('app.product')" :menu="menu" :active-path="route.path">
+  <AppLayout
+    v-else
+    :class="{ 'security-layout': route.path === '/security-settings' }"
+    :title="t('app.product')"
+    :menu="menu"
+    :active-path="route.path"
+  >
     <template #actions>
       <NotificationBell />
       <TenantSwitcher />
@@ -78,6 +84,16 @@ applyTheme(themeTokens.primary)
 <style scoped>
 /* 铃铛加入顶栏后，窄屏仍须完整显示切换租户和个人菜单。 */
 @media (max-width: 640px) {
+  .security-layout :deep(.shell-aside) {
+    width: 120px !important;
+  }
+  .security-layout :deep(.el-menu-item) {
+    padding: 0 12px;
+  }
+  .security-layout :deep(.el-main) {
+    padding: 12px;
+  }
+
   :deep(.shell-header) {
     height: auto;
     min-height: 60px;

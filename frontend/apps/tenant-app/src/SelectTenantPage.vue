@@ -30,7 +30,9 @@ async function select(membershipId: string) {
     await router.replace(safeRedirect(route.query.redirect))
   } catch (cause) {
     // 登录会话失效时只能重新输入凭证；租户被拒绝时留在选择页。
-    if (cause instanceof ApiError && cause.code === 'auth.mfaRequired') {
+    if (cause instanceof ApiError && cause.code === 'tenant.ipNotAllowed') {
+      await router.replace('/ip-not-allowed')
+    } else if (cause instanceof ApiError && cause.code === 'auth.mfaRequired') {
       bindFor.value = membershipId
     } else if (cause instanceof Error && cause.message === 'auth.failed') {
       loginFlow.memberships = null

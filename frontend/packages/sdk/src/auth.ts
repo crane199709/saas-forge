@@ -65,14 +65,23 @@ export interface TenantMembership {
 /**
  * First Factor 校验通过后的结果：唯一的有效 Membership 自动进入；多个时须调用 `selectTenant`；
  * 没有时应展示无租户页，不会签发 Token。已绑定 Authenticator 时为 `mfa`，须调用 `submitMfa`；
+ * 自动进入被 IP 允许列表拒绝时为 `ipNotAllowed`，仍保留 Membership 选择上下文。
  * 唯一的租户要求 MFA 而本次认证未完成 MFA 时为 `mfaBindRequired`，凭登录会话当场绑定后再 `selectTenant` 该 Membership。
  */
 export type TenantLoginResult =
   | { status: 'signedIn'; session: TenantSession }
   | { status: 'selectTenant'; memberships: TenantMembership[] }
   | { status: 'noTenant' }
+  | { status: 'ipNotAllowed'; memberships: TenantMembership[] }
   | { status: 'mfa' }
   | { status: 'mfaBindRequired'; membershipId: string }
+
+/** 租户 IP 准入拒绝；目标租户被拒不代表当前租户被拒。 */
+export interface TenantIpDenial {
+  error: ApiError
+  currentTenant: boolean
+  membershipId?: string
+}
 
 /** MFA 步骤提交动态码或 Recovery Code，二者恰好一个。 */
 export type MfaFactor = { code: string } | { recoveryCode: string }
@@ -251,26 +260,38 @@ export function createTenantClient(storage: Storage) {
       // 被拒的授权码不能重试；授权参数仍保留，当场绑定后重新 selectTenant 即走一次新的授权码流程。
       if (error instanceof ApiError && error.code === 'auth.mfaRequired')
         return { status: 'mfaBindRequired', membershipId }
+      if (error instanceof ApiError && error.code === 'tenant.ipNotAllowed')
+        return { status: 'ipNotAllowed', memberships }
       throw error
     }
   }
 
   /** 以 `login` 建立的 IAM 登录会话进入指定 Membership 所在租户，签发绑定该租户的 Token。 */
-  function selectTenant(membershipId: string): Promise<TenantSession> {
-    return core.authorize({ membershipId })
+  async function selectTenant(membershipId: string): Promise<TenantSession> {
+    try {
+      return await core.authorize({ membershipId })
+    } catch (error) {
+      core.reportIpDenial(error, false, membershipId)
+      throw error
+    }
   }
 
-  /** 列出当前身份可进入的有效 Membership，供租户切换器使用。 */
+  /** 凭最新 Refresh Token 只读列出有效 Membership；与刷新、切换共锁，不携带当前 Tenant Token 或 Cookie，IP 被拒后仍可使用。 */
   async function memberships(): Promise<TenantMembership[]> {
-    return core.api<TenantMembership[]>(`${tenantRealm.authPath}/memberships`)
+    return core.withRefreshToken<TenantMembership[]>(`${tenantRealm.authPath}/memberships`)
   }
 
   /**
    * 用当前 Refresh Token 换发绑定目标 Membership 的新会话；被拒绝时保留原会话。
    * 成功后切换前发出的请求一律以 `auth.sessionChanged` 失败，调用方应清空租户相关状态并重新加载。
    */
-  function switchTenant(membershipId: string): Promise<TenantSession> {
-    return core.rebind(`${tenantRealm.authPath}/switch`, { membershipId })
+  async function switchTenant(membershipId: string): Promise<TenantSession> {
+    try {
+      return await core.rebind(`${tenantRealm.authPath}/switch`, { membershipId })
+    } catch (error) {
+      core.reportIpDenial(error, false, membershipId)
+      throw error
+    }
   }
 
   /**
@@ -315,7 +336,7 @@ export function createTenantClient(storage: Storage) {
     const current = core.session()
     if (!current) return Promise.reject(new Error('auth.failed'))
     const target = membershipId ?? current.membershipId
-    if (core.canAuthorize()) return core.authorize({ membershipId: target })
+    if (core.canAuthorize()) return selectTenant(target)
     return target === current.membershipId ? core.refresh() : switchTenant(target)
   }
 
@@ -372,6 +393,9 @@ export function createTenantClient(storage: Storage) {
     confirmMfaBinding,
     resumeEntry,
     onMfaRequired: core.onMfaRequired,
+    onIpNotAllowed: core.onIpNotAllowed,
+    ipDenial: core.ipDenial,
+    dismissTargetIpDenial: core.dismissTargetIpDenial,
     mfaStatus,
     regenerateRecoveryCodes,
     unbindMfa,
@@ -477,6 +501,8 @@ function createRealmClient<S extends RealmSession>(
   // 登录会话已建立、尚未签发 Token 时的授权参数；只在同一 generation 内有效。
   let authorization: { clientId: string; redirectUri: string; generation: number } | undefined
   const listeners = new Set<(session: S | null, change: SessionChange) => void>()
+  let denial: TenantIpDenial | null = null
+  const ipListeners = new Set<(denial: TenantIpDenial) => void>()
   // 当前授权的刷新被 MFA Requirement 拒绝：会话保留，等待当场绑定；得到新会话或会话结束后作废。
   let mfaBlocked = false
   const mfaListeners = new Set<() => void>()
@@ -487,6 +513,7 @@ function createRealmClient<S extends RealmSession>(
 
   function store(value: S | null) {
     mfaBlocked = false
+    denial = null
     if (value) storage.setItem(realm.storageKey, JSON.stringify(value))
     else storage.removeItem(realm.storageKey)
     notify(value, false)
@@ -504,7 +531,9 @@ function createRealmClient<S extends RealmSession>(
         generation += 1
         pendingRotation = undefined
         authorization = undefined
+        denial = null
       }
+      if (previous?.accessToken !== next?.accessToken) denial = null
       notify(next, true)
     })
   }
@@ -525,6 +554,31 @@ function createRealmClient<S extends RealmSession>(
     mfaListeners.add(listener)
     if (mfaBlocked) listener()
     return () => mfaListeners.delete(listener)
+  }
+
+  /** 读取最近一次租户 IP 拒绝；获得新会话或退出后清除。 */
+  function ipDenial(): TenantIpDenial | null {
+    return denial
+  }
+
+  /** 订阅租户 IP 拒绝；晚订阅立即获得已有拒绝，返回取消订阅函数。 */
+  function onIpNotAllowed(listener: (value: TenantIpDenial) => void): () => void {
+    ipListeners.add(listener)
+    if (denial) listener(denial)
+    return () => ipListeners.delete(listener)
+  }
+
+  /** 目标租户被拒时允许返回仍然有效的当前租户；当前租户的拒绝只能经新会话解除。 */
+  function dismissTargetIpDenial(): void {
+    if (!denial?.currentTenant) denial = null
+  }
+
+  function reportIpDenial(error: unknown, currentTenant: boolean, membershipId?: string) {
+    if (!(error instanceof ApiError) || error.code !== 'tenant.ipNotAllowed') return
+    // 当前租户已经被拒时，随后切换失败不能把其错误降成仅目标租户被拒。
+    if (denial?.currentTenant && !currentTenant) return
+    denial = { error, currentTenant, membershipId }
+    for (const listener of ipListeners) listener(denial)
   }
 
   function parse(raw: string | null): S | null {
@@ -588,7 +642,13 @@ function createRealmClient<S extends RealmSession>(
     })
     // 失败以服务端错误码抛出：auth.failed、auth.tenantAccessDenied 表示凭证被拒绝，
     // system.unavailable 等故障码与非信封响应不代表凭证失效，由调用方区分处理。
-    const value = (await readEnvelope<S>(response)).data as S
+    let value: S
+    try {
+      value = (await readEnvelope<S>(response)).data as S
+    } catch (error) {
+      if (started !== generation) throw new Error('auth.sessionChanged')
+      throw error
+    }
     if (started !== generation) throw new Error('auth.sessionChanged')
     store(value)
     return value
@@ -729,6 +789,7 @@ function createRealmClient<S extends RealmSession>(
           try {
             next = (await readEnvelope<S>(response)).data as S
           } catch (error) {
+            if (started !== generation) throw new Error('auth.sessionChanged')
             // 只有刷新凭证被拒绝才说明会话已失效；租户被拒绝、网关或服务端故障时保留原会话以便重试。
             if (error instanceof ApiError && error.code === 'auth.failed' && started === generation)
               clear()
@@ -747,11 +808,26 @@ function createRealmClient<S extends RealmSession>(
     return operation
   }
 
+  /** 在同一轮换锁内读取最新刷新凭证执行全局只读操作，不携带 Tenant Token 或 Cookie。 */
+  async function withRefreshToken<T>(path: string): Promise<T> {
+    const started = generation
+    await pendingRotation?.catch(() => undefined)
+    return rotating(async () => {
+      if (started !== generation) throw new Error('auth.sessionChanged')
+      const value = session()
+      if (!value) throw new Error('auth.failed')
+      const result = await post<T>(path, { refreshToken: value.refreshToken })
+      if (started !== generation) throw new Error('auth.sessionChanged')
+      return result
+    })
+  }
+
   /**
    * 轮换刷新凭证；本标签页的并发调用共用进行中的一次，各标签页之间经轮换锁串行，其他标签页已轮换时直接采用存储中的新会话。
    * 凭证被拒绝（刷新接口返回 401，或 Membership、租户已停用）时清除会话，服务端或网络故障以原错误失败并保留会话。
    */
   function refresh(): Promise<S> {
+    if (denial?.currentTenant) return Promise.reject(denial.error)
     if (pendingRotation) return pendingRotation
     const value = session()
     if (!value) return Promise.reject(new Error('auth.failed'))
@@ -772,6 +848,7 @@ function createRealmClient<S extends RealmSession>(
           (error.httpStatus === 401 ||
             ['auth.failed', 'auth.tenantAccessDenied'].includes(error.code))
         if (rejected && started === generation) clear()
+        if (started === generation) reportIpDenial(error, true)
         if (
           error instanceof ApiError &&
           error.code === 'auth.mfaRequired' &&
@@ -790,6 +867,7 @@ function createRealmClient<S extends RealmSession>(
   }
 
   async function request(path: string, init: RequestInit = {}): Promise<Response> {
+    if (denial?.currentTenant) throw denial.error
     // 只接受同源路径，防止业务调用把共享凭证带到外部地址。
     const target = new URL(path, location.origin)
     if (!path.startsWith('/') || target.origin !== location.origin) {
@@ -811,6 +889,13 @@ function createRealmClient<S extends RealmSession>(
       response = await send()
       if (started !== generation) throw new Error('auth.sessionChanged')
       if (response.status === 401) clear()
+    }
+    if (response.status === 403) {
+      try {
+        await readEnvelope(response.clone())
+      } catch (error) {
+        if (started === generation) reportIpDenial(error, true)
+      }
     }
     return response
   }
@@ -837,6 +922,11 @@ function createRealmClient<S extends RealmSession>(
     rebind,
     onSessionChange,
     onMfaRequired,
+    onIpNotAllowed,
+    ipDenial,
+    dismissTargetIpDenial,
+    reportIpDenial,
+    withRefreshToken,
     logout,
     refresh,
     request,

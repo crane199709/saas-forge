@@ -37,6 +37,7 @@ export type {
   SessionChange,
   TenantClient,
   TenantLoginResult,
+  TenantIpDenial,
   TenantMembership,
   TenantSession,
   TenantSessionListener,
