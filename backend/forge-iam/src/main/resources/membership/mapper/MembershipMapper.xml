@@ -84,6 +84,14 @@
         ORDER BY m.id
         LIMIT #{limit} OFFSET #{offset}
     </select>
+    <select id="findAll" resultType="io.saasforge.iam.membership.model.MemberRow">
+        SELECT m.id AS membership_id, i.account, i.display_name, m.status, CAST(m.attributes AS text) AS attributes
+        FROM membership m JOIN identity i ON i.id = m.identity_id
+        WHERE m.tenant_id = #{tenantId} AND m.status &lt;&gt; 'left' AND NOT m.deleted AND NOT i.deleted
+        AND m.id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id, javaType=java.lang.Object}</foreach>
+        ORDER BY m.id
+    </select>
     <select id="count" resultType="long">
         SELECT count(*) FROM membership m JOIN identity i ON i.id = m.identity_id
         WHERE m.tenant_id = #{tenantId} AND m.status &lt;&gt; 'left' AND NOT m.deleted AND NOT i.deleted

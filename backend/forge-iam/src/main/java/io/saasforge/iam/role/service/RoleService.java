@@ -18,6 +18,7 @@ import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -183,12 +184,22 @@ public class RoleService implements RoleGrantSource {
                         .map(PermissionRow::code)
                         .collect(Collectors.toSet()))
                 .orElse(Set.of());
-        Set<String> effective = all
-                ? grantable
-                : grants.grantedCodes(membershipId).stream()
-                        .filter(grantable::contains)
-                        .collect(Collectors.toSet());
+        Set<String> effective =
+                effectivePermissions(codes, all ? List.of() : grants.grantedCodes(membershipId), grantable);
         return new RoleGrants(Set.copyOf(codes), Set.copyOf(effective), policies);
+    }
+
+    /**
+     * 有效 Permission Code 的唯一口径：持有预置角色时为全部可授予的权限码，否则为授权记录中可授予的部分。
+     *
+     * @param roleCodes Membership 持有的角色编码
+     * @param granted 各角色授权的并集，持有预置角色时不使用
+     * @param grantable 租户当前可授予、可生效的权限码
+     */
+    static Set<String> effectivePermissions(
+            Collection<String> roleCodes, Collection<String> granted, Set<String> grantable) {
+        if (roleCodes.stream().anyMatch(ALL_PERMISSIONS::contains)) return grantable;
+        return granted.stream().filter(grantable::contains).collect(Collectors.toSet());
     }
 
     /** 存储与接口中的范围名到预设，如 {@code department_and_below}；未知名称抛出 {@link IllegalArgumentException}。 */

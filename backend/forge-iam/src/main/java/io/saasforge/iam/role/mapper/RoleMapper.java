@@ -1,6 +1,7 @@
 package io.saasforge.iam.role.mapper;
 
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
+import io.saasforge.iam.role.model.MembershipCodeRow;
 import io.saasforge.iam.role.model.MembershipRoleRow;
 import io.saasforge.iam.role.model.OwnerContact;
 import io.saasforge.iam.role.model.RoleRow;
@@ -79,6 +80,9 @@ public interface RoleMapper {
 
     /** 持有该角色的未删除 Membership。用于授权变更后递增版本，不受 Data Policy 过滤。 */
     List<UUID> holders(@Param("roleId") UUID roleId);
+
+    /** 持有该角色的 active Membership 各自的全部未删除角色编码，按 Membership 标识、角色编码排序。按 Token 租户限定，不受 Data Policy 过滤。 */
+    List<MembershipCodeRow> activeHolderRoleCodes(@Param("tenantId") UUID tenantId, @Param("roleId") UUID roleId);
 
     /** 给定 Membership 持有的租户内未删除角色。按 Token 租户限定，不受 Data Policy 过滤。 */
     List<MembershipRoleRow> rolesOf(

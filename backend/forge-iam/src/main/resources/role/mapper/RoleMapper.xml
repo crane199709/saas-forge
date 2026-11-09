@@ -85,6 +85,18 @@
         WHERE mr.role_id = #{roleId} AND NOT m.deleted
         ORDER BY mr.membership_id
     </select>
+    <select id="activeHolderRoleCodes" resultType="io.saasforge.iam.role.model.MembershipCodeRow">
+        SELECT m.id AS membership_id, held.code
+        FROM membership_role target
+        JOIN role tr ON tr.id = target.role_id
+        JOIN membership m ON m.id = target.membership_id
+        JOIN identity i ON i.id = m.identity_id
+        JOIN membership_role mr ON mr.membership_id = m.id
+        JOIN role held ON held.id = mr.role_id
+        WHERE target.role_id = #{roleId} AND tr.tenant_id = #{tenantId}
+        AND m.status = 'active' AND NOT m.deleted AND NOT i.deleted AND NOT held.deleted
+        ORDER BY m.id, held.code
+    </select>
     <select id="rolesOf" resultType="io.saasforge.iam.role.model.MembershipRoleRow">
         SELECT mr.membership_id, mr.role_id FROM membership_role mr JOIN role r ON r.id = mr.role_id
         WHERE r.tenant_id = #{tenantId} AND NOT r.deleted
