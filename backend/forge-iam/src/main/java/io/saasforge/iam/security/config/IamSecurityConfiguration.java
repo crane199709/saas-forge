@@ -322,7 +322,7 @@ class IamSecurityConfiguration {
                         "/todos/**",
                         "/notifications/**",
                         "/reference-data/**",
-                        "/security-settings",
+                        "/security-settings/**",
                         "/announcements/**")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.disable())

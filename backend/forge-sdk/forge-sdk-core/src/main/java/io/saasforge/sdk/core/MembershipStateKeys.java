@@ -49,6 +49,16 @@ public final class MembershipStateKeys {
     }
 
     /**
+     * 租户 IP 允许列表，值由 {@link TenantIpAllowlist#encode()} 定义；缺失时读取方必须拒绝访问。
+     *
+     * @param tenantId 租户标识
+     * @return Redis 键
+     */
+    public static String tenantIpAllowlist(UUID tenantId) {
+        return "iam:" + tenantId + ":ip-allowlist";
+    }
+
+    /**
      * 某一 {@code version} 下 Membership 的角色与权限明细（JSON），版本号进入键名，变更后旧明细自然不再被读取。
      *
      * @param tenantId Membership 所在租户
