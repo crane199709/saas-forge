@@ -281,7 +281,7 @@ public class RoleManagementService {
 
     private List<AffectedMember> firstMembers(UUID tenantId, List<UUID> membershipIds) {
         return memberships
-                .findAll(tenantId, membershipIds.subList(0, Math.min(IMPACT_MEMBER_LIMIT, membershipIds.size())))
+                .findByIds(tenantId, membershipIds.subList(0, Math.min(IMPACT_MEMBER_LIMIT, membershipIds.size())))
                 .stream()
                 .map(member -> new AffectedMember(member.membershipId(), member.account(), member.displayName()))
                 .toList();

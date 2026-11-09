@@ -14,10 +14,12 @@ import io.saasforge.sdk.core.ResourceManifest.RoleTemplate;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
@@ -123,6 +125,18 @@ public class PermissionService {
     /** 按调用方提供的权限码与 Plan 裁剪当前菜单，保留 actions 供各接口自行投影。 */
     public List<MenuNode> visibleMenus(Set<String> allowed, Optional<Set<String>> subApps) {
         return visible(currentMenus(), allowed, subApps);
+    }
+
+    /**
+     * 判断一组权限码能否看到给定 Sub-App 中的菜单，裁剪规则与 {@link #visibleMenus} 相同。菜单只读取一次，批量判断多个 Membership 时不随人数增加查询。
+     *
+     * @param subApps Sub-App 编码
+     * @return 接收权限码集合的判断函数
+     */
+    public Predicate<Set<String>> seesMenuIn(Collection<String> subApps) {
+        List<MenuNode> menus = currentMenus();
+        Optional<Set<String>> apps = Optional.of(new HashSet<>(subApps));
+        return allowed -> !visible(menus, allowed, apps).isEmpty();
     }
 
     // 缺少权限的节点连同子树隐藏；Plan 外叶子和裁剪后为空的分组隐藏。未登记 Plan 时不限 Sub-App。

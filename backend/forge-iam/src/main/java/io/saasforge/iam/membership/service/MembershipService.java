@@ -110,7 +110,7 @@ public class MembershipService {
     }
 
     /** 给定标识中租户内未离开的成员，按 Membership 标识排序。 */
-    public List<Member> findAll(UUID tenantId, Collection<UUID> membershipIds) {
+    public List<Member> findByIds(UUID tenantId, Collection<UUID> membershipIds) {
         if (membershipIds.isEmpty()) return List.of();
         return memberships.findAll(tenantId, membershipIds).stream()
                 .map(this::toMember)
@@ -125,6 +125,11 @@ public class MembershipService {
     /** 租户内未离开的成员数。 */
     public long count(UUID tenantId) {
         return memberships.count(tenantId);
+    }
+
+    /** 租户内状态正常的成员数。 */
+    public long countActive(UUID tenantId) {
+        return memberships.countActive(tenantId);
     }
 
     /** Extended Attribute 值；Membership 不存在时为空。 */

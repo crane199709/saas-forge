@@ -1,15 +1,11 @@
 package io.saasforge.platform.plan.service;
 
-import io.saasforge.platform.plan.config.IamCatalogProperties;
 import io.saasforge.platform.plan.model.CatalogPermission;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.core.api.ForgeException;
-import java.net.http.HttpClient;
-import java.time.Duration;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -26,15 +22,8 @@ public class PermissionCatalog {
 
     private final RestClient client;
 
-    PermissionCatalog(IamCatalogProperties properties) {
-        var factory = new JdkClientHttpRequestFactory(
-                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build());
-        factory.setReadTimeout(Duration.ofSeconds(10));
-        this.client = RestClient.builder()
-                .baseUrl(properties.uri())
-                .requestFactory(factory)
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + properties.token())
-                .build();
+    PermissionCatalog(@Qualifier("iamRestClient") RestClient client) {
+        this.client = client;
     }
 
     /**

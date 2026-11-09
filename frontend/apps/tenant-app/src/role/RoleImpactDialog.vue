@@ -12,6 +12,28 @@ const props = defineProps<{
 }>()
 defineEmits<{ confirm: []; cancel: [] }>()
 const { t } = useI18n()
+const sections = computed(() => {
+  const result = []
+  if (props.permissions) {
+    result.push({
+      key: 'permissions',
+      title: t('role.impact.permissions'),
+      preview: props.permissions,
+      summaryKey: 'role.impact.permissionSummary',
+      lostPermissions: props.permissions.ok ? props.permissions.value.lostPermissions : undefined,
+    })
+  }
+  if (props.dataPolicies) {
+    result.push({
+      key: 'dataPolicies',
+      title: t('role.impact.dataPolicies'),
+      notice: t('role.impact.dataPolicyNotice'),
+      preview: props.dataPolicies,
+      summaryKey: 'role.impact.dataPolicySummary',
+    })
+  }
+  return result
+})
 const anyFailed = computed(
   () => props.permissions?.ok === false || props.dataPolicies?.ok === false,
 )
@@ -26,68 +48,40 @@ const anyFailed = computed(
     @close="$emit('cancel')"
   >
     <div data-testid="role-impact">
-      <section v-if="permissions">
-        <h4>{{ t('role.impact.permissions') }}</h4>
-        <template v-if="permissions.ok">
-          <p>
-            {{ t('role.impact.permissionSummary', { count: permissions.value.affectedCount }) }}
-          </p>
-          <p class="label">{{ t('role.impact.lostPermissions') }}</p>
+      <section v-for="section in sections" :key="section.key">
+        <h4>{{ section.title }}</h4>
+        <p v-if="section.notice">{{ section.notice }}</p>
+        <template v-if="section.preview.ok">
+          <p>{{ t(section.summaryKey, { count: section.preview.value.affectedCount }) }}</p>
+          <template v-if="section.lostPermissions">
+            <p class="label">{{ t('role.impact.lostPermissions') }}</p>
+            <ul class="list">
+              <li v-for="code in section.lostPermissions" :key="code">
+                {{ permissionNames.get(code) ?? code }}
+              </li>
+            </ul>
+            <p class="label">{{ t('role.impact.affectedMembers') }}</p>
+          </template>
           <ul class="list">
-            <li v-for="code in permissions.value.lostPermissions" :key="code">
-              {{ permissionNames.get(code) ?? code }}
-            </li>
-          </ul>
-          <p class="label">{{ t('role.impact.affectedMembers') }}</p>
-          <ul class="list">
-            <li v-for="member in permissions.value.members" :key="member.membershipId">
+            <li v-for="member in section.preview.value.members" :key="member.membershipId">
               {{ member.displayName }}（{{ member.account }}）
             </li>
           </ul>
           <p
-            v-if="permissions.value.affectedCount > permissions.value.members.length"
+            v-if="section.preview.value.affectedCount > section.preview.value.members.length"
             class="truncated"
           >
             {{
               t('role.impact.membersTruncated', {
-                shown: permissions.value.members.length,
-                total: permissions.value.affectedCount,
+                shown: section.preview.value.members.length,
+                total: section.preview.value.affectedCount,
               })
             }}
           </p>
         </template>
         <template v-else>
           <p>{{ t('role.impact.previewFailed') }}</p>
-          <ErrorAlert :tip="permissions.tip" />
-        </template>
-      </section>
-      <section v-if="dataPolicies">
-        <h4>{{ t('role.impact.dataPolicies') }}</h4>
-        <p>{{ t('role.impact.dataPolicyNotice') }}</p>
-        <template v-if="dataPolicies.ok">
-          <p>
-            {{ t('role.impact.dataPolicySummary', { count: dataPolicies.value.affectedCount }) }}
-          </p>
-          <ul class="list">
-            <li v-for="member in dataPolicies.value.members" :key="member.membershipId">
-              {{ member.displayName }}（{{ member.account }}）
-            </li>
-          </ul>
-          <p
-            v-if="dataPolicies.value.affectedCount > dataPolicies.value.members.length"
-            class="truncated"
-          >
-            {{
-              t('role.impact.membersTruncated', {
-                shown: dataPolicies.value.members.length,
-                total: dataPolicies.value.affectedCount,
-              })
-            }}
-          </p>
-        </template>
-        <template v-else>
-          <p>{{ t('role.impact.previewFailed') }}</p>
-          <ErrorAlert :tip="dataPolicies.tip" />
+          <ErrorAlert :tip="section.preview.tip" />
         </template>
       </section>
     </div>
