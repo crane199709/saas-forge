@@ -358,6 +358,7 @@ class IamSecurityConfiguration {
                 new JwtClaimValidator<Object>("ver", Number.class::isInstance)));
         http.securityMatcher(
                         "/platform/operators/**",
+                        "/platform/tenants/**",
                         "/platform/roles/**",
                         "/platform/identities/**",
                         "/platform/access",
