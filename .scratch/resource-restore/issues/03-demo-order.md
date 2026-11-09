@@ -41,3 +41,19 @@
 - `git diff --check`：通过。
 
 本工单未修改前端，页面与 Playwright 由后续页面工单验证；MQ 在测试中关闭，出站消息通过 Outbox 契约验证，未验证真实 Broker 投递。全模块交付回归由集成代理统一运行。
+
+
+### 集成交付回归修复（2026-11-09）
+
+集成交付回归发现非 Web 的 Spring 上下文无法启动：本工单给 `OrderService` 新增了必需的 `CurrentActorProvider` 构造参数，但 SDK 的认证自动配置只在 Servlet Web 应用注册该 Bean。现有 `SchemaCommentTest`、`DatabaseMigrationTest`、`TenantInitializationTest`、`OutboxMessagingTest` 因此在执行测试前失败。
+
+沿用 SDK 标准列填充处理器的可选依赖约定，`OrderService` 改为注入 `ObjectProvider<CurrentActorProvider>`。恢复时缺少 provider 或没有认证上下文均写入 `updated_by = NULL`，表示系统操作；有认证 HTTP 请求继续使用当前已验证 JWT 的操作人。源码仅调整订单服务，不新增全局 Bean，不改变安全配置。
+
+本轮继续使用已确认的 Spring 公开服务启动、现有集成测试与 HTTP 边界，复用能捕获本次回归的现有测试：
+
+- Red：`cd backend && ./mvnw -o -pl examples/demo-service test -Dtest=SchemaCommentTest`，1 test / 1 error，明确报错为 `OrderService` 构造参数 5 缺少 `CurrentActorProvider` Bean。
+- 先执行 `cd backend && ./mvnw -o -pl examples/demo-service -am install -DskipTests`：通过，安装当前集成版本的上游 SDK。
+- Green：`cd backend && ./mvnw -o -pl examples/demo-service test -Dtest=SchemaCommentTest,DatabaseMigrationTest,TenantInitializationTest,OutboxMessagingTest,OrderRestoreTest`：18 tests，0 failures/errors/skips。四个原失败类恢复通过；`OrderRestoreTest` 的 9 项 HTTP 用例仍通过，包含恢复后的 `updatedBy` 与审计操作人。`OutboxMessagingTest` 的 4 项真实 Broker 用例也通过，补充验证了消费租户隔离、事务回滚、重复投递及 Broker 故障恢复。
+- `cd backend && ./mvnw -o -pl examples/demo-service spotless:check` 与 `git diff --check`：通过。
+
+本轮按集成回归的失败范围重跑上述测试，未重复执行模块全量；全量结果与修复后的失败类重跑由集成代理统一汇总。

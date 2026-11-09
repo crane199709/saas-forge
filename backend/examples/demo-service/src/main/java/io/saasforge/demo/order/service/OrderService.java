@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,7 +51,7 @@ public class OrderService implements TenantDataCleaner {
     private final DataPermission dataPermission;
     private final BusinessNumbers businessNumbers;
     private final NotificationClient notifications;
-    private final CurrentActorProvider actors;
+    private final ObjectProvider<CurrentActorProvider> actors;
 
     public OrderService(
             OrderMapper orderMapper,
@@ -58,7 +59,7 @@ public class OrderService implements TenantDataCleaner {
             DataPermission dataPermission,
             BusinessNumbers businessNumbers,
             NotificationClient notifications,
-            CurrentActorProvider actors) {
+            ObjectProvider<CurrentActorProvider> actors) {
         this.orderMapper = orderMapper;
         this.eventPublisher = eventPublisher;
         this.dataPermission = dataPermission;
@@ -183,8 +184,11 @@ public class OrderService implements TenantDataCleaner {
         if (orderMapper.selectDeletedForUpdate(id) == null) {
             throw notFound(id);
         }
+        // 非 Web 运行不注册认证模块，沿用标准列语义记为系统操作。
+        CurrentActorProvider provider = actors.getIfAvailable();
+        UUID actor = provider == null ? null : provider.currentActor().orElse(null);
         try {
-            if (orderMapper.restoreDeleted(id, actors.currentActor().orElse(null)) == 0) {
+            if (orderMapper.restoreDeleted(id, actor) == 0) {
                 throw notFound(id);
             }
         } catch (DuplicateKeyException conflict) {
