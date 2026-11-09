@@ -9,7 +9,7 @@ const alternateTheme = ref(false)
 import { inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import { applyTheme, themeTokens } from '@crane199709/ui'
+import { PageHeader, applyTheme, themeTokens } from '@crane199709/ui'
 import { subAppHostKey } from '../shell'
 import zhCN from './zh-CN.json'
 
@@ -27,7 +27,7 @@ function toggleTheme() {
 
 <template>
   <section>
-    <h1>{{ t('diagnostics.title') }}</h1>
+    <PageHeader :title="t('diagnostics.title')" />
     <p data-testid="shell-route">{{ route.fullPath }}</p>
     <el-button type="primary" data-testid="shell-theme" @click="toggleTheme">{{
       t('diagnostics.theme')

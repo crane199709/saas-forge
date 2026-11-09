@@ -3,7 +3,7 @@ import { computed, inject, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError, tenantClientKey } from '@crane199709/sdk'
 import type { TenantMembership } from '@crane199709/sdk'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, overlaySize } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from './error-tip'
 import { loginFlow, needsFullLogin } from './login-flow'
 import { createMemberApi } from './member/member-api'
@@ -152,6 +152,7 @@ onUnmounted(() => unsubscribe?.())
     <ErrorAlert v-if="error" :tip="error" />
     <el-dialog
       :model-value="bindFor !== null"
+      :width="overlaySize.dialogSm"
       :title="t('mfa.bindTitle')"
       :show-close="!bindConfirmed"
       :close-on-click-modal="false"
@@ -167,7 +168,7 @@ onUnmounted(() => unsubscribe?.())
         @error="bindFailed"
       />
     </el-dialog>
-    <el-dialog v-model="leaving" :title="t('tenant.leave')">
+    <el-dialog v-model="leaving" :width="overlaySize.dialogSm" :title="t('tenant.leave')">
       <p>{{ t('tenant.leaveConfirm', { tenant: currentName }) }}</p>
       <template #footer>
         <el-button @click="leaving = false">{{ t('tenant.cancel') }}</el-button>
@@ -187,7 +188,7 @@ onUnmounted(() => unsubscribe?.())
 .tenant-switcher {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--forge-space-3);
   max-width: 560px;
 }
 /* 顶栏是 flex 布局，选择框不设宽度会收缩到只剩箭头 */

@@ -3,7 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useTenantClient } from '@crane199709/sdk'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, PageHeader, PageToolbar } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import { createNotificationApi, type InboxItem, type InboxTab } from './notification-api'
 import { useInboxUnread } from './unread-count'
@@ -98,29 +98,32 @@ onUnmounted(() => {
 </script>
 <template>
   <section class="notification-center" aria-label="通知中心">
-    <h2>通知中心</h2>
-    <div class="toolbar" role="tablist" aria-label="通知类型">
-      <el-button
-        v-for="(label, kind) in tabs"
-        :key="kind"
-        role="tab"
-        :aria-selected="tab === kind"
-        :type="tab === kind ? 'primary' : 'default'"
-        :data-testid="`tab-${kind}`"
-        @click="select(kind)"
-        >{{ label }}</el-button
-      >
-    </div>
-    <div class="toolbar">
-      <el-button :disabled="busy" @click="load()">刷新列表</el-button>
-      <el-button
-        v-if="tab === 'notifications'"
-        :disabled="busy || !items.length"
-        @click="markRead()"
-        >全部通知标为已读</el-button
-      >
-    </div>
-    <ErrorAlert v-if="error" :tip="error" />
+    <PageHeader title="通知中心" />
+    <PageToolbar>
+      <el-button-group role="tablist" aria-label="通知类型">
+        <el-button
+          v-for="(label, kind) in tabs"
+          :key="kind"
+          plain
+          role="tab"
+          :aria-selected="tab === kind"
+          :type="tab === kind ? 'primary' : 'default'"
+          :data-testid="`tab-${kind}`"
+          @click="select(kind)"
+          >{{ label }}</el-button
+        >
+      </el-button-group>
+      <template #actions>
+        <el-button :disabled="busy" @click="load()">刷新列表</el-button>
+        <el-button
+          v-if="tab === 'notifications'"
+          :disabled="busy || !items.length"
+          @click="markRead()"
+          >全部通知标为已读</el-button
+        >
+      </template>
+    </PageToolbar>
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
     <p v-if="busy" role="status">加载中…</p>
     <p v-else-if="!error && !items.length">暂无{{ tabs[tab] }}</p>
     <article
@@ -140,6 +143,7 @@ onUnmounted(() => {
       <div class="item-actions">
         <el-button
           v-if="tab !== 'todos' && !item.read"
+          link
           :disabled="busy"
           :data-testid="`mark-read-${item.id}`"
           @click="markRead(item)"
@@ -147,6 +151,7 @@ onUnmounted(() => {
         >
         <el-button
           v-if="linkOf(item)"
+          link
           type="primary"
           :data-testid="`open-${item.id}`"
           @click="open(item)"
@@ -156,7 +161,8 @@ onUnmounted(() => {
     </article>
     <el-pagination
       v-if="tab !== 'announcements' && total > 20"
-      layout="prev, pager, next"
+      class="pagination"
+      layout="total, prev, pager, next"
       :current-page="page"
       :page-size="20"
       :total="total"
@@ -165,34 +171,35 @@ onUnmounted(() => {
   </section>
 </template>
 <style scoped>
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
+.page-error {
+  margin-bottom: var(--forge-space-3);
 }
 .inbox-item {
-  padding: 16px 0;
+  padding: var(--forge-space-4) 0;
   border-bottom: 1px solid var(--el-border-color-lighter);
   overflow-wrap: anywhere;
 }
 h3 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--forge-space-2);
+  font-size: var(--forge-font-size-md);
+  font-weight: 600;
 }
 .body {
+  margin: 0 0 var(--forge-space-2);
   white-space: pre-wrap;
 }
 time {
-  font-size: 12px;
   color: var(--el-text-color-secondary);
+  font-size: var(--forge-font-size-xs);
 }
 .item-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--forge-space-2);
+  margin-top: var(--forge-space-2);
 }
-.el-pagination {
-  margin-top: 16px;
+.pagination {
+  justify-content: flex-end;
+  margin-top: var(--forge-space-4);
 }
 </style>

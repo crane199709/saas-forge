@@ -2,18 +2,10 @@
   "apps/demo-sub-app/src/AttachmentsPage.vue",
   "apps/demo-sub-app/src/DemoApp.vue",
   "apps/platform-console/src/LoginPage.vue",
-  "apps/tenant-app/src/App.vue",
   "apps/tenant-app/src/AuthCard.vue",
   "apps/tenant-app/src/ForgotPasswordPage.vue",
-  "apps/tenant-app/src/HomePage.vue",
   "apps/tenant-app/src/LoginPage.vue",
   "apps/tenant-app/src/RegisterForm.vue",
   "apps/tenant-app/src/TenantSelect.vue",
-  "apps/tenant-app/src/TenantSwitcher.vue",
-  "apps/tenant-app/src/announcement/AnnouncementPage.vue",
-  "apps/tenant-app/src/notification/NotificationBell.vue",
-  "apps/tenant-app/src/notification/NotificationCenter.vue",
-  "apps/tenant-app/src/security/AccountSecurityPage.vue",
-  "apps/tenant-app/src/security/SecuritySettingsPage.vue",
   "packages/sub-app-kit/src/DevHost.vue"
 ]

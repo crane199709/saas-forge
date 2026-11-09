@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTenantClient } from '@crane199709/sdk'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, PageHeader } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import { createSecurityApi } from './security-api'
 
@@ -40,9 +40,9 @@ function toggle(next: string | number | boolean) {
 
 <template>
   <section class="security-settings" :aria-label="t('securitySettings.title')">
-    <h2>{{ t('securitySettings.title') }}</h2>
-    <ErrorAlert v-if="error" :tip="error" />
-    <el-card v-if="mfaRequired !== null">
+    <PageHeader :title="t('securitySettings.title')" />
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
+    <div v-if="mfaRequired !== null">
       <div class="row">
         <span>{{ t('securitySettings.mfaRequired') }}</span>
         <el-switch
@@ -53,20 +53,24 @@ function toggle(next: string | number | boolean) {
         />
       </div>
       <p class="hint">{{ t('securitySettings.mfaRequiredHint') }}</p>
-    </el-card>
+    </div>
   </section>
 </template>
 
 <style scoped>
+.page-error {
+  margin-bottom: var(--forge-space-3);
+}
 .security-settings {
   max-width: 640px;
 }
 .row {
   display: flex;
-  gap: 16px;
+  gap: var(--forge-space-4);
   align-items: center;
 }
 .hint {
+  margin: var(--forge-space-2) 0 0;
   color: var(--el-text-color-secondary);
 }
 </style>

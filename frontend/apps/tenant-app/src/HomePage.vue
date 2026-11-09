@@ -3,7 +3,7 @@ import { inject, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { tenantClientKey } from '@crane199709/sdk'
 import type { TenantContextResponse } from './demo-context'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, PageHeader } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from './error-tip'
 
 const { t } = useI18n()
@@ -34,26 +34,38 @@ onMounted(async () => {
 
 <template>
   <section>
-    <h1>{{ t('app.welcome') }}</h1>
-    <ErrorAlert v-if="error" :tip="error" />
-    <template v-if="session">
+    <PageHeader :title="t('app.welcome')" />
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
+    <div v-if="session" class="session">
       <p>{{ t('auth.identity') }}：{{ session.identityName }}</p>
       <p>{{ t('auth.tenant') }}：{{ session.tenantName }}</p>
-    </template>
-    <dl v-if="context">
-      <dt>{{ t('auth.identityId') }}</dt>
-      <dd>{{ context.identityId }}</dd>
-      <dt>{{ t('auth.tenantId') }}</dt>
-      <dd>{{ context.tenantId }}</dd>
-      <dt>{{ t('auth.membershipId') }}</dt>
-      <dd>{{ context.membershipId }}</dd>
-    </dl>
+    </div>
+    <el-descriptions v-if="context" class="info" :column="1" border>
+      <el-descriptions-item :label="t('auth.identityId')">{{
+        context.identityId
+      }}</el-descriptions-item>
+      <el-descriptions-item :label="t('auth.tenantId')">{{
+        context.tenantId
+      }}</el-descriptions-item>
+      <el-descriptions-item :label="t('auth.membershipId')">{{
+        context.membershipId
+      }}</el-descriptions-item>
+    </el-descriptions>
   </section>
 </template>
 
 <style scoped>
-dd {
-  margin: 4px 0 14px;
+.page-error {
+  margin-bottom: var(--forge-space-3);
+}
+.session {
+  margin-bottom: var(--forge-space-4);
+}
+.session p {
+  margin: 0 0 var(--forge-space-1);
+}
+.info {
+  max-width: 640px;
   overflow-wrap: anywhere;
 }
 </style>

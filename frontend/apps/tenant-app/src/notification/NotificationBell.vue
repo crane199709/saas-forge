@@ -28,16 +28,16 @@ const { count, failed } = useInboxUnread()
 .notification-bell {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--forge-space-1);
+  padding: var(--forge-space-2);
   color: var(--el-text-color-primary);
   text-decoration: none;
-  padding: 8px;
 }
 .unread-count {
-  border-radius: 12px;
-  padding: 1px 6px;
-  font-size: 12px;
+  padding: 0 var(--forge-space-2);
+  color: var(--el-color-white);
+  font-size: var(--forge-font-size-xs);
   background: var(--el-color-danger);
-  color: white;
+  border-radius: var(--forge-radius-lg);
 }
 </style>
