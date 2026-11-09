@@ -48,7 +48,7 @@
         SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtext('role:' || #{tenantId}))) AS locked
     </select>
     <sql id="roleColumns">
-        r.id, r.code, r.name, r.builtin, r.owner,
+        r.id, r.code, r.name, r.builtin, r.owner, r.updated_at, r.updated_by,
         (SELECT count(*) FROM membership_role mr JOIN membership m ON m.id = mr.membership_id
         WHERE mr.role_id = r.id AND NOT m.deleted) AS member_count
     </sql>
@@ -59,6 +59,26 @@
         WHERE r.tenant_id = #{tenantId} AND NOT r.deleted
         ORDER BY r.owner DESC, r.builtin DESC, r.code
     </select>
+    <select id="listDeleted" resultType="io.saasforge.iam.role.model.RoleRow">
+        SELECT
+        <include refid="roleColumns"/>
+        FROM role r
+        WHERE r.tenant_id = #{tenantId} AND r.deleted = true
+        ORDER BY r.updated_at DESC, r.id
+    </select>
+    <select id="findDeleted" resultType="io.saasforge.iam.role.model.RoleRow">
+        SELECT
+        <include refid="roleColumns"/>
+        FROM role r
+        WHERE r.tenant_id = #{tenantId} AND r.id = #{id} AND r.deleted = true
+    </select>
+    <select id="codeExists" resultType="boolean">
+        SELECT count(*) &gt; 0 FROM role WHERE tenant_id = #{tenantId} AND code = #{code} AND NOT deleted
+    </select>
+    <update id="restore">
+        UPDATE role SET deleted = false, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT builtin AND deleted = true
+    </update>
     <select id="find" resultType="io.saasforge.iam.role.model.RoleRow">
         SELECT
         <include refid="roleColumns"/>

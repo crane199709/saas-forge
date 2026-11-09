@@ -24,6 +24,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -38,6 +39,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import tools.jackson.databind.JsonNode;
@@ -59,8 +61,9 @@ class RoleController {
 
     @Operation(summary = "列出当前租户的角色及其授权")
     @GetMapping
-    ApiResponse<List<RoleResponse>> list(@AuthenticationPrincipal Jwt jwt) {
-        return ApiResponse.ok(roles.list(TenantActor.of(jwt)).stream()
+    ApiResponse<List<RoleResponse>> list(
+            @AuthenticationPrincipal Jwt jwt, @RequestParam(defaultValue = "false") boolean deleted) {
+        return ApiResponse.ok(roles.list(TenantActor.of(jwt), deleted).stream()
                 .map(role -> RoleResponse.from(role, this::toBody))
                 .toList());
     }
@@ -156,6 +159,13 @@ class RoleController {
     @DeleteMapping("/{id}")
     ApiResponse<Void> delete(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
         roles.delete(TenantActor.of(jwt), id);
+        return ApiResponse.ok();
+    }
+
+    @Operation(summary = "恢复已删除的自定义角色")
+    @PostMapping("/{id}/restore")
+    ApiResponse<Void> restore(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        roles.restore(TenantActor.of(jwt), id);
         return ApiResponse.ok();
     }
 
@@ -265,7 +275,9 @@ class RoleController {
             boolean owner,
             long memberCount,
             List<String> permissions,
-            List<DataPolicyBody> dataPolicies) {
+            List<DataPolicyBody> dataPolicies,
+            Instant updatedAt,
+            UUID updatedBy) {
         static RoleResponse from(RoleDetail value, Function<DataPolicy, DataPolicyBody> body) {
             return new RoleResponse(
                     value.id(),
@@ -275,7 +287,9 @@ class RoleController {
                     value.owner(),
                     value.memberCount(),
                     value.permissions(),
-                    value.dataPolicies().stream().map(body).toList());
+                    value.dataPolicies().stream().map(body).toList(),
+                    value.updatedAt(),
+                    value.updatedBy());
         }
     }
 

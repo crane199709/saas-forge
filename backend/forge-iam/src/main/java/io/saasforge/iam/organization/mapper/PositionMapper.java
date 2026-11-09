@@ -16,6 +16,15 @@ public interface PositionMapper {
     /** 租户的全部未删除岗位，按名称排序。 */
     List<PositionRow> list(@Param("tenantId") UUID tenantId);
 
+    /** 当前租户内的未删除岗位，其他情况返回 null。 */
+    PositionRow find(@Param("tenantId") UUID tenantId, @Param("id") UUID id);
+
+    /** 当前租户的已删除岗位，按最后更新时间倒序。 */
+    List<PositionRow> listDeleted(@Param("tenantId") UUID tenantId);
+
+    /** 恢复当前租户的已删除岗位，并维护审计列。 */
+    int restore(@Param("tenantId") UUID tenantId, @Param("id") UUID id, @Param("actor") UUID actor);
+
     /** 给定标识中属于该租户且未删除的岗位数，用于校验分配。 */
     long countExisting(@Param("tenantId") UUID tenantId, @Param("ids") Collection<UUID> ids);
 

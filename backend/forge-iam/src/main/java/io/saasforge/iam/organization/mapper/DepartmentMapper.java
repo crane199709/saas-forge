@@ -22,6 +22,19 @@ public interface DepartmentMapper {
     /** 按主键查找未删除的部门；不属于该租户时返回 null。 */
     DepartmentRow find(@Param("tenantId") UUID tenantId, @Param("id") UUID id);
 
+    /** 当前租户的已删除部门，按最后更新时间倒序。 */
+    List<DepartmentRow> listDeleted(@Param("tenantId") UUID tenantId);
+
+    /** 当前租户内已删除的部门，其他情况返回 null。 */
+    DepartmentRow findDeleted(@Param("tenantId") UUID tenantId, @Param("id") UUID id);
+
+    /** 按当前父部门路径恢复，维护审计列，只影响当前租户已删除行。 */
+    int restore(
+            @Param("tenantId") UUID tenantId,
+            @Param("id") UUID id,
+            @Param("path") String path,
+            @Param("actor") UUID actor);
+
     /** 给定标识中属于该租户且未删除的部门数，用于校验分配。 */
     long countExisting(@Param("tenantId") UUID tenantId, @Param("ids") Collection<UUID> ids);
 

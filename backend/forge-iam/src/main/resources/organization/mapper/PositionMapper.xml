@@ -3,8 +3,20 @@
 <!-- foreach 元素按 UUID 推断类型时找不到 TypeHandler，显式按 Object 交给驱动的 setObject，与单个 UUID 参数一致。 -->
 <mapper namespace="io.saasforge.iam.organization.mapper.PositionMapper">
     <select id="list" resultType="io.saasforge.iam.organization.model.PositionRow">
-        SELECT id, name FROM position WHERE tenant_id = #{tenantId} AND NOT deleted ORDER BY name, id
+        SELECT id, name, updated_at, updated_by FROM position WHERE tenant_id = #{tenantId} AND NOT deleted ORDER BY name, id
     </select>
+    <select id="listDeleted" resultType="io.saasforge.iam.organization.model.PositionRow">
+        SELECT id, name, updated_at, updated_by FROM position
+        WHERE tenant_id = #{tenantId} AND deleted = true ORDER BY updated_at DESC, id
+    </select>
+    <select id="find" resultType="io.saasforge.iam.organization.model.PositionRow">
+        SELECT id, name, updated_at, updated_by FROM position
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT deleted
+    </select>
+    <update id="restore">
+        UPDATE position SET deleted = false, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND deleted = true
+    </update>
     <select id="countExisting" resultType="long">
         SELECT count(*) FROM position
         WHERE tenant_id = #{tenantId} AND NOT deleted

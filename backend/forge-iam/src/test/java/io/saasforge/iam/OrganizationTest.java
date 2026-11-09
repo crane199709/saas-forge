@@ -70,6 +70,73 @@ class OrganizationTest {
     StringRedisTemplate redisTemplate;
 
     @Test
+    void deletedPositionCanBeRestoredDespiteAnotherPositionWithTheSameName() throws Exception {
+        String id = (String) data(call(ADMIN, HttpMethod.POST, "/org/positions", Map.of("name", "同名岗位")))
+                .get("id");
+        call(ADMIN, HttpMethod.DELETE, "/org/positions/" + id, null);
+        call(ADMIN, HttpMethod.POST, "/org/positions", Map.of("name", "同名岗位"));
+        assertThat(list(call(ADMIN, HttpMethod.GET, "/org/positions", null)))
+                .noneMatch(row -> id.equals(((Map<?, ?>) row).get("id")));
+        var deleted = list(call(ADMIN, HttpMethod.GET, "/org/positions?deleted=true", null)).stream()
+                .map(row -> (Map<?, ?>) row)
+                .filter(row -> id.equals(row.get("id")))
+                .findFirst()
+                .orElseThrow();
+        assertThat(deleted.get("updatedBy")).isEqualTo(IDENTITIES.get(ADMIN).toString());
+        assertThat(deleted.get("updatedAt")).isNotNull();
+        assertThat(call(ADMIN, HttpMethod.POST, "/org/positions/" + id + "/restore", null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(200);
+        assertThat(list(call(ADMIN, HttpMethod.GET, "/org/positions", null)))
+                .anyMatch(row -> id.equals(((Map<?, ?>) row).get("id")));
+    }
+
+    @Test
+    void departmentRestoreIsBlockedUntilItsParentIsRestored() throws Exception {
+        String parent = createDepartment(ADMIN, "待恢复父部门", null);
+        String child = createDepartment(ADMIN, "待恢复子部门", parent);
+        call(ADMIN, HttpMethod.DELETE, "/org/departments/" + child, null);
+        call(ADMIN, HttpMethod.DELETE, "/org/departments/" + parent, null);
+        var blocked = call(ADMIN, HttpMethod.POST, "/org/departments/" + child + "/restore", null);
+        assertThat(blocked.getStatusCode().value()).isEqualTo(409);
+        assertThat(blocked.getBody().get("code")).isEqualTo("resource.restoreBlocked");
+        assertThat(paths(ADMIN)).doesNotContainKey(child);
+        assertThat(call(ADMIN, HttpMethod.POST, "/org/departments/" + parent + "/restore", null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(200);
+        assertThat(call(ADMIN, HttpMethod.POST, "/org/departments/" + child + "/restore", null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(200);
+        assertThat(paths(ADMIN)).containsEntry(child, label(parent) + "." + label(child));
+    }
+
+    @Test
+    void restoringDepartmentUsesItsParentsCurrentPathAndAllowsDuplicateNames() throws Exception {
+        String parent = createDepartment(ADMIN, "原父部门", null);
+        String id = createDepartment(ADMIN, "同名部门", parent);
+        call(ADMIN, HttpMethod.DELETE, "/org/departments/" + id, null);
+        String other = createDepartment(ADMIN, "新父部门", null);
+        call(ADMIN, HttpMethod.PUT, "/org/departments/" + parent + "/parent", Map.of("parentId", other));
+        createDepartment(ADMIN, "同名部门", parent);
+        assertThat(paths(ADMIN)).doesNotContainKey(id);
+        var deleted = list(call(ADMIN, HttpMethod.GET, "/org/departments?deleted=true", null)).stream()
+                .map(row -> (Map<?, ?>) row)
+                .filter(row -> id.equals(row.get("id")))
+                .findFirst()
+                .orElseThrow();
+        assertThat(deleted.get("updatedBy")).isEqualTo(IDENTITIES.get(ADMIN).toString());
+        assertThat(deleted.get("updatedAt")).isNotNull();
+        assertThat(call(ADMIN, HttpMethod.POST, "/org/departments/" + id + "/restore", null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(200);
+        assertThat(paths(ADMIN)).containsEntry(id, label(other) + "." + label(parent) + "." + label(id));
+    }
+
+    @Test
     void movingADepartmentRewritesThePathsOfItsWholeSubtree() throws Exception {
         String a = createDepartment(ADMIN, "总部", null);
         String b = createDepartment(ADMIN, "研发", a);
