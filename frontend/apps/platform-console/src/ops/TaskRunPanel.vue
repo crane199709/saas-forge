@@ -2,7 +2,14 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Page } from '@crane199709/sdk'
-import { ErrorAlert, ListPage, PageHeader, overlaySize, type ErrorTip } from '@crane199709/ui'
+import {
+  ErrorAlert,
+  ListPage,
+  PageHeader,
+  formatDateTime,
+  overlaySize,
+  type ErrorTip,
+} from '@crane199709/ui'
 import { errorTip } from '../error-tip'
 import type { OpsServiceStatus } from './dead-event-api'
 import type { RunView, TaskDefinition, TaskRun, TaskRunApi } from './task-run-api'
@@ -214,7 +221,7 @@ onMounted(async () => {
         <template #default="{ row }">
           <template v-if="row.latestRun"
             >{{ t(`taskRun.statuses.${row.latestRun.status}`) }}<br />{{
-              row.latestRun.startedAt
+              formatDateTime(row.latestRun.startedAt)
             }}</template
           >
           <span v-else>{{ t('taskRun.neverRun') }}</span>
@@ -271,7 +278,9 @@ onMounted(async () => {
             row.trigger ? t(`taskRun.triggers.${row.trigger}`) : '—'
           }}</template>
         </el-table-column>
-        <el-table-column prop="startedAt" :label="t('taskRun.startedAt')" min-width="190" />
+        <el-table-column :label="t('taskRun.startedAt')" min-width="170">
+          <template #default="{ row }">{{ formatDateTime(row.startedAt) }}</template>
+        </el-table-column>
         <el-table-column :label="t('taskRun.counts')" min-width="140">
           <template #default="{ row }">{{
             row.type === 'TENANT'
@@ -315,10 +324,10 @@ onMounted(async () => {
             detail.targetTenantId ?? '—'
           }}</el-descriptions-item>
           <el-descriptions-item :label="t('taskRun.startedAt')">{{
-            detail.startedAt
+            formatDateTime(detail.startedAt)
           }}</el-descriptions-item>
           <el-descriptions-item :label="t('taskRun.finishedAt')">{{
-            detail.finishedAt ?? '—'
+            formatDateTime(detail.finishedAt)
           }}</el-descriptions-item>
           <el-descriptions-item v-if="detail.type === 'TENANT'" :label="t('taskRun.counts')">{{
             t('taskRun.resultCounts', {

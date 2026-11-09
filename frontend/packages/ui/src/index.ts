@@ -1,5 +1,6 @@
 export { AppLayout } from './AppLayout'
 export type { MenuItem } from './AppLayout'
+export { formatDateTime } from './format'
 export { ErrorAlert } from './ErrorAlert'
 export type { ErrorTip } from './ErrorAlert'
 export { ListPage } from './ListPage'

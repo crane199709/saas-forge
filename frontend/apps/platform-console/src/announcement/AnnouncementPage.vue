@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ErrorAlert, PageHeader, overlaySize, type ErrorTip } from '@crane199709/ui'
+import { ErrorAlert, PageHeader, formatDateTime, overlaySize, type ErrorTip } from '@crane199709/ui'
 import { usePlatformClient } from '../shell'
 import { errorTip } from '../error-tip'
 import { createAnnouncementApi, type Announcement } from './announcement-api'
@@ -149,8 +149,8 @@ onUnmounted(() => {
       <p class="body">{{ item.body }}</p>
       <p>{{ item.allTenants ? '全部租户' : `指定租户：${item.tenantIds.join('、')}` }}</p>
       <p class="hint">
-        发布于 {{ item.publishedAt
-        }}<template v-if="item.expiresAt"> · 到期于 {{ item.expiresAt }}</template>
+        发布于 {{ formatDateTime(item.publishedAt)
+        }}<template v-if="item.expiresAt"> · 到期于 {{ formatDateTime(item.expiresAt) }}</template>
       </p>
       <el-button
         v-if="!item.revoked"

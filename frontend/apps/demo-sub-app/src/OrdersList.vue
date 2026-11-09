@@ -5,9 +5,10 @@ import { ElButton, ElDialog, ElTableColumn } from 'element-plus'
 import { ApiError, useAccessControl, useTenantClient, type Page } from '@crane199709/sdk'
 import {
   ErrorAlert,
-  ListPage,
-  ImportDialog,
   ExportButton,
+  ImportDialog,
+  ListPage,
+  formatDateTime,
   type IoTaskApi,
   type IoTask,
   type IoUploadTicket,
@@ -223,9 +224,7 @@ onMounted(() => load())
         }}</template>
       </el-table-column>
       <el-table-column v-if="deleted" :label="t('deletedAt')" min-width="180">
-        <template #default="{ row }">{{
-          row.updatedAt ? new Date(row.updatedAt).toLocaleString() : '—'
-        }}</template>
+        <template #default="{ row }">{{ formatDateTime(row.updatedAt) }}</template>
       </el-table-column>
       <el-table-column v-if="deleted" :label="t('deletedBy')" min-width="160">
         <template #default="{ row }">{{ row.updatedBy ?? t('system') }}</template>

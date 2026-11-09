@@ -3,7 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useTenantClient } from '@crane199709/sdk'
-import { ErrorAlert, PageHeader, PageToolbar } from '@crane199709/ui'
+import { ErrorAlert, PageHeader, PageToolbar, formatDateTime } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import { createNotificationApi, type InboxItem, type InboxTab } from './notification-api'
 import { useInboxUnread } from './unread-count'
@@ -139,7 +139,7 @@ onUnmounted(() => {
         }}</el-tag>
       </h3>
       <p class="body">{{ item.body }}</p>
-      <time>{{ item.occurredAt ?? item.publishedAt }}</time>
+      <time>{{ formatDateTime(item.occurredAt ?? item.publishedAt) }}</time>
       <div class="item-actions">
         <el-button
           v-if="tab !== 'todos' && !item.read"

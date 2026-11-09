@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@crane199709/sdk'
-import { ErrorAlert, PageHeader, overlaySize, type ErrorTip } from '@crane199709/ui'
+import { ErrorAlert, PageHeader, formatDateTime, overlaySize, type ErrorTip } from '@crane199709/ui'
 import { errorTip } from '../error-tip'
 import type { Plan } from '../plan/plan-api'
 import PlanImpactDialog from './PlanImpactDialog.vue'
@@ -60,7 +60,6 @@ const withdrawing = computed(() => detail.value?.tenant.status === 'deleted')
 
 // datetime-local 输入是本地时间，提交时转为带时区的 ISO 时间
 const toInstant = (local: string) => (local ? new Date(local).toISOString() : undefined)
-const formatTime = (value: string | null) => (value ? new Date(value).toLocaleString() : '')
 const planName = (id: string | null) =>
   id === null
     ? t('tenant.noPlan')
@@ -313,13 +312,13 @@ onMounted(() => load(1))
             planName(detail.tenant.planId)
           }}</el-descriptions-item>
           <el-descriptions-item v-if="detail.tenant.expiresAt" :label="t('tenant.expiresAt')">{{
-            formatTime(detail.tenant.expiresAt)
+            formatDateTime(detail.tenant.expiresAt)
           }}</el-descriptions-item>
           <el-descriptions-item v-if="detail.tenant.purgedAt" :label="t('tenant.purgedAt')">{{
-            formatTime(detail.tenant.purgedAt)
+            formatDateTime(detail.tenant.purgedAt)
           }}</el-descriptions-item>
           <el-descriptions-item v-else-if="detail.tenant.purgeAt" :label="t('tenant.purgeAt')">{{
-            formatTime(detail.tenant.purgeAt)
+            formatDateTime(detail.tenant.purgeAt)
           }}</el-descriptions-item>
         </el-descriptions>
 
@@ -401,7 +400,7 @@ onMounted(() => load(1))
           </el-table-column>
           <el-table-column prop="reason" :label="t('tenant.reason')" />
           <el-table-column :label="t('tenant.changedAt')">
-            <template #default="{ row }">{{ formatTime(row.changedAt) }}</template>
+            <template #default="{ row }">{{ formatDateTime(row.changedAt) }}</template>
           </el-table-column>
         </el-table>
 

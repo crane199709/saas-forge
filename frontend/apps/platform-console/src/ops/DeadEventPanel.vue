@@ -2,7 +2,14 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Page } from '@crane199709/sdk'
-import { ErrorAlert, ListPage, PageHeader, overlaySize, type ErrorTip } from '@crane199709/ui'
+import {
+  ErrorAlert,
+  ListPage,
+  PageHeader,
+  formatDateTime,
+  overlaySize,
+  type ErrorTip,
+} from '@crane199709/ui'
 import { errorTip } from '../error-tip'
 import type { DeadEvent, DeadEventApi, DeadEventStatus, OpsServiceStatus } from './dead-event-api'
 
@@ -187,7 +194,9 @@ onMounted(async () => {
         width="90"
         align="right"
       />
-      <el-table-column prop="createdAt" :label="t('deadEvent.createdAt')" min-width="180" />
+      <el-table-column :label="t('deadEvent.createdAt')" min-width="170">
+        <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+      </el-table-column>
       <el-table-column prop="status" :label="t('deadEvent.status')" width="96">
         <template #default="{ row }">
           <el-tag v-if="row.status" size="small" :type="statusTag[row.status as DeadEventStatus]">
@@ -241,10 +250,10 @@ onMounted(async () => {
           detail.deliveryAttempt
         }}</el-descriptions-item>
         <el-descriptions-item :label="t('deadEvent.createdAt')">{{
-          detail.createdAt
+          formatDateTime(detail.createdAt)
         }}</el-descriptions-item>
         <el-descriptions-item :label="t('deadEvent.resolvedAt')">{{
-          detail.resolvedAt ?? '—'
+          formatDateTime(detail.resolvedAt)
         }}</el-descriptions-item>
         <el-descriptions-item :label="t('deadEvent.reason')">{{
           detail.resolutionReason ?? '—'

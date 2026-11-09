@@ -2,7 +2,7 @@
 import { inject, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { tenantClientKey } from '@crane199709/sdk'
-import { ErrorAlert, PageHeader, PageToolbar } from '@crane199709/ui'
+import { ErrorAlert, PageHeader, PageToolbar, formatDateTime } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import { createAuditApi, type AuditEvent } from './audit-api'
 
@@ -106,9 +106,7 @@ onMounted(() => void load(1))
       <el-table :data="events" row-key="id" :empty-text="t('audit.empty')">
         <el-table-column :label="t('audit.time')" min-width="170">
           <template #default="{ row }">
-            <span :data-testid="`audit-${row.id}`">{{
-              new Date(row.occurredAt).toLocaleString()
-            }}</span>
+            <span :data-testid="`audit-${row.id}`">{{ formatDateTime(row.occurredAt) }}</span>
           </template>
         </el-table-column>
         <el-table-column :label="t('audit.categoryLabel')" width="96">

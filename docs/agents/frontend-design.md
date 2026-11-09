@@ -46,7 +46,7 @@
 
 ## 组件选择
 
-- **数据列表**用 `el-table`，分页接口优先用 `ListPage`。列用 `min-width`，长文本加 `show-overflow-tooltip`，操作列 `fixed="right"` 且宽度容得下所有按钮同行。数字列右对齐，状态用 `el-tag`，空值显示 `—`。
+- **数据列表**用 `el-table`，分页接口优先用 `ListPage`。列用 `min-width`，长文本加 `show-overflow-tooltip`，操作列 `fixed="right"` 且宽度容得下所有按钮同行。数字列右对齐，状态用 `el-tag`，空值显示 `—`，时间用 `formatDateTime`。
 - **编辑**按内容选载体：字段少于 6 个且无嵌套用 `el-dialog`；含权限树、条件组等长内容用 `el-drawer`；需要多步或跨会话用独立页面。尺寸取 `overlaySize` 的档位。
 - **确认**不可逆或影响他人的操作用 `el-dialog` 说明影响，可恢复的操作不打断。
 - **按钮层级**：每个区域一个实心主按钮，其余用默认或 `plain`，行内操作用 `link`。视图切换用 `plain` 的 `el-button-group`。

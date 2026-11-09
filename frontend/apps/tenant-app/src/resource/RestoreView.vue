@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ErrorAlert, PageToolbar } from '@crane199709/ui'
+import { ErrorAlert, PageToolbar, formatDateTime } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 
 interface DeletedRecord {
@@ -97,9 +97,7 @@ async function confirmRestore() {
         <el-table-column prop="name" :label="t('restore.name')" min-width="140" />
         <el-table-column v-if="showCode" prop="code" :label="t('role.list.code')" min-width="140" />
         <el-table-column :label="t('restore.deletedAt')" min-width="180">
-          <template #default="{ row }">{{
-            row.updatedAt ? new Date(row.updatedAt).toLocaleString() : '—'
-          }}</template>
+          <template #default="{ row }">{{ formatDateTime(row.updatedAt) }}</template>
         </el-table-column>
         <el-table-column :label="t('restore.deletedBy')" min-width="160">
           <template #default="{ row }">{{ row.updatedBy ?? t('restore.system') }}</template>

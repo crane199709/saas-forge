@@ -1,6 +1,6 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
 
-test.use({ baseURL: 'http://127.0.0.1:5173' })
+test.use({ baseURL: 'http://127.0.0.1:5173', timezoneId: 'Asia/Shanghai' })
 
 const baseEvent = {
   consumerGroup: 'orders-group',
@@ -150,7 +150,7 @@ test('Operator 查看、按服务和状态分页、重放及放弃，并可从�
   await expect(page.getByTestId('list-page-total')).toContainText('21')
   const replayRow = page.getByRole('row').filter({ hasText: 'order-created' })
   await expect(replayRow).toContainText('16')
-  await expect(replayRow).toContainText('2026-11-07')
+  await expect(replayRow).toContainText('2026/11/7 11:00:00')
   await page.screenshot({ animations: 'disabled', path: '/tmp/forge-mq-dead-events-desktop.png' })
   await replayRow.getByRole('button', { name: '查看', exact: true }).click()
   const detail = page.getByRole('dialog', { name: '死信事件详情' })
@@ -207,7 +207,7 @@ test('Operator 查看、按服务和状态分页、重放及放弃，并可从�
   await expect(abandonRow).toContainText('已放弃')
   await abandonRow.getByRole('button', { name: '查看', exact: true }).click()
   await expect(detail).toContainText('该事件已人工补偿')
-  await expect(detail).toContainText('2026-11-07T04:00:00Z')
+  await expect(detail).toContainText('2026/11/7 12:00:00')
   await page.screenshot({
     animations: 'disabled',
     path: '/tmp/forge-mq-dead-events-mobile-detail.png',

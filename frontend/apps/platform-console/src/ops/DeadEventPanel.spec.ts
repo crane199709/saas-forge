@@ -69,7 +69,7 @@ it('按服务读取待处置分页元数据，展示错误与次数但不展示�
   expect(wrapper.text()).toContain('tenant-1')
   expect(wrapper.text()).toContain('库存服务超时')
   expect(wrapper.text()).toContain('16')
-  expect(wrapper.text()).toContain('2026-11-07')
+  expect(wrapper.text()).toMatch(/2026\/11\/\d+ \d+:\d{2}:\d{2}/)
   expect(wrapper.text()).not.toContain('secret-message-body')
   expect(wrapper.get('[data-testid="list-page-total"]').text()).toContain('21')
   const query = new URL(fetcher.mock.calls[1]![0], location.origin)
