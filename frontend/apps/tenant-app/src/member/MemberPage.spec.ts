@@ -5,6 +5,7 @@ import { createAccessControl, createTenantClient, tenantClientKey } from '@crane
 import { i18n } from '../i18n'
 import MemberPage from './MemberPage.vue'
 import type { Member } from './member-api'
+import { tableRow } from '../test-table'
 
 beforeEach(() => {
   sessionStorage.setItem(
@@ -62,9 +63,9 @@ it('按状态展示成员与可用操作，Owner 不可停用或移除；停用�
     .mockResolvedValueOnce(ok(rows, page))
   const wrapper = await mountPage(fetcher)
 
-  expect(wrapper.get('[data-testid="member-owner"]').text()).toContain('所有者')
-  expect(wrapper.get('[data-testid="member-owner"]').findAll('button')).toHaveLength(0)
-  expect(wrapper.get('[data-testid="member-bob"]').text()).toContain('邀请中')
+  expect(tableRow(wrapper, 'member-owner').text()).toContain('所有者')
+  expect(tableRow(wrapper, 'member-owner').findAll('button')).toHaveLength(0)
+  expect(tableRow(wrapper, 'member-bob').text()).toContain('邀请中')
   expect(wrapper.find('[data-testid="member-suspend-bob"]').exists()).toBe(false)
   expect(wrapper.find('[data-testid="member-remove-bob"]').exists()).toBe(true)
 

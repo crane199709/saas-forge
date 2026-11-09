@@ -2,7 +2,7 @@
 import { inject, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { tenantClientKey } from '@crane199709/sdk'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, PageHeader } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import AttributePanel from './AttributePanel.vue'
 import DepartmentPanel from './DepartmentPanel.vue'
@@ -45,8 +45,8 @@ onMounted(load)
 </script>
 
 <template>
-  <section class="organization">
-    <h2>{{ t('org.title') }}</h2>
+  <section>
+    <PageHeader :title="t('org.title')" />
     <ErrorAlert v-if="error" :tip="error" />
     <el-tabs v-if="loaded" v-model="tab">
       <el-tab-pane :label="t('org.tabs.departments')" name="departments">

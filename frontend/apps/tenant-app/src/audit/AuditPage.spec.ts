@@ -5,6 +5,7 @@ import { createTenantClient, tenantClientKey } from '@crane199709/sdk'
 import { i18n } from '../i18n'
 import AuditPage from './AuditPage.vue'
 import type { AuditEvent } from './audit-api'
+import { tableRow } from '../test-table'
 
 beforeEach(() => {
   sessionStorage.setItem(
@@ -76,12 +77,12 @@ it('展示审计记录的操作人、对象与结果，按条件重新查询', a
   await flushPromises()
 
   expect(fetcher.mock.calls[0]![0]).toBe(`${location.origin}/iam/audit/events?page=1&size=20`)
-  const success = wrapper.get('[data-testid="audit-a"]').text()
+  const success = tableRow(wrapper, 'audit-a').text()
   expect(success).toContain('业务操作')
   expect(success).toContain('爱丽丝（alice）')
   expect(success).toContain('order / o-1')
   expect(success).toContain('成功')
-  const failure = wrapper.get('[data-testid="audit-b"]').text()
+  const failure = tableRow(wrapper, 'audit-b').text()
   expect(failure).toContain('系统')
   expect(failure).toContain('失败')
   expect(failure).toContain('auth.failed')

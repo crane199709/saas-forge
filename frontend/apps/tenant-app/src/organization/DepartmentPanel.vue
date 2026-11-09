@@ -63,106 +63,127 @@ function remove(id: string) {
 
 <template>
   <RestoreView
-    class="department-panel"
     :load-deleted="() => api.departments(true)"
     :restore="api.restoreDepartment"
     :disabled="busy"
     @restored="emit('changed')"
   >
-    <section class="tree">
-      <el-tree
-        v-if="tree.length"
-        :data="tree"
-        node-key="id"
-        :props="{ label: 'name', children: 'children' }"
-        default-expand-all
-        :expand-on-click-node="false"
-        highlight-current
-      >
-        <template #default="{ data }">
-          <span :data-testid="`dept-node-${data.id}`" @click="select(data)">{{ data.name }}</span>
-        </template>
-      </el-tree>
-      <p v-else>{{ t('org.department.empty') }}</p>
-      <div class="row">
-        <el-input
-          v-model="name"
-          :placeholder="t('org.department.name')"
-          maxlength="120"
-          data-testid="dept-name"
-        />
-        <el-button :disabled="busy || !name.trim()" @click="create(null)">
-          {{ t('org.department.createRoot') }}
-        </el-button>
-        <el-button
-          type="primary"
-          :disabled="busy || !name.trim() || !selected"
-          data-testid="dept-create-child"
-          @click="create(selected!.id)"
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
+    <div class="layout">
+      <section>
+        <el-tree
+          v-if="tree.length"
+          :data="tree"
+          node-key="id"
+          :props="{ label: 'name', children: 'children' }"
+          default-expand-all
+          :expand-on-click-node="false"
+          highlight-current
         >
-          {{ t('org.department.createChild') }}
-        </el-button>
-      </div>
-    </section>
-    <section v-if="selected" class="detail">
-      <h3>{{ t('org.department.selected') }}：{{ selected.name }}</h3>
-      <p class="path">{{ t('org.department.path') }}：{{ selected.path }}</p>
-      <div class="row">
-        <el-input v-model="rename" maxlength="120" data-testid="dept-rename" />
-        <el-button
-          :disabled="busy || !rename.trim()"
-          @click="run(() => api.renameDepartment(selected!.id, rename.trim()))"
-        >
-          {{ t('org.department.rename') }}
-        </el-button>
-      </div>
-      <div class="row">
-        <el-select
-          v-model="parent"
-          :aria-label="t('org.department.parent')"
-          data-testid="dept-parent"
-        >
-          <el-option :label="t('org.department.rootOption')" value="" />
-          <el-option
-            v-for="item in parentOptions"
-            :key="item.id"
-            :label="item.name"
-            :value="item.id"
+          <template #default="{ data }">
+            <span :data-testid="`dept-node-${data.id}`" @click="select(data)">{{ data.name }}</span>
+          </template>
+        </el-tree>
+        <p v-else class="hint">{{ t('org.department.empty') }}</p>
+        <div class="row">
+          <el-input
+            v-model="name"
+            :placeholder="t('org.department.name')"
+            maxlength="120"
+            data-testid="dept-name"
           />
-        </el-select>
+          <el-button :disabled="busy || !name.trim()" @click="create(null)">
+            {{ t('org.department.createRoot') }}
+          </el-button>
+          <el-button
+            type="primary"
+            :disabled="busy || !name.trim() || !selected"
+            data-testid="dept-create-child"
+            @click="create(selected!.id)"
+          >
+            {{ t('org.department.createChild') }}
+          </el-button>
+        </div>
+      </section>
+      <section v-if="selected" class="detail">
+        <h3>{{ t('org.department.selected') }}：{{ selected.name }}</h3>
+        <p class="hint path">{{ t('org.department.path') }}：{{ selected.path }}</p>
+        <div class="row">
+          <el-input v-model="rename" maxlength="120" data-testid="dept-rename" />
+          <el-button
+            :disabled="busy || !rename.trim()"
+            @click="run(() => api.renameDepartment(selected!.id, rename.trim()))"
+          >
+            {{ t('org.department.rename') }}
+          </el-button>
+        </div>
+        <div class="row">
+          <el-select
+            v-model="parent"
+            :aria-label="t('org.department.parent')"
+            data-testid="dept-parent"
+          >
+            <el-option :label="t('org.department.rootOption')" value="" />
+            <el-option
+              v-for="item in parentOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+          <el-button
+            :disabled="busy"
+            @click="run(() => api.moveDepartment(selected!.id, parent || null))"
+          >
+            {{ t('org.department.move') }}
+          </el-button>
+        </div>
         <el-button
+          plain
+          type="danger"
           :disabled="busy"
-          @click="run(() => api.moveDepartment(selected!.id, parent || null))"
+          data-testid="dept-delete"
+          @click="remove(selected.id)"
         >
-          {{ t('org.department.move') }}
+          {{ t('org.department.delete') }}
         </el-button>
-      </div>
-      <el-button
-        type="danger"
-        :disabled="busy"
-        data-testid="dept-delete"
-        @click="remove(selected.id)"
-      >
-        {{ t('org.department.delete') }}
-      </el-button>
-    </section>
-    <ErrorAlert v-if="error" :tip="error" />
+      </section>
+    </div>
   </RestoreView>
 </template>
 
 <style scoped>
-.department-panel {
+.page-error {
+  margin-bottom: var(--forge-space-3);
+}
+.layout {
   display: grid;
-  gap: 16px;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: var(--forge-space-5);
 }
 .row {
   display: flex;
-  gap: 8px;
-  margin: 8px 0;
-  max-width: 640px;
+  gap: var(--forge-space-2);
+  margin-top: var(--forge-space-3);
+}
+.detail {
+  padding-left: var(--forge-space-5);
+  border-left: 1px solid var(--el-border-color-lighter);
+}
+.detail h3 {
+  margin: 0;
+  font-size: var(--forge-font-size-md);
+  font-weight: 600;
+}
+.hint {
+  color: var(--el-text-color-secondary);
 }
 .path {
-  color: var(--el-text-color-secondary);
+  margin: var(--forge-space-1) 0 var(--forge-space-4);
+  font-size: var(--forge-font-size-xs);
   overflow-wrap: anywhere;
+}
+.detail > .el-button {
+  margin-top: var(--forge-space-4);
 }
 </style>

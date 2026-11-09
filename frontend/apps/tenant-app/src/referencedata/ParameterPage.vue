@@ -2,7 +2,7 @@
 import { inject, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { tenantClientKey } from '@crane199709/sdk'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, PageHeader } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import {
   createReferenceDataApi,
@@ -106,101 +106,136 @@ async function run(action: () => Promise<unknown>) {
 }
 
 onMounted(load)
+
+const rowKey = (row: object) => keyOf(row as Parameter)
 </script>
 
 <template>
-  <section class="parameters">
-    <h2>{{ t('referenceData.parameter.title') }}</h2>
-    <ErrorAlert v-if="error" :tip="error" />
-    <p v-if="loaded && !parameters.length">{{ t('referenceData.parameter.empty') }}</p>
-    <table v-if="loaded && parameters.length" class="list">
-      <thead>
-        <tr>
-          <th>{{ t('referenceData.parameter.service') }}</th>
-          <th>{{ t('referenceData.parameter.name') }}</th>
-          <th>{{ t('referenceData.parameter.value') }}</th>
-          <th>{{ t('referenceData.parameter.defaultValue') }}</th>
-          <th>{{ t('referenceData.parameter.constraints') }}</th>
-          <th />
-        </tr>
-      </thead>
-      <tbody>
-        <tr
-          v-for="parameter in parameters"
-          :key="keyOf(parameter)"
-          :data-testid="`parameter-${keyOf(parameter)}`"
-        >
-          <td>{{ parameter.service }}</td>
-          <td>
-            {{ parameter.name }} <code>{{ parameter.code }}</code>
-          </td>
-          <td>
-            {{ display(parameter, parameter.value) }}
-            <el-tag v-if="parameter.overridden" size="small">
+  <section>
+    <PageHeader :title="t('referenceData.parameter.title')" />
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
+    <p v-if="loaded && !parameters.length" class="hint">
+      {{ t('referenceData.parameter.empty') }}
+    </p>
+    <el-table v-if="loaded && parameters.length" :data="parameters" :row-key="rowKey">
+      <el-table-column :label="t('referenceData.parameter.name')" min-width="240">
+        <template #default="{ row }">
+          <div :data-testid="`parameter-${keyOf(row as Parameter)}`">{{ row.name }}</div>
+          <code class="code">{{ row.service }} · {{ row.code }}</code>
+        </template>
+      </el-table-column>
+      <el-table-column :label="t('referenceData.parameter.value')" min-width="170">
+        <template #default="{ row }">
+          <span class="value">
+            <span class="value-text">{{ display(row as Parameter, row.value) || '—' }}</span>
+            <el-tag v-if="row.overridden" size="small" type="info">
               {{ t('referenceData.parameter.overridden') }}
             </el-tag>
-          </td>
-          <td>{{ display(parameter, parameter.defaultValue) }}</td>
-          <td>{{ constraints(parameter) }}</td>
-          <td class="edit">
-            <el-checkbox
-              v-if="parameter.type === 'boolean'"
-              v-model="drafts[keyOf(parameter)]"
-              :data-testid="`value-${keyOf(parameter)}`"
-              :aria-label="parameter.name"
-            />
-            <el-select
-              v-else-if="parameter.type === 'dictionary'"
-              v-model="drafts[keyOf(parameter)]"
-              :data-testid="`value-${keyOf(parameter)}`"
-              :aria-label="parameter.name"
-            >
-              <el-option
-                v-for="item in itemsOf(parameter).filter((item) => item.status === 'enabled')"
-                :key="item.code"
-                :label="item.name"
-                :value="item.code"
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column :label="t('referenceData.parameter.defaultValue')" min-width="90">
+        <template #default="{ row }">{{
+          display(row as Parameter, row.defaultValue) || '—'
+        }}</template>
+      </el-table-column>
+      <el-table-column
+        :label="t('referenceData.parameter.constraints')"
+        min-width="130"
+        show-overflow-tooltip
+      >
+        <template #default="{ row }">{{ constraints(row as Parameter) || '—' }}</template>
+      </el-table-column>
+      <el-table-column :label="t('common.actions')" width="300" fixed="right">
+        <template #default="{ row }">
+          <div class="edit">
+            <div class="control">
+              <el-checkbox
+                v-if="row.type === 'boolean'"
+                v-model="drafts[keyOf(row as Parameter)]"
+                :data-testid="`value-${keyOf(row as Parameter)}`"
+                :aria-label="row.name"
               />
-            </el-select>
-            <el-input
-              v-else
-              v-model="drafts[keyOf(parameter)] as string"
-              :data-testid="`value-${keyOf(parameter)}`"
-              :aria-label="parameter.name"
-              :maxlength="parameter.maxLength ?? undefined"
-            />
+              <el-select
+                v-else-if="row.type === 'dictionary'"
+                v-model="drafts[keyOf(row as Parameter)]"
+                :data-testid="`value-${keyOf(row as Parameter)}`"
+                :aria-label="row.name"
+              >
+                <el-option
+                  v-for="item in itemsOf(row as Parameter).filter(
+                    (item) => item.status === 'enabled',
+                  )"
+                  :key="item.code"
+                  :label="item.name"
+                  :value="item.code"
+                />
+              </el-select>
+              <el-input
+                v-else
+                v-model="drafts[keyOf(row as Parameter)] as string"
+                :data-testid="`value-${keyOf(row as Parameter)}`"
+                :aria-label="row.name"
+                :maxlength="row.maxLength ?? undefined"
+              />
+            </div>
             <el-button
+              link
               type="primary"
-              :data-testid="`override-${keyOf(parameter)}`"
+              :data-testid="`override-${keyOf(row as Parameter)}`"
               :disabled="busy"
-              @click="run(() => api.override(parameter, valueOf(parameter)))"
+              @click="run(() => api.override(row as Parameter, valueOf(row as Parameter)))"
             >
               {{ t('referenceData.parameter.override') }}
             </el-button>
             <el-button
-              v-if="parameter.overridden"
-              :data-testid="`reset-${keyOf(parameter)}`"
+              v-if="row.overridden"
+              link
+              :data-testid="`reset-${keyOf(row as Parameter)}`"
               :disabled="busy"
-              @click="run(() => api.reset(parameter))"
+              @click="run(() => api.reset(row as Parameter))"
             >
               {{ t('referenceData.parameter.reset') }}
             </el-button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+          </div>
+        </template>
+      </el-table-column>
+    </el-table>
   </section>
 </template>
 
 <style scoped>
-.list th,
-.list td {
-  padding: 4px 12px 4px 0;
-  text-align: left;
+.page-error {
+  margin-bottom: var(--forge-space-3);
+}
+.hint {
+  color: var(--el-text-color-secondary);
+}
+.code {
+  display: block;
+  overflow: hidden;
+  color: var(--el-text-color-secondary);
+  font-size: var(--forge-font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.value {
+  display: inline-flex;
+  gap: var(--forge-space-2);
+  align-items: center;
+  max-width: 100%;
+}
+.value-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .edit {
   display: flex;
-  gap: 8px;
+  gap: var(--forge-space-2);
   align-items: center;
+}
+.control {
+  flex: 0 0 140px;
 }
 </style>

@@ -2,7 +2,7 @@
 import { computed, inject, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { tenantClientKey } from '@crane199709/sdk'
-import { ErrorAlert } from '@crane199709/ui'
+import { ErrorAlert, PageHeader } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import DictionaryPanel from './DictionaryPanel.vue'
 import { createReferenceDataApi, type Dictionary } from './reference-data-api'
@@ -47,15 +47,18 @@ onMounted(load)
 </script>
 
 <template>
-  <section class="dictionaries">
-    <h2>{{ t('referenceData.dictionary.title') }}</h2>
-    <ErrorAlert v-if="error" :tip="error" />
-    <p v-if="loaded && !dictionaries.length">{{ t('referenceData.dictionary.empty') }}</p>
+  <section>
+    <PageHeader :title="t('referenceData.dictionary.title')" />
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
+    <p v-if="loaded && !dictionaries.length" class="hint">
+      {{ t('referenceData.dictionary.empty') }}
+    </p>
     <div v-if="loaded && dictionaries.length" class="layout">
       <nav>
         <div
           v-for="group in services"
           :key="group.service"
+          class="group"
           :data-testid="`service-${group.service}`"
         >
           <h3>{{ group.service }}</h3>
@@ -77,15 +80,33 @@ onMounted(load)
 </template>
 
 <style scoped>
+.page-error {
+  margin-bottom: var(--forge-space-3);
+}
+.hint {
+  color: var(--el-text-color-secondary);
+}
 .layout {
   display: flex;
-  gap: 24px;
+  gap: var(--forge-space-5);
 }
 nav {
-  min-width: 180px;
+  flex-shrink: 0;
+  width: 180px;
+  padding-right: var(--forge-space-4);
+  border-right: 1px solid var(--el-border-color-lighter);
+}
+.group + .group {
+  margin-top: var(--forge-space-4);
+}
+nav h3 {
+  margin: 0 0 var(--forge-space-2);
+  color: var(--el-text-color-secondary);
+  font-size: var(--forge-font-size-xs);
+  font-weight: 400;
 }
 nav .el-button {
   display: block;
-  margin: 4px 0;
+  margin: var(--forge-space-2) 0 0;
 }
 </style>

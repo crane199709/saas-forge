@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { createTenantClient, tenantClientKey } from '@crane199709/sdk'
 import { i18n } from '../i18n'
 import DictionaryPage from './DictionaryPage.vue'
+import { tableRow } from '../test-table'
 
 afterEach(() => {
   sessionStorage.clear()
@@ -91,8 +92,8 @@ it('按服务列出字典，默认隐藏已停用项，可切换显示', async (
   expect(wrapper.find('[data-testid="item-fax"]').exists()).toBe(false)
 
   await wrapper.get('[data-testid="show-disabled"] input').setValue(true)
-  expect(wrapper.get('[data-testid="item-custom.expo"]').text()).toContain('已停用')
-  expect(wrapper.get('[data-testid="item-fax"]').text()).toContain('已下线')
+  expect(tableRow(wrapper, 'item-custom.expo').text()).toContain('已停用')
+  expect(tableRow(wrapper, 'item-fax').text()).toContain('已下线')
 })
 
 it('可扩展字典新增自定义项：编码提示 custom. 前缀，提交不含前缀，完成后重读', async () => {
@@ -144,7 +145,7 @@ it('固定字典只读，不提供新增与修改', async () => {
 
   expect(wrapper.text()).toContain('固定字典')
   expect(wrapper.find('[data-testid="new-item-create"]').exists()).toBe(false)
-  expect(wrapper.get('[data-testid="item-male"]').find('button').exists()).toBe(false)
+  expect(tableRow(wrapper, 'item-male').find('button').exists()).toBe(false)
 })
 
 it('修改内置项的显示名与排序', async () => {
@@ -177,7 +178,7 @@ it('停用启用中的项，启用已停用的项；已下线的项不可操作'
     ['POST', `${base}/web/disable`],
     ['POST', `${base}/custom.expo/enable`],
   ])
-  expect(wrapper.get('[data-testid="item-fax"]').find('button').exists()).toBe(false)
+  expect(tableRow(wrapper, 'item-fax').find('button').exists()).toBe(false)
 })
 
 it('与其他可选项重名的项带标记，提示改名其中之一', async () => {
