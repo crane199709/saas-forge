@@ -1,6 +1,6 @@
 # 租户 IP 允许列表规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-11-07 的设计拷问逐条确认。
 
@@ -39,3 +39,7 @@ Tenant 目前无法限制其 Membership 的访问来源。
 - 遵守 `docs/agents/coding-standards.md`；新表用 `COMMENT ON` 写中文描述。
 - 新增 SDK 表时，同步更新服务迁移、`forge-service-archetype`、`docs/business-service-guide.md` 与 `CHANGELOG.md`。
 - 带租户数据的新表接入租户清理流程（`TenantDataCleaner`）。
+
+## 实现与验收
+
+工单 01–04 均已 resolved，全部实现及审查修复已合入 `codex/tenant-ip-allowlist-integration`。本地提交，未推送或部署。验证结果、审查修复和上线顺序见 [最终验收](acceptance.md)。
