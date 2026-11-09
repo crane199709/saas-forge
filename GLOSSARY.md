@@ -6,7 +6,7 @@
 
 **Tenant（租户）**:
 购买并使用 SaaS 的客户单位，是业务数据隔离的边界。
-_Avoid_: 组织、企业、空间、Workspace
+_Avoid_: 组织、企业、机构、空间、Workspace
 
 **Identity（身份）**:
 一个自然人在整个系统中唯一的全局身份，持有登录凭证与全局基础资料，不属于任何租户。
@@ -15,6 +15,10 @@ _Avoid_: 用户、User、账号
 **Membership（成员关系）**:
 某个 Identity 在某个 Tenant 中的成员身份，承载其在该租户内的状态、资料、角色与属性。
 _Avoid_: 租户用户、员工、TenantUser
+
+**Bulk Invitation（批量邀请）**:
+一次提交多个联系方式、逐个邀请其加入当前 Tenant 的操作；每个联系方式各自成败，互不影响，不是 Import Task。
+_Avoid_: 批量导入成员、批量新增用户、批量创建账号
 
 **Active Tenant（当前租户）**:
 一次登录会话当前所处的那个 Tenant；任一时刻一个会话只有一个当前租户。
