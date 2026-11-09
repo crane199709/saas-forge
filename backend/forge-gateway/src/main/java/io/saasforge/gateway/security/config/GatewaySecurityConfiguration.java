@@ -4,6 +4,7 @@ import io.saasforge.gateway.envelope.service.ErrorEnvelopeService;
 import io.saasforge.gateway.routing.config.GatewayServicesProperties;
 import io.saasforge.gateway.security.service.MembershipStateVerifier;
 import io.saasforge.gateway.security.service.OperatorStateVerifier;
+import io.saasforge.sdk.core.ClientIpHeader;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import io.saasforge.sdk.security.ForgeSecurityProperties;
 import io.saasforge.sdk.security.PlatformJwtValidator;
@@ -48,14 +49,12 @@ class GatewaySecurityConfiguration {
         tenantDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(properties.issuer()), new TenantJwtValidator()));
         // 验签之后再比对即时失效状态：BadJwtException 由资源服务器转换为 401 auth.unauthenticated 信封（质询头为 invalid_token）。
-        ReactiveJwtDecoder tenant = token -> tenantDecoder.decode(token).flatMap(states::verify);
         var platformDecoder = NimbusReactiveJwtDecoder.withJwkSetUri(
                         properties.platform().jwkSetUri())
                 .build();
         platformDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(properties.platform().issuer()), new PlatformJwtValidator()));
         ReactiveJwtDecoder platform = token -> platformDecoder.decode(token).flatMap(operators::verify);
-        ReactiveAuthenticationManager tenantManager = new JwtReactiveAuthenticationManager(tenant);
         ReactiveAuthenticationManager platformManager = new JwtReactiveAuthenticationManager(platform);
         var platformRoutes = ServerWebExchangeMatchers.pathMatchers(Stream.concat(
                         Stream.of("/iam/platform/**"),
@@ -63,8 +62,14 @@ class GatewaySecurityConfiguration {
                                 .filter(service -> service.realm() == GatewayServicesProperties.Realm.PLATFORM)
                                 .map(service -> service.prefix() + "/**"))
                 .toArray(String[]::new));
-        return exchange ->
-                platformRoutes.matches(exchange).map(match -> match.isMatch() ? platformManager : tenantManager);
+        return exchange -> platformRoutes.matches(exchange).map(match -> {
+            if (match.isMatch()) return platformManager;
+            // ClientIpFilter 已覆盖此头；只把本次请求的可信来源绑定到认证管理器。
+            String clientIp = exchange.getRequest().getHeaders().getFirst(ClientIpHeader.NAME);
+            ReactiveJwtDecoder tenant =
+                    token -> tenantDecoder.decode(token).flatMap(jwt -> states.verify(jwt, clientIp));
+            return new JwtReactiveAuthenticationManager(tenant);
+        });
     }
 
     /**
@@ -100,6 +105,7 @@ class GatewaySecurityConfiguration {
                                     "/iam/auth/exchange",
                                     "/iam/auth/refresh",
                                     "/iam/auth/switch",
+                                    "/iam/auth/memberships",
                                     "/iam/auth/login/send-code",
                                     "/iam/auth/code-login",
                                     // 待 MFA 状态保存在 iam 登录会话中，由 iam 校验
