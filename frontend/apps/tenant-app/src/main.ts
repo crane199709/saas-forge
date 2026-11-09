@@ -5,6 +5,7 @@ import 'element-plus/dist/index.css'
 // Element Plus 内置文案默认是英文，与第一期只支持简体中文保持一致
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import {
+  ApiError,
   createAccessControl,
   createTenantClient,
   sdkRuntime,
@@ -63,7 +64,7 @@ async function loadAccess() {
     try {
       await access.load()
     } catch (error) {
-      console.error(error)
+      if (!(error instanceof ApiError && error.code === 'tenant.ipNotAllowed')) console.error(error)
       access.clear()
     }
   }

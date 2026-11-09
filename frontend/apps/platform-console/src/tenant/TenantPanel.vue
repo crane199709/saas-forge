@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@crane199709/sdk'
 import { ErrorAlert, type ErrorTip } from '@crane199709/ui'
@@ -44,6 +44,41 @@ const planDraft = ref('')
 const pendingPlan = ref<{ tenantId: string; planId: string; preview: PlanImpactPreview } | null>(
   null,
 )
+const clearing = ref<{ tenantId: string; tenantName: string } | null>(null)
+const clearReason = ref('')
+const clearError = ref<ErrorTip | null>(null)
+const clearBusy = ref(false)
+const cleared = ref(false)
+watch(
+  () => detail.value?.tenant.id,
+  () => {
+    clearing.value = null
+    cleared.value = false
+  },
+)
+function startClear() {
+  if (!props.canManage || !detail.value) return
+  clearing.value = { tenantId: detail.value.tenant.id, tenantName: detail.value.tenant.name }
+  clearReason.value = ''
+  clearError.value = null
+}
+async function confirmClear() {
+  const target = clearing.value
+  if (!props.canManage || !target || !clearReason.value.trim() || clearBusy.value) return
+  if (target.tenantId !== detail.value?.tenant.id) return
+  clearBusy.value = true
+  clearError.value = null
+  try {
+    await props.api.clearIpAllowlist(target.tenantId, clearReason.value.trim())
+    if (target !== clearing.value) return
+    cleared.value = true
+    clearing.value = null
+  } catch (cause) {
+    if (target === clearing.value) clearError.value = errorTip(cause, t)
+  } finally {
+    clearBusy.value = false
+  }
+}
 const busy = ref(false)
 const error = ref<ErrorTip | null>(null)
 
@@ -279,7 +314,12 @@ onMounted(() => load(1))
       </el-form>
     </el-dialog>
 
-    <el-drawer :model-value="detail !== null" :title="detail?.tenant.name" @close="detail = null">
+    <el-drawer
+      size="min(560px, calc(100vw - 24px))"
+      :model-value="detail !== null"
+      :title="detail?.tenant.name"
+      @close="detail = null"
+    >
       <template v-if="detail">
         <el-descriptions :column="1" border>
           <el-descriptions-item :label="t('tenant.status')">{{
@@ -303,6 +343,12 @@ onMounted(() => load(1))
         </el-descriptions>
 
         <template v-if="canManage">
+          <h3>租户 IP 允许列表</h3>
+          <p>成员因来源 IP 被拒时，可紧急清除限制。清除后所有来源 IP 均可访问该租户。</p>
+          <el-button type="danger" plain data-testid="ip-clear-open" @click="startClear"
+            >紧急清除 IP 允许列表</el-button
+          >
+          <p v-if="cleared" role="status">租户 IP 允许列表已清除。</p>
           <h3>{{ t('tenant.changePlan') }}</h3>
           <p>{{ t('tenant.changePlanHint') }}</p>
           <el-form class="change-plan" inline @submit.prevent="changePlan">
@@ -414,6 +460,45 @@ onMounted(() => load(1))
         </el-table>
       </template>
     </el-drawer>
+    <el-dialog
+      :model-value="clearing !== null"
+      title="确认紧急清除 IP 允许列表"
+      width="min(480px, calc(100vw - 32px))"
+      :close-on-click-modal="false"
+      :show-close="!clearBusy"
+      :close-on-press-escape="!clearBusy"
+      @close="clearing = null"
+    >
+      <p>
+        即将清除「{{ clearing?.tenantName }}」的 IP 允许列表，所有来源 IP
+        将立即恢复访问。请确认目标并填写原因。
+      </p>
+      <ErrorAlert v-if="clearError" :tip="clearError" />
+      <el-form label-position="top" @submit.prevent="confirmClear">
+        <el-form-item label="清除原因（必填）" for="ip-clear-reason">
+          <el-input
+            id="ip-clear-reason"
+            v-model="clearReason"
+            type="textarea"
+            :rows="3"
+            maxlength="500"
+            show-word-limit
+            :disabled="clearBusy"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button :disabled="clearBusy" @click="clearing = null">取消</el-button>
+        <el-button
+          type="danger"
+          data-testid="ip-clear-confirm"
+          :loading="clearBusy"
+          :disabled="!clearReason.trim() || clearBusy"
+          @click="confirmClear"
+          >确认清除</el-button
+        >
+      </template>
+    </el-dialog>
     <PlanImpactDialog
       v-if="pendingPlan"
       :plan-name="planName(pendingPlan.planId)"

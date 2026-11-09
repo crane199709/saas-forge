@@ -11,6 +11,14 @@ export function createSecurityApi(client: Pick<TenantClient, 'api'>) {
   // 经网关的 IAM 路由，与 `/iam/auth` 同源
   const path = '/iam/security-settings'
   return {
+    getIpAllowlist: () =>
+      client.api<{ rules: string[]; currentIp: string }>(`${path}/ip-allowlist`),
+    updateIpAllowlist: (rules: string[]) =>
+      client.api<{ rules: string[]; currentIp: string }>(`${path}/ip-allowlist`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rules }),
+      }),
     get: () => client.api<SecuritySettings>(path),
     update: (settings: SecuritySettings) =>
       client.api<SecuritySettings>(path, {

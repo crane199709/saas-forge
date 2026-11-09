@@ -80,6 +80,9 @@ async function enter(authenticate: () => Promise<TenantLoginResult>) {
     } else if (result.status === 'mfaBindRequired') {
       bindMembershipId = result.membershipId
       step.value = 'bind'
+    } else if (result.status === 'ipNotAllowed') {
+      loginFlow.memberships = result.memberships
+      await router.replace('/ip-not-allowed')
     } else if (result.status === 'selectTenant') {
       loginFlow.memberships = result.memberships
       await router.push({ path: '/select-tenant', query: route.query })

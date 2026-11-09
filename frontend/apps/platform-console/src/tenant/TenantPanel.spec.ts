@@ -479,3 +479,40 @@ it('等待预览期间关闭详情后，不再弹出确认也不更换', async (
   expect(planDialog()).toBeNull()
   expect(planWrites(fetcher)).toEqual([])
 })
+
+it('清除租户 IP 允许列表必须确认并填写原因，取消不写入', async () => {
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(ok([tenant], page))
+    .mockResolvedValueOnce(ok({ tenant, ...lifecycle, initializations: [] }))
+    .mockResolvedValueOnce(ok(null))
+  vi.stubGlobal('fetch', fetcher)
+  const wrapper = mountPanel()
+  await flushPromises()
+  await wrapper
+    .findAll('button')
+    .find((item) => item.text() === '详情')!
+    .trigger('click')
+  await flushPromises()
+  await wrapper.get('[data-testid="ip-clear-open"]').trigger('click')
+  await flushPromises()
+  const confirm = () =>
+    document.querySelector<HTMLButtonElement>('[data-testid="ip-clear-confirm"]')!
+  expect(confirm().disabled).toBe(true)
+  const input = document.querySelector<HTMLTextAreaElement>('#ip-clear-reason')!
+  input.value = '   '
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  await flushPromises()
+  expect(confirm().disabled).toBe(true)
+  input.value = '  管理员误配置，申请紧急恢复  '
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  await flushPromises()
+  confirm().click()
+  await flushPromises()
+  expect(path(fetcher.mock.calls[2]![0])).toBe('/iam/platform/tenants/t1/ip-allowlist/clear')
+  expect(JSON.parse(fetcher.mock.calls[2]![1].body)).toEqual({
+    reason: '管理员误配置，申请紧急恢复',
+  })
+  expect(wrapper.text()).toContain('租户 IP 允许列表已清除')
+  wrapper.unmount()
+})

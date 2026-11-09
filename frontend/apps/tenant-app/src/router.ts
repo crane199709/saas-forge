@@ -51,6 +51,11 @@ export function createShellRouter(history: RouterHistory) {
         meta: { public: true, standalone: true },
       },
       {
+        path: '/ip-not-allowed',
+        component: () => import('./IpNotAllowedPage.vue'),
+        meta: { public: true, standalone: true },
+      },
+      {
         path: '/no-tenant',
         component: () => import('./NoTenantPage.vue'),
         meta: { public: true, standalone: true },
@@ -147,23 +152,32 @@ function loginLocation(path: string) {
  */
 export function installGuard(
   router: Router,
-  client: Pick<TenantClient, 'session' | 'onSessionChange' | 'onMfaRequired'>,
+  client: Pick<
+    TenantClient,
+    'session' | 'onSessionChange' | 'onMfaRequired' | 'onIpNotAllowed' | 'ipDenial'
+  >,
   access: Pick<AccessControl, 'has'>,
   ready: () => Promise<unknown>,
 ) {
   router.beforeEach(async (to) => {
+    if (client.ipDenial()) return to.path === '/ip-not-allowed' ? true : '/ip-not-allowed'
+    if (to.path === '/ip-not-allowed') return client.session() ? '/' : '/login'
     if (!client.session()) {
       if (to.path === '/mfa-bind') return { path: '/login', query: to.query }
       return requiresAuth(to) ? loginLocation(to.fullPath) : true
     }
     if (to.path === '/login') return '/'
     await ready()
+    if (client.ipDenial()) return '/ip-not-allowed'
     // 登录前解析的 Sub-App 地址落在兜底路由上；权限读取完成、路由已注册后重新解析。
     if (to.name === notFoundRoute && router.resolve(to.fullPath).name !== notFoundRoute) {
       return to.fullPath
     }
     if (to.meta.permission && !access.has(to.meta.permission)) return '/403'
     return true
+  })
+  client.onIpNotAllowed(() => {
+    if (router.currentRoute.value.path !== '/ip-not-allowed') void router.replace('/ip-not-allowed')
   })
   // 刷新被 MFA Requirement 拒绝：进入强制绑定步骤，绑定后回到原页面（账号安全规格 2.4）。
   client.onMfaRequired(() => {
