@@ -47,8 +47,8 @@ public class TenantPlanImpactService {
         Plan current = tenant.getPlanId() == null ? null : plans.get(tenant.getPlanId());
         List<String> lostPermissions = lostPermissions(current, target);
         List<String> lostSubApps = lostSubApps(current, target);
-        // 升级不依赖 iam：没有可失去的内容时，iam 不可用也不影响给出空结果。
-        if (lostPermissions.isEmpty() && lostSubApps.isEmpty() && !quotaLowered(current, target)) return none(target);
+        // 配额没有降低也要查成员数：租户可能已经超额，差额只有 iam 算得出。只有新 Plan 不限成员且无损失时才不依赖 iam。
+        if (lostPermissions.isEmpty() && lostSubApps.isEmpty() && target.getMemberQuota() == null) return none(target);
         TenantMemberImpactResponse impact = members.impact(tenantId, lostPermissions, lostSubApps);
         Integer quota = target.getMemberQuota();
         return new PlanChangeImpactResponse(
@@ -92,12 +92,5 @@ public class TenantPlanImpactService {
     // Plan 中可能保留已下线的权限码或已删除的 Sub-App（重新登记后随之恢复），它们当前本就用不了，不算失去。
     private static List<String> existing(List<String> codes, Set<String> known) {
         return codes.stream().filter(known::contains).toList();
-    }
-
-    private static boolean quotaLowered(Plan current, Plan target) {
-        if (target.getMemberQuota() == null) return false;
-        return current == null
-                || current.getMemberQuota() == null
-                || target.getMemberQuota() < current.getMemberQuota();
     }
 }

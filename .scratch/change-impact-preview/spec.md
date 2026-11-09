@@ -37,7 +37,7 @@ Status: resolved
 
 三张票均已解决，实现汇总于 `claude/change-impact-preview`。本次没有新表，新表相关的验收项不适用。
 
-交付前全量验证：forge-iam 230 个、forge-platform 48 个测试通过，含 `ArchitectureTest` 与 Spotless；tenant-app 174 个、platform-console 72 个单元测试通过；Playwright 37 个通过；类型检查与格式检查通过。
+交付前全量验证：forge-iam 230 个、forge-platform 51 个测试通过，含 `ArchitectureTest` 与 Spotless；tenant-app 174 个、platform-console 72 个单元测试通过；Playwright 37 个通过；类型检查与格式检查通过。
 
 未验证：平台到 IAM 的调用在测试中用 HTTP 桩替代，Playwright 也未连接真实后端和网关，因此没有真实服务联调；平台与 IAM 的内部接口字段已逐项核对一致。
 
@@ -45,5 +45,4 @@ Status: resolved
 
 - Plan 预览的受影响 Membership 只计状态正常、且确实失去有效 Permission Code 或所失去 Sub-App 中可见菜单的成员。
 - 已删除的 Sub-App 和已下线的 Permission Code 不算失去。
-
-待决：租户已超出配额时换到无损失且配额未降低的 Plan，差额显示为 0，详见 [02](issues/02-plan-impact.md)。
+- 新 Plan 有成员配额时，升级也显示实际差额；这类升级在 IAM 不可用时预览失败。详见 [02](issues/02-plan-impact.md)。

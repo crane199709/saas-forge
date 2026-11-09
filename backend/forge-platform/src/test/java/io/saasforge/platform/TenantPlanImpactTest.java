@@ -71,15 +71,53 @@ class TenantPlanImpactTest extends PlatformIntegrationTest {
     }
 
     @Test
-    void upgradeIsEmptyAndDoesNotDependOnIam() throws Exception {
+    void upgradeWithinTheNewQuotaHasNoImpact() throws Exception {
         UUID basic = plan(List.of("order:read"), List.of(), 3);
         UUID pro = plan(List.of("order:read", "order:approve"), List.of("demo"), 50);
         UUID tenant = tenant(basic, null);
+        IamPlanImpactFixture.stub(tenant, 2, 0);
 
         Response impact = impact(PlatformTokens.operator(), tenant, pro);
 
         assertThat(impact.status()).isEqualTo(200);
-        assertEmpty(impact, 50);
+        assertNoLoss(impact, 2, 50, 0);
+    }
+
+    @Test
+    void upgradeStillReportsAShortfallThatAlreadyExists() throws Exception {
+        UUID small = plan(List.of("order:read"), List.of(), 5);
+        UUID larger = plan(List.of("order:read", "order:approve"), List.of(), 6);
+        UUID tenant = tenant(small, null);
+        IamPlanImpactFixture.stub(tenant, 8, 0);
+
+        Response impact = impact(PlatformTokens.operator(), tenant, larger);
+
+        assertThat(impact.status()).isEqualTo(200);
+        assertNoLoss(impact, 8, 6, 2);
+    }
+
+    @Test
+    void upgradeWithAQuotaIsAnExplicitErrorWhenIamIsUnavailable() throws Exception {
+        UUID small = plan(List.of("order:read"), List.of(), 5);
+        UUID larger = plan(List.of("order:read", "order:approve"), List.of(), 6);
+        UUID tenant = tenant(small, null);
+
+        Response impact = impact(PlatformTokens.operator(), tenant, larger);
+
+        assertThat(impact.status()).isEqualTo(503);
+        assertThat(impact.code()).isEqualTo("plan.impactUnavailable");
+    }
+
+    @Test
+    void upgradeToAnUnlimitedPlanIsEmptyAndDoesNotDependOnIam() throws Exception {
+        UUID basic = plan(List.of("order:read"), List.of(), 3);
+        UUID unlimited = plan(List.of("order:read", "order:approve"), List.of(), null);
+        UUID tenant = tenant(basic, null);
+
+        Response impact = impact(PlatformTokens.operator(), tenant, unlimited);
+
+        assertThat(impact.status()).isEqualTo(200);
+        assertEmpty(impact, null);
         assertThat(IamPlanImpactFixture.received(tenant)).isNull();
     }
 
@@ -171,9 +209,9 @@ class TenantPlanImpactTest extends PlatformIntegrationTest {
     void onlyRetiredOrDeletedCapabilitiesMissingFromTheTargetIsNotADowngrade() throws Exception {
         UUID target = plan(List.of("order:read", "order:approve"), List.of(REGISTERED), 50);
         UUID tenant = tenant(STALE_PLAN, null);
+        IamPlanImpactFixture.stub(tenant, 1, 0);
 
-        assertEmpty(impact(PlatformTokens.operator(), tenant, target), 50);
-        assertThat(IamPlanImpactFixture.received(tenant)).isNull();
+        assertNoLoss(impact(PlatformTokens.operator(), tenant, target), 1, 50, 0);
     }
 
     @Test
@@ -199,12 +237,13 @@ class TenantPlanImpactTest extends PlatformIntegrationTest {
         UUID basic = plan(List.of("order:read"), List.of(), 3);
         UUID pro = plan(List.of("order:read", "order:approve"), List.of(REGISTERED), 50);
         UUID tenant = tenant(basic, null);
+        IamPlanImpactFixture.stub(tenant, 1, 0);
         PlatformTokens.catalogAvailable = false;
         try {
             Response impact = impact(PlatformTokens.operator(), tenant, pro);
 
             assertThat(impact.status()).isEqualTo(200);
-            assertEmpty(impact, 50);
+            assertNoLoss(impact, 1, 50, 0);
         } finally {
             PlatformTokens.catalogAvailable = true;
         }
@@ -242,13 +281,23 @@ class TenantPlanImpactTest extends PlatformIntegrationTest {
         assertThat(missing.code()).isEqualTo("request.malformed");
     }
 
-    private static void assertEmpty(Response impact, int memberQuota) {
+    private static void assertEmpty(Response impact, Integer memberQuota) {
         assertThat(impact.data())
                 .containsEntry("lostPermissions", List.of())
                 .containsEntry("lostSubApps", List.of())
                 .containsEntry("memberCount", null)
                 .containsEntry("memberQuota", memberQuota)
                 .containsEntry("membersOverQuota", 0)
+                .containsEntry("affectedMemberships", 0);
+    }
+
+    private static void assertNoLoss(Response impact, int memberCount, int memberQuota, int membersOverQuota) {
+        assertThat(impact.data())
+                .containsEntry("lostPermissions", List.of())
+                .containsEntry("lostSubApps", List.of())
+                .containsEntry("memberCount", memberCount)
+                .containsEntry("memberQuota", memberQuota)
+                .containsEntry("membersOverQuota", membersOverQuota)
                 .containsEntry("affectedMemberships", 0);
     }
 
