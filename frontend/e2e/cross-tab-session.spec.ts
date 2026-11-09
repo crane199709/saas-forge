@@ -127,8 +127,9 @@ async function mockBackend(context: BrowserContext): Promise<Backend> {
     await route.fulfill(issue(membershipId))
   })
   await context.route('**/iam/auth/logout', (route) => route.fulfill(ok(null)))
+  // 成员关系接口用 Refresh Token 认证，不带 Bearer。
   await context.route('**/iam/auth/memberships', (route) =>
-    route.fulfill(authorized(route) ? ok(memberships) : unauthorized()),
+    route.fulfill(backend.revoked ? unauthorized() : ok(memberships)),
   )
   await context.route('**/iam/auth/access', (route) => {
     if (!authorized(route)) return route.fulfill(unauthorized())

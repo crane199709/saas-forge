@@ -137,6 +137,8 @@ test('订单切换重置页码，恢复末页最后一条后回到有效页并�
   await page.goto('/apps/demo/overview')
   await expect(page.getByRole('heading', { name: '订单', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '下一页' }).click()
+  // 翻页响应返回前旧的 20 行还在，多元素时 toHaveText 会直接报严格模式错误。
+  await expect(page.getByTestId('order-title')).toHaveCount(1)
   await expect(page.getByTestId('order-title')).toHaveText('有效订单 21')
   await page.getByRole('button', { name: '已删除', exact: true }).click()
   await expect(page.getByTestId('order-title').first()).toHaveText('已删除订单 1')
