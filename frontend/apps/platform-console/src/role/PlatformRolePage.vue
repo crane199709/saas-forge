@@ -7,7 +7,5 @@ const api = createPlatformRoleApi(usePlatformClient())
 </script>
 
 <template>
-  <el-card>
-    <PlatformRolePanel :api="api" />
-  </el-card>
+  <PlatformRolePanel :api="api" />
 </template>

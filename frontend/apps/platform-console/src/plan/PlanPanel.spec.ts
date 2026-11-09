@@ -83,7 +83,7 @@ it('列出套餐，新建时从权限码目录中选择 Feature Pack', async () 
   await wrapper.get('[data-testid="plan-create"]').trigger('click')
   await flushPromises()
   expect(path(fetcher.mock.calls[1][0])).toBe('/platform/plans/permissions')
-  const form = document.body.querySelector('.el-dialog form') as HTMLFormElement
+  const form = document.body.querySelector('.el-drawer form') as HTMLFormElement
   for (const [name, value] of [
     ['code', 'pro'],
     ['name', '专业版'],
@@ -136,7 +136,7 @@ it('编辑时保留已下线的权限码，删除被拒时展示服务端提示'
 
   await wrapper.get('[data-testid="plan-edit-basic"]').trigger('click')
   await flushPromises()
-  const form = document.body.querySelector('.el-dialog form') as HTMLFormElement
+  const form = document.body.querySelector('.el-drawer form') as HTMLFormElement
   expect((form.querySelector('input[name="code"]') as HTMLInputElement).disabled).toBe(true)
   expect(form.textContent).toContain('已从清单下线（保留）')
   form.dispatchEvent(new Event('submit'))

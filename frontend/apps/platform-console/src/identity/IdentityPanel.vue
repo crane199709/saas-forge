@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@crane199709/sdk'
-import { ErrorAlert, type ErrorTip } from '@crane199709/ui'
+import { ErrorAlert, PageHeader, overlaySize, type ErrorTip } from '@crane199709/ui'
 import { errorTip } from '../error-tip'
 import type { IdentityApi, IdentityLookup } from './identity-api'
 
@@ -51,10 +51,14 @@ async function reset() {
 
 <template>
   <section :aria-label="t('identity.title')">
-    <h2>{{ t('identity.title') }}</h2>
-    <p class="hint">{{ t('identity.hint') }}</p>
-    <ErrorAlert v-if="error" :tip="error" />
-    <el-form label-position="top" data-testid="identity-lookup" @submit.prevent="search">
+    <PageHeader :title="t('identity.title')" :description="t('identity.hint')" />
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
+    <el-form
+      class="lookup"
+      label-position="top"
+      data-testid="identity-lookup"
+      @submit.prevent="search"
+    >
       <el-form-item :label="t('identity.identifier')" for="identity-identifier">
         <el-input
           id="identity-identifier"
@@ -88,33 +92,45 @@ async function reset() {
         >
       </el-descriptions-item>
     </el-descriptions>
-    <el-alert v-if="resetDone" type="success" :closable="false" :title="t('identity.resetDone')" />
+    <el-alert
+      v-if="resetDone"
+      class="result"
+      type="success"
+      :closable="false"
+      :title="t('identity.resetDone')"
+    />
 
     <el-dialog
       v-model="confirming"
-      width="min(420px, 92vw)"
+      :width="overlaySize.dialogSm"
       :title="t('identity.resetTitle', { name: identity?.displayName ?? '' })"
     >
       <p>{{ t('identity.resetHint') }}</p>
-      <el-button
-        type="danger"
-        :loading="busy"
-        data-testid="identity-mfa-reset-confirm"
-        @click="reset"
-        >{{ t('identity.reset') }}</el-button
-      >
+      <template #footer>
+        <el-button
+          type="danger"
+          :loading="busy"
+          data-testid="identity-mfa-reset-confirm"
+          @click="reset"
+          >{{ t('identity.reset') }}</el-button
+        >
+      </template>
     </el-dialog>
   </section>
 </template>
 
 <style scoped>
-.hint {
-  color: var(--el-text-color-secondary);
+.page-error {
+  margin-bottom: var(--forge-space-3);
+}
+.lookup,
+.result {
+  max-width: 640px;
 }
 .result {
-  margin-top: 16px;
+  margin-top: var(--forge-space-4);
 }
 .reset {
-  margin-left: 12px;
+  margin-left: var(--forge-space-3);
 }
 </style>

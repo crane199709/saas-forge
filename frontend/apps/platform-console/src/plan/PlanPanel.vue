@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@crane199709/sdk'
-import { ErrorAlert, type ErrorTip } from '@crane199709/ui'
+import { ErrorAlert, PageHeader, overlaySize, type ErrorTip } from '@crane199709/ui'
 import type { CatalogPermission, Plan, PlanApi } from './plan-api'
 
 // subApps：App Registry 中已登记的编码，作为 Feature Pack 的选项；仍可输入尚未登记的编码，登记后随之生效
@@ -141,32 +141,33 @@ onMounted(() => run(fetchPlans))
 
 <template>
   <section class="plan-panel" :aria-label="t('plan.title')">
-    <header>
-      <h2>{{ t('plan.title') }}</h2>
-      <el-button type="primary" :loading="busy" data-testid="plan-create" @click="open(null)">{{
-        t('plan.create')
-      }}</el-button>
-    </header>
-    <ErrorAlert v-if="error && !dialogOpen" :tip="error" />
+    <PageHeader :title="t('plan.title')">
+      <template #actions>
+        <el-button type="primary" :loading="busy" data-testid="plan-create" @click="open(null)">{{
+          t('plan.create')
+        }}</el-button>
+      </template>
+    </PageHeader>
+    <ErrorAlert v-if="error && !dialogOpen" class="page-error" :tip="error" />
 
-    <el-table :data="plans" :empty-text="t('plan.empty')">
-      <el-table-column prop="name" :label="t('plan.name')" />
-      <el-table-column prop="code" :label="t('plan.code')" />
-      <el-table-column :label="t('plan.permissions')">
+    <el-table :data="plans" row-key="id" :empty-text="t('plan.empty')">
+      <el-table-column prop="name" :label="t('plan.name')" min-width="140" show-overflow-tooltip />
+      <el-table-column prop="code" :label="t('plan.code')" min-width="110" show-overflow-tooltip />
+      <el-table-column :label="t('plan.permissions')" width="100">
         <template #default="{ row }">{{
           t('plan.permissionCount', { count: row.permissions.length })
         }}</template>
       </el-table-column>
-      <el-table-column :label="t('plan.subApps')">
-        <template #default="{ row }">{{ row.subApps.join('、') }}</template>
+      <el-table-column :label="t('plan.subApps')" min-width="130" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.subApps.join('、') || '—' }}</template>
       </el-table-column>
-      <el-table-column :label="t('plan.memberQuota')">
+      <el-table-column :label="t('plan.memberQuota')" width="110" align="right">
         <template #default="{ row }">{{ quota(row.memberQuota) }}</template>
       </el-table-column>
-      <el-table-column :label="t('plan.storageQuota')">
+      <el-table-column :label="t('plan.storageQuota')" width="120" align="right">
         <template #default="{ row }">{{ quota(row.storageQuotaMb, ' MiB') }}</template>
       </el-table-column>
-      <el-table-column :label="t('plan.actions')">
+      <el-table-column :label="t('plan.actions')" width="112" fixed="right">
         <template #default="{ row }">
           <el-button
             link
@@ -188,9 +189,9 @@ onMounted(() => run(fetchPlans))
       </el-table-column>
     </el-table>
 
-    <el-dialog
+    <el-drawer
       v-model="dialogOpen"
-      width="720px"
+      :size="overlaySize.drawerLg"
       :title="editing ? t('plan.editTitle', { name: editing.name }) : t('plan.create')"
     >
       <ErrorAlert v-if="error" :tip="error" />
@@ -270,29 +271,27 @@ onMounted(() => run(fetchPlans))
           t('plan.save')
         }}</el-button>
       </el-form>
-    </el-dialog>
+    </el-drawer>
   </section>
 </template>
 
 <style scoped>
-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.page-error {
+  margin-bottom: var(--forge-space-3);
 }
 .hint {
-  margin: 4px 0 0;
+  margin: var(--forge-space-1) 0 0;
   color: var(--el-text-color-secondary);
 }
 .permissions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--forge-space-2);
 }
 .group-title {
   font-weight: 600;
 }
 .unit {
-  margin-left: 8px;
+  margin-left: var(--forge-space-2);
 }
 </style>

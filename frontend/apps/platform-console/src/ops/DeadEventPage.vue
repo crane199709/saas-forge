@@ -9,7 +9,5 @@ const access = useConsoleAccess()
 </script>
 
 <template>
-  <el-card>
-    <DeadEventPanel :api="api" :can-manage="access.has(permissions.opsManage)" />
-  </el-card>
+  <DeadEventPanel :api="api" :can-manage="access.has(permissions.opsManage)" />
 </template>

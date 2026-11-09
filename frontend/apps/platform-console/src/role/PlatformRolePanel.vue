@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@crane199709/sdk'
-import { ErrorAlert, type ErrorTip } from '@crane199709/ui'
+import { ErrorAlert, PageHeader, overlaySize, type ErrorTip } from '@crane199709/ui'
 import type {
   DataPolicy,
   PlatformDataResource,
@@ -192,33 +192,49 @@ onMounted(() =>
 
 <template>
   <section :aria-label="t('platformRole.title')">
-    <header>
-      <h2>{{ t('platformRole.title') }}</h2>
-      <el-button
-        type="primary"
-        :loading="busy"
-        data-testid="platform-role-create"
-        @click="open(null)"
-        >{{ t('platformRole.create') }}</el-button
-      >
-    </header>
-    <ErrorAlert v-if="error && !dialogOpen" :tip="error" />
+    <PageHeader :title="t('platformRole.title')">
+      <template #actions>
+        <el-button
+          type="primary"
+          :loading="busy"
+          data-testid="platform-role-create"
+          @click="open(null)"
+          >{{ t('platformRole.create') }}</el-button
+        >
+      </template>
+    </PageHeader>
+    <ErrorAlert v-if="error && !dialogOpen" class="page-error" :tip="error" />
 
-    <el-table :data="roles" :empty-text="t('platformRole.empty')">
-      <el-table-column prop="name" :label="t('platformRole.name')" />
-      <el-table-column prop="code" :label="t('platformRole.code')" />
-      <el-table-column :label="t('platformRole.permissions')">
+    <el-table :data="roles" row-key="id" :empty-text="t('platformRole.empty')">
+      <el-table-column
+        prop="name"
+        :label="t('platformRole.name')"
+        min-width="160"
+        show-overflow-tooltip
+      />
+      <el-table-column
+        prop="code"
+        :label="t('platformRole.code')"
+        min-width="160"
+        show-overflow-tooltip
+      />
+      <el-table-column :label="t('platformRole.permissions')" width="120">
         <template #default="{ row }">{{
           row.builtin
             ? t('platformRole.allPermissions')
             : t('platformRole.permissionCount', { count: row.permissions.length })
         }}</template>
       </el-table-column>
-      <el-table-column :label="t('platformRole.dataScope')" min-width="200">
+      <el-table-column :label="t('platformRole.dataScope')" min-width="200" show-overflow-tooltip>
         <template #default="{ row }">{{ describe(row as PlatformRole) }}</template>
       </el-table-column>
-      <el-table-column prop="operatorCount" :label="t('platformRole.operatorCount')" />
-      <el-table-column :label="t('platformRole.actions')">
+      <el-table-column
+        prop="operatorCount"
+        :label="t('platformRole.operatorCount')"
+        width="100"
+        align="right"
+      />
+      <el-table-column :label="t('platformRole.actions')" width="160" fixed="right">
         <template #default="{ row }">
           <template v-if="!row.builtin">
             <el-button
@@ -243,9 +259,9 @@ onMounted(() =>
       </el-table-column>
     </el-table>
 
-    <el-dialog
+    <el-drawer
       v-model="dialogOpen"
-      width="min(720px, 92vw)"
+      :size="overlaySize.drawerLg"
       :title="
         editing ? t('platformRole.editTitle', { name: editing.name }) : t('platformRole.create')
       "
@@ -312,21 +328,19 @@ onMounted(() =>
           t('platformRole.save')
         }}</el-button>
       </el-form>
-    </el-dialog>
+    </el-drawer>
   </section>
 </template>
 
 <style scoped>
-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.page-error {
+  margin-bottom: var(--forge-space-3);
 }
 .hint {
-  margin: 4px 0 0;
+  margin: var(--forge-space-1) 0 0;
   color: var(--el-text-color-secondary);
 }
 .groups h4 {
-  margin: 8px 0 4px;
+  margin: var(--forge-space-2) 0 var(--forge-space-1);
 }
 </style>

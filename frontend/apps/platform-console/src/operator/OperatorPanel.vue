@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ErrorAlert, type ErrorTip } from '@crane199709/ui'
+import { ErrorAlert, PageHeader, overlaySize, type ErrorTip } from '@crane199709/ui'
 import { errorTip } from '../error-tip'
 import type { PlatformRole, PlatformRoleApi } from '../role/platform-role-api'
 import type { Operator, OperatorApi } from './operator-api'
@@ -139,37 +139,57 @@ onMounted(() =>
 
 <template>
   <section :aria-label="t('operator.title')">
-    <header>
-      <h2>{{ t('operator.title') }}</h2>
-      <el-button type="primary" :loading="busy" data-testid="operator-create" @click="open(null)">{{
-        t('operator.create')
-      }}</el-button>
-    </header>
-    <ErrorAlert v-if="error && !dialogOpen && !passwordTarget" :tip="error" />
+    <PageHeader :title="t('operator.title')">
+      <template #actions>
+        <el-button
+          type="primary"
+          :loading="busy"
+          data-testid="operator-create"
+          @click="open(null)"
+          >{{ t('operator.create') }}</el-button
+        >
+      </template>
+    </PageHeader>
+    <ErrorAlert v-if="error && !dialogOpen && !passwordTarget" class="page-error" :tip="error" />
     <el-alert
       v-if="mfaResetName"
+      class="page-error"
       type="success"
       :closable="false"
       :title="t('operator.resetMfaDone', { name: mfaResetName })"
     />
 
-    <el-table :data="operators" :empty-text="t('operator.empty')">
-      <el-table-column prop="account" :label="t('operator.account')" />
-      <el-table-column prop="displayName" :label="t('operator.displayName')" />
-      <el-table-column :label="t('operator.region')">
+    <el-table :data="operators" row-key="id" :empty-text="t('operator.empty')">
+      <el-table-column
+        prop="account"
+        :label="t('operator.account')"
+        min-width="140"
+        show-overflow-tooltip
+      />
+      <el-table-column
+        prop="displayName"
+        :label="t('operator.displayName')"
+        min-width="120"
+        show-overflow-tooltip
+      />
+      <el-table-column :label="t('operator.region')" width="96">
         <template #default="{ row }">{{ row.region ?? t('operator.noRegion') }}</template>
       </el-table-column>
-      <el-table-column :label="t('operator.roles')">
-        <template #default="{ row }">{{ roleNames(row.roleIds) }}</template>
+      <el-table-column :label="t('operator.roles')" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">{{ roleNames(row.roleIds) || '—' }}</template>
       </el-table-column>
-      <el-table-column :label="t('operator.status')">
+      <el-table-column :label="t('operator.status')" width="88">
         <template #default="{ row }">
-          <el-tag :type="row.status === 'active' ? 'success' : 'info'">{{
+          <el-tag size="small" :type="row.status === 'active' ? 'success' : 'info'">{{
             t(`operator.statuses.${row.status}`)
           }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column :label="t('operator.actions')" min-width="280">
+      <el-table-column
+        :label="t('operator.actions')"
+        :width="canResetMfa ? 320 : 240"
+        fixed="right"
+      >
         <template #default="{ row }">
           <el-button
             link
@@ -210,7 +230,7 @@ onMounted(() =>
 
     <el-dialog
       v-model="dialogOpen"
-      width="min(560px, 92vw)"
+      :width="overlaySize.dialogMd"
       :title="
         editing ? t('operator.editTitle', { name: editing.displayName }) : t('operator.create')
       "
@@ -268,7 +288,7 @@ onMounted(() =>
 
     <el-dialog
       :model-value="passwordTarget !== null"
-      width="min(420px, 92vw)"
+      :width="overlaySize.dialogSm"
       :title="t('operator.resetPasswordTitle', { name: passwordTarget?.displayName ?? '' })"
       @close="passwordTarget = null"
     >
@@ -293,30 +313,30 @@ onMounted(() =>
 
     <el-dialog
       :model-value="mfaTarget !== null"
-      width="min(420px, 92vw)"
+      :width="overlaySize.dialogSm"
       :title="t('operator.resetMfaTitle', { name: mfaTarget?.displayName ?? '' })"
       @close="mfaTarget = null"
     >
       <p>{{ t('operator.resetMfaHint') }}</p>
-      <el-button
-        type="danger"
-        :loading="busy"
-        data-testid="operator-mfa-reset-confirm"
-        @click="resetMfa"
-        >{{ t('operator.resetMfa') }}</el-button
-      >
+      <template #footer>
+        <el-button
+          type="danger"
+          :loading="busy"
+          data-testid="operator-mfa-reset-confirm"
+          @click="resetMfa"
+          >{{ t('operator.resetMfa') }}</el-button
+        >
+      </template>
     </el-dialog>
   </section>
 </template>
 
 <style scoped>
-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.page-error {
+  margin-bottom: var(--forge-space-3);
 }
 .hint {
-  margin: 4px 0 0;
+  margin: var(--forge-space-1) 0 0;
   color: var(--el-text-color-secondary);
 }
 </style>

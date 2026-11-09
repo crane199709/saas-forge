@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@crane199709/sdk'
-import { ErrorAlert, RecoveryCodeList, type ErrorTip } from '@crane199709/ui'
+import { ErrorAlert, PageHeader, RecoveryCodeList, type ErrorTip } from '@crane199709/ui'
 import { errorTip } from '../error-tip'
 import { usePlatformClient } from '../shell'
 import { createAccountSecurityApi } from './account-security-api'
@@ -101,10 +101,10 @@ function regenerate() {
 
 <template>
   <section class="account-security" :aria-label="t('account.title')">
-    <h2>{{ t('account.title') }}</h2>
+    <PageHeader :title="t('account.title')" />
     <ErrorAlert v-if="error" :tip="error" />
 
-    <el-card>
+    <section class="block">
       <h3>{{ t('account.password.title') }}</h3>
       <el-alert
         v-if="passwordChanged"
@@ -139,9 +139,9 @@ function regenerate() {
           t('account.password.submit')
         }}</el-button>
       </el-form>
-    </el-card>
+    </section>
 
-    <el-card data-testid="mfa-section">
+    <section class="block" data-testid="mfa-section">
       <h3>{{ t('account.mfa.title') }}</h3>
       <template v-if="step === 'bind'">
         <MfaBindForm
@@ -188,9 +188,9 @@ function regenerate() {
           t('account.mfa.change')
         }}</el-button>
       </template>
-    </el-card>
+    </section>
 
-    <el-card>
+    <section class="block">
       <h3>{{ t('account.recovery.title') }}</h3>
       <RecoveryCodeList v-if="recoveryCodes" :codes="recoveryCodes" @done="recoveryCodes = null" />
       <el-form
@@ -215,7 +215,7 @@ function regenerate() {
           t('account.recovery.submit')
         }}</el-button>
       </el-form>
-    </el-card>
+    </section>
   </section>
 </template>
 
@@ -223,7 +223,16 @@ function regenerate() {
 .account-security {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--forge-space-4);
   max-width: 640px;
+}
+.block + .block {
+  padding-top: var(--forge-space-4);
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+h3 {
+  margin: 0 0 var(--forge-space-3);
+  font-size: var(--forge-font-size-md);
+  font-weight: 600;
 }
 </style>

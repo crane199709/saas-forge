@@ -23,6 +23,7 @@ export const layoutTokens = Object.freeze({
 export const overlaySize = Object.freeze({
   dialogSm: 'min(480px, calc(100vw - 32px))',
   dialogMd: 'min(640px, calc(100vw - 32px))',
+  dialogLg: 'min(960px, calc(100vw - 32px))',
   drawerMd: 'min(480px, 100vw)',
   drawerLg: 'min(760px, 100vw)',
 })

@@ -9,7 +9,5 @@ const access = useConsoleAccess()
 </script>
 
 <template>
-  <el-card>
-    <TaskRunPanel :api="api" :can-manage="access.has(permissions.opsManage)" />
-  </el-card>
+  <TaskRunPanel :api="api" :can-manage="access.has(permissions.opsManage)" />
 </template>

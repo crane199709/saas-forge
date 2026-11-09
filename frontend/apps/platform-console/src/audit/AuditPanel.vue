@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@crane199709/sdk'
-import { ErrorAlert, type ErrorTip } from '@crane199709/ui'
+import { ErrorAlert, PageHeader, PageToolbar, type ErrorTip } from '@crane199709/ui'
 import type { AuditApi, AuditEvent } from './audit-api'
 
 const props = defineProps<{ api: AuditApi }>()
@@ -57,11 +57,12 @@ onMounted(() => void load(1))
 
 <template>
   <section :aria-label="t('audit.title')">
-    <h2>{{ t('audit.title') }}</h2>
-    <ErrorAlert v-if="error" :tip="error" />
-    <div class="toolbar">
+    <PageHeader :title="t('audit.title')" />
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
+    <PageToolbar>
       <el-date-picker
         v-model="range"
+        class="range"
         type="datetimerange"
         :start-placeholder="t('audit.from')"
         :end-placeholder="t('audit.to')"
@@ -69,45 +70,61 @@ onMounted(() => void load(1))
       />
       <el-input
         v-model="actor"
+        class="filter"
         :placeholder="t('audit.actor')"
         clearable
         data-testid="audit-actor"
       />
       <el-input
         v-model="action"
+        class="filter"
         :placeholder="t('audit.action')"
         clearable
         data-testid="audit-action"
       />
       <el-input
         v-model="resourceType"
+        class="filter"
         :placeholder="t('audit.resourceType')"
         clearable
         data-testid="audit-resource-type"
       />
       <el-input
         v-model="resourceId"
+        class="filter"
         :placeholder="t('audit.resourceId')"
         clearable
         data-testid="audit-resource-id"
       />
-      <el-button data-testid="audit-search" @click="load(1)">{{ t('audit.search') }}</el-button>
-    </div>
+      <el-button type="primary" data-testid="audit-search" @click="load(1)">{{
+        t('audit.search')
+      }}</el-button>
+    </PageToolbar>
     <el-table :data="events" :empty-text="t('audit.empty')" row-key="id">
-      <el-table-column :label="t('audit.time')">
+      <el-table-column :label="t('audit.time')" min-width="170">
         <template #default="{ row }">{{ new Date(row.occurredAt).toLocaleString() }}</template>
       </el-table-column>
-      <el-table-column :label="t('audit.categoryLabel')">
+      <el-table-column :label="t('audit.categoryLabel')" width="96">
         <template #default="{ row }">{{ t(`audit.category.${row.category}`) }}</template>
       </el-table-column>
-      <el-table-column :label="t('audit.actor')">
+      <el-table-column :label="t('audit.actor')" min-width="150" show-overflow-tooltip>
         <template #default="{ row }">{{ actorOf(row as AuditEvent) }}</template>
       </el-table-column>
-      <el-table-column prop="action" :label="t('audit.action')" />
-      <el-table-column :label="t('audit.resource')">
+      <el-table-column
+        prop="action"
+        :label="t('audit.action')"
+        min-width="150"
+        show-overflow-tooltip
+      />
+      <el-table-column :label="t('audit.resource')" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">{{ resourceOf(row as AuditEvent) }}</template>
       </el-table-column>
-      <el-table-column :label="t('audit.outcomeLabel')">
+      <el-table-column
+        :label="t('audit.outcomeLabel')"
+        width="220"
+        fixed="right"
+        show-overflow-tooltip
+      >
         <template #default="{ row }">
           <el-tag :type="row.outcome === 'success' ? 'success' : 'danger'" size="small">
             {{ t(`audit.outcome.${row.outcome}`) }}
@@ -118,7 +135,8 @@ onMounted(() => void load(1))
     </el-table>
     <el-pagination
       v-if="total > size"
-      layout="prev, pager, next"
+      class="pagination"
+      layout="total, prev, pager, next"
       :current-page="page"
       :page-size="size"
       :total="total"
@@ -128,18 +146,23 @@ onMounted(() => void load(1))
 </template>
 
 <style scoped>
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+.page-error {
+  margin-bottom: var(--forge-space-3);
 }
-.toolbar .el-input {
-  width: 180px;
+.range.el-date-editor {
+  flex: none;
+  width: 360px;
+}
+.filter {
+  width: 160px;
 }
 .error-code {
-  margin-left: 6px;
+  margin-left: var(--forge-space-2);
   color: var(--el-text-color-secondary);
-  font-size: 12px;
+  font-size: var(--forge-font-size-xs);
+}
+.pagination {
+  justify-content: flex-end;
+  margin-top: var(--forge-space-4);
 }
 </style>

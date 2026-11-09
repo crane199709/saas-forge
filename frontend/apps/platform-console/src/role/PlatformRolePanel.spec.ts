@@ -80,7 +80,7 @@ function respond(url: string, init?: RequestInit) {
 }
 
 function radio(label: string) {
-  return [...document.body.querySelectorAll('.el-dialog .el-radio')].find((item) =>
+  return [...document.body.querySelectorAll('.el-drawer .el-radio')].find((item) =>
     item.textContent?.includes(label),
   ) as HTMLElement
 }
@@ -116,7 +116,7 @@ it('新建平台角色时勾选权限码并按负责区域限定租户', async (
   ).click()
   radio('负责区域').querySelector('input')!.click()
   await flushPromises()
-  ;(document.body.querySelector('.el-dialog form') as HTMLFormElement).dispatchEvent(
+  ;(document.body.querySelector('.el-drawer form') as HTMLFormElement).dispatchEvent(
     new Event('submit'),
   )
   await flushPromises()
@@ -139,15 +139,15 @@ it('自定义条件不是合法 JSON 时不提交', async () => {
   await flushPromises()
   radio('自定义条件').querySelector('input')!.click()
   await flushPromises()
-  const condition = document.body.querySelector('.el-dialog textarea') as HTMLTextAreaElement
+  const condition = document.body.querySelector('.el-drawer textarea') as HTMLTextAreaElement
   condition.value = '{"attr":'
   condition.dispatchEvent(new Event('input'))
-  ;(document.body.querySelector('.el-dialog form') as HTMLFormElement).dispatchEvent(
+  ;(document.body.querySelector('.el-drawer form') as HTMLFormElement).dispatchEvent(
     new Event('submit'),
   )
   await flushPromises()
 
-  expect(document.body.querySelector('.el-dialog [role="alert"]')?.textContent).toContain(
+  expect(document.body.querySelector('.el-drawer [role="alert"]')?.textContent).toContain(
     '自定义条件不是合法的 JSON',
   )
   expect(fetcher.mock.calls.map((call) => route(...call))).not.toContain(

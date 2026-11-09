@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Page } from '@crane199709/sdk'
-import { ErrorAlert, ListPage, type ErrorTip } from '@crane199709/ui'
+import { ErrorAlert, ListPage, PageHeader, overlaySize, type ErrorTip } from '@crane199709/ui'
 import { errorTip } from '../error-tip'
 import type { OpsServiceStatus } from './dead-event-api'
 import type { RunView, TaskDefinition, TaskRun, TaskRunApi } from './task-run-api'
@@ -166,9 +166,9 @@ onMounted(async () => {
 
 <template>
   <section :aria-label="t('taskRun.title')" class="task-runs">
-    <h2>{{ t('taskRun.title') }}</h2>
+    <PageHeader :title="t('taskRun.title')" />
     <el-alert type="info" :title="t('taskRun.retention')" :closable="false" class="notice" />
-    <ErrorAlert v-if="error" :tip="error" />
+    <ErrorAlert v-if="error" class="notice" :tip="error" />
     <el-alert
       v-if="done && !historyOpen && !detailOpen"
       type="success"
@@ -234,7 +234,7 @@ onMounted(async () => {
     <el-dialog
       v-model="historyOpen"
       @close="closeHistory"
-      width="min(1100px, 94vw)"
+      :width="overlaySize.dialogLg"
       :title="t('taskRun.historyTitle', { name: task?.name ?? '' })"
     >
       <p>{{ historyService }}</p>
@@ -293,7 +293,7 @@ onMounted(async () => {
     </el-dialog>
     <el-dialog
       v-model="detailOpen"
-      width="min(800px, 94vw)"
+      :width="overlaySize.dialogLg"
       :title="t('taskRun.detailTitle')"
       append-to-body
     >
@@ -379,7 +379,7 @@ onMounted(async () => {
     </el-dialog>
     <el-dialog
       v-model="confirming"
-      width="min(480px, 94vw)"
+      :width="overlaySize.dialogSm"
       append-to-body
       :title="t(target?.tenantId ? 'taskRun.confirmRetry' : 'taskRun.confirmTrigger')"
       :close-on-click-modal="!submitting"
@@ -409,7 +409,7 @@ onMounted(async () => {
   display: flex;
   align-items: flex-end;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--forge-space-3);
 }
 .filters .el-form-item {
   width: 240px;
@@ -417,9 +417,14 @@ onMounted(async () => {
   margin-bottom: 0;
 }
 .notice {
-  margin-bottom: 16px;
+  margin-bottom: var(--forge-space-3);
 }
 .detail {
   overflow-wrap: anywhere;
+}
+h3 {
+  margin: var(--forge-space-4) 0 var(--forge-space-2);
+  font-size: var(--forge-font-size-md);
+  font-weight: 600;
 }
 </style>

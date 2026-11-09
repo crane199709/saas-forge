@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ErrorAlert, type ErrorTip } from '@crane199709/ui'
+import { ErrorAlert, PageHeader, overlaySize, type ErrorTip } from '@crane199709/ui'
 import { usePlatformClient } from '../shell'
 import { errorTip } from '../error-tip'
 import { createAnnouncementApi, type Announcement } from './announcement-api'
@@ -125,13 +125,15 @@ onUnmounted(() => {
 </script>
 <template>
   <section class="announcement-management" aria-label="公告管理">
-    <h2>公告管理</h2>
-    <div class="toolbar">
-      <el-button type="primary" data-testid="announcement-create" @click="create"
-        >发布公告</el-button
-      ><el-button :disabled="loading" @click="load">刷新公告</el-button>
-    </div>
-    <ErrorAlert v-if="error" :tip="error" />
+    <PageHeader title="公告管理">
+      <template #actions>
+        <el-button :disabled="loading" @click="load">刷新公告</el-button>
+        <el-button type="primary" data-testid="announcement-create" @click="create"
+          >发布公告</el-button
+        >
+      </template>
+    </PageHeader>
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
     <p v-if="loading" role="status">加载中…</p>
     <p v-else-if="!error && !items.length">暂无公告</p>
     <article
@@ -142,7 +144,7 @@ onUnmounted(() => {
     >
       <h3>
         {{ item.title }}
-        <el-tag :type="item.revoked ? 'info' : 'success'">{{ status(item) }}</el-tag>
+        <el-tag size="small" :type="item.revoked ? 'info' : 'success'">{{ status(item) }}</el-tag>
       </h3>
       <p class="body">{{ item.body }}</p>
       <p>{{ item.allTenants ? '全部租户' : `指定租户：${item.tenantIds.join('、')}` }}</p>
@@ -152,16 +154,17 @@ onUnmounted(() => {
       </p>
       <el-button
         v-if="!item.revoked"
+        link
         type="danger"
         :data-testid="`announcement-revoke-${item.id}`"
         @click="requestRevoke(item)"
         >撤回公告</el-button
       >
     </article>
-    <el-dialog
+    <el-drawer
       v-model="creating"
       title="发布公告"
-      width="min(640px, 94vw)"
+      :size="overlaySize.drawerMd"
       :close-on-click-modal="false"
       :show-close="!busy"
       :close-on-press-escape="!busy"
@@ -236,11 +239,11 @@ onUnmounted(() => {
           >确认发布</el-button
         ></template
       >
-    </el-dialog>
+    </el-drawer>
     <el-dialog
       :model-value="pending !== null"
       title="撤回公告"
-      width="min(480px, 94vw)"
+      :width="overlaySize.dialogSm"
       :show-close="!busy"
       :close-on-click-modal="false"
       :close-on-press-escape="!busy"
@@ -262,32 +265,34 @@ onUnmounted(() => {
   </section>
 </template>
 <style scoped>
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
+.page-error {
+  margin-bottom: var(--forge-space-3);
 }
 .announcement {
-  padding: 16px 0;
+  padding: var(--forge-space-4) 0;
   border-bottom: 1px solid var(--el-border-color-lighter);
   overflow-wrap: anywhere;
 }
 h3 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--forge-space-2);
+  font-size: var(--forge-font-size-md);
+  font-weight: 600;
+}
+p {
+  margin: 0 0 var(--forge-space-2);
 }
 .body {
   white-space: pre-wrap;
 }
 .hint {
-  font-size: 12px;
   color: var(--el-text-color-secondary);
+  font-size: var(--forge-font-size-xs);
 }
 input[type='datetime-local'] {
-  padding: 8px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 4px;
-  font: inherit;
   max-width: 100%;
+  padding: var(--forge-space-2);
+  border: 1px solid var(--el-border-color);
+  border-radius: var(--forge-radius-sm);
+  font: inherit;
 }
 </style>

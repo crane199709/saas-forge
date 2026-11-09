@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@crane199709/sdk'
-import { ErrorAlert, type ErrorTip } from '@crane199709/ui'
+import { ErrorAlert, PageHeader, overlaySize, type ErrorTip } from '@crane199709/ui'
 import { errorTip } from '../error-tip'
 import type { Plan } from '../plan/plan-api'
 import PlanImpactDialog from './PlanImpactDialog.vue'
@@ -191,41 +191,57 @@ onMounted(() => load(1))
 
 <template>
   <section class="tenant-panel" :aria-label="t('tenant.title')">
-    <header>
-      <h2>{{ t('tenant.title') }}</h2>
-      <el-button v-if="canManage" type="primary" @click="creating = true">{{
-        t('tenant.create')
-      }}</el-button>
-    </header>
-    <ErrorAlert v-if="error" :tip="error" />
+    <PageHeader :title="t('tenant.title')">
+      <template #actions>
+        <el-button v-if="canManage" type="primary" @click="creating = true">{{
+          t('tenant.create')
+        }}</el-button>
+      </template>
+    </PageHeader>
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
 
-    <el-table :data="tenants" :empty-text="t('tenant.empty')">
-      <el-table-column prop="name" :label="t('tenant.name')" />
-      <el-table-column prop="adminContact" :label="t('tenant.adminContact')" />
-      <el-table-column :label="t('tenant.region')">
+    <el-table :data="tenants" row-key="id" :empty-text="t('tenant.empty')">
+      <el-table-column
+        prop="name"
+        :label="t('tenant.name')"
+        min-width="160"
+        show-overflow-tooltip
+      />
+      <el-table-column
+        prop="adminContact"
+        :label="t('tenant.adminContact')"
+        min-width="180"
+        show-overflow-tooltip
+      />
+      <el-table-column :label="t('tenant.region')" width="100">
         <template #default="{ row }">{{ row.region ?? t('tenant.noRegion') }}</template>
       </el-table-column>
-      <el-table-column :label="t('tenant.plan')">
+      <el-table-column :label="t('tenant.plan')" min-width="120" show-overflow-tooltip>
         <template #default="{ row }">{{ planName(row.planId) }}</template>
       </el-table-column>
-      <el-table-column :label="t('tenant.status')">
-        <template #default="{ row }">{{ t(`tenant.statuses.${row.status}`) }}</template>
+      <el-table-column :label="t('tenant.status')" width="96">
+        <template #default="{ row }">
+          <el-tag size="small" :type="row.status === 'active' ? 'success' : 'info'">
+            {{ t(`tenant.statuses.${row.status}`) }}
+          </el-tag>
+        </template>
       </el-table-column>
-      <el-table-column :label="t('tenant.actions')">
+      <el-table-column :label="t('tenant.actions')" width="80" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="open(row.id)">{{ t('tenant.detail') }}</el-button>
         </template>
       </el-table-column>
     </el-table>
     <el-pagination
-      layout="prev, pager, next"
+      class="pagination"
+      layout="total, prev, pager, next"
       :current-page="page"
       :page-size="size"
       :total="total"
       @current-change="load"
     />
 
-    <el-dialog v-model="creating" :title="t('tenant.create')">
+    <el-dialog v-model="creating" :width="overlaySize.dialogMd" :title="t('tenant.create')">
       <el-form label-position="top" @submit.prevent="create">
         <el-form-item :label="t('tenant.name')" for="tenant-name">
           <el-input id="tenant-name" v-model="draft.name" name="name" maxlength="120" required />
@@ -279,7 +295,12 @@ onMounted(() => load(1))
       </el-form>
     </el-dialog>
 
-    <el-drawer :model-value="detail !== null" :title="detail?.tenant.name" @close="detail = null">
+    <el-drawer
+      :model-value="detail !== null"
+      :size="overlaySize.drawerLg"
+      :title="detail?.tenant.name"
+      @close="detail = null"
+    >
       <template v-if="detail">
         <el-descriptions :column="1" border>
           <el-descriptions-item :label="t('tenant.status')">{{
@@ -304,7 +325,7 @@ onMounted(() => load(1))
 
         <template v-if="canManage">
           <h3>{{ t('tenant.changePlan') }}</h3>
-          <p>{{ t('tenant.changePlanHint') }}</p>
+          <p class="hint">{{ t('tenant.changePlanHint') }}</p>
           <el-form class="change-plan" inline @submit.prevent="changePlan">
             <el-select
               v-model="planDraft"
@@ -385,8 +406,8 @@ onMounted(() => load(1))
         </el-table>
 
         <h3>{{ t('tenant.initialization') }}</h3>
-        <p>{{ t('tenant.provisioningHint') }}</p>
-        <el-button :loading="busy" @click="open(detail.tenant.id)">{{
+        <p class="hint">{{ t('tenant.provisioningHint') }}</p>
+        <el-button class="init-refresh" :loading="busy" @click="open(detail.tenant.id)">{{
           t('tenant.refresh')
         }}</el-button>
         <el-table :data="detail.initializations" :empty-text="t('tenant.noInitializations')">
@@ -425,23 +446,44 @@ onMounted(() => load(1))
 </template>
 
 <style scoped>
-header {
+.page-error {
+  margin-bottom: var(--forge-space-3);
+}
+.pagination {
+  justify-content: flex-end;
+  margin-top: var(--forge-space-4);
+}
+h3 {
+  margin: var(--forge-space-5) 0 var(--forge-space-2);
+  font-size: var(--forge-font-size-md);
+  font-weight: 600;
+}
+.hint {
+  margin: 0 0 var(--forge-space-3);
+  color: var(--el-text-color-secondary);
+}
+.change-plan {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  gap: var(--forge-space-2);
+}
+.change-plan .el-select {
+  width: 240px;
+}
+.init-refresh {
+  margin-bottom: var(--forge-space-2);
 }
 .warning {
   color: var(--el-color-warning);
 }
 .native-input {
   width: 100%;
-  padding: 4px 8px;
+  padding: var(--forge-space-1) var(--forge-space-2);
   border: 1px solid var(--el-border-color);
   border-radius: var(--el-border-radius-base);
   font: inherit;
 }
 .failure {
-  margin: 4px 0 0;
+  margin: var(--forge-space-1) 0 0;
   color: var(--el-color-danger);
   overflow-wrap: anywhere;
 }

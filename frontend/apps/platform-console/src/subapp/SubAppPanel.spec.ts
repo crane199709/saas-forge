@@ -76,7 +76,7 @@ it('列出 Sub-App，登记时填写各环境入口地址与最低共享依赖�
   await type(input('sub-app-name'), '账单')
   await type(input('sub-app-version'), '2.0.0')
   await type(input('sub-app-entry-0'), 'https://cdn.example.com/billing/remoteEntry.js')
-  ;(document.body.querySelector('.el-dialog form') as HTMLFormElement).dispatchEvent(
+  ;(document.body.querySelector('.el-drawer form') as HTMLFormElement).dispatchEvent(
     new Event('submit'),
   )
   await flushPromises()
@@ -107,7 +107,7 @@ it('编辑时整体替换入口地址，修改地址即切换版本', async () =
   await flushPromises()
   expect(input('sub-app-code').disabled).toBe(true)
   await type(input('sub-app-entry-0'), 'http://127.0.0.1:5176/remoteEntry.js')
-  ;(document.body.querySelector('.el-dialog form') as HTMLFormElement).dispatchEvent(
+  ;(document.body.querySelector('.el-drawer form') as HTMLFormElement).dispatchEvent(
     new Event('submit'),
   )
   await flushPromises()
