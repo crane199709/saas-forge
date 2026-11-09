@@ -31,4 +31,5 @@
 - 普通管理租户 Operator 与 Super Admin 均可清除；目标 Tenant 发布为 `*`，另一个 Tenant 保持限制。
 - `spotless:apply` 与 `git diff --check` 通过。
 - IAM 全量测试留给全部工单合入后的集成阶段统一执行。
-
+- 已在功能提交后无冲突合入包含工单 02 的最新 integration `9b3e2fd`（本分支合并提交 `0c95b74`），保留 Platform `/platform/tenants/**` matcher 及工单 02 的 Membership 选择接口安全配置。
+- 合并后重新安装当前 SDK/依赖，并单 fork 重跑 `ArchitectureTest`：1/1 通过；合并后的 IAM 模块全量由集成阶段统一执行。
