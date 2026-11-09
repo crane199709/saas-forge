@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import RestoreView from '../resource/RestoreView.vue'
 import { ErrorAlert } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import type { OrganizationApi, Position } from './org-api'
@@ -36,7 +37,12 @@ function create() {
 </script>
 
 <template>
-  <div>
+  <RestoreView
+    :load-deleted="() => api.positions(true)"
+    :restore="api.restorePosition"
+    :disabled="busy"
+    @restored="emit('changed')"
+  >
     <div
       v-for="position in positions"
       :key="position.id"
@@ -67,7 +73,7 @@ function create() {
       </el-button>
     </div>
     <ErrorAlert v-if="error" :tip="error" />
-  </div>
+  </RestoreView>
 </template>
 
 <style scoped>

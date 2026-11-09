@@ -862,3 +862,32 @@ it('无影响的保存在等待预览期间关闭编辑框后也不提交', asyn
 
   expect(writes(fetcher)).toEqual([])
 })
+
+it('角色已删除视图保留删除信息，确认恢复后移除记录并通知主列表刷新', async () => {
+  let restored = false
+  const deletedRole = { ...roles[1]!, updatedAt: '2026-11-09T01:00:00Z', updatedBy: null }
+  const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'POST') {
+      restored = true
+      return ok(null)
+    }
+    expect(url).toBe(`${location.origin}/iam/roles?deleted=true`)
+    return ok(restored ? [] : [deletedRole])
+  })
+  const wrapper = mountPanel(fetcher)
+  await wrapper.get('[data-testid="restore-view-deleted"]').trigger('click')
+  await flushPromises()
+  expect(wrapper.text()).toContain('删除时间')
+  expect(wrapper.text()).toContain('系统')
+  expect(wrapper.find('[data-testid="role-create"]').exists()).toBe(false)
+  await wrapper.get('[data-testid="restore-r-viewer"]').trigger('click')
+  await flushPromises()
+  expect(restored).toBe(false)
+  document.querySelector<HTMLButtonElement>('[data-testid="restore-confirm"]')!.click()
+  await flushPromises()
+  expect(restored).toBe(true)
+  expect(wrapper.find('[data-testid="restore-r-viewer"]').exists()).toBe(false)
+  expect(wrapper.text()).toContain('恢复成功')
+  expect(wrapper.emitted('changed')).toHaveLength(1)
+  wrapper.unmount()
+})

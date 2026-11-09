@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ErrorAlert } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
+import RestoreView from '../resource/RestoreView.vue'
 import ConditionGroup from './ConditionGroup.vue'
 import ConditionPreview from './ConditionPreview.vue'
 import PermissionTreeEditor from './PermissionTreeEditor.vue'
@@ -268,7 +269,13 @@ const scopeSummary = (role: Role) =>
 </script>
 
 <template>
-  <div>
+  <RestoreView
+    :load-deleted="() => api.roles(true)"
+    :restore="api.restoreRole"
+    :disabled="busy"
+    show-code
+    @restored="emit('changed')"
+  >
     <el-button type="primary" data-testid="role-create" @click="openCreate">
       {{ t('role.list.create') }}
     </el-button>
@@ -426,7 +433,7 @@ const scopeSummary = (role: Role) =>
       @confirm="confirmImpact"
       @cancel="pendingImpact = null"
     />
-  </div>
+  </RestoreView>
 </template>
 
 <style scoped>

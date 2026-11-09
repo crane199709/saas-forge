@@ -6,6 +6,8 @@ export interface Department {
   parentId: string | null
   name: string
   path: string
+  updatedAt?: string | null
+  updatedBy?: string | null
 }
 
 export interface DepartmentNode extends Department {
@@ -15,6 +17,8 @@ export interface DepartmentNode extends Department {
 export interface Position {
   id: string
   name: string
+  updatedAt?: string | null
+  updatedBy?: string | null
 }
 
 export type AttributeType = 'string' | 'number' | 'boolean'
@@ -56,7 +60,7 @@ export function departmentTree(departments: Department[]): DepartmentNode[] {
   return roots
 }
 
-/** 组织管理接口；只有 Owner 与 Tenant Admin 可以调用，其他成员得到 403。 */
+/** 组织管理接口；需要 `iam:org:manage`，其他成员得到 403。 */
 export function createOrganizationApi(client: Pick<TenantClient, 'api' | 'page'>) {
   // 经网关的 IAM 路由，与 `/iam/auth` 同源
   const base = '/iam/org'
@@ -68,7 +72,9 @@ export function createOrganizationApi(client: Pick<TenantClient, 'api' | 'page'>
     })
 
   return {
-    departments: () => send<Department[]>('GET', '/departments'),
+    departments: (deleted = false) =>
+      send<Department[]>('GET', `/departments${deleted ? '?deleted=true' : ''}`),
+    restoreDepartment: (id: string) => send<null>('POST', `/departments/${id}/restore`),
     createDepartment: (name: string, parentId: string | null) =>
       send<Department>('POST', '/departments', { name, parentId }),
     renameDepartment: (id: string, name: string) =>
@@ -76,7 +82,9 @@ export function createOrganizationApi(client: Pick<TenantClient, 'api' | 'page'>
     moveDepartment: (id: string, parentId: string | null) =>
       send<Department>('PUT', `/departments/${id}/parent`, { parentId }),
     deleteDepartment: (id: string) => send<null>('DELETE', `/departments/${id}`),
-    positions: () => send<Position[]>('GET', '/positions'),
+    positions: (deleted = false) =>
+      send<Position[]>('GET', `/positions${deleted ? '?deleted=true' : ''}`),
+    restorePosition: (id: string) => send<null>('POST', `/positions/${id}/restore`),
     createPosition: (name: string) => send<Position>('POST', '/positions', { name }),
     renamePosition: (id: string, name: string) =>
       send<Position>('PUT', `/positions/${id}`, { name }),

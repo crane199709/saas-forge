@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import RestoreView from '../resource/RestoreView.vue'
 import { ErrorAlert } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import { departmentTree, type Department, type OrganizationApi } from './org-api'
@@ -61,7 +62,13 @@ function remove(id: string) {
 </script>
 
 <template>
-  <div class="department-panel">
+  <RestoreView
+    class="department-panel"
+    :load-deleted="() => api.departments(true)"
+    :restore="api.restoreDepartment"
+    :disabled="busy"
+    @restored="emit('changed')"
+  >
     <section class="tree">
       <el-tree
         v-if="tree.length"
@@ -140,7 +147,7 @@ function remove(id: string) {
       </el-button>
     </section>
     <ErrorAlert v-if="error" :tip="error" />
-  </div>
+  </RestoreView>
 </template>
 
 <style scoped>
