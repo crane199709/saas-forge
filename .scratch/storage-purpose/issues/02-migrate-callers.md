@@ -35,3 +35,7 @@
 - `./mvnw -o -pl forge-sdk/forge-sdk-storage,forge-sdk/forge-sdk-io test -Dtest=StoragePurposeTest,ArchitectureTest -Dsurefire.failIfNoSpecifiedTests=false`：Storage 3 项、IO 1 项通过，无失败、无跳过。
 - `./mvnw -o -pl forge-sdk/forge-sdk-storage,forge-sdk/forge-sdk-io,examples/demo-service,forge-service-archetype spotless:check`：通过；`git diff --check` 通过。
 - 按编排约定，模块全量、archetype 生成 verify、前端 typecheck/格式和浏览器验收留给主代理在最终集成工作树统一执行。浏览器用 `/private/tmp/storage-purpose-playwright.config.mts` 的独立 5274/5275 端口，运行时设置 `FORGE_STORAGE_REMOTE_ENTRY=http://127.0.0.1:5275/remoteEntry.js`；此处不声称已运行浏览器。
+
+### 最终集成验收
+
+2026-11-09：模块全量、脚手架生成和前端浏览器/类型/格式验收均已完成；两轴审查均无发现。详见 [最终验收记录](../acceptance.md)。

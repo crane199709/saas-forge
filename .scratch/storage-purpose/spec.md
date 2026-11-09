@@ -1,6 +1,6 @@
 # 存储用途规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-11-07 的设计拷问逐条确认。
 
@@ -27,3 +27,7 @@ Status: ready-for-agent
 - 遵守 `docs/agents/coding-standards.md`；新表用 `COMMENT ON` 写中文描述。
 - 新增 SDK 表时，同步更新服务迁移、`forge-service-archetype`、`docs/business-service-guide.md` 与 `CHANGELOG.md`。
 - 带租户数据的新表接入租户清理流程（`TenantDataCleaner`）。
+
+## Answer
+
+2026-11-09：两张工单均已 resolved，集成分支为 `codex/storage-purpose-integration`。用途声明、统一校验、用途持久化与下载、IO/附件迁移、正式旧行回填及接入文档均完成；99 项后端全量测试、4 项 Playwright、脚手架生成验证和格式/类型检查通过，Standards/Spec 两轴审查均为 0 项发现。详见 [最终验收记录](acceptance.md)。

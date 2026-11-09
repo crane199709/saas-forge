@@ -10,6 +10,8 @@
 
 - 02 已完成：IO/附件调用方使用明确用途，异步导入前核对用途以保留错误来源对象；删除全部无用途兼容入口和全局下载 TTL，正式 V14 以旧格式夹具验证回填，脚手架保持按需接入。定向 demo 40 项、SDK 4 项及 Spotless 通过；新增 4 个浏览器拒绝场景交由最终集成验收。详见 [02 工单 Answer](issues/02-migrate-callers.md#answer)。
 
+- 最终验收完成：后端 99 项、Playwright 4 项、脚手架生成、前端构建/类型/格式和 Spotless 均通过；Standards/Spec 两轴均无发现。见 [验收记录](acceptance.md)。
+
 ## Fog
 
-- 实现已完成；主代理在最终集成工作树执行模块全量、模板 verify 和前端浏览器/typecheck/格式验收，更新最终交付结论。
+- 无未决事项。历史 unspecified 对象仍需按可信业务关联显式归类，未知用途保持拒绝。

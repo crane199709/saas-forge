@@ -39,3 +39,7 @@
 - `get(UUID)` / `open(UUID)` 仍可供管理与清理；业务导入及附件确认必须在提交异步任务或绑定对象前调用 `get(purpose, id)`，防止错误用途的源文件被读取或任务 finally 清理。
 - 服务正式迁移由02添加。测试暂用 `src/test/resources/storage-purpose-migration/V14__storage_purpose.sql`，内容复制自 SDK 升级脚本；正式服务 V14 到位时删除这个临时测试 V14。
 - 保留测试目录的 `V13_1__legacy_storage_object.sql` 及 `ObjectStorageTest` 的额外 Flyway location，使旧格式登记仍在真实服务 V14 前插入，继续通过公共 API 验证真实回填。夹具只位于 `src/test`，不修改生产数据。
+
+### 最终集成验收
+
+2026-11-09：模块全量、脚手架生成和前端浏览器/类型/格式验收均已完成；两轴审查均无发现。详见 [最终验收记录](../acceptance.md)。
