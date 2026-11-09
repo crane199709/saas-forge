@@ -205,3 +205,98 @@ for (const [label, width, height] of viewports) {
     })
   })
 }
+
+const inbox = [
+  {
+    id: 'n1',
+    title: '订单 SO-20261108-000123 审批通过',
+    body: '您提交的订单已通过审批，可以继续安排发货。',
+    read: false,
+    occurredAt: '2026-11-08T09:30:00Z',
+    link: { appCode: 'demo', route: '/orders' },
+  },
+  {
+    id: 'n2',
+    title: '成员邀请已被接受',
+    body: '李娜已加入本租户。',
+    read: true,
+    occurredAt: '2026-11-07T09:30:00Z',
+    link: null,
+  },
+]
+const managed = [
+  {
+    id: 'm1',
+    title: '春节放假安排',
+    body: '2 月 10 日至 17 日放假，期间客服仅处理紧急工单。',
+    subApp: null,
+    route: null,
+    expiresAt: '2026-11-15T00:00:00Z',
+    publishedAt: '2026-11-08T09:00:00Z',
+    revoked: false,
+  },
+  {
+    id: 'm2',
+    title: '已撤回的旧公告',
+    body: '这条公告已经撤回。',
+    subApp: null,
+    route: null,
+    expiresAt: null,
+    publishedAt: '2026-11-01T09:00:00Z',
+    revoked: true,
+  },
+]
+
+function respondOthers(path: string, route: Route) {
+  if (path === '/iam/notifications') return route.fulfill(onePage(inbox))
+  if (path === '/iam/announcements/manage') return route.fulfill(ok(managed))
+  if (path === '/iam/security-settings') return route.fulfill(ok({ mfaRequired: true }))
+  if (path.endsWith('/mfa/status') || path.endsWith('/mfa'))
+    return route.fulfill(ok({ bound: true }))
+  return undefined
+}
+
+for (const [label, width, height] of viewports) {
+  test.describe(label, () => {
+    test.use({ viewport: { width, height } })
+
+    test('首页', async ({ page }) => {
+      await page.route('**/demo/context', (route) =>
+        route.fulfill(
+          ok({
+            identityId: '018d0000-0000-7000-8000-000000000001',
+            tenantId: '018d0000-0000-7000-8000-000000000002',
+            membershipId: '018d0000-0000-7000-8000-000000000003',
+          }),
+        ),
+      )
+      await openAsAdmin(page, '/', respondOthers)
+      await expect(page.getByText('018d0000-0000-7000-8000-000000000003')).toBeVisible()
+      await expect(page).toHaveScreenshot(`home-${label}.png`)
+    })
+
+    test('通知中心', async ({ page }) => {
+      await openAsAdmin(page, '/notifications', respondOthers)
+      await expect(page.getByTestId('inbox-n1')).toBeVisible()
+      await expect(page).toHaveScreenshot(`notifications-${label}.png`)
+    })
+
+    test('公告管理', async ({ page }) => {
+      await openAsAdmin(page, '/announcements', respondOthers)
+      await expect(page.getByTestId('announcement-m1')).toBeVisible()
+      await expect(page).toHaveScreenshot(`announcements-${label}.png`)
+    })
+
+    test('安全设置', async ({ page }) => {
+      await openAsAdmin(page, '/security-settings', respondOthers)
+      await expect(page.getByTestId('mfa-required')).toBeVisible()
+      await expect(page).toHaveScreenshot(`security-settings-${label}.png`)
+    })
+
+    test('账号安全', async ({ page }) => {
+      await openAsAdmin(page, '/account/security', respondOthers)
+      await expect(page.getByTestId('password-form')).toBeVisible()
+      await expect(page).toHaveScreenshot(`account-${label}.png`)
+    })
+  })
+}
