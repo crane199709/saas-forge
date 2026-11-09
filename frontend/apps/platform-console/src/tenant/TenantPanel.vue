@@ -359,7 +359,9 @@ onMounted(() => load(1))
 
         <template v-if="canManage">
           <h3>租户 IP 允许列表</h3>
-          <p>成员因来源 IP 被拒时，可紧急清除限制。清除后所有来源 IP 均可访问该租户。</p>
+          <p class="hint">
+            成员因来源 IP 被拒时，可紧急清除限制。清除后所有来源 IP 均可访问该租户。
+          </p>
           <el-button type="danger" plain data-testid="ip-clear-open" @click="startClear"
             >紧急清除 IP 允许列表</el-button
           >
@@ -478,7 +480,7 @@ onMounted(() => load(1))
     <el-dialog
       :model-value="clearing !== null"
       title="确认紧急清除 IP 允许列表"
-      width="min(480px, calc(100vw - 32px))"
+      :width="overlaySize.dialogSm"
       :close-on-click-modal="false"
       :show-close="!clearBusy"
       :close-on-press-escape="!clearBusy"
@@ -488,7 +490,7 @@ onMounted(() => load(1))
         即将清除「{{ clearing?.tenantName }}」的 IP 允许列表，所有来源 IP
         将立即恢复访问。请确认目标并填写原因。
       </p>
-      <ErrorAlert v-if="clearError" :tip="clearError" />
+      <ErrorAlert v-if="clearError" class="page-error" :tip="clearError" />
       <el-form label-position="top" @submit.prevent="confirmClear">
         <el-form-item label="清除原因（必填）" for="ip-clear-reason">
           <el-input

@@ -88,10 +88,11 @@ applyTheme(themeTokens.primary)
     width: 120px !important;
   }
   .security-layout :deep(.el-menu-item) {
-    padding: 0 12px;
+    padding: 0 var(--forge-space-3);
   }
-  .security-layout :deep(.el-main) {
-    padding: 12px;
+  /* AppLayout 用内联样式设置内容区内边距 */
+  .security-layout :deep(.shell-main) {
+    padding: var(--forge-space-3) !important;
   }
 
   :deep(.shell-header) {

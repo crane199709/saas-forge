@@ -79,7 +79,7 @@ it('显示可信当前 IP 与生效提示，保存规则并定位服务端条目
   })
   expect(wrapper.text()).toContain('192.0.2.1')
   expect(wrapper.text()).toContain('每次请求')
-  await wrapper.get('.ip-card form').trigger('submit')
+  await wrapper.get('.ip-section form').trigger('submit')
   await flushPromises()
   await vi.waitFor(() =>
     expect(wrapper.get('[data-testid="ip-rule-1"]').text()).toContain('请输入 IP 地址或 CIDR'),
@@ -115,7 +115,7 @@ it.each([undefined, '', ' \t '])('字段提示为 %j 时显示通用提示，不
   const { wrapper } = await mountShell('/security-settings', {
     access: async () => ({ permissions: ['iam:security:manage'] }),
   })
-  await wrapper.get('.ip-card form').trigger('submit')
+  await wrapper.get('.ip-section form').trigger('submit')
   await flushPromises()
   await vi.waitFor(() =>
     expect(wrapper.get('[data-testid="ip-rule-0"]').text()).toContain('请求失败，请稍后重试'),

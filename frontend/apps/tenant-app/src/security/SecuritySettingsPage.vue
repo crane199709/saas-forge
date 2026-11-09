@@ -122,6 +122,8 @@ function toggle(next: string | number | boolean) {
               @input="saved = false"
             />
             <el-button
+              link
+              type="danger"
               :disabled="busy"
               :aria-label="`删除条目 ${index + 1}`"
               @click="removeRule(index)"
@@ -149,12 +151,22 @@ function toggle(next: string | number | boolean) {
 .security-settings {
   max-width: 640px;
 }
-.ip-card {
-  margin-top: 20px;
+.ip-section {
+  margin-top: var(--forge-space-4);
+  padding-top: var(--forge-space-4);
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+h3 {
+  margin: 0 0 var(--forge-space-2);
+  font-size: var(--forge-font-size-md);
+  font-weight: 600;
+}
+.ip-section p {
+  margin: 0 0 var(--forge-space-2);
 }
 .rule-row {
   display: flex;
-  gap: 8px;
+  gap: var(--forge-space-2);
   width: 100%;
 }
 .row {
@@ -173,7 +185,7 @@ function toggle(next: string | number | boolean) {
   }
   .row {
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--forge-space-2);
   }
   .row .el-button + .el-button {
     margin-left: 0;

@@ -68,8 +68,8 @@ function returnToCurrent() {
 <template>
   <AuthCard title="当前 IP 无法访问该租户">
     <p>该租户的 IP 允许列表限制了当前访问来源。你可以进入其他租户，或退出后联系租户管理员。</p>
-    <ErrorAlert v-if="denial" :tip="errorTip(denial.error, t)" />
-    <ErrorAlert v-if="error" :tip="error" />
+    <ErrorAlert v-if="denial" class="page-error" :tip="errorTip(denial.error, t)" />
+    <ErrorAlert v-if="error" class="page-error" :tip="error" />
     <TenantSelect
       v-if="alternatives.length"
       :memberships="alternatives"
@@ -85,6 +85,12 @@ function returnToCurrent() {
 </template>
 
 <style scoped>
+.page-error {
+  margin-bottom: var(--forge-space-3);
+}
+p {
+  margin: 0 0 var(--forge-space-3);
+}
 .actions {
   display: flex;
   flex-wrap: wrap;

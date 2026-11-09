@@ -251,6 +251,10 @@ function respondOthers(path: string, route: Route) {
   if (path === '/iam/notifications') return route.fulfill(onePage(inbox))
   if (path === '/iam/announcements/manage') return route.fulfill(ok(managed))
   if (path === '/iam/security-settings') return route.fulfill(ok({ mfaRequired: true }))
+  if (path === '/iam/security-settings/ip-allowlist')
+    return route.fulfill(
+      ok({ rules: ['203.0.113.0/24', '2001:db8::/48'], currentIp: '203.0.113.8' }),
+    )
   if (path.endsWith('/mfa/status') || path.endsWith('/mfa'))
     return route.fulfill(ok({ bound: true }))
   return undefined
@@ -291,6 +295,23 @@ for (const [label, width, height] of viewports) {
       await openAsAdmin(page, '/security-settings', respondOthers)
       await expect(page.getByTestId('mfa-required')).toBeVisible()
       await expect(page).toHaveScreenshot(`security-settings-${label}.png`)
+    })
+
+    test('IP 不可访问', async ({ page }) => {
+      await page.route('**/demo/context', (route) =>
+        route.fulfill({
+          status: 403,
+          json: {
+            code: 'tenant.ipNotAllowed',
+            httpStatus: 403,
+            userTip: '当前 IP 不在该租户的允许列表内',
+            traceId: 'visual-ip',
+          },
+        }),
+      )
+      await openAsAdmin(page, '/', respondOthers)
+      await expect(page.getByTestId('ip-denied-logout')).toBeVisible()
+      await expect(page).toHaveScreenshot(`ip-not-allowed-${label}.png`)
     })
 
     test('账号安全', async ({ page }) => {
