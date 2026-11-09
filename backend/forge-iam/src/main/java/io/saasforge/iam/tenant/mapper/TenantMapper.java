@@ -45,4 +45,14 @@ public interface TenantMapper {
      */
     int updateMfaRequired(
             @Param("tenantId") UUID tenantId, @Param("mfaRequired") boolean mfaRequired, @Param("actor") UUID actor);
+    /** 租户的 IP 允许列表发布值；不存在或已删除时为 null。全局表，不受 Data Policy 过滤。 */
+    String findIpAllowlist(@Param("tenantId") UUID tenantId);
+
+    /** 更新 IP 允许列表并持有租户行锁直到事务结束；全局表，不受 Data Policy 过滤。 */
+    int updateIpAllowlist(@Param("tenantId") UUID tenantId, @Param("rules") String rules, @Param("actor") UUID actor);
+    /** 锁定未删除租户并读取 IP 允许列表，供恢复发布与修改串行；全局表，不受 Data Policy 过滤。 */
+    String lockIpAllowlist(@Param("tenantId") UUID tenantId);
+
+    /** 列出所有未删除租户，供启动时恢复发布；全局表，不受 Data Policy 过滤。 */
+    List<UUID> findAllIds();
 }

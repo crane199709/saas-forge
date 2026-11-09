@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 租户的安全设置：目前只有 MFA Requirement（账号安全规格 2.4）。要求由 iam 在签发进入该租户的 Token 时执行，
+ * 租户安全设置中的 MFA Requirement（账号安全规格 2.4）。要求由 iam 在签发进入该租户的 Token 时执行，
  * 开启后存量授权在下一次刷新时被拦，不做即时吊销（ADR-0019）。
  */
 @Service
