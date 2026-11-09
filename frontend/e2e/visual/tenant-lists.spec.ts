@@ -173,8 +173,7 @@ for (const [label, width, height] of viewports) {
 
     test('组织-部门', async ({ page }) => {
       await openAsAdmin(page, '/org', respond)
-      await page.getByTestId('dept-node-rd').click()
-      await expect(page.getByTestId('dept-delete')).toBeVisible()
+      await expect(page.getByTestId('dept-delete-rd')).toBeVisible()
       await expect(page).toHaveScreenshot(`org-departments-${label}.png`)
     })
 
