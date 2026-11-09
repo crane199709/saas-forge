@@ -3,10 +3,13 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@crane199709/sdk'
 import { ErrorAlert, type ErrorTip } from '@crane199709/ui'
+import { errorTip } from '../error-tip'
 import type { Plan } from '../plan/plan-api'
+import PlanImpactDialog from './PlanImpactDialog.vue'
 import type {
   CreateTenant,
   InitializationStatus,
+  PlanImpactPreview,
   Tenant,
   TenantApi,
   TenantDetail,
@@ -38,6 +41,9 @@ const draft = ref(emptyDraft())
 const emptyTransition = () => ({ status: '' as TenantStatus | '', reason: '', expiresAt: '' })
 const transitionDraft = ref(emptyTransition())
 const planDraft = ref('')
+const pendingPlan = ref<{ tenantId: string; planId: string; preview: PlanImpactPreview } | null>(
+  null,
+)
 const busy = ref(false)
 const error = ref<ErrorTip | null>(null)
 
@@ -127,13 +133,45 @@ const transition = () =>
     await fetchPage(page.value)
   })
 
+async function applyPlan(tenantId: string, planId: string) {
+  detail.value = await props.api.changePlan(tenantId, planId)
+  planDraft.value = ''
+  await fetchPage(page.value)
+}
+
+async function previewPlan(tenantId: string, planId: string): Promise<PlanImpactPreview> {
+  try {
+    return { ok: true, value: await props.api.planImpact(tenantId, planId) }
+  } catch (cause) {
+    return { ok: false, tip: errorTip(cause, t) }
+  }
+}
+
+// 配额降低但未超出时成员不受影响，不算需要确认。
+const needsConfirmation = (preview: PlanImpactPreview) =>
+  !preview.ok ||
+  preview.value.lostPermissions.length > 0 ||
+  preview.value.lostSubApps.length > 0 ||
+  preview.value.membersOverQuota > 0 ||
+  preview.value.affectedMemberships > 0
+
 const changePlan = () =>
   run(async () => {
     if (!detail.value || !planDraft.value) return
-    detail.value = await props.api.changePlan(detail.value.tenant.id, planDraft.value)
-    planDraft.value = ''
-    await fetchPage(page.value)
+    const tenantId = detail.value.tenant.id
+    const planId = planDraft.value
+    const preview = await previewPlan(tenantId, planId)
+    // 预览期间抽屉可能已关闭或换成其他租户，这次更换已作废
+    if (detail.value?.tenant.id !== tenantId) return
+    if (needsConfirmation(preview)) pendingPlan.value = { tenantId, planId, preview }
+    else await applyPlan(tenantId, planId)
   })
+
+function confirmPlan() {
+  const { tenantId, planId } = pendingPlan.value!
+  pendingPlan.value = null
+  return run(() => applyPlan(tenantId, planId))
+}
 
 // 重试后状态回到 pending，服务回报前需手动刷新查看结果。
 const retry = (service: string) =>
@@ -376,6 +414,13 @@ onMounted(() => load(1))
         </el-table>
       </template>
     </el-drawer>
+    <PlanImpactDialog
+      v-if="pendingPlan"
+      :plan-name="planName(pendingPlan.planId)"
+      :preview="pendingPlan.preview"
+      @confirm="confirmPlan"
+      @cancel="pendingPlan = null"
+    />
   </section>
 </template>
 

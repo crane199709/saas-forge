@@ -147,6 +147,20 @@
       "noScope": "未配置（不可见）",
       "dataScopeHint": "未配置数据范围的数据，持有该角色的成员看不到"
     },
+    "impact": {
+      "title": "确认保存对 {name} 的修改",
+      "permissions": "权限影响",
+      "permissionSummary": "{count} 名成员将失去权限（经其他角色仍持有的权限不计入）",
+      "lostPermissions": "失去的权限",
+      "affectedMembers": "受影响的成员",
+      "dataPolicies": "数据范围影响",
+      "dataPolicyNotice": "这里只列出持有该角色的成员，不判断具体数据行的变化。",
+      "dataPolicySummary": "{count} 名成员持有该角色，保存后按新的数据范围生效",
+      "membersTruncated": "仅显示前 {shown} 名，共 {total} 名",
+      "previewFailed": "无法获取影响预览，不代表没有影响。可以取消后重试，或自行判断是否继续保存。",
+      "confirm": "确认保存",
+      "continue": "仍要保存"
+    },
     "member": {
       "name": "成员",
       "account": "账号",

@@ -1,4 +1,5 @@
 import type { Page, PlatformClient } from '@crane199709/sdk'
+import type { ErrorTip } from '@crane199709/ui'
 
 /** forge-platform 租户接口的模型，由 platform-console 维护，不属于通用 SDK。 */
 /** Tenant Lifecycle 状态，合法迁移由服务端的迁移表决定。 */
@@ -67,6 +68,20 @@ export interface Transition {
   expiresAt?: string
 }
 
+/** 更换套餐的影响预览；升级等没有损失时列表为空、计数为 0，`memberCount` 为 null。 */
+export interface PlanChangeImpact {
+  lostPermissions: string[]
+  lostSubApps: string[]
+  memberCount: number | null
+  /** 新套餐的成员数上限，null 表示不限。 */
+  memberQuota: number | null
+  membersOverQuota: number
+  affectedMemberships: number
+}
+
+/** 预览失败不等于没有影响，必须与各项为空的结果区分开。 */
+export type PlanImpactPreview = { ok: true; value: PlanChangeImpact } | { ok: false; tip: ErrorTip }
+
 export function createTenantApi(client: Pick<PlatformClient, 'api' | 'page'>) {
   // 经网关的 platform 路由，只接受 Platform Realm Token
   const base = '/platform/tenants'
@@ -84,6 +99,11 @@ export function createTenantApi(client: Pick<PlatformClient, 'api' | 'page'>) {
     create: (request: CreateTenant) => post<TenantDetail>('', request),
     transition: (id: string, request: Transition) =>
       post<TenantDetail>(`/${id}/transitions`, request),
+    /** 预览更换套餐的影响，只读；成员数据不可用时返回 503，不会以零影响代替。 */
+    planImpact: (id: string, planId: string) =>
+      client.api<PlanChangeImpact>(
+        `${base}/${id}/plan/impact?planId=${encodeURIComponent(planId)}`,
+      ),
     /** 更换套餐；降级后超出新套餐的授权随即失效但保留记录，升级后恢复。 */
     changePlan: (id: string, planId: string) =>
       client.api<TenantDetail>(`${base}/${id}/plan`, {
