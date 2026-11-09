@@ -1,6 +1,9 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
 import { mkdir } from 'node:fs/promises'
-const evidence = '/private/tmp/notification-center-qa'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+const evidence = join(tmpdir(), 'notification-center-qa')
 function ok(data: unknown, page?: unknown) {
   return {
     json: {

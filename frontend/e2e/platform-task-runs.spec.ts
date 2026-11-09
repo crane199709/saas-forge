@@ -1,4 +1,6 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 test.use({ baseURL: 'http://127.0.0.1:5173' })
 
@@ -147,7 +149,7 @@ test('按服务查看规则、最近任务运行与问题运行，读取失败�
   await expect(task).toContainText('部分失败')
   await expect(page.getByRole('row').filter({ hasText: 'health-check' })).toContainText('PT1H')
   await expect(page.getByRole('row').filter({ hasText: 'health-check' })).toContainText('尚未运行')
-  await page.screenshot({ animations: 'disabled', path: '/private/tmp/task-run-ui-desktop.png' })
+  await page.screenshot({ animations: 'disabled', path: join(tmpdir(), 'task-run-ui-desktop.png') })
   await task.getByRole('button', { name: '运行历史' }).click()
   const history = page.getByRole('dialog', { name: '运行历史：租户 清理' })
   await expect(history.getByRole('row').filter({ hasText: 'succeeded-run' })).toContainText('成功')
@@ -165,7 +167,7 @@ test('按服务查看规则、最近任务运行与问题运行，读取失败�
   )
   await page.screenshot({
     animations: 'disabled',
-    path: '/private/tmp/task-run-ui-failed-tenants.png',
+    path: join(tmpdir(), 'task-run-ui-failed-tenants.png'),
   })
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
 })
@@ -220,7 +222,7 @@ test('手动触发和失败租户重跑须确认，展示已在运行拒绝及�
   await expect(confirmation.getByRole('alert')).toContainText('task-409')
   await page.screenshot({
     animations: 'disabled',
-    path: '/private/tmp/task-run-ui-already-running.png',
+    path: join(tmpdir(), 'task-run-ui-already-running.png'),
   })
   await confirmation.getByRole('button', { name: '确认触发', exact: true }).click()
   await expect(confirmation).not.toBeVisible()
@@ -237,7 +239,7 @@ test('手动触发和失败租户重跑须确认，展示已在运行拒绝及�
   await expect(retry).toContainText(failedTenant)
   await page.screenshot({
     animations: 'disabled',
-    path: '/private/tmp/task-run-ui-mobile-confirm.png',
+    path: join(tmpdir(), 'task-run-ui-mobile-confirm.png'),
   })
   await retry.getByRole('button', { name: '确认触发', exact: true }).click()
   await expect(retry).not.toBeVisible()
@@ -247,7 +249,7 @@ test('手动触发和失败租户重跑须确认，展示已在运行拒绝及�
   await expect(accepted).toContainText('accepted-run')
   await page.screenshot({
     animations: 'disabled',
-    path: '/private/tmp/task-run-ui-mobile-detail.png',
+    path: join(tmpdir(), 'task-run-ui-mobile-detail.png'),
   })
   await detail.getByRole('button', { name: '关闭', exact: true }).click()
   await history.getByRole('button', { name: '关闭', exact: true }).click()
@@ -256,7 +258,7 @@ test('手动触发和失败租户重跑须确认，展示已在运行拒绝及�
   await expect(page.getByRole('heading', { name: '任务运行', exact: true })).toBeVisible()
   await page.screenshot({
     animations: 'disabled',
-    path: '/private/tmp/task-run-ui-mobile-list.png',
+    path: join(tmpdir(), 'task-run-ui-mobile-list.png'),
   })
   await choose(page, '服务', 'billing（不可用）')
   await expect(page.getByRole('alert').filter({ hasText: '服务 billing 当前不可用' })).toBeVisible()
