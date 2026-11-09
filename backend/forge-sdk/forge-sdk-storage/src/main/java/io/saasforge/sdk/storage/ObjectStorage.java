@@ -98,27 +98,6 @@ public class ObjectStorage {
      */
     public UploadTicket prepareUpload(StoragePurpose purpose, String filename, String contentType, long size) {
         requireFile(purpose, filename, size);
-        return prepareUpload(purpose.code(), filename, contentType, size);
-    }
-
-    /**
-     * 申请上传：校验存储容量 Quota 后登记对象并签发上传 URL。
-     *
-     * @deprecated 工单 02 迁移调用方后删除，改用带 StoragePurpose 的入口
-     *
-     * @param filename 文件名，只作为下载时的附件名，不进入对象 key；不超过 255 个字符
-     * @param contentType 内容类型，为 null 或空白时为 {@code application/octet-stream}
-     * @param size 文件大小（字节），上传的内容须与之一致
-     * @return 上传凭证
-     * @throws ForgeException 参数非法时为 {@code request.invalid}；上传后将超出 Quota 时为 {@link StorageErrorCode#QUOTA_EXCEEDED}
-     */
-    @Deprecated(forRemoval = true)
-    public UploadTicket prepareUpload(String filename, String contentType, long size) {
-        return prepareUpload("unspecified", filename, contentType, size);
-    }
-
-    private UploadTicket prepareUpload(String purpose, String filename, String contentType, long size) {
-        requireName(filename, "filename");
         String type = contentType == null || contentType.isBlank() ? DEFAULT_CONTENT_TYPE : contentType;
         requireName(type, "contentType");
         if (size <= 0 || size > MAX_OBJECT_SIZE) {
@@ -134,7 +113,7 @@ public class ObjectStorage {
             if (quota != null && mapper.usedBytes(now, null) + size > quota) {
                 throw quotaExceeded(quota);
             }
-            mapper.insertPending(id, key, purpose, filename, type, size, expiresAt);
+            mapper.insertPending(id, key, purpose.code(), filename, type, size, expiresAt);
         });
         PresignedPutObjectRequest presigned =
                 presigner.presignPutObject(request -> request.signatureDuration(properties.uploadUrlTtl())
@@ -258,29 +237,6 @@ public class ObjectStorage {
     public StoredObject write(
             StoragePurpose purpose, String filename, String contentType, long size, InputStream content) {
         requireFile(purpose, filename, size);
-        return write(purpose.code(), filename, contentType, size, content);
-    }
-
-    /**
-     * 服务端流式写入对象。大小须提前确定；调用方负责关闭输入流。
-     *
-     * @deprecated 工单 02 迁移调用方后删除，改用带 StoragePurpose 的入口
-     * Quota 检查、登记与确认在同一事务内，失败或外层事务回滚时清理存储对象，不留下计费登记。
-     *
-     * @param filename 下载文件名
-     * @param contentType 内容类型
-     * @param size 内容字节数
-     * @param content 内容流
-     * @return 已确认对象，可直接申请下载票据
-     * @throws ForgeException 超出容量时为 QUOTA_EXCEEDED
-     */
-    @Deprecated(forRemoval = true)
-    public StoredObject write(String filename, String contentType, long size, InputStream content) {
-        return write("unspecified", filename, contentType, size, content);
-    }
-
-    private StoredObject write(String purpose, String filename, String contentType, long size, InputStream content) {
-        requireName(filename, "filename");
         String type = contentType == null || contentType.isBlank() ? DEFAULT_CONTENT_TYPE : contentType;
         requireName(type, "contentType");
         if (size <= 0 || size > MAX_OBJECT_SIZE) {
@@ -292,7 +248,7 @@ public class ObjectStorage {
             var now = OffsetDateTime.now(clock);
             Long quota = mapper.lockQuota();
             if (quota != null && mapper.usedBytes(now, null) + size > quota) throw quotaExceeded(quota);
-            mapper.insertPending(id, key, purpose, filename, type, size, now.plus(properties.uploadUrlTtl()));
+            mapper.insertPending(id, key, purpose.code(), filename, type, size, now.plus(properties.uploadUrlTtl()));
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCompletion(int completion) {
@@ -327,25 +283,8 @@ public class ObjectStorage {
      *     {@link StorageErrorCode#PURPOSE_MISMATCH}
      */
     public DownloadTicket prepareDownload(StoragePurpose purpose, UUID objectId) {
-        return prepareDownload(requirePurpose(purpose, objectId), purpose.downloadUrlTtl());
-    }
-
-    /**
-     * 签发下载 URL。
-     *
-     * @deprecated 工单 02 迁移调用方后删除，改用带 StoragePurpose 的入口
-     *
-     * @param objectId 对象 ID
-     * @return 下载凭证
-     * @throws ForgeException 对象不存在、未确认上传或属于其他租户时为 {@link StorageErrorCode#OBJECT_NOT_FOUND}
-     */
-    @Deprecated(forRemoval = true)
-    public DownloadTicket prepareDownload(UUID objectId) {
-        return prepareDownload(requireStored(objectId), properties.downloadUrlTtl());
-    }
-
-    private DownloadTicket prepareDownload(StorageObjectRecord object, Duration ttl) {
-        UUID objectId = object.id();
+        StorageObjectRecord object = requirePurpose(purpose, objectId);
+        Duration ttl = purpose.downloadUrlTtl();
         // 登记已按租户隔离；再核对一次前缀，签名的 key 绝不会落在当前租户之外
         if (!object.objectKey().startsWith(prefix(CurrentTenant.require()))) {
             throw notFound(objectId);

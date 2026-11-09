@@ -16,7 +16,6 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param secretKey 访问密钥
  * @param pathStyle 是否以路径形式（{@code endpoint/bucket/key}）访问；多数自建 S3 兼容实现只支持路径形式
  * @param uploadUrlTtl 上传预签名 URL 的有效期，也是未确认上传的对象占用容量的时长
- * @param downloadUrlTtl 下载预签名 URL 的有效期
  */
 @ConfigurationProperties("forge.storage")
 public record StorageProperties(
@@ -26,8 +25,7 @@ public record StorageProperties(
         String accessKey,
         String secretKey,
         @DefaultValue("true") boolean pathStyle,
-        @DefaultValue("15m") Duration uploadUrlTtl,
-        @DefaultValue("5m") Duration downloadUrlTtl) {
+        @DefaultValue("15m") Duration uploadUrlTtl) {
     public StorageProperties {
         Objects.requireNonNull(endpoint, "forge.storage.endpoint must be configured");
         requireText(bucket, "forge.storage.bucket");
@@ -45,7 +43,6 @@ public record StorageProperties(
     @Override
     public String toString() {
         return "StorageProperties[endpoint=" + endpoint + ", region=" + region + ", bucket=" + bucket + ", accessKey="
-                + accessKey + ", pathStyle=" + pathStyle + ", uploadUrlTtl=" + uploadUrlTtl + ", downloadUrlTtl="
-                + downloadUrlTtl + "]";
+                + accessKey + ", pathStyle=" + pathStyle + ", uploadUrlTtl=" + uploadUrlTtl + "]";
     }
 }

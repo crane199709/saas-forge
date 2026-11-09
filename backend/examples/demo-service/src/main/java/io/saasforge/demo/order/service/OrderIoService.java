@@ -3,6 +3,7 @@ package io.saasforge.demo.order.service;
 import io.saasforge.demo.order.model.OrderExportRow;
 import io.saasforge.demo.order.model.OrderImportRow;
 import io.saasforge.sdk.io.ExcelIo;
+import io.saasforge.sdk.io.IoStoragePurposes;
 import io.saasforge.sdk.io.IoTask;
 import io.saasforge.sdk.storage.ObjectStorage;
 import io.saasforge.sdk.storage.UploadTicket;
@@ -29,7 +30,7 @@ public class OrderIoService {
     }
 
     public UploadTicket upload(String filename, String contentType, long size) {
-        return storage.prepareUpload(filename, contentType, size);
+        return storage.prepareUpload(IoStoragePurposes.SOURCE, filename, contentType, size);
     }
 
     public IoTask importFile(UUID source) {

@@ -7,9 +7,12 @@ import io.saasforge.demo.order.service.OrderService;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.storage.DownloadTicket;
 import io.saasforge.sdk.storage.ObjectStorage;
+import io.saasforge.sdk.storage.StoragePurpose;
 import io.saasforge.sdk.storage.StoredObject;
 import io.saasforge.sdk.storage.UploadTicket;
+import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +25,12 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class OrderAttachmentService {
+    private static final StoragePurpose ATTACHMENT = new StoragePurpose(
+            "order-attachment",
+            Set.of("txt", "pdf", "xlsx", "png", "jpg", "jpeg"),
+            20L * 1024 * 1024,
+            Duration.ofMinutes(5));
+
     private final OrderAttachmentMapper attachmentMapper;
     private final OrderService orderService;
     private final ObjectStorage storage;
@@ -35,13 +44,14 @@ public class OrderAttachmentService {
 
     public UploadTicket prepareUpload(UUID orderId, String filename, String contentType, long size) {
         orderService.get(orderId);
-        return storage.prepareUpload(filename, contentType, size);
+        return storage.prepareUpload(ATTACHMENT, filename, contentType, size);
     }
 
     /** 确认上传不放在事务中：SDK 因超出 Quota 删除对象登记时须独立提交，不能随调用方回滚。 */
     public OrderAttachment attach(UUID orderId, UUID objectId) {
         orderService.get(orderId);
-        StoredObject object = storage.completeUpload(objectId);
+        storage.completeUpload(objectId);
+        StoredObject object = storage.get(ATTACHMENT, objectId);
         boolean attached = attachmentMapper.exists(
                 new LambdaQueryWrapper<OrderAttachment>().eq(OrderAttachment::getObjectId, objectId));
         if (attached) {
@@ -66,7 +76,7 @@ public class OrderAttachmentService {
     }
 
     public DownloadTicket prepareDownload(UUID orderId, UUID attachmentId) {
-        return storage.prepareDownload(find(orderId, attachmentId).getObjectId());
+        return storage.prepareDownload(ATTACHMENT, find(orderId, attachmentId).getObjectId());
     }
 
     /** 附件逻辑删除与对象登记删除同一事务提交，SDK 在提交后才删除文件，任一步失败都不会留下指向已删文件的附件。 */

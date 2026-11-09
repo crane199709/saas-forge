@@ -15,6 +15,7 @@ import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.io.ExcelColumn;
 import io.saasforge.sdk.io.ExcelIo;
 import io.saasforge.sdk.io.IoMaintenance;
+import io.saasforge.sdk.io.IoStoragePurposes;
 import io.saasforge.sdk.io.IoTasks;
 import io.saasforge.sdk.mq.EventHandler;
 import io.saasforge.sdk.provisioning.TenantPlanChanged;
@@ -164,6 +165,161 @@ class ObjectStorageTest {
 
     @Autowired
     CurrentActorProvider actors;
+
+    @Test
+    void importRejectsAttachmentObjectsWithoutCreatingTaskOrDeletingTheAttachment() throws Exception {
+        String orderId = createOrder(tenant);
+        byte[] content = "attachment".getBytes(StandardCharsets.UTF_8);
+        var upload = prepareUpload(tenant, orderId, "attachment.xlsx", content.length);
+        assertThat(put(upload, content)).isEqualTo(200);
+        var attachment = (Map<?, ?>)
+                exchange(tenant, HttpMethod.POST, attachments(orderId), Map.of("objectId", upload.get("objectId")))
+                        .get("data");
+        long before = asMember(ioTasks::count);
+        var rejected = exchange(tenant, HttpMethod.POST, "/orders/import", Map.of("objectId", upload.get("objectId")));
+        assertThat(rejected.get("code")).isEqualTo("storage.purposeMismatch");
+        assertThat(rejected.get("userTip")).isEqualTo("文件用途不匹配，请选择正确的文件");
+        assertThat(asMember(ioTasks::count)).isEqualTo(before);
+        var download = (Map<?, ?>)
+                exchange(tenant, HttpMethod.GET, attachments(orderId) + "/" + attachment.get("id") + "/download", null)
+                        .get("data");
+        assertThat(HTTP.send(
+                                HttpRequest.newBuilder(URI.create((String) download.get("url")))
+                                        .build(),
+                                HttpResponse.BodyHandlers.ofByteArray())
+                        .body())
+                .isEqualTo(content);
+    }
+
+    @Test
+    void anotherTenantsImportSourceCannotBeImportedOrAttached() throws Exception {
+        UUID source;
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            source = storage.write(
+                            IoStoragePurposes.SOURCE, "source.xlsx", null, 1, new ByteArrayInputStream(new byte[] {1}))
+                    .id();
+        }
+        UUID other = UUID.randomUUID();
+        TestGrants.publishAll(redisTemplate, other, TestTokens.MEMBERSHIP_ID);
+        var rejected = exchange(other, HttpMethod.POST, "/orders/import", Map.of("objectId", source));
+        assertThat(rejected.get("code")).isEqualTo("storage.objectNotFound");
+        assertThat(rejected.get("httpStatus")).isEqualTo(404);
+        assertThat((List<?>) exchange(other, HttpMethod.GET, "/io/tasks", null).get("data"))
+                .isEmpty();
+        var attachment = exchange(other, HttpMethod.POST, attachments(createOrder(other)), Map.of("objectId", source));
+        assertThat(attachment.get("code")).isEqualTo("storage.objectNotFound");
+        assertThat(attachment.get("httpStatus")).isEqualTo(404);
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(storage.get(IoStoragePurposes.SOURCE, source).filename()).isEqualTo("source.xlsx");
+        }
+    }
+
+    @Test
+    void taskDownloadsRejectNonResultPurpose() throws Exception {
+        UUID source;
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            source = storage.write(
+                            IoStoragePurposes.SOURCE, "source.xlsx", null, 1, new ByteArrayInputStream(new byte[] {1}))
+                    .id();
+        }
+        var task = asMember(() -> ioTasks.submit("EXPORT", null, "custom result", progress -> source));
+        assertThat(awaitTask(task.id().toString()).get("status")).isEqualTo("SUCCEEDED");
+        var rejected = exchange(tenant, HttpMethod.GET, "/io/tasks/" + task.id() + "/download", null);
+        assertThat(rejected.get("code")).isEqualTo("storage.purposeMismatch");
+        assertThat(rejected.get("httpStatus")).isEqualTo(400);
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(storage.get(IoStoragePurposes.SOURCE, source).filename()).isEqualTo("source.xlsx");
+        }
+    }
+
+    @Test
+    void attachmentsRejectIoSourceAndResultObjectsBeforeRegistration() throws Exception {
+        String orderId = createOrder(tenant);
+        for (StoragePurpose purpose : List.of(IoStoragePurposes.SOURCE, IoStoragePurposes.RESULT)) {
+            UUID id;
+            try (var ignored = CurrentTenant.bind(tenant)) {
+                id = storage.write(purpose, "io.xlsx", null, 1, new ByteArrayInputStream(new byte[] {1}))
+                        .id();
+            }
+            var rejected = exchange(tenant, HttpMethod.POST, attachments(orderId), Map.of("objectId", id));
+            assertThat(rejected.get("code")).isEqualTo("storage.purposeMismatch");
+            assertThat(rejected.get("httpStatus")).isEqualTo(400);
+            assertThat((List<?>) exchange(tenant, HttpMethod.GET, attachments(orderId), null)
+                            .get("data"))
+                    .isEmpty();
+            try (var ignored = CurrentTenant.bind(tenant)) {
+                assertThat(storage.get(purpose, id).filename()).isEqualTo("io.xlsx");
+            }
+        }
+    }
+
+    @Test
+    void attachmentUploadsRejectDisallowedExtensionsAndOversizedFilesWithoutReservingQuota() throws Exception {
+        String orderId = createOrder(tenant);
+        var extension = exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("script.exe", 1));
+        assertThat(extension.get("code")).isEqualTo("storage.extensionNotAllowed");
+        assertThat(extension.get("httpStatus")).isEqualTo(400);
+        var size =
+                exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("large.pdf", 20L * 1024 * 1024 + 1));
+        assertThat(size.get("code")).isEqualTo("storage.fileTooLarge");
+        assertThat(size.get("httpStatus")).isEqualTo(400);
+        assertThat(size.get("userTip")).isEqualTo("文件大小超过该用途的上限");
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, attachments(orderId), null)
+                        .get("data"))
+                .isEmpty();
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(storage.usage().usedBytes()).isZero();
+        }
+        for (String filename :
+                List.of("document.txt", "document.pdf", "document.xlsx", "image.png", "image.jpg", "image.jpeg")) {
+            assertThat(prepareUpload(tenant, orderId, filename, 1)).isNotEmpty();
+        }
+    }
+
+    @Test
+    void importRejectsResultObjectsBeforeCreatingTaskAndPreservesTheObject() throws Exception {
+        UUID result;
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            result = storage.write(
+                            IoStoragePurposes.RESULT, "result.xlsx", null, 1, new ByteArrayInputStream(new byte[] {1}))
+                    .id();
+        }
+        long before = asMember(ioTasks::count);
+        var rejected = exchange(tenant, HttpMethod.POST, "/orders/import", Map.of("objectId", result));
+        assertThat(rejected.get("code")).isEqualTo("storage.purposeMismatch");
+        assertThat(rejected.get("httpStatus")).isEqualTo(400);
+        assertThat(asMember(ioTasks::count)).isEqualTo(before);
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .isEmpty();
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            var download = storage.prepareDownload(IoStoragePurposes.RESULT, result);
+            assertThat(HTTP.send(
+                                    HttpRequest.newBuilder(download.url()).build(),
+                                    HttpResponse.BodyHandlers.ofByteArray())
+                            .body())
+                    .containsExactly(1);
+        }
+    }
+
+    @Test
+    void importUploadsRejectOtherExtensionsAndOversizedFilesWithoutReservingQuota() throws Exception {
+        for (String filename : List.of("source.xls", "source.csv", "source.txt")) {
+            var rejected = exchange(tenant, HttpMethod.POST, "/orders/import/upload", uploadRequest(filename, 1));
+            assertThat(rejected.get("code")).isEqualTo("storage.extensionNotAllowed");
+            assertThat(rejected.get("httpStatus")).isEqualTo(400);
+            assertThat(rejected.get("userTip")).isEqualTo("该用途不支持此文件扩展名");
+        }
+        var oversized = exchange(
+                tenant, HttpMethod.POST, "/orders/import/upload", uploadRequest("source.xlsx", 20L * 1024 * 1024 + 1));
+        assertThat(oversized.get("code")).isEqualTo("storage.fileTooLarge");
+        assertThat(oversized.get("httpStatus")).isEqualTo(400);
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(storage.usage().usedBytes()).isZero();
+        }
+        assertThat(exchange(tenant, HttpMethod.POST, "/orders/import/upload", uploadRequest("source.XLSX", 1))
+                        .get("httpStatus"))
+                .isEqualTo(201);
+    }
 
     @Test
     void purposeRejectsDisallowedExtensionsBeforeReservingQuota() {
@@ -321,19 +477,24 @@ class ObjectStorageTest {
     @Test
     void serverWriteFailureRollsBackRegistrationAndQuotaIsEnforced() throws Exception {
         try (var ignored = CurrentTenant.bind(tenant)) {
-            assertThatThrownBy(() -> storage.write("failed.xlsx", "application/octet-stream", 10, new InputStream() {
-                        @Override
-                        public int read() throws IOException {
-                            throw new IOException("test stream failure");
-                        }
-                    }))
+            assertThatThrownBy(() -> storage.write(
+                            IoStoragePurposes.RESULT, "failed.xlsx", "application/octet-stream", 10, new InputStream() {
+                                @Override
+                                public int read() throws IOException {
+                                    throw new IOException("test stream failure");
+                                }
+                            }))
                     .isInstanceOf(RuntimeException.class);
             assertThat(storage.usage().usedBytes()).isZero();
         }
         deliver(planChanged(0L, 1));
         try (var ignored = CurrentTenant.bind(tenant)) {
             assertThatThrownBy(() -> storage.write(
-                            "quota.xlsx", "application/octet-stream", 1, new ByteArrayInputStream(new byte[] {1})))
+                            IoStoragePurposes.RESULT,
+                            "quota.xlsx",
+                            "application/octet-stream",
+                            1,
+                            new ByteArrayInputStream(new byte[] {1})))
                     .isInstanceOfSatisfying(
                             ForgeException.class,
                             error -> assertThat(error.errorCode()).isEqualTo(StorageErrorCode.QUOTA_EXCEEDED));
@@ -813,9 +974,14 @@ class ObjectStorageTest {
         }
         assertThat(task.get("status")).isEqualTo("SUCCEEDED");
         assertThat(task.get("rowCount")).isEqualTo(1);
-        assertThat(exchange(tenant, HttpMethod.GET, "/io/tasks/" + id + "/download", null)
-                        .get("code"))
-                .isEqualTo("ok");
+        var result = exchange(tenant, HttpMethod.GET, "/io/tasks/" + id + "/download", null);
+        assertThat(result.get("code")).isEqualTo("ok");
+        assertThat(((Map<?, ?>) result.get("data")).get("url").toString()).contains("X-Amz-Expires=300");
+        var resultId = asMember(() -> ioTasks.get(UUID.fromString(id))).resultObjectId();
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(storage.get(IoStoragePurposes.RESULT, resultId).filename())
+                    .isEqualTo("订单.xlsx");
+        }
         UUID other = UUID.randomUUID();
         TestGrants.publishAll(redisTemplate, other, TestTokens.MEMBERSHIP_ID);
         assertThat(exchange(other, HttpMethod.GET, "/io/tasks/" + id, null).get("httpStatus"))
@@ -828,12 +994,16 @@ class ObjectStorageTest {
         UUID object;
         try (var ignored = CurrentTenant.bind(tenant)) {
             object = storage.write(
-                            "导出.xlsx", "application/octet-stream", content.length, new ByteArrayInputStream(content))
+                            IoStoragePurposes.RESULT,
+                            "导出.xlsx",
+                            "application/octet-stream",
+                            content.length,
+                            new ByteArrayInputStream(content))
                     .id();
             try (var input = storage.open(object)) {
                 assertThat(input.readAllBytes()).isEqualTo(content);
             }
-            var ticket = storage.prepareDownload(object);
+            var ticket = storage.prepareDownload(IoStoragePurposes.RESULT, object);
             assertThat(HTTP.send(HttpRequest.newBuilder(ticket.url()).build(), HttpResponse.BodyHandlers.ofByteArray())
                             .body())
                     .isEqualTo(content);
@@ -882,6 +1052,7 @@ class ObjectStorageTest {
         Map<?, ?> download = (Map<?, ?>)
                 exchange(tenant, HttpMethod.GET, attachments(orderId) + "/" + attachment.get("id") + "/download", null)
                         .get("data");
+        assertThat(download.get("url").toString()).contains("X-Amz-Expires=300");
         HttpResponse<byte[]> file = HTTP.send(
                 HttpRequest.newBuilder(URI.create((String) download.get("url"))).build(),
                 HttpResponse.BodyHandlers.ofByteArray());
@@ -950,10 +1121,10 @@ class ObjectStorageTest {
         String orderId = createOrder(tenant);
         int size = 600 * 1024;
 
-        Map<?, ?> first = prepareUpload(tenant, orderId, "first.bin", size);
+        Map<?, ?> first = prepareUpload(tenant, orderId, "first.txt", size);
         // 未确认的上传申请同样占用容量，并发申请不会合计超出 Quota
         Map<String, Object> reserved =
-                exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("second.bin", size));
+                exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("second.txt", size));
         assertThat(reserved.get("code")).isEqualTo("storage.quotaExceeded");
         assertThat(reserved.get("httpStatus")).isEqualTo(409);
         assertThat(reserved.get("userTip")).isEqualTo("存储空间已达套餐上限，无法继续上传");
@@ -962,22 +1133,22 @@ class ObjectStorageTest {
         assertThat(exchange(tenant, HttpMethod.POST, attachments(orderId), Map.of("objectId", first.get("objectId")))
                         .get("httpStatus"))
                 .isEqualTo(201);
-        assertThat(exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("second.bin", size))
+        assertThat(exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("second.txt", size))
                         .get("code"))
                 .isEqualTo("storage.quotaExceeded");
         // 未超出时照常允许
-        assertThat(exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("small.bin", 1024))
+        assertThat(exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("small.txt", 1024))
                         .get("httpStatus"))
                 .isEqualTo(201);
 
         // 重复或乱序送达的旧版本不生效
         deliver(planChanged(null, 1));
-        assertThat(exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("second.bin", size))
+        assertThat(exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("second.txt", size))
                         .get("code"))
                 .isEqualTo("storage.quotaExceeded");
 
         deliver(planChanged(null, 2));
-        assertThat(exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("second.bin", size))
+        assertThat(exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("second.txt", size))
                         .get("httpStatus"))
                 .isEqualTo(201);
     }
@@ -986,8 +1157,8 @@ class ObjectStorageTest {
     void uploadConfirmedAfterDowngradeBeyondQuotaIsRejectedAndRemoved() throws Exception {
         String orderId = createOrder(tenant);
         int size = 600 * 1024;
-        Map<?, ?> first = prepareUpload(tenant, orderId, "first.bin", size);
-        Map<?, ?> second = prepareUpload(tenant, orderId, "second.bin", size);
+        Map<?, ?> first = prepareUpload(tenant, orderId, "first.txt", size);
+        Map<?, ?> second = prepareUpload(tenant, orderId, "second.txt", size);
         put(first, new byte[size]);
         put(second, new byte[size]);
         exchange(tenant, HttpMethod.POST, attachments(orderId), Map.of("objectId", first.get("objectId")));
@@ -1008,14 +1179,14 @@ class ObjectStorageTest {
         deliver(planChanged(1L, 1));
         String orderId = createOrder(tenant);
         int size = 600 * 1024;
-        Map<?, ?> ticket = prepareUpload(tenant, orderId, "first.bin", size);
+        Map<?, ?> ticket = prepareUpload(tenant, orderId, "first.txt", size);
         put(ticket, new byte[size]);
         String objectId = (String) ticket.get("objectId");
         String attachmentId = (String)
                 ((Map<?, ?>) exchange(tenant, HttpMethod.POST, attachments(orderId), Map.of("objectId", objectId))
                                 .get("data"))
                         .get("id");
-        assertThat(exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("second.bin", size))
+        assertThat(exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("second.txt", size))
                         .get("code"))
                 .isEqualTo("storage.quotaExceeded");
 
@@ -1052,7 +1223,7 @@ class ObjectStorageTest {
         assertThat(exchange(tenant, HttpMethod.GET, attachments(orderId) + "/" + attachmentId + "/download", null)
                         .get("code"))
                 .isEqualTo("attachment.notFound");
-        assertThat(exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("second.bin", size))
+        assertThat(exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("second.txt", size))
                         .get("httpStatus"))
                 .isEqualTo(201);
     }

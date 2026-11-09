@@ -99,7 +99,7 @@ public final class IoTasks implements AutoCloseable {
      * 提交一个任务。业务方应通过 ExcelIo 提交导入与导出；此入口供需要定制处理的业务复用任务生命周期。
      *
      * @param type IMPORT 或 EXPORT
-     * @param source 导入源对象，导出为 null；任务结束后删除
+     * @param source 已按 {@link IoStoragePurposes#SOURCE} 核对用途的导入源对象，导出为 null；任务结束后删除
      * @param summary 查询条件摘要，禁止放入凭证或敏感信息
      * @param work 在提交时租户、认证与数据权限上下文中运行的处理
      * @return 等待中的任务
@@ -225,7 +225,7 @@ public final class IoTasks implements AutoCloseable {
                 || task.finishedAt() == null
                 || task.finishedAt().isBefore(OffsetDateTime.now().minus(properties.retention())))
             throw new ForgeException(IoErrorCode.RESULT_UNAVAILABLE);
-        return storage.prepareDownload(task.resultObjectId());
+        return storage.prepareDownload(IoStoragePurposes.RESULT, task.resultObjectId());
     }
 
     String tenantKey() {
@@ -250,7 +250,7 @@ public final class IoTasks implements AutoCloseable {
     /** 异步处理边界。 */
     @FunctionalInterface
     public interface Work {
-        /** 返回结果文件对象 ID；无结果文件返回 null。 */
+        /** 返回按 {@link IoStoragePurposes#RESULT} 写入的结果文件对象 ID；无结果文件返回 null。 */
         UUID execute(Progress progress) throws Exception;
     }
     /** 供处理器登记已处理行数；不会缓存业务行。 */

@@ -18,6 +18,9 @@
         <forkCount>2</forkCount>
     </properties>
 
+    <!-- 按需接入 storage：添加 forge-sdk-storage，复制当前 schema.sql 为 Flyway 迁移，
+         并在服务代码声明 StoragePurpose；已有表升级复制 upgrade-purpose.sql，不修改旧迁移。
+         IO 上传复用 IoStoragePurposes.SOURCE。配置与示例见 docs/business-service-guide.md。 -->
     <dependencies>
         <dependency>
             <groupId>io.saasforge</groupId>

@@ -161,13 +161,14 @@ public final class ExcelIo {
      * 错误报告保留字典下拉，可修改后直接重传；末尾“错误原因”列的旧说明不参与业务校验。
      *
      * @param model 导入 record 类型
-     * @param source 已确认上传的 xlsx 对象 ID
+     * @param source 已确认上传且用途为 {@link IoStoragePurposes#SOURCE} 的 xlsx 对象 ID
      * @param validate 业务校验，返回该行的错误说明
      * @param writer 事务内的逐行写入
      * @return 等待中的任务
      */
     public <T> IoTask importFile(Class<T> model, UUID source, RowValidator<T> validate, Consumer<T> writer) {
-        requireXlsx(storage.get(source).filename());
+        // 任务结束会删除源对象，必须在登记任务之前拒绝其他用途。
+        requireXlsx(storage.get(IoStoragePurposes.SOURCE, source).filename());
         var columns = new ExcelModel<T>(model, reference);
         return tasks.submit("IMPORT", source, null, progress -> {
             Path original = Files.createTempFile("forge-import-", ".xlsx");
@@ -267,7 +268,7 @@ public final class ExcelIo {
 
     StoredObject store(String filename, Path path) throws Exception {
         try (InputStream input = Files.newInputStream(path)) {
-            return storage.write(filename, CONTENT_TYPE, Files.size(path), input);
+            return storage.write(IoStoragePurposes.RESULT, filename, CONTENT_TYPE, Files.size(path), input);
         }
     }
 

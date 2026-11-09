@@ -6,6 +6,8 @@
 
 ### 新增
 
+- 对象存储支持 `StoragePurpose`：服务声明扩展名、大小与下载时长，SDK 统一校验并记录用途；IO 源文件、结果与订单附件分别限定用途，上传拒绝原因沿用前端 `userTip` 展示。
+
 - SDK 新增资源恢复的共享错误码和中英文提示，`ListPage` 可选已删除视图及恢复事件；Business Service 接入指南补充恢复规则与验证要求。
 - 角色、部门、岗位和 demo 订单支持查看已删除记录并恢复：保留角色配置，部门按当前父路径恢复，沿用原管理权限、租户与数据权限，以及现有唯一性规则。
 
@@ -30,6 +32,8 @@
 - 提供四个后端服务与两个 Shell 的镜像构建入口，以及从临时发布到仓库外生成、启动和权限校验的模板冒烟质量门。
 
 ### 不兼容变更
+
+- `ObjectStorage.prepareUpload`、`write`、`prepareDownload` 删除无用途重载，须以 `StoragePurpose` 为首参；导入与业务绑定前使用 `get(purpose, id)` 校验用途。`forge.storage.download-url-ttl` 删除，下载时长改由用途声明。已有服务须新增 Flyway 迁移复制 SDK `upgrade-purpose.sql`（demo V14）：旧对象回填 `unspecified`、新登记显式提供用途；旧对象须按可信业务关联归类后才可按明确用途下载。
 
 - 引入 `forge-sdk-ops` 的服务必须配置独立 `forge.ops.token`；平台须配置服务令牌映射，漏配启动失败。本仓库本地启动须显式提供 IAM、platform 与 demo-service 的三个运维令牌环境变量，详见接入指南。
 

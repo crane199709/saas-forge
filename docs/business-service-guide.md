@@ -205,13 +205,34 @@ SDK 自动将实际执行保存为 Task Run，不需要新增数据库表或迁�
 
 ## 按需启用 storage 与镜像
 
-需要附件时在 POM 添加同版本 `io.saasforge:forge-sdk-storage`，由平台提供 `forge.storage.endpoint`、`bucket`、`access-key`、`secret-key`；endpoint 必须供浏览器访问。参考 demo-service 的 attachment 功能及 V8 迁移，不应只添加依赖却遗漏配置和存储表。
+需要附件时在 POM 添加同版本 `io.saasforge:forge-sdk-storage`，由平台提供 `forge.storage.endpoint`、`bucket`、`access-key`、`secret-key`；endpoint 必须供浏览器访问。把 SDK 的 `io/saasforge/sdk/storage/schema.sql` 复制为服务的 Flyway 迁移；脚手架默认不启用 storage，不应只添加依赖却遗漏配置和存储表。
+
+每类文件在可信服务代码中声明 `StoragePurpose`，编码、扩展名、大小和下载时长均为 Java 常量，不由客户端、Tenant 或 Operator 选择。例如 demo 的订单附件：
+
+```java
+private static final StoragePurpose ATTACHMENT = new StoragePurpose(
+        "order-attachment", Set.of("txt", "pdf", "xlsx", "png", "jpg", "jpeg"),
+        20L * 1024 * 1024, Duration.ofMinutes(5));
+
+var upload = storage.prepareUpload(ATTACHMENT, filename, contentType, size);
+// 客户端凭 upload 直传后，确认存储并在登记业务关联之前校验用途。
+storage.completeUpload(objectId);
+var object = storage.get(ATTACHMENT, objectId);
+var download = storage.prepareDownload(ATTACHMENT, objectId);
+// 服务端写入同样显式传用途：storage.write(ATTACHMENT, filename, contentType, size, input)。
+```
+
+用途大小上限为 1 字节至 5 GiB，下载时长为 1 秒至 7 天的整秒；扩展名不含点、忽略大小写。SDK 在预留容量和写入之前拒绝不支持的扩展名或过大文件，错误码分别为 `storage.extensionNotAllowed`、`storage.fileTooLarge`；下载、导入和绑定的预期用途不一致时为 `storage.purposeMismatch`，跨租户仍为 `storage.objectNotFound`。业务权限仍须在使用对象前检查。前端沿用 `ApiError.userTip` 展示拒绝原因，申请失败后停止直传和业务确认。
+
+已有服务升级时，把 `io/saasforge/sdk/storage/upgrade-purpose.sql` 复制为新的 Flyway 迁移（demo 为 V14），不要改已执行的建表迁移。脚本增加必填 `purpose` 列、把旧行回填为 `unspecified`，随后移除列默认值；新登记必须显式提供用途。未知用途旧对象仍保留，普通用途不能下载；只有可信业务关联能够明确归类时，才在独立迁移中更新编码，不能根据扩展名猜用途。全局 `forge.storage.download-url-ttl` 已删除，改用用途的 `downloadUrlTtl`。参考 demo-service 的 attachment 功能及 V8/V14 迁移。
 
 需要 Business Number 时添加 `io.saasforge:forge-sdk-numbering`，把 SDK 中 `io/saasforge/sdk/numbering/schema.sql` 复制到 Flyway 迁移，在保存业务数据的事务中调用 `BusinessNumbers.next(rule)`。日期段按 Nacos 共享配置中的 `forge.business-zone` 计算，漏配时启动失败。参考 demo-service 的订单编号及 V9 迁移。
 
 需要字典或参数时在 Resource Manifest 中声明 `dictionaries`/`parameters`（内容变化须升 `forge.manifest.version`），添加 `io.saasforge:forge-sdk-referencedata` 与 `spring-boot-starter-validation`，配置 `forge.reference-data.iam-uri` 与 `token`（同清单上报令牌，无默认值，漏配启动失败）。经 `ReferenceData` 读取当前租户的字典与按类型的参数，在请求体字段上用 `@DictionaryValue("<字典编码>")` 并在控制器参数加 `@Valid` 校验取值；引用其他服务的字典写作 `服务:编码`。结果按租户缓存，每次读取先比对 iam 在 Redis 发布的租户参考数据版本号（`ReferenceDataKeys`，同 ADR-0005 的做法），版本变化即重新拉取，另有 `forge.reference-data.cache-ttl`（默认 10 分钟）兜底。参考 demo-service 订单的客户来源及 V10 迁移。
 
 需要导入导出时添加 `io.saasforge:forge-sdk-io`，复制 `io/saasforge/sdk/io/schema.sql` 到服务迁移，并提供 storage、reference-data 和 scheduling 的配置。模型必须是公开 `record`，每个字段使用 `@ExcelColumn`；字典字段同时用 `@DictionaryValue`。`ExcelIo.template` 写出模板，`importFile` 先校验全部行、再在同一事务内逐行调用写入器，`export` 的数据源应沿用列表查询条件逐页或游标读取。只支持 `.xlsx` 的首个工作表；日期使用 ISO 文本，不接受公式。导入源文件在任务结束后删除，错误报告与导出文件占用存储配额。
+
+IO 统一声明 `IoStoragePurposes.SOURCE`（`io-source`，仅 xlsx、20 MiB）和 `RESULT`（`io-result`，仅 xlsx、100 MiB），下载时长均为 5 分钟。上传入口复用 SOURCE；`ExcelIo.importFile` 在提交任务之前核对用途，导出和错误报告写入 RESULT，`IoTasks.download` 按 RESULT 签发。不要把附件或结果对象当作导入源文件，否则会被同步拒绝，既不创建任务也不删除原对象。
 
 SDK 自动提供 `/io/tasks`、`/io/tasks/{id}` 和 `/io/tasks/{id}/download`，均只允许提交人访问。业务提交和模板接口须挂自己的权限码；前端的 `ImportDialog`、`ExportButton` 通过回调绑定同一服务的任务接口。参考 demo-service 的 `OrderIoService`、V12 迁移及 demo-sub-app 订单页。
 
