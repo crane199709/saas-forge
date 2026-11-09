@@ -1,7 +1,15 @@
 import { afterEach, expect, it } from 'vitest'
-import { applyTheme } from './theme'
+import { applyTheme, layoutTokens } from './theme'
 
 afterEach(() => document.documentElement.removeAttribute('style'))
+
+it('写入版式 token', () => {
+  applyTheme('#409eff')
+
+  const style = document.documentElement.style
+  for (const [name, value] of Object.entries(layoutTokens))
+    expect(style.getPropertyValue(name)).toBe(value)
+})
 
 it('写入主色及 Element Plus 的派生色', () => {
   applyTheme('#8b5cf6')

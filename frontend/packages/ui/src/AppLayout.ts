@@ -51,23 +51,36 @@ export const AppLayout = defineComponent({
           ? h(ElMenuItemGroup, { key: item.key, title: item.title }, () =>
               item.children!.map(renderItem),
             )
-          : h(ElMenuItem, { key: item.key, index: item.path ?? '' }, () =>
-              h(
-                RouterLink,
-                {
-                  to: item.path,
-                  class: 'menu-link',
-                  style: linkStyle,
-                  'data-testid': `menu-${item.key}`,
+          : h(
+              ElMenuItem,
+              {
+                key: item.key,
+                index: item.path ?? '',
+                style: {
+                  margin: 'var(--forge-space-1) var(--forge-space-2) 0',
+                  borderRadius: 'var(--forge-radius-md)',
+                  backgroundColor:
+                    item.path === active.value ? 'var(--el-color-primary-light-9)' : undefined,
                 },
-                () => item.title,
-              ),
+              },
+              () =>
+                h(
+                  RouterLink,
+                  {
+                    to: item.path,
+                    class: 'menu-link',
+                    style: linkStyle,
+                    'data-testid': `menu-${item.key}`,
+                  },
+                  () => item.title,
+                ),
             )
       return h(ElContainer, { class: 'shell', style: { minHeight: '100vh' } }, () => [
         h(
           ElHeader,
           {
             class: 'shell-header',
+            height: '56px',
             style: {
               display: 'flex',
               alignItems: 'center',
@@ -104,11 +117,51 @@ export const AppLayout = defineComponent({
           h(ElAside, { width: '220px', class: 'shell-aside' }, () =>
             h(
               ElMenu,
-              { defaultActive: active.value, class: 'shell-menu', style: { height: '100%' } },
+              {
+                defaultActive: active.value,
+                class: 'shell-menu',
+                // 这些变量定义在 .el-menu 上，只能在同一元素覆盖
+                style: {
+                  height: '100%',
+                  paddingTop: 'var(--forge-space-1)',
+                  '--el-menu-item-height': '40px',
+                  '--el-menu-base-level-padding': 'var(--forge-space-3)',
+                  '--el-menu-hover-bg-color': 'var(--el-fill-color-light)',
+                },
+              },
               () => props.menu.map(renderItem),
             ),
           ),
-          h(ElMain, null, () => slots.default?.()),
+          h(
+            ElMain,
+            {
+              class: 'shell-main',
+              style: {
+                display: 'flex',
+                flexDirection: 'column',
+                minWidth: 0,
+                padding: 'var(--forge-space-4)',
+                backgroundColor: 'var(--forge-color-page)',
+              },
+            },
+            () =>
+              // 页面默认落在同一块内容面上，未单独设计的页面也有统一边界
+              h(
+                'div',
+                {
+                  class: 'shell-surface',
+                  style: {
+                    flex: 1,
+                    minWidth: 0,
+                    padding: 'var(--forge-space-4)',
+                    backgroundColor: 'var(--el-bg-color)',
+                    borderRadius: 'var(--forge-radius-lg)',
+                    boxShadow: 'var(--forge-shadow-card)',
+                  },
+                },
+                slots.default?.(),
+              ),
+          ),
         ]),
       ])
     }
