@@ -117,6 +117,12 @@ class SessionController {
         return ApiResponse.ok(toMembershipResponses(UUID.fromString(jwt.getSubject())));
     }
 
+    @Operation(summary = "凭当前 Tenant 刷新凭证全局读取有效 Membership，不签发或轮换 Token")
+    @PostMapping(value = "/auth/memberships", consumes = "application/json")
+    ApiResponse<List<MembershipResponse>> memberships(@Valid @RequestBody RefreshRequest request) {
+        return ApiResponse.ok(toMembershipResponses(tokens.identityForMemberships(request.refreshToken())));
+    }
+
     @Operation(summary = "用当前刷新凭证换发绑定目标 Membership 的 Token，旧刷新凭证随之轮换失效")
     @PostMapping(value = "/auth/switch", consumes = "application/json")
     ApiResponse<TokenResponse> switchTenant(@Valid @RequestBody SwitchRequest request) {

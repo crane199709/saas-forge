@@ -13,6 +13,7 @@ import com.nimbusds.jwt.SignedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import io.saasforge.gateway.routing.config.GatewayServicesProperties;
+import io.saasforge.sdk.core.ClientIpHeader;
 import io.saasforge.sdk.core.MembershipStateKeys;
 import io.saasforge.sdk.core.OperatorStateKeys;
 import java.io.IOException;
@@ -29,6 +30,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -36,6 +41,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -50,13 +56,19 @@ import tools.jackson.databind.json.JsonMapper;
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
-            "spring.cloud.nacos.config.enabled=false", "spring.cloud.nacos.discovery.enabled=false",
-            "forge.gateway.services[0].prefix=/iam", "forge.gateway.services[0].realm=tenant",
-            "forge.gateway.services[1].prefix=/platform", "forge.gateway.services[1].realm=platform",
-            "forge.gateway.services[2].prefix=/orders", "forge.gateway.services[2].realm=tenant",
-            "forge.gateway.services[3].prefix=/control", "forge.gateway.services[3].realm=platform",
+            "spring.cloud.nacos.config.enabled=false",
+            "spring.cloud.nacos.discovery.enabled=false",
+            "spring.cloud.gateway.server.webflux.trusted-proxies=127[.]0[.]0[.]1|0:0:0:0:0:0:0:1|::1",
+            "forge.gateway.services[0].prefix=/iam",
+            "forge.gateway.services[0].realm=tenant",
+            "forge.gateway.services[1].prefix=/platform",
+            "forge.gateway.services[1].realm=platform",
+            "forge.gateway.services[2].prefix=/orders",
+            "forge.gateway.services[2].realm=tenant",
+            "forge.gateway.services[3].prefix=/control",
+            "forge.gateway.services[3].realm=platform",
             "spring.cloud.gateway.server.webflux.routes[0].id=demo",
-                    "spring.cloud.gateway.server.webflux.routes[0].predicates[0]=Path=/orders/**"
+            "spring.cloud.gateway.server.webflux.routes[0].predicates[0]=Path=/orders/**"
         })
 class GatewaySecurityTest {
     static final String ISSUER = "http://tenant-realm.test";
@@ -165,7 +177,101 @@ class GatewaySecurityTest {
     void publishActiveState() {
         redisTemplate.opsForValue().set(MembershipStateKeys.version(TENANT_ID, MEMBERSHIP_ID), "1");
         redisTemplate.opsForValue().set(MembershipStateKeys.tenantStatus(TENANT_ID), "active");
+        redisTemplate.opsForValue().set(MembershipStateKeys.tenantIpAllowlist(TENANT_ID), "*");
         redisTemplate.opsForValue().set(OperatorStateKeys.version(OPERATOR_ID), "1");
+    }
+
+    @Test
+    void tenantIpAllowlistIsCheckedOnEveryRequestAndDenialKeepsItsBusinessEnvelope() throws Exception {
+        String tenant = token(KEY, ISSUER, Instant.now().plusSeconds(900));
+        redisTemplate.opsForValue().set(MembershipStateKeys.tenantIpAllowlist(TENANT_ID), "*");
+        assertThat(status(tenant)).isEqualTo(200);
+        redisTemplate.opsForValue().set(MembershipStateKeys.tenantIpAllowlist(TENANT_ID), "192.0.2.0/24");
+        Response denied = call(HttpMethod.GET, "/orders/context", tenant);
+        assertEnvelope(denied, 403, "tenant.ipNotAllowed");
+        assertThat(denied.body().path("userTip").asString()).isEqualTo("当前 IP 不在租户允许列表内");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "198.51.100.4/31,198.51.100.5,198.51.100.6",
+        "2001:db8::/126,2001:db8::3,2001:db8::4",
+        "2001:db8::1,2001:db8::1,2001:db8::2",
+        "::ffff:192.0.2.1,::ffff:192.0.2.1,192.0.2.1"
+    })
+    void trustedProxySelectionAndCidrBoundariesControlEntry(String rule, String inside, String outside)
+            throws Exception {
+        String tenant = token(KEY, ISSUER, Instant.now().plusSeconds(900));
+        redisTemplate.opsForValue().set(MembershipStateKeys.tenantIpAllowlist(TENANT_ID), rule);
+        assertThat(call(
+                                HttpMethod.GET,
+                                "/orders/context",
+                                tenant,
+                                Map.of(
+                                        "X-Forwarded-For",
+                                        outside + ", " + inside + ", 127.0.0.1",
+                                        ClientIpHeader.NAME,
+                                        outside))
+                        .status())
+                .isEqualTo(200);
+        assertEnvelope(
+                call(
+                        HttpMethod.GET,
+                        "/orders/context",
+                        tenant,
+                        Map.of(
+                                "X-Forwarded-For",
+                                inside + ", " + outside + ", 127.0.0.1",
+                                ClientIpHeader.NAME,
+                                inside)),
+                403,
+                "tenant.ipNotAllowed");
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"localhost", "::/0", "*,,", "192.0.2.0/24,"})
+    void missingOrMalformedPublishedRulesRefuseEntry(String rule) throws Exception {
+        if (rule == null) redisTemplate.delete(MembershipStateKeys.tenantIpAllowlist(TENANT_ID));
+        else redisTemplate.opsForValue().set(MembershipStateKeys.tenantIpAllowlist(TENANT_ID), rule);
+        assertEnvelope(
+                call(
+                        HttpMethod.GET,
+                        "/orders/context",
+                        token(KEY, ISSUER, Instant.now().plusSeconds(900))),
+                403,
+                "tenant.ipNotAllowed");
+        // Tenant IP 限制不适用于 Platform Realm。
+        assertThat(call(
+                                HttpMethod.GET,
+                                "/platform/operators/current",
+                                platformToken(PLATFORM_KEY, PLATFORM_ISSUER, "platform-console"))
+                        .status())
+                .isEqualTo(200);
+    }
+
+    @Test
+    void redisReadFailureIs503RatherThanAnAuthenticationFailure() throws Exception {
+        mgetPermission("-mget");
+        try {
+            assertEnvelope(
+                    call(
+                            HttpMethod.GET,
+                            "/orders/context",
+                            token(KEY, ISSUER, Instant.now().plusSeconds(900))),
+                    503,
+                    "system.unavailable");
+        } finally {
+            mgetPermission("+mget");
+        }
+    }
+
+    private void mgetPermission(String permission) {
+        redisTemplate.execute((RedisCallback<Object>) connection -> connection.execute(
+                "ACL",
+                "SETUSER".getBytes(StandardCharsets.UTF_8),
+                "default".getBytes(StandardCharsets.UTF_8),
+                permission.getBytes(StandardCharsets.UTF_8)));
     }
 
     @Test
@@ -358,6 +464,7 @@ class GatewaySecurityTest {
     @Test
     void tenantSwitchEndpointsAreReachableWithTheirOwnCredentials() throws Exception {
         // 测试未配置 IAM 路由：通过安全规则后得到路由 404，被拦截则为 401/403。
+        assertEnvelope(call(HttpMethod.POST, "/iam/auth/memberships", null), 404, "request.notFound");
         Response notFound = call(HttpMethod.POST, "/iam/auth/switch", null);
         assertEnvelope(notFound, 404, "request.notFound");
         assertThat(notFound.body().path("userTip").asString()).isEqualTo("请求的资源不存在");
@@ -570,11 +677,16 @@ class GatewaySecurityTest {
     }
 
     private Response call(HttpMethod method, String path, String token) {
+        return call(method, path, token, Map.of());
+    }
+
+    private Response call(HttpMethod method, String path, String token, Map<String, String> headers) {
         var request =
                 RestClient.create("http://localhost:" + port).method(method).uri(path);
         if (token != null) {
             request.header("Authorization", "Bearer " + token);
         }
+        headers.forEach((name, value) -> request.header(name, value));
         return request.exchange((req, response) -> {
             String body = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
             return new Response(

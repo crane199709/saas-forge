@@ -48,6 +48,18 @@ public class TenantIpAllowlistService {
         return TenantIpAllowlist.decode(value);
     }
 
+    /** 签发前校验来源，拒绝事件归于已确认的目标 Membership；无事务以免拒绝异常回滚审计。 */
+    public boolean allowEntry(UUID tenantId, UUID identityId, UUID membershipId) {
+        if (rules(tenantId).allows(currentIp())) return true;
+        audits.record(AuditEvent.builder(AuditRealm.TENANT, AuditCategory.LOGIN, "tenant.ipAllowlistDenied")
+                .tenant(tenantId)
+                .actor(identityId)
+                .resource("membership", membershipId)
+                .failure(FrameworkErrorCode.TENANT_IP_NOT_ALLOWED.code())
+                .build());
+        return false;
+    }
+
     @Transactional
     public List<String> update(TenantActor actor, List<String> rules) {
         roles.requirePermission(actor.membershipId(), IamPermissions.SECURITY_MANAGE);
