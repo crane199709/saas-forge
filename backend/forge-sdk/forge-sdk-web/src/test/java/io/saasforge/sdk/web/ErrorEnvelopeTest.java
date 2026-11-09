@@ -16,6 +16,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
@@ -60,6 +62,35 @@ class ErrorEnvelopeTest {
                 .andExpect(jsonPath("$.traceId").value(TRACE_ID))
                 .andExpect(jsonPath("$.data").doesNotExist())
                 .andExpect(jsonPath("$.errors").doesNotExist());
+    }
+
+    @Test
+    void restoreConflictUsesSharedCodeAndActionableTip() throws Exception {
+        mvc.perform(post("/orders/conflict/restore"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("resource.restoreConflict"))
+                .andExpect(jsonPath("$.httpStatus").value(409))
+                .andExpect(jsonPath("$.userTip").value("名称或编码已被占用，请先改名或处理冲突记录后再恢复"));
+    }
+
+    @Test
+    void restoreBlockedUsesSharedCodeAndActionableTip() throws Exception {
+        mvc.perform(post("/orders/blocked/restore"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("resource.restoreBlocked"))
+                .andExpect(jsonPath("$.httpStatus").value(409))
+                .andExpect(jsonPath("$.userTip").value("关联资源尚未恢复，请先恢复关联资源后重试"));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "conflict, The name or code is already in use. Rename it or resolve the conflicting record before restoring.",
+        "blocked, A related resource is still deleted. Restore it first and try again."
+    })
+    void restoreErrorsUseRequestedEnglishLanguage(String id, String tip) throws Exception {
+        mvc.perform(post("/orders/" + id + "/restore").header("Accept-Language", "en"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.userTip").value(tip));
     }
 
     @Test

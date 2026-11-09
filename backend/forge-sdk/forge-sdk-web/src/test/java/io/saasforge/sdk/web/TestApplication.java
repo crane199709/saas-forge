@@ -3,6 +3,7 @@ package io.saasforge.sdk.web;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.core.api.ErrorCode;
 import io.saasforge.sdk.core.api.ForgeException;
+import io.saasforge.sdk.core.api.ResourceErrorCode;
 import jakarta.servlet.Filter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -88,6 +89,14 @@ class TestApplication {
         ApiResponse<List<OrderView>> list(@SortableFields({"createdAt", "amount"}) PageQuery query) {
             log.info("listing orders page={} size={}", query.page(), query.size());
             return ApiResponse.page(List.of(new OrderView("o-1", "t", BigDecimal.TEN)), query.toPageMeta(135));
+        }
+
+        @PostMapping("/{id}/restore")
+        ApiResponse<Void> restore(@PathVariable String id) {
+            if ("blocked".equals(id)) {
+                throw new ForgeException(ResourceErrorCode.RESTORE_BLOCKED);
+            }
+            throw new ForgeException(ResourceErrorCode.RESTORE_CONFLICT);
         }
 
         @GetMapping("/{id}")
