@@ -23,35 +23,58 @@ function respond(status: number, body: Record<string, unknown>) {
   })
 }
 
-function mountPanel(fetcher: ReturnType<typeof vi.fn>) {
+async function mountPanel(fetcher: ReturnType<typeof vi.fn>) {
   vi.stubGlobal('fetch', fetcher)
   sessionStorage.setItem(
     'forge.tenant.session',
     JSON.stringify({ accessToken: 'access', refreshToken: 'r', membershipId: 'm' }),
   )
-  return mount(DepartmentPanel, {
+  const wrapper = mount(DepartmentPanel, {
     props: { api: createOrganizationApi(createTenantClient(sessionStorage)), departments },
     global: { plugins: [i18n, ElementPlus] },
     attachTo: document.body,
   })
+  await flushPromises()
+  return wrapper
 }
 
 it('在选中的部门下新建下级部门，完成后通知刷新', async () => {
   const fetcher = vi
     .fn()
     .mockResolvedValue(respond(201, { code: 'ok', data: { id: 'c', parentId: 'a' } }))
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   expect(wrapper.text()).toContain('研发')
 
-  await wrapper.get('[data-testid="dept-node-a"]').trigger('click')
+  await wrapper.get('[data-testid="dept-create-child-a"]').trigger('click')
+  await flushPromises()
   await wrapper.get('input[data-testid="dept-name"]').setValue(' 市场 ')
-  await wrapper.get('[data-testid="dept-create-child"]').trigger('click')
+  await wrapper.get('[data-testid="dept-save"]').trigger('click')
   await flushPromises()
 
   const [url, init] = fetcher.mock.calls[0]!
   expect(url).toBe(`${location.origin}/iam/org/departments`)
   expect(JSON.parse(init.body)).toEqual({ name: '市场', parentId: 'a' })
   expect(wrapper.emitted('changed')).toHaveLength(1)
+})
+
+it('编辑时只提交变化的字段，没有变化不发请求', async () => {
+  const fetcher = vi.fn().mockImplementation(async () => respond(200, { code: 'ok', data: {} }))
+  const wrapper = await mountPanel(fetcher)
+
+  await wrapper.get('[data-testid="dept-edit-b"]').trigger('click')
+  await flushPromises()
+  await wrapper.get('[data-testid="dept-save"]').trigger('click')
+  await flushPromises()
+  expect(fetcher).not.toHaveBeenCalled()
+
+  await wrapper.get('[data-testid="dept-edit-b"]').trigger('click')
+  await flushPromises()
+  await wrapper.get('input[data-testid="dept-name"]').setValue('研发中心')
+  await wrapper.get('[data-testid="dept-save"]').trigger('click')
+  await flushPromises()
+  expect(fetcher.mock.calls).toHaveLength(1)
+  expect(fetcher.mock.calls[0]![0]).toBe(`${location.origin}/iam/org/departments/b`)
+  expect(JSON.parse(fetcher.mock.calls[0]![1].body)).toEqual({ name: '研发中心' })
 })
 
 it('删除被拒绝时展示 userTip 与 traceId', async () => {
@@ -62,10 +85,9 @@ it('删除被拒绝时展示 userTip 与 traceId', async () => {
       userTip: '部门下还有子部门或成员，不能删除',
     }),
   )
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
 
-  await wrapper.get('[data-testid="dept-node-a"]').trigger('click')
-  await wrapper.get('[data-testid="dept-delete"]').trigger('click')
+  await wrapper.get('[data-testid="dept-delete-a"]').trigger('click')
   await flushPromises()
 
   expect(fetcher.mock.calls[0]![1].method).toBe('DELETE')
@@ -97,10 +119,10 @@ it('已删除部门平铺显示，父部门已删除时保留记录并展示恢�
           ],
         }),
   )
-  const wrapper = mountPanel(fetcher)
+  const wrapper = await mountPanel(fetcher)
   await wrapper.get('[data-testid="restore-view-deleted"]').trigger('click')
   await flushPromises()
-  expect(wrapper.find('.el-tree').exists()).toBe(false)
+  expect(wrapper.find('[data-testid="dept-create-root"]').exists()).toBe(false)
   expect(wrapper.find('[data-testid="dept-name"]').exists()).toBe(false)
   expect(wrapper.text()).toContain('identity-admin')
   await wrapper.get('[data-testid="restore-child"]').trigger('click')

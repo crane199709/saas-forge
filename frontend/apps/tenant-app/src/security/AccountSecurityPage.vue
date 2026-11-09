@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useTenantClient } from '@crane199709/sdk'
 import { ErrorAlert, PageHeader, RecoveryCodeList } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
+import LeaveTenantSection from './LeaveTenantSection.vue'
 import MfaBindForm from './MfaBindForm.vue'
 
 // 当前 Identity 的个人安全设置：与租户无关，进入任何租户都看到同一份。
@@ -166,6 +167,8 @@ function unbind() {
         >
       </template>
     </section>
+
+    <LeaveTenantSection class="block" />
   </section>
 </template>
 

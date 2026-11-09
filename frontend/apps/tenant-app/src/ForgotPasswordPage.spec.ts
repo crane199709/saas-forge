@@ -39,7 +39,7 @@ it('从登录页进入忘记密码，验证码通过后设置新密码；已绑�
   await wrapper.get('form').trigger('submit')
   await flushPromises()
 
-  expect(wrapper.text()).toContain('该账号已绑定验证器')
+  expect(wrapper.text()).toContain('动态码')
   await wrapper.get('input[name="new-password"]').setValue('password')
   await wrapper.get('input[name="mfa-code"]').setValue('654321')
   await wrapper.get('form').trigger('submit')

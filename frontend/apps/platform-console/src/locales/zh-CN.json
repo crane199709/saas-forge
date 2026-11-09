@@ -41,7 +41,6 @@
     "actions": "操作",
     "detail": "详情",
     "refresh": "刷新",
-    "provisioningHint": "租户创建后即可使用，各服务在后台初始化本服务数据。",
     "noInitializations": "暂无服务初始化记录",
     "service": "服务",
     "initialization": "初始化状态",
@@ -73,7 +72,6 @@
     "noPlan": "未分配（不受套餐限制）",
     "unknownPlan": "已删除的套餐",
     "changePlan": "更换套餐",
-    "changePlanHint": "降级后超出新套餐的角色授权随即失效但保留记录，升级后恢复；成员数超出上限时不能再邀请新成员。",
     "region": "区域",
     "regionHint": "如 east；平台角色可按区域限定运营人员可见的租户",
     "noRegion": "未分配",
@@ -100,7 +98,6 @@
     "name": "名称",
     "permissions": "可用权限码",
     "permissionCount": "{count} 项",
-    "permissionsHint": "租户管理员只能在所选范围内为角色授权；租户自身的成员、组织与角色管理权限不受套餐限制。",
     "ungrouped": "未分组",
     "retired": "已从清单下线（保留）",
     "subApps": "可用子应用",
@@ -125,12 +122,10 @@
     "entries": "各环境入口地址",
     "environment": "环境",
     "remoteEntry": "remoteEntry 地址",
-    "entriesHint": "修改地址即可切换版本，租户端刷新后生效，无需重新发布 Shell App",
     "addEntry": "添加环境",
     "requirements": "最低共享依赖版本",
     "dependency": "包名",
     "minVersion": "最低版本",
-    "requirementsHint": "Shell App 提供的版本低于此处时拒绝加载该 Sub-App",
     "addRequirement": "添加依赖",
     "removeRow": "移除",
     "actions": "操作",
@@ -154,7 +149,6 @@
     "noRegion": "未分配",
     "regionHint": "如 east；平台角色的「负责区域」数据范围据此限定可见的租户",
     "roles": "平台角色",
-    "rolesHint": "可多选，权限取并集；变更后该运营人员下一次请求起按新权限处理",
     "status": "状态",
     "statuses": {
       "active": "正常",
@@ -207,7 +201,7 @@
     "edit": "编辑",
     "delete": "删除",
     "save": "保存",
-    "builtinHint": "预置角色，不可修改"
+    "builtin": "预置"
   },
   "audit": {
     "title": "平台审计",
@@ -269,7 +263,6 @@
   },
   "identity": {
     "title": "身份查询",
-    "hint": "按登录标识（账号、邮箱或手机号）精确查找身份。",
     "identifier": "登录标识",
     "search": "查找",
     "displayName": "昵称",
@@ -279,7 +272,8 @@
     "reset": "重置 MFA",
     "resetTitle": "重置 MFA：{name}",
     "resetHint": "重置后该身份的验证器与恢复码全部作废，下次登录可重新绑定。请先核实对方身份。",
-    "resetDone": "已重置该身份的 MFA。"
+    "resetDone": "已重置该身份的 MFA。",
+    "emptyHint": "输入账号、邮箱或手机号，精确查找身份"
   },
   "account": {
     "title": "账号安全",

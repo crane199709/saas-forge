@@ -87,7 +87,6 @@ function reset() {
         />
       </el-form-item>
       <template v-if="ticket.mfaRequired">
-        <p>{{ t('forgot.mfaHint') }}</p>
         <el-form-item v-if="useRecovery" :label="t('mfa.recoveryCode')" for="recovery-code">
           <el-input
             id="recovery-code"

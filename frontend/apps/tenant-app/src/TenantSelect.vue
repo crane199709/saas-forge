@@ -10,7 +10,6 @@ const { t } = useI18n()
 <template>
   <section class="tenant-select" :aria-label="t('tenant.selectTitle')">
     <h3>{{ t('tenant.selectTitle') }}</h3>
-    <p>{{ t('tenant.selectHint') }}</p>
     <ul>
       <li v-for="membership in memberships" :key="membership.membershipId">
         <el-button
@@ -29,10 +28,6 @@ h3 {
   margin: 0 0 var(--forge-space-2);
   font-size: var(--forge-font-size-md);
   font-weight: 600;
-}
-p {
-  margin: 0 0 var(--forge-space-3);
-  color: var(--el-text-color-secondary);
 }
 ul {
   display: flex;

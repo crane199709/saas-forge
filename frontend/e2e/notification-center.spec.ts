@@ -90,6 +90,9 @@ async function tenant(page: Page, permissions: string[] = []) {
     route.fulfill(ok({ identityId: 'i', tenantId: 't', membershipId: 'm' })),
   )
 }
+const announcementRow = (page: Page, id: string) =>
+  page.getByRole('row').filter({ has: page.getByTestId(`announcement-${id}`) })
+
 test('通知、公告已读、错误重试与待办进入业务后关单', async ({ page }) => {
   await tenant(page, ['order:read', 'order:update'])
   let read1 = false,
@@ -264,11 +267,11 @@ test('租户公告管理按权限显示，发布错误保留输入并可重试�
   await expect(dialog.getByLabel('标题', { exact: true })).toHaveValue('租户维护')
   await dialog.getByRole('button', { name: '确认发布' }).click()
   await expect(dialog).toBeHidden()
-  await expect(page.getByTestId('announcement-a1')).toContainText('发布中')
+  await expect(announcementRow(page, 'a1')).toContainText('发布中')
   await page.screenshot({ path: `${evidence}/tenant-announcement.png` })
   await page.getByTestId('announcement-revoke-a1').click()
   await page.getByTestId('announcement-confirm-revoke').click()
-  await expect(page.getByTestId('announcement-a1')).toContainText('已撤回')
+  await expect(announcementRow(page, 'a1')).toContainText('已撤回')
 })
 
 test('平台公告管理具有独立权限，指定租户表单验证并发布撤回', async ({ page }) => {
@@ -320,11 +323,11 @@ test('平台公告管理具有独立权限，指定租户表单验证并发布�
   await page.screenshot({ path: `${evidence}/platform-announcement-mobile-form.png` })
   await dialog.getByRole('button', { name: '确认发布' }).click()
   await expect(dialog).toBeHidden()
-  await expect(page.getByTestId('announcement-p1')).toContainText('<strong>保留纯文本</strong>')
-  await expect(page.locator('.announcement strong')).toHaveCount(0)
+  await expect(announcementRow(page, 'p1')).toContainText('<strong>保留纯文本</strong>')
+  await expect(page.locator('tbody strong')).toHaveCount(0)
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.screenshot({ path: `${evidence}/platform-announcement.png` })
   await page.getByTestId('announcement-revoke-p1').click()
   await page.getByTestId('announcement-confirm-revoke').click()
-  await expect(page.getByTestId('announcement-p1')).toContainText('已撤回')
+  await expect(announcementRow(page, 'p1')).toContainText('已撤回')
 })

@@ -51,27 +51,23 @@ async function reset() {
 
 <template>
   <section :aria-label="t('identity.title')">
-    <PageHeader :title="t('identity.title')" :description="t('identity.hint')" />
+    <PageHeader :title="t('identity.title')" />
     <ErrorAlert v-if="error" class="page-error" :tip="error" />
-    <el-form
-      class="lookup"
-      label-position="top"
-      data-testid="identity-lookup"
-      @submit.prevent="search"
-    >
-      <el-form-item :label="t('identity.identifier')" for="identity-identifier">
-        <el-input
-          id="identity-identifier"
-          v-model="identifier"
-          name="identifier"
-          maxlength="254"
-          required
-        />
-      </el-form-item>
+    <el-form class="lookup" data-testid="identity-lookup" @submit.prevent="search">
+      <el-input
+        id="identity-identifier"
+        v-model="identifier"
+        name="identifier"
+        maxlength="254"
+        required
+        :aria-label="t('identity.identifier')"
+        :placeholder="t('identity.identifier')"
+      />
       <el-button native-type="submit" type="primary" :loading="busy">{{
         t('identity.search')
       }}</el-button>
     </el-form>
+    <el-empty v-if="!identity && !error" :description="t('identity.emptyHint')" />
 
     <el-descriptions v-if="identity" :column="1" border class="result">
       <el-descriptions-item :label="t('identity.displayName')">{{
@@ -123,7 +119,11 @@ async function reset() {
 .page-error {
   margin-bottom: var(--forge-space-3);
 }
-.lookup,
+.lookup {
+  display: flex;
+  gap: var(--forge-space-2);
+  max-width: 480px;
+}
 .result {
   max-width: 640px;
 }

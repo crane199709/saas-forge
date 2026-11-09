@@ -66,7 +66,7 @@ const shared = (permission: TreePermission) =>
     </div>
     <div v-if="groups.length" class="section-title">{{ t('role.tree.others') }}</div>
     <div v-for="group in groups" :key="group.key" class="permission-group">
-      <div class="hint">{{ group.service }} · {{ group.group ?? t('role.dialog.ungrouped') }}</div>
+      <div class="hint">{{ group.group ?? t('role.dialog.ungrouped') }}</div>
       <el-checkbox
         v-for="permission in group.permissions"
         :key="permission.code"

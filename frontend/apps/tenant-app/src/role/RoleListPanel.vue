@@ -368,7 +368,6 @@ const scopeSummary = (role: Role) =>
         </el-form-item>
         <el-form-item v-if="dataResources.length > 0" :label="t('role.dialog.dataScopes')">
           <div class="scopes">
-            <div class="hint">{{ t('role.dialog.dataScopeHint') }}</div>
             <div v-for="resource in dataResources" :key="resource.code" class="scope-resource">
               <div class="scope-row">
                 <span class="scope-name">{{ resource.name }}</span>

@@ -206,12 +206,14 @@ onMounted(() =>
     <ErrorAlert v-if="error && !dialogOpen" class="page-error" :tip="error" />
 
     <el-table :data="roles" row-key="id" :empty-text="t('platformRole.empty')">
-      <el-table-column
-        prop="name"
-        :label="t('platformRole.name')"
-        min-width="160"
-        show-overflow-tooltip
-      />
+      <el-table-column :label="t('platformRole.name')" min-width="160">
+        <template #default="{ row }">
+          {{ row.name }}
+          <el-tag v-if="row.builtin" size="small" type="info">{{
+            t('platformRole.builtin')
+          }}</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column
         prop="code"
         :label="t('platformRole.code')"
@@ -254,7 +256,6 @@ onMounted(() =>
               >{{ t('platformRole.delete') }}</el-button
             >
           </template>
-          <span v-else class="hint">{{ t('platformRole.builtinHint') }}</span>
         </template>
       </el-table-column>
     </el-table>

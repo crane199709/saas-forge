@@ -367,7 +367,6 @@ onMounted(() => load(1))
           >
           <p v-if="cleared" role="status">租户 IP 允许列表已清除。</p>
           <h3>{{ t('tenant.changePlan') }}</h3>
-          <p class="hint">{{ t('tenant.changePlanHint') }}</p>
           <el-form class="change-plan" inline @submit.prevent="changePlan">
             <el-select
               v-model="planDraft"
@@ -448,7 +447,6 @@ onMounted(() => load(1))
         </el-table>
 
         <h3>{{ t('tenant.initialization') }}</h3>
-        <p class="hint">{{ t('tenant.provisioningHint') }}</p>
         <el-button class="init-refresh" :loading="busy" @click="open(detail.tenant.id)">{{
           t('tenant.refresh')
         }}</el-button>

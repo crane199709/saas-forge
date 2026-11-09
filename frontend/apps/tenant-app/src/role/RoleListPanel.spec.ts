@@ -525,7 +525,7 @@ it('新建角色按分组全选，跨页面共用的页面及操作权限传递�
   await flushPromises()
   input('perm-iam:role:manage').click()
   await flushPromises()
-  expect(document.body.textContent).toContain('forge-iam · 租户管理')
+  expect(document.body.textContent).toContain('租户管理')
   ;(document.querySelector('[data-testid="role-save"]') as HTMLElement).click()
   await flushPromises()
   const [url, init] = fetcher.mock.calls.at(-1)!

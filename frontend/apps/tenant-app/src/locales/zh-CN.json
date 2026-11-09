@@ -1,5 +1,7 @@
 {
-  "common": { "actions": "操作" },
+  "common": {
+    "actions": "操作"
+  },
   "app": {
     "title": "SaaS Forge 租户端",
     "welcome": "欢迎使用 SaaS Forge 租户端",
@@ -49,10 +51,9 @@
   },
   "tenant": {
     "selectTitle": "选择租户",
-    "selectHint": "此身份加入了多个租户，请选择要进入的租户。",
     "switcher": "切换租户",
-    "leave": "退出当前租户",
-    "leaveConfirm": "退出后将无法再进入「{tenant}」，除非被重新邀请。确定退出吗？",
+    "leave": "离开租户",
+    "leaveConfirm": "离开后将无法再进入「{tenant}」，除非被重新邀请。确定离开吗？",
     "cancel": "取消"
   },
   "org": {
@@ -67,25 +68,27 @@
     "department": {
       "name": "部门名称",
       "createRoot": "新建根部门",
-      "createChild": "新建下级部门",
-      "selected": "当前部门",
-      "rename": "改名",
+      "createChild": "新建下级",
       "parent": "上级部门",
       "rootOption": "（无，作为根部门）",
-      "move": "移动",
       "delete": "删除",
       "empty": "暂无部门",
-      "path": "路径"
+      "createUnder": "在「{name}」下新建部门",
+      "edit": "编辑",
+      "save": "保存",
+      "cancel": "取消"
     },
     "position": {
       "name": "岗位名称",
       "create": "新建岗位",
-      "rename": "改名",
-      "delete": "删除"
+      "delete": "删除",
+      "edit": "编辑",
+      "save": "保存",
+      "cancel": "取消",
+      "empty": "暂无岗位"
     },
     "attribute": {
-      "code": "编码（小写字母开头）",
-      "codeColumn": "编码",
+      "code": "编码",
       "name": "名称",
       "type": "类型",
       "required": "必填",
@@ -96,7 +99,11 @@
         "string": "文本",
         "number": "数值",
         "boolean": "是/否"
-      }
+      },
+      "codePlaceholder": "小写字母开头",
+      "edit": "编辑",
+      "cancel": "取消",
+      "empty": "暂无扩展属性"
     },
     "member": {
       "name": "成员",
@@ -146,8 +153,7 @@
       "save": "保存",
       "cancel": "取消",
       "dataScopes": "数据范围",
-      "noScope": "未配置（不可见）",
-      "dataScopeHint": "未配置数据范围的数据，持有该角色的成员看不到"
+      "noScope": "未配置（不可见）"
     },
     "impact": {
       "title": "确认保存对 {name} 的修改",
@@ -381,7 +387,6 @@
     "code": "验证码",
     "next": "下一步",
     "password": "新密码（至少 8 位）",
-    "mfaHint": "该账号已绑定验证器，请同时输入动态码或恢复码。",
     "submit": "重设密码",
     "done": "密码已重设，所有设备上的登录已失效，请用新密码登录。"
   },
@@ -405,13 +410,16 @@
       "regenerateHint": "重新生成后，原有恢复码全部作废。",
       "unbind": "解绑验证器",
       "unbindHint": "解绑后将无法进入要求两步验证的租户。"
+    },
+    "danger": {
+      "title": "危险操作"
     }
   },
   "securitySettings": {
     "nav": "安全设置",
     "title": "安全设置",
     "mfaRequired": "要求两步验证",
-    "mfaRequiredHint": "开启后，成员须绑定验证器并在登录时完成两步验证才能进入本租户；已登录但未完成两步验证的成员在下次刷新登录状态时被拦下，须当场绑定。",
+    "mfaRequiredHint": "开启后，成员须完成两步验证才能进入本租户。",
     "saved": "已保存"
   },
   "errorCode": {

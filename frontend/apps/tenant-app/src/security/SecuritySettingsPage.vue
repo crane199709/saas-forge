@@ -100,11 +100,12 @@ function toggle(next: string | number | boolean) {
       <p>
         当前 IP：<strong>{{ currentIp }}</strong>
       </p>
-      <p class="hint">
-        保存后立即影响所有成员进入当前租户及每次请求，不影响全局登录或其他租户。必须包含当前
-        IP；空列表表示无限制。
-      </p>
-      <p class="hint">支持 IPv4、IPv6 和 CIDR，最多 100 条，不允许 /0。</p>
+      <el-alert
+        class="ip-notice"
+        type="warning"
+        :closable="false"
+        title="保存后立即影响所有成员进入当前租户及每次请求，不影响全局登录或其他租户。必须包含当前 IP；空列表表示无限制。"
+      />
       <el-form label-position="top" @submit.prevent="saveRules">
         <el-form-item
           v-for="(_, index) in rules"
@@ -118,6 +119,7 @@ function toggle(next: string | number | boolean) {
             <el-input
               :id="`ip-rule-${index}`"
               v-model="rules[index]"
+              placeholder="IPv4、IPv6 或 CIDR"
               :disabled="busy"
               @input="saved = false"
             />
@@ -160,6 +162,9 @@ h3 {
   margin: 0 0 var(--forge-space-2);
   font-size: var(--forge-font-size-md);
   font-weight: 600;
+}
+.ip-notice {
+  margin-bottom: var(--forge-space-3);
 }
 .ip-section p {
   margin: 0 0 var(--forge-space-2);

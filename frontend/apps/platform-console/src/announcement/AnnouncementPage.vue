@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { vLoading } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { ErrorAlert, PageHeader, formatDateTime, overlaySize, type ErrorTip } from '@crane199709/ui'
 import { usePlatformClient } from '../shell'
@@ -15,6 +16,7 @@ const error = ref<ErrorTip | null>(null)
 const formError = ref<ErrorTip | null>(null)
 const creating = ref(false)
 const pending = ref<Announcement | null>(null)
+const viewing = ref<Announcement | null>(null)
 const title = ref('')
 const body = ref('')
 const subApp = ref('')
@@ -117,6 +119,9 @@ function status(item: Announcement) {
       ? '已到期'
       : '发布中'
 }
+function tagOf(item: Announcement) {
+  return status(item) === '发布中' ? 'success' : 'info'
+}
 onMounted(() => void load())
 onUnmounted(() => {
   active = false
@@ -134,33 +139,53 @@ onUnmounted(() => {
       </template>
     </PageHeader>
     <ErrorAlert v-if="error" class="page-error" :tip="error" />
-    <p v-if="loading" role="status">加载中…</p>
-    <p v-else-if="!error && !items.length">暂无公告</p>
-    <article
-      v-for="item in items"
-      :key="item.id"
-      class="announcement"
-      :data-testid="`announcement-${item.id}`"
+    <el-table v-loading="loading" :data="items" row-key="id" empty-text="暂无公告">
+      <el-table-column label="标题" min-width="180" show-overflow-tooltip>
+        <template #default="{ row }">
+          <span :data-testid="`announcement-${row.id}`">{{ row.title }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="body" label="内容" min-width="220" show-overflow-tooltip />
+      <el-table-column label="投放范围" min-width="140" show-overflow-tooltip>
+        <template #default="{ row }">{{
+          row.allTenants ? '全部租户' : `指定租户：${row.tenantIds.join('、')}`
+        }}</template>
+      </el-table-column>
+      <el-table-column label="状态" width="88">
+        <template #default="{ row }">
+          <el-tag size="small" :type="tagOf(row as Announcement)">{{
+            status(row as Announcement)
+          }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="发布时间" min-width="170">
+        <template #default="{ row }">{{ formatDateTime(row.publishedAt) }}</template>
+      </el-table-column>
+      <el-table-column label="到期时间" min-width="170">
+        <template #default="{ row }">{{ formatDateTime(row.expiresAt) }}</template>
+      </el-table-column>
+      <el-table-column :label="'操作'" width="136" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="primary" @click="viewing = row as Announcement">查看</el-button>
+          <el-button
+            v-if="!row.revoked"
+            link
+            type="danger"
+            :data-testid="`announcement-revoke-${row.id}`"
+            @click="requestRevoke(row as Announcement)"
+            >撤回公告</el-button
+          >
+        </template>
+      </el-table-column>
+    </el-table>
+    <el-dialog
+      :model-value="viewing !== null"
+      :title="viewing?.title ?? ''"
+      :width="overlaySize.dialogMd"
+      @close="viewing = null"
     >
-      <h3>
-        {{ item.title }}
-        <el-tag size="small" :type="item.revoked ? 'info' : 'success'">{{ status(item) }}</el-tag>
-      </h3>
-      <p class="body">{{ item.body }}</p>
-      <p>{{ item.allTenants ? '全部租户' : `指定租户：${item.tenantIds.join('、')}` }}</p>
-      <p class="hint">
-        发布于 {{ formatDateTime(item.publishedAt)
-        }}<template v-if="item.expiresAt"> · 到期于 {{ formatDateTime(item.expiresAt) }}</template>
-      </p>
-      <el-button
-        v-if="!item.revoked"
-        link
-        type="danger"
-        :data-testid="`announcement-revoke-${item.id}`"
-        @click="requestRevoke(item)"
-        >撤回公告</el-button
-      >
-    </article>
+      <p class="body">{{ viewing?.body }}</p>
+    </el-dialog>
     <el-drawer
       v-model="creating"
       title="发布公告"
@@ -268,20 +293,9 @@ onUnmounted(() => {
 .page-error {
   margin-bottom: var(--forge-space-3);
 }
-.announcement {
-  padding: var(--forge-space-4) 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-  overflow-wrap: anywhere;
-}
-h3 {
-  margin: 0 0 var(--forge-space-2);
-  font-size: var(--forge-font-size-md);
-  font-weight: 600;
-}
-p {
-  margin: 0 0 var(--forge-space-2);
-}
 .body {
+  margin: 0;
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 .hint {

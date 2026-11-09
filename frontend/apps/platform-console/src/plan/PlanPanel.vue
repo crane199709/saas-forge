@@ -195,7 +195,13 @@ onMounted(() => run(fetchPlans))
       :title="editing ? t('plan.editTitle', { name: editing.name }) : t('plan.create')"
     >
       <ErrorAlert v-if="error" :tip="error" />
-      <p v-if="editing" class="hint">{{ t('plan.editHint') }}</p>
+      <el-alert
+        v-if="editing"
+        class="page-error"
+        type="warning"
+        :closable="false"
+        :title="t('plan.editHint')"
+      />
       <el-form label-position="top" @submit.prevent="save">
         <el-form-item :label="t('plan.code')" for="plan-code">
           <el-input
@@ -224,7 +230,6 @@ onMounted(() => run(fetchPlans))
               >
             </div>
           </el-checkbox-group>
-          <p class="hint">{{ t('plan.permissionsHint') }}</p>
         </el-form-item>
         <el-form-item :label="t('plan.subApps')">
           <el-select

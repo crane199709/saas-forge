@@ -209,7 +209,6 @@ onMounted(() => run(fetchApps))
               t('subApp.addEntry')
             }}</el-button>
           </div>
-          <p class="hint">{{ t('subApp.entriesHint') }}</p>
         </el-form-item>
         <el-form-item :label="t('subApp.requirements')">
           <div class="rows">
@@ -238,7 +237,6 @@ onMounted(() => run(fetchApps))
               >{{ t('subApp.addRequirement') }}</el-button
             >
           </div>
-          <p class="hint">{{ t('subApp.requirementsHint') }}</p>
         </el-form-item>
         <el-button native-type="submit" type="primary" :loading="busy">{{
           t('subApp.save')

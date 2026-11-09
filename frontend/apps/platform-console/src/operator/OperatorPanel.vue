@@ -278,7 +278,6 @@ onMounted(() =>
               role.name
             }}</el-checkbox>
           </el-checkbox-group>
-          <p class="hint">{{ t('operator.rolesHint') }}</p>
         </el-form-item>
         <el-button native-type="submit" type="primary" :loading="busy">{{
           t('operator.save')

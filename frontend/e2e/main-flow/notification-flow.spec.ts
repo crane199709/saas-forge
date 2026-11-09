@@ -73,12 +73,12 @@ async function publish(page: Page, title: string, target?: string) {
 }
 async function revoke(page: Page, title: string) {
   await page
-    .locator('article')
+    .getByRole('row')
     .filter({ hasText: title })
     .getByRole('button', { name: '撤回公告', exact: true })
     .click()
   await page.getByTestId('announcement-confirm-revoke').click()
-  await expect(page.locator('article').filter({ hasText: title })).toContainText('已撤回')
+  await expect(page.getByRole('row').filter({ hasText: title })).toContainText('已撤回')
 }
 async function isolated(browser: Browser, url: string) {
   const context = await browser.newContext({
