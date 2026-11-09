@@ -60,7 +60,28 @@ cd backend
 ./mvnw install -DskipTests
 ```
 
-然后分别启动四个服务（各开一个终端，或在 IDE 中运行各模块的 `*Application`）：
+回到仓库根目录，为本地环境生成三个独立的运维令牌（只需生成一次，文件已被 Git 忽略）：
+
+```bash
+cd ..
+if [ ! -f .env.ops.local ]; then
+  (
+    umask 077
+    cat > .env.ops.local <<EOF
+FORGE_IAM_OPS_TOKEN=$(openssl rand -hex 32)
+FORGE_PLATFORM_OPS_TOKEN=$(openssl rand -hex 32)
+FORGE_DEMO_OPS_TOKEN=$(openssl rand -hex 32)
+EOF
+  )
+fi
+set -a
+source .env.ops.local
+set +a
+```
+
+三个服务都要求显式配置运维令牌，漏配、空值或未解析的占位符会导致启动失败，例如 `forge.ops.token must be set`。`forge-platform` 同时需要三个变量，以匹配各服务的内部运维认证。
+
+然后分别启动四个服务（各开一个终端；新终端须在仓库根目录重新执行上面的 `set -a`、`source`、`set +a`）：
 
 ```bash
 java -jar backend/forge-iam/target/forge-iam-0.1.0.jar
@@ -77,6 +98,8 @@ java -jar backend/examples/demo-service/target/demo-service-0.1.0.jar
 ```bash
 java -jar backend/forge-gateway/target/forge-gateway-0.1.0.jar
 ```
+
+使用 IDEA 时，在各模块的 `*Application` 运行配置的 **Environment variables** 中设置 `.env.ops.local` 中的三个同名变量，工作目录设为仓库根目录。IDEA 从界面启动时不会自动加载该文件；也不要把含真实令牌的运行配置提交到 Git。更换令牌后，须同步更新服务和 `forge-platform` 的运行配置并重启。
 
 | 服务 | 端口 | 经网关访问 |
 |---|---|---|
