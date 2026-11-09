@@ -140,6 +140,15 @@ public class RedisAuthorizationService implements OAuth2AuthorizationService {
     @Override
     public OAuth2Authorization findByToken(String token, OAuth2TokenType type) {
         if (OAuth2TokenType.REFRESH_TOKEN.equals(type) && revokeUsedRefreshToken(token)) return null;
+        return lookupToken(token, type);
+    }
+
+    /** 只读取当前刷新授权；拒绝已轮换凭证，但列表读取不会像刷新重放那样吊销现存授权。 */
+    public OAuth2Authorization findByRefreshTokenReadOnly(String token) {
+        return lookupToken(token, OAuth2TokenType.REFRESH_TOKEN);
+    }
+
+    private OAuth2Authorization lookupToken(String token, OAuth2TokenType type) {
         String id = redis.opsForValue().get(tokenKey(token));
         OAuth2Authorization authorization = id == null ? null : findById(id);
         if (authorization == null) return null;

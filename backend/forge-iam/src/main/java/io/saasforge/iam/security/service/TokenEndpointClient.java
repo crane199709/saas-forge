@@ -1,7 +1,9 @@
 package io.saasforge.iam.security.service;
 
+import io.saasforge.iam.clientip.service.ClientIpResolver;
 import io.saasforge.iam.security.config.ClientCredentials;
 import io.saasforge.iam.security.config.IamProperties;
+import io.saasforge.sdk.core.ClientIpHeader;
 import java.util.Map;
 import org.springframework.boot.web.server.autoconfigure.ServerProperties;
 import org.springframework.boot.web.server.servlet.context.ServletWebServerApplicationContext;
@@ -41,7 +43,12 @@ public class TokenEndpointClient {
         return RestClient.create(tokenBaseUri())
                 .post()
                 .uri("/oauth2/token")
-                .headers(headers -> headers.setBasicAuth(clientId, credentials.secret()))
+                .headers(headers -> {
+                    headers.setBasicAuth(clientId, credentials.secret());
+                    // 本进程 HTTP 调用会替换连接 IP，必须保留外层适配器收到的可信来源。
+                    String ip = ClientIpResolver.currentIp();
+                    if (ip != null) headers.set(ClientIpHeader.NAME, ip);
+                })
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(form)
                 .retrieve()

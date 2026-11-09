@@ -17,6 +17,7 @@ import io.saasforge.iam.security.filter.EnvelopeSecurityErrorHandler;
 import io.saasforge.iam.security.filter.TokenGrantLockFilter;
 import io.saasforge.iam.security.service.MfaAuthority;
 import io.saasforge.iam.security.service.RedisAuthorizationService;
+import io.saasforge.iam.tenant.service.TenantIpAllowlistService;
 import io.saasforge.iam.tenant.service.TenantSecurityService;
 import io.saasforge.iam.tenant.service.TenantStateService;
 import io.saasforge.sdk.web.EnvelopeErrorWriter;
@@ -40,6 +41,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.config.Customizer;
@@ -75,6 +77,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
 @Configuration(proxyBeanMethods = false)
 class IamSecurityConfiguration {
@@ -193,6 +196,7 @@ class IamSecurityConfiguration {
             MembershipStateService membershipStates,
             TenantStateService tenantStates,
             TenantSecurityService tenantSecurity,
+            TenantIpAllowlistService tenantIps,
             OperatorService operators,
             OperatorStateService operatorStates,
             RealmIssuerProperties issuers,
@@ -251,9 +255,13 @@ class IamSecurityConfiguration {
             if (!MfaAuthority.completed(context.getPrincipal()) && tenantSecurity.mfaRequired(membership.tenantId())) {
                 throw new OAuth2AuthenticationException(new OAuth2Error(TenantTokenParameters.MFA_REQUIRED));
             }
+            if (!tenantIps.allowEntry(membership.tenantId(), membership.identityId(), membership.membershipId())) {
+                throw new OAuth2AuthenticationException(new OAuth2Error(TenantTokenParameters.IP_NOT_ALLOWED));
+            }
             // 网关只认 Redis 中的状态，缺失即拒绝；每次签发都按数据库补齐，被淘汰的状态随刷新恢复（ADR-0005）。
             membershipStates.publish(membership.tenantId(), membership.membershipId(), membership.version());
             tenantStates.publish(membership.tenantId(), membership.tenantStatus());
+            tenantIps.publishIfAbsent(membership.tenantId());
             context.getClaims()
                     .subject(membership.identityId().toString())
                     .claim("tenant_id", membership.tenantId().toString())
@@ -308,22 +316,22 @@ class IamSecurityConfiguration {
         // 已持有 Access Token 的身份读取自己的 Membership 与权限、读取自己的 Authenticator 绑定状态、管理自己的 Recovery Code 与解绑
         // Authenticator、改密码、管理本租户成员、组织与角色、
         // 查看本租户审计、读取与管理本租户的字典与参数、管理本租户的安全设置；无状态、不使用登录会话 Cookie。
-        http.securityMatcher(
-                        "/auth/memberships",
-                        "/auth/access",
-                        "/auth/mfa",
-                        "/auth/mfa/recovery-codes/**",
-                        "/auth/mfa/unbind",
-                        "/auth/password/change",
-                        "/org/**",
-                        "/roles/**",
-                        "/members/**",
-                        "/audit/**",
-                        "/todos/**",
-                        "/notifications/**",
-                        "/reference-data/**",
-                        "/security-settings",
-                        "/announcements/**")
+        http.securityMatchers(matchers -> matchers.requestMatchers(HttpMethod.GET, "/auth/memberships")
+                        .requestMatchers(
+                                "/auth/access",
+                                "/auth/mfa",
+                                "/auth/mfa/recovery-codes/**",
+                                "/auth/mfa/unbind",
+                                "/auth/password/change",
+                                "/org/**",
+                                "/roles/**",
+                                "/members/**",
+                                "/audit/**",
+                                "/todos/**",
+                                "/notifications/**",
+                                "/reference-data/**",
+                                "/security-settings/**",
+                                "/announcements/**"))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
@@ -358,6 +366,7 @@ class IamSecurityConfiguration {
                 new JwtClaimValidator<Object>("ver", Number.class::isInstance)));
         http.securityMatcher(
                         "/platform/operators/**",
+                        "/platform/tenants/**",
                         "/platform/roles/**",
                         "/platform/identities/**",
                         "/platform/access",
@@ -422,30 +431,34 @@ class IamSecurityConfiguration {
     SecurityFilterChain applicationSecurity(HttpSecurity http, EnvelopeSecurityErrorHandler errors) throws Exception {
         // JSON 凭证入口不开启 CORS，授权端点使用 Redis HTTP 会话；Token 交换仍需授权码和 PKCE。
         http.csrf(csrf -> csrf.ignoringRequestMatchers(
-                        "/auth/login",
-                        "/auth/logout",
-                        "/auth/exchange",
-                        "/auth/refresh",
-                        "/auth/switch",
-                        "/auth/login/send-code",
-                        "/auth/code-login",
-                        "/auth/login/mfa",
-                        "/auth/register/send-code",
-                        "/auth/register",
-                        "/auth/password/forgot/send-code",
-                        "/auth/password/forgot/verify",
-                        "/auth/password/forgot/reset",
-                        "/auth/invitations/preview",
-                        "/auth/invitations/accept",
-                        "/platform/auth/login",
-                        "/platform/auth/login/mfa",
-                        "/platform/auth/login/bind/start",
-                        "/platform/auth/login/bind/confirm",
-                        "/platform/auth/logout",
-                        "/platform/auth/exchange",
-                        "/platform/auth/refresh"))
+                                PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/auth/memberships"))
+                        .ignoringRequestMatchers(
+                                "/auth/login",
+                                "/auth/logout",
+                                "/auth/exchange",
+                                "/auth/refresh",
+                                "/auth/switch",
+                                "/auth/login/send-code",
+                                "/auth/code-login",
+                                "/auth/login/mfa",
+                                "/auth/register/send-code",
+                                "/auth/register",
+                                "/auth/password/forgot/send-code",
+                                "/auth/password/forgot/verify",
+                                "/auth/password/forgot/reset",
+                                "/auth/invitations/preview",
+                                "/auth/invitations/accept",
+                                "/platform/auth/login",
+                                "/platform/auth/login/mfa",
+                                "/platform/auth/login/bind/start",
+                                "/platform/auth/login/bind/confirm",
+                                "/platform/auth/logout",
+                                "/platform/auth/exchange",
+                                "/platform/auth/refresh"))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth.dispatcherTypeMatchers(DispatcherType.ERROR)
+                        .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/memberships")
                         .permitAll()
                         .requestMatchers(
                                 "/auth/login",

@@ -3,6 +3,7 @@ package io.saasforge.gateway.envelope.filter;
 import io.saasforge.gateway.envelope.service.ErrorEnvelopeService;
 import io.saasforge.gateway.logcontext.service.RequestLogContext;
 import io.saasforge.sdk.core.api.ErrorEnvelopes;
+import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import java.net.ConnectException;
 import java.util.concurrent.TimeoutException;
@@ -40,6 +41,9 @@ class EnvelopeErrorWebExceptionHandler implements ErrorWebExceptionHandler {
     public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
         if (exchange.getResponse().isCommitted()) {
             return Mono.error(ex);
+        }
+        if (ex instanceof ForgeException error) {
+            return envelopes.write(exchange, error.errorCode(), error.errorMessage());
         }
         int status =
                 ex instanceof ErrorResponse response ? response.getStatusCode().value() : 500;

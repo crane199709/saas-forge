@@ -361,16 +361,16 @@ describe('多租户', () => {
     await expect(client.selectTenant('membership-a')).rejects.toThrow('auth.failed')
   })
 
-  it('列出 Membership 时携带 Access Token', async () => {
+  it('列出 Membership 使用独立刷新凭证而不携带当前 Tenant Token', async () => {
     signedIn()
     const fetcher = vi.fn().mockResolvedValueOnce(ok([membershipA, membershipB]))
     vi.stubGlobal('fetch', fetcher)
     const client = createTenantClient(sessionStorage)
     expect(await client.memberships()).toEqual([membershipA, membershipB])
-    expect(fetcher.mock.calls[0]?.[0]).toBe(location.origin + '/iam/auth/memberships')
-    expect(new Headers(fetcher.mock.calls[0]?.[1]?.headers).get('Authorization')).toBe(
-      'Bearer access-a',
-    )
+    expect(fetcher.mock.calls[0]?.[0]).toBe('/iam/auth/memberships')
+    expect(fetcher.mock.calls[0]?.[1]?.credentials).toBe('omit')
+    expect(new Headers(fetcher.mock.calls[0]?.[1]?.headers).get('Authorization')).toBeNull()
+    expect(JSON.parse(fetcher.mock.calls[0]?.[1]?.body)).toEqual({ refreshToken: 'refresh-a' })
   })
 
   it('切换租户用刷新凭证换发新会话，切换前发出的请求作废并通知订阅者', async () => {
@@ -845,4 +845,125 @@ describe('账号安全', () => {
       code: '654321',
     })
   })
+})
+
+it.each(['api', 'page', 'request'] as const)(
+  '当前 Tenant IP 被 %s 拒绝时保留凭证，晚订阅收到拒绝且停止后续请求',
+  async (method) => {
+    signedIn()
+    const fetcher = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(fail('tenant.ipNotAllowed', 403)))
+    vi.stubGlobal('fetch', fetcher)
+    const client = createTenantClient(sessionStorage)
+    await client[method]('/demo/orders').catch(() => undefined)
+    const listener = vi.fn()
+    client.onIpNotAllowed(listener)
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currentTenant: true,
+        error: expect.objectContaining({ code: 'tenant.ipNotAllowed' }),
+      }),
+    )
+    expect(client.session()?.refreshToken).toBe('refresh-a')
+    await expect(client.api('/demo/orders')).rejects.toMatchObject({ code: 'tenant.ipNotAllowed' })
+    await expect(client.refresh()).rejects.toMatchObject({ code: 'tenant.ipNotAllowed' })
+    expect(fetcher).toHaveBeenCalledTimes(1)
+  },
+)
+
+it('切换目标 IP 被拒不阻断当前 Tenant', async () => {
+  signedIn()
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(fail('tenant.ipNotAllowed', 403))
+    .mockResolvedValueOnce(ok({ works: true }))
+  vi.stubGlobal('fetch', fetcher)
+  const client = createTenantClient(sessionStorage)
+  await expect(client.switchTenant('membership-b')).rejects.toMatchObject({
+    code: 'tenant.ipNotAllowed',
+  })
+  expect(client.ipDenial()).toMatchObject({ currentTenant: false, membershipId: 'membership-b' })
+  await expect(client.api('/demo/orders')).resolves.toEqual({ works: true })
+  expect(client.session()?.refreshToken).toBe('refresh-a')
+})
+
+it('刷新 IP 拒绝通知 Shell 且 memberships 与切换 B 仍然可用', async () => {
+  signedIn()
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(fail('tenant.ipNotAllowed', 403))
+    .mockResolvedValueOnce(ok([membershipA, membershipB]))
+    .mockResolvedValueOnce(tokens('access-b', 'refresh-b', membershipB))
+  vi.stubGlobal('fetch', fetcher)
+  const client = createTenantClient(sessionStorage)
+  await expect(client.refresh()).rejects.toMatchObject({ code: 'tenant.ipNotAllowed' })
+  expect(client.ipDenial()?.currentTenant).toBe(true)
+  expect(await client.memberships()).toEqual([membershipA, membershipB])
+  await client.switchTenant('membership-b')
+  expect(client.ipDenial()).toBeNull()
+})
+
+it('唯一 Membership 换码 IP 被拒保留登录选择上下文', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce(loginSettings([membershipA]))
+      .mockImplementationOnce(authorizeRedirect)
+      .mockResolvedValueOnce(fail('tenant.ipNotAllowed', 403)),
+  )
+  const client = createTenantClient(sessionStorage)
+  expect(await client.login('demo', 'password')).toEqual({
+    status: 'ipNotAllowed',
+    memberships: [membershipA],
+  })
+  expect(client.ipDenial()).toMatchObject({ currentTenant: false, membershipId: 'membership-a' })
+})
+
+it('memberships 等待轮换并在锁内读取最新凭证', async () => {
+  signedIn()
+  let finish!: (response: Response) => void
+  const fetcher = vi
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve
+        }),
+    )
+    .mockResolvedValueOnce(ok([membershipA]))
+  vi.stubGlobal('fetch', fetcher)
+  const client = createTenantClient(sessionStorage)
+  const rotating = client.refresh()
+  await vi.waitFor(() => expect(finish).toBeDefined())
+  const reading = client.memberships()
+  finish(tokens('new-access', 'new-refresh'))
+  await rotating
+  await reading
+  expect(JSON.parse(fetcher.mock.calls[1]?.[1]?.body)).toEqual({ refreshToken: 'new-refresh' })
+})
+
+it('已退出后迟到的 exchange 拒绝不恢复租户拒绝状态', async () => {
+  let finish!: (response: Response) => void
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce(loginSettings([membershipA]))
+      .mockImplementationOnce(authorizeRedirect)
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            finish = resolve
+          }),
+      ),
+  )
+  const client = createTenantClient(sessionStorage)
+  const pending = client.login('demo', 'password')
+  await vi.waitFor(() => expect(finish).toBeDefined())
+  client.clear()
+  finish(fail('tenant.ipNotAllowed', 403))
+  await expect(pending).rejects.toThrow('auth.sessionChanged')
+  expect(client.ipDenial()).toBeNull()
 })

@@ -36,4 +36,17 @@
         UPDATE tenant SET mfa_required = #{mfaRequired}, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE id = #{tenantId} AND NOT deleted
     </update>
+    <select id="findIpAllowlist" resultType="string">
+        SELECT ip_allowlist FROM tenant WHERE id = #{tenantId} AND NOT deleted
+    </select>
+    <update id="updateIpAllowlist">
+        UPDATE tenant SET ip_allowlist = #{rules}, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
+        WHERE id = #{tenantId} AND NOT deleted
+    </update>
+    <select id="lockIpAllowlist" resultType="string">
+        SELECT ip_allowlist FROM tenant WHERE id = #{tenantId} AND NOT deleted FOR UPDATE
+    </select>
+    <select id="findAllIds" resultType="java.util.UUID">
+        SELECT id FROM tenant WHERE NOT deleted ORDER BY id
+    </select>
 </mapper>

@@ -4,13 +4,16 @@ import io.saasforge.iam.tenant.mapper.TenantMapper;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /** iam 中的租户目录：Tenant 主数据属于 platform，iam 保存登录与签发需要的副本。 */
 @Service
 public class TenantService {
     private final TenantMapper tenants;
+    private final TenantIpAllowlistService allowlists;
 
-    TenantService(TenantMapper tenants) {
+    TenantService(TenantMapper tenants, TenantIpAllowlistService allowlists) {
+        this.allowlists = allowlists;
         this.tenants = tenants;
     }
 
@@ -19,8 +22,10 @@ public class TenantService {
      *
      * @param status platform 发布 TenantCreated 时的状态
      */
+    @Transactional
     public void register(UUID tenantId, String name, String status) {
         tenants.insertIfAbsent(tenantId, name, status);
+        allowlists.publishIfAbsent(tenantId);
     }
 
     /** 按状态列出未删除的租户 ID，供受信任服务发现任务目标。 */

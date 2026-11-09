@@ -4,13 +4,17 @@ import com.nimbusds.jwt.SignedJWT;
 import io.saasforge.iam.identity.service.IdentityService;
 import io.saasforge.iam.security.config.IamProperties;
 import io.saasforge.iam.security.config.TenantTokenParameters;
+import io.saasforge.iam.security.service.RedisAuthorizationService;
 import io.saasforge.iam.security.service.TokenEndpointClient;
 import io.saasforge.iam.session.model.TokenResponse;
 import io.saasforge.sdk.audit.AuditRealm;
 import io.saasforge.sdk.core.api.ForgeException;
+import io.saasforge.sdk.core.api.FrameworkErrorCode;
+import java.security.Principal;
 import java.text.ParseException;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -20,15 +24,18 @@ import org.springframework.web.client.HttpClientErrorException;
 public class TokenExchangeService {
     private final TokenEndpointClient tokenEndpoint;
     private final IdentityService identities;
+    private final RedisAuthorizationService authorizations;
     private final LoginAudit audits;
     private final String redirectUri;
 
     TokenExchangeService(
             TokenEndpointClient tokenEndpoint,
+            RedisAuthorizationService authorizations,
             IdentityService identities,
             LoginAudit audits,
             IamProperties properties) {
         this.tokenEndpoint = tokenEndpoint;
+        this.authorizations = authorizations;
         this.identities = identities;
         this.audits = audits;
         this.redirectUri = properties.redirectUri();
@@ -45,6 +52,26 @@ public class TokenExchangeService {
         TokenResponse tokens = exchange(form);
         audits.entered(LoginAudit.LOGIN, identityOf(tokens), tokens.tenantId(), tokens.membershipId());
         return tokens;
+    }
+
+    /** 全局恢复入口只凭当前 Tenant 刷新授权确认身份，不签发或轮换，也不检查当前 Tenant 的准入规则。 */
+    public UUID identityForMemberships(String refreshToken) {
+        var authorization = authorizations.findByRefreshTokenReadOnly(refreshToken);
+        Authentication principal = authorization == null ? null : authorization.getAttribute(Principal.class.getName());
+        if (authorization == null
+                || !"tenant-app".equals(authorization.getRegisteredClientId())
+                || authorization.getRefreshToken() == null
+                || !authorization.getRefreshToken().isActive()
+                || principal == null
+                || !principal.isAuthenticated()
+                || !principal.getName().equals(authorization.getPrincipalName())
+                || principal.getAuthorities().stream()
+                        .noneMatch(authority -> "TENANT".equals(authority.getAuthority()))) {
+            throw new ForgeException(SessionErrorCode.AUTH_FAILED);
+        }
+        UUID identityId = UUID.fromString(authorization.getPrincipalName());
+        if (identities.findActivePassword(identityId).isEmpty()) throw new ForgeException(SessionErrorCode.AUTH_FAILED);
+        return identityId;
     }
 
     public TokenResponse refresh(String token) {
@@ -101,6 +128,10 @@ public class TokenExchangeService {
                 throw ForgeException.withErrorMessage(
                         SessionErrorCode.MFA_REQUIRED,
                         "Tenant requires MFA but the authorization has not completed it");
+            }
+            if (body != null && TenantTokenParameters.IP_NOT_ALLOWED.equals(body.get("error"))) {
+                throw ForgeException.withErrorMessage(
+                        FrameworkErrorCode.TENANT_IP_NOT_ALLOWED, "Client IP is outside the tenant allowlist");
             }
             throw ForgeException.withErrorMessage(SessionErrorCode.AUTH_FAILED, "Token grant rejected");
         }

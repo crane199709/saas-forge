@@ -8,5 +8,8 @@ public final class TenantTokenParameters {
     /** 目标租户提出了 MFA Requirement 而授权未完成 MFA 时，定制器拒绝签发使用的 OAuth2 错误码。 */
     public static final String MFA_REQUIRED = "mfa_required";
 
+    /** 目标 Tenant 不允许本次来源 IP 时，定制器拒绝签发使用的 OAuth2 错误码。 */
+    public static final String IP_NOT_ALLOWED = "tenant_ip_not_allowed";
+
     private TenantTokenParameters() {}
 }

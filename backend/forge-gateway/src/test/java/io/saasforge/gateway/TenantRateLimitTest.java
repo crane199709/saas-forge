@@ -100,6 +100,7 @@ class TenantRateLimitTest {
         for (UUID tenant : List.of(NOISY_TENANT, QUIET_TENANT)) {
             redisTemplate.opsForValue().set(MembershipStateKeys.version(tenant, MEMBERSHIP_ID), "1");
             redisTemplate.opsForValue().set(MembershipStateKeys.tenantStatus(tenant), "active");
+            redisTemplate.opsForValue().set(MembershipStateKeys.tenantIpAllowlist(tenant), "*");
         }
     }
 

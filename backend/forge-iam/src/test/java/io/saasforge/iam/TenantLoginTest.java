@@ -387,8 +387,10 @@ class TenantLoginTest {
         var tenant = UUID.fromString(DEMO_TENANT);
         var membership = UUID.fromString(DEMO_MEMBERSHIP);
         // Redis 丢失状态时网关拒绝请求；刷新必须恢复状态，否则用户只能重新登录。
-        redisTemplate.delete(
-                List.of(MembershipStateKeys.version(tenant, membership), MembershipStateKeys.tenantStatus(tenant)));
+        redisTemplate.delete(List.of(
+                MembershipStateKeys.version(tenant, membership),
+                MembershipStateKeys.tenantStatus(tenant),
+                MembershipStateKeys.tenantIpAllowlist(tenant)));
 
         Map<?, ?> refreshed = refresh((String) issued.get("refreshToken"));
 
@@ -397,6 +399,8 @@ class TenantLoginTest {
                 .isEqualTo(String.valueOf(version));
         assertThat(redisTemplate.opsForValue().get(MembershipStateKeys.tenantStatus(tenant)))
                 .isEqualTo("active");
+        assertThat(redisTemplate.opsForValue().get(MembershipStateKeys.tenantIpAllowlist(tenant)))
+                .isEqualTo("*");
     }
 
     private static final UUID REV_VERSION_TENANT = UUID.fromString("019a0110-0000-7000-8000-00000000000e");

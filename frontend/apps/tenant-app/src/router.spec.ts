@@ -152,3 +152,34 @@ describe('safeRedirect', () => {
     expect(safeRedirect(value)).toBe(expected)
   })
 })
+
+it('当前租户 IP 被拒进入独立页面，保留刷新凭证并提供退出', async () => {
+  signedIn()
+  vi.stubGlobal(
+    'fetch',
+    fakeFetch({
+      '/demo/context': new Response(
+        JSON.stringify({
+          code: 'tenant.ipNotAllowed',
+          httpStatus: 403,
+          userTip: '当前 IP 无法访问该租户',
+          traceId: 'ip-denied',
+        }),
+        { status: 403 },
+      ),
+      '/iam/auth/memberships': ok([{ membershipId: 'b', tenantId: 'tb', tenantName: '租户 B' }]),
+      '/iam/auth/logout': ok(null),
+    }),
+  )
+  const { router, wrapper, client } = await mountShell('/')
+  await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/ip-not-allowed'))
+  await flushPromises()
+  expect(wrapper.text()).toContain('当前 IP 无法访问该租户')
+  expect(wrapper.text()).toContain('租户 B')
+  expect(wrapper.find('.shell-header').exists()).toBe(false)
+  expect(client.session()?.refreshToken).toBe('r')
+  await wrapper.get('[data-testid="ip-denied-logout"]').trigger('click')
+  await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/login')
+  expect(client.session()).toBeNull()
+})
