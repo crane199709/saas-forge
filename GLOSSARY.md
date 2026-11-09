@@ -45,7 +45,8 @@ Tenant 订购的商业规格，由 Feature Pack 与 Quota 组成，是该租户�
 _Avoid_: 版本、Edition、订阅
 
 **Feature Pack（功能包）**:
-Plan 中规定 Tenant 可使用哪些 Permission Code 与 Sub-App 的部分。
+Plan 中规定 Tenant 可使用哪些 Permission Code 与 Sub-App 的部分。Permission Code 经挂载它的 Menu 归属该 Menu 指向的 Sub-App，可同时归属多个；未挂载在 Menu 上的不归属任何 Sub-App。
+_Avoid_: 租户授权菜单、菜单授权
 
 **Quota（配额）**:
 Plan 中规定 Tenant 可使用资源数量上限的部分，如成员数、存储容量。
