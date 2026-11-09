@@ -3,7 +3,9 @@ package io.saasforge.platform.tenant.controller;
 import io.saasforge.platform.tenant.entity.Tenant;
 import io.saasforge.platform.tenant.entity.TenantInitialization;
 import io.saasforge.platform.tenant.entity.TenantStatusChange;
+import io.saasforge.platform.tenant.model.PlanChangeImpactResponse;
 import io.saasforge.platform.tenant.service.TenantLifecycleService;
+import io.saasforge.platform.tenant.service.TenantPlanImpactService;
 import io.saasforge.platform.tenant.service.TenantService;
 import io.saasforge.sdk.audit.AuditLog;
 import io.saasforge.sdk.core.api.ApiResponse;
@@ -27,6 +29,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -40,10 +43,12 @@ class TenantController {
 
     private final TenantService tenants;
     private final TenantLifecycleService lifecycle;
+    private final TenantPlanImpactService planImpacts;
 
-    TenantController(TenantService tenants, TenantLifecycleService lifecycle) {
+    TenantController(TenantService tenants, TenantLifecycleService lifecycle, TenantPlanImpactService planImpacts) {
         this.tenants = tenants;
         this.lifecycle = lifecycle;
+        this.planImpacts = planImpacts;
     }
 
     @Operation(summary = "创建租户并开始 Provisioning：iam 邀请初始管理员，各服务初始化本服务数据")
@@ -81,6 +86,13 @@ class TenantController {
     @AuditLog(action = "tenant.changePlan", resourceType = "tenant", resourceId = "#id")
     ApiResponse<TenantDetailResponse> changePlan(@PathVariable UUID id, @Valid @RequestBody ChangePlanRequest request) {
         return ApiResponse.ok(detail(tenants.changePlan(id, request.planId())));
+    }
+
+    @Operation(summary = "预览为租户更换套餐的影响，只读：失去的权限码与 Sub-App、成员数超出新上限的差额、受影响的成员数；iam 不可用时返回 503")
+    @GetMapping("/{id}/plan/impact")
+    @RequiresPermission(MANAGE)
+    ApiResponse<PlanChangeImpactResponse> planImpact(@PathVariable UUID id, @RequestParam UUID planId) {
+        return ApiResponse.ok(planImpacts.preview(id, planId));
     }
 
     @Operation(summary = "分页列出租户，最近创建的在前")
