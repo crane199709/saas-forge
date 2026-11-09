@@ -11,7 +11,11 @@ import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-// iam 的表不按租户行拦截隔离（ADR-0001），租户条件由 SQL 显式书写；消费事件时 SDK 恢复的租户上下文不能改写这些 SQL。
+/**
+ * 租户角色及其成员授权的持久化操作；所有方法均不受 Data Policy 过滤。
+ *
+ * <p>IAM 的表不按租户行拦截隔离（ADR-0001），租户条件由 SQL 显式书写；消费事件时 SDK 恢复的租户上下文不能改写这些 SQL。
+ */
 @InterceptorIgnore(tenantLine = "true")
 @Mapper
 public interface RoleMapper {

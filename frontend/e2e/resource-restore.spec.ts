@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-// Browser plugin not available: exercise real UI, routing and SDK at the public HTTP seam.
+// Browser 插件不可用，因此通过公开 HTTP 边界验证真实 UI、路由与 SDK。
 const problems = new WeakMap<Page, string[]>()
 function ok(data: unknown, page?: unknown) {
   return {
