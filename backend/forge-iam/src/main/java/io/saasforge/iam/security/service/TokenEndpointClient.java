@@ -1,5 +1,6 @@
 package io.saasforge.iam.security.service;
 
+import io.saasforge.iam.clientip.service.ClientIpResolver;
 import io.saasforge.iam.security.config.ClientCredentials;
 import io.saasforge.iam.security.config.IamProperties;
 import io.saasforge.sdk.core.ClientIpHeader;
@@ -11,8 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.util.UriComponentsBuilder;
 
 /** 以注册客户端身份调用本进程的标准 Token 端点，供两个 Realm 的 Token 交换适配器共用。 */
@@ -47,12 +46,8 @@ public class TokenEndpointClient {
                 .headers(headers -> {
                     headers.setBasicAuth(clientId, credentials.secret());
                     // 本进程 HTTP 调用会替换连接 IP，必须保留外层适配器收到的可信来源。
-                    if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
-                        var request = attributes.getRequest();
-                        String ip = request.getHeader(ClientIpHeader.NAME);
-                        headers.set(
-                                ClientIpHeader.NAME, ip == null || ip.isBlank() ? request.getRemoteAddr() : ip.strip());
-                    }
+                    String ip = ClientIpResolver.currentIp();
+                    if (ip != null) headers.set(ClientIpHeader.NAME, ip);
                 })
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(form)

@@ -20,7 +20,7 @@
 - `POST /platform/tenants/{tenantId}/ip-allowlist/clear`（网关前缀 `/iam`）；请求 `{reason: string}`，成功返回 HTTP 200、`ApiResponse<Void>`。
 - 仅接受 Platform Realm Token，并按数据库中的当前 Operator 状态与既有 `platform:tenant:manage` 权限校验；Tenant Token、匿名请求、无权限或停用 Operator 均不能清除。
 - 原因必填，拒绝空白，最多 500 字符；成功记录 Platform Realm 的 `tenant.ipAllowlistClear`，包括 Operator、目标 Tenant 资源和去除首尾空白后的原因。
-- 复用工单 01 的 `TenantIpAllowlistService.clear` 事务与同步 Redis 发布，不重复更新逻辑；紧急入口允许从旧规则外的 IP 操作。不存在、已删除目标返回 404。
+- 复用工单 01 的 `TenantIpAllowlistService.clear` 事务与同步 Redis 发布，不重复更新逻辑；紧急入口允许从旧规则外的 IP 操作。不存在、已删除目标返回 404 `tenant.ipAllowlistNotFound`，用户提示为「租户不存在或已被删除」；该错误码由 IAM 独有定义，Platform 既有的 `tenant.notFound` 不变。
 - 成功后目标规则立即发布为 `*`；其他 Tenant 不变。真实 Redis 拒写时数据库回滚、旧发布值保留，且不记录成功清除审计。
 
 验证：`OperatorIpAllowlistClearTest` 10 个 HTTP 集成用例及 `ArchitectureTest` 1 个检查全部通过；`spotless:apply` 与 `git diff --check` 通过。先执行未实现入口的 RED，再写入完整受控实现并 GREEN，随后逐片验证权限、Realm、原因、目标、审计与真实 Redis 故障行为。详细记录见 [validation-03.md](../validation-03.md)。

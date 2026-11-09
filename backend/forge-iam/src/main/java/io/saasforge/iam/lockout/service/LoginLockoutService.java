@@ -1,14 +1,13 @@
 package io.saasforge.iam.lockout.service;
 
+import io.saasforge.iam.clientip.service.ClientIpResolver;
 import io.saasforge.iam.lockout.config.LockoutProperties;
 import io.saasforge.iam.lockout.model.LockoutTarget;
 import io.saasforge.sdk.audit.AuditCategory;
 import io.saasforge.sdk.audit.AuditEvent;
 import io.saasforge.sdk.audit.AuditRealm;
 import io.saasforge.sdk.audit.AuditRecorder;
-import io.saasforge.sdk.core.ClientIpHeader;
 import io.saasforge.sdk.core.api.ForgeException;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 import java.util.Locale;
@@ -61,7 +60,7 @@ public class LoginLockoutService {
      */
     public void check(LockoutTarget target) {
         long remaining = remainingMillis(lockedKey(target.realm(), target.key()));
-        String ip = clientIp();
+        String ip = ClientIpResolver.currentIp();
         if (ip != null) remaining = Math.max(remaining, remainingMillis(lockedKey(target.realm(), ipKey(ip))));
         if (remaining <= 0) return;
         long seconds = Math.max(1, (remaining + 999) / 1000);
@@ -80,7 +79,7 @@ public class LoginLockoutService {
         if (count(target.realm(), target.key(), rule.maxFailures(), rule)) {
             record(target.realm(), target.actor(), "account", target.account(), rule);
         }
-        String ip = clientIp();
+        String ip = ClientIpResolver.currentIp();
         if (ip != null && count(target.realm(), ipKey(ip), rule.ipMaxFailures(), rule)) {
             record(target.realm(), null, "ip", ip, rule);
         }
@@ -128,23 +127,6 @@ public class LoginLockoutService {
 
     private static String ipKey(String ip) {
         return "ip:" + ip;
-    }
-
-    /**
-     * 客户端 IP 取网关写入的 {@link ClientIpHeader#NAME}，网关会覆盖客户端自带的值；没有该头时（未经网关）取连接地址。不读
-     * {@code X-Forwarded-For}：其中可能有客户端伪造的项，且 {@code forward-headers-strategy: framework} 下已被框架消费。
-     */
-    private static String clientIp() {
-        HttpServletRequest request = currentRequest();
-        if (request == null) return null;
-        String forwarded = request.getHeader(ClientIpHeader.NAME);
-        return forwarded == null || forwarded.isBlank() ? request.getRemoteAddr() : forwarded.strip();
-    }
-
-    private static HttpServletRequest currentRequest() {
-        return RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes
-                ? attributes.getRequest()
-                : null;
     }
 
     private static HttpServletResponse currentResponse() {
