@@ -30,6 +30,10 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/ag
 
 完整规则见 `docs/agents/coding-standards.md`。
 
+## 前端界面
+
+新增或调整页面前读 `docs/agents/frontend-design.md`，按页面简报、功能实现、设计走查三步完成；走查必须查看截图。
+
 ## 测试
 
 - 集成测试不自行声明 PostgreSQL、Redis 容器：forge-platform 继承 `PlatformIntegrationTest`（共享容器与 Spring 上下文，测试类共用一个库，不能假设库中只有本类数据）；其他模块用模块内的 `SharedContainers`（共享容器，每个测试类独立建库、独立 Redis 库，属性注册须带 `spring.data.redis.database`）。模块只有一个测试类用容器、或容器只有一个类用到（如 RocketMQ、S3）时，可留在类内。
