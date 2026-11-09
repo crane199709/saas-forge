@@ -58,6 +58,9 @@ final class PlatformTokens {
             "platform:ops:read",
             "platform:ops:manage");
 
+    /** 模拟的 iam 权限码目录是否可用；改为 false 的测试须在结束时恢复。 */
+    static volatile boolean catalogAvailable = true;
+
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final RSAKey KEY;
     private static final HttpServer JWKS;
@@ -79,9 +82,10 @@ final class PlatformTokens {
             JWKS.createContext("/internal/permissions", exchange -> {
                 boolean authorized = ("Bearer " + IAM_TOKEN)
                         .equals(exchange.getRequestHeaders().getFirst("Authorization"));
-                byte[] body = authorized ? CATALOG.getBytes(StandardCharsets.UTF_8) : new byte[0];
+                int status = !authorized ? 401 : catalogAvailable ? 200 : 503;
+                byte[] body = status == 200 ? CATALOG.getBytes(StandardCharsets.UTF_8) : new byte[0];
                 exchange.getResponseHeaders().add("Content-Type", "application/json");
-                exchange.sendResponseHeaders(authorized ? 200 : 401, authorized ? body.length : -1);
+                exchange.sendResponseHeaders(status, status == 200 ? body.length : -1);
                 try (var stream = exchange.getResponseBody()) {
                     stream.write(body);
                 }

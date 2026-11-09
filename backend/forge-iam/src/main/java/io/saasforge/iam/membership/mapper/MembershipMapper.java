@@ -111,6 +111,9 @@ public interface MembershipMapper {
     /** 租户内未删除、未离开的 Membership 数量。不受 Data Policy 过滤。 */
     long count(@Param("tenantId") UUID tenantId);
 
+    /** 租户内状态正常的 Membership 数量。 */
+    long countActive(@Param("tenantId") UUID tenantId);
+
     /** Extended Attribute 值（JSON 对象文本）；不存在时返回 null。不受 Data Policy 过滤。 */
     String attributes(@Param("tenantId") UUID tenantId, @Param("membershipId") UUID membershipId);
 

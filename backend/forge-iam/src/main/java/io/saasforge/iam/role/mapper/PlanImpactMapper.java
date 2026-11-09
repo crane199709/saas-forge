@@ -1,7 +1,8 @@
 package io.saasforge.iam.role.mapper;
 
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
-import java.util.Collection;
+import io.saasforge.iam.role.model.MembershipCodeRow;
+import java.util.List;
 import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -11,17 +12,9 @@ import org.apache.ibatis.annotations.Param;
 @InterceptorIgnore(tenantLine = "true")
 @Mapper
 public interface PlanImpactMapper {
-    /** 租户内 active 的 Membership 数量。 */
-    long countActive(@Param("tenantId") UUID tenantId);
+    /** 租户内 active 的 Membership 持有的角色编码；没有角色的 Membership 不返回。 */
+    List<MembershipCodeRow> activeRoleCodes(@Param("tenantId") UUID tenantId);
 
-    /**
-     * 租户内持有给定 Permission Code 的 active Membership 数量。
-     *
-     * @param codes 不能为空
-     * @param allPermissionRoles 拥有 Plan 范围内全部权限的预置角色编码，不落授权记录，持有即视为持有 {@code codes}；不能为空
-     */
-    long countHolders(
-            @Param("tenantId") UUID tenantId,
-            @Param("codes") Collection<String> codes,
-            @Param("allPermissionRoles") Collection<String> allPermissionRoles);
+    /** 租户内 active 的 Membership 经各角色获得的有效 Permission Code（已下线的不含），未按 Plan 裁剪。 */
+    List<MembershipCodeRow> activeGrantedCodes(@Param("tenantId") UUID tenantId);
 }

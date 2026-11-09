@@ -16,7 +16,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.web.client.RestClient;
 
-/** platform 预览 Plan 降级时经内部接口读取的成员数据：只统计本租户，失去 Permission Code 按实际生效的授权判断。 */
+/** platform 预览 Plan 降级时经内部接口读取的成员数据：只统计本租户，失去 Permission Code 按实际生效的授权判断，失去 Sub-App 按实际可见的菜单判断。 */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Sql("/fixtures/plan_impact.sql")
 class PlanImpactTest {
@@ -24,6 +24,7 @@ class PlanImpactTest {
     static final String TENANT_A = "019a0130-0000-7000-8000-0000000000a0";
     static final String TENANT_B = "019a0130-0000-7000-8000-0000000000b0";
     static final String TENANT_C = "019a0130-0000-7000-8000-0000000000c0";
+    static final String TENANT_D = "019a0130-0000-7000-8000-0000000000e0";
     static final ParameterizedTypeReference<Map<String, Object>> ENVELOPE = new ParameterizedTypeReference<>() {};
     static final SharedContainers.Postgres postgres = SharedContainers.postgres();
     static final SharedContainers.Redis redis = SharedContainers.redis();
@@ -66,10 +67,53 @@ class PlanImpactTest {
     }
 
     @Test
-    void losingASubAppAffectsEveryActiveMembership() {
-        var impact = impact(TENANT_A, List.of(), List.of("demo"));
+    void losingASubAppAffectsOnlyMembershipsThatSeeAMenuInIt() {
+        var impact = impact(TENANT_A, List.of(), List.of("gated"));
 
-        assertThat(impact).containsEntry("memberCount", 5).containsEntry("affectedMemberships", 3);
+        // 管理员经预置角色、审批员经授权看得到；只读成员本来就看不到这个菜单，不算失去
+        assertThat(impact).containsEntry("memberCount", 5).containsEntry("affectedMemberships", 2);
+    }
+
+    @Test
+    void aMenuThatNeedsNoPermissionIsLostByEveryActiveMembership() {
+        var impact = impact(TENANT_A, List.of(), List.of("open"));
+
+        // 已停用、已邀请、已离开的成员不算
+        assertThat(impact).containsEntry("affectedMemberships", 3);
+    }
+
+    @Test
+    void aMenuUnderAPermissionGatedGroupIsLostOnlyByHoldersOfTheGroupPermission() {
+        var impact = impact(TENANT_A, List.of(), List.of("nested"));
+
+        // 分组需 order:read：只读成员与管理员看得到，审批员没有 order:read
+        assertThat(impact).containsEntry("affectedMemberships", 2);
+    }
+
+    @Test
+    void aMembershipLosingBothAPermissionAndAMenuIsCountedOnce() {
+        var impact = impact(TENANT_A, List.of("order:read"), List.of("gated"));
+
+        // order:read：管理员、只读成员；gated：管理员、审批员
+        assertThat(impact).containsEntry("affectedMemberships", 3);
+    }
+
+    @Test
+    void ownerLosesAMenuGatedByAGrantablePermissionWhileARolelessMemberDoesNot() {
+        assertThat(impact(TENANT_D, List.of(), List.of("gated"))).containsEntry("affectedMemberships", 1);
+        // 不需权限的菜单连没有任何角色的成员也看得到
+        assertThat(impact(TENANT_D, List.of(), List.of("open"))).containsEntry("affectedMemberships", 2);
+    }
+
+    @Test
+    void aMenuGatedByAPermissionOutsideThePlanIsNotLostEvenByTenantAdmins() {
+        // 租户 C 的 Plan 不含 order:approve：Tenant Admin 与持有授权记录的成员都看不到该菜单
+        assertThat(impact(TENANT_C, List.of(), List.of("gated"))).containsEntry("affectedMemberships", 0);
+    }
+
+    @Test
+    void aMenuNobodyCanSeeAffectsNobody() {
+        assertThat(impact(TENANT_A, List.of(), List.of("unheld"))).containsEntry("affectedMemberships", 0);
     }
 
     @Test

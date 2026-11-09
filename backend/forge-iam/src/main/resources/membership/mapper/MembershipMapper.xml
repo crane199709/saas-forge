@@ -96,6 +96,10 @@
         SELECT count(*) FROM membership m JOIN identity i ON i.id = m.identity_id
         WHERE m.tenant_id = #{tenantId} AND m.status &lt;&gt; 'left' AND NOT m.deleted AND NOT i.deleted
     </select>
+    <select id="countActive" resultType="long">
+        SELECT count(*) FROM membership m JOIN identity i ON i.id = m.identity_id
+        WHERE m.tenant_id = #{tenantId} AND m.status = 'active' AND NOT m.deleted AND NOT i.deleted
+    </select>
     <!-- 关键词用 strpos 做子串匹配，用户输入的 % 与 _ 不会被当作 LIKE 通配符。 -->
     <sql id="searchCondition">
         FROM membership m JOIN identity i ON i.id = m.identity_id

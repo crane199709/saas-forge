@@ -1,4 +1,5 @@
--- 仅供 Plan 降级影响测试：租户 A 含各状态成员，租户 B 用于跨租户断言，租户 C 的 Plan 已不含 order:approve。插入须可重复执行。
+-- 仅供 Plan 降级影响测试：租户 A 含各状态成员，租户 B 用于跨租户断言，租户 C 的 Plan 已不含 order:approve，租户 D 含 Owner 与未分配角色的成员。
+-- 清单中的菜单：gated 需 order:approve，open 不需权限，nested 由需 order:read 的分组承载，unheld 需无人持有的权限码。插入须可重复执行。
 INSERT INTO permission (id, code, service, name) VALUES
 ('019a0130-0000-7000-8000-0000000000f1', 'order:read', 'demo-service', '查看订单'),
 ('019a0130-0000-7000-8000-0000000000f2', 'order:approve', 'demo-service', '审批订单')
@@ -6,7 +7,8 @@ ON CONFLICT DO NOTHING;
 INSERT INTO tenant (id, name) VALUES
 ('019a0130-0000-7000-8000-0000000000a0', '影响预览租户 A'),
 ('019a0130-0000-7000-8000-0000000000b0', '影响预览租户 B'),
-('019a0130-0000-7000-8000-0000000000c0', '影响预览租户 C')
+('019a0130-0000-7000-8000-0000000000c0', '影响预览租户 C'),
+('019a0130-0000-7000-8000-0000000000e0', '影响预览租户 D')
 ON CONFLICT DO NOTHING;
 INSERT INTO identity (id, account, email, display_name, password_hash) VALUES
 ('019a0130-0000-7000-8000-000000000011', 'impact-admin', 'impact-admin@example.com', '管理员', 'x'),
@@ -17,7 +19,9 @@ INSERT INTO identity (id, account, email, display_name, password_hash) VALUES
 ('019a0130-0000-7000-8000-000000000016', 'impact-left', 'impact-left@example.com', '已离开', 'x'),
 ('019a0130-0000-7000-8000-000000000017', 'impact-b', 'impact-b@example.com', '租户 B 审批员', 'x'),
 ('019a0130-0000-7000-8000-000000000018', 'impact-c-admin', 'impact-c-admin@example.com', '租户 C 管理员', 'x'),
-('019a0130-0000-7000-8000-000000000019', 'impact-c', 'impact-c@example.com', '租户 C 审批员', 'x')
+('019a0130-0000-7000-8000-000000000019', 'impact-c', 'impact-c@example.com', '租户 C 审批员', 'x'),
+('019a0130-0000-7000-8000-00000000001a', 'impact-d-owner', 'impact-d-owner@example.com', '租户 D Owner', 'x'),
+('019a0130-0000-7000-8000-00000000001b', 'impact-d-plain', 'impact-d-plain@example.com', '租户 D 无角色成员', 'x')
 ON CONFLICT DO NOTHING;
 INSERT INTO membership (id, identity_id, tenant_id, status) VALUES
 ('019a0130-0000-7000-8000-000000000021', '019a0130-0000-7000-8000-000000000011', '019a0130-0000-7000-8000-0000000000a0', 'active'),
@@ -28,7 +32,9 @@ INSERT INTO membership (id, identity_id, tenant_id, status) VALUES
 ('019a0130-0000-7000-8000-000000000026', '019a0130-0000-7000-8000-000000000016', '019a0130-0000-7000-8000-0000000000a0', 'left'),
 ('019a0130-0000-7000-8000-000000000027', '019a0130-0000-7000-8000-000000000017', '019a0130-0000-7000-8000-0000000000b0', 'active'),
 ('019a0130-0000-7000-8000-000000000028', '019a0130-0000-7000-8000-000000000018', '019a0130-0000-7000-8000-0000000000c0', 'active'),
-('019a0130-0000-7000-8000-000000000029', '019a0130-0000-7000-8000-000000000019', '019a0130-0000-7000-8000-0000000000c0', 'active')
+('019a0130-0000-7000-8000-000000000029', '019a0130-0000-7000-8000-000000000019', '019a0130-0000-7000-8000-0000000000c0', 'active'),
+('019a0130-0000-7000-8000-00000000002a', '019a0130-0000-7000-8000-00000000001a', '019a0130-0000-7000-8000-0000000000e0', 'active'),
+('019a0130-0000-7000-8000-00000000002b', '019a0130-0000-7000-8000-00000000001b', '019a0130-0000-7000-8000-0000000000e0', 'active')
 ON CONFLICT DO NOTHING;
 INSERT INTO role (id, tenant_id, code, name, builtin) VALUES
 ('019a0130-0000-7000-8000-000000000031', '019a0130-0000-7000-8000-0000000000a0', 'tenant-admin', '租户管理员', true),
@@ -36,7 +42,8 @@ INSERT INTO role (id, tenant_id, code, name, builtin) VALUES
 ('019a0130-0000-7000-8000-000000000033', '019a0130-0000-7000-8000-0000000000a0', 'reader', '只读', false),
 ('019a0130-0000-7000-8000-000000000034', '019a0130-0000-7000-8000-0000000000b0', 'approver', '审批员', false),
 ('019a0130-0000-7000-8000-000000000035', '019a0130-0000-7000-8000-0000000000c0', 'tenant-admin', '租户管理员', true),
-('019a0130-0000-7000-8000-000000000036', '019a0130-0000-7000-8000-0000000000c0', 'approver', '审批员', false)
+('019a0130-0000-7000-8000-000000000036', '019a0130-0000-7000-8000-0000000000c0', 'approver', '审批员', false),
+('019a0130-0000-7000-8000-000000000037', '019a0130-0000-7000-8000-0000000000e0', 'owner', 'Owner', true)
 ON CONFLICT DO NOTHING;
 INSERT INTO role_permission (role_id, permission_id) VALUES
 ('019a0130-0000-7000-8000-000000000032', '019a0130-0000-7000-8000-0000000000f2'),
@@ -54,9 +61,22 @@ INSERT INTO membership_role (membership_id, role_id) VALUES
 ('019a0130-0000-7000-8000-000000000028', '019a0130-0000-7000-8000-000000000035'),
 ('019a0130-0000-7000-8000-000000000029', '019a0130-0000-7000-8000-000000000036')
 ON CONFLICT DO NOTHING;
+INSERT INTO membership_role (membership_id, role_id, owner) VALUES
+('019a0130-0000-7000-8000-00000000002a', '019a0130-0000-7000-8000-000000000037', true)
+ON CONFLICT DO NOTHING;
 INSERT INTO tenant_plan (tenant_id, plan_id, plan_version) VALUES
 ('019a0130-0000-7000-8000-0000000000c0', '019a0130-0000-7000-8000-0000000000d0', 1)
 ON CONFLICT DO NOTHING;
 INSERT INTO tenant_plan_permission (tenant_id, code) VALUES
 ('019a0130-0000-7000-8000-0000000000c0', 'order:read')
+ON CONFLICT DO NOTHING;
+INSERT INTO resource_manifest (id, service, version, content, current) VALUES
+('019a0130-0000-7000-8000-0000000000f9', 'impact-menu-service', '1',
+'{"service":"impact-menu-service","version":"1","permissions":[],"menus":[
+  {"code":"gated","name":"需审批权限","app":"gated","path":"/gated","permission":"order:approve"},
+  {"code":"open","name":"无需权限","app":"open","path":"/open"},
+  {"code":"group","name":"分组","permission":"order:read","children":[
+    {"code":"nested","name":"分组下的页面","app":"nested","path":"/nested"}]},
+  {"code":"unheld","name":"无人持有","app":"unheld","path":"/unheld","permission":"order:unheld"}]}',
+true)
 ON CONFLICT DO NOTHING;

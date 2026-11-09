@@ -93,7 +93,7 @@
         JOIN identity i ON i.id = m.identity_id
         JOIN membership_role mr ON mr.membership_id = m.id
         JOIN role held ON held.id = mr.role_id
-        WHERE target.role_id = #{roleId} AND tr.tenant_id = #{tenantId}
+        WHERE target.role_id = #{roleId} AND tr.tenant_id = #{tenantId} AND NOT tr.deleted
         AND m.status = 'active' AND NOT m.deleted AND NOT i.deleted AND NOT held.deleted
         ORDER BY m.id, held.code
     </select>

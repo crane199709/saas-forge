@@ -26,6 +26,9 @@ class TenantPlanImpactTest extends PlatformIntegrationTest {
     static final String REGION_POLICY =
             "{\"attr\":\"resource.region\",\"op\":\"eq\",\"value\":{\"ref\":\"subject.attributes.region\"}}";
     static final UUID LEGACY_TENANT = UUID.fromString("019a0210-0000-7000-8000-000000000001");
+    static final UUID STALE_PLAN = UUID.fromString("019a0210-0000-7000-8000-000000000021");
+    static final String REGISTERED = "impact-registered";
+    static final String KEPT = "impact-kept";
 
     @LocalServerPort
     int port;
@@ -35,8 +38,8 @@ class TenantPlanImpactTest extends PlatformIntegrationTest {
 
     @Test
     void downgradeShowsWhatIsLostAndDoesNotChangeThePlan() throws Exception {
-        UUID pro = plan(List.of("order:read", "order:approve", "report:export"), List.of("demo", "billing"), 50);
-        UUID basic = plan(List.of("order:read"), List.of("demo"), 3);
+        UUID pro = plan(List.of("order:read", "order:approve", "report:export"), List.of(KEPT, REGISTERED), 50);
+        UUID basic = plan(List.of("order:read"), List.of(KEPT), 3);
         UUID tenant = tenant(pro, null);
         IamPlanImpactFixture.stub(tenant, 5, 2);
         int eventsBefore =
@@ -47,7 +50,7 @@ class TenantPlanImpactTest extends PlatformIntegrationTest {
         assertThat(impact.status()).isEqualTo(200);
         assertThat(impact.data())
                 .containsEntry("lostPermissions", List.of("order:approve", "report:export"))
-                .containsEntry("lostSubApps", List.of("billing"))
+                .containsEntry("lostSubApps", List.of(REGISTERED))
                 .containsEntry("memberCount", 5)
                 .containsEntry("memberQuota", 3)
                 .containsEntry("membersOverQuota", 2)
@@ -58,7 +61,7 @@ class TenantPlanImpactTest extends PlatformIntegrationTest {
                 .containsExactly("order:approve", "report:export");
         assertThat(sent.path("lostSubApps").values())
                 .extracting(node -> node.asString())
-                .containsExactly("billing");
+                .containsExactly(REGISTERED);
 
         // 只读：Plan 不变，也不广播 TenantPlanChanged
         assertThat(tenantOf(call(PlatformTokens.operator(), "GET", "/tenants/" + tenant, null)))
@@ -141,6 +144,70 @@ class TenantPlanImpactTest extends PlatformIntegrationTest {
         assertThat(impact.data()).containsEntry("lostPermissions", List.of("order:approve", "report:export"));
         assertThat(lostSubApps(impact)).contains("impact-registered").doesNotContain("impact-kept");
         assertThat(impact.data()).containsEntry("memberCount", 4).containsEntry("membersOverQuota", 1);
+    }
+
+    @Test
+    void retiredPermissionsAndDeletedSubAppsAreNotReportedAsLost() throws Exception {
+        UUID basic = plan(List.of("order:read"), List.of(), 3);
+        UUID tenant = tenant(STALE_PLAN, null);
+        IamPlanImpactFixture.stub(tenant, 1, 1);
+
+        Response impact = impact(PlatformTokens.operator(), tenant, basic);
+
+        assertThat(impact.status()).isEqualTo(200);
+        assertThat(impact.data())
+                .containsEntry("lostPermissions", List.of("order:approve"))
+                .containsEntry("lostSubApps", List.of(REGISTERED));
+        var sent = IamPlanImpactFixture.received(tenant);
+        assertThat(sent.path("lostPermissions").values())
+                .extracting(node -> node.asString())
+                .containsExactly("order:approve");
+        assertThat(sent.path("lostSubApps").values())
+                .extracting(node -> node.asString())
+                .containsExactly(REGISTERED);
+    }
+
+    @Test
+    void onlyRetiredOrDeletedCapabilitiesMissingFromTheTargetIsNotADowngrade() throws Exception {
+        UUID target = plan(List.of("order:read", "order:approve"), List.of(REGISTERED), 50);
+        UUID tenant = tenant(STALE_PLAN, null);
+
+        assertEmpty(impact(PlatformTokens.operator(), tenant, target), 50);
+        assertThat(IamPlanImpactFixture.received(tenant)).isNull();
+    }
+
+    @Test
+    void catalogUnavailableIsAnExplicitErrorRatherThanZeroImpact() throws Exception {
+        UUID pro = plan(List.of("order:read", "order:approve"), List.of(), 50);
+        UUID basic = plan(List.of("order:read"), List.of(), 3);
+        UUID tenant = tenant(pro, null);
+        PlatformTokens.catalogAvailable = false;
+        try {
+            Response impact = impact(PlatformTokens.operator(), tenant, basic);
+
+            assertThat(impact.status()).isEqualTo(503);
+            assertThat(impact.code()).isEqualTo("plan.catalogUnavailable");
+            assertThat(impact.body().get("data")).isNull();
+            assertThat(IamPlanImpactFixture.received(tenant)).isNull();
+        } finally {
+            PlatformTokens.catalogAvailable = true;
+        }
+    }
+
+    @Test
+    void upgradeDoesNotDependOnTheCatalog() throws Exception {
+        UUID basic = plan(List.of("order:read"), List.of(), 3);
+        UUID pro = plan(List.of("order:read", "order:approve"), List.of(REGISTERED), 50);
+        UUID tenant = tenant(basic, null);
+        PlatformTokens.catalogAvailable = false;
+        try {
+            Response impact = impact(PlatformTokens.operator(), tenant, pro);
+
+            assertThat(impact.status()).isEqualTo(200);
+            assertEmpty(impact, 50);
+        } finally {
+            PlatformTokens.catalogAvailable = true;
+        }
     }
 
     @Test
