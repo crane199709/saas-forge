@@ -154,7 +154,8 @@ class OperatorIpAllowlistClearTest {
                 UUID.fromString("019a0192-0000-7000-8000-000000000099"))) {
             Response rejected = clear(platformToken(MANAGER), target, Map.of("reason", "恢复租户访问"));
             assertThat(rejected.status()).isEqualTo(404);
-            assertThat(rejected.code()).isEqualTo("tenant.notFound");
+            assertThat(rejected.code()).isEqualTo("tenant.ipAllowlistNotFound");
+            assertThat(rejected.body().get("userTip")).isEqualTo("租户不存在或已被删除");
             assertThat(redisTemplate.opsForValue().get("iam:" + target + ":ip-allowlist"))
                     .isNull();
         }

@@ -95,6 +95,22 @@ for (const mobile of [false, true]) {
               errors: [{ field: 'rules[1]', code: 'invalid', userTip: '请输入 IP 地址或 CIDR' }],
             },
           })
+        if (['missing-tip', 'blank-tip'].includes(body.rules[1]))
+          return route.fulfill({
+            status: 400,
+            json: {
+              code: 'validation.failed',
+              httpStatus: 400,
+              userTip: '请检查规则',
+              errors: [
+                {
+                  field: 'rules[1]',
+                  code: 'tenant.invalidMachineCode',
+                  userTip: body.rules[1] === 'blank-tip' ? ' \t ' : undefined,
+                },
+              ],
+            },
+          })
         return route.fulfill(ok({ rules: ['192.0.2.1', '2001:db8::/64'], currentIp: '192.0.2.1' }))
       }
       return route.fulfill(ok({ rules: ['192.0.2.1'], currentIp: '192.0.2.1' }))
@@ -107,12 +123,23 @@ for (const mobile of [false, true]) {
     await page.getByTestId('ip-save').click()
     await expect(page.getByTestId('ip-rule-1')).toContainText('请输入 IP 地址或 CIDR')
     await expect(page.getByLabel('条目 2', { exact: true })).toBeFocused()
+    for (const rule of ['missing-tip', 'blank-tip']) {
+      await page.getByLabel('条目 2', { exact: true }).fill(rule)
+      await page.getByTestId('ip-save').click()
+      await expect(page.getByTestId('ip-rule-1')).toContainText('请求失败，请稍后重试')
+      await expect(page.locator('body')).not.toContainText('tenant.invalidMachineCode')
+      await expect(page.getByLabel('条目 2', { exact: true })).toBeFocused()
+    }
+    await page.screenshot({
+      path: `/private/tmp/tenant-ip-allowlist-review-fallback-${mobile ? 'mobile' : 'desktop'}.png`,
+      fullPage: true,
+    })
     await page.getByLabel('条目 2', { exact: true }).fill('2001:db8::1/64')
     await page.getByTestId('ip-save').click()
     await expect(page.getByRole('status')).toContainText('租户 IP 允许列表已保存')
     await expect(page.getByLabel('条目 2', { exact: true })).toHaveValue('2001:db8::/64')
     await expect(page.getByTestId('ip-rule-1')).not.toHaveClass(/is-error/)
-    expect(writes[1]).toEqual({ rules: ['192.0.2.1', '2001:db8::1/64'] })
+    expect(writes.at(-1)).toEqual({ rules: ['192.0.2.1', '2001:db8::1/64'] })
     await expect(page).toHaveURL(/\/security-settings$/)
     await page.screenshot({
       path: `/private/tmp/tenant-ip-allowlist-settings-${mobile ? 'mobile' : 'desktop'}.png`,

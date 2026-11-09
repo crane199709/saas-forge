@@ -90,3 +90,35 @@ it('显示可信当前 IP 与生效提示，保存规则并定位服务端条目
   )!
   expect(JSON.parse(put[1]!.body as string)).toEqual({ rules: ['192.0.2.1', 'bad'] })
 })
+
+it.each([undefined, '', ' \t '])('字段提示为 %j 时显示通用提示，不暴露错误码', async (userTip) => {
+  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+    const path = new URL(url, location.origin).pathname
+    if (path === '/iam/security-settings') return Promise.resolve(ok({ mfaRequired: false }))
+    if (path === '/iam/security-settings/ip-allowlist') {
+      if (init?.method === 'PUT')
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              code: 'validation.failed',
+              httpStatus: 400,
+              userTip: '规则无效',
+              errors: [{ field: 'rules[0]', code: 'tenant.invalidMachineCode', userTip }],
+            }),
+            { status: 400 },
+          ),
+        )
+      return Promise.resolve(ok({ rules: ['bad'], currentIp: '192.0.2.1' }))
+    }
+    return Promise.resolve(ok([]))
+  })
+  const { wrapper } = await mountShell('/security-settings', {
+    access: async () => ({ permissions: ['iam:security:manage'] }),
+  })
+  await wrapper.get('.ip-card form').trigger('submit')
+  await flushPromises()
+  await vi.waitFor(() =>
+    expect(wrapper.get('[data-testid="ip-rule-0"]').text()).toContain('请求失败，请稍后重试'),
+  )
+  expect(wrapper.text()).not.toContain('tenant.invalidMachineCode')
+})

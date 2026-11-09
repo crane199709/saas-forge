@@ -38,7 +38,7 @@ async function saveRules() {
       if (cause instanceof ApiError) {
         for (const item of cause.errors ?? []) {
           const index = /^rules\[(\d+)\]$/.exec(item.field)
-          if (index) rowErrors.value[Number(index[1])] = item.userTip ?? item.code
+          if (index) rowErrors.value[Number(index[1])] = item.userTip?.trim() || t('error.unknown')
         }
       }
       throw cause

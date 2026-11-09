@@ -1,5 +1,6 @@
 package io.saasforge.iam.tenant.service;
 
+import io.saasforge.iam.clientip.service.ClientIpResolver;
 import io.saasforge.iam.membership.model.TenantActor;
 import io.saasforge.iam.permission.service.IamPermissions;
 import io.saasforge.iam.role.service.RoleService;
@@ -8,7 +9,6 @@ import io.saasforge.sdk.audit.AuditCategory;
 import io.saasforge.sdk.audit.AuditEvent;
 import io.saasforge.sdk.audit.AuditRealm;
 import io.saasforge.sdk.audit.AuditRecorder;
-import io.saasforge.sdk.core.ClientIpHeader;
 import io.saasforge.sdk.core.MembershipStateKeys;
 import io.saasforge.sdk.core.TenantIpAllowlist;
 import io.saasforge.sdk.core.api.ForgeException;
@@ -18,8 +18,6 @@ import java.util.UUID;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 /** 当前 Tenant 的 IP 允许列表；管理权限与其他安全设置一致。 */
 @Service
@@ -85,7 +83,7 @@ public class TenantIpAllowlistService {
     @Transactional
     public void clear(UUID tenantId, UUID operatorId) {
         if (tenants.updateIpAllowlist(tenantId, TenantIpAllowlist.UNRESTRICTED, operatorId) == 0) {
-            throw new ForgeException(TenantErrorCode.NOT_FOUND);
+            throw new ForgeException(TenantErrorCode.IP_ALLOWLIST_NOT_FOUND);
         }
         redis.opsForValue().set(MembershipStateKeys.tenantIpAllowlist(tenantId), TenantIpAllowlist.UNRESTRICTED);
     }
@@ -106,12 +104,9 @@ public class TenantIpAllowlistService {
         if (value != null) redis.opsForValue().setIfAbsent(MembershipStateKeys.tenantIpAllowlist(tenantId), value);
     }
 
-    /** 客户端 IP 沿用网关覆盖的可信请求头；服务直连时退回连接地址，不读取 X-Forwarded-For。 */
+    /** 当前请求的可信客户端 IP；无请求上下文时返回 null。 */
     public static String currentIp() {
-        if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes)) return null;
-        var request = attributes.getRequest();
-        String forwarded = request.getHeader(ClientIpHeader.NAME);
-        return forwarded == null || forwarded.isBlank() ? request.getRemoteAddr() : forwarded.strip();
+        return ClientIpResolver.currentIp();
     }
 
     private static ForgeException unavailable() {
