@@ -118,6 +118,7 @@ class GatewayLogContextTest {
     void publishActiveState() {
         redisTemplate.opsForValue().set(MembershipStateKeys.version(TENANT_ID, MEMBERSHIP_ID), "1");
         redisTemplate.opsForValue().set(MembershipStateKeys.tenantStatus(TENANT_ID), "active");
+        redisTemplate.opsForValue().set(MembershipStateKeys.tenantIpAllowlist(TENANT_ID), "*");
     }
 
     @Test

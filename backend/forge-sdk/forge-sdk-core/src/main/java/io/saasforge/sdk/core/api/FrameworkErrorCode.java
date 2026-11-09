@@ -16,6 +16,8 @@ public enum FrameworkErrorCode implements ErrorCode {
     AUTH_UNAUTHENTICATED("auth.unauthenticated", 401),
     /** 已认证但无权限。 */
     AUTH_FORBIDDEN("auth.forbidden", 403),
+    /** 当前来源 IP 不符合 Tenant IP Allowlist，签发和网关使用同一错误语义。 */
+    TENANT_IP_NOT_ALLOWED("tenant.ipNotAllowed", 403),
     /** 租户已停用、过期、归档或删除，SDK 拒绝写入其数据。 */
     TENANT_WRITE_BLOCKED("tenant.writeBlocked", 403),
     /** 网关下游不可用或超时、依赖的 Redis 不可用。 */

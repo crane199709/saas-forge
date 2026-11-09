@@ -5,6 +5,12 @@
 
 后端使用 Spring Boot build-image（首次下载 builder/run image）。images profile 排除本地 application*.yml；必须 clean，避免旧配置残留。运行时挂载部署专用 `/config/application.yml` 并设置 `SPRING_CONFIG_LOCATION=file:/config/application.yml`，不要直接使用仓库本地默认配置。
 
+## 租户 IP 允许列表上线顺序
+
+先部署 IAM（包括 V27 迁移），等待应用完成启动。IAM 启动期间会按数据库全量发布 `iam:<tenantId>:ip-allowlist`；没有限制的 Tenant 也必须有明确的 `*` 值，发布失败会使启动失败。确认全量发布成功后，再部署启用逐请求校验的网关。顺序颠倒会使未发布规则的 Tenant 全部收到 403 `tenant.ipNotAllowed`。
+
+Redis 数据丢失后先重启 IAM 完成全量恢复，再恢复网关流量。规则键缺失或内容非法时网关拒绝访问，Redis 读故障返回 503。每次请求沿用既有一次 MGET，同时读取 Membership 版本、Tenant 状态和规则。部署时还须保证 IAM 只接受网关或受控服务的直连流量；来源 IP 使用网关覆盖的 `X-Forge-Client-Ip`，本进程 Token 调用会透传该值，不能让外部流量绕过可信代理边界直接伪造它。
+
 ## GHCR 发布与验证
 
 仓库 Actions variable `IMAGE_PREFIX` 设置为 `ghcr.io/crane199709/saas-forge-v2`。工作流只接受 `ghcr.io/<当前仓库 owner>/<单段命名空间>`，不接受其他 registry 或 owner。未配置时仍构建六个镜像，不登录、不推送。

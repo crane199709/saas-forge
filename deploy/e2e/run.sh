@@ -116,6 +116,10 @@ if [[ -n "${FORGE_TEMPLATE_SERVICE:-}" ]]; then
 else
   "${COMPOSE[@]}" exec -T postgres psql -U postgres -d forge -v ON_ERROR_STOP=1 < deploy/e2e/seed.sql
 fi
+# seed 在 IAM 启动全量发布之后创建 Tenant；夹具也须明确发布无限制，缺键会被网关拒绝。
+"${COMPOSE[@]}" exec -T redis redis-cli MSET \
+  iam:019a2525-0000-7000-8000-000000000001:ip-allowlist '*' \
+  iam:019a2525-0000-7000-8000-000000000002:ip-allowlist '*' >/dev/null
 if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 ]]; then
   "${COMPOSE[@]}" exec -T postgres psql -U postgres -d forge -v ON_ERROR_STOP=1 < deploy/e2e/seed.notification.sql
   (cd frontend && pnpm exec playwright test -c playwright.notification.config.ts "$@")
