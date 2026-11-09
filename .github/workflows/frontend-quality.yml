@@ -27,6 +27,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test 2>&1 | tee unit-test.log
       - run: pnpm format:check 2>&1 | tee format-check.log
+      - run: pnpm lint:style
       - run: pnpm build
       # mock E2E 会访问诊断页面并切换到子应用 v2，普通构建不包含这些产物。
       - run: pnpm build:spike
