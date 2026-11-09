@@ -6,8 +6,14 @@ import io.saasforge.iam.organization.mapper.DepartmentMapper;
 import io.saasforge.iam.organization.model.DepartmentRow;
 import io.saasforge.iam.permission.service.IamPermissions;
 import io.saasforge.iam.role.service.RoleService;
+import io.saasforge.sdk.audit.AuditCategory;
+import io.saasforge.sdk.audit.AuditEvent;
+import io.saasforge.sdk.audit.AuditRealm;
+import io.saasforge.sdk.audit.AuditRecorder;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
+import io.saasforge.sdk.core.api.FrameworkErrorCode;
+import io.saasforge.sdk.core.api.ResourceErrorCode;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -22,24 +28,65 @@ public class DepartmentService {
     private final RoleService roles;
     private final SubjectChangePublisher subjects;
     private final TransactionTemplate transactions;
+    private final AuditRecorder audits;
 
     DepartmentService(
             DepartmentMapper departments,
             AssignmentMapper assignments,
             RoleService roles,
             SubjectChangePublisher subjects,
-            TransactionTemplate transactions) {
+            TransactionTemplate transactions,
+            AuditRecorder audits) {
         this.departments = departments;
         this.assignments = assignments;
         this.roles = roles;
         this.subjects = subjects;
         this.transactions = transactions;
+        this.audits = audits;
     }
 
     /** 全部部门，按路径排序，上级总在下级之前。 */
     public List<DepartmentRow> list(TenantActor actor) {
         roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         return departments.list(actor.tenantId());
+    }
+
+    /** 指定删除状态的部门列表；常规组织选择仍只返回未删除部门。 */
+    public List<DepartmentRow> list(TenantActor actor, boolean deleted) {
+        roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
+        return deleted ? departments.listDeleted(actor.tenantId()) : departments.list(actor.tenantId());
+    }
+
+    /** 恢复时按当前上级重算路径，与部门删除、移动使用同一把锁。 */
+    public void restore(TenantActor actor, UUID id) {
+        AuditEvent.Builder event = AuditEvent.builder(AuditRealm.TENANT, AuditCategory.OPERATION, "department.restore")
+                .tenant(actor.tenantId())
+                .actor(actor.identityId())
+                .resource("department", id);
+        try {
+            roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
+            transactions.executeWithoutResult(status -> {
+                departments.lockTenant(actor.tenantId());
+                DepartmentRow deleted = departments.findDeleted(actor.tenantId(), id);
+                if (deleted == null) throw new ForgeException(OrganizationErrorCode.DEPARTMENT_NOT_FOUND);
+                DepartmentRow parent =
+                        deleted.parentId() == null ? null : departments.find(actor.tenantId(), deleted.parentId());
+                if (deleted.parentId() != null && parent == null) {
+                    throw new ForgeException(ResourceErrorCode.RESTORE_BLOCKED);
+                }
+                if (departments.restore(actor.tenantId(), id, childPath(parent, id), actor.identityId()) == 0) {
+                    throw new ForgeException(OrganizationErrorCode.DEPARTMENT_NOT_FOUND);
+                }
+            });
+        } catch (RuntimeException failure) {
+            audits.record(event.failure(
+                            failure instanceof ForgeException forge
+                                    ? forge.errorCode().code()
+                                    : FrameworkErrorCode.SYSTEM_ERROR.code())
+                    .build());
+            throw failure;
+        }
+        audits.record(event.build());
     }
 
     /** 全部部门，按路径排序，不校验权限；供角色编辑中的条件编辑器选择部门。 */
@@ -55,7 +102,7 @@ public class DepartmentService {
             UUID id = UuidV7.generate();
             String path = childPath(parentId == null ? null : require(actor, parentId), id);
             departments.insert(actor.tenantId(), id, parentId, name, path, actor.identityId());
-            return new DepartmentRow(id, parentId, name, path);
+            return departments.find(actor.tenantId(), id);
         });
     }
 
@@ -85,8 +132,7 @@ public class DepartmentService {
             String path = childPath(parent, id);
             departments.move(actor.tenantId(), id, parentId, department.path(), path, actor.identityId());
             return new Moved(
-                    new DepartmentRow(id, parentId, department.name(), path),
-                    assignments.membershipsUnder(actor.tenantId(), path));
+                    departments.find(actor.tenantId(), id), assignments.membershipsUnder(actor.tenantId(), path));
         });
         subjects.changed(moved.affected());
         return moved.department();

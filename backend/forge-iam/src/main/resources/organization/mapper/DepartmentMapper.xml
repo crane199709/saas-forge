@@ -7,14 +7,27 @@
         SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtext('organization:' || #{tenantId}))) AS locked
     </select>
     <select id="list" resultType="io.saasforge.iam.organization.model.DepartmentRow">
-        SELECT id, parent_id, name, CAST(path AS text) AS path FROM department
+        SELECT id, parent_id, name, CAST(path AS text) AS path, updated_at, updated_by FROM department
         WHERE tenant_id = #{tenantId} AND NOT deleted
         ORDER BY path
     </select>
     <select id="find" resultType="io.saasforge.iam.organization.model.DepartmentRow">
-        SELECT id, parent_id, name, CAST(path AS text) AS path FROM department
+        SELECT id, parent_id, name, CAST(path AS text) AS path, updated_at, updated_by FROM department
         WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT deleted
     </select>
+    <select id="listDeleted" resultType="io.saasforge.iam.organization.model.DepartmentRow">
+        SELECT id, parent_id, name, CAST(path AS text) AS path, updated_at, updated_by FROM department
+        WHERE tenant_id = #{tenantId} AND deleted = true ORDER BY updated_at DESC, id
+    </select>
+    <select id="findDeleted" resultType="io.saasforge.iam.organization.model.DepartmentRow">
+        SELECT id, parent_id, name, CAST(path AS text) AS path, updated_at, updated_by FROM department
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND deleted = true
+    </select>
+    <update id="restore">
+        UPDATE department SET deleted = false, path = CAST(#{path} AS ltree),
+        updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND deleted = true
+    </update>
     <select id="countExisting" resultType="long">
         SELECT count(*) FROM department
         WHERE tenant_id = #{tenantId} AND NOT deleted

@@ -32,6 +32,9 @@ import io.saasforge.sdk.audit.AuditRealm;
 import io.saasforge.sdk.audit.AuditRecorder;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
+import io.saasforge.sdk.core.api.FrameworkErrorCode;
+import io.saasforge.sdk.core.api.ResourceErrorCode;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -44,6 +47,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
@@ -118,6 +122,52 @@ public class RoleManagementService {
                 .toList();
     }
 
+    /** 列出指定删除状态的角色；已删除记录仅用于管理与恢复。 */
+    public List<RoleDetail> list(TenantActor actor, boolean deleted) {
+        if (!deleted) return list(actor);
+        requireManager(actor);
+        return roles.listDeleted(actor.tenantId()).stream()
+                .map(row -> RoleDetail.of(row, List.of(), List.of()))
+                .toList();
+    }
+
+    /** 恢复不重建成员关系；角色原有授权与 Data Policy 随角色重新可见。 */
+    public void restore(TenantActor actor, UUID id) {
+        AuditEvent.Builder event = audit(actor, "role.restore", "role", id);
+        try {
+            requireManager(actor);
+            try {
+                transactions.executeWithoutResult(status -> {
+                    roles.lockTenant(actor.tenantId());
+                    RoleRow deleted = roles.findDeleted(actor.tenantId(), id);
+                    if (deleted == null) throw new ForgeException(RoleErrorCode.NOT_FOUND);
+                    if (roles.codeExists(actor.tenantId(), deleted.code())) {
+                        throw new ForgeException(ResourceErrorCode.RESTORE_CONFLICT);
+                    }
+                    if (roles.restore(actor.tenantId(), id, actor.identityId()) == 0) {
+                        throw new ForgeException(RoleErrorCode.NOT_FOUND);
+                    }
+                });
+            } catch (DuplicateKeyException conflict) {
+                // 创建角色可能不持有恢复锁；只转换角色编码唯一索引，其他约束错误保留原意。
+                if (conflict.getMostSpecificCause() instanceof SQLException sql
+                        && "23505".equals(sql.getSQLState())
+                        && sql.getMessage().contains("\"role_tenant_code_key\"")) {
+                    throw new ForgeException(ResourceErrorCode.RESTORE_CONFLICT);
+                }
+                throw conflict;
+            }
+        } catch (RuntimeException failure) {
+            audits.record(event.failure(
+                            failure instanceof ForgeException forge
+                                    ? forge.errorCode().code()
+                                    : FrameworkErrorCode.SYSTEM_ERROR.code())
+                    .build());
+            throw failure;
+        }
+        audits.record(event.build());
+    }
+
     /** 各业务服务当前声明的 Data Resource 及其可用的 Data Scope 预设与资源属性，供角色编辑选择。 */
     public List<DataResourceOption> dataResources(TenantActor actor) {
         requireManager(actor);
@@ -190,7 +240,7 @@ public class RoleManagementService {
                 .detail("permissions", sorted(granted))
                 .detail("dataPolicies", scoped)
                 .build());
-        return RoleDetail.of(new RoleRow(id, code, name, false, false, 0), sorted(granted), scoped);
+        return RoleDetail.of(roles.find(actor.tenantId(), id), sorted(granted), scoped);
     }
 
     public void rename(TenantActor actor, UUID id, String name) {
@@ -299,8 +349,6 @@ public class RoleManagementService {
         transactions.executeWithoutResult(status -> {
             roles.lockTenant(actor.tenantId());
             if (requireCustom(actor, id).memberCount() > 0) throw new ForgeException(RoleErrorCode.IN_USE);
-            grants.deleteByRole(id);
-            dataPolicies.deleteByRole(id);
             roles.delete(actor.tenantId(), id, actor.identityId());
         });
         audits.record(audit(actor, "role.delete", "role", id).build());

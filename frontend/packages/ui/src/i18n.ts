@@ -26,6 +26,12 @@ const messages = {
     traceId: '追踪 ID',
     copyTraceId: '复制',
     total: '共 {total} 条',
+    resource: {
+      view: '记录视图',
+      active: '未删除',
+      deleted: '已删除',
+      restore: '恢复',
+    },
     mfa: {
       title: '两步验证',
       codeHint: '请输入验证器应用上的 6 位动态码。',

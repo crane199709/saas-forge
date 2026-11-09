@@ -9,10 +9,13 @@ import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import io.saasforge.iam.audit.service.AuditService;
 import io.saasforge.iam.permission.service.PermissionService;
+import io.saasforge.iam.provisioning.mapper.OutboxAuditMapper;
 import io.saasforge.iam.role.service.RoleService;
 import io.saasforge.sdk.abac.DataResourceDefinition;
 import io.saasforge.sdk.abac.DataScope;
+import io.saasforge.sdk.audit.AuditEvent;
 import io.saasforge.sdk.core.MembershipGrants;
 import io.saasforge.sdk.core.MembershipStateKeys;
 import io.saasforge.sdk.core.ResourceManifest;
@@ -31,6 +34,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -94,12 +101,236 @@ class RoleManagementTest {
     RoleService roles;
 
     @Autowired
+    AuditService audits;
+
+    @Autowired
+    OutboxAuditMapper outbox;
+
+    @Autowired
     StringRedisTemplate redisTemplate;
 
     // 各测试共用同一份清单内容；按测试名区分版本，重复上报相同内容为无操作。
     @BeforeEach
     void reportManifest() {
         permissions.report("demo-service", manifest("roles-1", List.of("order:read", "order:approve")));
+    }
+
+    @Test
+    void concurrentRestoreSucceedsOnlyOnceForEachIamResource() throws Exception {
+        for (String path : List.of("/roles", "/org/departments", "/org/positions")) {
+            String id = (String)
+                    data(call(ADMIN, HttpMethod.POST, path, Map.of("code", "concurrent-restore", "name", "并发恢复")))
+                            .get("id");
+            call(ADMIN, HttpMethod.DELETE, path + "/" + id, null);
+            var responses = race(
+                    () -> call(ADMIN, HttpMethod.POST, path + "/" + id + "/restore", null),
+                    () -> call(ADMIN, HttpMethod.POST, path + "/" + id + "/restore", null));
+            assertThat(responses)
+                    .extracting(response -> response.getStatusCode().value())
+                    .containsExactlyInAnyOrder(200, 404);
+            assertThat((List<Map<String, Object>>)
+                            call(ADMIN, HttpMethod.GET, path, null).getBody().get("data"))
+                    .filteredOn(row -> id.equals(row.get("id")))
+                    .hasSize(1);
+            assertThat((List<Map<String, Object>>) call(ADMIN, HttpMethod.GET, path + "?deleted=true", null)
+                            .getBody()
+                            .get("data"))
+                    .noneMatch(row -> id.equals(row.get("id")));
+        }
+    }
+
+    @Test
+    void departmentRestoreSerializesWithParentDeletionAndMovement() throws Exception {
+        String parent = (String) data(call(ADMIN, HttpMethod.POST, "/org/departments", Map.of("name", "竞争父部门")))
+                .get("id");
+        String child = (String)
+                data(call(ADMIN, HttpMethod.POST, "/org/departments", Map.of("name", "竞争子部门", "parentId", parent)))
+                        .get("id");
+        call(ADMIN, HttpMethod.DELETE, "/org/departments/" + child, null);
+        assertThat(race(
+                        () -> call(ADMIN, HttpMethod.POST, "/org/departments/" + child + "/restore", null),
+                        () -> call(ADMIN, HttpMethod.DELETE, "/org/departments/" + parent, null)))
+                .extracting(response -> response.getStatusCode().value())
+                .containsExactlyInAnyOrder(200, 409);
+        var rows = (List<Map<String, Object>>)
+                call(ADMIN, HttpMethod.GET, "/org/departments", null).getBody().get("data");
+        assertThat(rows.stream().anyMatch(row -> child.equals(row.get("id"))))
+                .isEqualTo(rows.stream().anyMatch(row -> parent.equals(row.get("id"))));
+
+        // 另一棵树并发恢复下级和移动上级，两种锁顺序都必须得到当前父路径。
+        String movingParent = (String) data(call(ADMIN, HttpMethod.POST, "/org/departments", Map.of("name", "移动父部门")))
+                .get("id");
+        String movingChild = (String) data(call(
+                        ADMIN, HttpMethod.POST, "/org/departments", Map.of("name", "移动子部门", "parentId", movingParent)))
+                .get("id");
+        String destination = (String) data(call(ADMIN, HttpMethod.POST, "/org/departments", Map.of("name", "目标部门")))
+                .get("id");
+        call(ADMIN, HttpMethod.DELETE, "/org/departments/" + movingChild, null);
+        assertThat(race(
+                        () -> call(ADMIN, HttpMethod.POST, "/org/departments/" + movingChild + "/restore", null),
+                        () -> call(
+                                ADMIN,
+                                HttpMethod.PUT,
+                                "/org/departments/" + movingParent + "/parent",
+                                Map.of("parentId", destination))))
+                .allSatisfy(
+                        response -> assertThat(response.getStatusCode().value()).isEqualTo(200));
+        var moved = (List<Map<String, Object>>)
+                call(ADMIN, HttpMethod.GET, "/org/departments", null).getBody().get("data");
+        assertThat(moved)
+                .filteredOn(row -> movingChild.equals(row.get("id")))
+                .singleElement()
+                .satisfies(row -> assertThat(row)
+                        .containsEntry(
+                                "path", label(destination) + "." + label(movingParent) + "." + label(movingChild)));
+    }
+
+    private static <T> List<T> race(Callable<T> first, Callable<T> second) throws Exception {
+        var executor = Executors.newFixedThreadPool(2);
+        var start = new CountDownLatch(1);
+        try {
+            var a = executor.submit(() -> {
+                start.await();
+                return first.call();
+            });
+            var b = executor.submit(() -> {
+                start.await();
+                return second.call();
+            });
+            start.countDown();
+            return List.of(a.get(10, TimeUnit.SECONDS), b.get(10, TimeUnit.SECONDS));
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void restoreAuditsSuccessFailureAndTenantBoundariesForAllIamResources() throws Exception {
+        for (String path : List.of("/roles", "/org/departments", "/org/positions")) {
+            String type = path.equals("/roles") ? "role" : path.endsWith("departments") ? "department" : "position";
+            String id =
+                    (String) data(call(ADMIN, HttpMethod.POST, path, Map.of("code", "audit-restore", "name", "恢复审计")))
+                            .get("id");
+            call(ADMIN, HttpMethod.DELETE, path + "/" + id, null);
+            assertThat(call(MEMBER, HttpMethod.GET, path + "?deleted=true", null)
+                            .getStatusCode()
+                            .value())
+                    .isEqualTo(403);
+            assertThat(call(ADMIN_B, HttpMethod.GET, path + "?deleted=true", null)
+                            .getBody()
+                            .get("data"))
+                    .isEqualTo(List.of());
+            assertThat(call(MEMBER, HttpMethod.POST, path + "/" + id + "/restore", null)
+                            .getStatusCode()
+                            .value())
+                    .isEqualTo(403);
+            assertThat(call(ADMIN_B, HttpMethod.POST, path + "/" + id + "/restore", null)
+                            .getStatusCode()
+                            .value())
+                    .isEqualTo(404);
+            assertThat(call(ADMIN, HttpMethod.POST, path + "/" + id + "/restore", null)
+                            .getStatusCode()
+                            .value())
+                    .isEqualTo(200);
+            assertThat(call(ADMIN, HttpMethod.POST, path + "/" + id + "/restore", null)
+                            .getStatusCode()
+                            .value())
+                    .isEqualTo(404);
+            // 沿用 AuditTest 的 MQ 投递替身；业务断言仍读取公开审计 HTTP 接口。
+            outbox.payloadsOf(AuditEvent.class.getSimpleName()).stream()
+                    .map(payload -> JsonMapper.builder().build().readValue(payload, AuditEvent.class))
+                    .forEach(audits::store);
+            var events = (List<Map<String, Object>>)
+                    call(ADMIN, HttpMethod.GET, "/audit/events?action=" + type + ".restore&resourceId=" + id, null)
+                            .getBody()
+                            .get("data");
+            assertThat(events).hasSize(3);
+            assertThat(events)
+                    .filteredOn(event -> "success".equals(event.get("outcome")))
+                    .singleElement()
+                    .satisfies(event -> assertThat(event)
+                            .containsEntry("resourceType", type)
+                            .containsEntry("actorId", IDENTITIES.get(ADMIN).toString())
+                            .containsEntry("service", "forge-iam"));
+            assertThat(events)
+                    .filteredOn(event -> "failure".equals(event.get("outcome")))
+                    .extracting(event -> event.get("errorCode"))
+                    .contains("auth.forbidden");
+            var foreign = (List<Map<String, Object>>)
+                    call(ADMIN_B, HttpMethod.GET, "/audit/events?action=" + type + ".restore&resourceId=" + id, null)
+                            .getBody()
+                            .get("data");
+            assertThat(foreign)
+                    .singleElement()
+                    .satisfies(event -> assertThat(event)
+                            .containsEntry("outcome", "failure")
+                            .containsEntry("actorId", IDENTITIES.get(ADMIN_B).toString()));
+        }
+    }
+
+    @Test
+    void roleRestoreReportsOnlySameTenantCodeConflicts() throws Exception {
+        String id = createRole("restore-conflict", "原角色", List.of());
+        call(ADMIN, HttpMethod.DELETE, "/roles/" + id, null);
+        String replacement = createRole("restore-conflict", "替代角色", List.of());
+        var rejected = call(ADMIN, HttpMethod.POST, "/roles/" + id + "/restore", null);
+        assertThat(rejected.getStatusCode().value()).isEqualTo(409);
+        assertThat(code(rejected)).isEqualTo("resource.restoreConflict");
+        call(ADMIN, HttpMethod.DELETE, "/roles/" + replacement, null);
+        assertThat(call(ADMIN_B, HttpMethod.POST, "/roles", Map.of("code", "restore-conflict", "name", "乙角色"))
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(201);
+        assertThat(call(ADMIN, HttpMethod.POST, "/roles/" + id + "/restore", null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(200);
+    }
+
+    @Test
+    void deletedRoleCanBeListedAndRestoredWithItsConfigurationAndNoMembers() throws Exception {
+        permissions.report("ledger-service", ledgerManifest("ledger-service", "restore"));
+        String id = createRole("restore-role", "可恢复角色", List.of("order:read"));
+        var policies = List.of(Map.of("resource", "ledger", "scope", "self"));
+        assertThat(dataPolicies(id, policies).getStatusCode().value()).isEqualTo(200);
+        assign(ADMIN, MEMBER, List.of(id));
+        assertThat((List<Object>)
+                        data(call(MEMBER, HttpMethod.GET, "/auth/access", null)).get("permissions"))
+                .contains("order:read");
+        assign(ADMIN, MEMBER, List.of());
+        assertThat(call(ADMIN, HttpMethod.DELETE, "/roles/" + id, null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(200);
+        assertThat(roleIds(ADMIN)).doesNotContainKey("restore-role");
+        assertThat((List<Object>)
+                        data(call(MEMBER, HttpMethod.GET, "/auth/access", null)).get("permissions"))
+                .doesNotContain("order:read");
+        var deleted = ((List<Map<String, Object>>) call(ADMIN, HttpMethod.GET, "/roles?deleted=true", null)
+                        .getBody()
+                        .get("data"))
+                .stream().filter(row -> id.equals(row.get("id"))).findFirst().orElseThrow();
+        assertThat(deleted).containsEntry("updatedBy", IDENTITIES.get(ADMIN).toString());
+        assertThat(deleted.get("updatedAt")).isNotNull();
+        assertThat(call(ADMIN, HttpMethod.POST, "/roles/" + id + "/restore", null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(200);
+        var restored = roleById(ADMIN, id);
+        assertThat(restored.get("permissions")).isEqualTo(List.of("order:read"));
+        assertThat(restored.get("dataPolicies")).isEqualTo(policies);
+        assertThat(restored.get("memberCount")).isEqualTo(0);
+        assertThat(Instant.parse((String) restored.get("updatedAt")))
+                .isAfter(Instant.parse((String) deleted.get("updatedAt")));
+        assertThat((List<Object>)
+                        data(call(MEMBER, HttpMethod.GET, "/auth/access", null)).get("permissions"))
+                .doesNotContain("order:read");
+        assertThat((List<Map<String, Object>>) call(ADMIN, HttpMethod.GET, "/roles/memberships?size=100", null)
+                        .getBody()
+                        .get("data"))
+                .filteredOn(row -> MEMBER.toString().equals(row.get("membershipId")))
+                .singleElement()
+                .satisfies(row -> assertThat(row.get("roleIds")).isEqualTo(List.of()));
     }
 
     @Test

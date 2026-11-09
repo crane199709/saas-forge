@@ -1,5 +1,6 @@
 package io.saasforge.iam.role.model;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -9,4 +10,12 @@ import java.util.UUID;
  * @param owner 是否 Owner 角色
  * @param memberCount 持有该角色的未删除 Membership 数
  */
-public record RoleRow(UUID id, String code, String name, boolean builtin, boolean owner, long memberCount) {}
+public record RoleRow(
+        UUID id,
+        String code,
+        String name,
+        boolean builtin,
+        boolean owner,
+        long memberCount,
+        Instant updatedAt,
+        UUID updatedBy) {}

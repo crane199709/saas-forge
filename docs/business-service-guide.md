@@ -73,6 +73,54 @@ export FORGE_DEMO_OPS_TOKEN="$(openssl rand -hex 32)"
 
 内部 HTTP 接口必须放在 `/internal/` 下，网关拒绝该前缀；网络访问控制与服务自身认证仍由部署和实现保障。不要把内部接口改成其他路径绕过网关限制。
 
+## 资源恢复
+
+Restore 由每类资源自行实现。SDK 只提供 `io.saasforge.sdk.core.api.ResourceErrorCode`、共享文案和 `ListPage` 的可选已删除视图；不提供通用恢复 Mapper 或跨资源恢复服务，不新建集中回收站，也不提供彻底删除。Membership 和 Identity 不接入恢复，避免重新授予权限。
+
+后端接入时沿用该资源现有管理权限与租户上下文：列表默认只查未删除记录，显式 `deleted=true` 时只查已删除记录；恢复接口使用 `POST /<资源>/{id}/restore`，成功返回 HTTP 200 的 `ApiResponse.ok()`。请求不接受租户 ID 作为隔离依据；当前租户外的 ID 不得通过查询或恢复暴露。
+
+1. 已删除列表、恢复前读取与恢复 UPDATE 写在 Mapper XML。`BaseMapper` 的常规查询和更新带逻辑删除条件，不能用来读取或恢复已删除记录。`deleted = true` 仅用于这些专用语句；常规列表、详情、JOIN 和业务写入继续保留各自的 `NOT deleted`，不能全局关闭逻辑删除、租户拦截器或 RLS。
+2. 在同一事务内先获取与删除相同的锁，再读取已删除记录、校验资源规则并恢复。相关的删除、移动或其他结构变更必须遵守同一锁约定，避免父资源校验通过后又被删除。恢复不应重置业务状态或重建已不存在的权限关系；依赖关系如何保留与恢复由资源自己定义。
+3. 唯一性以现有 `WHERE NOT deleted` 的部分唯一索引为准，提前检查后仍由数据库兜底并发；只把对应唯一索引的冲突映射为 `RESTORE_CONFLICT`，不要把所有数据完整性错误都当成恢复冲突。角色只检查编码，部门和岗位允许同租户重名，不新增名称唯一约束。
+4. 恢复 UPDATE 带目标 ID、当前租户隔离条件和 `deleted = true` 条件，并检查受影响行数；按原有 Data Policy 控制可操作范围。设置 `deleted = false, updated_at = CURRENT_TIMESTAMP, updated_by = #{actorId}`，保留 `created_*`。XML 不触发 SDK 自动填充，`actorId` 从已认证上下文的 `CurrentActorProvider` 取得，无认证上下文时为 NULL，不能从请求体接收。
+5. 在对外入口记录 `@AuditLog(action = "<资源>.restore", ...)`，包含资源 ID 与成功或失败结果；删除时的 `updated_at`、`updated_by` 仅表示最后一次写入，恢复会刷新它们，详细历史由 Audit Event 回答。
+
+可直接参考 demo-service 的 [OrderController](../backend/examples/demo-service/src/main/java/io/saasforge/demo/order/controller/OrderController.java)、[OrderService](../backend/examples/demo-service/src/main/java/io/saasforge/demo/order/service/OrderService.java) 与 [OrderMapper XML](../backend/examples/demo-service/src/main/resources/order/mapper/OrderMapper.xml)：`GET /orders?deleted=true` 使用 `order:delete`，返回相同分页信封和 `updatedAt`、`updatedBy`；普通列表继续使用 `order:read`。`POST /orders/{id}/restore` 使用 `order:delete`，成功返回 HTTP 200，重复恢复、当前租户外或 Data Policy 范围外的 ID 均返回 `order.notFound` / 404。
+
+订单恢复在事务内以 `SELECT ... FOR UPDATE` 锁住已删除行，与删除的条件 UPDATE 共用数据库行锁；专用查询与恢复 UPDATE 都保留 SDK 租户和 Data Policy 拦截。恢复只修改 `deleted` 和 `updated_*`，保留 Business Number、原有归属与业务状态，不重开 Todo 或重发 Notification；只把现有 `orders_number_key` 部分唯一索引的 23505 冲突映射为 `resource.restoreConflict`。公开 HTTP 行为、跨租户、Data Policy、冲突、并发，以及出站审计和通知契约见 [OrderRestoreTest](../backend/examples/demo-service/src/test/java/io/saasforge/demo/OrderRestoreTest.java)。
+
+两种共享错误都用 `new ForgeException(ResourceErrorCode.<枚举值>)` 抛出，不在服务重新声明同一 code；`userTip` 随 `Accept-Language` 查 SDK 文案（默认中文，支持英文）。
+
+| SDK 枚举值 | Error Code / HTTP | 语义与用户处理 |
+|---|---|---|
+| `RESTORE_CONFLICT` | `resource.restoreConflict` / 409 | 名称或编码与实际唯一索引冲突，先改名或处理冲突记录后再恢复 |
+| `RESTORE_BLOCKED` | `resource.restoreBlocked` / 409 | 恢复依赖的关联资源仍已删除，先恢复关联资源；例如 Department 的父部门 |
+
+前端按权限决定是否传入 `deleted`；不传时 `ListPage` 的旧属性、插槽和分页行为保持兼容。组件不发送 HTTP 请求，也不替页面作授权或确认。
+
+| ListPage 属性或事件 | 用法 |
+|---|---|
+| `deleted?: boolean` | 受控属性：不传则隐藏视图切换；`false` 为未删除，`true` 为已删除，并自动追加恢复列 |
+| `deleted-change(boolean)` | 页面更新 `deleted`、将页码重置为 1，再按当前查询条件加载 |
+| `restore(row)` | 交回完整条目；页面确认后调用自己的恢复接口，成功后刷新列表，失败展示 SDK 返回的 `userTip` |
+| `loading?: boolean` | 加载或恢复请求期间传 `true`，禁用视图切换、恢复和分页 |
+
+```vue
+<ListPage
+  :page="page"
+  :deleted="deleted"
+  :loading="loading"
+  @deleted-change="changeDeletedView"
+  @page-change="loadPage"
+  @restore="confirmAndRestore"
+>
+  <!-- 搜索与普通操作由页面按 deleted 视图区分。 -->
+  <el-table-column prop="title" label="标题" />
+</ListPage>
+```
+
+交付前经后端公开 HTTP 接口验证默认查询排除已删除行、已删除列表和恢复成功、权限拒绝、跨租户不可见且不能恢复、现有唯一索引冲突、关联资源受阻、重复及并发恢复，以及恢复后的审计列与原有业务状态。并发测试应覆盖恢复与删除/移动竞争并验证最终公开可见结果；前端通过 Playwright 验证切换视图、确认恢复、成功刷新和失败提示。共享组件自身可通过公开 props/events 与 DOM 测试验证。
+
 ## 通知与待办
 
 需要站内 Notification 或 Todo 时添加可选依赖 `io.saasforge:forge-sdk-notification`，版本由 `forge-dependencies` 管理。注入 `NotificationClient`，在修改业务状态的同一 `@Transactional` 方法中调用；事务外明确抛出 `IllegalStateException`，业务回滚时不产生事件。Tenant 取自 `CurrentTenant`，来源服务取自必填且非空的 `spring.application.name`（最长 255 字符），调用方不传租户或服务名。

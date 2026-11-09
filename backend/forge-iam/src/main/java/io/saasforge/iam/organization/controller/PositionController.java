@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,8 +38,9 @@ class PositionController {
 
     @Operation(summary = "列出当前租户的岗位")
     @GetMapping
-    ApiResponse<List<PositionResponse>> list(@AuthenticationPrincipal Jwt jwt) {
-        return ApiResponse.ok(positions.list(TenantActor.of(jwt)).stream()
+    ApiResponse<List<PositionResponse>> list(
+            @AuthenticationPrincipal Jwt jwt, @RequestParam(defaultValue = "false") boolean deleted) {
+        return ApiResponse.ok(positions.list(TenantActor.of(jwt), deleted).stream()
                 .map(PositionResponse::from)
                 .toList());
     }
@@ -66,11 +69,18 @@ class PositionController {
         return ApiResponse.ok();
     }
 
+    @Operation(summary = "恢复已删除的岗位")
+    @PostMapping("/{id}/restore")
+    ApiResponse<Void> restore(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        positions.restore(TenantActor.of(jwt), id);
+        return ApiResponse.ok();
+    }
+
     record PositionRequest(@NotBlank @Size(max = 120) String name) {}
 
-    record PositionResponse(UUID id, String name) {
+    record PositionResponse(UUID id, String name, Instant updatedAt, UUID updatedBy) {
         static PositionResponse from(PositionRow row) {
-            return new PositionResponse(row.id(), row.name());
+            return new PositionResponse(row.id(), row.name(), row.updatedAt(), row.updatedBy());
         }
     }
 }

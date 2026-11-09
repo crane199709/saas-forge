@@ -11,7 +11,11 @@ import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-// iam 的表不按租户行拦截隔离（ADR-0001），租户条件由 SQL 显式书写；消费事件时 SDK 恢复的租户上下文不能改写这些 SQL。
+/**
+ * 租户角色及其成员授权的持久化操作；所有方法均不受 Data Policy 过滤。
+ *
+ * <p>IAM 的表不按租户行拦截隔离（ADR-0001），租户条件由 SQL 显式书写；消费事件时 SDK 恢复的租户上下文不能改写这些 SQL。
+ */
 @InterceptorIgnore(tenantLine = "true")
 @Mapper
 public interface RoleMapper {
@@ -52,6 +56,18 @@ public interface RoleMapper {
 
     /** 租户的未删除角色及持有人数：Owner、Tenant Admin 在前，其余按编码排序。按 Token 租户限定，不受 Data Policy 过滤。 */
     List<RoleRow> list(@Param("tenantId") UUID tenantId);
+
+    /** 租户内已删除角色，按最后修改时间倒序。 */
+    List<RoleRow> listDeleted(@Param("tenantId") UUID tenantId);
+
+    /** 租户内的已删除角色；其他租户与未删除记录返回 null。 */
+    RoleRow findDeleted(@Param("tenantId") UUID tenantId, @Param("id") UUID id);
+
+    /** 检查当前租户未删除角色是否占用编码。 */
+    boolean codeExists(@Param("tenantId") UUID tenantId, @Param("code") String code);
+
+    /** 恢复自定义角色并维护审计列，仅影响当前租户的已删除记录。 */
+    int restore(@Param("tenantId") UUID tenantId, @Param("id") UUID id, @Param("actor") UUID actor);
 
     /** 租户内的未删除角色；不存在或属于其他租户时为 null。按 Token 租户限定，不受 Data Policy 过滤。 */
     RoleRow find(@Param("tenantId") UUID tenantId, @Param("id") UUID id);

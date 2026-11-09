@@ -1,5 +1,6 @@
 package io.saasforge.iam.role.model;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,7 +18,9 @@ public record RoleDetail(
         boolean owner,
         long memberCount,
         List<String> permissions,
-        List<DataPolicy> dataPolicies) {
+        List<DataPolicy> dataPolicies,
+        Instant updatedAt,
+        UUID updatedBy) {
     public static RoleDetail of(RoleRow row, List<String> permissions, List<DataPolicy> dataPolicies) {
         return new RoleDetail(
                 row.id(),
@@ -27,6 +30,8 @@ public record RoleDetail(
                 row.owner(),
                 row.memberCount(),
                 permissions,
-                dataPolicies);
+                dataPolicies,
+                row.updatedAt(),
+                row.updatedBy());
     }
 }

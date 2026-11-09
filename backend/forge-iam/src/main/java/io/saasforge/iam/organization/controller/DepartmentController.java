@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,8 +38,9 @@ class DepartmentController {
 
     @Operation(summary = "列出当前租户的全部部门，按路径排序，由调用方组装为树")
     @GetMapping
-    ApiResponse<List<DepartmentResponse>> list(@AuthenticationPrincipal Jwt jwt) {
-        return ApiResponse.ok(departments.list(TenantActor.of(jwt)).stream()
+    ApiResponse<List<DepartmentResponse>> list(
+            @AuthenticationPrincipal Jwt jwt, @RequestParam(defaultValue = "false") boolean deleted) {
+        return ApiResponse.ok(departments.list(TenantActor.of(jwt), deleted).stream()
                 .map(DepartmentResponse::from)
                 .toList());
     }
@@ -73,6 +76,13 @@ class DepartmentController {
         return ApiResponse.ok();
     }
 
+    @Operation(summary = "恢复已删除部门，按当前上级重算路径")
+    @PostMapping("/{id}/restore")
+    ApiResponse<Void> restore(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        departments.restore(TenantActor.of(jwt), id);
+        return ApiResponse.ok();
+    }
+
     record CreateDepartmentRequest(
             @NotBlank @Size(max = 120) String name, UUID parentId) {}
 
@@ -80,9 +90,10 @@ class DepartmentController {
 
     record MoveRequest(UUID parentId) {}
 
-    record DepartmentResponse(UUID id, UUID parentId, String name, String path) {
+    record DepartmentResponse(UUID id, UUID parentId, String name, String path, Instant updatedAt, UUID updatedBy) {
         static DepartmentResponse from(DepartmentRow row) {
-            return new DepartmentResponse(row.id(), row.parentId(), row.name(), row.path());
+            return new DepartmentResponse(
+                    row.id(), row.parentId(), row.name(), row.path(), row.updatedAt(), row.updatedBy());
         }
     }
 }

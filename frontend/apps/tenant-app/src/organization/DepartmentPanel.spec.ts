@@ -9,6 +9,7 @@ import { createOrganizationApi } from './org-api'
 afterEach(() => {
   sessionStorage.clear()
   vi.unstubAllGlobals()
+  document.body.innerHTML = ''
 })
 
 const departments = [
@@ -31,6 +32,7 @@ function mountPanel(fetcher: ReturnType<typeof vi.fn>) {
   return mount(DepartmentPanel, {
     props: { api: createOrganizationApi(createTenantClient(sessionStorage)), departments },
     global: { plugins: [i18n, ElementPlus] },
+    attachTo: document.body,
   })
 }
 
@@ -71,4 +73,43 @@ it('删除被拒绝时展示 userTip 与 traceId', async () => {
   expect(alert.text()).toContain('部门下还有子部门或成员')
   expect(alert.text()).toContain('trace-dept')
   expect(wrapper.emitted('changed')).toBeUndefined()
+})
+
+it('已删除部门平铺显示，父部门已删除时保留记录并展示恢复受阻原因', async () => {
+  const fetcher = vi.fn(async (_url: string, init?: RequestInit) =>
+    init?.method === 'POST'
+      ? respond(409, {
+          code: 'resource.restoreBlocked',
+          userTip: '请先恢复上级部门',
+          errorMessage: 'parent deleted',
+        })
+      : respond(200, {
+          code: 'ok',
+          data: [
+            {
+              id: 'child',
+              name: '已删除子部门',
+              parentId: 'deleted-parent',
+              path: 'old.child',
+              updatedAt: null,
+              updatedBy: 'identity-admin',
+            },
+          ],
+        }),
+  )
+  const wrapper = mountPanel(fetcher)
+  await wrapper.get('[data-testid="restore-view-deleted"]').trigger('click')
+  await flushPromises()
+  expect(wrapper.find('.el-tree').exists()).toBe(false)
+  expect(wrapper.find('[data-testid="dept-name"]').exists()).toBe(false)
+  expect(wrapper.text()).toContain('identity-admin')
+  await wrapper.get('[data-testid="restore-child"]').trigger('click')
+  await flushPromises()
+  document.querySelector<HTMLButtonElement>('[data-testid="restore-confirm"]')!.click()
+  await flushPromises()
+  expect(wrapper.get('[role="alert"]').text()).toContain('请先恢复上级部门')
+  expect(wrapper.get('[role="alert"]').text()).toContain('trace-dept')
+  expect(wrapper.find('[data-testid="restore-child"]').exists()).toBe(true)
+  expect(wrapper.emitted('changed')).toBeUndefined()
+  wrapper.unmount()
 })

@@ -426,5 +426,20 @@
       "resetExpired": "重设已超时或已完成，请重新获取验证码",
       "mfaRequired": "该账号已绑定验证器，请输入动态码或恢复码"
     }
+  },
+  "restore": {
+    "view": "记录视图",
+    "active": "未删除",
+    "deleted": "已删除",
+    "name": "名称",
+    "deletedAt": "删除时间",
+    "deletedBy": "操作人（身份 ID）",
+    "system": "系统",
+    "action": "恢复",
+    "empty": "暂无已删除记录",
+    "confirmTitle": "确认恢复",
+    "confirmMessage": "确认恢复「{name}」？",
+    "cancel": "取消",
+    "succeeded": "恢复成功"
   }
 }

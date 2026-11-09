@@ -15,6 +15,8 @@ export interface Role {
   permissions: string[]
   /** 各数据资源上的数据范围；预置角色对全部数据为「全部」，为空列表。 */
   dataPolicies: DataPolicy[]
+  updatedAt?: string | null
+  updatedBy?: string | null
 }
 
 /** Data Scope 预设；未配置的数据资源对持有者不可见。 */
@@ -165,7 +167,8 @@ export function createRoleApi(client: Pick<TenantClient, 'api' | 'page'>) {
     })
 
   return {
-    roles: () => send<Role[]>('GET', ''),
+    roles: (deleted = false) => send<Role[]>('GET', deleted ? '?deleted=true' : ''),
+    restoreRole: (id: string) => send<null>('POST', `/${id}/restore`),
     permissions: () => send<GrantablePermission[]>('GET', '/permissions'),
     permissionTree: () => send<PermissionTree>('GET', '/permission-tree'),
     dataResources: () => send<DataResource[]>('GET', '/data-resources'),
