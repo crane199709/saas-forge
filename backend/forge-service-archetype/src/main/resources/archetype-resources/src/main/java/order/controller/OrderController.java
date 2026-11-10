@@ -11,6 +11,11 @@ import io.saasforge.sdk.web.PageQuery;
 import io.saasforge.sdk.web.SortableFields;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -41,7 +46,7 @@ class OrderController {
     @RequiresPermission("order:create")
     @AuditLog(action = "order.create", resourceType = "order", resourceId = "${hash}result.data().id()")
     @ResponseStatus(HttpStatus.CREATED)
-    ApiResponse<OrderResponse> create(@RequestBody OrderRequest request) {
+    ApiResponse<OrderResponse> create(@Valid @RequestBody OrderRequest request) {
         return ApiResponse.created(OrderResponse.from(orderService.create(request.title(), request.amount())));
     }
 
@@ -65,7 +70,7 @@ class OrderController {
     @PutMapping("/{id}")
     @RequiresPermission("order:update")
     @AuditLog(action = "order.update", resourceType = "order", resourceId = "${hash}id")
-    ApiResponse<OrderResponse> update(@PathVariable UUID id, @RequestBody OrderRequest request) {
+    ApiResponse<OrderResponse> update(@PathVariable UUID id, @Valid @RequestBody OrderRequest request) {
         return ApiResponse.ok(OrderResponse.from(orderService.update(id, request.title(), request.amount())));
     }
 
@@ -78,7 +83,9 @@ class OrderController {
         return ApiResponse.ok();
     }
 
-    record OrderRequest(String title, BigDecimal amount) {}
+    /** 约束与 orders 表一致，违反时由 SDK 返回 400 request.invalid 并逐项列出字段，不必等数据库报错。 */
+    record OrderRequest(
+            @NotBlank @Size(max = 200) String title, @NotNull @PositiveOrZero BigDecimal amount) {}
 
     /**
      * @param ownerId 数据归属的 Membership，系统创建的订单为 null
