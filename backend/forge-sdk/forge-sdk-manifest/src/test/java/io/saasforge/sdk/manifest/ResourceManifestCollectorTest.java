@@ -187,6 +187,14 @@ class ResourceManifestCollectorTest {
     }
 
     @Test
+    void menuGroupCannotRequireAPermissionCode() {
+        assertThatThrownBy(() -> collect("manifests/permission-group.json"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Menu group group")
+                .hasMessageContaining("order:approve");
+    }
+
+    @Test
     void menusAreLimitedToThreeLevels() {
         assertThat(collect("manifests/menu-three-levels.json").menus()).hasSize(1);
         assertThatThrownBy(() -> collect("manifests/menu-four-levels.json"))
