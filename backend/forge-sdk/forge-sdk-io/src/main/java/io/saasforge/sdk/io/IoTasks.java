@@ -25,6 +25,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
@@ -105,13 +106,36 @@ public final class IoTasks implements AutoCloseable {
      * @return 等待中的任务
      */
     public IoTask submit(String type, UUID source, String summary, Work work) {
+        return submit(type, source, summary, work, null);
+    }
+
+    IoTask confirmImport(UUID id, Function<UUID, Work> work) {
+        var owner = TenantContext.current();
+        var task = mapper.confirmation(id);
+        if (task == null) throw new ForgeException(IoErrorCode.NOT_FOUND);
+        if (!owner.membershipId().equals(task.membershipId())) throw new ForgeException(IoErrorCode.CONFIRM_FORBIDDEN);
+        if (!"AWAITING_CONFIRM".equals(task.status())
+                || task.sourceObjectId() == null
+                || !task.heartbeatAt().isAfter(OffsetDateTime.now().minusHours(24))) {
+            throw new ForgeException(IoErrorCode.TASK_NOT_AWAITING_CONFIRMATION);
+        }
+        // 先抢占再打开源对象；过期清理若先赢，确认只返回状态冲突，不会读取已被清理的源文件。
+        return submit(
+                "IMPORT",
+                task.sourceObjectId(),
+                null,
+                progress -> work.apply(task.sourceObjectId()).execute(progress),
+                id);
+    }
+
+    private IoTask submit(String type, UUID source, String summary, Work work, UUID confirmation) {
         if (!List.of("IMPORT", "EXPORT").contains(type)) throw new IllegalArgumentException("Unknown IO type");
         TenantContext owner = TenantContext.current();
         if (!owner.tenantId().equals(CurrentTenant.require())) throw new IllegalStateException("Tenant mismatch");
         var authentication = new BackgroundJwtAuthentication(
                 (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication());
         var locale = LocaleContextHolder.getLocale();
-        UUID id = UuidV7.generate();
+        UUID id = confirmation == null ? UuidV7.generate() : confirmation;
         var progress = new Progress();
         Runnable execution = permissions.wrap(CurrentTenant.wrap(() -> {
             var previous = SecurityContextHolder.getContext();
@@ -128,16 +152,30 @@ public final class IoTasks implements AutoCloseable {
         }));
         if (!slots.tryAcquire()) throw new ForgeException(IoErrorCode.BUSY);
         try {
-            // 只存租户 ID 的持久目录供 Global Task 恢复 RLS 上下文；进程重启后仍能收尾中断任务。
-            redis.opsForSet().add(tenantKey, owner.tenantId().toString());
-            transaction.executeWithoutResult(
-                    status -> mapper.insert(id, type, owner.membershipId(), owner.identityId(), source, summary));
-            IoTask task = get(id);
-            pending.put(id, new Pending(owner.tenantId(), progress));
-            workers.execute(execution);
-            return task;
+            // 与 close 共用监视器；持有容量后提交不会被关闭的执行器拒绝，避免确认抢占后无人执行。
+            synchronized (workers) {
+                if (workers.isShutdown()) throw new ForgeException(IoErrorCode.BUSY);
+                // 只存租户 ID 的持久目录供 Global Task 恢复 RLS 上下文；进程重启后仍能收尾中断任务。
+                redis.opsForSet().add(tenantKey, owner.tenantId().toString());
+                transaction.executeWithoutResult(status -> {
+                    if (confirmation == null) {
+                        mapper.insert(id, type, owner.membershipId(), owner.identityId(), source, summary);
+                    } else if (mapper.confirm(
+                                    id,
+                                    owner.membershipId(),
+                                    owner.identityId(),
+                                    OffsetDateTime.now().minusHours(24))
+                            != 1) {
+                        throw new ForgeException(IoErrorCode.TASK_NOT_AWAITING_CONFIRMATION);
+                    }
+                });
+                IoTask task = get(id);
+                pending.put(id, new Pending(owner.tenantId(), progress));
+                workers.execute(execution);
+                return task;
+            }
         } catch (RuntimeException error) {
-            pending.remove(id);
+            pending.remove(id, new Pending(owner.tenantId(), progress));
             slots.release();
             throw error;
         }
@@ -156,7 +194,7 @@ public final class IoTasks implements AutoCloseable {
             code = error instanceof ForgeException forge ? forge.errorCode().code() : IoErrorCode.FAILED.code();
         } finally {
             try {
-                if (source != null)
+                if (source != null && !(progress.awaitingConfirmation && code == null))
                     TenantWriteGuard.exempt(() -> transaction.executeWithoutResult(status -> {
                         storage.delete(source);
                         mapper.clearSource(id);
@@ -178,7 +216,9 @@ public final class IoTasks implements AutoCloseable {
                 UUID finalResult = result;
                 TenantWriteGuard.exempt(() -> changedHolder.set(mapper.finish(
                         id,
-                        finalCode == null ? "SUCCEEDED" : "FAILED",
+                        finalCode == null
+                                ? (progress.awaitingConfirmation ? "AWAITING_CONFIRM" : "SUCCEEDED")
+                                : "FAILED",
                         progress.rows.get(),
                         finalCode,
                         reason,
@@ -189,7 +229,11 @@ public final class IoTasks implements AutoCloseable {
                 var event = AuditEvent.builder(
                                 AuditRealm.TENANT,
                                 AuditCategory.OPERATION,
-                                "IMPORT".equals(type) ? "import.run" : "export.run")
+                                "IMPORT".equals(type)
+                                        ? (progress.awaitingConfirmation && code == null
+                                                ? "import.validate"
+                                                : "import.run")
+                                        : "export.run")
                         .tenant(owner.tenantId())
                         .actor(owner.identityId())
                         .resource("ioTask", id)
@@ -198,7 +242,8 @@ public final class IoTasks implements AutoCloseable {
                 if (code != null) event.failure(code);
                 audit.record(event.build());
             } finally {
-                pending.remove(id);
+                // 校验结束后确认可能已入队，只移除本轮心跳，保留同一任务的新执行。
+                pending.remove(id, new Pending(owner.tenantId(), progress));
                 slots.release();
             }
         }
@@ -234,7 +279,9 @@ public final class IoTasks implements AutoCloseable {
     /** 停止接收提交，等待正在执行的本地任务结束。 */
     @Override
     public void close() {
-        workers.shutdown();
+        synchronized (workers) {
+            workers.shutdown();
+        }
         try {
             workers.awaitTermination(30, TimeUnit.SECONDS);
         } catch (InterruptedException error) {
@@ -257,6 +304,11 @@ public final class IoTasks implements AutoCloseable {
     public static final class Progress {
         private final AtomicLong rows = new AtomicLong();
         private String errorCode;
+        private boolean awaitingConfirmation;
+
+        void awaitConfirmation() {
+            awaitingConfirmation = true;
+        }
         /** 处理完毕但校验失败时保留结果文件，并将任务标为失败。 */
         public void fail(String code) {
             errorCode = code;

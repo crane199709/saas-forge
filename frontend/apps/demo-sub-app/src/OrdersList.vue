@@ -29,7 +29,7 @@ const client = useTenantClient()
 const access = useAccessControl()
 const importOpen = ref(false)
 const ioTasks: IoTaskApi = {
-  list: async () => (await client.page<IoTask>('/demo/io/tasks?size=10')).items,
+  list: (page) => client.page<IoTask>(`/demo/io/tasks?page=${page}&size=10`),
   get: (id) => client.api<IoTask>(`/demo/io/tasks/${id}`),
   download: (id) => client.api<{ url: string }>(`/demo/io/tasks/${id}/download`),
 }
@@ -47,6 +47,7 @@ const prepareImport = (file: File) =>
     size: file.size,
   })
 const submitImport = (objectId: string) => post<IoTask>('/demo/orders/import', { objectId })
+const confirmImport = (taskId: string) => post<IoTask>(`/demo/orders/import/${taskId}/confirm`, {})
 async function downloadTemplate() {
   const data = await client.api<{ filename: string; base64: string }>(
     '/demo/orders/import/template',
@@ -212,6 +213,8 @@ onMounted(() => load())
       :download-template="downloadTemplate"
       :prepare-upload="prepareImport"
       :submit="submitImport"
+      :confirm="confirmImport"
+      :membership-id="client.session()?.membershipId ?? ''"
       @completed="load()"
     />
     <ListPage

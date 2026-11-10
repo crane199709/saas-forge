@@ -45,7 +45,7 @@ public final class IoMaintenance {
         this.tasks = tasks;
         this.transaction = transaction;
     }
-    /** 也收尾重启后遗留的等待任务；租户已停用时仍需标记失败。 */
+    /** 收尾中断执行与超过 24 小时的待确认导入；租户已停用时仍清理源文件。 */
     @GlobalTask(name = "forge-io-interrupted", fixedDelay = "30s")
     public void interrupt() {
         try (var tenants = redis.opsForSet()
@@ -68,6 +68,7 @@ public final class IoMaintenance {
         transaction.executeWithoutResult(status -> {
             var stale = mapper.staleTasks(cutoff);
             mapper.interrupt(cutoff);
+            mapper.expireConfirmations(OffsetDateTime.now().minusHours(24));
             for (var task : stale) {
                 if (task.sourceObjectId() != null) {
                     delete(task.sourceObjectId());

@@ -10,12 +10,15 @@ import io.saasforge.sdk.abac.data.DataPermission;
 import io.saasforge.sdk.core.CurrentActorProvider;
 import io.saasforge.sdk.core.CurrentTenant;
 import io.saasforge.sdk.core.MembershipStateKeys;
+import io.saasforge.sdk.core.ReferenceDataKeys;
 import io.saasforge.sdk.core.SubjectAttributes;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.io.ExcelColumn;
 import io.saasforge.sdk.io.ExcelIo;
+import io.saasforge.sdk.io.IoAutoConfiguration;
 import io.saasforge.sdk.io.IoMaintenance;
 import io.saasforge.sdk.io.IoStoragePurposes;
+import io.saasforge.sdk.io.IoTask;
 import io.saasforge.sdk.io.IoTasks;
 import io.saasforge.sdk.mq.EventHandler;
 import io.saasforge.sdk.provisioning.TenantPlanChanged;
@@ -41,9 +44,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.VerticalAlignment;
@@ -55,6 +60,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
@@ -73,6 +80,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.S3Object;
@@ -165,6 +173,314 @@ class ObjectStorageTest {
 
     @Autowired
     CurrentActorProvider actors;
+
+    @Test
+    void validImportWaitsForConfirmationWithoutWritingOrDeletingSource() throws Exception {
+        String source = uploadWorkbook(new String[][] {{"待确认第一笔", "12.50", "线上"}, {"待确认第二笔", "20", "展会"}});
+        String id = submitImport(source);
+        var task = awaitValidation(id);
+        assertThat(task.get("status")).isEqualTo("AWAITING_CONFIRM");
+        assertThat(task.get("rowCount")).isEqualTo(2);
+        assertThat(task.get("finishedAt")).isNull();
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .isEmpty();
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(storage.get(IoStoragePurposes.SOURCE, UUID.fromString(source))
+                            .filename())
+                    .isEqualTo("订单.xlsx");
+        }
+    }
+
+    @Test
+    void httpConfirmationWritesValidatedOrdersOnlyAfterSubmitterConfirms() throws Exception {
+        String id = submitImport(uploadWorkbook(new String[][] {{"HTTP 确认订单", "12.50", "线上"}}));
+        assertThat(awaitValidation(id).get("rowCount")).isEqualTo(1);
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .isEmpty();
+        var confirmed = exchange(tenant, HttpMethod.POST, "/orders/import/" + id + "/confirm", null);
+        assertThat(confirmed.get("httpStatus")).isEqualTo(200);
+        assertThat(((Map<?, ?>) confirmed.get("data")).get("id")).isEqualTo(id);
+        assertThat(awaitTask(id).get("status")).isEqualTo("SUCCEEDED");
+        var orders = (List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data");
+        assertThat(orders).hasSize(1);
+        assertThat(((Map<?, ?>) orders.get(0)).get("title")).isEqualTo("HTTP 确认订单");
+        assertThat(exchange(tenant, HttpMethod.POST, "/orders/import/" + id + "/confirm", null)
+                        .get("code"))
+                .isEqualTo("io.taskNotAwaitingConfirmation");
+    }
+
+    @Test
+    void httpConfirmationRevalidatesChangedDictionaryAndProvidesNewReport() throws Exception {
+        TestReferenceData.referral(tenant, "enabled");
+        String id = submitImport(uploadWorkbook(new String[][] {{"依赖新字典值", "12.50", "转介绍"}}));
+        assertThat(awaitValidation(id).get("status")).isEqualTo("AWAITING_CONFIRM");
+        TestReferenceData.referral(tenant, "disabled");
+        redisTemplate.opsForValue().increment(ReferenceDataKeys.version(tenant));
+        assertThat(exchange(tenant, HttpMethod.POST, "/orders/import/" + id + "/confirm", null)
+                        .get("httpStatus"))
+                .isEqualTo(200);
+        var failed = awaitTask(id);
+        assertThat(failed.get("errorCode")).isEqualTo("io.validationFailed");
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .isEmpty();
+        try (var report = new XSSFWorkbook(new ByteArrayInputStream(downloadTaskFile(failed)))) {
+            assertThat(report.getSheetAt(0).getRow(1).getCell(3).getStringCellValue())
+                    .contains("客户来源");
+        }
+    }
+
+    @Test
+    void httpConfirmationRequiresImportPermissionAndSubmitterWithinTenant() throws Exception {
+        String id = submitImport(uploadWorkbook(new String[][] {{"提交人专属", "1", "线上"}}));
+        assertThat(awaitValidation(id).get("status")).isEqualTo("AWAITING_CONFIRM");
+        String path = "/orders/import/" + id + "/confirm";
+        UUID otherMember = UUID.randomUUID();
+        TestGrants.publishAll(redisTemplate, tenant, otherMember);
+        var forbidden = exchangeAs(otherMember, HttpMethod.POST, path, null);
+        assertThat(forbidden.get("httpStatus")).isEqualTo(403);
+        assertThat(forbidden.get("code")).isEqualTo("io.confirmForbidden");
+        UUID otherTenant = UUID.randomUUID();
+        TestGrants.publishAll(redisTemplate, otherTenant, TestTokens.MEMBERSHIP_ID);
+        var hidden = exchange(otherTenant, HttpMethod.POST, path, null);
+        assertThat(hidden.get("httpStatus")).isEqualTo(404);
+        assertThat(hidden.get("code")).isEqualTo("io.notFound");
+        TestGrants.publish(redisTemplate, tenant, otherMember, List.of("order:read"));
+        assertThat(exchangeAs(otherMember, HttpMethod.POST, path, null).get("httpStatus"))
+                .isEqualTo(403);
+        assertThat(awaitValidation(id).get("status")).isEqualTo("AWAITING_CONFIRM");
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .isEmpty();
+    }
+
+    @Autowired
+    ConfigurableApplicationContext application;
+
+    private AnnotationConfigApplicationContext anotherIoInstance() {
+        var instance = new AnnotationConfigApplicationContext();
+        instance.setParent(application);
+        instance.setEnvironment(application.getEnvironment());
+        instance.register(IoAutoConfiguration.class);
+        instance.refresh();
+        return instance;
+    }
+
+    @Test
+    void importCanBeConfirmedOnlyOnceAfterSubmittingInstanceStops() throws Exception {
+        String source = uploadWorkbook(new String[][] {{"重启后确认", "12.50", "线上"}});
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            storage.completeUpload(UUID.fromString(source));
+        }
+        UUID id;
+        try (var submitting = anotherIoInstance()) {
+            var task = asMember(() -> submitting
+                    .getBean(ExcelIo.class)
+                    .importFile(OrderImportRow.class, UUID.fromString(source), row -> List.of()));
+            id = task.id();
+            assertThat(awaitValidation(id.toString()).get("status")).isEqualTo("AWAITING_CONFIRM");
+        }
+        try (var confirming = anotherIoInstance()) {
+            var start = new CountDownLatch(1);
+            var release = new CountDownLatch(1);
+            var other = confirming.getBean(ExcelIo.class);
+            Function<ExcelIo, Object> confirm = client -> {
+                try {
+                    start.await(2, TimeUnit.SECONDS);
+                    return asMember(() -> client.confirmImport(id, OrderImportRow.class, row -> List.of(), row -> {
+                        try {
+                            release.await(5, TimeUnit.SECONDS);
+                        } catch (InterruptedException error) {
+                            Thread.currentThread().interrupt();
+                            throw new IllegalStateException(error);
+                        }
+                        orderService.create(row.title(), row.amount(), row.customerSource());
+                    }));
+                } catch (ForgeException error) {
+                    return error.errorCode().code();
+                } catch (InterruptedException error) {
+                    throw new IllegalStateException(error);
+                }
+            };
+            var first = CompletableFuture.supplyAsync(() -> confirm.apply(excel));
+            var second = CompletableFuture.supplyAsync(() -> confirm.apply(other));
+            start.countDown();
+            try {
+                var outcomes = List.of(first.get(5, TimeUnit.SECONDS), second.get(5, TimeUnit.SECONDS));
+                assertThat(outcomes.stream().filter(result -> result instanceof IoTask))
+                        .hasSize(1);
+                assertThat(outcomes).contains("io.taskNotAwaitingConfirmation");
+            } finally {
+                release.countDown();
+            }
+            assertThat(awaitTask(id.toString()).get("status")).isEqualTo("SUCCEEDED");
+        }
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .hasSize(1);
+    }
+
+    @Test
+    void confirmationRevalidatesAllRowsAndPublishesANewReportWithoutWriting() throws Exception {
+        String source = uploadWorkbook(new String[][] {{"本应有效", "1", "线上"}, {"业务已变化", "2", "线上"}});
+        String id = submitImport(source);
+        assertThat(awaitValidation(id).get("status")).isEqualTo("AWAITING_CONFIRM");
+        asMember(() -> excel.confirmImport(
+                UUID.fromString(id),
+                OrderImportRow.class,
+                row -> row.title().equals("业务已变化") ? List.of("确认前业务数据已变化") : List.of(),
+                row -> orderService.create(row.title(), row.amount(), row.customerSource())));
+        var failed = awaitTask(id);
+        assertThat(failed.get("errorCode")).isEqualTo("io.validationFailed");
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .isEmpty();
+        try (var report = new XSSFWorkbook(new ByteArrayInputStream(downloadTaskFile(failed)))) {
+            assertThat(report.getSheetAt(0).getLastRowNum()).isEqualTo(2);
+            assertThat(report.getSheetAt(0).getRow(2).getCell(3).getStringCellValue())
+                    .contains("确认前业务数据已变化");
+        }
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThatThrownBy(() -> storage.get(UUID.fromString(source))).isInstanceOf(ForgeException.class);
+        }
+    }
+
+    @Test
+    void onlySubmitterInTheSameTenantCanConfirm() throws Exception {
+        String id = submitImport(uploadWorkbook(new String[][] {{"提交人专属", "1", "线上"}}));
+        assertThat(awaitValidation(id).get("status")).isEqualTo("AWAITING_CONFIRM");
+        UUID member = UUID.randomUUID();
+        TestGrants.publishAll(redisTemplate, tenant, member);
+        assertThatThrownBy(() -> asMember(
+                        member,
+                        1,
+                        () -> excel.confirmImport(
+                                UUID.fromString(id), OrderImportRow.class, row -> List.of(), row -> {})))
+                .isInstanceOfSatisfying(
+                        ForgeException.class,
+                        error -> assertThat(error.errorCode().code()).isEqualTo("io.confirmForbidden"));
+        UUID ownerTenant = tenant;
+        tenant = UUID.randomUUID();
+        TestGrants.publishAll(redisTemplate, tenant, TestTokens.MEMBERSHIP_ID);
+        try {
+            assertThatThrownBy(() -> asMember(() -> excel.confirmImport(
+                            UUID.fromString(id), OrderImportRow.class, row -> List.of(), row -> {})))
+                    .isInstanceOfSatisfying(
+                            ForgeException.class,
+                            error -> assertThat(error.errorCode().code()).isEqualTo("io.notFound"));
+        } finally {
+            tenant = ownerTenant;
+        }
+        assertThat(awaitValidation(id).get("status")).isEqualTo("AWAITING_CONFIRM");
+    }
+
+    @Test
+    void awaitingImportsDoNotOccupyQueueOrGetInterruptedAndBusyConfirmationCanBeRetried() throws Exception {
+        String id = submitImport(uploadWorkbook(new String[][] {{"队列空闲后确认", "1", "线上"}}));
+        var awaiting = awaitValidation(id);
+        assertThat(awaiting.get("status")).isEqualTo("AWAITING_CONFIRM");
+        var started = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        IoTask first;
+        IoTask second;
+        try {
+            first = asMember(() -> ioTasks.submit("EXPORT", null, "queue blocker", progress -> {
+                started.countDown();
+                release.await(5, TimeUnit.SECONDS);
+                return null;
+            }));
+            assertThat(started.await(2, TimeUnit.SECONDS)).isTrue();
+            second = asMember(() -> ioTasks.submit("EXPORT", null, "queued", progress -> null));
+            assertThatThrownBy(() -> asMember(() -> excel.confirmImport(
+                            UUID.fromString(id), OrderImportRow.class, row -> List.of(), row -> {})))
+                    .isInstanceOfSatisfying(
+                            ForgeException.class,
+                            error -> assertThat(error.errorCode().code()).isEqualTo("io.busy"));
+            Thread.sleep(1200);
+            maintenance.interrupt();
+            var stillAwaiting = awaitValidation(id);
+            assertThat(stillAwaiting.get("status")).isEqualTo("AWAITING_CONFIRM");
+            assertThat(stillAwaiting.get("heartbeatAt")).isEqualTo(awaiting.get("heartbeatAt"));
+        } finally {
+            release.countDown();
+        }
+        awaitTask(first.id().toString());
+        awaitTask(second.id().toString());
+        asMember(() -> excel.confirmImport(
+                UUID.fromString(id),
+                OrderImportRow.class,
+                row -> List.of(),
+                row -> orderService.create(row.title(), row.amount(), row.customerSource())));
+        assertThat(awaitTask(id).get("status")).isEqualTo("SUCCEEDED");
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .hasSize(1);
+    }
+
+    @Test
+    @Sql("/fixtures/io-confirmation-expiry.sql")
+    void unconfirmedImportsExpireAfter24HoursAndRecoveryDeletesTheirSource() throws Exception {
+        tenant = UUID.fromString("019c0110-0000-7000-8000-000000000099");
+        TestGrants.publishAll(redisTemplate, tenant, TestTokens.MEMBERSHIP_ID);
+        UUID expired = UUID.fromString("019c0110-0000-7000-8000-000000000091");
+        UUID recent = UUID.fromString("019c0110-0000-7000-8000-000000000092");
+        UUID expiredSource = UUID.fromString("019c0110-0000-7000-8000-000000000081");
+        UUID recentSource = UUID.fromString("019c0110-0000-7000-8000-000000000082");
+        try (var client = s3Client()) {
+            for (UUID source : List.of(expiredSource, recentSource)) {
+                client.putObject(
+                        request -> request.bucket(BUCKET).key(tenant + "/demo-service/" + source),
+                        RequestBody.fromBytes(new byte[] {1}));
+            }
+        }
+        assertThatThrownBy(() ->
+                        asMember(() -> excel.confirmImport(expired, OrderImportRow.class, row -> List.of(), row -> {
+                            throw new AssertionError("Expired source must not be imported");
+                        })))
+                .isInstanceOfSatisfying(
+                        ForgeException.class,
+                        error -> assertThat(error.errorCode().code()).isEqualTo("io.taskNotAwaitingConfirmation"));
+        var registered =
+                asMember(() -> ioTasks.submit("EXPORT", null, "register tenant for recovery", progress -> null));
+        awaitTask(registered.id().toString());
+        maintenance.interrupt();
+        assertThat(asMember(() -> ioTasks.get(expired)).errorCode()).isEqualTo("io.confirmationExpired");
+        assertThat(asMember(() -> ioTasks.get(expired)).status()).isEqualTo("FAILED");
+        assertThat(asMember(() -> ioTasks.get(recent)).status()).isEqualTo("AWAITING_CONFIRM");
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThatThrownBy(() -> storage.get(expiredSource)).isInstanceOf(ForgeException.class);
+            assertThat(storage.get(IoStoragePurposes.SOURCE, recentSource).filename())
+                    .isEqualTo("recent.xlsx");
+            assertThat(storage.usage().usedBytes()).isEqualTo(1);
+        }
+        assertThat(objectKeys())
+                .doesNotContain(tenant + "/demo-service/" + expiredSource)
+                .contains(tenant + "/demo-service/" + recentSource);
+    }
+
+    @Test
+    void stoppedInstanceDoesNotClaimConfirmationAndAnotherInstanceCanRetry() throws Exception {
+        String id = submitImport(uploadWorkbook(new String[][] {{"换实例重试", "1", "线上"}}));
+        var awaiting = awaitValidation(id);
+        try (var stopped = anotherIoInstance()) {
+            stopped.getBean(IoTasks.class).close();
+            var client = stopped.getBean(ExcelIo.class);
+            assertThatThrownBy(() -> asMember(() -> client.confirmImport(
+                            UUID.fromString(id), OrderImportRow.class, row -> List.of(), row -> {})))
+                    .isInstanceOfSatisfying(
+                            ForgeException.class,
+                            error -> assertThat(error.errorCode().code()).isEqualTo("io.busy"));
+        }
+        var unchanged = awaitValidation(id);
+        assertThat(unchanged.get("status")).isEqualTo("AWAITING_CONFIRM");
+        assertThat(unchanged.get("heartbeatAt")).isEqualTo(awaiting.get("heartbeatAt"));
+        assertThat(confirmImport(id).get("status")).isEqualTo("SUCCEEDED");
+    }
+
+    private Map<?, ?> awaitValidation(String id) throws Exception {
+        for (int attempt = 0; attempt < 200; attempt++) {
+            var task = (Map<?, ?>)
+                    exchange(tenant, HttpMethod.GET, "/io/tasks/" + id, null).get("data");
+            if (!List.of("WAITING", "RUNNING").contains(task.get("status"))) return task;
+            Thread.sleep(50);
+        }
+        throw new AssertionError("Validation did not complete: " + id);
+    }
 
     @Test
     void importRejectsAttachmentObjectsWithoutCreatingTaskOrDeletingTheAttachment() throws Exception {
@@ -464,10 +780,7 @@ class ObjectStorageTest {
         try (var ignored = CurrentTenant.bind(tenant)) {
             storage.completeUpload(UUID.fromString(source));
         }
-        var task = asMember(
-                () -> excel.importFile(TypedImportRow.class, UUID.fromString(source), row -> List.of(), row -> {
-                    throw new AssertionError("Invalid rows must not be written");
-                }));
+        var task = asMember(() -> excel.importFile(TypedImportRow.class, UUID.fromString(source), row -> List.of()));
         assertThat(awaitTask(task.id().toString()).get("errorCode")).isEqualTo("io.validationFailed");
         assertThat(exchange(tenant, HttpMethod.GET, "/io/tasks/" + task.id() + "/download", null)
                         .get("code"))
@@ -711,11 +1024,12 @@ class ObjectStorageTest {
         try (var ignored = CurrentTenant.bind(tenant)) {
             storage.completeUpload(UUID.fromString(rollback));
         }
-        var task = asMember(() ->
-                excel.importFile(OrderImportRow.class, UUID.fromString(rollback), row -> List.of(), row -> {
-                    if (row.title().equals("写入失败")) throw new IllegalStateException("test rollback");
-                    orderService.create(row.title(), row.amount(), row.customerSource());
-                }));
+        var task = asMember(() -> excel.importFile(OrderImportRow.class, UUID.fromString(rollback), row -> List.of()));
+        assertThat(awaitValidation(task.id().toString()).get("status")).isEqualTo("AWAITING_CONFIRM");
+        asMember(() -> excel.confirmImport(task.id(), OrderImportRow.class, row -> List.of(), row -> {
+            if (row.title().equals("写入失败")) throw new IllegalStateException("test rollback");
+            orderService.create(row.title(), row.amount(), row.customerSource());
+        }));
         assertThat(awaitTask(task.id().toString()).get("status")).isEqualTo("FAILED");
         assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
                 .isEmpty();
@@ -729,13 +1043,17 @@ class ObjectStorageTest {
     }
 
     private <T> T asMemberVersion(long version, Supplier<T> action) {
+        return asMember(TestTokens.MEMBERSHIP_ID, version, action);
+    }
+
+    private <T> T asMember(UUID membership, long version, Supplier<T> action) {
         var previous = SecurityContextHolder.getContext();
         var context = SecurityContextHolder.createEmptyContext();
         var jwt = Jwt.withTokenValue("test")
                 .header("alg", "RS256")
                 .subject(TestTokens.IDENTITY_ID.toString())
                 .claim("tenant_id", tenant.toString())
-                .claim("membership_id", TestTokens.MEMBERSHIP_ID.toString())
+                .claim("membership_id", membership.toString())
                 .claim("ver", version)
                 .build();
         context.setAuthentication(new JwtAuthenticationToken(jwt, List.of()));
@@ -750,7 +1068,7 @@ class ObjectStorageTest {
     @Test
     void importMatchesNamesAndWritesAllRowsWhileInvalidNamesWriteNothing() throws Exception {
         String object = uploadWorkbook(new String[][] {{"第一笔", "12.50", "线上"}, {"第二笔", "20", "展会"}});
-        var task = awaitTask(submitImport(object));
+        var task = confirmImport(submitImport(object));
         assertThat(task.get("status")).isEqualTo("SUCCEEDED");
         var rows = (List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data");
         assertThat(rows).hasSize(2);
@@ -861,7 +1179,7 @@ class ObjectStorageTest {
             corrected = output.toByteArray();
         }
 
-        var completed = awaitTask(submitImport(uploadWorkbook(corrected)));
+        var completed = confirmImport(submitImport(uploadWorkbook(corrected)));
         assertThat(completed.get("status")).isEqualTo("SUCCEEDED");
         assertThat(completed.get("rowCount")).isEqualTo(2);
         var rows = (List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data");
@@ -932,6 +1250,14 @@ class ObjectStorageTest {
         var response = exchange(tenant, HttpMethod.POST, "/orders/import", Map.of("objectId", object));
         assertThat(response.get("httpStatus")).isEqualTo(201);
         return (String) ((Map<?, ?>) response.get("data")).get("id");
+    }
+
+    private Map<?, ?> confirmImport(String id) throws Exception {
+        assertThat(awaitValidation(id).get("status")).isEqualTo("AWAITING_CONFIRM");
+        assertThat(exchange(tenant, HttpMethod.POST, "/orders/import/" + id + "/confirm", null)
+                        .get("httpStatus"))
+                .isEqualTo(200);
+        return awaitTask(id);
     }
 
     private Map<?, ?> awaitTask(String id) throws Exception {

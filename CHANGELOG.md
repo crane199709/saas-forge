@@ -6,6 +6,8 @@
 
 ### 新增
 
+- SDK 导入校验成功后进入 `AWAITING_CONFIRM`，显示将写入的行数；提交人通过 `ExcelIo.confirmImport` 确认后，任意实例从持久源文件完整重新校验并事务写入，失败提供新错误报告且零写入。待确认不占队列、不判中断，24 小时后失败并清理源文件。
+
 - 对象存储支持 `StoragePurpose`：服务声明扩展名、大小与下载时长，SDK 统一校验并记录用途；IO 源文件、结果与订单附件分别限定用途，上传拒绝原因沿用前端 `userTip` 展示。
 
 - SDK 新增资源恢复的共享错误码和中英文提示，`ListPage` 可选已删除视图及恢复事件；Business Service 接入指南补充恢复规则与验证要求。
@@ -32,6 +34,10 @@
 - 提供四个后端服务与两个 Shell 的镜像构建入口，以及从临时发布到仓库外生成、启动和权限校验的模板冒烟质量门。
 
 ### 不兼容变更
+
+- 前端 `IoTaskApi.list(page)` 现在接收从 1 开始的页码并返回 SDK `Page<IoTask>`；调用方须转发页码并保留分页元数据，不能只返回 `items`。导入与导出记录可翻页，避免较早待确认任务被最新十条记录遮蔽。
+
+- `ExcelIo.importFile` 改为三参 `(model, source, validate)`，不再自动写入；Business Service 必须提供有权限控制的确认接口，重新传入模型、校验器与 writer 调用 `confirmImport(taskId, model, validate, writer)`。旧四参 `importFile` 签名删除。既有 IO 表无需新增迁移。
 
 - `ObjectStorage.prepareUpload`、`write`、`prepareDownload` 删除无用途重载，须以 `StoragePurpose` 为首参；导入与业务绑定前使用 `get(purpose, id)` 校验用途。`forge.storage.download-url-ttl` 删除，下载时长改由用途声明。已有服务须新增 Flyway 迁移复制 SDK `upgrade-purpose.sql`（demo V14）：旧对象回填 `unspecified`、新登记显式提供用途；旧对象须按可信业务关联归类后才可按明确用途下载。
 
