@@ -164,7 +164,7 @@ export const routes: RouteRecordRaw[] = [
   'src/HomePage.vue': `<script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElInput, ElTableColumn } from 'element-plus'
+import { ElOption, ElSelect, ElTableColumn } from 'element-plus'
 import { ApiError, useTenantClient, type Page } from '@crane199709/sdk'
 import {
   ErrorAlert,
@@ -179,13 +179,17 @@ interface Order {
   id: string
   title: string
   amount: number
-  remark: string | null
   createdAt: string
 }
 
 const client = useTenantClient()
 const orders = ref<Page<Order> | null>(null)
-const keyword = ref('')
+// 选项取自 archetype 订单接口 @SortableFields 声明的可排序字段；新增筛选前先让后端接口支持对应参数。
+const sorts = [
+  { value: 'createdAt,desc', label: 'newest' },
+  { value: 'amount,desc', label: 'amountDesc' },
+] as const
+const sort = ref<string>(sorts[0].value)
 const busy = ref(false)
 const error = ref<ErrorTip | null>(null)
 const { t } = useI18n({
@@ -193,10 +197,11 @@ const { t } = useI18n({
   messages: {
     'zh-CN': {
       title: '订单',
-      search: '搜索订单标题',
+      sort: '排序方式',
+      newest: '最新创建',
+      amountDesc: '金额从高到低',
       name: '标题',
       amount: '金额',
-      remark: '备注',
       createdAt: '创建时间',
       empty: '暂无订单',
       failed: '订单加载失败，请稍后重试',
@@ -209,8 +214,7 @@ async function load(page = orders.value?.page.number ?? 1) {
   busy.value = true
   error.value = null
   try {
-    const query = new URLSearchParams({ page: String(page), size: '20', sort: 'createdAt,desc' })
-    if (keyword.value.trim()) query.set('keyword', keyword.value.trim())
+    const query = new URLSearchParams({ page: String(page), size: '20', sort: sort.value })
     // 数据范围由服务端裁剪；通过 Shell 的共享客户端，让 401 走统一刷新与登出流程。
     orders.value = await client.page<Order>(\`/${code}/orders?\${query}\`)
   } catch (cause) {
@@ -231,14 +235,9 @@ onMounted(() => load())
   <section :aria-label="t('title')">
     <PageHeader :title="t('title')" />
     <PageToolbar>
-      <el-input
-        v-model="keyword"
-        class="search"
-        clearable
-        :placeholder="t('search')"
-        :aria-label="t('search')"
-        @change="load(1)"
-      />
+      <el-select v-model="sort" class="sort" :aria-label="t('sort')" @change="load(1)">
+        <el-option v-for="item in sorts" :key="item.value" :value="item.value" :label="t(item.label)" />
+      </el-select>
       <!-- 主操作（如新增）放在 #actions 插槽，靠右显示；每个区域只有一个实心主按钮。 -->
     </PageToolbar>
     <ErrorAlert v-if="error" :tip="error" />
@@ -251,9 +250,6 @@ onMounted(() => load())
       <el-table-column :label="t('amount')" width="140" align="right">
         <template #default="{ row }">{{ money.format(row.amount) }}</template>
       </el-table-column>
-      <el-table-column :label="t('remark')" min-width="160" show-overflow-tooltip>
-        <template #default="{ row }">{{ row.remark || '—' }}</template>
-      </el-table-column>
       <el-table-column :label="t('createdAt')" width="180">
         <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
       </el-table-column>
@@ -262,8 +258,8 @@ onMounted(() => load())
 </template>
 
 <style scoped>
-.search {
-  width: 240px;
+.sort {
+  width: 160px;
 }
 </style>
 `,
@@ -300,35 +296,31 @@ const viewports = [
   ['laptop', 1024, 768],
 ] as const
 
-// 接近真实长度的数据：含最长标题、空备注与大额金额，检查长文本与空值不撑破布局。
+// 接近真实长度的数据：含最长标题与大额金额，检查长文本不撑破布局；字段与 archetype 的 OrderResponse 一致。
 const orders = [
   {
     id: 'o1',
     title: '华东大区 2026 年第四季度办公设备集中采购订单（含笔记本电脑、显示器与会议室终端）',
     amount: 1286400.5,
-    remark: '分三批交付，首批 11 月 20 日前到达上海仓，其余两批随项目进度另行通知',
     createdAt: '2026-11-08T09:30:00Z',
   },
-  { id: 'o2', title: '办公用品补货', amount: 860, remark: null, createdAt: '2026-11-07T02:15:00Z' },
+  { id: 'o2', title: '办公用品补货', amount: 860, createdAt: '2026-11-07T02:15:00Z' },
   {
     id: 'o3',
     title: '生产环境服务器扩容',
     amount: 45200,
-    remark: '需在周末维护窗口内完成',
     createdAt: '2026-11-06T13:45:00Z',
   },
   {
     id: 'o4',
     title: '年度软件许可续费',
     amount: 98000,
-    remark: null,
     createdAt: '2026-11-05T08:00:00Z',
   },
   {
     id: 'o5',
     title: '华南区门店装修物料',
     amount: 23650.75,
-    remark: '供应商已确认报价',
     createdAt: '2026-11-03T06:20:00Z',
   },
 ]

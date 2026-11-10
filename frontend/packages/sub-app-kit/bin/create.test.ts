@@ -39,6 +39,35 @@ async function assertStandards(app: string, version: string) {
   const home = await readFile(join(app, 'src/HomePage.vue'), 'utf8')
   for (const part of ['PageHeader', 'PageToolbar', 'ListPage', 'formatDateTime'])
     assert.ok(home.includes(part), part)
+  await assertMatchesArchetypeOrders(home, spec)
+}
+
+// 首页与 forge-service-archetype 的订单接口配套：只用接口返回的字段与接受的参数，生成后前后端即可直接联调。
+async function assertMatchesArchetypeOrders(home: string, spec: string) {
+  const controller = await readFile(
+    new URL(
+      '../../../../backend/forge-service-archetype/src/main/resources/archetype-resources/src/main/java/order/controller/OrderController.java',
+      import.meta.url,
+    ),
+    'utf8',
+  )
+  const responseFields = [
+    ...controller.match(/record OrderResponse\(([^)]*)\)/)![1].matchAll(/\w+ (\w+)(?:,|$)/g),
+  ].map((field) => field[1])
+  const sortable = [...controller.match(/@SortableFields\(\{([^}]*)\}\)/)![1].matchAll(/"(\w+)"/g)].map(
+    (field) => field[1],
+  )
+  const used = [...home.match(/interface Order \{([^}]*)\}/)![1].matchAll(/(\w+):/g)].map(
+    (field) => field[1],
+  )
+  for (const field of used) assert.ok(responseFields.includes(field), `OrderResponse 没有 ${field}`)
+  for (const param of home.matchAll(/query\.set\('(\w+)'/g))
+    assert.ok(['page', 'size', 'sort'].includes(param[1]), `订单列表不接受 ${param[1]}`)
+  for (const sort of home.matchAll(/'(\w+),(?:asc|desc)'/g))
+    assert.ok(sortable.includes(sort[1]), `订单列表不能按 ${sort[1]} 排序`)
+  const mocked = spec.match(/const orders = \[([\s\S]*?)\n\]/)![1]
+  for (const field of mocked.matchAll(/(?:^|[{,]) *(\w+):/gm))
+    assert.ok(responseFields.includes(field[1]), `视觉用例 mock 了接口没有的 ${field[1]}`)
 }
 
 // 只经生成命令观察工程产物；临时发布布局中没有 Shell 或 monorepo。
