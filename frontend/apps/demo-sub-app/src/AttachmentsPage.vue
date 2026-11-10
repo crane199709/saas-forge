@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { onMounted, ref, watch } from 'vue'
-import { ElButton, ElOption, ElSelect } from 'element-plus'
+import { ElButton, ElOption, ElSelect, ElTable, ElTableColumn } from 'element-plus'
+import { PageToolbar, formatDateTime } from '@crane199709/ui'
 import { ApiError, useTenantClient } from '@crane199709/sdk'
 
 interface Order {
@@ -39,6 +40,10 @@ const { t } = useI18n({
       upload: '上传',
       download: '下载',
       remove: '删除',
+      filename: '文件名',
+      size: '大小',
+      createdAt: '上传时间',
+      actions: '操作',
       empty: '暂无附件',
       uploadFailed: '文件上传失败，请重试',
       failed: '操作失败，请稍后重试',
@@ -149,48 +154,71 @@ function formatSize(size: number) {
   <h3>{{ t('title') }}</h3>
   <p v-if="orders.length === 0">{{ t('noOrders') }}</p>
   <template v-else>
-    <el-select v-model="orderId" :aria-label="t('order')" :placeholder="t('order')">
-      <el-option v-for="order in orders" :key="order.id" :label="order.title" :value="order.id" />
-    </el-select>
-    <p class="upload">
-      <input type="file" data-testid="attachment-file" @change="pick" />
-      <el-button
-        v-perm="'order:update'"
-        type="primary"
-        :disabled="!file || busy"
-        data-testid="attachment-upload"
-        @click="upload"
-        >{{ t('upload') }}</el-button
-      >
-    </p>
-    <p v-if="error" class="error" role="alert">{{ error }}</p>
-    <p v-if="attachments.length === 0">{{ t('empty') }}</p>
-    <ul v-else data-testid="attachment-list">
-      <li v-for="attachment in attachments" :key="attachment.id">
-        {{ attachment.filename }}（{{ formatSize(attachment.size) }}）
-        <el-button link type="primary" :disabled="busy" @click="download(attachment)">{{
-          t('download')
-        }}</el-button>
+    <PageToolbar>
+      <el-select v-model="orderId" class="order" :aria-label="t('order')" :placeholder="t('order')">
+        <el-option v-for="order in orders" :key="order.id" :label="order.title" :value="order.id" />
+      </el-select>
+      <template #actions>
+        <input type="file" data-testid="attachment-file" @change="pick" />
         <el-button
           v-perm="'order:update'"
-          link
-          type="danger"
-          :disabled="busy"
-          @click="remove(attachment)"
-          >{{ t('remove') }}</el-button
+          type="primary"
+          :disabled="!file || busy"
+          data-testid="attachment-upload"
+          @click="upload"
+          >{{ t('upload') }}</el-button
         >
-      </li>
-    </ul>
+      </template>
+    </PageToolbar>
+    <p v-if="error" class="error" role="alert">{{ error }}</p>
+    <el-table
+      :data="attachments"
+      row-key="id"
+      :empty-text="t('empty')"
+      data-testid="attachment-list"
+    >
+      <el-table-column
+        prop="filename"
+        :label="t('filename')"
+        min-width="240"
+        show-overflow-tooltip
+      />
+      <el-table-column :label="t('size')" width="120" align="right">
+        <template #default="{ row }">{{ formatSize(row.size) }}</template>
+      </el-table-column>
+      <el-table-column :label="t('createdAt')" min-width="170">
+        <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+      </el-table-column>
+      <el-table-column :label="t('actions')" width="112" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="primary" :disabled="busy" @click="download(row as Attachment)">{{
+            t('download')
+          }}</el-button>
+          <el-button
+            v-perm="'order:update'"
+            link
+            type="danger"
+            :disabled="busy"
+            @click="remove(row as Attachment)"
+            >{{ t('remove') }}</el-button
+          >
+        </template>
+      </el-table-column>
+    </el-table>
   </template>
 </template>
 
 <style scoped>
-.upload {
-  display: flex;
-  gap: var(--forge-space-3);
-  align-items: center;
+h3 {
+  margin: 0 0 var(--forge-space-3);
+  font-size: var(--forge-font-size-md);
+  font-weight: 600;
+}
+.order {
+  width: 240px;
 }
 .error {
+  margin: 0 0 var(--forge-space-3);
   color: var(--el-color-danger);
 }
 </style>

@@ -6,7 +6,11 @@ export default defineSubAppConfig(
     appCode: 'demo',
     port: 5175,
     apiPrefixes: ['/demo'],
-    shellOrigins: process.env.FORGE_E2E ? ['http://127.0.0.1:15174'] : undefined,
+    shellOrigins: process.env.FORGE_E2E
+      ? ['http://127.0.0.1:15174']
+      : process.env.FORGE_VISUAL
+        ? ['http://127.0.0.1:5184']
+        : undefined,
   },
   ({ mode }) => ({ define: { __DEMO_VERSION__: JSON.stringify(mode === 'v2' ? 'v2' : 'v1') } }),
 )

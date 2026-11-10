@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElButton, ElDialog, ElTableColumn } from 'element-plus'
+import { ElButton, ElDialog, ElTableColumn, ElTag } from 'element-plus'
 import { ApiError, useAccessControl, useTenantClient, type Page } from '@crane199709/sdk'
 import {
   ErrorAlert,
@@ -9,6 +9,7 @@ import {
   ImportDialog,
   ListPage,
   formatDateTime,
+  overlaySize,
   type IoTaskApi,
   type IoTask,
   type IoUploadTicket,
@@ -85,6 +86,7 @@ const { t } = useI18n({
       unpaid: '未支付',
       closed: '已关闭',
       closeOrder: '关闭订单',
+      actions: '操作',
       closeFailed: '关闭订单失败，请稍后重试',
       failed: '订单加载失败，请稍后重试',
       deletedAt: '删除时间',
@@ -179,8 +181,8 @@ onMounted(() => load())
 <template>
   <section :aria-label="t('title')">
     <h3>{{ t('title') }}</h3>
-    <ErrorAlert v-if="error" :tip="error" />
-    <p v-if="restored" role="status">{{ t('restored') }}</p>
+    <ErrorAlert v-if="error" class="notice" :tip="error" />
+    <p v-if="restored" class="notice" role="status">{{ t('restored') }}</p>
     <ImportDialog
       v-if="!deleted && access.has('order:import')"
       v-model="importOpen"
@@ -212,16 +214,18 @@ onMounted(() => load())
           :submit="submitExport"
         />
       </template>
-      <el-table-column :label="t('name')">
+      <el-table-column :label="t('name')" min-width="240" show-overflow-tooltip>
         <template #default="{ row }">
           <span data-testid="order-title">{{ row.title }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="amount" :label="t('amount')" />
-      <el-table-column :label="t('status')">
-        <template #default="{ row }">{{
-          row.status === 'closed' ? t('closed') : t('unpaid')
-        }}</template>
+      <el-table-column prop="amount" :label="t('amount')" width="120" align="right" />
+      <el-table-column :label="t('status')" width="96">
+        <template #default="{ row }">
+          <el-tag size="small" :type="row.status === 'closed' ? 'info' : 'warning'">
+            {{ row.status === 'closed' ? t('closed') : t('unpaid') }}
+          </el-tag>
+        </template>
       </el-table-column>
       <el-table-column v-if="deleted" :label="t('deletedAt')" min-width="180">
         <template #default="{ row }">{{ formatDateTime(row.updatedAt) }}</template>
@@ -229,10 +233,17 @@ onMounted(() => load())
       <el-table-column v-if="deleted" :label="t('deletedBy')" min-width="160">
         <template #default="{ row }">{{ row.updatedBy ?? t('system') }}</template>
       </el-table-column>
-      <el-table-column v-if="!deleted && access.has('order:update')" :label="t('closeOrder')">
+      <el-table-column
+        v-if="!deleted && access.has('order:update')"
+        :label="t('actions')"
+        width="104"
+        fixed="right"
+      >
         <template #default="{ row }">
           <el-button
             v-if="row.status === 'unpaid'"
+            link
+            type="danger"
             :disabled="closing !== null || busy"
             :loading="closing === row.id"
             :data-testid="`order-close-${row.id}`"
@@ -245,7 +256,7 @@ onMounted(() => load())
     <ElDialog
       :model-value="restoring !== null"
       :title="t('confirmRestore')"
-      width="min(480px, calc(100vw - 32px))"
+      :width="overlaySize.dialogSm"
       :close-on-click-modal="!restoreBusy"
       :close-on-press-escape="!restoreBusy"
       :show-close="!restoreBusy"
@@ -261,3 +272,14 @@ onMounted(() => load())
     </ElDialog>
   </section>
 </template>
+
+<style scoped>
+h3 {
+  margin: 0 0 var(--forge-space-3);
+  font-size: var(--forge-font-size-md);
+  font-weight: 600;
+}
+.notice {
+  margin: 0 0 var(--forge-space-3);
+}
+</style>

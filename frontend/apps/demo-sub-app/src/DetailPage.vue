@@ -13,3 +13,15 @@ const { t } = useI18n({
   <h3>{{ t('title', { id: route.params.id }) }}</h3>
   <router-link :to="{ name: 'demo:overview' }">{{ t('overview') }}</router-link>
 </template>
+
+<style scoped>
+h3 {
+  margin: 0 0 var(--forge-space-3);
+  font-size: var(--forge-font-size-md);
+  font-weight: 600;
+}
+a {
+  color: var(--el-color-primary);
+  text-decoration: none;
+}
+</style>
