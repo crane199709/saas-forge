@@ -20,6 +20,8 @@ mvn verify
 
 工程继承发布的 `forge-dependencies`，包含十一个 SDK starter、Boot 插件、共享架构规则，以及真实 PostgreSQL/Redis 容器测试。测试使用自身 classpath 的数据库初始化脚本与测试签名密钥，不要求克隆平台仓库，也不连接共享数据库。`verify` 包含 HTTP 租户隔离、功能权限、Data Policy 及 ArchUnit；MQ/Nacos/Manifest 远程连接在测试配置关闭，因此该验证不替代平台联调。
 
+生成的工程带 `AGENTS.md`（规则摘要与构建、测试命令）和 `docs/standards/business-service.md`（业务服务编码规范，头部注明平台版本），供开发者与 Agent 改代码前阅读；规范副本不在业务工程修改，平台升级时按 CHANGELOG 重新复制。`SchemaCommentTest` 还检查 POM 中每个 SDK starter 自带 `schema.sql` 的表都已迁移，新增 starter 时漏复制迁移会失败。
+
 示例复用 demo-service 的订单 CRUD、分类 Provisioning、Outbox 通知和统一信封；不默认引入 storage。订单接口在服务内为 `/orders`，网关 StripPrefix 后外部为 `/orders/orders`。上线前把示例领域、全局权限码 `order:*`、Data Resource `order`、菜单、角色模板替换为本服务领域，避免与已有服务声明冲突。
 
 维护模板时，在平台仓库执行 `cd backend && ./mvnw install -Parchetype-it`；该 profile 启用 archetype 自带的生成集成测试。普通 reactor `verify` 不运行这一独立 Maven 消费接缝，避免冷缓存下引用尚未安装的同次 SDK；已发布/安装 SDK 后也可单独 `./mvnw -pl forge-service-archetype clean verify -Parchetype-it`。CI 使用包含模板测试的 install 命令。
