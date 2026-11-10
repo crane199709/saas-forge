@@ -4,7 +4,7 @@
 
 **Blocked by:** —
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 新增 `docs/standards/business-service.md`：业务服务必须遵守的规则（SQL 与持久层、SQL 写法与表注释、建表与标准列、服务包结构、配置读取、Java 模型、接口格式、注释、自动架构检查），不含 SDK 内部、iam/platform/gateway 专属规则
 - [x] 新增 `docs/standards/sub-app.md`：页面流程、原型、组件选择、交互规则、说明文字、样式、走查清单，命令与路径改为生成工程中的写法（`lint:style`、`test:visual`），不引用 `/roles`、`packages/ui` 内部实现

@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_call:
+    inputs:
+      force-full:
+        description: 可复用调用默认执行完整验证。
+        type: boolean
+        default: true
   workflow_dispatch:
 jobs:
   template-smoke:
@@ -11,26 +16,39 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: changes
+        uses: ./.github/actions/ci-scope
+        with:
+          scope: template-smoke
+          force-full: ${{ inputs.force-full || false }}
       - uses: actions/setup-java@v4
+        if: steps.changes.outputs.run == 'true'
         with:
           distribution: temurin
           java-version: '17'
           cache: maven
       - uses: pnpm/action-setup@v4
+        if: steps.changes.outputs.run == 'true'
         with:
           version: 12.4.2
       - uses: actions/setup-node@v4
+        if: steps.changes.outputs.run == 'true'
         with:
           node-version: '24'
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+        if: steps.changes.outputs.run == 'true'
         working-directory: frontend
       - run: pnpm exec playwright install --with-deps chromium
+        if: steps.changes.outputs.run == 'true'
         working-directory: frontend
       - run: deploy/template-smoke/run.sh
+        if: steps.changes.outputs.run == 'true'
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.changes.outputs.run == 'true'
         with:
           name: template-smoke
           path: |

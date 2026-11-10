@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_call:
+    inputs:
+      force-full:
+        description: 可复用调用默认执行完整验证。
+        type: boolean
+        default: true
   workflow_dispatch:
 jobs:
   verify:
@@ -11,14 +16,24 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: changes
+        uses: ./.github/actions/ci-scope
+        with:
+          scope: backend
+          force-full: ${{ inputs.force-full || false }}
       - uses: actions/setup-java@v4
+        if: steps.changes.outputs.run == 'true'
         with:
           distribution: temurin
           java-version: '17'
           cache: maven
       - run: docker info
+        if: steps.changes.outputs.run == 'true'
       # install 包含 verify，并让生成工程的独立 Maven 进程能解析本次 SDK 制品。
       - run: ./mvnw --batch-mode install -Parchetype-it
+        if: steps.changes.outputs.run == 'true'
         working-directory: backend
       - uses: actions/upload-artifact@v4
         if: failure()
