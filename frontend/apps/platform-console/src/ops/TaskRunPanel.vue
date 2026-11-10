@@ -174,7 +174,6 @@ onMounted(async () => {
 <template>
   <section :aria-label="t('taskRun.title')" class="task-runs">
     <PageHeader :title="t('taskRun.title')" />
-    <el-alert type="info" :title="t('taskRun.retention')" :closable="false" class="notice" />
     <ErrorAlert v-if="error" class="notice" :tip="error" />
     <el-alert
       v-if="done && !historyOpen && !detailOpen"
@@ -296,6 +295,7 @@ onMounted(async () => {
           >
         </el-table-column>
       </ListPage>
+      <p class="retention" data-testid="task-run-retention">{{ t('taskRun.retention') }}</p>
       <template #footer
         ><el-button @click="historyOpen = false">{{ t('taskRun.close') }}</el-button></template
       >
@@ -427,6 +427,11 @@ onMounted(async () => {
 }
 .notice {
   margin-bottom: var(--forge-space-3);
+}
+.retention {
+  margin: var(--forge-space-3) 0 0;
+  color: var(--el-text-color-secondary);
+  text-align: center;
 }
 .detail {
   overflow-wrap: anywhere;

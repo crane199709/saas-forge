@@ -142,7 +142,6 @@ test('按服务查看规则、最近任务运行与问题运行，读取失败�
   await expect(page).toHaveURL('http://127.0.0.1:5173/task-runs')
   await expect(page).toHaveTitle('SaaS Forge 平台控制台')
   await expect(page.getByRole('heading', { name: '任务运行', exact: true })).toBeVisible()
-  await expect(page.getByText('这里只保留最近的运行记录，不用于长期留存或统计。')).toBeVisible()
   const task = page.getByRole('row').filter({ hasText: '租户 清理' })
   await expect(task).toContainText('0 0 3 * * *')
   await expect(task).toContainText('Asia/Shanghai')
@@ -152,6 +151,9 @@ test('按服务查看规则、最近任务运行与问题运行，读取失败�
   await page.screenshot({ animations: 'disabled', path: join(tmpdir(), 'task-run-ui-desktop.png') })
   await task.getByRole('button', { name: '运行历史' }).click()
   const history = page.getByRole('dialog', { name: '运行历史：租户 清理' })
+  await expect(history.getByTestId('task-run-retention')).toHaveText(
+    '仅保留最近 100 次运行，最长 90 天',
+  )
   await expect(history.getByRole('row').filter({ hasText: 'succeeded-run' })).toContainText('成功')
   await choose(page, '运行视图', '最近非成功运行')
   await expect(history.getByText('succeeded-run')).toHaveCount(0)

@@ -285,6 +285,9 @@ function respond(path: string, route: Route) {
     '/platform/ops/services': ok(services),
     '/platform/ops/services/demo-service/dead-events': onePage(deadEvents),
     '/platform/ops/services/demo-service/tasks': ok(tasks),
+    [`/platform/ops/services/demo-service/tasks/${encodeURIComponent('租户清理')}/runs`]: ok([
+      taskRun,
+    ]),
     '/iam/platform/access': ok({ roles: [], permissions }),
     '/iam/platform/operators': ok(operators),
     '/iam/platform/roles': ok(roles),
@@ -380,6 +383,17 @@ test.describe('drawers', () => {
     await page.getByTestId('platform-role-edit-east-operations').click()
     await expect(page.getByTestId('platform-permission-platform:tenant:read')).toBeVisible()
     await expect(page).toHaveScreenshot('platform-role-edit.png')
+  })
+
+  test('task run history', async ({ page }) => {
+    await open(page, '/task-runs')
+    await page
+      .getByRole('row')
+      .filter({ hasText: '租户清理' })
+      .getByRole('button', { name: '运行历史' })
+      .click()
+    await expect(page.getByTestId('task-run-retention')).toBeVisible()
+    await expect(page).toHaveScreenshot('platform-task-run-history.png')
   })
 
   test('sub-app edit', async ({ page }) => {
