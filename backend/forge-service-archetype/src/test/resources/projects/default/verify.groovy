@@ -11,13 +11,15 @@ while (repoRoot != null && !new File(repoRoot, 'docs/standards/business-service.
 }
 assert repoRoot != null : '找不到仓库中的 docs/standards/business-service.md'
 
-// 规范只有一个来源：生成工程中的副本与仓库原文只差平台版本号
+// 规范只有一个来源：仓库原文不含版本占位符，生成时在头部注入平台版本，其余与原文一致
 def source = new File(repoRoot, 'docs/standards/business-service.md').getText('UTF-8')
+assert !source.contains('@project') : '仓库规范原文不应包含版本占位符'
 def standards = new File(project, 'docs/standards/business-service.md')
 assert standards.isFile() : '生成工程缺少 docs/standards/business-service.md'
 def copied = standards.getText('UTF-8')
-assert copied.contains("适用平台版本：${version}") : '规范文档头部未写入平台版本'
-assert copied == source.replace('@project.version@', version) : '规范文档与仓库原文不一致（标题被吞或内容被过滤改写）'
+def header = copied.readLines()[0]
+assert header.startsWith('<!-- 平台版本 ') && header.contains(version) : "规范文档头部未写入平台版本：${header}"
+assert copied == header + '\n\n' + source : '规范文档与仓库原文不一致（标题被吞或内容被过滤改写）'
 
 def agents = new File(project, 'AGENTS.md')
 assert agents.isFile() : '生成工程缺少 AGENTS.md'

@@ -20,10 +20,10 @@
                 <filtering>true</filtering>
                 <directory>src/main/resources</directory>
             </resource>
-            <!-- 规范只维护仓库根目录一份：构建时复制进模板，同时以 @ 分隔符写入平台版本 -->
+            <!-- 规范只维护仓库根目录一份：构建时原样复制进模板，平台版本由 archetype-post-generate.groovy 在生成时注入 -->
             <resource>
                 <targetPath>archetype-resources/docs/standards</targetPath>
-                <filtering>true</filtering>
+                <filtering>false</filtering>
                 <directory>${project.basedir}/../../docs/standards</directory>
                 <includes>
                     <include>business-service.md</include>
