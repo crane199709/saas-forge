@@ -73,11 +73,11 @@ class NavigationLayoutController {
     }
 
     /**
-     * @param layout 布局，没有时为 null
+     * @param layout 生效中的布局（自己的布局，没有时为默认布局），都没有时为 null
      * @param menus 管理页目录
      */
     record TenantLayoutResponse(NavigationLayout layout, List<MenuNode> menus) {}
 
-    /** @param layout 布局，没有时为 null */
+    /** @param layout 生效中的布局（自己的布局，没有时为默认布局），都没有时为 null */
     record PlatformLayoutResponse(NavigationLayout layout) {}
 }

@@ -52,11 +52,33 @@ const access = {
   },
 }
 
-async function openHome(page: Page) {
+// 迁移写入的租户端默认布局（导航布局规格第 9 节），租户没有自己的布局时由 /auth/access 返回。
+const defaultLayout = {
+  nodes: [
+    { page: 'announcements' },
+    {
+      group: 'org-access',
+      name: '组织与权限',
+      children: [{ page: 'members' }, { page: 'org' }, { page: 'roles' }],
+    },
+    {
+      group: 'security-audit',
+      name: '安全与审计',
+      children: [{ page: 'security-settings' }, { page: 'audit' }],
+    },
+    {
+      group: 'system-settings',
+      name: '系统设置',
+      children: [{ page: 'dictionaries' }, { page: 'parameters' }, { page: 'menu-layout' }],
+    },
+  ],
+}
+
+async function openHome(page: Page, layout: unknown = access.layout) {
   await page.route('**/demo/context', (route) =>
     route.fulfill(ok({ identityId: 'i', tenantId: 't', membershipId: 'm' })),
   )
-  await openAsAdmin(page, '/', () => undefined, access)
+  await openAsAdmin(page, '/', () => undefined, { ...access, layout })
   await expect(page.getByTestId('menu-group-demo.finance')).toBeVisible()
 }
 
@@ -67,6 +89,13 @@ for (const [label, width, height] of viewports) {
     test('导航', async ({ page }) => {
       await openHome(page)
       await expect(page).toHaveScreenshot(`navigation-${label}.png`)
+    })
+
+    test('导航-默认布局', async ({ page }) => {
+      // 清单菜单不在默认布局中，排在顶层末尾
+      await openHome(page, defaultLayout)
+      await expect(page.getByTestId('menu-group-system-settings')).toBeVisible()
+      await expect(page).toHaveScreenshot(`navigation-default-${label}.png`)
     })
   })
 }

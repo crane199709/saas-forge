@@ -45,7 +45,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.json.JsonMapper;
 
-/** 导航布局（navigation-layout 规格第 6 节）：两端的读取、保存与恢复默认，结构校验、权限、审计与 access 响应。 */
+/** 导航布局（navigation-layout 规格第 6、9 节）：两端的读取、保存与恢复默认，默认布局，结构校验、权限、审计与 access 响应。 */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Sql("/fixtures/navigation_layout.sql")
 @SuppressWarnings({"unchecked", "rawtypes"})
@@ -73,6 +73,30 @@ class NavigationLayoutTest {
               {"page": "members"},
               {"group": "f3c1d2", "name": "财务", "children": [{"menu": "demo.attachments"}]},
               {"menu": "demo", "children": [{"menu": "demo.overview"}]}
+            ]}
+            """;
+
+    // 迁移写入的默认布局（规格第 9 节），没有自己的布局时生效。
+    static final String TENANT_DEFAULT = """
+            {"nodes": [
+              {"page": "announcements"},
+              {"group": "org-access", "name": "组织与权限", "children": [
+                {"page": "members"}, {"page": "org"}, {"page": "roles"}]},
+              {"group": "security-audit", "name": "安全与审计", "children": [
+                {"page": "security-settings"}, {"page": "audit"}]},
+              {"group": "system-settings", "name": "系统设置", "children": [
+                {"page": "dictionaries"}, {"page": "parameters"}, {"page": "menu-layout"}]}
+            ]}
+            """;
+    static final String PLATFORM_DEFAULT = """
+            {"nodes": [
+              {"group": "tenant-operations", "name": "租户运营", "children": [
+                {"page": "tenants"}, {"page": "plans"}, {"page": "sub-apps"}, {"page": "announcements"}]},
+              {"group": "access-control", "name": "访问控制", "children": [
+                {"page": "operators"}, {"page": "identities"}, {"page": "roles"}]},
+              {"group": "operations", "name": "运维", "children": [
+                {"page": "audit"}, {"page": "task-runs"}, {"page": "dead-events"}]},
+              {"page": "menu-layout"}
             ]}
             """;
 
@@ -137,8 +161,10 @@ class NavigationLayoutTest {
     @Test
     void tenantAdminSavesReadsAndResetsTheLayout() throws Exception {
         String admin = token(ADMIN_A);
+        Map<String, Object> defaults = JSON.readValue(TENANT_DEFAULT, Map.class);
         assertThat(data(call(admin, HttpMethod.GET, "/navigation-layout", null)))
-                .containsEntry("layout", null);
+                .containsEntry("layout", defaults);
+        assertThat(data(call(admin, HttpMethod.GET, "/auth/access", null))).containsEntry("layout", defaults);
 
         var saved = call(admin, HttpMethod.PUT, "/navigation-layout", JSON.readValue(LAYOUT, Map.class));
         assertThat(saved.getStatusCode().value()).isEqualTo(200);
@@ -152,8 +178,8 @@ class NavigationLayoutTest {
         assertThat(reset.getStatusCode().value()).isEqualTo(200);
         assertThat(reset.getBody().get("data")).isNull();
         assertThat(data(call(admin, HttpMethod.GET, "/navigation-layout", null)))
-                .containsEntry("layout", null);
-        assertThat(data(call(admin, HttpMethod.GET, "/auth/access", null))).containsEntry("layout", null);
+                .containsEntry("layout", defaults);
+        assertThat(data(call(admin, HttpMethod.GET, "/auth/access", null))).containsEntry("layout", defaults);
     }
 
     @Test
@@ -195,10 +221,11 @@ class NavigationLayoutTest {
     @Test
     void operatorSavesReadsAndResetsThePlatformLayoutKeepingOneRecord() throws Exception {
         String admin = platformToken(SUPER_ADMIN);
+        Map<String, Object> defaults = JSON.readValue(PLATFORM_DEFAULT, Map.class);
         assertThat(data(call(admin, HttpMethod.GET, "/platform/navigation-layout", null)))
-                .containsEntry("layout", null);
+                .containsEntry("layout", defaults);
         Map<String, Object> access = data(call(admin, HttpMethod.GET, "/platform/access", null));
-        assertThat(access).containsEntry("layout", null).containsEntry("roles", List.of("super-admin"));
+        assertThat(access).containsEntry("layout", defaults).containsEntry("roles", List.of("super-admin"));
         assertThat((List<Object>) access.get("permissions")).contains("platform:menu:manage");
 
         Map<String, Object> first = Map.of("nodes", List.of(Map.of("page", "tenants"), Map.of("page", "plans")));
@@ -215,8 +242,8 @@ class NavigationLayoutTest {
         assertThat(reset.getStatusCode().value()).isEqualTo(200);
         assertThat(reset.getBody().get("data")).isNull();
         assertThat(data(call(admin, HttpMethod.GET, "/platform/navigation-layout", null)))
-                .containsEntry("layout", null);
-        assertThat(data(call(admin, HttpMethod.GET, "/platform/access", null))).containsEntry("layout", null);
+                .containsEntry("layout", defaults);
+        assertThat(data(call(admin, HttpMethod.GET, "/platform/access", null))).containsEntry("layout", defaults);
 
         // 恢复默认后可以再次保存
         assertThat(data(call(admin, HttpMethod.PUT, "/platform/navigation-layout", first)))
@@ -352,13 +379,53 @@ class NavigationLayoutTest {
                         .value())
                 .isEqualTo(200);
         String adminB = token(ADMIN_B);
+        Map<String, Object> defaults = JSON.readValue(TENANT_DEFAULT, Map.class);
         assertThat(data(call(adminB, HttpMethod.GET, "/navigation-layout", null)))
-                .containsEntry("layout", null);
-        assertThat(data(call(adminB, HttpMethod.GET, "/auth/access", null))).containsEntry("layout", null);
+                .containsEntry("layout", defaults);
+        assertThat(data(call(adminB, HttpMethod.GET, "/auth/access", null))).containsEntry("layout", defaults);
         // 同租户的其他成员在下次读取权限时拿到新布局
         assertThat(data(call(token(MEMBER_A), HttpMethod.GET, "/auth/access", null)))
                 .containsEntry("layout", JSON.readValue(LAYOUT, Map.class));
         call(adminA, HttpMethod.DELETE, "/navigation-layout", null);
+    }
+
+    @Test
+    void theMigratedDefaultLayoutsPassTheStructuralValidation() throws Exception {
+        String tenantAdmin = token(ADMIN_A);
+        Object tenantDefault = data(call(tenantAdmin, HttpMethod.GET, "/navigation-layout", null))
+                .get("layout");
+        assertThat(call(tenantAdmin, HttpMethod.PUT, "/navigation-layout", tenantDefault)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(200);
+        call(tenantAdmin, HttpMethod.DELETE, "/navigation-layout", null);
+
+        String operator = platformToken(SUPER_ADMIN);
+        Object platformDefault = data(call(operator, HttpMethod.GET, "/platform/navigation-layout", null))
+                .get("layout");
+        assertThat(call(operator, HttpMethod.PUT, "/platform/navigation-layout", platformDefault)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(200);
+        call(operator, HttpMethod.DELETE, "/platform/navigation-layout", null);
+    }
+
+    @Test
+    @Sql(scripts = {"/fixtures/navigation_layout.sql", "/fixtures/navigation_default_layout_removed.sql"})
+    @Sql(
+            scripts = "/fixtures/navigation_default_layout_restored.sql",
+            executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD)
+    void withoutAnyDefaultLayoutTheLayoutIsNull() throws Exception {
+        String admin = token(ADMIN_A);
+        assertThat(data(call(admin, HttpMethod.GET, "/navigation-layout", null)))
+                .containsEntry("layout", null);
+        assertThat(data(call(admin, HttpMethod.GET, "/auth/access", null))).containsEntry("layout", null);
+
+        String operator = platformToken(SUPER_ADMIN);
+        assertThat(data(call(operator, HttpMethod.GET, "/platform/navigation-layout", null)))
+                .containsEntry("layout", null);
+        assertThat(data(call(operator, HttpMethod.GET, "/platform/access", null)))
+                .containsEntry("layout", null);
     }
 
     private static Map<String, Object> pages(int count) {

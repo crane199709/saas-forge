@@ -37,6 +37,8 @@ import tools.jackson.databind.json.JsonMapper;
 public class NavigationLayoutService {
     private static final String REPLACE = "navigationLayout.replace";
     private static final String RESET = "navigationLayout.reset";
+    private static final String TENANT_REALM = "tenant";
+    private static final String PLATFORM_REALM = "platform";
     // 与 Shell App 的导航一致，顶层算第一层。
     private static final int MAX_DEPTH = 3;
     private static final int MAX_NODES = 500;
@@ -71,12 +73,13 @@ public class NavigationLayoutService {
         this.json = json;
     }
 
-    /** 租户的布局，供 {@code /auth/access} 下发给每个成员，不校验权限；没有布局时为 null。 */
+    /** 租户生效中的布局，供 {@code /auth/access} 下发给每个成员，不校验权限：自己的布局，没有时为默认布局，都没有时为 null。 */
     public NavigationLayout tenantLayoutForAccess(UUID tenantId) {
-        return read(tenants.navigationLayout(tenantId));
+        String own = tenants.navigationLayout(tenantId);
+        return read(own != null ? own : layouts.findDefaultLayout(TENANT_REALM));
     }
 
-    /** 管理页读取租户的布局，需要 {@link IamPermissions#MENU_MANAGE}；没有布局时为 null。 */
+    /** 管理页读取租户生效中的布局，需要 {@link IamPermissions#MENU_MANAGE}；规则同 {@link #tenantLayoutForAccess}。 */
     public NavigationLayout tenantLayout(TenantActor actor) {
         roles.requirePermission(actor.membershipId(), IamPermissions.MENU_MANAGE);
         return tenantLayoutForAccess(actor.tenantId());
@@ -112,12 +115,13 @@ public class NavigationLayoutService {
         audits.record(tenantAudit(actor, RESET));
     }
 
-    /** 平台控制台的布局，供 {@code /platform/access} 下发给每个 Operator，不校验权限；没有布局时为 null。 */
+    /** 平台控制台生效中的布局，供 {@code /platform/access} 下发给每个 Operator，不校验权限：自己的布局，没有时为默认布局，都没有时为 null。 */
     public NavigationLayout platformLayoutForAccess() {
-        return read(layouts.findPlatformLayout());
+        String own = layouts.findPlatformLayout();
+        return read(own != null ? own : layouts.findDefaultLayout(PLATFORM_REALM));
     }
 
-    /** 管理页读取平台的布局，需要 {@link PlatformPermissions#MENU_MANAGE}；没有布局时为 null。 */
+    /** 管理页读取平台生效中的布局，需要 {@link PlatformPermissions#MENU_MANAGE}；规则同 {@link #platformLayoutForAccess}。 */
     public NavigationLayout platformLayout(UUID operator) {
         platformRoles.requirePermission(operator, PlatformPermissions.MENU_MANAGE);
         return platformLayoutForAccess();

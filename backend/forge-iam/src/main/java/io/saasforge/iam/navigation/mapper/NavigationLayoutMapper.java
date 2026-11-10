@@ -5,7 +5,10 @@ import java.util.UUID;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-/** 平台控制台的 Navigation Layout，布局以 JSON 文本读写；租户布局存在租户表，经由 {@code TenantService} 读写。全局表，不受 Data Policy 过滤。 */
+/**
+ * 平台控制台的 Navigation Layout 与两端的默认布局，布局以 JSON 文本读写；租户布局存在租户表，经由 {@code TenantService} 读写。
+ * 全局表，不受 Data Policy 过滤。
+ */
 @InterceptorIgnore(tenantLine = "true")
 @Mapper
 public interface NavigationLayoutMapper {
@@ -14,6 +17,13 @@ public interface NavigationLayoutMapper {
 
     /** 平台的布局；没有未删除记录时为 null。 */
     String findPlatformLayout();
+
+    /**
+     * 对应 Realm 的默认布局；没有未删除记录时为 null。
+     *
+     * @param realm {@code tenant} 或 {@code platform}
+     */
+    String findDefaultLayout(@Param("realm") String realm);
 
     /** 替换未删除的平台布局，返回受影响行数，没有时为 0。 */
     int updatePlatformLayout(@Param("layout") String layout, @Param("actor") UUID actor);

@@ -8,6 +8,9 @@
     <select id="findPlatformLayout" resultType="string">
         SELECT CAST(layout AS text) FROM platform_navigation_layout WHERE NOT deleted
     </select>
+    <select id="findDefaultLayout" resultType="string">
+        SELECT CAST(layout AS text) FROM navigation_default_layout WHERE realm = #{realm} AND NOT deleted
+    </select>
     <update id="updatePlatformLayout">
         UPDATE platform_navigation_layout SET layout = CAST(#{layout} AS jsonb),
         updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}

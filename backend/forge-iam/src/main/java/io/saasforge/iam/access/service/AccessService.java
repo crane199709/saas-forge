@@ -83,7 +83,7 @@ public class AccessService {
      * @param permissions 权限码，按编码排序
      * @param menus 可见菜单树
      * @param subApps 可加载的 Sub-App，按编码排序
-     * @param layout 租户的 Navigation Layout，没有时为 null
+     * @param layout 租户生效中的 Navigation Layout（自己的或默认布局），都没有时为 null
      */
     public record Access(
             List<String> permissions, List<MenuNode> menus, List<LoadableSubApp> subApps, NavigationLayout layout) {}
@@ -91,7 +91,7 @@ public class AccessService {
     /**
      * @param roles 平台角色编码，按编码排序
      * @param permissions 有效平台权限码，按编码排序
-     * @param layout 平台的 Navigation Layout，没有时为 null
+     * @param layout 平台生效中的 Navigation Layout（自己的或默认布局），都没有时为 null
      */
     public record PlatformAccess(List<String> roles, List<String> permissions, NavigationLayout layout) {}
 }

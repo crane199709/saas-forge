@@ -398,6 +398,38 @@ for (const [label, width, height] of viewports) {
       await expect(page).toHaveScreenshot(`platform-navigation-${label}.png`)
     })
 
+    test('navigation default layout', async ({ page }) => {
+      // 迁移写入的平台端默认布局（导航布局规格第 9 节），平台没有自己的布局时由 /platform/access 返回
+      await open(page, '/tenants', {
+        nodes: [
+          {
+            group: 'tenant-operations',
+            name: '租户运营',
+            children: [
+              { page: 'tenants' },
+              { page: 'plans' },
+              { page: 'sub-apps' },
+              { page: 'announcements' },
+            ],
+          },
+          {
+            group: 'access-control',
+            name: '访问控制',
+            children: [{ page: 'operators' }, { page: 'identities' }, { page: 'roles' }],
+          },
+          {
+            group: 'operations',
+            name: '运维',
+            children: [{ page: 'audit' }, { page: 'task-runs' }, { page: 'dead-events' }],
+          },
+          { page: 'menu-layout' },
+        ],
+      })
+      await expect(page.getByText('示例科技有限公司', { exact: true }).first()).toBeVisible()
+      await expect(page.getByTestId('menu-group-operations')).toBeVisible()
+      await expect(page).toHaveScreenshot(`platform-navigation-default-${label}.png`)
+    })
+
     test('menu layout', async ({ page }) => {
       await open(page, '/menu-layout')
       await expect(page.getByTestId('navigation-node-page:menu-layout')).toBeVisible()
