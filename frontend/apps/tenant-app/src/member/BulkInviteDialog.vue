@@ -9,6 +9,7 @@ import { createRoleApi, type Role } from '../role/role-api'
 import { createMemberApi } from './member-api'
 import {
   MAX_ROWS,
+  OUTCOMES,
   failureWorkbook,
   parseInvitations,
   readRows,
@@ -17,6 +18,7 @@ import {
   templateWorkbook,
   type BulkResult,
   type BulkRow,
+  type FailedRow,
   type Outcome,
   type TemplateText,
 } from './bulk-invite'
@@ -62,10 +64,9 @@ const template = computed<TemplateText>(() => ({
 }))
 const valid = computed(() => rows.value.filter((row) => row.input))
 const invalid = computed(() => rows.value.filter((row) => row.problem))
-const outcomes: Outcome[] = ['invited', 'resent', 'alreadyMember', 'failed', 'skipped']
 
 // 本地校验错误、接口失败与停止后未处理的行都进入失败清单，按行号排在一起便于对照原文件修改。
-const failures = computed(() =>
+const failures = computed<FailedRow[]>(() =>
   [
     ...invalid.value.map((row) => ({ row, reason: problemText(row) })),
     ...results.value
@@ -78,7 +79,7 @@ const failures = computed(() =>
   ].sort((a, b) => a.row.line - b.row.line),
 )
 const counts = computed(() => {
-  const count = Object.fromEntries(outcomes.map((outcome) => [outcome, 0])) as Record<
+  const count = Object.fromEntries(OUTCOMES.map((outcome) => [outcome, 0])) as Record<
     Outcome,
     number
   >
@@ -257,7 +258,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', preventLeave))
     </div>
     <div v-else class="result" data-testid="member-bulk-result">
       <dl class="counts">
-        <div v-for="outcome in outcomes" :key="outcome" :data-testid="`member-bulk-${outcome}`">
+        <div v-for="outcome in OUTCOMES" :key="outcome" :data-testid="`member-bulk-${outcome}`">
           <dt>{{ t(`member.bulk.outcome.${outcome}`) }}</dt>
           <dd :class="{ danger: outcome === 'failed' && counts.failed }">{{ counts[outcome] }}</dd>
         </div>

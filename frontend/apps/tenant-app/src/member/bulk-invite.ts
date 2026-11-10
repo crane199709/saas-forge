@@ -9,8 +9,9 @@ export const MAX_ROWS = 500
 // 固定并发：逐行调用现有邀请接口，既不压垮网关限流，也不必等太久。
 const CONCURRENCY = 3
 
-// 与服务端 SendCodeRequest.TARGET_PATTERN 及 254 字符上限一致，避免本地通过、接口拒绝。
-const CONTACT_PATTERN = /^(?:[^@\s]+@[^@\s]+\.[^@\s]+|\+?[0-9]{6,15})$/
+// 与服务端 SendCodeRequest.TARGET_PATTERN 及 254 字符上限一致，避免本地与接口判断不一。
+// Java 的 \s 只含 ASCII 空白，JS 的 \s 还含全角空格等 Unicode 空白，因此显式列出 ASCII 空白。
+const CONTACT_PATTERN = /^(?:[^@ \t\n\v\f\r]+@[^@ \t\n\v\f\r]+\.[^@ \t\n\v\f\r]+|\+?[0-9]{6,15})$/
 const CONTACT_MAX = 254
 
 const ROLE_SEPARATOR = '、'
@@ -56,6 +57,12 @@ export async function readRows(file: Blob): Promise<Cell[][]> {
   return (await readSheet(file)) as Cell[][]
 }
 
+/** 失败清单中的一行：原数据行及其失败原因。 */
+export interface FailedRow {
+  row: BulkRow
+  reason: string
+}
+
 /** 模板的文字：表头、各列填写说明与两个工作表的名称。 */
 export interface TemplateText {
   headers: ParseContext['headers']
@@ -78,7 +85,7 @@ export function templateWorkbook(template: TemplateText): Promise<Blob> {
 export function failureWorkbook(
   template: TemplateText,
   reasonHeader: string,
-  failures: { row: BulkRow; reason: string }[],
+  failures: FailedRow[],
 ): Promise<Blob> {
   return workbook(
     template,
@@ -118,6 +125,11 @@ export function saveFile(blob: Blob, name: string) {
   URL.revokeObjectURL(url)
 }
 
+/** 把 `value` 追加到 `map` 中 `key` 对应的分组。 */
+function addTo<K, V>(map: Map<K, V[]>, key: K, value: V) {
+  map.set(key, [...(map.get(key) ?? []), value])
+}
+
 const text = (cell: Cell | undefined) =>
   cell === null || cell === undefined ? '' : String(cell).trim()
 
@@ -135,7 +147,7 @@ function departmentsByPath(departments: Department[]) {
       node = node.parentId ? byId.get(node.parentId) : undefined
     }
     const path = names.join(PATH_SEPARATOR)
-    result.set(path, [...(result.get(path) ?? []), item.id])
+    addTo(result, path, item.id)
   }
   return result
 }
@@ -164,10 +176,7 @@ export function parseInvitations(data: Cell[][], context: ParseContext): ParseRe
   if (lines.length > MAX_ROWS) return { ok: false, reason: 'tooMany' }
 
   const roleNames = new Map<string, Role[]>()
-  for (const role of context.roles ?? []) {
-    const name = role.name.trim()
-    roleNames.set(name, [...(roleNames.get(name) ?? []), role])
-  }
+  for (const role of context.roles ?? []) addTo(roleNames, role.name.trim(), role)
   const paths = departmentsByPath(context.departments ?? [])
   const seen = new Map<string, number>()
 
@@ -223,7 +232,8 @@ export function parseInvitations(data: Cell[][], context: ParseContext): ParseRe
 }
 
 /** 发送后的行结果，按规格第 5 节归类；`skipped` 是停止后尚未发出的行（未处理）。 */
-export type Outcome = 'invited' | 'resent' | 'alreadyMember' | 'failed' | 'skipped'
+export const OUTCOMES = ['invited', 'resent', 'alreadyMember', 'failed', 'skipped'] as const
+export type Outcome = (typeof OUTCOMES)[number]
 
 export interface BulkResult {
   row: BulkRow

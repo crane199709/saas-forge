@@ -160,6 +160,16 @@ describe('parseInvitations', () => {
     ])
   })
 
+  it('联系方式中间的空白按邀请接口的规则只认 ASCII 空白，全角空格与不换行空格不算空白', () => {
+    expect(
+      problems([
+        ['bob smith@example.com', null, null],
+        ['bob\u3000smith@example.com', null, null],
+        ['bob\u00a0smith@example.com', null, null],
+      ]),
+    ).toEqual([{ key: 'contactInvalid' }, null, null])
+  })
+
   it('角色按名称匹配：不存在、重名或 Owner 时该行报错', () => {
     expect(
       problems([
@@ -225,24 +235,28 @@ describe('sendInvitations', () => {
       'u4@example.com': () => Promise.reject(apiError('member.alreadyMember', 409)),
       'u5@example.com': () => Promise.reject(apiError('member.quotaExceeded', 409)),
       'u6@example.com': () => Promise.reject(new TypeError('Failed to fetch')),
-      'u7@example.com': () => Promise.resolve({ resent: false }),
+      'u7@example.com': () => Promise.reject(apiError('gateway.rateLimited', 429)),
+      'u8@example.com': () => Promise.reject(apiError('system.internalError', 500)),
+      'u9@example.com': () => Promise.resolve({ resent: false }),
     }
     const results = await sendInvitations(
-      [2, 3, 4, 5, 6, 7].map(row),
+      [2, 3, 4, 5, 6, 7, 8, 9].map(row),
       (input) => {
         calls.push(input.contact)
         return outcomes[input.contact]!()
       },
       (cause) => (cause instanceof ApiError ? cause.userTip! : '网络错误'),
     )
-    expect(calls).toHaveLength(6)
+    expect(calls).toHaveLength(8)
     expect(results.map((result) => [result.row.line, result.outcome, result.reason])).toEqual([
       [2, 'invited', undefined],
       [3, 'resent', undefined],
       [4, 'alreadyMember', undefined],
       [5, 'failed', 'tip member.quotaExceeded'],
       [6, 'failed', '网络错误'],
-      [7, 'invited', undefined],
+      [7, 'failed', 'tip gateway.rateLimited'],
+      [8, 'failed', 'tip system.internalError'],
+      [9, 'invited', undefined],
     ])
   })
 
