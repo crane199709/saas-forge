@@ -60,7 +60,8 @@ async function click(id: string) {
   await flushPromises()
 }
 
-const value = (wrapper: VueWrapper) => [...(wrapper.props('modelValue') as string[])].sort()
+const value = (wrapper: VueWrapper) =>
+  [...(wrapper.props() as { modelValue: string[] }).modelValue].sort()
 
 it('默认方式下页面勾选框代表页面权限，勾选页面同时授予全部操作', async () => {
   const wrapper = await mountTree()

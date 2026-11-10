@@ -19,17 +19,12 @@ const sectionTitle = (text: string) =>
     text,
   )
 
-const hint = (text: string) =>
-  h(
-    'span',
-    {
-      style: {
-        color: 'var(--el-text-color-secondary)',
-        fontSize: 'var(--forge-font-size-xs)',
-      },
-    },
-    text,
-  )
+const hintStyle = {
+  color: 'var(--el-text-color-secondary)',
+  fontSize: 'var(--forge-font-size-xs)',
+}
+
+const hint = (text: string) => h('span', { style: hintStyle }, text)
 
 const row = (children: VNode[], indent?: string) =>
   h(
@@ -158,7 +153,7 @@ export const PermissionTreeEditor = defineComponent({
       permissions: { code: string; name: string }[],
     ) =>
       h('div', { key, style: { marginBottom: 'var(--forge-space-2)' } }, [
-        ...(title ? [h('div', null, [hint(title)])] : []),
+        ...(title ? [h('div', { style: hintStyle }, title)] : []),
         ...permissions.map((permission) =>
           h(
             ElCheckbox,
