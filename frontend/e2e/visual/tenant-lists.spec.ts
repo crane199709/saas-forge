@@ -209,7 +209,7 @@ const inbox = [
   {
     id: 'n1',
     title: '订单 SO-20261108-000123 审批通过',
-    body: '您提交的订单已通过审批，可以继续安排发货。',
+    body: '您提交的华东大区第四季度办公设备集中采购订单已通过财务与业务双重审批，可以继续安排发货，如需调整收货地址请在发货前联系采购负责人。',
     read: false,
     occurredAt: '2026-11-08T09:30:00Z',
     link: { appCode: 'demo', route: '/orders' },
@@ -282,6 +282,16 @@ for (const [label, width, height] of viewports) {
       await openAsAdmin(page, '/notifications', respondOthers)
       await expect(page.getByTestId('inbox-n1')).toBeVisible()
       await expect(page).toHaveScreenshot(`notifications-${label}.png`)
+    })
+
+    test('通知中心-展开', async ({ page }) => {
+      await openAsAdmin(page, '/notifications', respondOthers)
+      await page.getByTestId('inbox-n1').click()
+      await expect(page.getByTestId('inbox-n1').getByRole('button').first()).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      )
+      await expect(page).toHaveScreenshot(`notifications-expanded-${label}.png`)
     })
 
     test('公告管理', async ({ page }) => {
