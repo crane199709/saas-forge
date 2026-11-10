@@ -50,7 +50,12 @@ export function createMemberApi(client: Pick<TenantClient, 'api' | 'page'>) {
       return client.page<Member>(`${base}?${params}`)
     },
     invite: (input: InviteInput) =>
-      send<{ membershipId: string; status: MemberStatus }>('POST', '/invitations', input),
+      // resent 为 true 表示给仍在邀请中的成员重发
+      send<{ membershipId: string; status: MemberStatus; resent: boolean }>(
+        'POST',
+        '/invitations',
+        input,
+      ),
     suspend: (membershipId: string) => send<null>('POST', `/${membershipId}/suspend`),
     resume: (membershipId: string) => send<null>('POST', `/${membershipId}/resume`),
     remove: (membershipId: string) => send<null>('DELETE', `/${membershipId}`),

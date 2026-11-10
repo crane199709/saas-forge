@@ -276,7 +276,66 @@
     "inviteDepartment": "预设主部门",
     "inviteSubmit": "发送邀请",
     "ok": "确定",
-    "cancel": "取消"
+    "cancel": "取消",
+    "bulk": {
+      "entry": "批量邀请",
+      "title": "批量邀请成员",
+      "template": "下载模板",
+      "templateFile": "成员批量邀请模板.xlsx",
+      "dataSheet": "成员",
+      "guideSheet": "填写说明",
+      "guide": {
+        "contact": "必填。邮箱或手机号，每行一人，不能重复。",
+        "roles": "选填。角色名称，多个用「、」分隔，不能填所有者。",
+        "department": "选填。部门从根到本级的完整名称，用「/」分隔，如：总部/研发部/后端组。"
+      },
+      "columns": {
+        "contact": "联系方式",
+        "roles": "角色",
+        "department": "主部门"
+      },
+      "choose": "选择文件",
+      "rechoose": "重新选择",
+      "rejected": {
+        "type": "只支持 .xlsx 文件",
+        "unreadable": "无法读取文件，请使用下载的模板填写",
+        "header": "表头与模板不符，请使用下载的模板填写",
+        "tooMany": "单次最多邀请 {max} 人，请拆分后分批上传"
+      },
+      "summary": "将邀请 {count} 人",
+      "problemSummary": "{count} 行有错误，不会发送",
+      "line": "行号",
+      "reason": "原因",
+      "problem": {
+        "contactRequired": "缺少联系方式",
+        "contactInvalid": "联系方式格式不正确",
+        "contactDuplicate": "与第 {line} 行重复",
+        "roleForbidden": "没有角色管理权限，不能预设角色",
+        "roleNotFound": "角色「{name}」不存在",
+        "roleAmbiguous": "有多个名为「{name}」的角色，请先在角色管理中改名",
+        "roleOwner": "不能预设所有者",
+        "departmentForbidden": "没有组织管理权限，不能预设主部门",
+        "departmentNotFound": "部门「{path}」不存在",
+        "departmentAmbiguous": "有多个路径为「{path}」的部门，请先在组织管理中改名"
+      },
+      "send": "发送邀请",
+      "progress": "已处理 {done} / {total}",
+      "outcome": {
+        "invited": "已邀请",
+        "resent": "已重发",
+        "alreadyMember": "已是成员",
+        "failed": "失败",
+        "skipped": "未处理"
+      },
+      "stop": "停止",
+      "stopping": "正在停止",
+      "skippedReason": "已停止，未发送",
+      "reasonColumn": "失败原因",
+      "downloadFailures": "下载失败清单",
+      "failureFile": "成员批量邀请失败清单.xlsx",
+      "failedRows": "失败明细",
+      "done": "完成"
+    }
   },
   "subApp": {
     "loading": "正在加载子应用 {app}…",

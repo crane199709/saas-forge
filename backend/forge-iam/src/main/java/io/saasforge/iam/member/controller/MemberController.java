@@ -1,8 +1,8 @@
 package io.saasforge.iam.member.controller;
 
 import io.saasforge.iam.member.model.ManagedMember;
+import io.saasforge.iam.member.model.MemberInvitation;
 import io.saasforge.iam.member.service.MemberService;
-import io.saasforge.iam.membership.model.MembershipStatus;
 import io.saasforge.iam.membership.model.TenantActor;
 import io.saasforge.iam.verification.model.SendCodeRequest;
 import io.saasforge.sdk.core.api.ApiResponse;
@@ -60,9 +60,10 @@ class MemberController {
     @PostMapping("/invitations")
     @ResponseStatus(HttpStatus.CREATED)
     ApiResponse<InvitedResponse> invite(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody InviteRequest request) {
-        MembershipStatus invited = members.invite(
+        MemberInvitation invited = members.invite(
                 TenantActor.of(jwt), request.contact().strip(), request.roleIds(), request.primaryDepartmentId());
-        return ApiResponse.created(new InvitedResponse(invited.membershipId(), invited.status()));
+        return ApiResponse.created(new InvitedResponse(
+                invited.membership().membershipId(), invited.membership().status(), invited.resent()));
     }
 
     @Operation(summary = "停用成员，立即生效；Owner 不可停用")
@@ -118,7 +119,8 @@ class MemberController {
 
     record TransferRequest(@NotNull UUID membershipId) {}
 
-    record InvitedResponse(UUID membershipId, String status) {}
+    /** @param resent 是否给仍为 invited 的成员重发；新邀请与已离开成员的重新邀请为 false */
+    record InvitedResponse(UUID membershipId, String status, boolean resent) {}
 
     record MemberResponse(
             UUID membershipId,

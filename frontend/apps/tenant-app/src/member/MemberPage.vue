@@ -7,6 +7,7 @@ import { errorTip, type ErrorTip } from '../error-tip'
 import { createOrganizationApi, type Department } from '../organization/org-api'
 import { createRoleApi, type Role } from '../role/role-api'
 import { createMemberApi, type Member, type MemberStatus } from './member-api'
+import BulkInviteDialog from './BulkInviteDialog.vue'
 
 type Action = 'suspend' | 'resume' | 'remove' | 'transferOwner'
 
@@ -34,6 +35,7 @@ const departmentId = ref<string | null>(null)
 const roles = ref<Role[]>([])
 const departments = ref<Department[]>([])
 const inviteError = ref<ErrorTip | null>(null)
+const bulkInviting = ref(false)
 
 async function load(number = page.value) {
   error.value = null
@@ -170,6 +172,12 @@ const statusTag: Record<MemberStatus, 'success' | 'warning' | 'danger' | 'info'>
         </el-select>
         <el-button data-testid="member-search" @click="load(1)">{{ t('member.search') }}</el-button>
         <template #actions>
+          <el-button
+            v-if="access.has('iam:member:manage')"
+            data-testid="member-bulk-invite"
+            @click="bulkInviting = true"
+            >{{ t('member.bulk.entry') }}</el-button
+          >
           <el-button type="primary" data-testid="member-invite" @click="openInvite">{{
             t('member.invite')
           }}</el-button>
@@ -281,6 +289,8 @@ const statusTag: Record<MemberStatus, 'success' | 'warning' | 'danger' | 'info'>
         </el-button>
       </template>
     </el-dialog>
+
+    <BulkInviteDialog v-model="bulkInviting" @finished="load()" />
   </section>
 </template>
 

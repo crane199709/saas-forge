@@ -222,7 +222,7 @@ class MemberManagementTest {
                 "/members/invitations",
                 Map.of("contact", "Newcomer@Example.com", "roleIds", List.of(role), "primaryDepartmentId", department));
         assertThat(invited.getStatusCode().value()).isEqualTo(201);
-        assertThat(data(invited)).containsEntry("status", "invited");
+        assertThat(data(invited)).containsEntry("status", "invited").containsEntry("resent", false);
         UUID newcomer = UUID.fromString((String) data(invited).get("membershipId"));
         assertThat(inbox.latest.get("Newcomer@Example.com").requiresCredentials())
                 .isTrue();
@@ -239,10 +239,11 @@ class MemberManagementTest {
         assertThat(code(call(
                         ADMIN, HttpMethod.POST, "/members/invitations", Map.of("contact", "memberadmin@example.com"))))
                 .isEqualTo("member.alreadyMember");
-        assertThat(call(ADMIN, HttpMethod.POST, "/members/invitations", Map.of("contact", "newcomer@example.com"))
-                        .getStatusCode()
-                        .value())
-                .isEqualTo(201);
+        var resent = call(ADMIN, HttpMethod.POST, "/members/invitations", Map.of("contact", "newcomer@example.com"));
+        assertThat(resent.getStatusCode().value()).isEqualTo(201);
+        assertThat(data(resent))
+                .containsEntry("membershipId", newcomer.toString())
+                .containsEntry("resent", true);
 
         // 移除（撤回邀请）后成员为已离开：角色与组织分配清除，旧链接失效，列表仍可按状态查到。
         String revokedToken = inbox.token("newcomer@example.com");
@@ -262,7 +263,9 @@ class MemberManagementTest {
 
         // 再次邀请回到同一个 Membership，接受后成为正常成员。
         var again = call(ADMIN, HttpMethod.POST, "/members/invitations", Map.of("contact", "newcomer@example.com"));
-        assertThat(data(again)).containsEntry("membershipId", newcomer.toString());
+        assertThat(data(again))
+                .containsEntry("membershipId", newcomer.toString())
+                .containsEntry("resent", false);
         var accepted = post(
                 "/auth/invitations/accept",
                 Map.of("token", inbox.token("newcomer@example.com"), "account", "newcomer", "password", PASSWORD));
