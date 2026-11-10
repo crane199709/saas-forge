@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ErrorAlert, PageToolbar } from '@crane199709/ui'
+import { ErrorAlert, PageToolbar, overlaySize } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import {
   CUSTOM_ITEM_PREFIX,
@@ -14,7 +14,10 @@ const props = defineProps<{ api: ReferenceDataApi; dictionary: Dictionary }>()
 const emit = defineEmits<{ changed: [] }>()
 const { t } = useI18n()
 const showDisabled = ref(false)
-const form = ref({ code: '', name: '' })
+// 新建与编辑共用一个对话框：editing 为 null 时新建自定义项，编码创建后不可修改。
+const dialogOpen = ref(false)
+const editing = ref<DictionaryItem | null>(null)
+const form = ref({ code: '', name: '', sort: 0 })
 const busy = ref(false)
 const error = ref<ErrorTip | null>(null)
 
@@ -26,18 +29,6 @@ const items = computed(() =>
 // 服务新版本新增的内置项可能与已有可选项重名，服务端只标记不处理；按名称导入会因此出错，提示租户改名。
 const hasNameConflict = computed(() => props.dictionary.items.some((item) => item.nameConflict))
 
-// 每行的显示名与排序先在本地编辑，点保存才提交；字典重读后以服务端结果重置。
-const drafts = ref<Record<string, { name: string; sort: number }>>({})
-watch(
-  () => props.dictionary,
-  (dictionary) => {
-    drafts.value = Object.fromEntries(
-      dictionary.items.map((item) => [item.code, { name: item.name, sort: item.sort }]),
-    )
-  },
-  { immediate: true },
-)
-
 // 固定字典只读；已下线的项不再出现在当前声明中，服务端按不存在处理。
 const editable = (item: DictionaryItem) => props.dictionary.extensible && item.status !== 'retired'
 
@@ -47,23 +38,34 @@ async function run(action: () => Promise<unknown>) {
   try {
     await action()
     emit('changed')
+    return true
   } catch (cause) {
     error.value = errorTip(cause, t)
+    return false
   } finally {
     busy.value = false
   }
 }
 
-function save(item: DictionaryItem) {
-  const draft = drafts.value[item.code]!
-  return run(() => props.api.updateItem(props.dictionary, item.code, draft.name.trim(), draft.sort))
+function open(item: DictionaryItem | null) {
+  error.value = null
+  editing.value = item
+  form.value = item
+    ? { code: item.code, name: item.name, sort: item.sort }
+    : { code: '', name: '', sort: 0 }
+  dialogOpen.value = true
 }
 
-function create() {
-  return run(async () => {
-    await props.api.createItem(props.dictionary, form.value.code.trim(), form.value.name.trim())
-    form.value = { code: '', name: '' }
-  })
+async function save() {
+  const name = form.value.name.trim()
+  const target = editing.value
+  if (busy.value || !name || (!target && !form.value.code.trim())) return
+  const done = await run(() =>
+    target
+      ? props.api.updateItem(props.dictionary, target.code, name, form.value.sort)
+      : props.api.createItem(props.dictionary, form.value.code.trim(), name),
+  )
+  if (done) dialogOpen.value = false
 }
 </script>
 
@@ -76,7 +78,7 @@ function create() {
     <p v-if="hasNameConflict" class="conflict-hint" data-testid="name-conflict-hint">
       {{ t('referenceData.dictionary.nameConflictHint') }}
     </p>
-    <ErrorAlert v-if="error" class="page-error" :tip="error" />
+    <ErrorAlert v-if="error && !dialogOpen" class="page-error" :tip="error" />
     <PageToolbar>
       <el-checkbox
         v-model="showDisabled"
@@ -84,66 +86,29 @@ function create() {
         :label="t('referenceData.dictionary.showDisabled')"
       />
       <template v-if="dictionary.extensible" #actions>
-        <div class="code-field" data-testid="new-item-code-field">
-          <el-input
-            v-model="form.code"
-            data-testid="new-item-code"
-            :placeholder="t('referenceData.dictionary.newCode')"
-            maxlength="57"
-          >
-            <template #prepend>{{ CUSTOM_ITEM_PREFIX }}</template>
-          </el-input>
-        </div>
-        <el-input
-          v-model="form.name"
-          class="name-field"
-          data-testid="new-item-name"
-          :placeholder="t('referenceData.dictionary.newName')"
-          maxlength="120"
-        />
-        <el-button
-          type="primary"
-          data-testid="new-item-create"
-          :disabled="busy || !form.code.trim() || !form.name.trim()"
-          @click="create"
-        >
+        <el-button type="primary" data-testid="new-item-create" @click="open(null)">
           {{ t('referenceData.dictionary.create') }}
         </el-button>
       </template>
     </PageToolbar>
     <el-table :data="items" row-key="code">
-      <el-table-column :label="t('referenceData.dictionary.code')" min-width="130">
+      <el-table-column :label="t('referenceData.dictionary.code')" min-width="160">
         <template #default="{ row }">
           <code :data-testid="`item-${row.code}`">{{ row.code }}</code>
         </template>
       </el-table-column>
-      <el-table-column :label="t('referenceData.dictionary.name')" min-width="140">
-        <template #default="{ row }">
-          <el-input
-            v-if="editable(row as DictionaryItem)"
-            v-model="drafts[row.code]!.name"
-            :data-testid="`item-name-${row.code}`"
-            :aria-label="t('referenceData.dictionary.name')"
-            maxlength="120"
-          />
-          <template v-else>{{ row.name }}</template>
-        </template>
-      </el-table-column>
-      <el-table-column :label="t('referenceData.dictionary.sort')" width="120">
-        <template #default="{ row }">
-          <el-input-number
-            v-if="editable(row as DictionaryItem)"
-            v-model="drafts[row.code]!.sort"
-            class="sort-input"
-            :data-testid="`item-sort-${row.code}`"
-            :aria-label="t('referenceData.dictionary.sort')"
-            :step="1"
-            step-strictly
-            controls-position="right"
-          />
-          <template v-else>{{ row.sort }}</template>
-        </template>
-      </el-table-column>
+      <el-table-column
+        prop="name"
+        :label="t('referenceData.dictionary.name')"
+        min-width="160"
+        show-overflow-tooltip
+      />
+      <el-table-column
+        prop="sort"
+        :label="t('referenceData.dictionary.sort')"
+        width="80"
+        align="right"
+      />
       <el-table-column :label="t('referenceData.dictionary.source')" width="88">
         <template #default="{ row }">
           {{
@@ -179,11 +144,10 @@ function create() {
             <el-button
               link
               type="primary"
-              :data-testid="`item-save-${row.code}`"
-              :disabled="busy || !drafts[row.code]!.name.trim()"
-              @click="save(row as DictionaryItem)"
+              :data-testid="`item-edit-${row.code}`"
+              @click="open(row as DictionaryItem)"
             >
-              {{ t('referenceData.dictionary.save') }}
+              {{ t('referenceData.dictionary.edit') }}
             </el-button>
             <el-button
               v-if="row.status === 'enabled'"
@@ -198,6 +162,7 @@ function create() {
             <el-button
               v-else
               link
+              type="primary"
               :data-testid="`item-enable-${row.code}`"
               :disabled="busy"
               @click="run(() => api.enableItem(dictionary, row.code))"
@@ -208,6 +173,48 @@ function create() {
         </template>
       </el-table-column>
     </el-table>
+    <el-dialog
+      v-model="dialogOpen"
+      :width="overlaySize.dialogSm"
+      :title="editing ? t('referenceData.dictionary.edit') : t('referenceData.dictionary.create')"
+    >
+      <ErrorAlert v-if="error" class="page-error" :tip="error" />
+      <el-form label-position="top" @submit.prevent="save">
+        <el-form-item :label="t('referenceData.dictionary.code')">
+          <el-input v-if="editing" :model-value="editing.code" disabled />
+          <div v-else class="code-field" data-testid="item-code-field">
+            <el-input v-model="form.code" data-testid="item-code" maxlength="57">
+              <template #prepend>{{ CUSTOM_ITEM_PREFIX }}</template>
+            </el-input>
+          </div>
+        </el-form-item>
+        <el-form-item :label="t('referenceData.dictionary.name')">
+          <el-input v-model="form.name" data-testid="item-name" maxlength="120" />
+        </el-form-item>
+        <el-form-item v-if="editing" :label="t('referenceData.dictionary.sort')">
+          <el-input-number
+            v-model="form.sort"
+            data-testid="item-sort"
+            :step="1"
+            step-strictly
+            controls-position="right"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogOpen = false">{{
+          t('referenceData.dictionary.cancel')
+        }}</el-button>
+        <el-button
+          type="primary"
+          :disabled="busy || !form.name.trim() || (!editing && !form.code.trim())"
+          data-testid="item-save"
+          @click="save"
+        >
+          {{ t('referenceData.dictionary.save') }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -238,12 +245,6 @@ function create() {
   margin-bottom: var(--forge-space-3);
 }
 .code-field {
-  width: 200px;
-}
-.name-field {
-  width: 120px;
-}
-.sort-input {
   width: 100%;
 }
 .status {

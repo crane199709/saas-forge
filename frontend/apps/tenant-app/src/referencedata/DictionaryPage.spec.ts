@@ -104,10 +104,13 @@ it('可扩展字典新增自定义项：编码提示 custom. 前缀，提交不�
     }),
   )
 
-  expect(wrapper.get('[data-testid="new-item-code-field"]').text()).toContain('custom.')
-  await wrapper.get('input[data-testid="new-item-code"]').setValue('expo2')
-  await wrapper.get('input[data-testid="new-item-name"]').setValue(' 展会 ')
+  expect(wrapper.find('input[data-testid="item-code"]').exists()).toBe(false)
   await wrapper.get('[data-testid="new-item-create"]').trigger('click')
+  await flushPromises()
+  expect(wrapper.get('[data-testid="item-code-field"]').text()).toContain('custom.')
+  await wrapper.get('input[data-testid="item-code"]').setValue('expo2')
+  await wrapper.get('input[data-testid="item-name"]').setValue(' 展会 ')
+  await wrapper.get('[data-testid="item-save"]').trigger('click')
   await flushPromises()
 
   const [url, init] = writes()[0]!
@@ -128,9 +131,11 @@ it('编码重复时展示服务端的 userTip 与 traceId', async () => {
     }),
   )
 
-  await wrapper.get('input[data-testid="new-item-code"]').setValue('expo')
-  await wrapper.get('input[data-testid="new-item-name"]').setValue('展会2')
   await wrapper.get('[data-testid="new-item-create"]').trigger('click')
+  await flushPromises()
+  await wrapper.get('input[data-testid="item-code"]').setValue('expo')
+  await wrapper.get('input[data-testid="item-name"]').setValue('展会2')
+  await wrapper.get('[data-testid="item-save"]').trigger('click')
   await flushPromises()
 
   const alert = wrapper.get('[role="alert"]')
@@ -151,9 +156,14 @@ it('固定字典只读，不提供新增与修改', async () => {
 it('修改内置项的显示名与排序', async () => {
   const { wrapper, writes } = await mountPage()
 
-  await wrapper.get('input[data-testid="item-name-web"]').setValue(' 公司官网 ')
-  await wrapper.get('[data-testid="item-sort-web"] input').setValue('5')
-  await wrapper.get('[data-testid="item-save-web"]').trigger('click')
+  expect(wrapper.find('input[data-testid="item-name"]').exists()).toBe(false)
+  await wrapper.get('[data-testid="item-edit-web"]').trigger('click')
+  await flushPromises()
+  const name = wrapper.get('input[data-testid="item-name"]')
+  expect((name.element as HTMLInputElement).value).toBe('官网')
+  await name.setValue(' 公司官网 ')
+  await wrapper.get('[data-testid="item-sort"] input').setValue('5')
+  await wrapper.get('[data-testid="item-save"]').trigger('click')
   await flushPromises()
 
   const [url, init] = writes()[0]!

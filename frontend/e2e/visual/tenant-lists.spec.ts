@@ -197,6 +197,14 @@ for (const [label, width, height] of viewports) {
       await expect(page).toHaveScreenshot(`dictionaries-${label}.png`)
     })
 
+    test('字典-新增', async ({ page }) => {
+      await openAsAdmin(page, '/dictionaries', respond)
+      await page.getByTestId('dictionary-demo-service/order.channel').click()
+      await page.getByTestId('new-item-create').click()
+      await expect(page.getByTestId('item-save')).toBeVisible()
+      await expect(page).toHaveScreenshot(`dictionaries-create-${label}.png`)
+    })
+
     test('参数', async ({ page }) => {
       await openAsAdmin(page, '/parameters', respond)
       await expect(page.getByTestId('override-demo-service/order.max-lines')).toBeVisible()

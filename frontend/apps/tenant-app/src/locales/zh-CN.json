@@ -341,10 +341,10 @@
       "save": "保存",
       "disable": "停用",
       "enable": "启用",
-      "newCode": "编码",
-      "newName": "显示名",
       "create": "新增自定义项",
-      "empty": "暂无字典"
+      "empty": "暂无字典",
+      "edit": "编辑",
+      "cancel": "取消"
     },
     "parameter": {
       "nav": "参数",
