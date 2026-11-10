@@ -82,6 +82,13 @@ export const consolePages = [
     permission: permissions.announcementManage,
     component: () => import('./announcement/AnnouncementPage.vue'),
   },
+  // 菜单管理页在默认导航中放在最后。
+  {
+    path: '/menu-layout',
+    title: 'menuLayout.title',
+    permission: permissions.menuManage,
+    component: () => import('./navigation/MenuLayoutPage.vue'),
+  },
 ] as const
 
 /** 兜底路由名：不存在的路径。 */

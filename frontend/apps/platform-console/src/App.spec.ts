@@ -50,6 +50,7 @@ describe('App 布局', () => {
       '任务运行',
       '死信事件',
       '公告管理',
+      '菜单管理',
     ])
     expect(wrapper.get('.shell-menu .is-active').text()).toBe('套餐')
     expect(wrapper.find('[aria-label="套餐"]').exists()).toBe(true)

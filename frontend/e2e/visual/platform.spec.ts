@@ -276,7 +276,26 @@ const announcements = [
   },
 ]
 
-function respond(path: string, route: Route, layout: unknown = null) {
+// 菜单管理页编辑的布局：自定义分组、跨分组移动的页面与已下线的引用；分组名取接近真实的最长值。
+const editedLayout = {
+  nodes: [
+    { page: 'tenants' },
+    {
+      group: 'ops',
+      name: '运维监控与故障排查',
+      children: [{ page: 'task-runs' }, { page: 'dead-events' }, { page: 'retired-report' }],
+    },
+    { page: 'announcements' },
+    { group: 'access', name: '访问控制', children: [{ page: 'roles' }, { page: 'audit' }] },
+  ],
+}
+
+function respond(
+  path: string,
+  route: Route,
+  layout: unknown = null,
+  overrides: Record<string, unknown> = {},
+) {
   const table: Record<string, unknown> = {
     '/platform/plans': ok(plans),
     '/platform/plans/permissions': ok(catalog),
@@ -301,11 +320,18 @@ function respond(path: string, route: Route, layout: unknown = null) {
       displayName: '李娜',
       mfaBound: true,
     }),
+    '/iam/platform/navigation-layout': ok({ layout: editedLayout }),
+    ...overrides,
   }
   return route.fulfill((table[path] ?? ok([])) as Parameters<Route['fulfill']>[0])
 }
 
-async function open(page: Page, url: string, layout: unknown = null) {
+async function open(
+  page: Page,
+  url: string,
+  layout: unknown = null,
+  overrides: Record<string, unknown> = {},
+) {
   await page.addInitScript(() =>
     localStorage.setItem(
       'forge.platform.session',
@@ -317,7 +343,7 @@ async function open(page: Page, url: string, layout: unknown = null) {
     ),
   )
   await page.route('**/platform/**', (route) =>
-    respond(new URL(route.request().url()).pathname, route, layout),
+    respond(new URL(route.request().url()).pathname, route, layout, overrides),
   )
   await page.goto(url)
 }
@@ -372,6 +398,12 @@ for (const [label, width, height] of viewports) {
       await expect(page).toHaveScreenshot(`platform-navigation-${label}.png`)
     })
 
+    test('menu layout', async ({ page }) => {
+      await open(page, '/menu-layout')
+      await expect(page.getByTestId('navigation-node-page:menu-layout')).toBeVisible()
+      await expect(page).toHaveScreenshot(`platform-menu-layout-${label}.png`)
+    })
+
     test('account', async ({ page }) => {
       await open(page, '/account/security')
       await expect(page.getByTestId('password-form')).toBeVisible()
@@ -413,6 +445,30 @@ test.describe('drawers', () => {
       .click()
     await expect(page.getByTestId('task-run-retention')).toBeVisible()
     await expect(page).toHaveScreenshot('platform-task-run-history.png')
+  })
+
+  test('menu layout reset', async ({ page }) => {
+    await open(page, '/menu-layout')
+    await page.getByTestId('navigation-reset').click()
+    await expect(page.getByTestId('menu-layout-reset-confirm')).toBeVisible()
+    await expect(page).toHaveScreenshot('platform-menu-layout-reset.png')
+  })
+
+  test('menu layout read failed', async ({ page }) => {
+    await open(page, '/menu-layout', null, {
+      '/iam/platform/navigation-layout': {
+        status: 500,
+        json: {
+          code: 'system.error',
+          httpStatus: 500,
+          userTip: '服务暂时不可用，请稍后重试',
+          data: null,
+          traceId: 'visual-trace-0001',
+        },
+      },
+    })
+    await expect(page.getByTestId('menu-layout-retry')).toBeVisible()
+    await expect(page).toHaveScreenshot('platform-menu-layout-error.png')
   })
 
   test('sub-app edit', async ({ page }) => {
