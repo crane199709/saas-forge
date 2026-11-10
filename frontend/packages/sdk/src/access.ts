@@ -35,14 +35,34 @@ export interface SubAppEntry {
   sharedRequirements: Record<string, string>
 }
 
+/** Navigation Layout 的节点，恰有 `page`、`menu`、`group` 之一；引用的页面或菜单可能已不存在或不可见。 */
+export interface NavigationLayoutNode {
+  /** Shell Page 的页面键。 */
+  page?: string
+  /** 清单菜单编码，叶子或分组。 */
+  menu?: string
+  /** 自定义分组 id。 */
+  group?: string
+  /** 自定义分组名称。 */
+  name?: string
+  children?: NavigationLayoutNode[]
+}
+
+/** Navigation Layout：Shell App 导航的排列与分组，只决定位置，不决定可见性。 */
+export interface NavigationLayout {
+  nodes: NavigationLayoutNode[]
+}
+
 /**
- * 当前 Membership 的 Permission Code、已按权限与套餐裁剪的菜单树，以及可加载的 Sub-App
- * （菜单引用、套餐允许且在 App Registry 中登记了当前环境入口地址的那些）。
+ * 当前 Membership 的 Permission Code、已按权限与套餐裁剪的菜单树、可加载的 Sub-App
+ * （菜单引用、套餐允许且在 App Registry 中登记了当前环境入口地址的那些），以及租户的导航布局。
  */
 export interface TenantAccess {
   permissions: string[]
   menus: MenuNode[]
   subApps: SubAppEntry[]
+  /** 没有布局时为 null，导航按默认顺序显示。 */
+  layout?: NavigationLayout | null
 }
 
 /**
@@ -59,7 +79,7 @@ export type AccessControl = ReturnType<typeof createAccessControl>
 /** 权限上下文的注入 key。 */
 export const accessControlKey: InjectionKey<AccessControl> = Symbol('forge.access')
 
-const empty: TenantAccess = Object.freeze({ permissions: [], menus: [], subApps: [] })
+const empty: TenantAccess = Object.freeze({ permissions: [], menus: [], subApps: [], layout: null })
 
 /**
  * 创建当前 Membership 的权限上下文。以 `app.use()` 安装后提供注入并注册全局指令 `v-perm`：
@@ -98,6 +118,11 @@ export function createAccessControl(client: Pick<TenantClient, 'api'>) {
     return state.value.menus
   }
 
+  /** 租户的导航布局；没有时为 null。 */
+  function layout(): NavigationLayout | null {
+    return state.value.layout ?? null
+  }
+
   /** 当前可加载的 Sub-App。 */
   function subApps(): SubAppEntry[] {
     return state.value.subApps
@@ -108,6 +133,7 @@ export function createAccessControl(client: Pick<TenantClient, 'api'>) {
     clear,
     has,
     menus,
+    layout,
     subApps,
     install(app: App) {
       app.provide(accessControlKey, control)

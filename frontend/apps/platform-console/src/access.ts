@@ -1,10 +1,12 @@
 import { shallowRef } from 'vue'
-import type { PlatformClient } from '@crane199709/sdk'
+import type { NavigationLayout, PlatformClient } from '@crane199709/sdk'
 
-/** iam 下发的当前 Operator 的平台角色与有效权限码。 */
+/** iam 下发的当前 Operator 的平台角色、有效权限码与平台控制台的导航布局。 */
 export interface PlatformAccess {
   roles: string[]
   permissions: string[]
+  /** 没有布局时为 null，导航按 `consolePages` 的顺序显示。 */
+  layout?: NavigationLayout | null
 }
 
 /** platform-console 按权限码显示的功能，与各服务申报的平台权限码一致。 */
@@ -23,7 +25,7 @@ export const permissions = Object.freeze({
   menuManage: 'platform:menu:manage',
 })
 
-const empty: PlatformAccess = Object.freeze({ roles: [], permissions: [] })
+const empty: PlatformAccess = Object.freeze({ roles: [], permissions: [], layout: null })
 
 /**
  * 当前 Operator 的平台权限，只用于界面展示，接口仍由服务端按平台角色校验。

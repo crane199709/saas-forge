@@ -1,52 +1,53 @@
 import type { MenuNode } from '@crane199709/sdk'
 import { describe, expect, it } from 'vitest'
-import { menuSections } from './menu-routes'
+import { menuEntries } from './menu-routes'
 
-const demoMenu: MenuNode[] = [
-  {
-    code: 'demo',
-    name: '示例应用',
-    children: [{ code: 'demo.overview', name: '订单概览', app: 'demo', path: 'overview' }],
-  },
-]
-
-describe('menuSections', () => {
-  it('分组列出叶子入口，顶层叶子自成一组，没有入口的分组不展示', () => {
-    expect(
-      menuSections(
-        [
-          ...demoMenu,
-          { code: 'home', name: '首页', app: 'demo', path: 'home' },
-          { code: 'empty', name: '空分组', children: [] },
-        ],
-        new Set(['demo']),
-      ),
-    ).toEqual([
+describe('menuEntries', () => {
+  it('保持清单的多层分组，叶子入口指向 Sub-App 路由', () => {
+    const menus: MenuNode[] = [
       {
         code: 'demo',
         name: '示例应用',
-        links: [{ code: 'demo.overview', name: '订单概览', to: '/apps/demo/overview' }],
+        children: [
+          { code: 'demo.overview', name: '订单概览', app: 'demo', path: 'overview' },
+          {
+            code: 'demo.finance',
+            name: '财务',
+            children: [{ code: 'demo.bills', name: '账单', app: 'demo', path: 'bills' }],
+          },
+        ],
       },
+      { code: 'home', name: '主页', app: 'demo', path: 'home' },
+    ]
+    expect(menuEntries(menus, new Set(['demo']))).toEqual([
       {
-        code: 'home',
-        name: '首页',
-        links: [{ code: 'home', name: '首页', to: '/apps/demo/home' }],
+        menu: 'demo',
+        title: '示例应用',
+        children: [
+          { menu: 'demo.overview', title: '订单概览', path: '/apps/demo/overview' },
+          {
+            menu: 'demo.finance',
+            title: '财务',
+            children: [{ menu: 'demo.bills', title: '账单', path: '/apps/demo/bills' }],
+          },
+        ],
       },
+      { menu: 'home', title: '主页', path: '/apps/demo/home' },
     ])
   })
 
-  it('不展示指向未注册 Sub-App 的入口', () => {
-    expect(
-      menuSections(
-        [...demoMenu, { code: 'report', name: '报表', app: 'report', path: 'monthly' }],
-        new Set(['report']),
-      ),
-    ).toEqual([
+  it('指向未注册 Sub-App 的入口按不可见处理', () => {
+    const menus: MenuNode[] = [
       {
-        code: 'report',
-        name: '报表',
-        links: [{ code: 'report', name: '报表', to: '/apps/report/monthly' }],
+        code: 'demo',
+        name: '示例应用',
+        children: [{ code: 'demo.overview', name: '订单概览', app: 'demo', path: 'overview' }],
       },
+      { code: 'report', name: '报表', app: 'report', path: 'monthly' },
+    ]
+    expect(menuEntries(menus, new Set(['report']))).toEqual([
+      { menu: 'demo', title: '示例应用', children: [] },
+      { menu: 'report', title: '报表', path: '/apps/report/monthly' },
     ])
   })
 })

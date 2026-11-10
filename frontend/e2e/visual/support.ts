@@ -25,7 +25,7 @@ export async function openAsAdmin(
   page: Page,
   url: string,
   respond: (path: string, route: Route) => Promise<void> | undefined,
-  access: { permissions?: string[]; menus?: unknown[]; subApps?: unknown[] } = {},
+  access: { permissions?: string[]; menus?: unknown[]; subApps?: unknown[]; layout?: unknown } = {},
 ) {
   await page.addInitScript(() =>
     localStorage.setItem(
@@ -58,6 +58,7 @@ export async function openAsAdmin(
           ],
           menus: access.menus ?? [],
           subApps: access.subApps ?? [],
+          layout: access.layout ?? null,
         }),
       )
     if (path === '/iam/auth/memberships')

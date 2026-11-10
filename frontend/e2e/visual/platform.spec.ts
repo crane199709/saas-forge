@@ -276,7 +276,7 @@ const announcements = [
   },
 ]
 
-function respond(path: string, route: Route) {
+function respond(path: string, route: Route, layout: unknown = null) {
   const table: Record<string, unknown> = {
     '/platform/plans': ok(plans),
     '/platform/plans/permissions': ok(catalog),
@@ -289,7 +289,7 @@ function respond(path: string, route: Route) {
     [`/platform/ops/services/demo-service/tasks/${encodeURIComponent('租户清理')}/runs`]: ok([
       taskRun,
     ]),
-    '/iam/platform/access': ok({ roles: [], permissions }),
+    '/iam/platform/access': ok({ roles: [], permissions, layout }),
     '/iam/platform/operators': ok(operators),
     '/iam/platform/roles': ok(roles),
     '/iam/platform/roles/permissions': ok(rolePermissions),
@@ -305,7 +305,7 @@ function respond(path: string, route: Route) {
   return route.fulfill((table[path] ?? ok([])) as Parameters<Route['fulfill']>[0])
 }
 
-async function open(page: Page, url: string) {
+async function open(page: Page, url: string, layout: unknown = null) {
   await page.addInitScript(() =>
     localStorage.setItem(
       'forge.platform.session',
@@ -317,7 +317,7 @@ async function open(page: Page, url: string) {
     ),
   )
   await page.route('**/platform/**', (route) =>
-    respond(new URL(route.request().url()).pathname, route),
+    respond(new URL(route.request().url()).pathname, route, layout),
   )
   await page.goto(url)
 }
@@ -352,6 +352,24 @@ for (const [label, width, height] of viewports) {
       await page.getByTestId('identity-lookup').getByRole('button').click()
       await expect(page.getByTestId('identity-mfa-reset')).toBeVisible()
       await expect(page).toHaveScreenshot(`platform-identity-${label}.png`)
+    })
+
+    test('navigation', async ({ page }) => {
+      // 运维页面归入自定义分组，公告管理上移；布局中没有的页面排在末尾
+      await open(page, '/dead-events', {
+        nodes: [
+          { page: 'tenants' },
+          { page: 'announcements' },
+          {
+            group: 'ops',
+            name: '运维监控与故障排查',
+            children: [{ page: 'task-runs' }, { page: 'dead-events' }],
+          },
+          { group: 'access', name: '访问控制', children: [{ page: 'roles' }, { page: 'audit' }] },
+        ],
+      })
+      await expect(page.getByText('order-created', { exact: true }).first()).toBeVisible()
+      await expect(page).toHaveScreenshot(`platform-navigation-${label}.png`)
     })
 
     test('account', async ({ page }) => {
