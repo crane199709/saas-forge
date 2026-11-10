@@ -48,7 +48,7 @@ async function xlsx(rows: unknown[][]) {
   return Buffer.from(await (await writeXlsxFile(rows).toBlob()).arrayBuffer())
 }
 
-test('下载模板、上传预览、确认发送并显示各结果计数', async ({ page }) => {
+test('下载模板、上传预览、确认发送、显示结果并下载失败清单', async ({ page }) => {
   const invited: unknown[] = []
   let listed = 0
   await openAsAdmin(page, '/members', (path, route) => {
@@ -132,6 +132,24 @@ test('下载模板、上传预览、确认发送并显示各结果计数', async
     primaryDepartmentId: 'rd',
   })
   expect(listed).toBe(listedBefore + 1)
+
+  const failures = page.waitForEvent('download')
+  await dialog.getByTestId('member-bulk-download').click()
+  const failureList = await failures
+  expect(failureList.suggestedFilename()).toBe('成员批量邀请失败清单.xlsx')
+  const failureContent = await readFile(await failureList.path())
+  expect(
+    await readSheet(
+      failureContent.buffer.slice(
+        failureContent.byteOffset,
+        failureContent.byteOffset + failureContent.byteLength,
+      ) as ArrayBuffer,
+    ),
+  ).toEqual([
+    ['联系方式', '角色', '主部门', '失败原因'],
+    ['down@example.com', null, null, '服务暂不可用'],
+    ['new@example.com', null, null, '与第 2 行重复'],
+  ])
 
   await dialog.getByTestId('member-bulk-done').click()
   await expect(dialog).toBeHidden()

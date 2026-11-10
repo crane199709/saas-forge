@@ -39,6 +39,8 @@ export interface BulkRow {
 export interface ParseContext {
   /** 模板的三列表头：联系方式、角色、主部门。 */
   headers: readonly [string, string, string]
+  /** 失败清单末尾的「失败原因」列表头；上传时忽略该列，修正后可直接重传。 */
+  reasonHeader: string
   /** 可匹配的角色，含 Owner；没有 `iam:role:manage` 时为 null。 */
   roles: Role[] | null
   /** 可匹配的部门；没有 `iam:org:manage` 时为 null。 */
@@ -54,25 +56,53 @@ export async function readRows(file: Blob): Promise<Cell[][]> {
   return (await readSheet(file)) as Cell[][]
 }
 
+/** 模板的文字：表头、各列填写说明与两个工作表的名称。 */
+export interface TemplateText {
+  headers: ParseContext['headers']
+  guide: readonly [string, string, string]
+  sheets: { data: string; guide: string }
+}
+
 /**
  * 生成模板：第一个工作表只有表头，第二个工作表是填写说明。
  * 说明放在模板里而不是页面上，填写时随手可查；上传时只读第一个工作表。
  */
-export async function templateWorkbook(
-  headers: ParseContext['headers'],
-  guide: readonly [string, string, string],
-  sheets: { data: string; guide: string },
+export function templateWorkbook(template: TemplateText): Promise<Blob> {
+  return workbook(template, [...template.headers], [])
+}
+
+/**
+ * 生成失败清单：格式与模板相同，第一个工作表末尾多一列失败原因。
+ * 上传时忽略这一列，修正后可直接重传。
+ */
+export function failureWorkbook(
+  template: TemplateText,
+  reasonHeader: string,
+  failures: { row: BulkRow; reason: string }[],
 ): Promise<Blob> {
+  return workbook(
+    template,
+    [...template.headers, reasonHeader],
+    // 联系方式按文本写出，手机号不会被表格转成数字或科学计数法。
+    failures.map(({ row, reason }) => [row.contact, row.roles, row.department, reason]),
+  )
+}
+
+async function workbook(template: TemplateText, header: string[], rows: string[][]) {
   const { default: writeXlsxFile } = await import('write-excel-file/universal')
+  const cell = (value: string) => (value ? { value } : null)
   return writeXlsxFile([
     {
-      sheet: sheets.data,
-      data: [headers.map((value) => ({ value, fontWeight: 'bold' as const }))],
-      columns: [{ width: 32 }, { width: 24 }, { width: 32 }],
+      sheet: template.sheets.data,
+      data: [
+        header.map((value) => ({ value, fontWeight: 'bold' as const })),
+        ...rows.map((values) => values.map(cell)),
+      ],
+      columns: [{ width: 32 }, { width: 24 }, { width: 32 }, { width: 40 }].slice(0, header.length),
     },
     {
-      sheet: sheets.guide,
-      data: headers.map((header, index) => [header, guide[index]!]),
+      sheet: template.sheets.guide,
+      data: template.headers.map((name, index) => [name, template.guide[index]!]),
       columns: [{ width: 12 }, { width: 72 }],
     },
   ]).toBlob()
@@ -117,14 +147,19 @@ function departmentsByPath(departments: Department[]) {
 export function parseInvitations(data: Cell[][], context: ParseContext): ParseResult {
   const [header = [], ...body] = data
   const headerCells = header.map(text)
+  const [extra = '', ...rest] = headerCells.slice(context.headers.length)
   if (
     context.headers.some((name, index) => headerCells[index] !== name) ||
-    headerCells.slice(context.headers.length).some(Boolean)
+    (extra && extra !== context.reasonHeader) ||
+    rest.some(Boolean)
   )
     return { ok: false, reason: 'header' }
 
   const lines = body
-    .map((cells, index) => ({ cells: cells.map(text), line: index + 2 }))
+    .map((cells, index) => ({
+      cells: cells.slice(0, context.headers.length).map(text),
+      line: index + 2,
+    }))
     .filter(({ cells }) => cells.some(Boolean))
   if (lines.length > MAX_ROWS) return { ok: false, reason: 'tooMany' }
 
@@ -187,8 +222,8 @@ export function parseInvitations(data: Cell[][], context: ParseContext): ParseRe
   }
 }
 
-/** 发送后的行结果，按规格第 5 节归类。 */
-export type Outcome = 'invited' | 'resent' | 'alreadyMember' | 'failed'
+/** 发送后的行结果，按规格第 5 节归类；`skipped` 是停止后尚未发出的行（未处理）。 */
+export type Outcome = 'invited' | 'resent' | 'alreadyMember' | 'failed' | 'skipped'
 
 export interface BulkResult {
   row: BulkRow
@@ -204,17 +239,19 @@ export interface BulkResult {
  * @param rows 有 `input` 的有效行
  * @param describe 把失败原因转为展示文案
  * @param onSettled 每行有结果时回调，用于显示进度
+ * @param stopped 返回 true 后不再发出新请求；已发出的请求照常等待完成，其余行标为 `skipped`
  */
 export async function sendInvitations(
   rows: BulkRow[],
   invite: (input: InviteInput) => Promise<{ resent: boolean }>,
   describe: (cause: unknown) => string,
   onSettled?: (result: BulkResult) => void,
+  stopped: () => boolean = () => false,
 ): Promise<BulkResult[]> {
-  const results: BulkResult[] = new Array(rows.length)
+  const results: BulkResult[] = rows.map((row) => ({ row, outcome: 'skipped' }))
   let next = 0
   async function worker() {
-    while (next < rows.length) {
+    while (next < rows.length && !stopped()) {
       const index = next++
       const row = rows[index]!
       let result: BulkResult

@@ -3,7 +3,9 @@ import { ApiError } from '@crane199709/sdk'
 import type { Department } from '../organization/org-api'
 import type { Role } from '../role/role-api'
 import {
+  failureWorkbook,
   parseInvitations,
+  readRows,
   sendInvitations,
   type BulkRow,
   type Cell,
@@ -41,7 +43,7 @@ const departments = [
   department('be2', 'rd', '后端组'),
   department('ops', 'hq', '运营部'),
 ]
-const context: ParseContext = { headers, roles, departments }
+const context: ParseContext = { headers, reasonHeader: '失败原因', roles, departments }
 
 function parse(rows: Cell[][], overrides: Partial<ParseContext> = {}) {
   return parseInvitations([[...headers], ...rows], { ...context, ...overrides })
@@ -61,6 +63,33 @@ describe('parseInvitations', () => {
     })
     expect(parseInvitations([], context)).toEqual({ ok: false, reason: 'header' })
     expect(parseInvitations([[...headers, '备注']], context)).toEqual({
+      ok: false,
+      reason: 'header',
+    })
+  })
+
+  it('忽略失败清单末尾的「失败原因」列，只有该列有值的行视为空行', () => {
+    const result = parseInvitations(
+      [
+        [...headers, '失败原因'],
+        ['a@example.com', null, null, '服务暂不可用'],
+        [null, null, null, '缺少联系方式'],
+      ],
+      context,
+    )
+    expect(result).toEqual({
+      ok: true,
+      rows: [
+        {
+          line: 2,
+          contact: 'a@example.com',
+          roles: '',
+          department: '',
+          input: { contact: 'a@example.com', roleIds: [], primaryDepartmentId: null },
+        },
+      ],
+    })
+    expect(parseInvitations([[...headers, '失败原因', '备注']], context)).toEqual({
       ok: false,
       reason: 'header',
     })
@@ -235,5 +264,66 @@ describe('sendInvitations', () => {
     )
     expect(peak).toBe(3)
     expect(settled.sort()).toEqual([2, 3, 4, 5, 6, 7, 8])
+  })
+
+  it('停止后已发出的请求等待完成，其余行标为未处理', async () => {
+    const stop = { stopped: false }
+    const pending: Array<() => void> = []
+    const calls: string[] = []
+    const sending = sendInvitations(
+      [2, 3, 4, 5, 6].map(row),
+      (input) => {
+        calls.push(input.contact)
+        return new Promise((resolve) => pending.push(() => resolve({ resent: false })))
+      },
+      () => '',
+      undefined,
+      () => stop.stopped,
+    )
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(calls).toHaveLength(3)
+    stop.stopped = true
+    pending.forEach((resolve) => resolve())
+    const results = await sending
+    expect(calls).toHaveLength(3)
+    expect(results.map((result) => [result.row.line, result.outcome])).toEqual([
+      [2, 'invited'],
+      [3, 'invited'],
+      [4, 'invited'],
+      [5, 'skipped'],
+      [6, 'skipped'],
+    ])
+  })
+})
+
+describe('failureWorkbook', () => {
+  const template = {
+    headers,
+    guide: ['必填', '选填', '选填'] as const,
+    sheets: { data: '成员', guide: '填写说明' },
+  }
+
+  it('失败清单与模板同格式，末尾多一列失败原因，修正后可直接重传', async () => {
+    const failed: BulkRow[] = [
+      { line: 3, contact: '13800000000', roles: '销售', department: '总部/研发部' },
+      { line: 5, contact: '', roles: '运营', department: '' },
+    ]
+    const blob = await failureWorkbook(template, '失败原因', [
+      { row: failed[0]!, reason: '服务暂不可用' },
+      { row: failed[1]!, reason: '缺少联系方式' },
+    ])
+    const data = await readRows(blob)
+    expect(data).toEqual([
+      ['联系方式', '角色', '主部门', '失败原因'],
+      ['13800000000', '销售', '总部/研发部', '服务暂不可用'],
+      [null, '运营', null, '缺少联系方式'],
+    ])
+    const result = parseInvitations(data, context)
+    expect(
+      result.ok && result.rows.map((item) => [item.contact, item.input ?? item.problem]),
+    ).toEqual([
+      ['13800000000', { contact: '13800000000', roleIds: ['r-sales'], primaryDepartmentId: 'rd' }],
+      ['', { key: 'contactRequired' }],
+    ])
   })
 })

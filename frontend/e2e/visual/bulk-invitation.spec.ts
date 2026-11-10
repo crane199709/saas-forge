@@ -35,7 +35,7 @@ const rows = [
   ['ZhangWei@example.com', null, null],
 ]
 
-async function open(page: Page) {
+async function open(page: Page, hold = false) {
   await openAsAdmin(page, '/members', (path, route) => {
     if (path === '/iam/members') return route.fulfill(onePage([]))
     if (path === '/iam/roles') return route.fulfill(ok(roles))
@@ -47,6 +47,8 @@ async function open(page: Page) {
           status: 409,
           json: { code: 'member.alreadyMember', httpStatus: 409, userTip: '该用户已是成员' },
         })
+      // 发送中的截图让这一行一直等待，停在发送中。
+      if (contact === 'quota@example.com' && hold) return new Promise<void>(() => {})
       if (contact === 'quota@example.com')
         return route.fulfill({
           status: 409,
@@ -94,6 +96,15 @@ for (const [label, width, height] of viewports) {
       await open(page)
       await upload(page)
       await expect(page).toHaveScreenshot(`bulk-invitation-preview-${label}.png`)
+    })
+
+    test('批量邀请-发送中', async ({ page }) => {
+      const dialog = await open(page, true)
+      await upload(page)
+      await dialog.getByTestId('member-bulk-send').click()
+      await expect(dialog.getByTestId('member-bulk-progress')).toContainText('已处理 4 / 5')
+      await page.mouse.move(0, 0)
+      await expect(page).toHaveScreenshot(`bulk-invitation-sending-${label}.png`)
     })
 
     test('批量邀请-结果', async ({ page }) => {

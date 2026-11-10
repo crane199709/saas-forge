@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { createAccessControl, createTenantClient, tenantClientKey } from '@crane199709/sdk'
 import { i18n } from '../i18n'
 import MemberPage from './MemberPage.vue'
-import type { Cell } from './bulk-invite'
+import { readRows, type Cell } from './bulk-invite'
 
 beforeEach(() => {
   sessionStorage.setItem(
@@ -180,4 +180,81 @@ it('没有有效行时不能确认；缺少角色与组织管理权限时填了�
   expect($('member-bulk-preview').textContent).toContain('没有角色管理权限')
   expect($('member-bulk-preview').textContent).toContain('没有组织管理权限')
   expect(($('member-bulk-send') as HTMLButtonElement).disabled).toBe(true)
+})
+
+it('发送中不可关闭且有离开提示；停止后其余行未处理，失败清单可下载并修正重传', async () => {
+  const pending: Array<(response: Response) => void> = []
+  const hang = () => new Promise<Response>((resolve) => pending.push(resolve))
+  const fetcher = vi.fn((url: string) => {
+    const path = new URL(url).pathname
+    if (path === '/iam/members/invitations') return hang()
+    if (path === '/iam/roles') return Promise.resolve(ok(roles))
+    if (path === '/iam/org/departments') return Promise.resolve(ok(departments))
+    return Promise.resolve(ok([], page))
+  })
+  const saved: Blob[] = []
+  // jsdom 没有实现对象 URL，用替身截获下载的文件。
+  URL.createObjectURL = (blob: Blob) => {
+    saved.push(blob)
+    return 'blob:failures'
+  }
+  URL.revokeObjectURL = () => {}
+  const wrapper = await mountPage(fetcher, all)
+  await open(wrapper)
+  await upload(
+    await workbook([
+      headers,
+      ['a@example.com', '销售', null],
+      ['b@example.com', null, null],
+      ['c@example.com', null, null],
+      ['d@example.com', null, '总部/研发部'],
+      ['bad-contact', null, null],
+      ['e@example.com', null, null],
+    ]),
+  )
+  const unload = () => {
+    const event = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(event)
+    return event.defaultPrevented
+  }
+  expect(unload()).toBe(false)
+
+  $('member-bulk-send').click()
+  await vi.waitFor(() => expect(pending).toHaveLength(3))
+  expect(document.querySelector('.el-dialog__headerbtn')).toBeNull()
+  expect(unload()).toBe(true)
+
+  $('member-bulk-stop').click()
+  await flushPromises()
+  pending[0]!(ok({ membershipId: 'm1', status: 'invited', resent: false }))
+  pending[1]!(failure('service.unavailable', 503, '服务暂不可用'))
+  pending[2]!(ok({ membershipId: 'm3', status: 'invited', resent: false }))
+  await vi.waitFor(() => {
+    if (!$('member-bulk-result')) throw new Error('pending')
+  })
+  await flushPromises()
+  expect(pending).toHaveLength(3)
+  expect(unload()).toBe(false)
+  const result = $('member-bulk-result').textContent!
+  expect(result).toMatch(/已邀请\s*2/)
+  expect(result).toMatch(/失败\s*2/)
+  expect(result).toMatch(/未处理\s*2/)
+
+  $('member-bulk-download').click()
+  await vi.waitFor(() => expect(saved).toHaveLength(1))
+  expect(await readRows(saved[0]!)).toEqual([
+    ['联系方式', '角色', '主部门', '失败原因'],
+    ['b@example.com', null, null, '服务暂不可用'],
+    ['d@example.com', null, '总部/研发部', '已停止，未发送'],
+    ['bad-contact', null, null, '联系方式格式不正确'],
+    ['e@example.com', null, null, '已停止，未发送'],
+  ])
+
+  // 修正后直接重传：失败原因列被忽略。
+  $('member-bulk-done').click()
+  await flushPromises()
+  await open(wrapper)
+  await upload(new File([saved[0]!], 'failures.xlsx'))
+  expect($('member-bulk-preview').textContent).toContain('将邀请 3 人')
+  expect($('member-bulk-preview').textContent).toContain('1 行有错误')
 })

@@ -324,8 +324,15 @@
         "invited": "已邀请",
         "resent": "已重发",
         "alreadyMember": "已是成员",
-        "failed": "失败"
+        "failed": "失败",
+        "skipped": "未处理"
       },
+      "stop": "停止",
+      "stopping": "正在停止",
+      "skippedReason": "已停止，未发送",
+      "reasonColumn": "失败原因",
+      "downloadFailures": "下载失败清单",
+      "failureFile": "成员批量邀请失败清单.xlsx",
       "failedRows": "失败明细",
       "done": "完成"
     }

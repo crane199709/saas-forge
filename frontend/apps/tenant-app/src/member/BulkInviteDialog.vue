@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { tenantClientKey, useAccessControl } from '@crane199709/sdk'
 import { ErrorAlert, overlaySize } from '@crane199709/ui'
@@ -9,6 +9,7 @@ import { createRoleApi, type Role } from '../role/role-api'
 import { createMemberApi } from './member-api'
 import {
   MAX_ROWS,
+  failureWorkbook,
   parseInvitations,
   readRows,
   saveFile,
@@ -17,6 +18,7 @@ import {
   type BulkResult,
   type BulkRow,
   type Outcome,
+  type TemplateText,
 } from './bulk-invite'
 
 const open = defineModel<boolean>({ required: true })
@@ -38,6 +40,7 @@ const departments = ref<Department[] | null>(null)
 const rows = ref<BulkRow[]>([])
 const results = ref<BulkResult[]>([])
 const settled = ref(0)
+const stopping = ref(false)
 const fileInput = ref<HTMLInputElement>()
 
 const headers = computed(
@@ -48,17 +51,30 @@ const headers = computed(
       t('member.bulk.columns.department'),
     ] as const,
 )
+const template = computed<TemplateText>(() => ({
+  headers: headers.value,
+  guide: [
+    t('member.bulk.guide.contact'),
+    t('member.bulk.guide.roles'),
+    t('member.bulk.guide.department'),
+  ],
+  sheets: { data: t('member.bulk.dataSheet'), guide: t('member.bulk.guideSheet') },
+}))
 const valid = computed(() => rows.value.filter((row) => row.input))
 const invalid = computed(() => rows.value.filter((row) => row.problem))
-const outcomes: Outcome[] = ['invited', 'resent', 'alreadyMember', 'failed']
+const outcomes: Outcome[] = ['invited', 'resent', 'alreadyMember', 'failed', 'skipped']
 
-// 本地校验错误与接口失败都计为失败，按行号排在一起便于对照原文件修改。
+// 本地校验错误、接口失败与停止后未处理的行都进入失败清单，按行号排在一起便于对照原文件修改。
 const failures = computed(() =>
   [
     ...invalid.value.map((row) => ({ row, reason: problemText(row) })),
     ...results.value
-      .filter((result) => result.outcome === 'failed')
-      .map((result) => ({ row: result.row, reason: result.reason ?? '' })),
+      .filter((result) => result.outcome === 'failed' || result.outcome === 'skipped')
+      .map((result) => ({
+        row: result.row,
+        reason:
+          result.outcome === 'skipped' ? t('member.bulk.skippedReason') : (result.reason ?? ''),
+      })),
   ].sort((a, b) => a.row.line - b.row.line),
 )
 const counts = computed(() => {
@@ -105,16 +121,12 @@ watch(open, (value) => {
 })
 
 async function downloadTemplate() {
-  const blob = await templateWorkbook(
-    headers.value,
-    [
-      t('member.bulk.guide.contact'),
-      t('member.bulk.guide.roles'),
-      t('member.bulk.guide.department'),
-    ],
-    { data: t('member.bulk.dataSheet'), guide: t('member.bulk.guideSheet') },
-  )
-  saveFile(blob, t('member.bulk.templateFile'))
+  saveFile(await templateWorkbook(template.value), t('member.bulk.templateFile'))
+}
+
+async function downloadFailures() {
+  const blob = await failureWorkbook(template.value, t('member.bulk.reasonColumn'), failures.value)
+  saveFile(blob, t('member.bulk.failureFile'))
 }
 
 async function choose(event: Event) {
@@ -139,6 +151,7 @@ async function choose(event: Event) {
   }
   const parsed = parseInvitations(data, {
     headers: headers.value,
+    reasonHeader: t('member.bulk.reasonColumn'),
     roles: roles.value,
     departments: departments.value,
   })
@@ -150,22 +163,43 @@ async function choose(event: Event) {
   step.value = 'preview'
 }
 
+// 发送中关闭标签页会中断剩余行，且无法得知已发出请求的结果，交给浏览器弹出离开提示。
+function preventLeave(event: BeforeUnloadEvent) {
+  event.preventDefault()
+}
+
 async function send() {
   step.value = 'sending'
   settled.value = 0
-  results.value = await sendInvitations(
-    valid.value,
-    (input) => api.invite(input),
-    (cause) => errorTip(cause, t).message,
-    () => settled.value++,
-  )
+  stopping.value = false
+  window.addEventListener('beforeunload', preventLeave)
+  try {
+    results.value = await sendInvitations(
+      valid.value,
+      (input) => api.invite(input),
+      (cause) => errorTip(cause, t).message,
+      () => settled.value++,
+      () => stopping.value,
+    )
+  } finally {
+    window.removeEventListener('beforeunload', preventLeave)
+  }
   step.value = 'done'
   emit('finished')
 }
+
+onBeforeUnmount(() => window.removeEventListener('beforeunload', preventLeave))
 </script>
 
 <template>
-  <el-dialog v-model="open" :width="overlaySize.dialogMd" :title="t('member.bulk.title')">
+  <el-dialog
+    v-model="open"
+    :width="overlaySize.dialogMd"
+    :title="t('member.bulk.title')"
+    :show-close="step !== 'sending'"
+    :close-on-click-modal="step !== 'sending'"
+    :close-on-press-escape="step !== 'sending'"
+  >
     <ErrorAlert v-if="loadError" :tip="loadError" />
     <template v-else-if="step === 'select' || step === 'preview'">
       <div class="actions">
@@ -229,7 +263,17 @@ async function send() {
         </div>
       </dl>
       <template v-if="failures.length">
-        <h4 class="section-title">{{ t('member.bulk.failedRows') }}</h4>
+        <div class="section-head">
+          <h4 class="section-title">{{ t('member.bulk.failedRows') }}</h4>
+          <el-button
+            link
+            type="primary"
+            data-testid="member-bulk-download"
+            @click="downloadFailures"
+          >
+            {{ t('member.bulk.downloadFailures') }}
+          </el-button>
+        </div>
         <el-table :data="failures" max-height="320" :row-key="(item) => String(item.row.line)">
           <el-table-column :label="t('member.bulk.line')" width="72" align="right">
             <template #default="{ row }">{{ row.row.line }}</template>
@@ -256,14 +300,19 @@ async function send() {
           {{ t('member.bulk.done') }}
         </el-button>
       </template>
+      <template v-else-if="step === 'sending'">
+        <el-button :loading="stopping" data-testid="member-bulk-stop" @click="stopping = true">
+          {{ stopping ? t('member.bulk.stopping') : t('member.bulk.stop') }}
+        </el-button>
+        <el-button type="primary" loading>{{ t('member.bulk.send') }}</el-button>
+      </template>
       <template v-else>
-        <el-button :disabled="step === 'sending'" @click="open = false">
+        <el-button @click="open = false">
           {{ t('member.cancel') }}
         </el-button>
         <el-button
           type="primary"
           :disabled="step !== 'preview' || !valid.length"
-          :loading="step === 'sending'"
           data-testid="member-bulk-send"
           @click="send"
         >
@@ -294,7 +343,7 @@ async function send() {
 }
 .counts {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: var(--forge-space-3);
   margin: 0;
 }
@@ -309,8 +358,14 @@ async function send() {
 .counts dd.danger {
   color: var(--el-color-danger);
 }
-.section-title {
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin: var(--forge-space-4) 0 var(--forge-space-2);
+}
+.section-title {
+  margin: 0;
   font-size: var(--forge-font-size-sm);
   font-weight: 600;
 }
