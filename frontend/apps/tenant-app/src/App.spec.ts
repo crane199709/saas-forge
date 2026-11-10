@@ -193,4 +193,33 @@ describe('App 布局', () => {
     expect(wrapper.get('[data-testid="menu-parameters"]').text()).toBe('参数')
     expect(wrapper.find('[data-testid="menu-roles"]').exists()).toBe(false)
   })
+
+  it('菜单管理入口要求 iam:menu:manage，默认排在清单菜单之后', async () => {
+    signedIn()
+    const menus = [{ code: 'demo.orders', name: '订单', app: 'demo', path: 'orders' }]
+    const subApps = [
+      { code: 'demo', name: '示例', version: '1', remoteEntry: 'x', sharedRequirements: {} },
+    ]
+    const host = createSubAppHost({
+      router: createRouter({ history: createMemoryHistory(), routes: [] }),
+      sharedVersions: {},
+      loadModule: () => new Promise(() => {}),
+      timeoutMs: 1000,
+    })
+    host.apply(menus, subApps)
+    const { wrapper } = await mountShell('/', {
+      access: async () => ({
+        permissions: ['iam:menu:manage', 'iam:role:manage'],
+        menus,
+        subApps,
+      }),
+      host,
+    })
+
+    const keys = wrapper
+      .findAll('[data-testid^="menu-"]')
+      .map((item) => item.attributes('data-testid'))
+    expect(keys.slice(-3)).toEqual(['menu-roles', 'menu-demo.orders', 'menu-menu-layout'])
+    expect(wrapper.get('[data-testid="menu-menu-layout"]').text()).toBe('菜单管理')
+  })
 })

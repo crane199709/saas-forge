@@ -109,6 +109,11 @@ export function createShellRouter(history: RouterHistory) {
         meta: { permission: 'iam:reference-data:manage' },
       },
       {
+        path: '/menu-layout',
+        component: () => import('./navigation/MenuLayoutPage.vue'),
+        meta: { permission: 'iam:menu:manage' },
+      },
+      {
         path: '/audit',
         component: () => import('./audit/AuditPage.vue'),
         meta: { permission: 'iam:audit:read' },
