@@ -4,6 +4,7 @@ import io.saasforge.iam.identity.model.ContactIdentity;
 import io.saasforge.iam.identity.service.IdentityService;
 import io.saasforge.iam.invitation.service.InvitationService;
 import io.saasforge.iam.member.model.ManagedMember;
+import io.saasforge.iam.member.model.MemberInvitation;
 import io.saasforge.iam.membership.model.MembershipChange;
 import io.saasforge.iam.membership.model.MembershipStatus;
 import io.saasforge.iam.membership.model.TenantActor;
@@ -101,14 +102,15 @@ public class MemberService {
      *
      * @param roleIds 预设角色，不含 Owner
      * @param primaryDepartmentId 预设主部门，可为 null
+     * @return 邀请结果；未离开的成员数不变即为重发
      */
-    public MembershipStatus invite(
+    public MemberInvitation invite(
             TenantActor actor, String contact, Collection<UUID> roleIds, UUID primaryDepartmentId) {
         requireManager(actor);
         if (!roleIds.isEmpty()) roles.requirePermission(actor.membershipId(), IamPermissions.ROLE_MANAGE);
         if (primaryDepartmentId != null) roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         ContactIdentity identity = identities.findOrCreatePending(contact);
-        MembershipStatus membership = transactions.execute(status -> {
+        MemberInvitation invitation = transactions.execute(status -> {
             roles.lockTenant(actor.tenantId());
             long before = memberships.count(actor.tenantId());
             MembershipStatus invited = memberships.invite(actor.tenantId(), identity.identityId(), actor.identityId());
@@ -118,8 +120,9 @@ public class MemberService {
             if (quota.isPresent() && after > before && after > quota.get()) {
                 throw new ForgeException(MemberErrorCode.QUOTA_EXCEEDED, quota.get());
             }
-            return invited;
+            return new MemberInvitation(invited, after == before);
         });
+        MembershipStatus membership = invitation.membership();
         if (!roleIds.isEmpty()) roleManagement.assign(actor, membership.membershipId(), roleIds);
         if (primaryDepartmentId != null) {
             assignments.assignPrimaryDepartment(actor, membership.membershipId(), primaryDepartmentId);
@@ -130,7 +133,7 @@ public class MemberService {
                 .detail("roleIds", List.copyOf(roleIds))
                 .detail("primaryDepartmentId", primaryDepartmentId)
                 .build());
-        return membership;
+        return invitation;
     }
 
     /** 停用正常的成员，立即生效；可恢复。 */
