@@ -2,6 +2,7 @@ package io.saasforge.platform.plan.controller;
 
 import io.saasforge.platform.plan.entity.Plan;
 import io.saasforge.platform.plan.model.CatalogPermission;
+import io.saasforge.platform.plan.model.CatalogPermissionTree;
 import io.saasforge.platform.plan.service.PlanService;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.security.RequiresPermission;
@@ -51,6 +52,13 @@ class PlanController {
     @RequiresPermission(MANAGE)
     ApiResponse<List<CatalogPermission>> permissions() {
         return ApiResponse.ok(plans.catalog());
+    }
+
+    @Operation(summary = "Feature Pack 的菜单授权树：各业务服务的菜单与可纳入套餐的权限码，不按 Plan 或 Sub-App 裁剪，未挂在菜单上的权限码在 others 中")
+    @GetMapping("/permission-tree")
+    @RequiresPermission(MANAGE)
+    ApiResponse<CatalogPermissionTree> permissionTree() {
+        return ApiResponse.ok(plans.catalogTree());
     }
 
     @Operation(summary = "新建套餐")

@@ -74,6 +74,24 @@ class PlanTest extends PlatformIntegrationTest {
     }
 
     @Test
+    void featurePackTreeIsPassedThroughFromIam() throws Exception {
+        Response tree = call("GET", "/plans/permission-tree", null);
+        assertThat(tree.status()).isEqualTo(200);
+        assertThat(tree.body().get("data"))
+                .isEqualTo(
+                        JSON.readValue(PlatformTokens.CATALOG_TREE, Map.class).get("data"));
+
+        PlatformTokens.catalogAvailable = false;
+        try {
+            Response unavailable = call("GET", "/plans/permission-tree", null);
+            assertThat(unavailable.status()).isEqualTo(503);
+            assertThat(unavailable.code()).isEqualTo("plan.catalogUnavailable");
+        } finally {
+            PlatformTokens.catalogAvailable = true;
+        }
+    }
+
+    @Test
     void assignmentAndPlanEditsAreBroadcastToTenants() {
         UUID basic = id(call("POST", "/plans", plan("bcast-basic", List.of("order:read"), List.of(), 3, null)));
         UUID pro = id(call(

@@ -23,8 +23,10 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -298,6 +300,131 @@ class PlanEnforcementTest {
                 .onStatus(HttpStatusCode::isError, (req, res) -> {})
                 .toBodilessEntity();
         assertThat(anonymous.getStatusCode().value()).isEqualTo(401);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void platformReadsTheFeaturePackTreeWithoutPlanPruning() {
+        permissions.report(
+                "catalog-tree-service",
+                new ResourceManifest(
+                        "catalog-tree-service",
+                        "1",
+                        List.of(
+                                new Permission("ct:read", "查看", "目录树"),
+                                new Permission("ct:edit", "编辑", "目录树"),
+                                new Permission("ct:loose", "未上菜单", "目录树")),
+                        List.of(new MenuNode(
+                                "ct",
+                                "目录树",
+                                "grid",
+                                null,
+                                null,
+                                null,
+                                List.of(
+                                        new MenuNode(
+                                                "ct.page",
+                                                "页面",
+                                                null,
+                                                "ct-app",
+                                                "page",
+                                                "ct:read",
+                                                List.of(),
+                                                List.of("ct:edit")),
+                                        new MenuNode(
+                                                "ct.nested",
+                                                "子分组",
+                                                null,
+                                                null,
+                                                null,
+                                                null,
+                                                List.of(new MenuNode(
+                                                        "ct.second",
+                                                        "其他应用页",
+                                                        null,
+                                                        "unassigned-app",
+                                                        "second",
+                                                        "ct:read",
+                                                        List.of()))),
+                                        new MenuNode(
+                                                "ct.public", "公共页", null, "ct-app", "public", null, List.of()))))));
+
+        var response = RestClient.create("http://127.0.0.1:" + port)
+                .get()
+                .uri("/internal/permission-tree")
+                .headers(headers -> headers.setBearerAuth("test-platform-token"))
+                .retrieve()
+                .toEntity(Map.class);
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        var tree = (Map<String, Object>) response.getBody().get("data");
+        var root = ((List<Map<String, Object>>) tree.get("menus"))
+                .stream()
+                        .filter(node -> node.get("code").equals("ct"))
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(root).containsEntry("app", null).containsEntry("permission", null);
+        var children = (List<Map<String, Object>>) root.get("children");
+        assertThat(children.stream().map(node -> node.get("code")))
+                .containsExactly("ct.page", "ct.nested", "ct.public");
+        assertThat(children.get(0))
+                .containsEntry("app", "ct-app")
+                .containsEntry(
+                        "permission", Map.of("code", "ct:read", "name", "查看", "sharedWith", List.of("ct.second")))
+                .containsEntry("actions", List.of(Map.of("code", "ct:edit", "name", "编辑", "sharedWith", List.of())));
+        // 不按 Plan 或 Sub-App 裁剪：没有任何 Plan 包含的 Sub-App 也在树上
+        var nested = (List<Map<String, Object>>) children.get(1).get("children");
+        assertThat(children.get(1)).containsEntry("app", null);
+        assertThat(nested)
+                .singleElement()
+                .satisfies(node -> assertThat(node)
+                        .containsEntry("app", "unassigned-app")
+                        .containsEntry(
+                                "permission",
+                                Map.of("code", "ct:read", "name", "查看", "sharedWith", List.of("ct.page"))));
+        assertThat(children.get(2)).containsEntry("app", "ct-app").containsEntry("permission", null);
+
+        var others = (List<Map<String, Object>>) tree.get("others");
+        assertThat(others.stream().map(item -> item.get("code")))
+                .contains("ct:loose")
+                .doesNotContain("ct:read", "ct:edit")
+                .noneMatch(code -> ((String) code).startsWith("iam:"));
+        assertThat(others)
+                .filteredOn(item -> item.get("code").equals("ct:loose"))
+                .singleElement()
+                .isEqualTo(
+                        Map.of("code", "ct:loose", "name", "未上菜单", "service", "catalog-tree-service", "group", "目录树"));
+        // others 保持目录的排序：按服务、分组、编码
+        var catalog = (List<Map<String, Object>>) RestClient.create("http://127.0.0.1:" + port)
+                .get()
+                .uri("/internal/permissions")
+                .headers(headers -> headers.setBearerAuth("test-platform-token"))
+                .retrieve()
+                .toEntity(Map.class)
+                .getBody()
+                .get("data");
+        var placed = new HashSet<Object>();
+        collect(tree.get("menus"), placed);
+        assertThat(others)
+                .isEqualTo(catalog.stream()
+                        .filter(item -> !placed.contains(item.get("code")))
+                        .toList());
+
+        var anonymous = RestClient.create("http://127.0.0.1:" + port)
+                .get()
+                .uri("/internal/permission-tree")
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (req, res) -> {})
+                .toBodilessEntity();
+        assertThat(anonymous.getStatusCode().value()).isEqualTo(401);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void collect(Object nodes, Set<Object> codes) {
+        for (var node : (List<Map<String, Object>>) nodes) {
+            if (node.get("permission") instanceof Map<?, ?> permission) codes.add(permission.get("code"));
+            ((List<Map<String, Object>>) node.get("actions")).forEach(action -> codes.add(action.get("code")));
+            collect(node.get("children"), codes);
+        }
     }
 
     private static TenantPlanChanged planChanged(UUID planId, List<String> codes, Integer memberQuota, long version) {
