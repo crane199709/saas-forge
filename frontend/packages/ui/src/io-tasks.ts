@@ -8,8 +8,14 @@ export interface IoTask {
   /** 任务方向。 */
   type: 'IMPORT' | 'EXPORT'
   /** 服务端状态。 */
-  status: 'WAITING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'
-  /** 已处理行数。 */
+  status: 'WAITING' | 'RUNNING' | 'AWAITING_CONFIRM' | 'SUCCEEDED' | 'FAILED'
+  /** 提交任务的 Membership。 */
+  membershipId?: string
+  /** 最后心跳；待确认时记录进入该状态的时间。 */
+  heartbeatAt?: string
+  /** 服务端失败原因标识。 */
+  errorCode?: string
+  /** 已校验或处理行数。 */
   rowCount: number
   /** 可直接展示的失败原因。 */
   failureReason?: string
@@ -36,6 +42,7 @@ export interface IoUploadTicket {
   /** 需要带入 PUT 的签名头。 */
   headers: Record<string, string>
 }
+/** 轮询所属服务任务；待确认释放执行忙碌状态，只有最终成功或失败才通知完成。 */
 export function useIoTasks(
   api: () => IoTaskApi,
   type: IoTask['type'],
@@ -73,11 +80,11 @@ export function useIoTasks(
         const task = await api().get(tracked)
         if (stopped || request !== generation) return
         active.value = task
-        if (task.status === 'SUCCEEDED' || task.status === 'FAILED') {
+        if (['AWAITING_CONFIRM', 'SUCCEEDED', 'FAILED'].includes(task.status)) {
           tracked = undefined
           busy.value = false
           recent.value = [task, ...recent.value.filter((item) => item.id !== task.id)]
-          done?.(task)
+          if (task.status !== 'AWAITING_CONFIRM') done?.(task)
         }
       }
     } catch (cause) {
@@ -87,7 +94,9 @@ export function useIoTasks(
       !stopped &&
       request === generation &&
       (tracked ||
-        recent.value.some((task) => task.status === 'WAITING' || task.status === 'RUNNING'))
+        recent.value.some((task) =>
+          ['WAITING', 'RUNNING', 'AWAITING_CONFIRM'].includes(task.status),
+        ))
     )
       timer = setTimeout(() => void refresh(), 1000)
   }

@@ -10,6 +10,7 @@ import io.saasforge.sdk.abac.data.DataPermission;
 import io.saasforge.sdk.core.CurrentActorProvider;
 import io.saasforge.sdk.core.CurrentTenant;
 import io.saasforge.sdk.core.MembershipStateKeys;
+import io.saasforge.sdk.core.ReferenceDataKeys;
 import io.saasforge.sdk.core.SubjectAttributes;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.io.ExcelColumn;
@@ -188,6 +189,67 @@ class ObjectStorageTest {
                             .filename())
                     .isEqualTo("订单.xlsx");
         }
+    }
+
+    @Test
+    void httpConfirmationWritesValidatedOrdersOnlyAfterSubmitterConfirms() throws Exception {
+        String id = submitImport(uploadWorkbook(new String[][] {{"HTTP 确认订单", "12.50", "线上"}}));
+        assertThat(awaitValidation(id).get("rowCount")).isEqualTo(1);
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .isEmpty();
+        var confirmed = exchange(tenant, HttpMethod.POST, "/orders/import/" + id + "/confirm", null);
+        assertThat(confirmed.get("httpStatus")).isEqualTo(200);
+        assertThat(((Map<?, ?>) confirmed.get("data")).get("id")).isEqualTo(id);
+        assertThat(awaitTask(id).get("status")).isEqualTo("SUCCEEDED");
+        var orders = (List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data");
+        assertThat(orders).hasSize(1);
+        assertThat(((Map<?, ?>) orders.get(0)).get("title")).isEqualTo("HTTP 确认订单");
+        assertThat(exchange(tenant, HttpMethod.POST, "/orders/import/" + id + "/confirm", null)
+                        .get("code"))
+                .isEqualTo("io.taskNotAwaitingConfirmation");
+    }
+
+    @Test
+    void httpConfirmationRevalidatesChangedDictionaryAndProvidesNewReport() throws Exception {
+        TestReferenceData.referral(tenant, "enabled");
+        String id = submitImport(uploadWorkbook(new String[][] {{"依赖新字典值", "12.50", "转介绍"}}));
+        assertThat(awaitValidation(id).get("status")).isEqualTo("AWAITING_CONFIRM");
+        TestReferenceData.referral(tenant, "disabled");
+        redisTemplate.opsForValue().increment(ReferenceDataKeys.version(tenant));
+        assertThat(exchange(tenant, HttpMethod.POST, "/orders/import/" + id + "/confirm", null)
+                        .get("httpStatus"))
+                .isEqualTo(200);
+        var failed = awaitTask(id);
+        assertThat(failed.get("errorCode")).isEqualTo("io.validationFailed");
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .isEmpty();
+        try (var report = new XSSFWorkbook(new ByteArrayInputStream(downloadTaskFile(failed)))) {
+            assertThat(report.getSheetAt(0).getRow(1).getCell(3).getStringCellValue())
+                    .contains("客户来源");
+        }
+    }
+
+    @Test
+    void httpConfirmationRequiresImportPermissionAndSubmitterWithinTenant() throws Exception {
+        String id = submitImport(uploadWorkbook(new String[][] {{"提交人专属", "1", "线上"}}));
+        assertThat(awaitValidation(id).get("status")).isEqualTo("AWAITING_CONFIRM");
+        String path = "/orders/import/" + id + "/confirm";
+        UUID otherMember = UUID.randomUUID();
+        TestGrants.publishAll(redisTemplate, tenant, otherMember);
+        var forbidden = exchangeAs(otherMember, HttpMethod.POST, path, null);
+        assertThat(forbidden.get("httpStatus")).isEqualTo(403);
+        assertThat(forbidden.get("code")).isEqualTo("io.confirmForbidden");
+        UUID otherTenant = UUID.randomUUID();
+        TestGrants.publishAll(redisTemplate, otherTenant, TestTokens.MEMBERSHIP_ID);
+        var hidden = exchange(otherTenant, HttpMethod.POST, path, null);
+        assertThat(hidden.get("httpStatus")).isEqualTo(404);
+        assertThat(hidden.get("code")).isEqualTo("io.notFound");
+        TestGrants.publish(redisTemplate, tenant, otherMember, List.of("order:read"));
+        assertThat(exchangeAs(otherMember, HttpMethod.POST, path, null).get("httpStatus"))
+                .isEqualTo(403);
+        assertThat(awaitValidation(id).get("status")).isEqualTo("AWAITING_CONFIRM");
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .isEmpty();
     }
 
     @Autowired
@@ -1192,11 +1254,9 @@ class ObjectStorageTest {
 
     private Map<?, ?> confirmImport(String id) throws Exception {
         assertThat(awaitValidation(id).get("status")).isEqualTo("AWAITING_CONFIRM");
-        asMember(() -> excel.confirmImport(
-                UUID.fromString(id),
-                OrderImportRow.class,
-                row -> List.of(),
-                row -> orderService.create(row.title(), row.amount(), row.customerSource())));
+        assertThat(exchange(tenant, HttpMethod.POST, "/orders/import/" + id + "/confirm", null)
+                        .get("httpStatus"))
+                .isEqualTo(200);
         return awaitTask(id);
     }
 

@@ -47,6 +47,7 @@ const prepareImport = (file: File) =>
     size: file.size,
   })
 const submitImport = (objectId: string) => post<IoTask>('/demo/orders/import', { objectId })
+const confirmImport = (taskId: string) => post<IoTask>(`/demo/orders/import/${taskId}/confirm`, {})
 async function downloadTemplate() {
   const data = await client.api<{ filename: string; base64: string }>(
     '/demo/orders/import/template',
@@ -212,6 +213,8 @@ onMounted(() => load())
       :download-template="downloadTemplate"
       :prepare-upload="prepareImport"
       :submit="submitImport"
+      :confirm="confirmImport"
+      :membership-id="client.session()?.membershipId ?? ''"
       @completed="load()"
     />
     <ListPage

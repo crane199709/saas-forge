@@ -35,7 +35,19 @@ public class OrderIoService {
 
     public IoTask importFile(UUID source) {
         storage.completeUpload(source);
-        return excel.importFile(OrderImportRow.class, source, row -> List.of());
+        return excel.importFile(OrderImportRow.class, source, this::validate);
+    }
+
+    public IoTask confirmImport(UUID taskId) {
+        return excel.confirmImport(taskId, OrderImportRow.class, this::validate, this::write);
+    }
+
+    private List<String> validate(OrderImportRow row) {
+        return List.of();
+    }
+
+    private void write(OrderImportRow row) {
+        orders.create(row.title(), row.amount(), row.customerSource());
     }
 
     public IoTask export(PageQuery query) {

@@ -50,6 +50,13 @@ class OrderIoController {
         return ApiResponse.created(service.importFile(request.objectId()));
     }
 
+    @Operation(summary = "重新校验并确认写入订单导入任务")
+    @PostMapping("/import/{taskId}/confirm")
+    @RequiresPermission("order:import")
+    ApiResponse<IoTask> confirmImport(@PathVariable UUID taskId) {
+        return ApiResponse.ok(service.confirmImport(taskId));
+    }
+
     record UploadRequest(String filename, String contentType, long size) {}
 
     record ImportRequest(UUID objectId) {}
