@@ -56,12 +56,17 @@ public class RequestLogContext {
      * 在当前线程绑定请求的日志上下文，供过滤链之外（异常处理）记录日志时使用。
      *
      * @param exchange 当前请求
-     * @return 关闭时移除绑定的值
+     * @return 关闭时恢复原值，避免在过滤链内记录失败摘要时破坏外层上下文
      */
     public Binding bind(ServerWebExchange exchange) {
         Map<String, String> values = exchange.getAttributeOrDefault(ATTRIBUTE, Map.of());
+        Map<String, String> previous = new LinkedHashMap<>();
+        values.keySet().forEach(key -> previous.put(key, MDC.get(key)));
         values.forEach(MDC::put);
-        return () -> values.keySet().forEach(MDC::remove);
+        return () -> previous.forEach((key, value) -> {
+            if (value == null) MDC.remove(key);
+            else MDC.put(key, value);
+        });
     }
 
     /** {@link #bind(ServerWebExchange)} 的句柄。 */

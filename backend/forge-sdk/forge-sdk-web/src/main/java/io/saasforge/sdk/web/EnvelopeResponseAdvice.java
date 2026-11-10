@@ -3,6 +3,9 @@ package io.saasforge.sdk.web;
 import io.micrometer.tracing.Tracer;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.core.api.ErrorEnvelopes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
@@ -20,6 +23,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
  */
 @RestControllerAdvice
 class EnvelopeResponseAdvice implements ResponseBodyAdvice<Object> {
+
+    private static final Logger log = LoggerFactory.getLogger(EnvelopeResponseAdvice.class);
 
     private final ObjectProvider<Tracer> tracer;
 
@@ -51,6 +56,15 @@ class EnvelopeResponseAdvice implements ResponseBodyAdvice<Object> {
                     .map(ErrorEnvelopes::traceId)
                     .orElse(null);
         }
-        return envelope.withTraceId(traceId);
+        ApiResponse<?> result = envelope.withTraceId(traceId);
+        if (request instanceof ServletServerHttpRequest servlet) {
+            ServletFailureLogs.write(
+                    log,
+                    servlet.getServletRequest(),
+                    result,
+                    result.httpStatus() == 503 ? Level.WARN : Level.ERROR,
+                    null);
+        }
+        return result;
     }
 }

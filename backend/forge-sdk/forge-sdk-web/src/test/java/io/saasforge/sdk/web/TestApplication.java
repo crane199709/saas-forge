@@ -3,6 +3,7 @@ package io.saasforge.sdk.web;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.core.api.ErrorCode;
 import io.saasforge.sdk.core.api.ForgeException;
+import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import io.saasforge.sdk.core.api.ResourceErrorCode;
 import jakarta.servlet.Filter;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,13 +34,21 @@ class TestApplication {
 
     /** 模拟在 DispatcherServlet 之前失败的过滤器（如 Spring Session 读取 Redis），错误经容器转发到 /error。 */
     @Bean
-    Filter failingFilter() {
+    Filter failingFilter(EnvelopeErrorWriter writer) {
         return (request, response, chain) -> {
             switch (((HttpServletRequest) request).getRequestURI()) {
                 case "/filter-failures/redis" ->
                     throw new DataAccessResourceFailureException("Unable to connect to Redis at 10.0.0.1:6379");
                 case "/filter-failures/boom" -> throw new IllegalStateException("database password=secret leaked");
                 case "/filter-failures/rejected" -> ((HttpServletResponse) response).sendError(403);
+                case "/filter-failures/status500" -> ((HttpServletResponse) response).sendError(500);
+                case "/filter-failures/status503" -> ((HttpServletResponse) response).sendError(503);
+                case "/filter-failures/unauthorized" ->
+                    writer.write(
+                            (HttpServletRequest) request,
+                            (HttpServletResponse) response,
+                            FrameworkErrorCode.AUTH_UNAUTHENTICATED,
+                            "credential-detail-not-for-logs");
                 default -> chain.doFilter(request, response);
             }
         };
@@ -47,6 +56,7 @@ class TestApplication {
 
     enum OrderErrorCode implements ErrorCode {
         NOT_FOUND("order.notFound", 404),
+        INVALID_RULE("order.invalidRule", 400),
         UNTRANSLATED("order.untranslated", 409),
         STORAGE_BROKEN("order.storageBroken", 500);
 
@@ -101,6 +111,9 @@ class TestApplication {
 
         @GetMapping("/{id}")
         ApiResponse<OrderView> get(@PathVariable String id) {
+            if ("invalid-rule".equals(id)) {
+                throw new ForgeException(OrderErrorCode.INVALID_RULE);
+            }
             if ("missing".equals(id)) {
                 throw ForgeException.withErrorMessage(
                         OrderErrorCode.NOT_FOUND, "Order " + id + " not found in current tenant", id);

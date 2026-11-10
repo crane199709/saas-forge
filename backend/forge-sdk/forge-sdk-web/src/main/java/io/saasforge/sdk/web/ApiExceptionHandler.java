@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -54,11 +55,11 @@ class ApiExceptionHandler {
         ErrorCode code = e.errorCode();
         String errorMessage = e.errorMessage();
         if (code.httpStatus() >= 500) {
-            log.error("Request failed with {}", code.code(), e);
             errorMessage = ErrorEnvelopes.INTERNAL_ERROR;
         }
         ApiResponse<Void> body = ApiResponse.error(
                 code.httpStatus(), code.code(), errorMessage, userTips.resolve(code.code(), e.args(), locale()), null);
+        if (code.httpStatus() >= 500) ServletFailureLogs.serverError(log, body, Level.ERROR, e);
         return ResponseEntity.status(code.httpStatus()).body(body);
     }
 
@@ -76,7 +77,6 @@ class ApiExceptionHandler {
         ServletRequestBindingException.class
     })
     ApiResponse<Void> handleMalformed(Exception e) {
-        log.debug("Malformed request", e);
         return error(
                 FrameworkErrorCode.REQUEST_MALFORMED,
                 "Malformed request: " + e.getClass().getSimpleName(),
@@ -111,8 +111,9 @@ class ApiExceptionHandler {
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
     @ExceptionHandler(DataAccessResourceFailureException.class)
     ApiResponse<Void> handleUnavailable(DataAccessResourceFailureException e) {
-        log.warn("Dependent resource unavailable", e);
-        return error(FrameworkErrorCode.SYSTEM_UNAVAILABLE, ErrorEnvelopes.INTERNAL_ERROR, null);
+        ApiResponse<Void> body = error(FrameworkErrorCode.SYSTEM_UNAVAILABLE, ErrorEnvelopes.INTERNAL_ERROR, null);
+        ServletFailureLogs.serverError(log, body, Level.WARN, e);
+        return body;
     }
 
     /**
@@ -139,8 +140,10 @@ class ApiExceptionHandler {
         if (e instanceof ErrorResponse response) {
             int status = response.getStatusCode().value();
             if (status == HttpStatus.SERVICE_UNAVAILABLE.value()) {
-                log.warn("Service unavailable", e);
-                return error(FrameworkErrorCode.SYSTEM_UNAVAILABLE, ErrorEnvelopes.INTERNAL_ERROR, null);
+                ApiResponse<Void> body =
+                        error(FrameworkErrorCode.SYSTEM_UNAVAILABLE, ErrorEnvelopes.INTERNAL_ERROR, null);
+                ServletFailureLogs.serverError(log, body, Level.WARN, e);
+                return body;
             }
             if (status < 500) {
                 String code = FrameworkErrorCode.REQUEST_MALFORMED.code();
@@ -148,8 +151,9 @@ class ApiExceptionHandler {
                         status, code, e.getClass().getSimpleName(), userTips.resolve(code, null, locale()), null);
             }
         }
-        log.error("Unhandled exception", e);
-        return error(FrameworkErrorCode.SYSTEM_ERROR, ErrorEnvelopes.INTERNAL_ERROR, null);
+        ApiResponse<Void> body = error(FrameworkErrorCode.SYSTEM_ERROR, ErrorEnvelopes.INTERNAL_ERROR, null);
+        ServletFailureLogs.serverError(log, body, Level.ERROR, e);
+        return body;
     }
 
     private ApiResponse<Void> error(FrameworkErrorCode code, String errorMessage, List<FieldError> errors) {

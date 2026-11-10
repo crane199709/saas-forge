@@ -9,6 +9,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -18,6 +21,8 @@ import org.springframework.http.MediaType;
  * traceId 与按请求语言生成的 {@code userTip}。
  */
 public class EnvelopeErrorWriter {
+
+    private static final Logger log = LoggerFactory.getLogger(EnvelopeErrorWriter.class);
 
     private final UserTipResolver userTips;
     private final ObjectProvider<Tracer> tracer;
@@ -46,6 +51,7 @@ public class EnvelopeErrorWriter {
         ApiResponse<Void> body = ApiResponse.error(
                         code.httpStatus(), code.code(), errorMessage, userTips.resolve(code.code(), null, locale), null)
                 .withTraceId(ErrorEnvelopes.traceId(tracer.getIfAvailable()));
+        ServletFailureLogs.write(log, request, body, code.httpStatus() == 503 ? Level.WARN : Level.ERROR, null);
         response.setStatus(code.httpStatus());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());

@@ -1,14 +1,11 @@
 package io.saasforge.gateway.envelope.filter;
 
 import io.saasforge.gateway.envelope.service.ErrorEnvelopeService;
-import io.saasforge.gateway.logcontext.service.RequestLogContext;
 import io.saasforge.sdk.core.api.ErrorEnvelopes;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import java.net.ConnectException;
 import java.util.concurrent.TimeoutException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.boot.webflux.error.ErrorWebExceptionHandler;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataAccessResourceFailureException;
@@ -27,14 +24,10 @@ import reactor.core.publisher.Mono;
 @Order(-2)
 class EnvelopeErrorWebExceptionHandler implements ErrorWebExceptionHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(EnvelopeErrorWebExceptionHandler.class);
-
     private final ErrorEnvelopeService envelopes;
-    private final RequestLogContext logContext;
 
-    EnvelopeErrorWebExceptionHandler(ErrorEnvelopeService envelopes, RequestLogContext logContext) {
+    EnvelopeErrorWebExceptionHandler(ErrorEnvelopeService envelopes) {
         this.envelopes = envelopes;
-        this.logContext = logContext;
     }
 
     @Override
@@ -43,7 +36,11 @@ class EnvelopeErrorWebExceptionHandler implements ErrorWebExceptionHandler {
             return Mono.error(ex);
         }
         if (ex instanceof ForgeException error) {
-            return envelopes.write(exchange, error.errorCode(), error.errorMessage());
+            return envelopes.write(
+                    exchange,
+                    error.errorCode(),
+                    error.errorCode().httpStatus() >= 500 ? ErrorEnvelopes.INTERNAL_ERROR : error.errorMessage(),
+                    error);
         }
         int status =
                 ex instanceof ErrorResponse response ? response.getStatusCode().value() : 500;
@@ -62,16 +59,9 @@ class EnvelopeErrorWebExceptionHandler implements ErrorWebExceptionHandler {
                     ex.getClass().getSimpleName());
         }
         if (isUnavailable(ex, status)) {
-            // 异常处理在过滤链之外，链内写入 Reactor context 的租户读不到，需显式绑定
-            try (RequestLogContext.Binding ignored = logContext.bind(exchange)) {
-                log.warn("Upstream unavailable for {}", route(exchange), ex);
-            }
-            return envelopes.write(exchange, FrameworkErrorCode.SYSTEM_UNAVAILABLE, ErrorEnvelopes.INTERNAL_ERROR);
+            return envelopes.write(exchange, FrameworkErrorCode.SYSTEM_UNAVAILABLE, ErrorEnvelopes.INTERNAL_ERROR, ex);
         }
-        try (RequestLogContext.Binding ignored = logContext.bind(exchange)) {
-            log.error("Unhandled gateway error for {}", route(exchange), ex);
-        }
-        return envelopes.write(exchange, FrameworkErrorCode.SYSTEM_ERROR, ErrorEnvelopes.INTERNAL_ERROR);
+        return envelopes.write(exchange, FrameworkErrorCode.SYSTEM_ERROR, ErrorEnvelopes.INTERNAL_ERROR, ex);
     }
 
     private static boolean isUnavailable(Throwable ex, int status) {

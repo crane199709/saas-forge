@@ -131,7 +131,7 @@ class GatewayLogContextTest {
     @Test
     void errorHandlerLogsCarryTraceTenantAndMembership(CapturedOutput output) throws Exception {
         String traceId = call("/demo/unavailable");
-        assertThat(lineWith(output, "Upstream unavailable for GET /demo/unavailable"))
+        assertThat(lineWith(output, "Request failed method=GET route=/demo/unavailable status=503"))
                 .contains(traceId, TENANT_ID.toString(), MEMBERSHIP_ID.toString());
     }
 

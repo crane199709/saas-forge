@@ -16,6 +16,8 @@ import io.saasforge.gateway.routing.config.GatewayServicesProperties;
 import io.saasforge.sdk.core.ClientIpHeader;
 import io.saasforge.sdk.core.MembershipStateKeys;
 import io.saasforge.sdk.core.OperatorStateKeys;
+import io.saasforge.sdk.core.api.ForgeException;
+import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -30,6 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -39,6 +42,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.core.RedisCallback;
@@ -70,6 +75,7 @@ import tools.jackson.databind.json.JsonMapper;
             "spring.cloud.gateway.server.webflux.routes[0].id=demo",
             "spring.cloud.gateway.server.webflux.routes[0].predicates[0]=Path=/orders/**"
         })
+@ExtendWith(OutputCaptureExtension.class)
 class GatewaySecurityTest {
     static final String ISSUER = "http://tenant-realm.test";
     static final String PLATFORM_ISSUER = "http://platform-realm.test";
@@ -161,6 +167,10 @@ class GatewaySecurityTest {
             return RouterFunctions.route()
                     .GET("/orders/boom", request -> {
                         throw new IllegalStateException("redis password=secret leaked");
+                    })
+                    .GET("/orders/forge-boom", request -> {
+                        throw ForgeException.withErrorMessage(
+                                FrameworkErrorCode.SYSTEM_ERROR, "private failure detail");
                     })
                     .build();
         }
@@ -342,7 +352,7 @@ class GatewaySecurityTest {
     }
 
     @Test
-    void passesDownstreamEnvelopeThroughUnchanged() throws Exception {
+    void passesDownstreamEnvelopeThroughUnchanged(CapturedOutput output) throws Exception {
         Response response = call(
                 HttpMethod.GET,
                 "/orders/missing",
@@ -350,10 +360,11 @@ class GatewaySecurityTest {
         assertThat(response.status()).isEqualTo(404);
         assertThat(response.rawBody()).isEqualTo(DOWNSTREAM_ENVELOPE);
         assertThat(response.traceIdHeader()).hasSize(32);
+        assertThat(output.getAll()).doesNotContain("Request failed method=");
     }
 
     @Test
-    void unavailableDownstreamIs503Envelope() throws Exception {
+    void unavailableDownstreamIs503Envelope(CapturedOutput output) throws Exception {
         Response response = call(
                 HttpMethod.GET,
                 "/orders/unavailable/x",
@@ -361,6 +372,7 @@ class GatewaySecurityTest {
         assertEnvelope(response, 503, "system.unavailable");
         assertThat(response.body().path("errorMessage").asString()).isEqualTo("Internal error");
         assertThat(response.body().path("userTip").asString()).isEqualTo("服务暂时不可用，请稍后重试");
+        assertFailure(output, response, "/orders/unavailable/x", 503, "system.unavailable", "WARN");
     }
 
     @Test
@@ -372,13 +384,70 @@ class GatewaySecurityTest {
     }
 
     @Test
-    void unknownGatewayErrorIs500EnvelopeWithoutExceptionText() throws Exception {
+    void unknownGatewayErrorIs500EnvelopeWithoutExceptionText(CapturedOutput output) throws Exception {
         Response response = call(
                 HttpMethod.GET, "/orders/boom", token(KEY, ISSUER, Instant.now().plusSeconds(900)));
         assertEnvelope(response, 500, "system.error");
         assertThat(response.body().path("errorMessage").asString()).isEqualTo("Internal error");
         assertThat(response.body().path("userTip").asString()).isEqualTo("系统繁忙，请稍后重试");
         assertThat(response.rawBody()).doesNotContain("secret").doesNotContain("IllegalStateException");
+        assertFailure(output, response, "/orders/boom", 500, "system.error", "ERROR");
+    }
+
+    @Test
+    void serverSideForgeExceptionIsLoggedOnceWithItsStack(CapturedOutput output) throws Exception {
+        Response response = call(
+                HttpMethod.GET,
+                "/orders/forge-boom",
+                token(KEY, ISSUER, Instant.now().plusSeconds(900)));
+        assertEnvelope(response, 500, "system.error");
+        assertThat(response.rawBody()).doesNotContain("private failure detail");
+        assertFailure(output, response, "/orders/forge-boom", 500, "system.error", "ERROR");
+        assertThat(output.getAll()).contains("ForgeException: private failure detail");
+    }
+
+    @Test
+    void localAuthenticationFailureLogsOnlySafeResponseMetadata(CapturedOutput output) throws Exception {
+        Response response = call(HttpMethod.GET, "/orders/context?password=query-secret", "credential-secret");
+        assertEnvelope(response, 401, "auth.unauthenticated");
+        assertFailure(output, response, "/orders/context", 401, "auth.unauthenticated", "INFO");
+        assertThat(output.getAll()).doesNotContain("query-secret", "credential-secret");
+    }
+
+    @Test
+    void localIpRejectionLogsTheTraceAndExistingTenantContext(CapturedOutput output) throws Exception {
+        redisTemplate.opsForValue().set(MembershipStateKeys.tenantIpAllowlist(TENANT_ID), "192.0.2.0/24");
+        Response response = call(
+                HttpMethod.GET,
+                "/orders/context",
+                token(KEY, ISSUER, Instant.now().plusSeconds(900)));
+        assertEnvelope(response, 403, "tenant.ipNotAllowed");
+        assertFailure(output, response, "/orders/context", 403, "tenant.ipNotAllowed", "INFO");
+    }
+
+    @Test
+    void missingLocalRouteHasOneFailureSummary(CapturedOutput output) throws Exception {
+        Response response = call(HttpMethod.POST, "/iam/auth/login", null);
+        assertEnvelope(response, 404, "request.notFound");
+        assertFailure(output, response, "/iam/auth/login", 404, "request.notFound", "INFO");
+    }
+
+    private static void assertFailure(
+            CapturedOutput output, Response response, String route, int status, String code, String level) {
+        // HTTP 客户端可能重试 503；每个重试有独立 trace，去重断言只针对这次响应所属的请求。
+        var failures = output.getAll()
+                .lines()
+                .filter(line ->
+                        line.contains("Request failed method=") && line.contains("traceId=" + response.traceIdHeader()))
+                .toList();
+        assertThat(failures).hasSize(1);
+        assertThat(failures.get(0))
+                .contains(
+                        level,
+                        "route=" + route,
+                        "status=" + status,
+                        "code=" + code,
+                        "traceId=" + response.traceIdHeader());
     }
 
     @Test

@@ -3,11 +3,15 @@ package io.saasforge.sdk.security;
 import io.micrometer.tracing.Tracer;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.core.api.ErrorEnvelopes;
+import io.saasforge.sdk.core.api.FailureLogs;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -20,6 +24,8 @@ import org.springframework.http.MediaType;
  */
 final class SecurityErrorWriter {
 
+    private static final Logger log = LoggerFactory.getLogger(SecurityErrorWriter.class);
+
     private final ObjectProvider<Tracer> tracer;
 
     SecurityErrorWriter(ObjectProvider<Tracer> tracer) {
@@ -31,6 +37,11 @@ final class SecurityErrorWriter {
         ApiResponse<Void> body = ErrorEnvelopes.framework(
                         code, errorMessage, ErrorEnvelopes.localeOf(request.getHeader(HttpHeaders.ACCEPT_LANGUAGE)))
                 .withTraceId(ErrorEnvelopes.traceId(tracer.getIfAvailable()));
+        String logged = FailureLogs.class.getName();
+        if (!Boolean.TRUE.equals(request.getAttribute(logged))) {
+            FailureLogs.write(log, Level.ERROR, request.getMethod(), request.getRequestURI(), body, null);
+            request.setAttribute(logged, Boolean.TRUE);
+        }
         response.setStatus(code.httpStatus());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());

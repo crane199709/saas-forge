@@ -5,6 +5,9 @@ import io.saasforge.sdk.core.api.ErrorEnvelopes;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 import org.springframework.boot.webmvc.error.ErrorController;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 class EnvelopeErrorController implements ErrorController {
+
+    private static final Logger log = LoggerFactory.getLogger(EnvelopeErrorController.class);
 
     private final UserTipResolver userTips;
 
@@ -41,12 +46,16 @@ class EnvelopeErrorController implements ErrorController {
         int httpStatus = code == FrameworkErrorCode.REQUEST_MALFORMED ? status : code.httpStatus();
         String errorMessage =
                 httpStatus >= 500 ? ErrorEnvelopes.INTERNAL_ERROR : "Request failed with status " + status;
-        return ApiResponse.error(
+        ApiResponse<Void> body = ApiResponse.error(
                 httpStatus,
                 code.code(),
                 errorMessage,
                 userTips.resolve(code.code(), null, LocaleContextHolder.getLocale()),
                 null);
+        if (httpStatus >= 500) {
+            ServletFailureLogs.serverError(log, body, httpStatus == 503 ? Level.WARN : Level.ERROR, null);
+        }
+        return body;
     }
 
     private static FrameworkErrorCode codeOf(int status) {

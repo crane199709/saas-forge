@@ -25,8 +25,11 @@ import java.util.concurrent.Executors;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -46,6 +49,7 @@ import tools.jackson.databind.json.JsonMapper;
             "forge.gateway.services[0].prefix=/orders",
             "forge.gateway.services[0].realm=tenant"
         })
+@ExtendWith(OutputCaptureExtension.class)
 class TenantRateLimitTest {
     static final String ISSUER = "http://tenant-realm.test";
     static final UUID NOISY_TENANT = UUID.fromString("019a0110-0000-7000-8000-00000000000a");
@@ -105,7 +109,7 @@ class TenantRateLimitTest {
     }
 
     @Test
-    void tenantOverThresholdIsLimitedWithoutAffectingOtherTenants() throws Exception {
+    void tenantOverThresholdIsLimitedWithoutAffectingOtherTenants(CapturedOutput output) throws Exception {
         String noisy = token(NOISY_TENANT);
         String quiet = token(QUIET_TENANT);
         // 先各请求一次，让 JWKS 获取等首次开销不占用限流窗口
@@ -126,6 +130,14 @@ class TenantRateLimitTest {
         assertThat(body.path("userTip").asString()).isEqualTo("请求过于频繁，请稍后重试");
         assertThat(body.path("traceId").asString()).hasSize(32).isEqualTo(limited.traceIdHeader());
         assertThat(limited.retryAfter()).isEqualTo("1");
+        var matching = output.getAll()
+                .lines()
+                .filter(line ->
+                        line.contains("Request failed method=") && line.contains("traceId=" + limited.traceIdHeader()))
+                .toList();
+        assertThat(matching).hasSize(1);
+        assertThat(matching.get(0))
+                .contains("INFO", "method=GET", "route=/orders/context", "status=429", "code=request.rateLimited");
 
         assertThat(call(quiet).status()).isEqualTo(200);
     }

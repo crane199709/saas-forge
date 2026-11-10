@@ -1,8 +1,13 @@
 package io.saasforge.gateway.envelope.service;
 
+import io.saasforge.gateway.logcontext.service.RequestLogContext;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.core.api.ErrorCode;
 import io.saasforge.sdk.core.api.ErrorEnvelopes;
+import io.saasforge.sdk.core.api.FailureLogs;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -21,6 +26,13 @@ import reactor.core.publisher.Mono;
  */
 @Service
 public class ErrorEnvelopeService {
+
+    private static final Logger log = LoggerFactory.getLogger(ErrorEnvelopeService.class);
+    private final RequestLogContext logContext;
+
+    public ErrorEnvelopeService(RequestLogContext logContext) {
+        this.logContext = logContext;
+    }
 
     /**
      * 按错误码固定的状态码写出失败信封。
@@ -44,10 +56,33 @@ public class ErrorEnvelopeService {
      * @return 写出完成信号
      */
     public Mono<Void> write(ServerWebExchange exchange, ErrorCode code, int httpStatus, String errorMessage) {
+        return write(exchange, code, httpStatus, errorMessage, null);
+    }
+
+    /** 本地异常使用同一写出口，摘要与原有级别的异常堆栈只记录一次。 */
+    public Mono<Void> write(ServerWebExchange exchange, ErrorCode code, String errorMessage, Throwable failure) {
+        return write(exchange, code, code.httpStatus(), errorMessage, failure);
+    }
+
+    private Mono<Void> write(
+            ServerWebExchange exchange, ErrorCode code, int httpStatus, String errorMessage, Throwable failure) {
         String acceptLanguage = exchange.getRequest().getHeaders().getFirst(HttpHeaders.ACCEPT_LANGUAGE);
         ApiResponse<Void> body = ErrorEnvelopes.framework(
                         code, httpStatus, errorMessage, ErrorEnvelopes.localeOf(acceptLanguage))
                 .withTraceId(traceId(exchange));
+        String logged = FailureLogs.class.getName();
+        if (!Boolean.TRUE.equals(exchange.getAttribute(logged))) {
+            try (RequestLogContext.Binding ignored = logContext.bind(exchange)) {
+                FailureLogs.write(
+                        log,
+                        httpStatus == 503 ? Level.WARN : Level.ERROR,
+                        exchange.getRequest().getMethod().name(),
+                        exchange.getRequest().getPath().value(),
+                        body,
+                        failure);
+            }
+            exchange.getAttributes().put(logged, Boolean.TRUE);
+        }
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(HttpStatus.valueOf(httpStatus));
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
