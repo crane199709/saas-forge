@@ -102,6 +102,71 @@ describe('App 布局', () => {
     expect(wrapper.get('.el-menu-item.is-active').text()).toBe('成员管理')
   })
 
+  it('导航按租户布局排列，首页与通知中心固定在顶部，清单多层分组按原层级显示', async () => {
+    signedIn()
+    const menus = [
+      {
+        code: 'demo',
+        name: '示例应用',
+        children: [
+          { code: 'demo.overview', name: '订单概览', app: 'demo', path: 'overview' },
+          {
+            code: 'demo.finance',
+            name: '财务报表',
+            children: [{ code: 'demo.bills', name: '账单', app: 'demo', path: 'bills' }],
+          },
+        ],
+      },
+    ]
+    const subApps = [
+      {
+        code: 'demo',
+        name: '示例',
+        version: '1',
+        remoteEntry: 'http://127.0.0.1:5175/remoteEntry.js',
+        sharedRequirements: {},
+      },
+    ]
+    const host = createSubAppHost({
+      router: createRouter({ history: createMemoryHistory(), routes: [] }),
+      sharedVersions: {},
+      loadModule: () => new Promise(() => {}),
+      timeoutMs: 1000,
+    })
+    host.apply(menus, subApps)
+    // 首页与通知中心不进入布局，布局中引用它们也不改变位置
+    const layout = {
+      nodes: [
+        { page: 'notifications' },
+        { group: 'g1', name: '常用', children: [{ menu: 'demo.overview' }, { page: 'roles' }] },
+        { page: 'members' },
+      ],
+    }
+    const { wrapper } = await mountShell('/', {
+      access: async () => ({
+        permissions: ['iam:member:manage', 'iam:role:manage', 'iam:audit:read'],
+        menus,
+        subApps,
+        layout,
+      }),
+      host,
+    })
+
+    expect(wrapper.findAll('.shell-menu .menu-link').map((link) => link.text())).toEqual([
+      '首页',
+      '通知中心',
+      '订单概览',
+      '角色管理',
+      '成员管理',
+      '审计日志',
+      '账单',
+    ])
+    expect(wrapper.get('[data-testid="menu-group-g1"]').text()).toContain('常用')
+    expect(
+      wrapper.get('[data-testid="menu-group-demo"] [data-testid="menu-group-demo.finance"]').text(),
+    ).toContain('账单')
+  })
+
   it('内置管理页入口按 iam 管理权限码显示，权限收回后随之隐藏', async () => {
     signedIn()
     const read = vi
@@ -127,5 +192,34 @@ describe('App 布局', () => {
     expect(wrapper.get('[data-testid="menu-dictionaries"]').text()).toBe('字典')
     expect(wrapper.get('[data-testid="menu-parameters"]').text()).toBe('参数')
     expect(wrapper.find('[data-testid="menu-roles"]').exists()).toBe(false)
+  })
+
+  it('菜单管理入口要求 iam:menu:manage，默认排在清单菜单之后', async () => {
+    signedIn()
+    const menus = [{ code: 'demo.orders', name: '订单', app: 'demo', path: 'orders' }]
+    const subApps = [
+      { code: 'demo', name: '示例', version: '1', remoteEntry: 'x', sharedRequirements: {} },
+    ]
+    const host = createSubAppHost({
+      router: createRouter({ history: createMemoryHistory(), routes: [] }),
+      sharedVersions: {},
+      loadModule: () => new Promise(() => {}),
+      timeoutMs: 1000,
+    })
+    host.apply(menus, subApps)
+    const { wrapper } = await mountShell('/', {
+      access: async () => ({
+        permissions: ['iam:menu:manage', 'iam:role:manage'],
+        menus,
+        subApps,
+      }),
+      host,
+    })
+
+    const keys = wrapper
+      .findAll('[data-testid^="menu-"]')
+      .map((item) => item.attributes('data-testid'))
+    expect(keys.slice(-3)).toEqual(['menu-roles', 'menu-demo.orders', 'menu-menu-layout'])
+    expect(wrapper.get('[data-testid="menu-menu-layout"]').text()).toBe('菜单管理')
   })
 })

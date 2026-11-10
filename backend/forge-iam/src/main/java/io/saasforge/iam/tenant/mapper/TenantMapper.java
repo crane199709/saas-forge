@@ -55,4 +55,15 @@ public interface TenantMapper {
 
     /** 列出所有未删除租户，供启动时恢复发布；全局表，不受 Data Policy 过滤。 */
     List<UUID> findAllIds();
+
+    /** 租户的 Navigation Layout JSON 文本；未设置、未登记或已删除时为 null。全局表，不受 Data Policy 过滤。 */
+    String findNavigationLayout(@Param("tenantId") UUID tenantId);
+
+    /**
+     * 替换租户的 Navigation Layout，{@code layout} 为 null 时恢复默认。全局表，不受 Data Policy 过滤。
+     *
+     * @return 受影响行数，租户未登记或已删除时为 0
+     */
+    int updateNavigationLayout(
+            @Param("tenantId") UUID tenantId, @Param("layout") String layout, @Param("actor") UUID actor);
 }

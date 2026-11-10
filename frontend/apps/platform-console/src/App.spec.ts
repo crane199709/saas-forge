@@ -50,9 +50,35 @@ describe('App 布局', () => {
       '任务运行',
       '死信事件',
       '公告管理',
+      '菜单管理',
     ])
     expect(wrapper.get('.shell-menu .is-active').text()).toBe('套餐')
     expect(wrapper.find('[aria-label="套餐"]').exists()).toBe(true)
+  })
+
+  it('侧边菜单按平台导航布局排列，布局中没有的页面放到末尾', async () => {
+    signedIn()
+    const layout = {
+      nodes: [
+        { group: 'g1', name: '运维', children: [{ page: 'dead-events' }, { page: 'task-runs' }] },
+        { page: 'plans' },
+      ],
+    }
+    vi.stubGlobal(
+      'fetch',
+      fakeFetch({
+        '/iam/platform/access': [
+          {
+            ...grants(permissions.tenantRead, permissions.planManage, permissions.opsRead),
+            layout,
+          },
+        ],
+      }),
+    )
+    const { wrapper } = await mountConsole('/plans')
+
+    expect(menu(wrapper)).toEqual(['死信事件', '任务运行', '套餐', '租户'])
+    expect(wrapper.get('[data-testid="menu-group-g1"]').text()).toContain('运维')
   })
 
   it('只读租户时菜单只有租户，页面不显示管理功能', async () => {

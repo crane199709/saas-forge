@@ -7,7 +7,14 @@ export {
   subAppContainerName,
   useAccessControl,
 } from './access'
-export type { AccessControl, MenuNode, SubAppEntry, TenantAccess } from './access'
+export type {
+  AccessControl,
+  MenuNode,
+  NavigationLayout,
+  NavigationLayoutNode,
+  SubAppEntry,
+  TenantAccess,
+} from './access'
 export { ApiError } from './api'
 export type { ApiResponse, FieldError, Page, PageMeta } from './api'
 export {

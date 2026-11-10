@@ -315,7 +315,7 @@ class IamSecurityConfiguration {
     SecurityFilterChain accessTokenSecurity(HttpSecurity http, EnvelopeSecurityErrorHandler errors) throws Exception {
         // 已持有 Access Token 的身份读取自己的 Membership 与权限、读取自己的 Authenticator 绑定状态、管理自己的 Recovery Code 与解绑
         // Authenticator、改密码、管理本租户成员、组织与角色、
-        // 查看本租户审计、读取与管理本租户的字典与参数、管理本租户的安全设置；无状态、不使用登录会话 Cookie。
+        // 查看本租户审计、读取与管理本租户的字典与参数、管理本租户的安全设置与导航布局；无状态、不使用登录会话 Cookie。
         http.securityMatchers(matchers -> matchers.requestMatchers(HttpMethod.GET, "/auth/memberships")
                         .requestMatchers(
                                 "/auth/access",
@@ -331,6 +331,7 @@ class IamSecurityConfiguration {
                                 "/notifications/**",
                                 "/reference-data/**",
                                 "/security-settings/**",
+                                "/navigation-layout",
                                 "/announcements/**"))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.disable())
@@ -352,7 +353,8 @@ class IamSecurityConfiguration {
             PlatformSigningKey platformKey,
             RealmIssuerProperties issuers)
             throws Exception {
-        // Operator 管理 Operator 账号与平台角色、查找身份并重置其 MFA、读取自己的平台权限、改密码、查看平台审计、管理自己的 Authenticator；只接受 Platform Realm 的
+        // Operator 管理 Operator 账号与平台角色、查找身份并重置其 MFA、读取自己的平台权限、管理平台导航布局、改密码、查看平台审计、管理自己的 Authenticator；只接受 Platform
+        // Realm 的
         // Access Token，
         // 不使用登录会话 Cookie。
         // 解码器不注册为 Bean：标准资源服务器配置按类型取唯一的 JwtDecoder，那是 Tenant Realm 的 accessTokenDecoder。
@@ -370,6 +372,7 @@ class IamSecurityConfiguration {
                         "/platform/roles/**",
                         "/platform/identities/**",
                         "/platform/access",
+                        "/platform/navigation-layout",
                         "/platform/audit/**",
                         "/platform/announcements/**",
                         "/platform/auth/password/change",

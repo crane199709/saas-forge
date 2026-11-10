@@ -1,11 +1,9 @@
 package io.saasforge.iam.platformrole.controller;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import io.saasforge.iam.operator.model.OperatorGrants;
 import io.saasforge.iam.permission.model.PermissionRow;
 import io.saasforge.iam.platformrole.model.PlatformRoleDetail;
 import io.saasforge.iam.platformrole.service.PlatformRoleManagementService;
-import io.saasforge.iam.platformrole.service.PlatformRoleService;
 import io.saasforge.iam.role.model.ConditionAttribute;
 import io.saasforge.iam.role.model.DataPolicy;
 import io.saasforge.iam.role.model.DataResourceOption;
@@ -38,22 +36,11 @@ import tools.jackson.databind.json.JsonMapper;
 @RestController
 class PlatformRoleController {
     private final PlatformRoleManagementService roles;
-    private final PlatformRoleService grants;
     private final JsonMapper json;
 
-    PlatformRoleController(PlatformRoleManagementService roles, PlatformRoleService grants, JsonMapper json) {
+    PlatformRoleController(PlatformRoleManagementService roles, JsonMapper json) {
         this.roles = roles;
-        this.grants = grants;
         this.json = json;
-    }
-
-    @Operation(summary = "当前 Operator 的平台角色与有效权限码，platform-console 据此显示功能")
-    @GetMapping("/platform/access")
-    ApiResponse<AccessResponse> access(@AuthenticationPrincipal Jwt jwt) {
-        OperatorGrants current = grants.accessOf(actor(jwt));
-        return ApiResponse.ok(new AccessResponse(
-                current.roles().stream().sorted().toList(),
-                current.permissions().stream().sorted().toList()));
     }
 
     @Operation(summary = "列出平台角色及其授权与 Data Policy")
@@ -130,9 +117,6 @@ class PlatformRoleController {
                 policy.scope(),
                 policy.condition() == null ? null : json.readTree(policy.condition()));
     }
-
-    /** @param roles 平台角色编码，含超级管理员时为 {@code super-admin} */
-    record AccessResponse(List<String> roles, List<String> permissions) {}
 
     /** @param code 创建后不可修改，小写字母、数字与连字符 */
     record CreateRoleRequest(

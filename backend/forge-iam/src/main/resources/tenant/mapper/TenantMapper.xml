@@ -49,4 +49,12 @@
     <select id="findAllIds" resultType="java.util.UUID">
         SELECT id FROM tenant WHERE NOT deleted ORDER BY id
     </select>
+    <select id="findNavigationLayout" resultType="string">
+        SELECT CAST(navigation_layout AS text) FROM tenant WHERE id = #{tenantId} AND NOT deleted
+    </select>
+    <update id="updateNavigationLayout">
+        UPDATE tenant SET navigation_layout = CAST(#{layout,jdbcType=VARCHAR} AS jsonb),
+        updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
+        WHERE id = #{tenantId} AND NOT deleted
+    </update>
 </mapper>

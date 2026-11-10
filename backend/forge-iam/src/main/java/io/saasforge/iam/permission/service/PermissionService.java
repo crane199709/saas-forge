@@ -139,6 +139,20 @@ public class PermissionService {
         return allowed -> !visible(menus, allowed, apps).isEmpty();
     }
 
+    /** 去掉菜单树中的页面操作：导航与布局只需要节点本身，页面操作的组织关系留在授权树中。 */
+    public static List<MenuNode> withoutActions(List<MenuNode> nodes) {
+        return nodes.stream()
+                .map(node -> new MenuNode(
+                        node.code(),
+                        node.name(),
+                        node.icon(),
+                        node.app(),
+                        node.path(),
+                        node.permission(),
+                        withoutActions(node.children())))
+                .toList();
+    }
+
     // 缺少权限的节点连同子树隐藏；Plan 外叶子和裁剪后为空的分组隐藏。未登记 Plan 时不限 Sub-App。
     private static List<MenuNode> visible(List<MenuNode> nodes, Set<String> allowed, Optional<Set<String>> subApps) {
         List<MenuNode> result = new ArrayList<>();

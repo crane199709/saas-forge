@@ -5,13 +5,23 @@ import {
   ElMain,
   ElMenu,
   ElMenuItem,
-  ElMenuItemGroup,
+  ElSubMenu,
+  type MenuInstance,
 } from 'element-plus'
-import { computed, defineComponent, h, resolveComponent, type PropType } from 'vue'
+import {
+  computed,
+  defineComponent,
+  h,
+  nextTick,
+  ref,
+  resolveComponent,
+  watch,
+  type PropType,
+} from 'vue'
 
-/** 侧边菜单项：带 `path` 的是链接，带 `children` 的是以 `title` 为标题的分组。 */
+/** 侧边菜单项：带 `path` 的是链接，带 `children` 的是以 `title` 为标题、可折叠的分组，最多三层。 */
 export interface MenuItem {
-  /** 同级唯一；链接带 `data-testid="menu-<key>"`。 */
+  /** 链接与分组各自唯一；链接带 `data-testid="menu-<key>"`，分组带 `data-testid="menu-group-<key>"`。 */
   key: string
   title: string
   path?: string
@@ -22,6 +32,15 @@ const linkStyle = { display: 'block', width: '100%', color: 'inherit', textDecor
 
 function paths(items: MenuItem[]): string[] {
   return items.flatMap((item) => [...(item.path ? [item.path] : []), ...paths(item.children ?? [])])
+}
+
+// 子菜单的 index 与链接的路径同在 ElMenu 的一个命名空间，加前缀避免冲突。
+const groupIndex = (item: MenuItem) => `group:${item.key}`
+
+function groups(items: MenuItem[]): string[] {
+  return items.flatMap((item) =>
+    item.children ? [groupIndex(item), ...groups(item.children)] : [],
+  )
 }
 
 /**
@@ -44,12 +63,37 @@ export const AppLayout = defineComponent({
         .filter((path) => props.activePath === path || props.activePath.startsWith(`${path}/`))
         .reduce((best, path) => (path.length > best.length ? path : best), ''),
     )
+    // 分组默认展开；default-openeds 只在挂载时生效，权限读取后才出现的分组须另行展开。
+    const menuRef = ref<MenuInstance>()
+    const opened = new Set(groups(props.menu))
+    watch(
+      () => groups(props.menu),
+      async (indexes) => {
+        const added = indexes.filter((index) => !opened.has(index))
+        added.forEach((index) => opened.add(index))
+        // 子菜单在自身挂载后才登记到 ElMenu
+        await nextTick()
+        added.forEach((index) => menuRef.value?.open(index))
+      },
+    )
     return () => {
       const RouterLink = resolveComponent('RouterLink')
       const renderItem = (item: MenuItem): ReturnType<typeof h> =>
         item.children
-          ? h(ElMenuItemGroup, { key: item.key, title: item.title }, () =>
-              item.children!.map(renderItem),
+          ? h(
+              ElSubMenu,
+              {
+                key: groupIndex(item),
+                index: groupIndex(item),
+                'data-testid': `menu-group-${item.key}`,
+                style: { marginTop: 'var(--forge-space-1)' },
+              },
+              {
+                // 菜单项靠外边距内缩，分组标题用同样的缩进对齐文字
+                title: () =>
+                  h('span', { style: { marginLeft: 'var(--forge-space-2)' } }, item.title),
+                default: () => item.children!.map(renderItem),
+              },
             )
           : h(
               ElMenuItem,
@@ -59,6 +103,8 @@ export const AppLayout = defineComponent({
                 style: {
                   margin: 'var(--forge-space-1) var(--forge-space-2) 0',
                   borderRadius: 'var(--forge-radius-md)',
+                  // 只有菜单项有悬停底色；分组标题横贯整栏，悬停时不加底色
+                  '--el-menu-hover-bg-color': 'var(--el-fill-color-light)',
                   backgroundColor:
                     item.path === active.value ? 'var(--el-color-primary-light-9)' : undefined,
                 },
@@ -118,15 +164,18 @@ export const AppLayout = defineComponent({
             h(
               ElMenu,
               {
+                ref: menuRef,
                 defaultActive: active.value,
+                defaultOpeneds: [...opened],
                 class: 'shell-menu',
                 // 这些变量定义在 .el-menu 上，只能在同一元素覆盖
                 style: {
                   height: '100%',
                   paddingTop: 'var(--forge-space-1)',
                   '--el-menu-item-height': '40px',
+                  '--el-menu-sub-item-height': '40px',
                   '--el-menu-base-level-padding': 'var(--forge-space-3)',
-                  '--el-menu-hover-bg-color': 'var(--el-fill-color-light)',
+                  '--el-menu-hover-bg-color': 'transparent',
                 },
               },
               () => props.menu.map(renderItem),

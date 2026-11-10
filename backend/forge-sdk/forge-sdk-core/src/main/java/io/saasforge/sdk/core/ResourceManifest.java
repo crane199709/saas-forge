@@ -75,6 +75,8 @@ public record ResourceManifest(
             Set.of("string", "integer", "decimal", "duration", "boolean", "dictionary");
     private static final int MAX_KEY = 64;
     private static final int MAX_NAME = 120;
+    // Shell App 的导航与 Navigation Layout 都只支持三层，顶层算第一层。
+    private static final int MAX_MENU_DEPTH = 3;
 
     /** 复制为不可变列表，已生成的清单不能被调用方修改。 */
     public ResourceManifest {
@@ -195,7 +197,7 @@ public record ResourceManifest(
      * 检查清单是否完整、自洽。SDK 生成清单时与 iam 接收上报时执行同一套规则，CI 或其他客户端直接上报也不例外。
      *
      * <p>规则：服务名与版本非空；权限码格式合法且不重复，名称非空；菜单编码不重复；菜单引用的权限码必须在本清单中声明；
-     * 叶子节点必须同时有 {@code app} 与 {@code path}，分组节点不能带路由，Shell 才能据此生成导航与路由；
+     * 叶子节点必须同时有 {@code app} 与 {@code path}，分组节点不能带路由，Shell 才能据此生成导航与路由；菜单最多三层；
      * 角色模板编码为小写字母、数字与连字符且不重复、不占用预置角色编码，名称非空，引用的权限码必须在本清单中声明；
      * Data Resource 的规则见 {@link #validateDataResources(List)}；Realm 只能是 Tenant 或 Platform，Platform Realm 服务不声明角色模板
      * （模板只用于开通租户）；Dictionary 编码为小写字母开头的小写字母、数字、{@code _ . -} 且不重复，名称非空，内置项编码合法、
@@ -225,7 +227,7 @@ public record ResourceManifest(
                 throw new IllegalArgumentException("Group of " + permission.code() + " is too long");
             }
         }
-        validateMenus(menus, codes, new HashSet<>());
+        validateMenus(menus, codes, new HashSet<>(), 1);
         validateRoles(codes);
         validateDataResources(dataResources);
         Map<String, Dictionary> declared = validateDictionaries();
@@ -409,8 +411,12 @@ public record ResourceManifest(
         }
     }
 
-    private static void validateMenus(List<MenuNode> nodes, Set<String> codes, Set<String> menuCodes) {
+    private static void validateMenus(List<MenuNode> nodes, Set<String> codes, Set<String> menuCodes, int depth) {
         for (MenuNode node : nodes) {
+            if (depth > MAX_MENU_DEPTH) {
+                throw new IllegalArgumentException(
+                        "Menu " + node.code() + " is nested deeper than " + MAX_MENU_DEPTH + " levels");
+            }
             requireText(node.code(), MAX_NAME, "menu code");
             requireText(node.name(), MAX_NAME, "name of menu " + node.code());
             if (!menuCodes.add(node.code())) throw new IllegalArgumentException("Duplicate menu code: " + node.code());
@@ -439,7 +445,7 @@ public record ResourceManifest(
                             "Menu " + node.code() + " action repeats its permission: " + action);
                 }
             }
-            validateMenus(node.children(), codes, menuCodes);
+            validateMenus(node.children(), codes, menuCodes, depth + 1);
         }
     }
 

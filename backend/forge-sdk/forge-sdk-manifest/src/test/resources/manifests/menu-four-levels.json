@@ -1,0 +1,21 @@
+{
+  "menus": [
+    {
+      "code": "l1",
+      "name": "一级",
+      "children": [
+        {
+          "code": "l2",
+          "name": "二级",
+          "children": [
+            {
+              "code": "l3",
+              "name": "三级",
+              "children": [{ "code": "l4", "name": "四级", "app": "demo", "path": "overview" }]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

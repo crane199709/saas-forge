@@ -3,10 +3,17 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { computed, inject, provide } from 'vue'
 import { useTenantClient, useAccessControl } from '@crane199709/sdk'
-import { AppLayout, applyTheme, themeTokens, type MenuItem } from '@crane199709/ui'
+import {
+  AppLayout,
+  applyTheme,
+  arrangeNavigation,
+  themeTokens,
+  type MenuItem,
+} from '@crane199709/ui'
 import TenantSwitcher from './TenantSwitcher.vue'
 import UserMenu from './UserMenu.vue'
-import { menuSections } from './menu-routes'
+import { menuEntries } from './menu-routes'
+import { defaultNavigation, shellPages } from './navigation/shell-pages'
 import { subAppHostKey } from './shell'
 
 import NotificationBell from './notification/NotificationBell.vue'
@@ -21,43 +28,16 @@ const route = useRoute()
 const menu = computed<MenuItem[]>(() => [
   { key: 'home', title: t('app.home'), path: '/' },
   { key: 'notifications', title: '通知中心', path: '/notifications' },
-  // Shell 自带的租户管理页按 iam 的管理权限码显示，授权被撤销后随权限刷新隐藏。
-  ...[
-    {
-      key: 'announcements',
-      path: '/announcements',
-      title: '公告管理',
-      permission: 'announcement:manage',
-    },
-    { key: 'members', path: '/members', title: t('member.nav'), permission: 'iam:member:manage' },
-    { key: 'org', path: '/org', title: t('org.nav'), permission: 'iam:org:manage' },
-    { key: 'roles', path: '/roles', title: t('role.nav'), permission: 'iam:role:manage' },
-    { key: 'audit', path: '/audit', title: t('audit.nav'), permission: 'iam:audit:read' },
-    {
-      key: 'dictionaries',
-      path: '/dictionaries',
-      title: t('referenceData.dictionary.nav'),
-      permission: 'iam:reference-data:manage',
-    },
-    {
-      key: 'parameters',
-      path: '/parameters',
-      title: t('referenceData.parameter.nav'),
-      permission: 'iam:reference-data:manage',
-    },
-    {
-      key: 'security-settings',
-      path: '/security-settings',
-      title: t('securitySettings.nav'),
-      permission: 'iam:security:manage',
-    },
-  ].filter((page) => access.has(page.permission)),
-  // 导航只列出已注册的 Sub-App：菜单可见、套餐允许且在当前环境登记了入口地址
-  ...menuSections(access.menus(), host?.codes() ?? new Set()).map((section) => ({
-    key: section.code,
-    title: section.name,
-    children: section.links.map((link) => ({ key: link.code, title: link.name, path: link.to })),
-  })),
+  // 首页与通知中心固定在顶部，其余按租户的导航布局排列。
+  ...arrangeNavigation(
+    defaultNavigation(
+      // Shell 自带的租户管理页按 iam 的管理权限码显示，授权被撤销后随权限刷新隐藏。
+      shellPages(t).filter((page) => access.has(page.permission)),
+      // 导航只列出已注册的 Sub-App：菜单可见、套餐允许且在当前环境登记了入口地址
+      menuEntries(access.menus(), host?.codes() ?? new Set()),
+    ),
+    access.layout(),
+  ),
 ])
 
 applyTheme(themeTokens.primary)

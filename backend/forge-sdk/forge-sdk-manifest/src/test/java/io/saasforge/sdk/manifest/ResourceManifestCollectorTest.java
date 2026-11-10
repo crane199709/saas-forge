@@ -187,6 +187,14 @@ class ResourceManifestCollectorTest {
     }
 
     @Test
+    void menusAreLimitedToThreeLevels() {
+        assertThat(collect("manifests/menu-three-levels.json").menus()).hasSize(1);
+        assertThatThrownBy(() -> collect("manifests/menu-four-levels.json"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("l4");
+    }
+
+    @Test
     void roleTemplatesMustGrantDeclaredCodesAndCannotTakeBuiltinRoleCodes() {
         assertThatThrownBy(() -> collect("manifests/unknown-role-permission.json"))
                 .isInstanceOf(IllegalStateException.class)
