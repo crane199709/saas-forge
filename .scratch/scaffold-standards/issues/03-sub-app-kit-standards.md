@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] sub-app-kit 发布包包含 `docs/standards/sub-app.md`；`create.ts` 在源码模式与发布模式下都把它复制到生成工程，头部写入版本
 - [x] 模板新增 `AGENTS.md`：规则摘要、`pnpm dev/lint/lint:style/typecheck/build/test:visual` 命令、指向 `docs/standards/` 的链接
