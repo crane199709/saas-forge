@@ -131,7 +131,9 @@ for (const mobile of [false, true]) {
       await expect(page.getByLabel('条目 2', { exact: true })).toBeFocused()
     }
     await page.screenshot({
-      path: `/private/tmp/tenant-ip-allowlist-review-fallback-${mobile ? 'mobile' : 'desktop'}.png`,
+      path: test
+        .info()
+        .outputPath(`tenant-ip-allowlist-review-fallback-${mobile ? 'mobile' : 'desktop'}.png`),
       fullPage: true,
     })
     await page.getByLabel('条目 2', { exact: true }).fill('2001:db8::1/64')
@@ -142,7 +144,9 @@ for (const mobile of [false, true]) {
     expect(writes.at(-1)).toEqual({ rules: ['192.0.2.1', '2001:db8::1/64'] })
     await expect(page).toHaveURL(/\/security-settings$/)
     await page.screenshot({
-      path: `/private/tmp/tenant-ip-allowlist-settings-${mobile ? 'mobile' : 'desktop'}.png`,
+      path: test
+        .info()
+        .outputPath(`tenant-ip-allowlist-settings-${mobile ? 'mobile' : 'desktop'}.png`),
       fullPage: true,
     })
   })
@@ -182,7 +186,7 @@ test('首屏权限被拒、整页刷新仍显示专用页面，停止轮询并�
   await page.clock.fastForward(125_000)
   expect(refreshes).toBe(0)
   expect(unread).toBe(0)
-  await page.screenshot({ path: '/private/tmp/tenant-ip-allowlist-denied-desktop.png' })
+  await page.screenshot({ path: test.info().outputPath('tenant-ip-allowlist-denied-desktop.png') })
   await page.getByRole('button', { name: '租户 B', exact: true }).click()
   await expect(page.getByTestId('home-tenant')).toHaveText('租户 B')
   await expect(page).toHaveURL('http://127.0.0.1:5174/')
@@ -211,7 +215,9 @@ for (const source of ['api', 'refresh'] as const) {
     await page.clock.install()
     await page.clock.fastForward(125_000)
     expect(refreshes).toBe(source === 'api' ? 0 : 1)
-    await page.screenshot({ path: `/private/tmp/tenant-ip-allowlist-denied-${source}-mobile.png` })
+    await page.screenshot({
+      path: test.info().outputPath(`tenant-ip-allowlist-denied-${source}-mobile.png`),
+    })
     await page.getByTestId('ip-denied-logout').click()
     await expect(page).toHaveURL(/\/login$/)
     expect(await page.evaluate(() => localStorage.getItem('forge.tenant.session'))).toBeNull()
@@ -336,7 +342,7 @@ for (const manage of [true, false]) {
     expect(writes).toHaveLength(0)
     await page.getByTestId('ip-clear-open').click()
     await page.getByLabel('清除原因（必填）').fill('管理员误配置，请求恢复')
-    await page.screenshot({ path: '/private/tmp/tenant-ip-allowlist-clear-mobile.png' })
+    await page.screenshot({ path: test.info().outputPath('tenant-ip-allowlist-clear-mobile.png') })
     await page.getByTestId('ip-clear-confirm').click()
     await expect(page.getByText('租户 IP 允许列表已清除。', { exact: true })).toBeVisible()
     expect(writes).toEqual([{ reason: '管理员误配置，请求恢复' }])

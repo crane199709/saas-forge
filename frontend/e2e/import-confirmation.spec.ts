@@ -171,7 +171,7 @@ test('提交后展示将写入行数，提交人确认后才刷新出写入订�
   await expect(dialog.getByText('导入 · 成功 · 2 行')).toBeVisible()
   expect(state.confirmations).toEqual(['/demo/orders/import/import-1/confirm'])
   await expect(page.getByTestId('order-title')).toHaveText('确认后写入的订单')
-  await page.screenshot({ path: '/private/tmp/import-confirmation-success.png' })
+  await page.screenshot({ path: test.info().outputPath('import-confirmation-success.png') })
 })
 
 test('确认时重新校验失败，显示新的错误原因并现取错误报告', async ({ page, context }) => {
@@ -188,7 +188,7 @@ test('确认时重新校验失败，显示新的错误原因并现取错误报�
   const report = await popup
   await expect(report).toHaveURL(/new-confirmation-report\.xlsx$/)
   expect(state.downloads()).toBe(1)
-  await page.screenshot({ path: '/private/tmp/import-confirmation-revalidation.png' })
+  await page.screenshot({ path: test.info().outputPath('import-confirmation-revalidation.png') })
 })
 
 test('非提交人无确认入口，超时和已过期任务明确提示', async ({ page }) => {
@@ -211,7 +211,7 @@ test('非提交人无确认入口，超时和已过期任务明确提示', async
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('button', { name: '确认写入' })).toHaveCount(0)
   await expect(dialog.getByText('确认已过期，请重新上传', { exact: false })).toHaveCount(2)
-  await page.screenshot({ path: '/private/tmp/import-confirmation-expired.png' })
+  await page.screenshot({ path: test.info().outputPath('import-confirmation-expired.png') })
 })
 
 test('确认队列繁忙后保留待确认任务并可重试', async ({ page }) => {
@@ -248,7 +248,7 @@ test('较早待确认任务在十个更新导出之后，重开与整页刷新�
   await expect(dialog.getByText('暂无任务')).toBeVisible()
   await dialog.locator('.btn-next').click()
   await expect(dialog.getByRole('button', { name: '确认写入' })).toBeEnabled()
-  await page.screenshot({ path: '/private/tmp/import-confirmation-review-paging.png' })
+  await page.screenshot({ path: test.info().outputPath('import-confirmation-review-paging.png') })
   await dialog.getByRole('button', { name: '确认写入' }).click()
   await expect(page.getByTestId('order-title')).toHaveText('确认后写入的订单')
   expect(state.confirmations).toEqual(['/demo/orders/import/import-1/confirm'])

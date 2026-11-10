@@ -138,10 +138,13 @@ for (const [code, tip, filename] of [
     expect(puts).toBe(0)
     expect(confirmations).toBe(0)
     await page.screenshot({
-      path:
-        code === 'storage.extensionNotAllowed'
-          ? '/private/tmp/storage-purpose-attachment-rejected.png'
-          : '/private/tmp/storage-purpose-attachment-size-rejected.png',
+      path: test
+        .info()
+        .outputPath(
+          code === 'storage.extensionNotAllowed'
+            ? 'storage-purpose-attachment-rejected.png'
+            : 'storage-purpose-attachment-size-rejected.png',
+        ),
       fullPage: false,
     })
   })
@@ -185,6 +188,9 @@ for (const [filename, tip, serverRejects] of [
     expect(uploads).toBe(serverRejects ? 1 : 0)
     expect(puts).toBe(0)
     expect(submissions).toBe(0)
-    await page.screenshot({ path: `/tmp/storage-purpose-import-${filename}.png`, fullPage: false })
+    await page.screenshot({
+      path: test.info().outputPath(`storage-purpose-import-${filename}.png`),
+      fullPage: false,
+    })
   })
 }
