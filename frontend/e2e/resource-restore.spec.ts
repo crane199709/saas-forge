@@ -425,6 +425,42 @@ test('订单编号冲突保留记录并显示明确提示与 traceId', async ({ 
   await page.screenshot({ path: '/tmp/resource-restore-ui-order-conflict.png', fullPage: false })
 })
 
+test('有删除权限时可删除订单，删除后出现在已删除视图；无更新权限不显示关闭', async ({ page }) => {
+  await session(page, ['order:read', 'order:delete'])
+  const active = [
+    { id: 'o1', title: '待删除订单', amount: 100, status: 'unpaid' },
+    { id: 'o2', title: '保留订单', amount: 200, status: 'unpaid' },
+  ]
+  const deleted: Record<string, unknown>[] = []
+  const deletes: string[] = []
+  await page.route('**/demo/orders**', (route) => {
+    const request = route.request()
+    const url = new URL(request.url())
+    if (request.method() === 'DELETE') {
+      deletes.push(url.pathname)
+      const index = active.findIndex((order) => url.pathname.endsWith(`/${order.id}`))
+      deleted.push({ ...active.splice(index, 1)[0], updatedAt: '2026-11-09T01:00:00Z' })
+      return route.fulfill(ok(null))
+    }
+    const data = url.searchParams.get('deleted') === 'true' ? deleted : active
+    return route.fulfill(
+      ok(data, { number: 1, size: 20, totalElements: data.length, totalPages: 1 }),
+    )
+  })
+  await page.goto('/apps/demo/overview')
+  await expect(page.getByTestId('order-title')).toHaveCount(2)
+  await expect(page.getByRole('button', { name: '关闭订单' })).toHaveCount(0)
+
+  await page.getByTestId('order-delete-o1').click()
+  await expect(page.getByTestId('order-title')).toHaveText(['保留订单'])
+  expect(deletes).toEqual(['/demo/orders/o1'])
+
+  await page.getByRole('button', { name: '已删除', exact: true }).click()
+  await expect(page.getByTestId('order-title')).toHaveText(['待删除订单'])
+  await expect(page.getByRole('button', { name: '恢复', exact: true })).toBeVisible()
+  await expect(page.getByTestId('order-delete-o1')).toHaveCount(0)
+})
+
 test('普通查看权限不暴露订单恢复入口，也不能进入角色和组织管理', async ({ page }) => {
   await session(page, ['order:read'])
   await page.route('**/demo/orders?*', (route) => {

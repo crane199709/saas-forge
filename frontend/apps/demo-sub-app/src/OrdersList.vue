@@ -67,6 +67,7 @@ async function downloadTemplate() {
 const orders = ref<Page<Order> | null>(null)
 const busy = ref(false)
 const closing = ref<string | null>(null)
+const deleting = ref<string | null>(null)
 const error = ref<ErrorTip | null>(null)
 const deleted = ref(false)
 const restoring = ref<Order | null>(null)
@@ -88,6 +89,8 @@ const { t } = useI18n({
       closeOrder: '关闭订单',
       actions: '操作',
       closeFailed: '关闭订单失败，请稍后重试',
+      delete: '删除',
+      deleteFailed: '删除订单失败，请稍后重试',
       failed: '订单加载失败，请稍后重试',
       deletedAt: '删除时间',
       deletedBy: '操作人（身份 ID）',
@@ -138,6 +141,25 @@ async function closeOrder(id: string) {
     }
   } finally {
     closing.value = null
+  }
+}
+
+// 删除是逻辑删除，可在已删除视图恢复，因此不弹确认。
+async function deleteOrder(id: string) {
+  if (deleting.value || closing.value || busy.value || deleted.value) return
+  deleting.value = id
+  error.value = null
+  restored.value = false
+  try {
+    await client.api<null>(`/demo/orders/${id}`, { method: 'DELETE' })
+    await load()
+  } catch (cause) {
+    error.value = {
+      message: cause instanceof ApiError && cause.userTip ? cause.userTip : t('deleteFailed'),
+      traceId: cause instanceof ApiError ? cause.traceId : undefined,
+    }
+  } finally {
+    deleting.value = null
   }
 }
 
@@ -194,7 +216,7 @@ onMounted(() => load())
     />
     <ListPage
       :page="orders"
-      :loading="busy || restoreBusy || closing !== null"
+      :loading="busy || restoreBusy || closing !== null || deleting !== null"
       :deleted="access.has('order:delete') ? deleted : undefined"
       :empty-text="t('empty')"
       @page-change="load"
@@ -234,21 +256,31 @@ onMounted(() => load())
         <template #default="{ row }">{{ row.updatedBy ?? t('system') }}</template>
       </el-table-column>
       <el-table-column
-        v-if="!deleted && access.has('order:update')"
+        v-if="!deleted && (access.has('order:update') || access.has('order:delete'))"
         :label="t('actions')"
-        width="104"
+        width="144"
         fixed="right"
       >
         <template #default="{ row }">
           <el-button
-            v-if="row.status === 'unpaid'"
+            v-if="row.status === 'unpaid' && access.has('order:update')"
             link
-            type="danger"
-            :disabled="closing !== null || busy"
+            type="primary"
+            :disabled="closing !== null || deleting !== null || busy"
             :loading="closing === row.id"
             :data-testid="`order-close-${row.id}`"
             @click="closeOrder(row.id)"
             >{{ t('closeOrder') }}</el-button
+          >
+          <el-button
+            v-if="access.has('order:delete')"
+            link
+            type="danger"
+            :disabled="closing !== null || deleting !== null || busy"
+            :loading="deleting === row.id"
+            :data-testid="`order-delete-${row.id}`"
+            @click="deleteOrder(row.id)"
+            >{{ t('delete') }}</el-button
           >
         </template>
       </el-table-column>
