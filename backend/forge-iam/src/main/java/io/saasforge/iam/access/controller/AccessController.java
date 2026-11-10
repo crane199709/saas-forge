@@ -44,5 +44,6 @@ class AccessController {
     record AccessResponse(
             List<String> permissions, List<MenuNode> menus, List<LoadableSubApp> subApps, NavigationLayout layout) {}
 
+    /** @param roles 平台角色编码，含超级管理员时为 {@code super-admin} */
     record PlatformAccessResponse(List<String> roles, List<String> permissions, NavigationLayout layout) {}
 }

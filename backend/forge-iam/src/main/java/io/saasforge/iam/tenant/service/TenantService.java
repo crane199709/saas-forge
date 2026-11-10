@@ -42,4 +42,19 @@ public class TenantService {
     public String name(UUID tenantId) {
         return tenants.findName(tenantId);
     }
+
+    /** 租户的 Navigation Layout JSON 文本；未设置、未登记或已删除时为 null。 */
+    public String navigationLayout(UUID tenantId) {
+        return tenants.findNavigationLayout(tenantId);
+    }
+
+    /**
+     * 替换租户的 Navigation Layout，{@code layout} 为 null 时恢复默认。
+     *
+     * @param actor 操作者的 Identity，写入 {@code updated_by}
+     * @return 租户已登记且未删除时为 true
+     */
+    public boolean replaceNavigationLayout(UUID tenantId, String layout, UUID actor) {
+        return tenants.updateNavigationLayout(tenantId, layout, actor) == 1;
+    }
 }

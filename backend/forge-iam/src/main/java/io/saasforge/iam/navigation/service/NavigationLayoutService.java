@@ -11,6 +11,7 @@ import io.saasforge.iam.permission.service.PlatformPermissions;
 import io.saasforge.iam.plan.service.PlanService;
 import io.saasforge.iam.platformrole.service.PlatformRoleService;
 import io.saasforge.iam.role.service.RoleService;
+import io.saasforge.iam.tenant.service.TenantService;
 import io.saasforge.sdk.audit.AuditCategory;
 import io.saasforge.sdk.audit.AuditEvent;
 import io.saasforge.sdk.audit.AuditRealm;
@@ -43,6 +44,7 @@ public class NavigationLayoutService {
     private static final int MAX_GROUP_NAME = 32;
 
     private final NavigationLayoutMapper layouts;
+    private final TenantService tenants;
     private final RoleService roles;
     private final PlatformRoleService platformRoles;
     private final PermissionService permissions;
@@ -52,6 +54,7 @@ public class NavigationLayoutService {
 
     NavigationLayoutService(
             NavigationLayoutMapper layouts,
+            TenantService tenants,
             RoleService roles,
             PlatformRoleService platformRoles,
             PermissionService permissions,
@@ -59,6 +62,7 @@ public class NavigationLayoutService {
             AuditRecorder audits,
             JsonMapper json) {
         this.layouts = layouts;
+        this.tenants = tenants;
         this.roles = roles;
         this.platformRoles = platformRoles;
         this.permissions = permissions;
@@ -68,14 +72,14 @@ public class NavigationLayoutService {
     }
 
     /** 租户的布局，供 {@code /auth/access} 下发给每个成员，不校验权限；没有布局时为 null。 */
-    public NavigationLayout tenantLayout(UUID tenantId) {
-        return read(layouts.findTenantLayout(tenantId));
+    public NavigationLayout tenantLayoutForAccess(UUID tenantId) {
+        return read(tenants.navigationLayout(tenantId));
     }
 
     /** 管理页读取租户的布局，需要 {@link IamPermissions#MENU_MANAGE}；没有布局时为 null。 */
     public NavigationLayout tenantLayout(TenantActor actor) {
         roles.requirePermission(actor.membershipId(), IamPermissions.MENU_MANAGE);
-        return tenantLayout(actor.tenantId());
+        return tenantLayoutForAccess(actor.tenantId());
     }
 
     /**
@@ -109,14 +113,14 @@ public class NavigationLayoutService {
     }
 
     /** 平台控制台的布局，供 {@code /platform/access} 下发给每个 Operator，不校验权限；没有布局时为 null。 */
-    public NavigationLayout platformLayout() {
+    public NavigationLayout platformLayoutForAccess() {
         return read(layouts.findPlatformLayout());
     }
 
     /** 管理页读取平台的布局，需要 {@link PlatformPermissions#MENU_MANAGE}；没有布局时为 null。 */
     public NavigationLayout platformLayout(UUID operator) {
         platformRoles.requirePermission(operator, PlatformPermissions.MENU_MANAGE);
-        return platformLayout();
+        return platformLayoutForAccess();
     }
 
     /** 替换平台的布局并审计，需要 {@link PlatformPermissions#MENU_MANAGE}。 */
@@ -143,7 +147,7 @@ public class NavigationLayoutService {
     }
 
     private void writeTenant(TenantActor actor, String content) {
-        if (layouts.updateTenantLayout(actor.tenantId(), content, actor.identityId()) == 0) {
+        if (!tenants.replaceNavigationLayout(actor.tenantId(), content, actor.identityId())) {
             // Token 中的租户在 iam 中必定已登记；未登记只可能是租户已被清理，与 Membership 失效同样按未认证处理。
             throw ForgeException.withErrorMessage(FrameworkErrorCode.AUTH_UNAUTHENTICATED, "Tenant unavailable");
         }

@@ -118,7 +118,6 @@ class PlatformRoleController {
                 policy.condition() == null ? null : json.readTree(policy.condition()));
     }
 
-    /** @param roles 平台角色编码，含超级管理员时为 {@code super-admin} */
     /** @param code 创建后不可修改，小写字母、数字与连字符 */
     record CreateRoleRequest(
             @NotBlank @Pattern(regexp = "[a-z0-9][a-z0-9-]{0,63}")

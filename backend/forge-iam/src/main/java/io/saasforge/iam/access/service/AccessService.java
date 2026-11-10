@@ -60,7 +60,7 @@ public class AccessService {
                 new ArrayList<>(new TreeSet<>(granted)),
                 menus,
                 subApps.loadable(referenced),
-                layouts.tenantLayout(tenantId));
+                layouts.tenantLayoutForAccess(tenantId));
     }
 
     /** 当前 Operator 的平台权限与平台的布局；已停用或删除的 Operator 没有任何权限，布局仍照常下发。 */
@@ -69,7 +69,7 @@ public class AccessService {
         return new PlatformAccess(
                 current.roles().stream().sorted().toList(),
                 current.permissions().stream().sorted().toList(),
-                layouts.platformLayout());
+                layouts.platformLayoutForAccess());
     }
 
     private static void collectApps(List<MenuNode> nodes, Set<String> apps) {
