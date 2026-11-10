@@ -45,7 +45,7 @@ describe('App 布局', () => {
     expect(wrapper.find('[data-testid="tenant-switcher"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="menu-home"]').attributes('href')).toBe('/')
     expect(wrapper.text()).toContain('欢迎使用 SaaS Forge 租户端')
-    expect(wrapper.text()).toContain('当前租户：演示租户')
+    expect(wrapper.find('[data-testid="home-tenant"]').text()).toBe('演示租户')
   })
 
   it('登录与异常页不带布局', async () => {

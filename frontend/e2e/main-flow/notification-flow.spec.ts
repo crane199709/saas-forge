@@ -54,7 +54,7 @@ async function center(page: Page, tab = 'notifications') {
 async function switchTenant(page: Page, name: string) {
   await page.getByTestId('tenant-switcher').click()
   await page.getByRole('option', { name, exact: true }).click()
-  await expect(page.getByText(`当前租户：${name}`, { exact: true }).first()).toBeVisible()
+  await expect(page.getByTestId('home-tenant')).toHaveText(name)
 }
 async function publish(page: Page, title: string, target?: string) {
   await page.getByTestId('announcement-create').click()

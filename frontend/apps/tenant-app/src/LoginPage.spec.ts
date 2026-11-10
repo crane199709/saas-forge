@@ -75,9 +75,11 @@ it('账号登录后进入首页，展示下游返回的身份、租户与成员�
   )
   const { wrapper, router } = await mountShell('/login')
   await submit(wrapper)
-  await vi.waitFor(() => expect(wrapper.text()).toContain('当前身份：演示身份'))
+  await vi.waitFor(() =>
+    expect(wrapper.find('[data-testid="home-identity"]').text()).toBe('演示身份'),
+  )
   expect(router.currentRoute.value.fullPath).toBe('/')
-  expect(wrapper.text()).toContain('当前租户：演示租户')
+  expect(wrapper.find('[data-testid="home-tenant"]').text()).toBe('演示租户')
   expect(wrapper.text()).toContain('membership-a')
   expect(wrapper.find('input[name="password"]').exists()).toBe(false)
 })
@@ -168,7 +170,7 @@ it('多个 Membership 时进入选择租户页，选择后进入该租户', asyn
   expect(fetcher).toHaveBeenCalledTimes(1)
   await wrapper.get('[data-testid="tenant-option-membership-b"]').trigger('click')
   await flushPromises()
-  await vi.waitFor(() => expect(wrapper.text()).toContain('当前租户：租户 B'))
+  await vi.waitFor(() => expect(wrapper.find('[data-testid="home-tenant"]').text()).toBe('租户 B'))
   const exchange = fetcher.mock.calls.find(([path]) => path === '/iam/auth/exchange')!
   expect(
     JSON.parse((exchange as unknown as [string, RequestInit])[1].body as string),

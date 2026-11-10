@@ -195,17 +195,17 @@ test('A 登录后 B 刷新即已登录，关闭全部页面再打开仍已登录
   await login(a)
   // A 登录后 B 自行整页回首页；等它完成再刷新，避免两次导航相互打断
   await expect(b.getByTestId('tenant-switcher')).toBeVisible()
-  await expect(b.getByText('当前租户：租户 A')).toBeVisible()
+  await expect(b.getByTestId('home-tenant')).toHaveText('租户 A')
   await b.reload()
   await expect(b.getByTestId('tenant-switcher')).toBeVisible()
-  await expect(b.getByText('当前租户：租户 A')).toBeVisible()
+  await expect(b.getByTestId('home-tenant')).toHaveText('租户 A')
 
   await a.close()
   await b.close()
   const reopened = await context.newPage()
   await reopened.goto('/')
   await expect(reopened.getByTestId('tenant-switcher')).toBeVisible()
-  await expect(reopened.getByText('当前租户：租户 A')).toBeVisible()
+  await expect(reopened.getByTestId('home-tenant')).toHaveText('租户 A')
 })
 
 test('A 切换租户，B 的菜单与 Sub-App 数据随之切换', async ({ context, page: a }) => {
@@ -219,11 +219,11 @@ test('A 切换租户，B 的菜单与 Sub-App 数据随之切换', async ({ cont
 
   await a.getByTestId('tenant-switcher').click()
   await a.getByRole('option', { name: '租户 B' }).click()
-  await expect(a.getByText('当前租户：租户 B')).toBeVisible()
+  await expect(a.getByTestId('home-tenant')).toHaveText('租户 B')
 
   // B 卸载旧租户的 Sub-App 回到首页，菜单按新租户的权限显示。
   await expect(b.getByTestId('order-title')).toHaveCount(0)
-  await expect(b.getByText('当前租户：租户 B')).toBeVisible()
+  await expect(b.getByTestId('home-tenant')).toHaveText('租户 B')
   await expect(b.getByTestId('menu-members')).toBeHidden()
   await openOrders(b)
   await expect(b.getByTestId('remote-tenant')).toHaveText('当前租户：租户 B')

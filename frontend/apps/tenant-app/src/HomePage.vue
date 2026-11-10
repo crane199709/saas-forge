@@ -36,20 +36,24 @@ onMounted(async () => {
   <section>
     <PageHeader :title="t('app.welcome')" />
     <ErrorAlert v-if="error" class="page-error" :tip="error" />
-    <div v-if="session" class="session">
-      <p>{{ t('auth.identity') }}：{{ session.identityName }}</p>
-      <p>{{ t('auth.tenant') }}：{{ session.tenantName }}</p>
-    </div>
-    <el-descriptions v-if="context" class="info" :column="1" border>
-      <el-descriptions-item :label="t('auth.identityId')">{{
-        context.identityId
-      }}</el-descriptions-item>
-      <el-descriptions-item :label="t('auth.tenantId')">{{
-        context.tenantId
-      }}</el-descriptions-item>
-      <el-descriptions-item :label="t('auth.membershipId')">{{
-        context.membershipId
-      }}</el-descriptions-item>
+    <el-descriptions v-if="session" class="info" :column="1" border>
+      <el-descriptions-item :label="t('auth.identity')">
+        <span data-testid="home-identity">{{ session.identityName }}</span>
+      </el-descriptions-item>
+      <el-descriptions-item :label="t('auth.tenant')">
+        <span data-testid="home-tenant">{{ session.tenantName }}</span>
+      </el-descriptions-item>
+      <template v-if="context">
+        <el-descriptions-item :label="t('auth.identityId')">{{
+          context.identityId
+        }}</el-descriptions-item>
+        <el-descriptions-item :label="t('auth.tenantId')">{{
+          context.tenantId
+        }}</el-descriptions-item>
+        <el-descriptions-item :label="t('auth.membershipId')">{{
+          context.membershipId
+        }}</el-descriptions-item>
+      </template>
     </el-descriptions>
   </section>
 </template>
@@ -57,12 +61,6 @@ onMounted(async () => {
 <style scoped>
 .page-error {
   margin-bottom: var(--forge-space-3);
-}
-.session {
-  margin-bottom: var(--forge-space-4);
-}
-.session p {
-  margin: 0 0 var(--forge-space-1);
 }
 .info {
   max-width: 640px;

@@ -32,7 +32,7 @@ test('双 Membership 登录、数据范围与租户切换', async ({ page }) => 
 
   await page.getByTestId('tenant-switcher').click()
   await page.getByRole('option', { name: 'E2E 租户 B', exact: true }).click()
-  await expect(page.getByText('当前租户：E2E 租户 B', { exact: true }).first()).toBeVisible()
+  await expect(page.getByTestId('home-tenant')).toHaveText('E2E 租户 B')
   await expect(page.getByTestId('menu-audit')).toBeHidden()
   await page.getByTestId('menu-demo.overview').click()
   await expect(page.getByTestId('remote-tenant')).toHaveText('当前租户：E2E 租户 B')
