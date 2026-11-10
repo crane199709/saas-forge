@@ -14,3 +14,7 @@
 - [ ] 设计走查：新增视觉用例并逐张查看截图
 
 ## Comments
+
+### 2026-11-10 页面简报（已经用户确认）
+
+与租户端一致（见 [03](03-tenant-menu-layout-page.md) 的简报），差异：使用者是持 `platform:menu:manage` 的 Operator，确认弹窗说明全体 Operator 的导航恢复默认；目录只有 `consolePages`，没有清单分组。
