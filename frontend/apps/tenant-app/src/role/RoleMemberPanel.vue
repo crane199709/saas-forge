@@ -16,6 +16,7 @@ const editing = ref<MemberRoles | null>(null)
 const draft = ref<string[]>([])
 const busy = ref(false)
 const error = ref<ErrorTip | null>(null)
+const editError = ref<ErrorTip | null>(null)
 
 const roleNames = computed(() => new Map(props.roles.map((role) => [role.id, role.name])))
 const ownerIds = computed(() => new Set(props.roles.filter((r) => r.owner).map((r) => r.id)))
@@ -35,6 +36,7 @@ async function load(number = page.value) {
 }
 
 function edit(member: MemberRoles) {
+  editError.value = null
   editing.value = member
   draft.value = member.roleIds.filter((id) => !ownerIds.value.has(id))
 }
@@ -42,7 +44,7 @@ function edit(member: MemberRoles) {
 async function save() {
   if (!editing.value) return
   busy.value = true
-  error.value = null
+  editError.value = null
   try {
     await props.api.assign(editing.value.membershipId, draft.value)
     editing.value = null
@@ -50,7 +52,7 @@ async function save() {
     // 角色的持有人数随之变化。
     emit('changed')
   } catch (cause) {
-    error.value = errorTip(cause, t)
+    editError.value = errorTip(cause, t)
   } finally {
     busy.value = false
   }
@@ -112,6 +114,7 @@ onMounted(() => void load(1))
       :title="t('role.member.dialog', { name: editing?.displayName ?? '' })"
       @close="editing = null"
     >
+      <ErrorAlert v-if="editError" class="list-error" :tip="editError" />
       <el-checkbox-group v-model="draft">
         <el-checkbox
           v-for="role in assignable"

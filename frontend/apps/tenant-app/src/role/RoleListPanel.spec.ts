@@ -608,6 +608,21 @@ const click = async (selector: string) => {
 
 const impactDialog = () => document.querySelector('[data-testid="role-impact"]')
 
+it('保存角色失败后关闭抽屉，再编辑另一个角色时不残留旧错误', async () => {
+  const wrapper = await mountPanel(vi.fn().mockImplementation(() => Promise.resolve(failure())))
+  await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
+  await flushPromises()
+  await click('[data-testid="role-save"]')
+  expect(document.body.textContent).toContain('服务暂不可用')
+  expect(document.body.textContent).toContain('trace-preview')
+
+  await click('.el-drawer__close-btn')
+  await wrapper.get('[data-testid="role-edit-large-orders"]').trigger('click')
+  await flushPromises()
+  expect(document.body.textContent).not.toContain('服务暂不可用')
+  expect(document.body.textContent).not.toContain('trace-preview')
+})
+
 it('权限变更有净影响时列出成员与失去的权限，确认后才提交', async () => {
   const fetcher = impactFetcher({
     permissions: ok({

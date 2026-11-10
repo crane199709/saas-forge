@@ -154,3 +154,27 @@ it('自定义条件不是合法 JSON 时不提交', async () => {
     'PUT /iam/platform/roles/r1',
   )
 })
+
+it('修正自定义条件并保存成功后清除旧错误', async () => {
+  const fetcher = vi.fn(respond)
+  const wrapper = mountPanel(fetcher)
+  await flushPromises()
+  await wrapper.get('[data-testid="platform-role-edit-east-viewer"]').trigger('click')
+  await flushPromises()
+  radio('自定义条件').querySelector('input')!.click()
+  await flushPromises()
+  const condition = document.querySelector('.el-drawer textarea') as HTMLTextAreaElement
+  const form = document.querySelector('.el-drawer form')!
+  condition.value = '{'
+  condition.dispatchEvent(new Event('input'))
+  form.dispatchEvent(new Event('submit'))
+  await flushPromises()
+  expect(document.body.textContent).toContain('自定义条件不是合法的 JSON')
+
+  condition.value = JSON.stringify(regionCondition)
+  condition.dispatchEvent(new Event('input'))
+  form.dispatchEvent(new Event('submit'))
+  await flushPromises()
+  expect(fetcher.mock.calls.map((call) => route(...call))).toContain('PUT /iam/platform/roles/r1')
+  expect(document.body.textContent).not.toContain('自定义条件不是合法的 JSON')
+})

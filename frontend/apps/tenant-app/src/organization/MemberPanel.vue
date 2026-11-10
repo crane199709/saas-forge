@@ -33,6 +33,7 @@ const draft = ref<Assignment>({
 })
 const busy = ref(false)
 const error = ref<ErrorTip | null>(null)
+const editError = ref<ErrorTip | null>(null)
 
 const departmentNames = computed(
   () => new Map(props.departments.map((item) => [item.id, item.name])),
@@ -54,6 +55,7 @@ async function load(number = page.value) {
 }
 
 function edit(member: MemberAssignment) {
+  editError.value = null
   editing.value = member
   draft.value = {
     primaryDepartmentId: member.primaryDepartmentId,
@@ -74,7 +76,7 @@ function setAttribute(code: string, value: AttributeValue | null | undefined) {
 async function save() {
   if (!editing.value) return
   busy.value = true
-  error.value = null
+  editError.value = null
   try {
     const primary = draft.value.primaryDepartmentId || null
     await props.api.assign(editing.value.membershipId, {
@@ -85,7 +87,7 @@ async function save() {
     editing.value = null
     await load()
   } catch (cause) {
-    error.value = errorTip(cause, t)
+    editError.value = errorTip(cause, t)
   } finally {
     busy.value = false
   }
@@ -157,6 +159,7 @@ onMounted(() => void load(1))
       :title="t('org.member.dialog', { name: editing?.displayName ?? '' })"
       @close="editing = null"
     >
+      <ErrorAlert v-if="editError" class="page-error" :tip="editError" />
       <el-form label-position="top">
         <el-form-item :label="t('org.member.primary')">
           <el-select v-model="draft.primaryDepartmentId" clearable data-testid="assignment-primary">

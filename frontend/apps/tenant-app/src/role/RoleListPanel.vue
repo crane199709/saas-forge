@@ -119,6 +119,7 @@ const incomplete = computed(() =>
 )
 
 function openCreate() {
+  error.value = null
   saveAttempt++
   editing.value = null
   previewing.value = null
@@ -127,6 +128,7 @@ function openCreate() {
 }
 
 function openEdit(role: Role) {
+  error.value = null
   saveAttempt++
   editing.value = role
   previewing.value = null

@@ -11,6 +11,7 @@ const api = createSecurityApi(useTenantClient())
 const mfaRequired = ref<boolean | null>(null)
 const busy = ref(false)
 const error = ref<ErrorTip | null>(null)
+const ipError = ref<ErrorTip | null>(null)
 const currentIp = ref<string | null>(null)
 const rules = ref<string[]>([])
 const rowErrors = ref<Record<number, string>>({})
@@ -19,10 +20,17 @@ const saved = ref(false)
 function removeRule(index: number) {
   rules.value.splice(index, 1)
   rowErrors.value = {}
+  ipError.value = null
   saved.value = false
 }
 function addRule() {
   rules.value.push('')
+  ipError.value = null
+  saved.value = false
+}
+function changeRule(index: number) {
+  delete rowErrors.value[index]
+  ipError.value = null
   saved.value = false
 }
 async function saveRules() {
@@ -43,20 +51,20 @@ async function saveRules() {
       }
       throw cause
     }
-  })
+  }, ipError)
   // 等 busy 解除、输入框恢复可用后再定位，禁用状态的输入框不能接收焦点。
   await nextTick()
   const first = Object.keys(rowErrors.value)[0]
   if (first !== undefined) document.getElementById(`ip-rule-${first}`)?.focus()
 }
 
-async function run(task: () => Promise<void>) {
+async function run(task: () => Promise<void>, feedback = error) {
   busy.value = true
-  error.value = null
+  feedback.value = null
   try {
     await task()
   } catch (cause) {
-    error.value = errorTip(cause, t)
+    feedback.value = errorTip(cause, t)
   } finally {
     busy.value = false
   }
@@ -121,7 +129,7 @@ function toggle(next: string | number | boolean) {
               v-model="rules[index]"
               placeholder="IPv4、IPv6 或 CIDR"
               :disabled="busy"
-              @input="saved = false"
+              @input="changeRule(index)"
             />
             <el-button
               link
@@ -134,6 +142,7 @@ function toggle(next: string | number | boolean) {
           </div>
         </el-form-item>
         <p v-if="rules.length === 0">当前未限制来源 IP。</p>
+        <ErrorAlert v-if="ipError" class="page-error" :tip="ipError" />
         <div class="row">
           <el-button :disabled="busy || rules.length >= 100" @click="addRule">添加条目</el-button>
           <el-button native-type="submit" type="primary" :loading="busy" data-testid="ip-save"

@@ -81,6 +81,13 @@ async function confirmClear() {
 }
 const busy = ref(false)
 const error = ref<ErrorTip | null>(null)
+const createError = ref<ErrorTip | null>(null)
+const detailError = ref<ErrorTip | null>(null)
+
+function startCreate() {
+  createError.value = null
+  creating.value = true
+}
 
 const statusType: Record<InitializationStatus, 'info' | 'success' | 'danger'> = {
   pending: 'info',
@@ -101,21 +108,21 @@ const planName = (id: string | null) =>
     : (props.plans.find((plan) => plan.id === id)?.name ?? t('tenant.unknownPlan'))
 
 // 优先展示服务端已翻译的 userTip，其余故障显示通用提示。
-function showError(cause: unknown) {
+function showError(cause: unknown, feedback = error) {
   const traceId = cause instanceof ApiError ? cause.traceId : undefined
-  error.value = {
+  feedback.value = {
     message: cause instanceof ApiError && cause.userTip ? cause.userTip : t('error.unknown'),
     traceId,
   }
 }
 
-async function run(action: () => Promise<void>) {
+async function run(action: () => Promise<void>, feedback = error) {
   busy.value = true
-  error.value = null
+  feedback.value = null
   try {
     await action()
   } catch (cause) {
-    showError(cause)
+    showError(cause, feedback)
   } finally {
     busy.value = false
   }
@@ -132,6 +139,7 @@ const load = (number = page.value) => run(() => fetchPage(number))
 
 const open = (id: string) =>
   run(async () => {
+    detailError.value = null
     detail.value = await props.api.get(id)
     transitionDraft.value = emptyTransition()
     planDraft.value = ''
@@ -149,10 +157,11 @@ const create = () =>
       expiresAt: toInstant(expiresAt),
       planId,
     })
+    detailError.value = null
     creating.value = false
     draft.value = emptyDraft()
-    await fetchPage(1)
-  })
+    await load(1)
+  }, createError)
 
 const transition = () =>
   run(async () => {
@@ -165,7 +174,7 @@ const transition = () =>
     })
     transitionDraft.value = emptyTransition()
     await fetchPage(page.value)
-  })
+  }, detailError)
 
 async function applyPlan(tenantId: string, planId: string) {
   detail.value = await props.api.changePlan(tenantId, planId)
@@ -199,12 +208,12 @@ const changePlan = () =>
     if (detail.value?.tenant.id !== tenantId) return
     if (needsConfirmation(preview)) pendingPlan.value = { tenantId, planId, preview }
     else await applyPlan(tenantId, planId)
-  })
+  }, detailError)
 
 function confirmPlan() {
   const { tenantId, planId } = pendingPlan.value!
   pendingPlan.value = null
-  return run(() => applyPlan(tenantId, planId))
+  return run(() => applyPlan(tenantId, planId), detailError)
 }
 
 // 重试后状态回到 pending，服务回报前需手动刷新查看结果。
@@ -218,7 +227,7 @@ const retry = (service: string) =>
         item.service === service ? updated : item,
       ),
     }
-  })
+  }, detailError)
 
 onMounted(() => load(1))
 </script>
@@ -227,7 +236,7 @@ onMounted(() => load(1))
   <section class="tenant-panel" :aria-label="t('tenant.title')">
     <PageHeader :title="t('tenant.title')">
       <template #actions>
-        <el-button v-if="canManage" type="primary" @click="creating = true">{{
+        <el-button v-if="canManage" type="primary" @click="startCreate">{{
           t('tenant.create')
         }}</el-button>
       </template>
@@ -276,6 +285,7 @@ onMounted(() => load(1))
     />
 
     <el-dialog v-model="creating" :width="overlaySize.dialogMd" :title="t('tenant.create')">
+      <ErrorAlert v-if="createError" class="page-error" :tip="createError" />
       <el-form label-position="top" @submit.prevent="create">
         <el-form-item :label="t('tenant.name')" for="tenant-name">
           <el-input id="tenant-name" v-model="draft.name" name="name" maxlength="120" required />
@@ -336,6 +346,7 @@ onMounted(() => load(1))
       @close="detail = null"
     >
       <template v-if="detail">
+        <ErrorAlert v-if="detailError" class="page-error" :tip="detailError" />
         <el-descriptions :column="1" border>
           <el-descriptions-item :label="t('tenant.status')">{{
             t(`tenant.statuses.${detail.tenant.status}`)

@@ -1,4 +1,4 @@
-import { flushPromises, mount } from '@vue/test-utils'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createTenantClient } from '@crane199709/sdk'
@@ -6,6 +6,7 @@ import { i18n } from '../i18n'
 import RoleMemberPanel from './RoleMemberPanel.vue'
 import { createRoleApi, type Role } from './role-api'
 
+enableAutoUnmount(afterEach)
 afterEach(() => {
   sessionStorage.clear()
   vi.unstubAllGlobals()
@@ -73,4 +74,54 @@ it('Owner 不可分配；保存时提交多选的其余角色', async () => {
   expect(url).toBe(`${location.origin}/iam/roles/memberships/m1`)
   expect(JSON.parse(init.body)).toEqual({ roleIds: ['viewer', 'approver'] })
   expect(wrapper.emitted('changed')).toHaveLength(1)
+})
+
+it('分配角色失败后重新打开编辑，不显示上次错误', async () => {
+  const member = {
+    membershipId: 'm1',
+    account: 'alice',
+    displayName: 'Alice',
+    status: 'active',
+    roleIds: [],
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce(
+        ok([member], { page: { number: 1, size: 20, totalElements: 1, totalPages: 1 } }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            code: 'system.unavailable',
+            httpStatus: 503,
+            userTip: '分配失败',
+            traceId: 'failed-assignment',
+          }),
+          { status: 503 },
+        ),
+      ),
+  )
+  sessionStorage.setItem(
+    'forge.tenant.session',
+    JSON.stringify({ accessToken: 'access', refreshToken: 'r' }),
+  )
+  const wrapper = mount(RoleMemberPanel, {
+    props: { api: createRoleApi(createTenantClient(sessionStorage)), roles: [] },
+    global: { plugins: [i18n, ElementPlus] },
+    attachTo: document.body,
+  })
+  await flushPromises()
+  await wrapper.get('[data-testid="role-member-edit-m1"]').trigger('click')
+  await flushPromises()
+  ;(document.querySelector('[data-testid="role-member-save"]') as HTMLElement).click()
+  await flushPromises()
+  expect(wrapper.text()).toContain('分配失败')
+  ;(document.querySelector('.el-dialog__headerbtn') as HTMLElement).click()
+  await flushPromises()
+  await wrapper.get('[data-testid="role-member-edit-m1"]').trigger('click')
+  await flushPromises()
+  expect(wrapper.text()).not.toContain('分配失败')
+  expect(wrapper.text()).not.toContain('failed-assignment')
 })

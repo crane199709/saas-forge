@@ -1,4 +1,4 @@
-import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import { enableAutoUnmount, flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import ElementPlus, { ElDrawer, ElSelect } from 'element-plus'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createPlatformClient } from '@crane199709/sdk'
@@ -6,6 +6,7 @@ import { i18n } from '../i18n'
 import TenantPanel from './TenantPanel.vue'
 import { createTenantApi } from './tenant-api'
 
+enableAutoUnmount(afterEach)
 afterEach(() => {
   localStorage.clear()
   document.body.innerHTML = ''
@@ -377,6 +378,110 @@ const planWrites = (fetcher: ReturnType<typeof vi.fn>) =>
   fetcher.mock.calls.filter(([, init]) => init?.method === 'PUT')
 
 const planDialog = () => document.querySelector('[data-testid="plan-impact"]')
+
+it('创建失败显示在创建窗口内，重新打开并成功创建后清除旧错误', async () => {
+  let attempts = 0
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((_url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        if (++attempts === 1)
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                code: 'validation.failed',
+                httpStatus: 400,
+                userTip: '管理员联系方式不可用',
+                traceId: 'create-failed',
+              }),
+              { status: 400 },
+            ),
+          )
+        return Promise.resolve(ok({ tenant, ...lifecycle, initializations: [] }))
+      }
+      return Promise.resolve(ok([tenant], page))
+    }),
+  )
+  const wrapper = mountPanel()
+  await flushPromises()
+  button(wrapper.element, '创建租户')!.click()
+  await flushPromises()
+  for (const [id, value] of [
+    ['tenant-name', '示例租户'],
+    ['tenant-admin-contact', 'owner@example.com'],
+  ]) {
+    const input = document.getElementById(id!) as HTMLInputElement
+    input.value = value!
+    input.dispatchEvent(new Event('input'))
+  }
+  const select = wrapper
+    .findAllComponents(ElSelect)
+    .find((item) => item.attributes('data-testid') === 'tenant-plan')!
+  select.vm.$emit('update:modelValue', 'p1')
+  await flushPromises()
+  document.querySelector('.el-dialog form')!.dispatchEvent(new Event('submit'))
+  await flushPromises()
+  expect(document.querySelector('.el-dialog [role="alert"]')?.textContent).toContain(
+    '管理员联系方式不可用',
+  )
+
+  ;(document.querySelector('.el-dialog__headerbtn') as HTMLElement).click()
+  await flushPromises()
+  expect(document.querySelector('.tenant-panel > .el-alert--error')).toBeNull()
+  button(wrapper.element, '创建租户')!.click()
+  await flushPromises()
+  expect(document.body.textContent).not.toContain('create-failed')
+  document.querySelector('.el-dialog form')!.dispatchEvent(new Event('submit'))
+  await flushPromises()
+  expect(attempts).toBe(2)
+  expect(document.body.textContent).not.toContain('管理员联系方式不可用')
+  expect(document.querySelector('.el-drawer')?.textContent).toContain('示例租户')
+})
+
+it('初始化重试失败显示在详情内，再次重试成功后清除错误', async () => {
+  let attempts = 0
+  const detail = {
+    tenant,
+    ...lifecycle,
+    initializations: [{ service: 'demo-service', status: 'failed', error: 'boom', updatedAt: 'x' }],
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        if (++attempts === 1)
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                code: 'system.unavailable',
+                httpStatus: 503,
+                userTip: '初始化服务暂不可用',
+                traceId: 'retry-failed',
+              }),
+              { status: 503 },
+            ),
+          )
+        return Promise.resolve(
+          ok({ service: 'demo-service', status: 'pending', error: null, updatedAt: 'y' }),
+        )
+      }
+      return Promise.resolve(path(url) === '/platform/tenants/t1' ? ok(detail) : ok([tenant], page))
+    }),
+  )
+  const wrapper = mountPanel()
+  await flushPromises()
+  await wrapper.get('tbody button').trigger('click')
+  await flushPromises()
+  const drawer = document.querySelector('.el-drawer')!
+  button(drawer, '重试')!.click()
+  await flushPromises()
+  expect(drawer.querySelector('[role="alert"]')?.textContent).toContain('初始化服务暂不可用')
+  button(drawer, '重试')!.click()
+  await flushPromises()
+  expect(attempts).toBe(2)
+  expect(document.body.textContent).not.toContain('retry-failed')
+  expect(drawer.textContent).toContain('进行中')
+})
 
 async function clickPlan(testid: string) {
   ;(document.querySelector(`[data-testid="${testid}"]`) as HTMLElement).click()

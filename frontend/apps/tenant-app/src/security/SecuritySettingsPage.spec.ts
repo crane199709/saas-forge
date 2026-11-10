@@ -122,3 +122,74 @@ it.each([undefined, '', ' \t '])('字段提示为 %j 时显示通用提示，不
   )
   expect(wrapper.text()).not.toContain('tenant.invalidMachineCode')
 })
+
+it('IP 规则保存失败后重试成功，清除错误文案与追踪 ID', async () => {
+  vi.stubGlobal(
+    'fetch',
+    fakeFetch({
+      '/iam/auth/memberships': ok([]),
+      '/iam/security-settings': ok({ mfaRequired: false }),
+      '/iam/security-settings/ip-allowlist': [
+        ok({ rules: ['192.0.2.1'], currentIp: '192.0.2.1' }),
+        new Response(
+          JSON.stringify({
+            code: 'tenant.currentIpNotAllowed',
+            httpStatus: 400,
+            userTip: '规则必须包含当前 IP',
+            traceId: 'failed-ip-save',
+          }),
+          { status: 400 },
+        ),
+        ok({ rules: ['192.0.2.1'], currentIp: '192.0.2.1' }),
+      ],
+    }),
+  )
+  const { wrapper } = await mountShell('/security-settings', {
+    access: async () => ({ permissions: ['iam:security:manage'] }),
+  })
+  await wrapper.get('.ip-section form').trigger('submit')
+  await flushPromises()
+  expect(wrapper.text()).toContain('规则必须包含当前 IP')
+  expect(wrapper.text()).toContain('failed-ip-save')
+
+  await wrapper.get('.ip-section form').trigger('submit')
+  await flushPromises()
+  expect(wrapper.text()).toContain('租户 IP 允许列表已保存')
+  expect(wrapper.text()).not.toContain('规则必须包含当前 IP')
+  expect(wrapper.text()).not.toContain('failed-ip-save')
+})
+
+it('修正出错的 IP 条目后，清除该条目与本次提交的旧错误', async () => {
+  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
+    const path = new URL(url, location.origin).pathname
+    if (path === '/iam/security-settings') return Promise.resolve(ok({ mfaRequired: false }))
+    if (path === '/iam/security-settings/ip-allowlist') {
+      if (init?.method === 'PUT')
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              code: 'validation.failed',
+              httpStatus: 400,
+              userTip: '规则无效',
+              traceId: 'failed-rule',
+              errors: [{ field: 'rules[0]', code: 'invalid', userTip: '请输入 IP 地址或 CIDR' }],
+            }),
+            { status: 400 },
+          ),
+        )
+      return Promise.resolve(ok({ rules: ['bad'], currentIp: '192.0.2.1' }))
+    }
+    return Promise.resolve(ok([]))
+  })
+  const { wrapper } = await mountShell('/security-settings', {
+    access: async () => ({ permissions: ['iam:security:manage'] }),
+  })
+  await wrapper.get('.ip-section form').trigger('submit')
+  await flushPromises()
+  await vi.waitFor(() => expect(wrapper.text()).toContain('请输入 IP 地址或 CIDR'))
+
+  await wrapper.get('#ip-rule-0').setValue('192.0.2.1')
+  expect(wrapper.text()).not.toContain('请输入 IP 地址或 CIDR')
+  expect(wrapper.text()).not.toContain('规则无效')
+  expect(wrapper.text()).not.toContain('failed-rule')
+})

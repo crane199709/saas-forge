@@ -144,6 +144,44 @@ it('停用运营账号，最后一位超级管理员被拒时显示服务端提�
   expect(wrapper.get('[role="alert"]').text()).toContain('至少需要保留一位状态正常的超级管理员')
 })
 
+it('停用失败后重试成功，清除旧错误并显示最新状态', async () => {
+  let attempts = 0
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url: string, init?: RequestInit) => {
+      const key = route(url, init)
+      if (key === 'GET /iam/platform/roles') return Promise.resolve(ok([superAdmin]))
+      if (key === 'POST /iam/platform/operators/o1/disable') {
+        if (++attempts === 1)
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                code: 'system.unavailable',
+                httpStatus: 503,
+                userTip: '账号服务暂不可用',
+                traceId: 'operator-failed',
+              }),
+              { status: 503 },
+            ),
+          )
+        return Promise.resolve(ok(null))
+      }
+      return Promise.resolve(ok([{ ...admin, status: attempts > 1 ? 'disabled' : 'active' }]))
+    }),
+  )
+  const wrapper = mountPanel()
+  await flushPromises()
+  await wrapper.get('[data-testid="operator-toggle-operator"]').trigger('click')
+  await flushPromises()
+  expect(wrapper.text()).toContain('账号服务暂不可用')
+  await wrapper.get('[data-testid="operator-toggle-operator"]').trigger('click')
+  await flushPromises()
+  expect(attempts).toBe(2)
+  expect(wrapper.text()).not.toContain('operator-failed')
+  expect(wrapper.text()).not.toContain('账号服务暂不可用')
+  expect(wrapper.get('[data-testid="operator-toggle-operator"]').text()).toContain('恢复')
+})
+
 describe('重置 MFA', () => {
   function backend(reset: () => Response) {
     const fetcher = vi.fn((url: string, init?: RequestInit) => {
