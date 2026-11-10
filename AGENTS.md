@@ -28,11 +28,19 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/ag
 - 租户业务表与有业务语义的实体表带标准列 `created_at`/`updated_at`/`created_by`/`updated_by`/`deleted`，实体继承 `AuditableEntity` 由 SDK 填充，删除一律为逻辑删除，唯一性只用 `WHERE NOT deleted` 的部分唯一索引，手写 SQL 自行维护标准列并带 `NOT deleted`。
 - 注释写「为什么」，不设占比指标，SDK public API 与 Mapper 方法必须有文档注释。
 
-完整规则见 `docs/agents/coding-standards.md`。
+完整规则分两处：业务服务通用部分见 `docs/standards/business-service.md`（随 archetype 发布），SDK 与平台服务的内部补充见 `docs/agents/coding-standards.md`。
 
 ## 前端界面
 
-新增或调整页面前读 `docs/agents/frontend-design.md`，按页面简报、功能实现、设计走查三步完成；走查必须查看截图。
+新增或调整页面前读 `docs/standards/sub-app.md`（随 sub-app-kit 发布）与 `docs/agents/frontend-design.md`（monorepo 内部补充），按页面简报、功能实现、设计走查三步完成；走查必须查看截图。
+
+## 脚手架同步
+
+`docs/standards/` 随脚手架复制进仓库外的生成工程，脚手架只带默认 starter 的必需项与规范要求的通用写法。改动以下任一项时，同一变更内同步更新 `docs/standards/`、`forge-service-archetype`、`sub-app-kit` 模板、`docs/business-service-guide.md` 与 `CHANGELOG.md`（写明改了哪些规则）：
+
+- 编码规范（业务服务适用的部分）
+- SDK 必需项：starter 需要的表、必配项
+- 前端设计约定
 
 ## 测试
 
