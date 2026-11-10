@@ -122,10 +122,12 @@ async function reset() {
 .lookup {
   display: flex;
   gap: var(--forge-space-2);
-  max-width: 480px;
 }
-.result {
-  max-width: 640px;
+.lookup,
+.result,
+.page-error {
+  max-width: 560px;
+  margin-inline: auto;
 }
 .result {
   margin-top: var(--forge-space-4);
