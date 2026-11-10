@@ -1,5 +1,15 @@
 import type { Page, TenantClient } from '@crane199709/sdk'
 import type { ErrorTip } from '../error-tip'
+import type { GrantablePermission, PermissionTree } from '@crane199709/ui'
+
+// 授权树的模型与勾选组件共用 `@crane199709/ui`，平台侧 Plan 也使用同一套。
+export type {
+  GrantablePermission,
+  PermissionMenu,
+  PermissionTree,
+  TreePermission,
+} from '@crane199709/ui'
+export { groupPermissions } from '@crane199709/ui'
 
 /** IAM 角色接口的模型，由 tenant-app 维护，不属于通用 SDK。 */
 export interface Role {
@@ -72,40 +82,6 @@ export interface PolicyPreview {
   matches: boolean[]
 }
 
-export interface GrantablePermission {
-  code: string
-  name: string
-  service: string
-  group: string | null
-}
-
-export interface TreePermission {
-  code: string
-  name: string
-  sharedWith: string[]
-}
-
-export interface PermissionMenu {
-  code: string
-  name: string
-  icon: string | null
-  permission: TreePermission | null
-  actions: TreePermission[]
-  children: PermissionMenu[]
-}
-
-export interface PermissionTree {
-  menus: PermissionMenu[]
-  others: GrantablePermission[]
-}
-
-export interface PermissionGroup {
-  key: string
-  service: string
-  group: string | null
-  permissions: GrantablePermission[]
-}
-
 export interface MemberRoles {
   membershipId: string
   account: string
@@ -136,24 +112,6 @@ export interface RoleDataPolicyImpact {
 
 /** 一次影响预览的结果；预览失败不等于没有影响，必须与 `affectedCount` 为 0 区分开。 */
 export type ImpactPreview<T> = { ok: true; value: T } | { ok: false; tip: ErrorTip }
-
-/** 接口已按服务、分组排序，这里按相邻的服务与分组归并，供权限勾选界面分块展示。 */
-export function groupPermissions(permissions: GrantablePermission[]): PermissionGroup[] {
-  const groups: PermissionGroup[] = []
-  for (const permission of permissions) {
-    const key = `${permission.service}\u0000${permission.group ?? ''}`
-    const last = groups.at(-1)
-    if (last?.key === key) last.permissions.push(permission)
-    else
-      groups.push({
-        key,
-        service: permission.service,
-        group: permission.group,
-        permissions: [permission],
-      })
-  }
-  return groups
-}
 
 /** 角色管理接口；需要 `iam:role:manage`，其他成员得到 403。 */
 export function createRoleApi(client: Pick<TenantClient, 'api' | 'page'>) {

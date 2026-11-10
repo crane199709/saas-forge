@@ -3,6 +3,15 @@ export type { MenuItem } from './AppLayout'
 export { arrangeNavigation } from './navigation'
 export type { NavigationEntry } from './navigation'
 export { NavigationLayoutEditor } from './NavigationLayoutEditor'
+export { PermissionTreeEditor } from './PermissionTreeEditor'
+export { groupPermissions, menuCodes, menuRows, togglePermissions } from './permission-selection'
+export type {
+  GrantablePermission,
+  PermissionMenu,
+  PermissionSection,
+  PermissionTree,
+  TreePermission,
+} from './permission-selection'
 export { formatDateTime } from './format'
 export { ErrorAlert } from './ErrorAlert'
 export type { ErrorTip } from './ErrorAlert'
