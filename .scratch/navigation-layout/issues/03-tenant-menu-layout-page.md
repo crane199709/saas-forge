@@ -34,3 +34,13 @@
 - 租户端 Shell Page 列表移到 `navigation/shell-pages.ts`，导航与管理页共用；菜单管理页在默认树中排在清单菜单之后。
 - 保存失败用 `ElMessage` 提示（仓库中首次使用），成功时提示「已保存」。
 - 视觉回归新增 `menu-layout-*` 5 张截图。现有租户端截图的侧边栏末尾多出「菜单管理」，差异低于 `maxDiffPixelRatio`，基线未重新生成。
+
+### 2026-11-10 代码评审修复
+
+- 后端：租户布局的读写移入 `tenant` 功能包（`TenantMapper` + `TenantService`），`navigation` 只经 `TenantService` 访问；供 access 下发、不校验权限的读取方法改名为 `tenantLayoutForAccess` / `platformLayoutForAccess`；平台角色字段注释移回 `PlatformAccessResponse`。
+- 前端：`arrangeNavigation` 与 `editorTree` 共用 `placeNavigation`，三层与分组名称 32 字的限制共用 `navigationLimits`；两端管理页的 `ErrorTip` 都取自 `@crane199709/ui`。
+- 新节点放入祖先分组会超过三层时放到顶层末尾（规格第 3 节）。
+- 目录外分组里显示出来、未被拖动过的节点，保存时按原顺序写回该分组，分组放在原位置；拖动过的节点保存在拖动后的位置（规格第 7 节）。
+- 去掉保存与恢复默认的成功提示及对应文案，只保留失败提示；保存后仍刷新导航。
+- 视觉基线全部重新生成：租户端与平台端各页侧边栏末尾多出「菜单管理」，`platform-navigation-desktop` 另有分组展开后行距统一的差异，其余无变化。
+- 规格补充：空白的 `page`/`menu` 引用与全空白的分组名称被拒绝。
