@@ -116,7 +116,7 @@ it('保存整棵布局，保存后刷新当前用户的权限与导航', async (
   expect(body.nodes.slice(0, 2)).toEqual(saved.nodes)
   expect(body.nodes.at(-1)).toEqual({ page: 'menu-layout' })
   expect(accessLoads).toHaveBeenCalledTimes(1)
-  expect(document.body.textContent).toContain('已保存')
+  expect(document.body.textContent).not.toContain('已保存')
 })
 
 it('保存失败时用消息提示，不刷新权限', async () => {
@@ -148,6 +148,7 @@ it('恢复默认须在确认弹窗中确认，之后按默认顺序显示并刷�
   expect(init.method).toBe('DELETE')
   expect(rows(wrapper)[0]).toBe('公告管理')
   expect(accessLoads).toHaveBeenCalledTimes(1)
+  expect(document.body.textContent).not.toContain('已恢复默认')
 })
 
 it('读取失败时显示错误，可以重试', async () => {

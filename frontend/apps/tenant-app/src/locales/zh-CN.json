@@ -457,8 +457,6 @@
     "nav": "菜单管理",
     "title": "菜单管理",
     "retry": "重试",
-    "saved": "已保存",
-    "resetDone": "已恢复默认",
     "resetTitle": "恢复默认导航",
     "resetImpact": "全体成员的导航将恢复默认顺序，自定义分组会被删除。",
     "resetConfirm": "恢复默认",

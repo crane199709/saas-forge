@@ -13,9 +13,10 @@ import {
   NavigationLayoutEditor,
   PageHeader,
   overlaySize,
+  type ErrorTip,
   type NavigationEntry,
 } from '@crane199709/ui'
-import { errorTip, type ErrorTip } from '../error-tip'
+import { errorTip } from '../error-tip'
 import { createNavigationApi } from './navigation-api'
 import { defaultNavigation, shellPages } from './shell-pages'
 
@@ -55,11 +56,10 @@ async function load() {
 }
 
 // 成功后重新读取权限，操作者自己的导航立即按新布局显示；其他成员在下次读取权限时生效。
-async function run(action: () => Promise<void>, done: string) {
+async function run(action: () => Promise<void>) {
   busy.value = true
   try {
     await action()
-    ElMessage.success(done)
     // 权限读取失败不影响已保存的结果，导航在下次读取权限时更新。
     void access.load().catch(() => undefined)
   } catch (cause) {
@@ -72,7 +72,7 @@ async function run(action: () => Promise<void>, done: string) {
 function save(value: NavigationLayout) {
   void run(async () => {
     layout.value = await api.replace(value)
-  }, t('menuLayout.saved'))
+  })
 }
 
 function reset() {
@@ -80,7 +80,7 @@ function reset() {
   void run(async () => {
     await api.reset()
     layout.value = null
-  }, t('menuLayout.resetDone'))
+  })
 }
 
 onMounted(load)

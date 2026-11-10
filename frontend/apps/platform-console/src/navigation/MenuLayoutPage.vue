@@ -43,11 +43,10 @@ async function load() {
 
 // 成功后重新读取权限，操作者自己的导航立即按新布局显示；其他 Operator 在下次读取权限时生效。
 // 权限读取失败由 Shell 提示，不影响已保存的结果。
-async function run(action: () => Promise<void>, done: string) {
+async function run(action: () => Promise<void>) {
   busy.value = true
   try {
     await action()
-    ElMessage.success(done)
     void access.reload()
   } catch (cause) {
     ElMessage.error(errorTip(cause, t).message)
@@ -59,7 +58,7 @@ async function run(action: () => Promise<void>, done: string) {
 function save(value: NavigationLayout) {
   void run(async () => {
     layout.value = await api.replace(value)
-  }, t('menuLayout.saved'))
+  })
 }
 
 function reset() {
@@ -67,7 +66,7 @@ function reset() {
   void run(async () => {
     await api.reset()
     layout.value = null
-  }, t('menuLayout.resetDone'))
+  })
 }
 
 onMounted(load)
