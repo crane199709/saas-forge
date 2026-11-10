@@ -5,6 +5,7 @@ import {
   addGroup,
   canDrop,
   editorTree,
+  markMoved,
   removeGroup,
   toLayout,
   type EditorNode,
@@ -57,6 +58,24 @@ describe('editorTree', () => {
       '成员管理',
     ])
   })
+
+  it('新节点放入祖先分组会超过三层时放到顶层末尾', () => {
+    const stats: NavigationEntry = { menu: 'demo.stats', title: '订单统计' }
+    const reports: NavigationEntry = { menu: 'demo.reports', title: '报表', children: [stats] }
+    const deeper: NavigationEntry = { ...demo, children: [overview, reports] }
+
+    const { nodes } = editorTree([deeper], {
+      nodes: [
+        {
+          group: 'g1',
+          name: '财务',
+          children: [{ menu: 'demo', children: [{ menu: 'demo.overview' }] }],
+        },
+      ],
+    })
+
+    expect(outline(nodes)).toEqual([{ 财务: [{ 示例应用: ['订单概览'] }] }, { 报表: ['订单统计'] }])
+  })
 })
 
 describe('toLayout', () => {
@@ -103,7 +122,7 @@ describe('toLayout', () => {
     ])
   })
 
-  it('目录外的分组保留其中同在目录外的子节点，目录内的子节点留在显示位置', () => {
+  it('目录外的分组在显示位置保留，其中目录内且未移动的子节点按原顺序放回', () => {
     const tree = editorTree(catalog, {
       nodes: [
         { menu: 'gone', children: [{ menu: 'gone.a' }, { page: 'members' }] },
@@ -116,8 +135,50 @@ describe('toLayout', () => {
       '角色管理',
       { 示例应用: ['订单概览', '订单附件'] },
     ])
-    expect(toLayout(tree).nodes.slice(-1)).toEqual([
-      { menu: 'gone', children: [{ menu: 'gone.a' }] },
+    expect(toLayout(tree).nodes).toEqual([
+      { menu: 'gone', children: [{ menu: 'gone.a' }, { page: 'members' }] },
+      { page: 'roles' },
+      { menu: 'demo', children: [{ menu: 'demo.overview' }, { menu: 'demo.attachments' }] },
+    ])
+  })
+
+  it('Sub-App 移出时未移动的节点保存回原分组，回来后位置恢复', () => {
+    const layout: NavigationLayout = {
+      nodes: [
+        { page: 'roles' },
+        {
+          menu: 'demo',
+          children: [{ menu: 'demo.overview' }, { page: 'members' }, { menu: 'demo.attachments' }],
+        },
+      ],
+    }
+    const tree = editorTree([members, roles], layout)
+    expect(outline(tree.nodes)).toEqual(['角色管理', '成员管理'])
+
+    const saved = toLayout(tree)
+
+    expect(saved).toEqual(layout)
+    expect(outline(editorTree(catalog, saved).nodes)).toEqual([
+      '角色管理',
+      { 示例应用: ['订单概览', '成员管理', '订单附件'] },
+    ])
+  })
+
+  it('Sub-App 移出时管理员移动过的节点保存在移动后的位置', () => {
+    const tree = editorTree([members, roles], {
+      nodes: [
+        { page: 'roles' },
+        { menu: 'demo', children: [{ menu: 'demo.overview' }, { page: 'members' }] },
+      ],
+    })
+    const moved = tree.nodes.splice(1, 1)[0]!
+    tree.nodes.unshift(moved)
+    markMoved(tree, moved)
+
+    expect(toLayout(tree).nodes).toEqual([
+      { page: 'members' },
+      { page: 'roles' },
+      { menu: 'demo', children: [{ menu: 'demo.overview' }] },
     ])
   })
 

@@ -151,6 +151,29 @@ it('拖拽时页面不接收子节点，不超过三层', async () => {
   expect(allowDrop(node('menu:demo'), node('menu:demo.attachments'), 'next')).toBe(true)
 })
 
+it('拖动过的节点不再放回目录外的原分组', async () => {
+  const wrapper = await mountEditor({
+    nodes: [
+      { page: 'roles' },
+      { menu: 'gone', children: [{ menu: 'gone.a' }, { page: 'members' }] },
+    ],
+  })
+  const tree = wrapper.getComponent(ElTree)
+  tree.vm.$emit(
+    'node-drop',
+    tree.vm.getNode('page:members'),
+    tree.vm.getNode('page:roles'),
+    'after',
+  )
+
+  expect((await saved(wrapper)).nodes).toEqual([
+    { page: 'roles' },
+    { page: 'members' },
+    { menu: 'demo', children: [{ menu: 'demo.overview' }, { menu: 'demo.attachments' }] },
+    { menu: 'gone', children: [{ menu: 'gone.a' }] },
+  ])
+})
+
 it('恢复默认交给页面处理，忙碌时按钮不可用', async () => {
   const wrapper = await mountEditor(finance)
 

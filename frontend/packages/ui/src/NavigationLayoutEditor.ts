@@ -11,11 +11,12 @@ import {
 } from 'element-plus'
 import { defineComponent, h, ref, watch, type PropType } from 'vue'
 import { useUiI18n } from './i18n'
-import type { NavigationEntry } from './navigation'
+import { navigationLimits, type NavigationEntry } from './navigation'
 import {
   addGroup,
   canDrop,
   editorTree,
+  markMoved,
   removeGroup,
   toLayout,
   type EditorNode,
@@ -36,8 +37,6 @@ const icon = (path: string) =>
       h('path', { fill: 'currentColor', d: path }),
     ]),
   )
-
-const maxNameLength = 32
 
 /**
  * Navigation Layout 编辑器：工具条（新建分组、恢复默认、保存）与可拖拽的树。
@@ -62,7 +61,7 @@ export const NavigationLayoutEditor = defineComponent({
   },
   setup(props, { emit }) {
     const { t } = useUiI18n()
-    const tree = ref<EditorTree>({ nodes: [], retained: [] })
+    const tree = ref<EditorTree>({ nodes: [], retained: [], surfaced: new Set() })
     watch(
       () => [props.catalog, props.layout] as const,
       ([catalog, layout]) => {
@@ -198,6 +197,7 @@ export const NavigationLayoutEditor = defineComponent({
             defaultExpandAll: true,
             expandOnClickNode: false,
             allowDrop,
+            onNodeDrop: (dragging: { data: EditorNode }) => markMoved(tree.value, dragging.data),
           },
           { default: row },
         ),
@@ -224,7 +224,7 @@ export const NavigationLayoutEditor = defineComponent({
                     h(ElInput, {
                       modelValue: name.value,
                       'onUpdate:modelValue': (value: string) => (name.value = value),
-                      maxlength: maxNameLength,
+                      maxlength: navigationLimits.maxGroupName,
                       showWordLimit: true,
                       'data-testid': 'navigation-group-name',
                     }),

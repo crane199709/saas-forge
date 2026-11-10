@@ -126,4 +126,21 @@ describe('arrangeNavigation', () => {
     }
     expect(outline(arrangeNavigation([members, roles], layout))).toEqual(['角色管理', '成员管理'])
   })
+
+  it('新节点放入祖先分组会超过三层时放到顶层末尾', () => {
+    const layout: NavigationLayout = {
+      nodes: [
+        {
+          group: 'g1',
+          name: '财务',
+          children: [{ menu: 'demo', children: [{ menu: 'demo.overview' }] }],
+        },
+      ],
+    }
+    const reports: NavigationEntry = { menu: 'demo.reports', title: '报表', children: [stats] }
+    expect(outline(arrangeNavigation([demo(overview, reports, attachments)], layout))).toEqual([
+      { 财务: [{ 示例应用: ['订单概览', '订单附件'] }] },
+      { 报表: ['订单统计'] },
+    ])
+  })
 })
