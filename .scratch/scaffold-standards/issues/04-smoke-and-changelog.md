@@ -4,7 +4,7 @@
 
 **Blocked by:** 02, 03
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] `deploy/template-smoke/consume.sh` 的 Sub-App 步骤增加 `pnpm lint:style`；视觉测试不进冒烟
 - [x] `CHANGELOG.md` 写明：生成工程新增 `AGENTS.md` 与 `docs/standards/`、archetype 的 schema 检查、Sub-App 的 `lint:style` 与视觉测试；已生成工程如何从新版本复制文档与配置
