@@ -90,7 +90,6 @@ class PlatformPermissionTest extends PlatformIntegrationTest {
                 .isEqualTo(403);
         // 套餐与注册表的列表供其他面板选择，只要求已认证
         assertThat(call(viewer, "GET", "/plans", null).status()).isEqualTo(200);
-        assertThat(call(viewer, "GET", "/plans/permissions", null).status()).isEqualTo(403);
         assertThat(call(viewer, "GET", "/plans/permission-tree", null).status()).isEqualTo(403);
     }
 

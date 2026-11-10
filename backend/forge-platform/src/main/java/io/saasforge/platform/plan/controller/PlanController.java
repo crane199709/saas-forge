@@ -1,7 +1,6 @@
 package io.saasforge.platform.plan.controller;
 
 import io.saasforge.platform.plan.entity.Plan;
-import io.saasforge.platform.plan.model.CatalogPermission;
 import io.saasforge.platform.plan.model.CatalogPermissionTree;
 import io.saasforge.platform.plan.service.PlanService;
 import io.saasforge.sdk.core.api.ApiResponse;
@@ -45,13 +44,6 @@ class PlanController {
     @GetMapping
     ApiResponse<List<PlanResponse>> list() {
         return ApiResponse.ok(plans.list().stream().map(PlanResponse::from).toList());
-    }
-
-    @Operation(summary = "Feature Pack 可选的权限码：各业务服务 Resource Manifest 中当前有效的权限码，iam 自身的管理权限码不受套餐限制、不在其中")
-    @GetMapping("/permissions")
-    @RequiresPermission(MANAGE)
-    ApiResponse<List<CatalogPermission>> permissions() {
-        return ApiResponse.ok(plans.catalog());
     }
 
     @Operation(summary = "Feature Pack 的菜单授权树：各业务服务的菜单与可纳入套餐的权限码，不按 Plan 或 Sub-App 裁剪，未挂在菜单上的权限码在 others 中")

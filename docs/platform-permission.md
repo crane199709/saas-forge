@@ -20,7 +20,7 @@
 | --- | --- | --- |
 | `platform:tenant:read` | forge-platform | `GET /platform/tenants`、`GET /platform/tenants/{id}` |
 | `platform:tenant:manage` | forge-platform | 创建租户、变更状态、更换套餐、重试初始化 |
-| `platform:plan:manage` | forge-platform | 新建、修改、删除套餐，`GET /platform/plans/permissions` |
+| `platform:plan:manage` | forge-platform | 新建、修改、删除套餐，`GET /platform/plans/permission-tree` |
 | `platform:sub-app:manage` | forge-platform | 登记、修改、删除 Sub-App |
 | `platform:operator:manage` | iam | `/iam/platform/operators/**` |
 | `platform:role:manage` | iam | `/iam/platform/roles/**`（角色列表也对 `platform:operator:manage` 开放，用于分配） |

@@ -32,11 +32,8 @@ class PlanTest extends PlatformIntegrationTest {
 
     @Test
     void featurePackIsChosenFromTheIamCatalog() {
-        Response catalog = call("GET", "/plans/permissions", null);
-        assertThat(catalog.status()).isEqualTo(200);
-        assertThat(catalog.list())
-                .extracting(item -> item.get("code"))
-                .containsExactly("order:read", "order:approve", "report:export");
+        // 旧的平铺目录接口已由 /plans/permission-tree 取代
+        assertThat(call("GET", "/plans/permissions", null).status()).isEqualTo(405);
 
         Response basic = call("POST", "/plans", plan("catalog-basic", List.of("order:read"), List.of(), 5, null));
         assertThat(basic.status()).isEqualTo(201);

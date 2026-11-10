@@ -67,13 +67,61 @@ const detail = {
   ],
 }
 
-const catalog = [
-  ['order:read', '查看订单', '订单'],
-  ['order:approve', '审批订单', '订单'],
-  ['order:export', '导出订单', '订单'],
-  ['report:view', '查看报表', '报表'],
-  ['member:invite', '邀请成员', '成员'],
-].map(([code, name, group]) => ({ code, name, service: 'demo-service', group }))
+const treePermission = (code: string, name: string, sharedWith: string[] = []) => ({
+  code,
+  name,
+  sharedWith,
+})
+const treePage = (
+  code: string,
+  name: string,
+  app: string,
+  permission: ReturnType<typeof treePermission>,
+  actions: ReturnType<typeof treePermission>[] = [],
+) => ({ code, name, icon: null, app, permission, actions, children: [] })
+const treeGroup = (code: string, name: string, children: ReturnType<typeof treePage>[]) => ({
+  code,
+  name,
+  icon: 'grid',
+  app: null,
+  permission: null,
+  actions: [],
+  children,
+})
+const catalogTree = {
+  menus: [
+    treeGroup('demo', '示例应用', [
+      treePage(
+        'demo.overview',
+        '订单概览',
+        'demo',
+        treePermission('order:read', '查看订单', ['demo.attachments']),
+        [
+          treePermission('order:create', '创建订单'),
+          treePermission('order:update', '修改订单'),
+          treePermission('order:delete', '删除订单'),
+          treePermission('order:import', '导入订单'),
+          treePermission('order:export', '导出订单'),
+        ],
+      ),
+      treePage(
+        'demo.attachments',
+        '订单附件',
+        'demo',
+        treePermission('order:read', '查看订单', ['demo.overview']),
+      ),
+    ]),
+    treeGroup('crm', '客户管理', [
+      treePage('crm.customers', '客户列表', 'crm', treePermission('customer:read', '查看客户'), [
+        treePermission('customer:export', '导出客户'),
+      ]),
+    ]),
+  ],
+  others: [
+    ['report:view', '查看报表', '报表'],
+    ['member:invite', '邀请成员', '成员'],
+  ].map(([code, name, group]) => ({ code, name, service: 'demo-service', group })),
+}
 const plan = (
   id: string,
   name: string,
@@ -92,7 +140,7 @@ const plan = (
   updatedAt: '2026-10-28T00:00:00Z',
 })
 const plans = [
-  plan('pro', '专业版', ['order:read', 'order:approve'], ['demo', 'crm', 'wms'], 200, 102400),
+  plan('pro', '专业版', ['customer:read', 'order:read'], ['demo', 'crm', 'wms'], 200, 102400),
   plan('basic', '基础版', ['order:read'], [], 5, 1024),
   plan('enterprise', '旗舰企业定制版', [], ['demo'], null, null),
 ]
@@ -298,7 +346,7 @@ function respond(
 ) {
   const table: Record<string, unknown> = {
     '/platform/plans': ok(plans),
-    '/platform/plans/permissions': ok(catalog),
+    '/platform/plans/permission-tree': ok(catalogTree),
     '/platform/sub-apps': ok(subApps),
     '/platform/tenants': onePage(tenants),
     '/platform/tenants/t1': ok(detail),
@@ -457,8 +505,15 @@ test.describe('drawers', () => {
   test('plan edit', async ({ page }) => {
     await open(page, '/plans')
     await page.getByTestId('plan-edit-pro').click()
-    await expect(page.getByTestId('plan-perm-order:read')).toBeVisible()
+    await expect(page.getByTestId('page-demo.overview')).toBeVisible()
     await expect(page).toHaveScreenshot('platform-plan-edit.png')
+  })
+
+  test('plan edit without sub-app', async ({ page }) => {
+    await open(page, '/plans')
+    await page.getByTestId('plan-edit-basic').click()
+    await expect(page.getByTestId('perm-order:read')).toBeVisible()
+    await expect(page).toHaveScreenshot('platform-plan-edit-no-sub-app.png')
   })
 
   test('role edit', async ({ page }) => {
