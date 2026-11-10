@@ -149,7 +149,6 @@
       "create": "新建角色",
       "edit": "编辑 {name}",
       "codeHint": "小写字母、数字与连字符，创建后不可修改",
-      "ungrouped": "未分组",
       "save": "保存",
       "cancel": "取消",
       "dataScopes": "数据范围",
@@ -240,12 +239,6 @@
       "result": "结果",
       "hit": "命中",
       "miss": "未命中"
-    },
-    "tree": {
-      "menus": "菜单与操作",
-      "others": "功能权限",
-      "alwaysVisible": "始终可见",
-      "shared": "与「{menus}」共用权限，会一起显示"
     }
   },
   "member": {

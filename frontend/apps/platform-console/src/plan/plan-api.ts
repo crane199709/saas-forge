@@ -1,4 +1,5 @@
 import type { PlatformClient } from '@crane199709/sdk'
+import type { GrantablePermission, PermissionMenu } from '@crane199709/ui'
 
 /** forge-platform 套餐接口的模型，由 platform-console 维护，不属于通用 SDK。 */
 export interface Plan {
@@ -16,12 +17,17 @@ export interface Plan {
   updatedAt: string
 }
 
-/** Feature Pack 可选的权限码，来自各业务服务的 Resource Manifest。 */
-export interface CatalogPermission {
-  code: string
-  name: string
-  service: string
-  group: string | null
+/** Feature Pack 授权树的菜单节点；叶子带所属 Sub-App，分组节点的 `app` 为 null。 */
+export interface CatalogMenu extends PermissionMenu {
+  app: string | null
+  children: CatalogMenu[]
+}
+
+/** Feature Pack 授权树，来自各业务服务的 Resource Manifest，不按 Plan 或 Sub-App 裁剪。 */
+export interface CatalogPermissionTree {
+  menus: CatalogMenu[]
+  /** 未挂在菜单上的权限码，按服务、分组、编码排序。 */
+  others: GrantablePermission[]
 }
 
 export interface PlanContent {
@@ -48,7 +54,7 @@ export function createPlanApi(client: Pick<PlatformClient, 'api'>) {
 
   return {
     list: () => client.api<Plan[]>(base),
-    permissions: () => client.api<CatalogPermission[]>(`${base}/permissions`),
+    permissionTree: () => client.api<CatalogPermissionTree>(`${base}/permission-tree`),
     create: (request: CreatePlan) => send<Plan>('POST', '', request),
     update: (id: string, request: PlanContent) => send<Plan>('PUT', `/${id}`, request),
     remove: (id: string) => send<null>('DELETE', `/${id}`),

@@ -1,6 +1,7 @@
 package io.saasforge.platform.plan.service;
 
 import io.saasforge.platform.plan.model.CatalogPermission;
+import io.saasforge.platform.plan.model.CatalogPermissionTree;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.core.api.ForgeException;
 import java.util.List;
@@ -20,6 +21,9 @@ public class PermissionCatalog {
     private static final ParameterizedTypeReference<ApiResponse<List<CatalogPermission>>> RESPONSE =
             new ParameterizedTypeReference<>() {};
 
+    private static final ParameterizedTypeReference<ApiResponse<CatalogPermissionTree>> TREE =
+            new ParameterizedTypeReference<>() {};
+
     private final RestClient client;
 
     PermissionCatalog(@Qualifier("iamRestClient") RestClient client) {
@@ -32,9 +36,21 @@ public class PermissionCatalog {
      * @throws ForgeException 503 {@code plan.catalogUnavailable} iam 不可用或拒绝请求
      */
     public List<CatalogPermission> permissions() {
+        return read("/internal/permissions", RESPONSE);
+    }
+
+    /**
+     * Feature Pack 的菜单授权树，菜单不按 Plan 或 Sub-App 裁剪。
+     *
+     * @throws ForgeException 503 {@code plan.catalogUnavailable} iam 不可用或拒绝请求
+     */
+    public CatalogPermissionTree tree() {
+        return read("/internal/permission-tree", TREE);
+    }
+
+    private <T> T read(String uri, ParameterizedTypeReference<ApiResponse<T>> type) {
         try {
-            ApiResponse<List<CatalogPermission>> response =
-                    client.get().uri("/internal/permissions").retrieve().body(RESPONSE);
+            ApiResponse<T> response = client.get().uri(uri).retrieve().body(type);
             if (response == null || response.data() == null) {
                 throw ForgeException.withErrorMessage(PlanErrorCode.CATALOG_UNAVAILABLE, "IAM returned no catalog");
             }

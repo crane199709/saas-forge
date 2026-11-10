@@ -35,6 +35,13 @@ const messages = {
       cancel: '取消',
       confirm: '确定',
     },
+    permissionTree: {
+      menus: '菜单与操作',
+      others: '功能权限',
+      ungrouped: '未分组',
+      alwaysVisible: '始终可见',
+      shared: '与「{menus}」共用权限，会一起显示',
+    },
     traceId: '追踪 ID',
     copyTraceId: '复制',
     total: '共 {total} 条',

@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ErrorAlert, overlaySize } from '@crane199709/ui'
+import { ErrorAlert, PermissionTreeEditor, menuRows, overlaySize } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import RestoreView from '../resource/RestoreView.vue'
 import ConditionGroup from './ConditionGroup.vue'
 import ConditionPreview from './ConditionPreview.vue'
-import PermissionTreeEditor from './PermissionTreeEditor.vue'
 import RoleImpactDialog from './RoleImpactDialog.vue'
-import { menuRows } from './permission-selection'
 import {
   emptyGroup,
   fromConditionJson,

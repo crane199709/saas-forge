@@ -372,21 +372,16 @@ class RoleManagementTest {
                                                 "pt:read",
                                                 List.of(),
                                                 List.of("pt:orphan")),
+                                        // 页面权限在套餐外时，套餐内的操作也随页面隐藏
                                         new MenuNode(
                                                 "pt.blocked",
-                                                "套餐外分组",
+                                                "套餐外页面",
                                                 null,
-                                                null,
-                                                null,
+                                                "demo",
+                                                "blocked",
                                                 "pt:outside",
-                                                List.of(new MenuNode(
-                                                        "pt.blocked-child",
-                                                        "隐藏子页",
-                                                        null,
-                                                        "demo",
-                                                        "child",
-                                                        "pt:read",
-                                                        List.of()))),
+                                                List.of(),
+                                                List.of("pt:read")),
                                         new MenuNode(
                                                 "pt.empty",
                                                 "空分组",

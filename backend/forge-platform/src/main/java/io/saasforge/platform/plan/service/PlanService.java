@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.saasforge.platform.plan.entity.Plan;
 import io.saasforge.platform.plan.mapper.PlanMapper;
 import io.saasforge.platform.plan.model.CatalogPermission;
+import io.saasforge.platform.plan.model.CatalogPermissionTree;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
 import java.util.Arrays;
@@ -58,6 +59,11 @@ public class PlanService {
     /** Feature Pack 可选的 Permission Code。 */
     public List<CatalogPermission> catalog() {
         return catalog.permissions();
+    }
+
+    /** Feature Pack 的菜单授权树，由 Operator 选择 Sub-App 后按页面勾选权限码。 */
+    public CatalogPermissionTree catalogTree() {
+        return catalog.tree();
     }
 
     /**

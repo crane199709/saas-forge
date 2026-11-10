@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 
@@ -31,10 +32,21 @@ public class PermissionTreeService {
 
     public PermissionTreeResponse of(TenantActor actor) {
         roles.requirePermission(actor.membershipId(), IamPermissions.ROLE_MANAGE);
-        List<PermissionRow> grantable = roles.grantablePermissions(actor.tenantId());
+        return tree(roles.grantablePermissions(actor.tenantId()), plans.subAppsOf(actor.tenantId()));
+    }
+
+    /**
+     * Plan 的 Feature Pack 授权树：范围为可纳入套餐的权限码，菜单不按 Plan 或 Sub-App 裁剪，由 Operator 选择 Sub-App 后在前端过滤。
+     * 服务间调用，不校验调用者权限。
+     */
+    public PermissionTreeResponse planCatalog() {
+        return tree(permissions.planScopedPermissions(), Optional.empty());
+    }
+
+    private PermissionTreeResponse tree(List<PermissionRow> grantable, Optional<Set<String>> subApps) {
         Map<String, PermissionRow> byCode = new LinkedHashMap<>();
         grantable.forEach(row -> byCode.put(row.code(), row));
-        List<MenuNode> menus = permissions.visibleMenus(byCode.keySet(), plans.subAppsOf(actor.tenantId()));
+        List<MenuNode> menus = permissions.visibleMenus(byCode.keySet(), subApps);
         Map<String, Set<String>> usages = new LinkedHashMap<>();
         collect(menus, byCode.keySet(), usages);
         return new PermissionTreeResponse(
@@ -65,6 +77,7 @@ public class PermissionTreeService {
                     node.code(),
                     node.name(),
                     node.icon(),
+                    node.app(),
                     node.permission() == null ? null : option(node.permission(), node.code(), byCode, usages),
                     node.actions().stream()
                             .filter(byCode::containsKey)

@@ -57,8 +57,8 @@ pnpm create:sub-app billing 5180
 
 1. 执行 `pnpm build`，部署整个 `dist` 到静态服务，确认 `remoteEntry.js` 与相对资源可访问，并允许目标 Shell 的跨源请求。
 2. Operator 在「应用注册表」登记编码 `billing`、当前环境入口 URL、应用版本及最低共享依赖版本；共享依赖版本应取本次生成的 package.json。环境名须与 iam 的 `FORGE_ENVIRONMENT` 一致。
-3. 业务服务 Resource Manifest 的菜单叶子声明 `"app": "billing"`、`"path": "home"`，绑定业务权限码；修改后递增 Manifest version 并重新上报。
-4. 在租户使用的 Plan 的 Feature Pack 中开放 `billing` 及对应 Permission Code，并为成员分配包含该权限的 Role。仅登记入口不会自动给成员授权。
+3. 业务服务 Resource Manifest 的菜单叶子声明 `"app": "billing"`、`"path": "home"`，绑定业务权限码；权限码只挂在页面上，菜单分组不能带 `permission`，否则清单生成与上报都会失败。修改后递增 Manifest version 并重新上报。
+4. 编辑租户使用的 Plan：先在「可用子应用」中选择 `billing`，再在授权树中按页面勾选它的 Permission Code（页面权限归属叶子的 `app`）；随后为成员分配包含这些权限的 Role。仅登记入口不会自动给成员授权。
 5. 刷新租户 Shell，在拥有权限的租户中确认菜单可见且页面加载成功。若不可见，依次核对菜单权限、套餐范围、登记环境与 `GET /iam/auth/access` 返回的 subApps。
 
 ## 使用 `@crane199709/ui`

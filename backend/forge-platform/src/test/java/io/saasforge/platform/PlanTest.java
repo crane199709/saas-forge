@@ -32,11 +32,8 @@ class PlanTest extends PlatformIntegrationTest {
 
     @Test
     void featurePackIsChosenFromTheIamCatalog() {
-        Response catalog = call("GET", "/plans/permissions", null);
-        assertThat(catalog.status()).isEqualTo(200);
-        assertThat(catalog.list())
-                .extracting(item -> item.get("code"))
-                .containsExactly("order:read", "order:approve", "report:export");
+        // 旧的平铺目录接口已由 /plans/permission-tree 取代
+        assertThat(call("GET", "/plans/permissions", null).status()).isEqualTo(405);
 
         Response basic = call("POST", "/plans", plan("catalog-basic", List.of("order:read"), List.of(), 5, null));
         assertThat(basic.status()).isEqualTo(201);
@@ -71,6 +68,24 @@ class PlanTest extends PlatformIntegrationTest {
         assertThat(call("GET", "/plans", null).list())
                 .extracting(item -> item.get("code"))
                 .containsSubsequence("catalog-basic", "catalog-pro", "default");
+    }
+
+    @Test
+    void featurePackTreeIsPassedThroughFromIam() throws Exception {
+        Response tree = call("GET", "/plans/permission-tree", null);
+        assertThat(tree.status()).isEqualTo(200);
+        assertThat(tree.body().get("data"))
+                .isEqualTo(
+                        JSON.readValue(PlatformTokens.CATALOG_TREE, Map.class).get("data"));
+
+        PlatformTokens.catalogAvailable = false;
+        try {
+            Response unavailable = call("GET", "/plans/permission-tree", null);
+            assertThat(unavailable.status()).isEqualTo(503);
+            assertThat(unavailable.code()).isEqualTo("plan.catalogUnavailable");
+        } finally {
+            PlatformTokens.catalogAvailable = true;
+        }
     }
 
     @Test

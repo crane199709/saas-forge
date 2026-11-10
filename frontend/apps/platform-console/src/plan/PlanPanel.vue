@@ -2,8 +2,22 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@crane199709/sdk'
-import { ErrorAlert, PageHeader, overlaySize, type ErrorTip } from '@crane199709/ui'
-import type { CatalogPermission, Plan, PlanApi } from './plan-api'
+import {
+  ErrorAlert,
+  PageHeader,
+  PermissionTreeEditor,
+  menuRows,
+  overlaySize,
+  type ErrorTip,
+  type PermissionSection,
+} from '@crane199709/ui'
+import type { CatalogPermissionTree, Plan, PlanApi } from './plan-api'
+import {
+  planTree,
+  retiredCodes,
+  selectionAfterSubApps,
+  unselectedCodes,
+} from './plan-permission-tree'
 
 // subApps：App Registry 中已登记的编码，作为 Feature Pack 的选项；仍可输入尚未登记的编码，登记后随之生效
 const props = defineProps<{ api: PlanApi; subApps?: string[] }>()
@@ -11,7 +25,7 @@ const props = defineProps<{ api: PlanApi; subApps?: string[] }>()
 const emit = defineEmits<{ loaded: [plans: Plan[]] }>()
 const { t } = useI18n()
 const plans = ref<Plan[]>([])
-const catalog = ref<CatalogPermission[]>([])
+const catalog = ref<CatalogPermissionTree>({ menus: [], others: [] })
 const busy = ref(false)
 const error = ref<ErrorTip | null>(null)
 
@@ -28,38 +42,46 @@ const emptyDraft = () => ({
 })
 const draft = ref(emptyDraft())
 
-interface PermissionGroup {
-  key: string
-  title: string
-  permissions: { code: string; label: string }[]
-}
+// 先选 Sub-App，树中只显示所选 Sub-App 的页面；切换 Sub-App 只在前端重新计算，不重新请求。
+const tree = computed(() => planTree(catalog.value, draft.value.subApps))
+const names = computed(
+  () =>
+    new Map(
+      menuRows(catalog.value.menus).flatMap(({ menu }) =>
+        [...(menu.permission ? [menu.permission] : []), ...menu.actions].map(
+          (permission) => [permission.code, permission.name] as const,
+        ),
+      ),
+    ),
+)
+// 不在树中显示但仍勾选的码分区列出，保持勾选、可逐项取消：所属 Sub-App 未选择的，以及已从清单下线的（业务服务重新上报后随之恢复）。
+const sections = computed<PermissionSection[]>(() => [
+  {
+    key: 'unselected',
+    title: t('plan.unselectedSubApp'),
+    permissions: unselectedCodes(catalog.value, draft.value.subApps, draft.value.permissions).map(
+      (code) => ({ code, name: names.value.get(code) ?? code }),
+    ),
+  },
+  {
+    key: 'retired',
+    title: t('plan.retired'),
+    permissions: retiredCodes(catalog.value, draft.value.permissions).map((code) => ({
+      code,
+      name: code,
+    })),
+  },
+])
 
-// 按服务与分组展示目录；套餐中已从清单下线的权限码单独列出，保持勾选，业务服务重新上报后随之恢复。
-const groups = computed<PermissionGroup[]>(() => {
-  const result = new Map<string, PermissionGroup>()
-  for (const permission of catalog.value) {
-    const key = `${permission.service}/${permission.group ?? ''}`
-    const group = result.get(key) ?? {
-      key,
-      title: `${permission.service} · ${permission.group ?? t('plan.ungrouped')}`,
-      permissions: [],
-    }
-    group.permissions.push({
-      code: permission.code,
-      label: `${permission.name}（${permission.code}）`,
-    })
-    result.set(key, group)
-  }
-  const known = new Set(catalog.value.map((permission) => permission.code))
-  const retired = draft.value.permissions.filter((code) => !known.has(code))
-  if (retired.length > 0)
-    result.set('retired', {
-      key: 'retired',
-      title: t('plan.retired'),
-      permissions: retired.map((code) => ({ code, label: code })),
-    })
-  return [...result.values()]
-})
+function changeSubApps(subApps: string[]) {
+  draft.value.permissions = selectionAfterSubApps(
+    catalog.value,
+    draft.value.permissions,
+    draft.value.subApps,
+    subApps,
+  )
+  draft.value.subApps = subApps
+}
 
 const quota = (value: number | null, unit = '') =>
   value === null ? t('plan.unlimited') : `${value}${unit}`
@@ -94,7 +116,7 @@ async function fetchPlans() {
 // 目录随业务服务上报变化，每次打开对话框重新读取
 async function open(plan: Plan | null) {
   const loaded = await run(async () => {
-    catalog.value = await props.api.permissions()
+    catalog.value = await props.api.permissionTree()
   })
   if (!loaded) return
   editing.value = plan
@@ -117,7 +139,7 @@ async function save() {
   // el-input-number 清空后为 null 或 undefined，统一按不限提交
   const content = {
     name: name.trim(),
-    permissions,
+    permissions: [...new Set(permissions)],
     subApps,
     memberQuota: memberQuota ?? null,
     storageQuotaMb: storageQuotaMb ?? null,
@@ -217,23 +239,9 @@ onMounted(() => run(fetchPlans))
         <el-form-item :label="t('plan.name')" for="plan-name">
           <el-input id="plan-name" v-model="draft.name" name="name" maxlength="120" required />
         </el-form-item>
-        <el-form-item :label="t('plan.permissions')">
-          <el-checkbox-group v-model="draft.permissions" class="permissions">
-            <div v-for="group in groups" :key="group.key" class="permission-group">
-              <div class="group-title">{{ group.title }}</div>
-              <el-checkbox
-                v-for="permission in group.permissions"
-                :key="permission.code"
-                :value="permission.code"
-                :data-testid="`plan-perm-${permission.code}`"
-                >{{ permission.label }}</el-checkbox
-              >
-            </div>
-          </el-checkbox-group>
-        </el-form-item>
         <el-form-item :label="t('plan.subApps')">
           <el-select
-            v-model="draft.subApps"
+            :model-value="draft.subApps"
             multiple
             filterable
             allow-create
@@ -241,6 +249,7 @@ onMounted(() => run(fetchPlans))
             :reserve-keyword="false"
             :placeholder="t('plan.subAppsHint')"
             data-testid="plan-sub-apps"
+            @update:model-value="changeSubApps"
           >
             <el-option
               v-for="code in props.subApps ?? []"
@@ -249,6 +258,15 @@ onMounted(() => run(fetchPlans))
               :value="code"
             />
           </el-select>
+        </el-form-item>
+        <el-form-item :label="t('plan.permissions')">
+          <p v-if="draft.subApps.length === 0" class="hint">{{ t('plan.noSubApp') }}</p>
+          <PermissionTreeEditor
+            v-model="draft.permissions"
+            :tree="tree"
+            :sections="sections"
+            page-as-child
+          />
         </el-form-item>
         <el-form-item :label="t('plan.memberQuota')">
           <el-input-number
@@ -285,16 +303,8 @@ onMounted(() => run(fetchPlans))
   margin-bottom: var(--forge-space-3);
 }
 .hint {
-  margin: var(--forge-space-1) 0 0;
+  margin: 0;
   color: var(--el-text-color-secondary);
-}
-.permissions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--forge-space-2);
-}
-.group-title {
-  font-weight: 600;
 }
 .unit {
   margin-left: var(--forge-space-2);

@@ -8,11 +8,13 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import io.saasforge.sdk.abac.DataScope;
 import io.saasforge.sdk.core.MembershipGrants;
 import io.saasforge.sdk.core.OperatorStateKeys;
 import io.saasforge.sdk.core.SubjectAttributes;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -31,7 +33,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 测试用 Platform Realm：本地 JWKS 端点与签发 Operator Token，供各测试类共享（进程内只启动一次）。
- * 同一端点还模拟 iam 的 {@code GET /internal/permissions}，供套餐选择权限码。
+ * 同一端点还模拟 iam 的 {@code GET /internal/permissions} 与 {@code GET /internal/permission-tree}，供套餐选择权限码。
  *
  * <p>Redis 容器同样只启动一次，模拟 iam 按 Token 版本发布的 Operator 明细：{@link #operator()} 的 Operator 为超级管理员，
  * 拥有全部平台权限码，租户数据范围为「全部」；不关心平台权限的测试因此照常访问全部接口与数据。
@@ -48,6 +50,15 @@ final class PlatformTokens {
               {"code":"order:read","name":"查看订单","service":"demo-service","group":"订单"},
               {"code":"order:approve","name":"审批订单","service":"demo-service","group":"订单"},
               {"code":"report:export","name":"导出报表","service":"demo-service","group":null}]}
+            """;
+    /** 模拟的 iam Feature Pack 授权树，原样透传给前端。 */
+    static final String CATALOG_TREE = """
+            {"code":"ok","httpStatus":200,"data":{"menus":[
+              {"code":"demo","name":"示例应用","icon":"grid","app":null,"permission":null,"actions":[],"children":[
+                {"code":"demo.overview","name":"订单概览","icon":null,"app":"demo",
+                 "permission":{"code":"order:read","name":"查看订单","sharedWith":[]},
+                 "actions":[{"code":"order:approve","name":"审批订单","sharedWith":[]}],"children":[]}]}],
+              "others":[{"code":"report:export","name":"导出报表","service":"demo-service","group":null}]}}
             """;
     /** 清单中声明的全部平台权限码，即超级管理员的权限。 */
     static final List<String> ALL_PERMISSIONS = List.of(
@@ -79,17 +90,8 @@ final class PlatformTokens {
                     stream.write(body);
                 }
             });
-            JWKS.createContext("/internal/permissions", exchange -> {
-                boolean authorized = ("Bearer " + IAM_TOKEN)
-                        .equals(exchange.getRequestHeaders().getFirst("Authorization"));
-                int status = !authorized ? 401 : catalogAvailable ? 200 : 503;
-                byte[] body = status == 200 ? CATALOG.getBytes(StandardCharsets.UTF_8) : new byte[0];
-                exchange.getResponseHeaders().add("Content-Type", "application/json");
-                exchange.sendResponseHeaders(status, status == 200 ? body.length : -1);
-                try (var stream = exchange.getResponseBody()) {
-                    stream.write(body);
-                }
-            });
+            JWKS.createContext("/internal/permissions", exchange -> catalog(exchange, CATALOG));
+            JWKS.createContext("/internal/permission-tree", exchange -> catalog(exchange, CATALOG_TREE));
             JWKS.createContext("/internal/services", exchange -> {
                 boolean authorized = ("Bearer " + IAM_TOKEN)
                         .equals(exchange.getRequestHeaders().getFirst("Authorization"));
@@ -163,6 +165,19 @@ final class PlatformTokens {
     }
 
     private PlatformTokens() {}
+
+    // 模拟 iam 的权限码目录接口：校验上报令牌，catalogAvailable 为 false 时返回 503。
+    private static void catalog(HttpExchange exchange, String catalog) throws IOException {
+        boolean authorized =
+                ("Bearer " + IAM_TOKEN).equals(exchange.getRequestHeaders().getFirst("Authorization"));
+        int status = !authorized ? 401 : catalogAvailable ? 200 : 503;
+        byte[] body = status == 200 ? catalog.getBytes(StandardCharsets.UTF_8) : new byte[0];
+        exchange.getResponseHeaders().add("Content-Type", "application/json");
+        exchange.sendResponseHeaders(status, status == 200 ? body.length : -1);
+        try (var stream = exchange.getResponseBody()) {
+            stream.write(body);
+        }
+    }
 
     static void register(DynamicPropertyRegistry registry) {
         registry.add("forge.security.platform.issuer", () -> PLATFORM_ISSUER);
