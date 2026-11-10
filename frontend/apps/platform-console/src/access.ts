@@ -20,6 +20,7 @@ export const permissions = Object.freeze({
   opsRead: 'platform:ops:read',
   opsManage: 'platform:ops:manage',
   identityMfaReset: 'platform:identity-mfa:reset',
+  menuManage: 'platform:menu:manage',
 })
 
 const empty: PlatformAccess = Object.freeze({ roles: [], permissions: [] })

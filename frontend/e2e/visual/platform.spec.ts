@@ -15,6 +15,7 @@ const permissions = [
   'platform:ops:read',
   'platform:ops:manage',
   'platform:identity-mfa:reset',
+  'platform:menu:manage',
 ]
 
 // 数据覆盖最长值、空值和各种状态，截图才能暴露布局问题。

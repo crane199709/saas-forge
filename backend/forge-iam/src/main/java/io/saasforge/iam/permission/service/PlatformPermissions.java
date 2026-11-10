@@ -24,10 +24,13 @@ public final class PlatformPermissions {
     /** 发布和撤回全租户或指定租户公告。 */
     public static final String ANNOUNCEMENT_MANAGE = "platform:announcement:manage";
 
+    /** 调整平台控制台的 Navigation Layout。 */
+    public static final String MENU_MANAGE = "platform:menu:manage";
+
     /** 登记清单使用的服务名。 */
     public static final String SERVICE = "forge-iam-platform";
     // 同 IamPermissions：改动权限码、名称或分组时必须升级版本。
-    private static final String VERSION = "4";
+    private static final String VERSION = "5";
     private static final String GROUP = "平台管理";
 
     private PlatformPermissions() {}
@@ -41,7 +44,8 @@ public final class PlatformPermissions {
                         new Permission(ROLE_MANAGE, "管理平台角色", GROUP),
                         new Permission(AUDIT_READ, "查看平台审计", GROUP),
                         new Permission(IDENTITY_MFA_RESET, "重置身份 MFA", GROUP),
-                        new Permission(ANNOUNCEMENT_MANAGE, "管理平台公告", GROUP)),
+                        new Permission(ANNOUNCEMENT_MANAGE, "管理平台公告", GROUP),
+                        new Permission(MENU_MANAGE, "管理平台菜单", GROUP)),
                 List.of(),
                 List.of(),
                 List.of(),

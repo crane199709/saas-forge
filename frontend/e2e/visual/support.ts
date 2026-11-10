@@ -53,6 +53,7 @@ export async function openAsAdmin(
             'iam:audit:read',
             'iam:reference-data:manage',
             'iam:security:manage',
+            'iam:menu:manage',
             ...(access.permissions ?? []),
           ],
           menus: access.menus ?? [],

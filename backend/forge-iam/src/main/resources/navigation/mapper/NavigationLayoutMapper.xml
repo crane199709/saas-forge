@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.navigation.mapper.NavigationLayoutMapper">
+    <select id="findTenantLayout" resultType="string">
+        SELECT CAST(navigation_layout AS text) FROM tenant WHERE id = #{tenantId} AND NOT deleted
+    </select>
+    <update id="updateTenantLayout">
+        UPDATE tenant SET navigation_layout = CAST(#{layout,jdbcType=VARCHAR} AS jsonb),
+        updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
+        WHERE id = #{tenantId} AND NOT deleted
+    </update>
+    <!-- 没有记录时行锁锁不住任何行，两个并发的首次保存会各插入一条；咨询锁让「查找 → 更新或插入」整体串行。 -->
+    <select id="lockPlatform" resultType="int">
+        SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtext('platform_navigation_layout'))) AS locked
+    </select>
+    <select id="findPlatformLayout" resultType="string">
+        SELECT CAST(layout AS text) FROM platform_navigation_layout WHERE NOT deleted
+    </select>
+    <update id="updatePlatformLayout">
+        UPDATE platform_navigation_layout SET layout = CAST(#{layout} AS jsonb),
+        updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
+        WHERE NOT deleted
+    </update>
+    <insert id="insertPlatformLayout">
+        INSERT INTO platform_navigation_layout (id, layout, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, CAST(#{layout} AS jsonb), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
+    </insert>
+    <update id="deletePlatformLayout">
+        UPDATE platform_navigation_layout SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
+        WHERE NOT deleted
+    </update>
+</mapper>

@@ -27,13 +27,16 @@ public final class IamPermissions {
     /** 管理租户的安全设置，如 MFA Requirement。 */
     public static final String SECURITY_MANAGE = "iam:security:manage";
 
+    /** 调整本租户的 Navigation Layout。 */
+    public static final String MENU_MANAGE = "iam:menu:manage";
+
     /** 发布和撤回本租户公告。 */
     public static final String ANNOUNCEMENT_MANAGE = "announcement:manage";
 
     /** iam 登记清单使用的服务名。这些管理权限码不受套餐限制：Tenant Admin 始终能管理成员与角色。 */
     public static final String SERVICE = "forge-iam";
     // 同一版本的清单内容不可变：改动权限码、名称或分组时必须升级版本，否则启动时登记失败。
-    private static final String VERSION = "6";
+    private static final String VERSION = "7";
     private static final String GROUP = "租户管理";
 
     private IamPermissions() {}
@@ -49,7 +52,8 @@ public final class IamPermissions {
                         new Permission(AUDIT_READ, "查看审计", GROUP),
                         new Permission(REFERENCE_DATA_MANAGE, "管理字典与参数", GROUP),
                         new Permission(SECURITY_MANAGE, "管理安全设置", GROUP),
-                        new Permission(ANNOUNCEMENT_MANAGE, "管理公告", GROUP)),
+                        new Permission(ANNOUNCEMENT_MANAGE, "管理公告", GROUP),
+                        new Permission(MENU_MANAGE, "管理菜单", GROUP)),
                 List.of());
     }
 }
