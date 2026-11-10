@@ -117,3 +117,32 @@ it('切换列表后旧通知慢响应不能覆盖当前待办', async () => {
   expect(wrapper.text()).toContain('当前待办')
   expect(wrapper.text()).not.toContain('旧通知')
 })
+
+it('点击整行展开全文，操作按钮不触发展开', async () => {
+  sessionStorage.setItem(
+    'forge.tenant.session',
+    JSON.stringify({ accessToken: 'a', refreshToken: 'r', membershipId: 'm' }),
+  )
+  vi.stubGlobal('fetch', async (input: string) => {
+    const path = new URL(input, location.origin).pathname
+    if (path === '/iam/notifications')
+      return ok([notice], { number: 1, size: 20, totalElements: 1, totalPages: 1 })
+    if (path.endsWith('/unread-count')) return ok({ count: 1 })
+    return ok([])
+  })
+  const { wrapper } = await mountShell('/notifications')
+  const row = () => wrapper.get('[data-testid="inbox-n1"]')
+  const title = () => row().get('button.title').attributes('aria-expanded')
+  expect(row().text()).toContain('未读')
+  expect(title()).toBe('false')
+
+  await row().trigger('click')
+  expect(title()).toBe('true')
+
+  await wrapper.get('[data-testid="mark-read-n1"]').trigger('click')
+  await flushPromises()
+  expect(title()).toBe('true')
+
+  await row().trigger('click')
+  expect(title()).toBe('false')
+})

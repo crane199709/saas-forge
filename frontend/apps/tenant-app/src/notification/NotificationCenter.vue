@@ -19,6 +19,8 @@ const page = ref(1)
 const total = ref(0)
 const busy = ref(false)
 const error = ref<ErrorTip | null>(null)
+// 同一时间只展开一条，翻页、刷新后仍按 id 保持。
+const expanded = ref<string | null>(null)
 let generation = 0
 let unsubscribe: (() => void) | undefined
 async function load(number = page.value) {
@@ -51,6 +53,7 @@ async function load(number = page.value) {
 function select(kind: InboxTab) {
   tab.value = kind
   total.value = 0
+  expanded.value = null
   void load(1)
 }
 async function markRead(item?: InboxItem) {
@@ -67,6 +70,9 @@ async function markRead(item?: InboxItem) {
   } finally {
     if (started === generation) busy.value = false
   }
+}
+function toggle(item: InboxItem) {
+  expanded.value = expanded.value === item.id ? null : item.id
 }
 function linkOf(item: InboxItem) {
   const link =
@@ -124,23 +130,34 @@ onUnmounted(() => {
       </template>
     </PageToolbar>
     <ErrorAlert v-if="error" class="page-error" :tip="error" />
-    <p v-if="busy" role="status">加载中…</p>
-    <p v-else-if="!error && !items.length">暂无{{ tabs[tab] }}</p>
+    <p v-if="busy" class="placeholder" role="status">加载中…</p>
+    <p v-else-if="!error && !items.length" class="placeholder">暂无{{ tabs[tab] }}</p>
     <article
       v-for="item in items"
       :key="item.id"
       class="inbox-item"
+      :class="{ expanded: expanded === item.id }"
       :data-testid="`inbox-${item.id}`"
+      @click="toggle(item)"
     >
-      <h3>
-        {{ item.title }}
-        <el-tag v-if="tab !== 'todos'" size="small" :type="item.read ? 'info' : 'warning'">{{
-          item.read ? '已读' : '未读'
-        }}</el-tag>
-      </h3>
-      <p class="body">{{ item.body }}</p>
+      <span
+        class="dot"
+        :class="{ unread: tab !== 'todos' && !item.read }"
+        aria-hidden="true"
+      ></span>
+      <div class="content">
+        <h3 :class="{ unread: tab !== 'todos' && !item.read }">
+          <button type="button" class="title" :aria-expanded="expanded === item.id">
+            {{ item.title }}
+          </button>
+          <span v-if="tab !== 'todos'" class="visually-hidden">{{
+            item.read ? '已读' : '未读'
+          }}</span>
+        </h3>
+        <p class="body">{{ item.body }}</p>
+      </div>
       <time>{{ formatDateTime(item.occurredAt ?? item.publishedAt) }}</time>
-      <div class="item-actions">
+      <div class="item-actions" @click.stop>
         <el-button
           v-if="tab !== 'todos' && !item.read"
           link
@@ -174,29 +191,131 @@ onUnmounted(() => {
 .page-error {
   margin-bottom: var(--forge-space-3);
 }
+.placeholder {
+  margin: 0;
+  padding: var(--forge-space-5) 0;
+  color: var(--el-text-color-secondary);
+  text-align: center;
+}
 .inbox-item {
-  padding: var(--forge-space-4) 0;
+  display: flex;
+  gap: var(--forge-space-3);
+  align-items: center;
+  padding: var(--forge-space-3) var(--forge-space-2);
   border-bottom: 1px solid var(--el-border-color-lighter);
-  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.inbox-item:hover {
+  background-color: var(--el-fill-color-lighter);
+}
+.inbox-item.expanded {
+  align-items: flex-start;
+}
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--forge-radius-sm);
+}
+.dot.unread {
+  background-color: var(--el-color-danger);
+}
+.content {
+  display: flex;
+  flex: 1;
+  gap: var(--forge-space-3);
+  align-items: baseline;
+  min-width: 0;
+}
+.expanded .content {
+  flex-direction: column;
+  gap: var(--forge-space-2);
 }
 h3 {
-  margin: 0 0 var(--forge-space-2);
-  font-size: var(--forge-font-size-md);
+  flex: none;
+  max-width: 45%;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--forge-font-size-sm);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+h3.unread {
   font-weight: 600;
 }
+.expanded h3 {
+  max-width: 100%;
+  white-space: normal;
+}
+.title {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0;
+  color: var(--el-text-color-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background: none;
+  border: 0;
+}
+.expanded .title {
+  white-space: normal;
+}
 .body {
-  margin: 0 0 var(--forge-space-2);
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--el-text-color-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.expanded .body {
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 time {
+  flex: none;
   color: var(--el-text-color-secondary);
-  font-size: var(--forge-font-size-xs);
 }
 .item-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--forge-space-2);
-  margin-top: var(--forge-space-2);
+  flex: none;
+  justify-content: flex-end;
+  width: 160px;
+  cursor: default;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .inbox-item {
+    flex-wrap: wrap;
+  }
+  .content {
+    flex-basis: calc(100% - var(--forge-space-5));
+    flex-direction: column;
+    gap: var(--forge-space-1);
+  }
+  h3 {
+    max-width: 100%;
+  }
+  .body {
+    width: 100%;
+  }
+  .item-actions {
+    width: auto;
+    margin-left: auto;
+  }
 }
 .pagination {
   justify-content: flex-end;
