@@ -4,7 +4,7 @@
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] `POST /members/invitations` 响应增加 `resent`，由 `MemberService.invite` 邀请前后的未离开成员数判断；`MemberManagementTest` 覆盖新邀请、已离开成员重新邀请和重发
 - [x] 调研并选定 Excel 解析库，按需加载，不进入首屏；选择理由写入本工单 Comments

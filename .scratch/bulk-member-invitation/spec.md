@@ -1,6 +1,6 @@
 # 批量邀请规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-11-09 的设计拷问逐条确认，未单独记录 ADR：不接入 Import Task 的决定以后可以只替换前端入口来改变，不算难以逆转。
 

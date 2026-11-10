@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 发送期间弹窗不可关闭，刷新或关闭标签页时弹出浏览器离开提示，发送结束后解除
 - [x] 「停止」后已发出的请求等待完成，其余行标为未处理
