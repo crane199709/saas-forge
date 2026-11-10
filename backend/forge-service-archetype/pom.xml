@@ -20,6 +20,15 @@
                 <filtering>true</filtering>
                 <directory>src/main/resources</directory>
             </resource>
+            <!-- 规范只维护仓库根目录一份：构建时复制进模板，同时以 @ 分隔符写入平台版本 -->
+            <resource>
+                <targetPath>archetype-resources/docs/standards</targetPath>
+                <filtering>true</filtering>
+                <directory>${project.basedir}/../../docs/standards</directory>
+                <includes>
+                    <include>business-service.md</include>
+                </includes>
+            </resource>
         </resources>
         <plugins>
             <plugin>
