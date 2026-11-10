@@ -1,6 +1,6 @@
-# 02: 授权树组件提取到 `@crane199709/ui`
+# 03: 授权树组件提取到 `@crane199709/ui`
 
-**What to build:** 按 [spec](../spec.md) 第 4 节，把 tenant-app 的授权树组件和勾选规则提取到 `@crane199709/ui`，并增加平台侧需要的两项能力。tenant-app 改为引用后，行为不变。
+**What to build:** 按 [spec](../spec.md) 第 4 节，把 tenant-app 的授权树组件和勾选规则提取到 `@crane199709/ui`，并增加 Plan 需要的两项能力。tenant-app 改为引用后，行为不变。
 
 **Blocked by:** 无
 

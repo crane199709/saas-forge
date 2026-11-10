@@ -2,38 +2,37 @@
 
 Status: ready-for-agent
 
-术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-11-09 的设计拷问逐条确认。授权树是 Permission Code 的视图，菜单不是授权单位（[ADR-0018](../../docs/adr/0018-menu-is-not-an-authorization-unit.md)）。租户侧授权树见 [menu-permission-tree](../menu-permission-tree/spec.md)。
+术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-11-09 的设计拷问逐条确认，2026-11-10 收缩范围：删除平台角色部分，增加菜单分组不挂权限码。授权树是 Permission Code 的视图，菜单不是授权单位（[ADR-0018](../../docs/adr/0018-menu-is-not-an-authorization-unit.md)）。租户侧授权树见 [menu-permission-tree](../menu-permission-tree/spec.md)，菜单管理见 [navigation-layout](../navigation-layout/spec.md)。
 
 ## 1. 背景与目标
 
-平台端有两处授权仍是按服务、分组平铺的 Permission Code 列表：
-
-- Plan 的 Feature Pack：Operator 还没把 Sub-App 放进 Plan，就能勾选它的权限码。例如 Plan 没有 `demo`，仍可勾选 `order:*`。
-- 平台角色：Operator 难以把权限码对应到控制台页面。
+Plan 的 Feature Pack 仍是按服务、分组平铺的 Permission Code 列表：Operator 还没把 Sub-App 放进 Plan，就能勾选它的权限码。例如 Plan 没有 `demo`，仍可勾选 `order:*`。
 
 目标：
 
 - Plan 先选可用 Sub-App，再按菜单页面勾选这些 Sub-App 的权限码。
-- 平台角色按控制台页面勾选权限码。
-- 两处和租户侧共用同一套树形编辑组件和勾选规则。
+- Plan 与租户侧共用同一套树形编辑组件和勾选规则。
+- 菜单分组不挂 Permission Code，权限码只挂在页面上。
 
 非目标：
 
 - 不新增菜单授权维度。Plan 仍只保存 Permission Code 与 Sub-App 编码，写入接口的格式不变。
+- 不改平台角色的授权界面，继续使用平铺列表。
 - 不改 App Registry 的注册表单，注册表单不录入、不展示菜单。
-- 不改 Resource Manifest 的结构与校验，不改 demo 的清单。
+- 除第 2 节的分组规则外，不改 Resource Manifest 的结构与校验，不改 demo 的清单。
 - 不合并不同服务声明的同编码根菜单。
 - 不改租户侧角色树的树形与行为。
 - 后端不校验「Plan 的权限码是否归属已选 Sub-App」。
 
-## 2. 权限码归属 Sub-App
+## 2. 菜单分组不挂权限码，权限码归属 Sub-App
 
-Permission Code 本身不带 Sub-App，归属由菜单决定：
+清单校验（`ResourceManifest.validate()`，SDK 生成与 iam 接收共用）拒绝带 `permission` 的分组节点。分组是否显示只看其下有没有可见页面；整块关闭一个模块用 Plan 的 Sub-App。现有清单（demo、forge-platform）没有带权限码的分组。仓库外已给分组挂权限码的业务服务，升级 SDK 后生成或上报清单会失败，需要把权限码移到页面上。
+
+Permission Code 本身不带 Sub-App，归属由叶子菜单决定：
 
 - 叶子菜单的 `permission` 与 `actions` 归属该叶子的 `app`。
-- 分组节点的 `permission` 归属其下全部叶子的 `app`。
 - 一个权限码可同时归属多个 Sub-App，其中任意一个被选中就显示。
-- 没有挂在任何菜单上的权限码不归属 Sub-App。
+- 没有挂在任何叶子菜单上的权限码不归属 Sub-App。
 
 ## 3. iam 与 platform：Plan 的授权树接口
 
@@ -69,7 +68,7 @@ platform 新增 `GET /platform/plans/permission-tree`，权限与现有 Plan 接
 
 组件增加两项能力，组件本身不感知 Plan：
 
-- 页面权限显示方式，默认保持租户侧现状（节点的勾选框代表页面权限）。开启「页面权限作为子项」后，根节点只负责全选和半选，页面权限显示为第一个子项。
+- 页面权限显示方式，默认保持租户侧现状（节点的勾选框代表页面权限）。开启「页面权限作为子项」后，根节点只负责全选和半选，页面权限显示为第一个子项。Plan 使用这种方式。
 - 由调用方传入额外的权限分组，显示在「功能权限」区之后，供 Plan 显示第 5 节的两个分组。
 
 勾选规则沿用租户侧：
@@ -86,7 +85,7 @@ platform 新增 `GET /platform/plans/permission-tree`，权限与现有 Plan 接
 由 `menus` 和所选 Sub-App 在前端即时计算要显示的树，切换 Sub-App 不重新请求（纯函数，放在 `platform-console` 的 `plan` 目录）：
 
 - 每个 `app` 在所选 Sub-App 中的叶子菜单成为一个根，分组节点不显示，多层分组全部拍平，按清单顺序排列。
-- 页面下依次是：祖先分组的 `permission`、页面的 `permission`、页面的 `actions`。
+- 使用「页面权限作为子项」的显示方式，页面下依次是：页面的 `permission`、页面的 `actions`。
 - 选了多个 Sub-App 时，根节点旁用小字显示 Sub-App 编码。
 - 没选 Sub-App 时菜单树为空并显示提示。
 - 共用提示只列当前显示的页面，未选 Sub-App 的页面不出现。
@@ -113,36 +112,16 @@ demo 选中后的结果：
 
 提交时把勾选结果去重为 Permission Code 列表，三个分区的码都包含在内，沿用现有创建和更新接口。
 
-## 6. 平台角色
+## 6. 文档
 
-树完全由前端生成，后端不改，继续读取 `GET /platform/roles/permissions`。
+- 更新 [docs/sub-app.md](../../docs/sub-app.md) 的「发布到租户 Shell」：Plan 中先选 Sub-App，再勾选其权限码；分组不挂权限码。
+- [menu-permission-tree 规格](../menu-permission-tree/spec.md)第 6 节的两个待定项已于 2026-11-10 关闭。
 
-控制台导航由 Shell 持有，`consolePages` 同时是这棵树的来源。各页面增加 `actions`：
-
-| 页面 | `permission` | `actions` |
-| --- | --- | --- |
-| `/tenants` | `platform:tenant:read` | `platform:tenant:manage` |
-| `/task-runs` | `platform:ops:read` | `platform:ops:manage` |
-| `/dead-events` | `platform:ops:read` | `platform:ops:manage` |
-
-其余页面没有 `actions`。
-
-- 每个控制台页面是一个根（共 10 个），标题取自页面的 i18n 文案，权限名称取自 `/platform/roles/permissions`。
-- 使用「页面权限作为子项」的显示方式。
-- 不在 `/platform/roles/permissions` 中的页面隐藏，不在其中的 action 去掉。
-- `sharedWith` 由前端计算。`platform:ops:read` 与 `platform:ops:manage` 在两个运维页面间同步勾选。
-- 未挂到页面上的平台权限码按服务、分组进入「功能权限」区。
-- 超级管理员的只读行为与提交接口不变。
-
-## 7. 文档
-
-- 更新 [docs/sub-app.md](../../docs/sub-app.md) 的「发布到租户 Shell」：Plan 中先选 Sub-App，再勾选其权限码。
-- 关闭 [menu-permission-tree 规格](../menu-permission-tree/spec.md)第 6 节的两个待定项，指向本规格。
-
-## 8. 验收
+## 7. 验收
 
 后端：
 
+- SDK：带权限码的分组被拒绝；`RoleManagementTest` 改写后仍覆盖隐藏规则。
 - iam 集成测试：`/internal/permission-tree` 不按 Plan 裁剪，不含 iam 自身管理权限码，`others` 正确，叶子带 `app`；缺少上报令牌时被拒绝。
 - platform 集成测试：`/platform/plans/permission-tree` 的透传、权限校验与 iam 不可用时的 `plan.catalogUnavailable`；旧接口已移除。
 - `PlanTest` 中已有的写入语义不变。
@@ -153,11 +132,10 @@ demo 选中后的结果：
 - tenant-app：角色树现有测试全部通过，行为无变化。
 - Plan 组件测试：
   - 未选 Sub-App 时不显示 demo 的权限码，选中后出现订单概览与订单附件两个根及 6 个权限码。
-  - 分组节点不显示；分组权限显示在其下每个页面。
+  - 分组节点不显示，多层分组拍平。
   - 取消 Sub-App 时移除独占的码、保留共用的码；重新选回时不勾选。
   - 存量 Plan 中未选 Sub-App 的码进入独立分区，保存时不丢失。
   - 已下线的码保留。
-- 平台角色组件测试：10 个根、运维权限同步勾选、提交的权限码正确、超级管理员只读。
 
 ## Comments
 

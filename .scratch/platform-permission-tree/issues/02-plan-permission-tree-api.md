@@ -1,8 +1,8 @@
-# 01: Plan 授权树接口
+# 02: Plan 授权树接口
 
-**What to build:** 按 [spec](../spec.md) 第 2、3 节，在 iam 与 platform 增加 Feature Pack 授权树的读取接口。本工单只增加接口，`GET /platform/plans/permissions` 的删除放在工单 03，保证前端在切换前仍可用。
+**What to build:** 按 [spec](../spec.md) 第 3 节，在 iam 与 platform 增加 Feature Pack 授权树的读取接口。本工单只增加接口，`GET /platform/plans/permissions` 的删除放在工单 04，保证前端在切换前仍可用。
 
-**Blocked by:** 无
+**Blocked by:** 01
 
 **Status:** ready-for-agent
 

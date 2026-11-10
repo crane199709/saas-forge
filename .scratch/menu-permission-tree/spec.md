@@ -72,10 +72,10 @@ Status: resolved
 - 需要按页面授权的操作，在叶子菜单的 `actions` 中列出，并在清单 `permissions` 中给出名称；按钮仍须用 `v-perm`、接口仍须用 `@RequiresPermission`，授权树只记录勾选。
 - 需要分开控制的菜单挂不同的权限码；没有后端接口的权限码只在清单文件中声明即可。
 
-## 6. 待定
+## 6. 待定（2026-11-10 关闭）
 
-- 平台在 Plan 中「指定菜单」（例如某菜单只对专业版可见）。倾向同样通过拆分 Permission Code、放入不同 Feature Pack 实现，尚未确认。
-- 平台角色授权界面是否采用同样的树。
+- 平台在 Plan 中「指定菜单」：不做菜单维度，Plan 按 Sub-App 与页面勾选 Permission Code，见 [platform-permission-tree](../platform-permission-tree/spec.md)。
+- 平台角色授权界面是否采用同样的树：暂不做，继续使用平铺列表。
 
 ## 完成记录
 

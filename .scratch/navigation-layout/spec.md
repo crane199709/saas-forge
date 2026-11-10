@@ -1,0 +1,143 @@
+# 导航布局规格
+
+Status: ready-for-agent
+
+术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-11-09 至 2026-11-10 的设计拷问逐条确认。Navigation Layout 只决定位置，不决定可见性，沿用 [ADR-0018](../../docs/adr/0018-menu-is-not-an-authorization-unit.md) 的原则：导航不是访问控制。
+
+## 1. 背景与目标
+
+两个 Shell App 的导航都不能调整：
+
+- 平台控制台的导航由 `consolePages` 写死，只有一层。
+- 租户端由写死的 Shell Page 与清单菜单拼接，`menuSections` 把清单的多层分组拍平成「分组 + 链接」两层。
+
+目标：Operator 调整平台控制台的导航，Tenant 管理员调整本租户的导航，可以排序、跨分组移动、新建/重命名/删除自定义分组。
+
+非目标：
+
+- 不隐藏页面，不改页面名称。隐藏会让管理员误以为已禁止访问。
+- 不影响可见性：页面仍只按自己的 Permission Code 与 Plan 显示。
+- 平台不为租户设默认布局，两端没有继承关系。
+- Plan 授权树、租户角色授权树、平台角色授权列表仍按清单原结构，不跟随布局。
+- 不实时推送，不处理并发编辑冲突（后保存的覆盖先保存的）。
+- 不保存用户个人的折叠状态。
+
+## 2. 布局的组成
+
+| 节点 | 引用 | 说明 |
+| --- | --- | --- |
+| Shell Page | `page`：页面键 | 没有子节点 |
+| 清单页面（叶子 Menu） | `menu`：菜单编码 | 仅租户端；没有子节点 |
+| 清单分组（分组 Menu） | `menu`：菜单编码 | 仅租户端；名称取清单，不能改名或删除，移空后不显示 |
+| 自定义分组 | `group`：前端生成的 id，`name` | 可新建、重命名、删除；删除时子节点移到它原来的位置 |
+
+页面键：
+
+- 租户端：`announcements`、`members`、`org`、`roles`、`audit`、`dictionaries`、`parameters`、`security-settings`，以及本规格新增的 `menu-layout`。首页与通知中心固定在导航顶部，不进入布局。
+- 平台端：`consolePages` 各页面路径去掉开头的 `/`，以及本规格新增的 `menu-layout`。
+
+存储格式（两端相同）：
+
+```json
+{
+  "nodes": [
+    { "page": "members" },
+    { "group": "f3c1d2", "name": "财务", "children": [ { "menu": "demo.attachments" } ] },
+    { "menu": "demo", "children": [ { "menu": "demo.overview" } ] }
+  ]
+}
+```
+
+保存时后端只校验结构，不校验引用是否存在（已下线的页面要保留位置）：
+
+- 每个节点恰有 `page`、`menu`、`group` 之一；`page` 节点没有 `children`。
+- 最多三层，顶层算第一层。
+- 同一个 `page`、`menu` 只出现一次；`group` id 唯一，1–64 个字符。
+- 自定义分组名称 1–32 个字符。
+- 节点总数不超过 500。
+- 违反时返回 400 与 `navigation.invalidLayout`。
+
+## 3. 合并规则
+
+两端共用一个纯函数，放在 `@crane199709/ui`，输入默认树、布局与可见节点，输出 `MenuItem[]`。
+
+默认树：
+
+- 租户端：Shell Page 按当前顺序，之后是清单菜单（已按权限、Plan 和已注册的 Sub-App 裁剪），保持清单原有层级。
+- 平台端：`consolePages` 的顺序。
+
+规则：
+
+1. 没有布局时显示默认树。
+2. 有布局时按布局放置可见节点；不可见或已不存在的引用跳过，但仍保留在已保存的布局中。
+3. 可见但布局里没有的节点（新上报的页面、新增的 Shell Page），放到它在默认树中最近的、已在布局里的祖先分组末尾；没有这样的祖先时放到顶层末尾。不在布局里的清单分组连同其子节点一起放入。
+4. 没有可见页面的分组（清单分组或自定义分组）不显示。
+
+例：管理员把「订单附件」移到自定义分组「财务」后，demo 新上报页面「订单统计」，它出现在「示例应用」末尾；`demo` 从 Plan 移除后，「财务」和「示例应用」都不显示，`demo` 回到 Plan 后恢复原样。
+
+## 4. 菜单分组层级
+
+SDK 生成与 iam 接收共用的清单校验（`ResourceManifest.validate()`）增加一条：菜单最多三层。现有清单（demo 为两层）不受影响。分组不挂 Permission Code 的规则见 [platform-permission-tree](../platform-permission-tree/spec.md)。
+
+## 5. 权限与审计
+
+- iam 新增 `iam:menu:manage`（「管理菜单」，`IamPermissions` 版本升级）与 `platform:menu:manage`（「管理平台菜单」，`PlatformPermissions` 版本升级）。Owner、Tenant Admin 与超级管理员随之拥有。
+- 保存与恢复默认各写一条操作类审计：租户端在 Tenant Realm，平台端在 Platform Realm，动作为 `navigationLayout.replace` 与 `navigationLayout.reset`。
+
+## 6. iam：存储与接口
+
+新增功能包 `navigation`。
+
+存储：
+
+- 租户：`tenant` 表新增可空的 `jsonb` 列 `navigation_layout`，NULL 表示默认。
+- 平台：新表 `platform_navigation_layout`（标准表，带标准列），最多一条未删除记录；保存时在事务内加锁维持这一约束，恢复默认即逻辑删除。
+
+租户接口（需要 `iam:menu:manage`）：
+
+- `GET /navigation-layout`：`{ "layout": {...} | null, "menus": [...] }`。`menus` 是管理页的目录：按 Plan 裁剪、不按操作者本人权限裁剪的清单菜单，范围同角色授权树，去掉 `actions`。
+- `PUT /navigation-layout`：请求体为布局，返回保存后的布局。
+- `DELETE /navigation-layout`：恢复默认，返回 200。
+
+平台接口（需要 `platform:menu:manage`）：
+
+- `GET`、`PUT`、`DELETE /platform/navigation-layout`：同上，`GET` 只返回 `layout`。
+
+运行时：
+
+- `/auth/access` 与 `/platform/access` 的响应增加 `layout`，没有布局时为 null。其他用户在下次读取权限时生效。
+
+不新增匿名接口。
+
+## 7. 前端
+
+导航：
+
+- `AppLayout` 的分组改为可折叠的子菜单，支持三层，默认全部展开，分组带 `data-testid="menu-group-<key>"`。
+- tenant-app 与 platform-console 的导航改用第 3 节的合并函数，删除 `menuSections`。
+
+菜单管理页（两端各一个，路径 `/menu-layout`，在导航中默认放在最后）：
+
+- 一棵可拖拽的树：排序、跨分组移动、新建/重命名/删除自定义分组，清单分组没有改名和删除操作；不允许超过三层，页面不能接收子节点。
+- 显示目录中的全部节点，不按操作者本人权限裁剪；租户端不显示首页和通知中心。
+- 布局中当前不在目录里的引用不显示，保存时保留在原父节点末尾；父节点也不在了则放到顶层末尾。
+- 「保存」整棵提交；「恢复默认」需二次确认；保存后操作者自己的导航立即刷新。
+- 编辑组件放在 `@crane199709/ui`，两端共用，文案走 i18n。
+- 按 [前端设计规范](../../docs/agents/frontend-design.md) 完成页面简报、功能实现与设计走查。
+
+## 8. 验收
+
+后端：
+
+- SDK：超过三层的菜单被拒绝。
+- iam 集成测试：两端的读取、保存、恢复默认；结构校验的各条规则；缺少权限码时 403；`/auth/access` 与 `/platform/access` 返回 `layout`；审计记录写入；租户之间互不可见。
+
+前端：
+
+- 合并函数：无布局、按布局放置、不可见引用跳过、新节点按祖先归位、空分组隐藏、Sub-App 移出再回来时位置恢复。
+- `AppLayout`：三层分组折叠与展开、当前页高亮。
+- 编辑组件：拖拽限制、自定义分组增删改、删除分组时子节点上移、保存时保留目录外引用。
+- 两端管理页：保存、恢复默认、读取或保存失败的提示。
+- 视觉回归：两端导航与管理页的关键状态。
+
+## Comments

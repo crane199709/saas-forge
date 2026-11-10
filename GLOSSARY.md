@@ -100,8 +100,12 @@ _Avoid_: 数据规则、行权限
 Data Policy 的常用预设，如「本人」「本部门」「本部门及下级」。
 
 **Menu（菜单）**:
-Business Service 在 Resource Manifest 中声明、由 Shell App 展示的导航节点；其可见性由所挂的 Permission Code 决定，本身不是授权单位。
+Business Service 在 Resource Manifest 中声明、由 Shell App 展示的导航节点，分为指向页面的叶子与只含子节点的分组；叶子的可见性由所挂的 Permission Code 决定，分组在有可见叶子时显示，本身都不是授权单位。
 _Avoid_: 菜单权限、导航权限
+
+**Navigation Layout（导航布局）**:
+Operator 或 Tenant 管理员为一个 Shell App 设定的 Menu 与 Shell Page 的排列与分组；只决定位置，不决定可见性。
+_Avoid_: 菜单配置、菜单权限
 
 **Resource Manifest（资源清单）**:
 业务服务按版本向平台申报的 Permission Code、Data Resource 与菜单的集合。
@@ -235,6 +239,9 @@ _Avoid_: 应用服务、子系统
 **Shell App（主应用）**:
 承载登录、租户上下文与菜单，并在运行时加载 Sub-App 的前端外壳；有平台运营端与租户业务端两个。
 _Avoid_: 基座、门户
+
+**Shell Page（内置页）**:
+由 Shell App 自身提供、不来自 Resource Manifest 的页面，如租户端的成员管理与平台端的全部管理页。
 
 **Sub-App（子应用）**:
 独立构建、独立部署、在运行时被 Shell App 加载的业务前端。
