@@ -7,8 +7,8 @@
 ### 新增
 
 - 脚手架带入规范：archetype 生成的 Business Service 与 `forge-create-sub-app` 生成的 Sub-App 新增 `AGENTS.md`（规则摘要、构建 / 测试 / lint 命令）和 `docs/standards/`（`business-service.md` 或 `sub-app.md`，头部注明平台版本）。规范只在平台仓库 `docs/standards/` 维护一份，生成时复制。
-- archetype 模板请求体补 `@Valid` 校验；`SchemaCommentTest` 检查 POM 中每个 SDK starter 自带 `schema.sql` 的表都已迁移。
-- Sub-App 模板首页改为 `PageHeader → PageToolbar → ListPage` 列表原型；新增导出 `@crane199709/sub-app-kit/stylelint`，生成工程带 `pnpm lint:style`（接入 `build`）与 `playwright.visual.config.ts`、`e2e/visual/` 示例视觉用例（不带基线截图，首次运行 `pnpm test:visual:update` 生成并提交）。模板冒烟增加 `pnpm lint:style`，视觉测试不进冒烟。
+- archetype 模板请求体补 `@Valid` 校验，`business-service.md`「接口格式」新增规则：请求体加 `@Valid`，违反约束由 SDK 返回 400 `request.invalid`；`SchemaCommentTest` 检查 POM 中每个 SDK starter 自带 `schema.sql` 的表都已迁移。
+- Sub-App 模板首页改为 `PageHeader → PageToolbar → ListPage` 列表原型，字段与工具栏排序只用 archetype 订单接口提供的字段和可排序字段；新增导出 `@crane199709/sub-app-kit/stylelint`，生成工程带 `pnpm lint:style`（接入 `build`）与 `playwright.visual.config.ts`、`e2e/visual/` 示例视觉用例（不带基线截图，首次运行 `pnpm test:visual:update` 生成并提交）。模板冒烟增加 `pnpm lint:style`，视觉测试不进冒烟。
 - 已生成的工程不会自动更新，按需从新版本复制：用同版本 archetype 或 `forge-create-sub-app` 生成一个临时工程，把其中的 `AGENTS.md`、`docs/standards/` 复制到本工程（`AGENTS.md` 中的服务名、命令按本工程调整）。后端另把临时工程 `SchemaCommentTest` 与 `SchemaCommentMapper`（含 XML）的 SDK 表检查合入，并在 POM 加 `spring-boot-starter-validation`、请求体加 `@Valid`；前端另合入 `package.json` 的 `lint:style`、`test:visual`、`test:visual:update` 脚本及 `stylelint`、`postcss-html`、`@playwright/test` 依赖，复制 `stylelint.config.mjs`、`playwright.visual.config.ts` 与 `e2e/visual/`。以后通用规范有改动时，本节写明改了哪些规则，届时重新复制 `docs/standards/`。
 
 - SDK 导入校验成功后进入 `AWAITING_CONFIRM`，显示将写入的行数；提交人通过 `ExcelIo.confirmImport` 确认后，任意实例从持久源文件完整重新校验并事务写入，失败提供新错误报告且零写入。待确认不占队列、不判中断，24 小时后失败并清理源文件。

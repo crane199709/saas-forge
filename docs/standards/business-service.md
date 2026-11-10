@@ -210,6 +210,7 @@ CREATE UNIQUE INDEX order_categories_name_key ON order_categories (name) WHERE N
 - Controller 的 public 接口方法返回 `ApiResponse<T>`，用 `ApiResponse.ok(x)`、`ApiResponse.created(x)` 构造，不依赖 Advice 自动包装。这样方法签名就是接口契约，springdoc 的 schema 才能如实反映 `data` 的类型。
 - HTTP 状态码如实反映结果：创建返回 201，删除返回 200 且 `data` 为 null，不使用 204（无法携带 `traceId`）。不采用「一律 200 + 业务码」，否则网关、监控与浏览器缓存都无法按状态码区分成败。
 - 请求体是纯业务 `record`，不套信封；JSON 字段用 camelCase。租户从 Token 取得，请求中不出现 `tenantId` 作为隔离依据。
+- 请求体参数加 `@Valid`，在 `record` 字段上用 Bean Validation 注解声明与表结构一致的约束（如 `@NotBlank @Size(max = 200)`）。违反时由 SDK 返回 400 `request.invalid`，`errors` 逐项列出字段，不必等数据库报错，也不在 Controller 中手工校验。
 
 ```json
 {
