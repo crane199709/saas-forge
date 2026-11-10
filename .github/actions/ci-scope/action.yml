@@ -1,0 +1,25 @@
+name: Select CI scope
+description: 根据 Git 差异选择检查，无法确定比较范围时执行完整验证。
+inputs:
+  scope:
+    description: frontend、backend、main-flow 或 template-smoke
+    required: true
+  force-full:
+    description: 可复用工作流默认执行完整验证。
+    default: 'false'
+outputs:
+  run:
+    description: 当前检查是否需要执行。
+    value: ${{ steps.detect.outputs.run }}
+runs:
+  using: composite
+  steps:
+    - name: Verify CI selection rules
+      shell: bash
+      run: python3 -m unittest discover -s "$GITHUB_WORKSPACE/scripts/ci" -p 'test_*.py'
+    - id: detect
+      shell: bash
+      env:
+        CI_SCOPE: ${{ inputs.scope }}
+        CI_FORCE_FULL: ${{ inputs.force-full }}
+      run: python3 "$GITHUB_WORKSPACE/scripts/ci/changes.py" --scope "$CI_SCOPE"
