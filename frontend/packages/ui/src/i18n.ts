@@ -35,7 +35,7 @@ const messages = {
     },
     mfa: {
       title: '两步验证',
-      codeHint: '请输入验证器应用上的 6 位动态码。',
+      codeHint: '账号已开启两步验证，每次登录都需输入验证器应用上的 6 位动态码。',
       code: '动态码',
       recoveryCode: '恢复码',
       recoveryHint: '无法使用验证器时，可输入一个未用过的恢复码，每个恢复码只能使用一次。',
