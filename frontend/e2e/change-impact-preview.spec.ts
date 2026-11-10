@@ -160,7 +160,8 @@ test('数据范围变更的确认弹窗说明不判断具体数据行', async ({
         }),
       ),
   )
-  await page.getByTestId('scope-order-self').click()
+  await page.getByTestId('scope-order').click()
+  await page.getByRole('option', { name: '本人', exact: true }).click()
   await page.getByTestId('role-save').click()
 
   const impact = page.getByRole('dialog', { name: '确认保存对 订单查看员 的修改' })
@@ -171,6 +172,9 @@ test('数据范围变更的确认弹窗说明不判断具体数据行', async ({
   await expect
     .poll(() => writes.map((write) => write.path))
     .toEqual(['/iam/roles/r-viewer/permissions', '/iam/roles/r-viewer/data-policies'])
+  expect(writes.find((write) => write.path.endsWith('/data-policies'))?.body).toEqual({
+    policies: [{ resource: 'order', scope: 'self' }],
+  })
 })
 
 test('角色预览失败时明确提示，由用户决定继续保存', async ({ page }) => {

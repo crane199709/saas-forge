@@ -94,13 +94,13 @@ const members = [
   roleIds,
 }))
 
-async function openRoles(page: Page) {
+async function openRoles(page: Page, resources = dataResources) {
   await openAsAdmin(page, '/roles', (path, route) => {
     if (path === '/iam/roles') return route.fulfill(ok(roles))
     if (path.endsWith('/memberships')) return route.fulfill(onePage(members))
     if (path === '/iam/roles/permission-tree')
       return route.fulfill(ok({ menus: [], others: permissions }))
-    if (path === '/iam/roles/data-resources') return route.fulfill(ok(dataResources))
+    if (path === '/iam/roles/data-resources') return route.fulfill(ok(resources))
     if (path === '/iam/roles/condition-options')
       return route.fulfill(ok({ subject: [], environment: [], departments: [], positions: [] }))
     return undefined
@@ -129,6 +129,58 @@ for (const [label, width, height] of viewports) {
       await page.getByTestId('role-edit-order-viewer').click()
       await expect(page.getByTestId('role-save')).toBeVisible()
       await expect(page).toHaveScreenshot(`roles-edit-${label}.png`)
+    })
+
+    test('数据范围下拉选择与自定义条件', async ({ page }) => {
+      const problems: string[] = []
+      page.on('pageerror', (error) => problems.push(error.message))
+      page.on('console', (message) => {
+        if (['error', 'warning'].includes(message.type())) problems.push(message.text())
+      })
+      await openRoles(
+        page,
+        dataResources.map((resource) => ({
+          ...resource,
+          name: resource.code === 'report' ? '跨部门销售与退款统计报表' : resource.name,
+        })),
+      )
+      await page.getByTestId('role-create').click()
+      const scope = page.getByTestId('scope-order')
+      await expect(scope).toContainText('未配置（不可见）')
+      await expect(page.getByTestId('scope-report')).toContainText('未配置（不可见）')
+      await expect(page.getByRole('combobox', { name: '订单', exact: true })).toBeVisible()
+      await scope.scrollIntoViewIfNeeded()
+      await expect(page).toHaveScreenshot(`roles-scope-defaults-${label}.png`)
+
+      await scope.click()
+      await expect(page.getByRole('option')).toHaveText([
+        '未配置（不可见）',
+        '本人',
+        '本部门',
+        '本部门及下级',
+        '全部',
+        '自定义条件',
+      ])
+      await expect(page).toHaveScreenshot(`roles-scope-options-${label}.png`)
+      await page.getByRole('option', { name: '本部门及下级', exact: true }).click()
+      await expect(scope).toContainText('本部门及下级')
+      await scope.click()
+      await page.getByRole('option', { name: '自定义条件', exact: true }).click()
+      await expect(page.getByTestId('condition-order')).toBeVisible()
+      await expect(page.getByTestId('role-save')).toBeDisabled()
+      await expect(page).toHaveScreenshot(`roles-scope-custom-${label}.png`)
+
+      await scope.click()
+      await page.getByRole('option', { name: '本人', exact: true }).click()
+      await expect(page.getByTestId('condition-order')).toHaveCount(0)
+      await expect(scope).toContainText('本人')
+      await expect(page).toHaveURL(/\/roles$/)
+      await expect(page).toHaveTitle(/SaaS Forge/)
+      await expect(page.getByRole('heading', { name: '角色管理', exact: true })).toBeVisible()
+      await expect(
+        page.locator('vite-error-overlay, #webpack-dev-server-client-overlay'),
+      ).toHaveCount(0)
+      expect(problems).toEqual([])
     })
   })
 }

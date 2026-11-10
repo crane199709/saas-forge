@@ -1,5 +1,5 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import ElementPlus from 'element-plus'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import ElementPlus, { ElSelect } from 'element-plus'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createTenantClient, tenantClientKey } from '@crane199709/sdk'
 import RolePage from './RolePage.vue'
@@ -124,6 +124,14 @@ async function mountPanel(fetcher: ReturnType<typeof vi.fn>) {
   return wrapper
 }
 
+async function chooseScope(wrapper: VueWrapper, scope: string) {
+  const select = wrapper
+    .findAllComponents(ElSelect)
+    .find((item) => item.attributes('data-testid') === 'scope-order')!
+  select.vm.$emit('update:modelValue', scope)
+  await flushPromises()
+}
+
 it('权限码按服务与分组归并', () => {
   expect(
     groupPermissions(permissions).map((group) => [
@@ -176,8 +184,7 @@ it('编辑角色时提交改动后的数据范围，未配置的数据资源不�
 
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
-  ;(document.querySelector('[data-testid="scope-order-self"] input') as HTMLElement).click()
-  await flushPromises()
+  await chooseScope(wrapper, 'self')
   ;(document.querySelector('[data-testid="role-save"]') as HTMLElement).click()
   await flushPromises()
 
@@ -189,8 +196,7 @@ it('编辑角色时提交改动后的数据范围，未配置的数据资源不�
   // 改为未配置：整体替换为空，持有者对订单不可见
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
-  ;(document.querySelector('[data-testid="scope-order-none"] input') as HTMLElement).click()
-  await flushPromises()
+  await chooseScope(wrapper, '')
   ;(document.querySelector('[data-testid="role-save"]') as HTMLElement).click()
   await flushPromises()
   expect(JSON.parse(fetcher.mock.calls.at(-1)![1].body)).toEqual({ policies: [] })
@@ -202,6 +208,9 @@ it('新建角色时授权与数据范围一次提交', async () => {
 
   await wrapper.get('[data-testid="role-create"]').trigger('click')
   await flushPromises()
+  expect(wrapper.get('[data-testid="scope-order"] .el-select__placeholder').text()).toBe(
+    '未配置（不可见）',
+  )
   // 对话框渲染在 body 上；el-input 把 data-testid 透传到原生 input
   for (const [testid, value] of [
     ['role-code', 'order-auditor'],
@@ -214,10 +223,7 @@ it('新建角色时授权与数据范围一次提交', async () => {
   await flushPromises()
   ;(document.querySelector('[data-testid="perm-order:read"] input') as HTMLElement).click()
   await flushPromises()
-  ;(
-    document.querySelector('[data-testid="scope-order-department_and_below"] input') as HTMLElement
-  ).click()
-  await flushPromises()
+  await chooseScope(wrapper, 'department_and_below')
   ;(document.querySelector('[data-testid="role-save"]') as HTMLElement).click()
   await flushPromises()
 
@@ -290,8 +296,7 @@ it('新选自定义条件时先填完条件才能保存', async () => {
 
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
-  ;(document.querySelector('[data-testid="scope-order-custom"] input') as HTMLElement).click()
-  await flushPromises()
+  await chooseScope(wrapper, 'custom')
 
   expect(
     document.querySelectorAll('[data-testid="condition-order"] [data-testid="condition-rule"]'),
@@ -715,7 +720,7 @@ it('数据范围变更列出持有者，并说明不判断具体数据行', asyn
   const wrapper = await mountPanel(fetcher)
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
-  await click('[data-testid="scope-order-self"] input')
+  await chooseScope(wrapper, 'self')
   await click('[data-testid="role-save"]')
 
   const [url, init] = fetcher.mock.calls[0]!
@@ -738,7 +743,7 @@ it('数据范围变更没有持有者时不打断保存', async () => {
   const wrapper = await mountPanel(fetcher)
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
-  await click('[data-testid="scope-order-self"] input')
+  await chooseScope(wrapper, 'self')
   await click('[data-testid="role-save"]')
 
   expect(impactDialog()).toBeNull()
@@ -803,7 +808,7 @@ it('数据范围预览失败时仍说明不判断具体数据行，无影响的�
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
   await flushPromises()
   await click('[data-testid="perm-order:approve"] input')
-  await click('[data-testid="scope-order-self"] input')
+  await chooseScope(wrapper, 'self')
   await click('[data-testid="role-save"]')
 
   const text = impactDialog()!.textContent!

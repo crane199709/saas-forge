@@ -372,26 +372,35 @@ const scopeSummary = (role: Role) =>
           <div class="scopes">
             <div v-for="resource in dataResources" :key="resource.code" class="scope-resource">
               <div class="scope-row">
-                <span class="scope-name">{{ resource.name }}</span>
-                <el-radio-group
+                <label class="scope-name" :for="`scope-${resource.code}`">{{
+                  resource.name
+                }}</label>
+                <el-select
+                  :id="`scope-${resource.code}`"
+                  class="scope-select"
+                  :data-testid="`scope-${resource.code}`"
                   :model-value="draft.scopes[resource.code]"
+                  :empty-values="[null, undefined]"
                   @update:model-value="(scope) => choose(resource.code, scope as ScopeChoice)"
                 >
-                  <el-radio value="" :data-testid="`scope-${resource.code}-none`">
-                    {{ t('role.dialog.noScope') }}
-                  </el-radio>
-                  <el-radio
+                  <el-option
+                    value=""
+                    :label="t('role.dialog.noScope')"
+                    :data-testid="`scope-${resource.code}-none`"
+                  />
+                  <el-option
                     v-for="scope in resource.scopes"
                     :key="scope"
                     :value="scope"
+                    :label="t(`role.scope.${scope}`)"
                     :data-testid="`scope-${resource.code}-${scope}`"
-                  >
-                    {{ t(`role.scope.${scope}`) }}
-                  </el-radio>
-                  <el-radio value="custom" :data-testid="`scope-${resource.code}-custom`">
-                    {{ t('role.scope.custom') }}
-                  </el-radio>
-                </el-radio-group>
+                  />
+                  <el-option
+                    value="custom"
+                    :label="t('role.scope.custom')"
+                    :data-testid="`scope-${resource.code}-custom`"
+                  />
+                </el-select>
               </div>
               <div
                 v-if="draft.scopes[resource.code] === 'custom'"
@@ -493,12 +502,15 @@ const scopeSummary = (role: Role) =>
 }
 .scope-row {
   display: grid;
-  grid-template-columns: 64px 1fr;
+  grid-template-columns: minmax(64px, 20%) minmax(0, 1fr);
   gap: var(--forge-space-3);
   align-items: start;
 }
 .scope-name {
   line-height: 32px;
+}
+.scope-select {
+  max-width: 320px;
 }
 .condition {
   display: flex;
