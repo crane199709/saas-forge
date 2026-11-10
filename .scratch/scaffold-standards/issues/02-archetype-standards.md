@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 构建时把 `docs/standards/business-service.md` 复制进模板资源，不在 archetype 里另存一份
 - [x] 模板新增 `AGENTS.md`：规则摘要、`./mvnw verify` 等命令、指向 `docs/standards/` 的链接
