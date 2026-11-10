@@ -6,6 +6,12 @@
         WHERE n.nspname = current_schema() AND c.relkind IN ('r', 'p') AND NOT c.relispartition
             AND c.relname &lt;&gt; 'flyway_schema_history'
     </select>
+    <select id="selectTableNames" resultType="string">
+        SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = current_schema() AND c.relkind IN ('r', 'p') AND NOT c.relispartition
+            AND c.relname &lt;&gt; 'flyway_schema_history'
+        ORDER BY 1
+    </select>
     <select id="selectUncommented" resultType="string">
         SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE n.nspname = current_schema() AND c.relkind IN ('r', 'p') AND NOT c.relispartition
