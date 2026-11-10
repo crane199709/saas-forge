@@ -1,6 +1,6 @@
 # 平台侧授权树规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-11-09 的设计拷问逐条确认，2026-11-10 收缩范围：删除平台角色部分，增加菜单分组不挂权限码。授权树是 Permission Code 的视图，菜单不是授权单位（[ADR-0018](../../docs/adr/0018-menu-is-not-an-authorization-unit.md)）。租户侧授权树见 [menu-permission-tree](../menu-permission-tree/spec.md)，菜单管理见 [navigation-layout](../navigation-layout/spec.md)。
 
