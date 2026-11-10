@@ -33,7 +33,7 @@ pnpm dev
 
 生成器使用随 sub-app-kit 发布的版本表（构建时取自同版本 tenant-app），共享依赖使用精确版本，三个 `@crane199709/*` 包使用统一发布版本；无需平台源码或父目录 tsconfig。不要单独升级共享依赖，混合版本兼容不在当前支持范围内。
 
-首页带 `ListPage`、分页、加载状态与错误提示，默认请求 `/billing/orders`，请按业务接口修改路径与行字段。开发宿主通过 `vite.config.ts` 的 `apiPrefixes` 代理业务前缀，`gateway`、`shellOrigins` 按环境设置。未接入后端时列表展示加载错误，不伪造业务数据。
+首页按列表原型 `PageHeader` → `PageToolbar` → `ListPage` 搭好，带标题筛选、分页、加载状态与错误提示，空值显示 `—`、时间用 `formatDateTime`，默认请求 `/billing/orders`，请按业务接口修改路径与行字段。生成的工程还带 `AGENTS.md`、`docs/standards/sub-app.md`（头部注明平台版本）、`pnpm lint:style`（接入 `build`）与 `e2e/visual/` 示例视觉用例；不带基线截图，首次运行 `pnpm test:visual:update` 生成，逐张查看后提交。开发宿主通过 `vite.config.ts` 的 `apiPrefixes` 代理业务前缀，`gateway`、`shellOrigins` 按环境设置。未接入后端时列表展示加载错误，不伪造业务数据。
 
 ### monorepo 内开发
 
@@ -49,6 +49,8 @@ pnpm create:sub-app billing 5180
 | --- | --- |
 | `pnpm --filter @forge/billing-sub-app dev` | 独立开发宿主，`http://localhost:5180`，支持 HMR，不需要启动 tenant-app。宿主按 Shell 的方式创建应用实例，提供登录栏，经开发服务器把 `/iam` 与 `apiPrefixes` 代理到本地网关 |
 | `pnpm --filter @forge/billing-sub-app lint` | 隔离约定检查（`forge-sub-app-lint`），`build` 前自动执行 |
+| `pnpm --filter @forge/billing-sub-app lint:style` | 样式 token 检查（规则来自 `@crane199709/sub-app-kit/stylelint`），`build` 前自动执行 |
+| `pnpm --filter @forge/billing-sub-app test:visual` | 示例视觉用例，开发宿主 + `page.route` mock，不需要后端 |
 | `pnpm --filter @forge/billing-sub-app build` | 产出 `dist/remoteEntry.js`，部署后把地址登记到 App Registry |
 
 开发模式不启用 Module Federation，Sub-App 直接使用自己的依赖副本，因此 HMR 照常生效；联邦加载与共享单例只在 build/preview 下由真实 Shell 验证（`pnpm test:e2e`）。
