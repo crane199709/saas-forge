@@ -84,5 +84,16 @@ for (const [label, width, height] of viewports) {
       await expect(page.getByText('采购合同-2026Q4-最终版.pdf')).toBeVisible()
       await expect(page).toHaveScreenshot(`sub-app-attachments-${label}.png`)
     })
+
+    test('附件-已选文件', async ({ page }) => {
+      await open(page, '/apps/demo/attachments')
+      await page.getByTestId('attachment-file').setInputFiles({
+        name: '2026年第四季度采购合同补充协议（双方盖章版）.pdf',
+        mimeType: 'application/pdf',
+        buffer: Buffer.from('pdf'),
+      })
+      await expect(page.getByTestId('attachment-upload')).toBeEnabled()
+      await expect(page).toHaveScreenshot(`sub-app-attachments-picked-${label}.png`)
+    })
   })
 }

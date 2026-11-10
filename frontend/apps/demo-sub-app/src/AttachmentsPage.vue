@@ -28,6 +28,7 @@ const orders = ref<Order[]>([])
 const orderId = ref('')
 const attachments = ref<Attachment[]>([])
 const file = ref<File>()
+const fileInput = ref<HTMLInputElement>()
 const busy = ref(false)
 const error = ref('')
 const { t } = useI18n({
@@ -40,6 +41,7 @@ const { t } = useI18n({
       upload: '上传',
       download: '下载',
       remove: '删除',
+      chooseFile: '选择文件',
       filename: '文件名',
       size: '大小',
       createdAt: '上传时间',
@@ -106,6 +108,8 @@ async function upload() {
       body: JSON.stringify({ objectId: ticket.objectId }),
     })
     file.value = undefined
+    // 清空原生输入，再次选择同一文件时仍会触发 change
+    if (fileInput.value) fileInput.value.value = ''
     await loadAttachments()
   })
 }
@@ -159,7 +163,17 @@ function formatSize(size: number) {
         <el-option v-for="order in orders" :key="order.id" :label="order.title" :value="order.id" />
       </el-select>
       <template #actions>
-        <input type="file" data-testid="attachment-file" @change="pick" />
+        <input
+          ref="fileInput"
+          type="file"
+          class="file-input"
+          data-testid="attachment-file"
+          @change="pick"
+        />
+        <span v-if="file" class="file-name">{{ file.name }}</span>
+        <el-button v-perm="'order:update'" @click="fileInput?.click()">{{
+          t('chooseFile')
+        }}</el-button>
         <el-button
           v-perm="'order:update'"
           type="primary"
@@ -216,6 +230,15 @@ h3 {
 }
 .order {
   width: 240px;
+}
+.file-input {
+  display: none;
+}
+.file-name {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .error {
   margin: 0 0 var(--forge-space-3);
