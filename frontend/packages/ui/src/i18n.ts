@@ -9,6 +9,7 @@ const messages = {
       template: '下载模板',
       file: '选择 Excel 文件',
       recent: '最近任务',
+      history: '导出记录',
       empty: '暂无任务',
       download: '下载结果',
       errorReport: '下载错误报告',

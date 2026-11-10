@@ -19,12 +19,15 @@ it('提交导出后展示任务进度，并在完成后提供下载', async () =
     download: vi.fn().mockResolvedValue({ url: 'https://storage.test/result' }),
   }
   const open = vi.spyOn(window, 'open').mockImplementation(() => null)
-  const wrapper = await mountWithShell(ExportButton, { props: { submit, tasks } })
+  const wrapper = await mountWithShell(ExportButton, {
+    props: { submit, tasks },
+    attachTo: document.body,
+  })
   await wrapper.get('[data-testid="export-submit"]').trigger('click')
   await flushPromises()
   await vi.waitFor(() => expect(tasks.download).toHaveBeenCalledWith('e1'))
-  expect(wrapper.text()).toContain('成功')
-  expect(wrapper.text()).toContain('3')
+  await wrapper.get('[data-testid="export-history"]').trigger('click')
+  await vi.waitFor(() => expect(document.body.textContent).toContain('导出 · 成功 · 3 行'))
   expect(open).toHaveBeenCalledWith('https://storage.test/result', '_blank', 'noopener')
   wrapper.unmount()
   open.mockRestore()

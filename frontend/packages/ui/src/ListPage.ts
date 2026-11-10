@@ -1,5 +1,12 @@
 import type { Page } from '@crane199709/sdk'
-import { ElButton, ElPagination, ElTable, ElTableColumn, vLoading } from 'element-plus'
+import {
+  ElButton,
+  ElButtonGroup,
+  ElPagination,
+  ElTable,
+  ElTableColumn,
+  vLoading,
+} from 'element-plus'
 import { defineComponent, h, withDirectives, type SlotsType, type VNode } from 'vue'
 import { useUiI18n } from './i18n'
 
@@ -40,29 +47,44 @@ export const ListPage = defineComponent(
     return () => {
       const meta = props.page?.page
       return h('section', { class: 'list-page', 'aria-busy': props.loading ?? false }, [
-        props.deleted !== undefined
+        props.deleted !== undefined || slots.search
           ? h(
               'div',
-              { role: 'group', 'aria-label': t('resource.view'), style: { marginBottom: '16px' } },
-              [false, true].map((deleted) =>
-                h(
-                  ElButton,
-                  {
-                    'aria-pressed': props.deleted === deleted,
-                    type: props.deleted === deleted ? 'primary' : 'default',
-                    disabled: props.loading ?? false,
-                    onClick: () => {
-                      if (!props.loading && props.deleted !== deleted)
-                        emit('deleted-change', deleted)
-                    },
-                  },
-                  () => t(deleted ? 'resource.deleted' : 'resource.active'),
-                ),
-              ),
+              {
+                class: 'list-page-toolbar',
+                style: {
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 'var(--forge-space-2)',
+                  marginBottom: 'var(--forge-space-3)',
+                },
+              },
+              [
+                props.deleted !== undefined
+                  ? h(ElButtonGroup, { role: 'group', 'aria-label': t('resource.view') }, () =>
+                      [false, true].map((deleted) =>
+                        h(
+                          ElButton,
+                          {
+                            plain: true,
+                            'aria-pressed': props.deleted === deleted,
+                            type: props.deleted === deleted ? 'primary' : 'default',
+                            disabled: props.loading ?? false,
+                            onClick: () => {
+                              if (!props.loading && props.deleted !== deleted)
+                                emit('deleted-change', deleted)
+                            },
+                          },
+                          () => t(deleted ? 'resource.deleted' : 'resource.active'),
+                        ),
+                      ),
+                    )
+                  : null,
+                slots.search ? h('div', { class: 'list-page-search' }, slots.search()) : null,
+              ],
             )
-          : null,
-        slots.search
-          ? h('div', { class: 'list-page-search', style: { marginBottom: '16px' } }, slots.search())
           : null,
         withDirectives(
           h(
@@ -107,8 +129,8 @@ export const ListPage = defineComponent(
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'flex-end',
-                  gap: '16px',
-                  marginTop: '16px',
+                  gap: 'var(--forge-space-4)',
+                  marginTop: 'var(--forge-space-4)',
                 },
               },
               [

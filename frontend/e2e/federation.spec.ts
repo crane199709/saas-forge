@@ -430,6 +430,7 @@ test('订单导入导出组件展示任务进度与错误报告', async ({ page 
       ),
     )
     .toBe(1)
+  await page.getByTestId('export-history').click()
   await expect(page.getByText('导出 · 成功 · 3 行')).toBeVisible()
   await page.screenshot({ path: '/tmp/io-desktop.png', fullPage: false })
   await page.getByRole('button', { name: '导入订单' }).click()

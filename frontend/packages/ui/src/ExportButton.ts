@@ -1,5 +1,5 @@
 import { defineComponent, h, type PropType } from 'vue'
-import { ElButton } from 'element-plus'
+import { ElButton, ElPopover } from 'element-plus'
 import { IoTaskList } from './IoTaskList'
 import { useIoTasks, type IoTask, type IoTaskApi } from './io-tasks'
 import { useUiI18n } from './i18n'
@@ -34,17 +34,39 @@ export const ExportButton = defineComponent({
       }
     }
     return () =>
-      h('section', [
-        h(
-          ElButton,
-          { loading: state.busy.value, 'data-testid': 'export-submit', onClick: submit },
-          () => t('io.export'),
-        ),
-        state.active.value
-          ? h('p', { role: 'status' }, t('io.' + state.active.value.status))
-          : null,
-        state.error.value ? h('p', { role: 'alert' }, state.error.value) : null,
-        h(IoTaskList, { tasks: state.recent.value, onDownload: state.download }),
-      ])
+      h(
+        'span',
+        {
+          style: {
+            display: 'inline-flex',
+            verticalAlign: 'middle',
+            alignItems: 'center',
+            gap: 'var(--forge-space-3)',
+            marginLeft: 'var(--forge-space-3)',
+          },
+        },
+        [
+          h(
+            ElButton,
+            { loading: state.busy.value, 'data-testid': 'export-submit', onClick: submit },
+            () => t('io.export'),
+          ),
+          // 任务记录放进弹层：常驻会把所在工具栏撑成多行。
+          h(
+            ElPopover,
+            { trigger: 'click', placement: 'bottom-end', width: 360 },
+            {
+              reference: () =>
+                h(ElButton, { link: true, 'data-testid': 'export-history' }, () => t('io.history')),
+              default: () =>
+                h(IoTaskList, { tasks: state.recent.value, onDownload: state.download }),
+            },
+          ),
+          state.active.value
+            ? h('span', { role: 'status' }, t('io.' + state.active.value.status))
+            : null,
+          state.error.value ? h('span', { role: 'alert' }, state.error.value) : null,
+        ],
+      )
   },
 })
