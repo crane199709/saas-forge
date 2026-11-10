@@ -3,12 +3,17 @@ import { expect, it, vi } from 'vitest'
 import { ExportButton } from './ExportButton'
 import { mountWithShell } from './test-mount'
 
+const taskPage = <T>(items: T[]) => ({
+  items,
+  page: { number: 1, size: 10, totalElements: items.length, totalPages: 1 },
+})
+
 it('提交导出后展示任务进度，并在完成后提供下载', async () => {
   const submit = vi
     .fn()
     .mockResolvedValue({ id: 'e1', type: 'EXPORT', status: 'WAITING', rowCount: 0 })
   const tasks = {
-    list: vi.fn().mockResolvedValue([]),
+    list: vi.fn().mockResolvedValue(taskPage([])),
     get: vi.fn().mockResolvedValue({
       id: 'e1',
       type: 'EXPORT',
@@ -41,7 +46,7 @@ it('导入按票据直传并提交对象 ID，失败后显示可下载的错误�
     .fn()
     .mockResolvedValue({ id: 'i1', type: 'IMPORT', status: 'WAITING', rowCount: 0 })
   const tasks = {
-    list: vi.fn().mockResolvedValue([]),
+    list: vi.fn().mockResolvedValue(taskPage([])),
     get: vi.fn().mockResolvedValue({
       id: 'i1',
       type: 'IMPORT',
@@ -122,7 +127,7 @@ it('校验通过先展示待写入行数，提交人确认后才完成导入', a
       }),
       submit: async () => ({ ...pending, status: 'WAITING' }),
       tasks: {
-        list: async () => [pending],
+        list: async () => taskPage([pending]),
         get: async () =>
           confirmed
             ? { ...pending, status: 'SUCCEEDED', finishedAt: new Date().toISOString() }
@@ -208,11 +213,12 @@ it('重新打开导入对话框时刷新已过期的最近任务', async () => {
       prepareUpload: vi.fn(),
       submit: vi.fn(),
       tasks: {
-        list: async () => [
-          expired
-            ? { ...pending, status: 'FAILED' as const, errorCode: 'io.confirmationExpired' }
-            : pending,
-        ],
+        list: async () =>
+          taskPage([
+            expired
+              ? { ...pending, status: 'FAILED' as const, errorCode: 'io.confirmationExpired' }
+              : pending,
+          ]),
         get: vi.fn(),
         download: vi.fn(),
       },
@@ -225,5 +231,63 @@ it('重新打开导入对话框时刷新已过期的最近任务', async () => {
   expired = true
   await wrapper.setProps({ modelValue: true })
   await vi.waitFor(() => expect(document.body.textContent).toContain('确认已过期，请重新上传'))
+  wrapper.unmount()
+})
+
+it('十个更新的导出不遮蔽待确认导入，重开与重新挂载后可翻页确认', async () => {
+  const { ImportDialog } = await import('./ImportDialog')
+  const pending = {
+    id: 'older-import',
+    type: 'IMPORT' as const,
+    status: 'AWAITING_CONFIRM' as const,
+    rowCount: 24,
+    membershipId: 'm',
+    heartbeatAt: new Date().toISOString(),
+  }
+  const confirm = vi.fn().mockResolvedValue({ ...pending, status: 'WAITING' })
+  const props = {
+    modelValue: true,
+    membershipId: 'm',
+    confirm,
+    downloadTemplate: vi.fn(),
+    prepareUpload: vi.fn(),
+    submit: vi.fn(),
+    tasks: {
+      list: async (page = 1) => ({
+        items:
+          page === 1
+            ? Array.from({ length: 10 }, (_, index) => ({
+                id: `export-${index}`,
+                type: 'EXPORT' as const,
+                status: 'SUCCEEDED' as const,
+                rowCount: 1,
+              }))
+            : [pending],
+        page: { number: page, size: 10, totalElements: 11, totalPages: 2 },
+      }),
+      get: async () => ({ ...pending, status: 'SUCCEEDED' as const }),
+      download: vi.fn(),
+    },
+  }
+  let wrapper = await mountWithShell(ImportDialog, { props, attachTo: document.body })
+  await flushPromises()
+  await wrapper.setProps({ modelValue: false })
+  await wrapper.setProps({ modelValue: true })
+  await flushPromises()
+  ;(document.body.querySelector('.el-dialog .btn-next') as HTMLButtonElement).click()
+  await vi.waitFor(() => expect(document.body.textContent).toContain('将写入 24 行'))
+  wrapper.unmount()
+  document.body.innerHTML = ''
+  wrapper = await mountWithShell(ImportDialog, { props, attachTo: document.body })
+  await flushPromises()
+  ;(document.body.querySelector('.el-dialog .btn-next') as HTMLButtonElement).click()
+  await vi.waitFor(() => expect(document.body.textContent).toContain('将写入 24 行'))
+  ;(
+    [...document.body.querySelectorAll('.el-dialog button')].find((button) =>
+      button.textContent?.includes('确认写入'),
+    ) as HTMLButtonElement
+  ).click()
+  await vi.waitFor(() => expect(wrapper.emitted('completed')).toHaveLength(1))
+  expect(confirm).toHaveBeenCalledWith('older-import')
   wrapper.unmount()
 })

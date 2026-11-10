@@ -236,6 +236,8 @@ IO 统一声明 `IoStoragePurposes.SOURCE`（`io-source`，仅 xlsx、20 MiB）�
 
 SDK 自动提供 `/io/tasks`、`/io/tasks/{id}` 和 `/io/tasks/{id}/download`，均只允许提交人访问。业务提交和模板接口须挂自己的权限码；前端的 `ImportDialog`、`ExportButton` 通过回调绑定同一服务的任务接口。参考 demo-service 的 `OrderIoService`、V12 迁移及 demo-sub-app 订单页。
 
+前端 `IoTaskApi.list(page)` 接收从 1 开始的页码并返回 SDK `Page<IoTask>`。例如 ``list: (page) => client.page<IoTask>(`/demo/io/tasks?page=${page}&size=10`)``；升级时须将旧的无参列表回调改为转发页码，并移除取 `.items` 的操作。`ImportDialog` 与 `ExportButton` 使用分页元数据提供翻页入口，只有当前页参与刷新，较早待确认任务在重开弹窗或刷新页面后仍可翻页找到。
+
 Business Service 须提供带导入权限码的确认接口，调用 `ExcelIo.confirmImport(taskId, model, validate, writer)`，并返回排队后的 `IoTask`。每次确认重新传入相同模型、只读业务校验器与事务内写入器；SDK 从持久源文件完整重新校验，全部行通过才在同一事务内逐行写入。校验失败时生成新的 Error Report，一行不写。确认使用当次请求的认证与 ABAC 快照，可交给另一实例，也支持提交实例重启后的确认。初次提交使用三参 `importFile(model, source, validate)`，写入器仅在确认时提供；旧四参签名已删除。
 
 只有同租户的提交人可以确认：其他成员返回 403 `io.confirmForbidden`，其他租户返回 404 `io.notFound`，重复确认、其他状态或已超时返回 409 `io.taskNotAwaitingConfirmation`。数据库条件更新只允许一个确认请求抢占成功；执行队列已满时返回 429 `io.busy`，任务保持待确认，可稍后重试。待确认任务不占执行容量，也不按心跳超时判中断；其 `heartbeatAt` 固定为进入待确认的时间，`finishedAt` 为空。超过 24 小时未确认，Global Task `forge-io-interrupted` 将其标记为 `FAILED` / `io.confirmationExpired` 并清理源文件，包含已停用租户。该状态使用现有 `varchar(16)`，无需新增表、列或迁移。

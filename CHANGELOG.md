@@ -35,6 +35,8 @@
 
 ### 不兼容变更
 
+- 前端 `IoTaskApi.list(page)` 现在接收从 1 开始的页码并返回 SDK `Page<IoTask>`；调用方须转发页码并保留分页元数据，不能只返回 `items`。导入与导出记录可翻页，避免较早待确认任务被最新十条记录遮蔽。
+
 - `ExcelIo.importFile` 改为三参 `(model, source, validate)`，不再自动写入；Business Service 必须提供有权限控制的确认接口，重新传入模型、校验器与 writer 调用 `confirmImport(taskId, model, validate, writer)`。旧四参 `importFile` 签名删除。既有 IO 表无需新增迁移。
 
 - `ObjectStorage.prepareUpload`、`write`、`prepareDownload` 删除无用途重载，须以 `StoragePurpose` 为首参；导入与业务绑定前使用 `get(purpose, id)` 校验用途。`forge.storage.download-url-ttl` 删除，下载时长改由用途声明。已有服务须新增 Flyway 迁移复制 SDK `upgrade-purpose.sql`（demo V14）：旧对象回填 `unspecified`、新登记显式提供用途；旧对象须按可信业务关联归类后才可按明确用途下载。

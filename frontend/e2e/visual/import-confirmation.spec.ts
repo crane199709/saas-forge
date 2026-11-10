@@ -24,6 +24,15 @@ const states = {
       resultAvailable: false,
     },
   ],
+  paging: [
+    ...Array.from({ length: 10 }, (_, index) => ({
+      id: `export-${index}`,
+      type: 'EXPORT',
+      status: 'SUCCEEDED',
+      rowCount: 1,
+    })),
+    { ...pending, id: 'older-import' },
+  ],
   revalidation: [
     {
       ...pending,
@@ -73,7 +82,18 @@ for (const [label, width, height] of viewports) {
         await page.clock.setFixedTime(new Date('2026-11-10T02:00:00Z'))
         await page.route(/:\d+\/demo\//, (route) => {
           const path = new URL(route.request().url()).pathname
-          if (path === '/demo/io/tasks') return route.fulfill(onePage(tasks))
+          if (path === '/demo/io/tasks') {
+            if (state !== 'paging') return route.fulfill(onePage(tasks))
+            const number = Number(new URL(route.request().url()).searchParams.get('page') ?? 1)
+            return route.fulfill(
+              ok(tasks.slice((number - 1) * 10, number * 10), {
+                number,
+                size: 10,
+                totalElements: 11,
+                totalPages: 2,
+              }),
+            )
+          }
           if (path === '/demo/context')
             return route.fulfill(
               ok({ identityId: 'i', tenantId: 't', membershipId: 'm', version: 1 }),
@@ -84,7 +104,12 @@ for (const [label, width, height] of viewports) {
         await page.getByRole('button', { name: '导入订单' }).click()
         const dialog = page.getByRole('dialog')
         await expect(dialog.getByRole('heading', { name: '最近任务' })).toBeVisible()
-        if (state === 'pending')
+        if (state === 'paging') {
+          await expect(dialog.getByText('暂无任务')).toBeVisible()
+          await expect(page).toHaveScreenshot(`import-confirmation-paging-first-${label}.png`)
+          await dialog.locator('.btn-next').click()
+          await expect(dialog.getByRole('button', { name: '确认写入' })).toBeVisible()
+        } else if (state === 'pending')
           await expect(dialog.getByRole('button', { name: '确认写入' })).toHaveCount(1)
         else if (state === 'expired') {
           await expect(dialog.getByText('确认已过期，请重新上传', { exact: false })).toHaveCount(2)

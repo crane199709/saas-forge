@@ -48,7 +48,7 @@ test.beforeEach(async ({ page }) => {
   page.on('console', (message) => {
     if (
       ['error', 'warning'].includes(message.type()) &&
-      !/Failed to load resource: the server responded with a status of (400|503)/.test(
+      !/Failed to load resource: the server responded with a status of (400|429)/.test(
         message.text(),
       )
     )
@@ -85,7 +85,18 @@ async function open(
             : [],
         ),
       )
-    if (path === '/demo/io/tasks') return route.fulfill(onePage(recent ?? (task ? [task] : [])))
+    if (path === '/demo/io/tasks') {
+      const number = Number(new URL(route.request().url()).searchParams.get('page') ?? 1)
+      const tasks = recent ?? (task ? [task] : [])
+      return route.fulfill(
+        ok(tasks.slice((number - 1) * 10, number * 10), {
+          number,
+          size: 10,
+          totalElements: tasks.length,
+          totalPages: Math.ceil(tasks.length / 10),
+        }),
+      )
+    }
     if (path === '/demo/orders/import/upload')
       return route.fulfill(
         ok({
@@ -102,8 +113,8 @@ async function open(
       confirmations.push(path)
       if (outcome === 'retry' && confirmations.length === 1)
         return route.fulfill({
-          status: 503,
-          json: { code: 'io.queueFull', httpStatus: 503, userTip: '任务繁忙，请稍后重试' },
+          status: 429,
+          json: { code: 'io.busy', httpStatus: 429, userTip: '任务较多，请稍后再试' },
         })
       confirmed = true
       task = { ...pending(), status: 'WAITING' }
@@ -207,9 +218,38 @@ test('确认队列繁忙后保留待确认任务并可重试', async ({ page }) 
   const state = await open(page, 'retry')
   const dialog = await upload(page)
   await dialog.getByRole('button', { name: '确认写入' }).click()
-  await expect(dialog.getByRole('alert')).toHaveText('任务繁忙，请稍后重试')
+  await expect(dialog.getByRole('alert')).toHaveText('任务较多，请稍后再试')
   await expect(dialog.getByRole('button', { name: '确认写入' })).toBeEnabled()
   await dialog.getByRole('button', { name: '确认写入' }).click()
   await expect(page.getByTestId('order-title')).toHaveText('确认后写入的订单')
   expect(state.confirmations).toHaveLength(2)
+})
+
+test('较早待确认任务在十个更新导出之后，重开与整页刷新仍可翻页确认', async ({ page }) => {
+  const state = await open(page, 'success', [
+    ...Array.from({ length: 10 }, (_, index) => ({
+      id: `export-${index}`,
+      type: 'EXPORT',
+      status: 'SUCCEEDED',
+      rowCount: 1,
+    })),
+    pending(),
+  ])
+  let dialog = page.getByRole('dialog')
+  await expect(dialog.getByText('暂无任务')).toBeVisible()
+  await dialog.locator('.btn-next').click()
+  await expect(dialog.getByText('将写入 2 行', { exact: false })).toBeVisible()
+  await dialog.locator('.el-dialog__headerbtn').click()
+  await page.getByRole('button', { name: '导入订单' }).click()
+  await expect(dialog.getByRole('button', { name: '确认写入' })).toBeEnabled()
+  await page.reload()
+  await page.getByRole('button', { name: '导入订单' }).click()
+  dialog = page.getByRole('dialog')
+  await expect(dialog.getByText('暂无任务')).toBeVisible()
+  await dialog.locator('.btn-next').click()
+  await expect(dialog.getByRole('button', { name: '确认写入' })).toBeEnabled()
+  await page.screenshot({ path: '/private/tmp/import-confirmation-review-paging.png' })
+  await dialog.getByRole('button', { name: '确认写入' }).click()
+  await expect(page.getByTestId('order-title')).toHaveText('确认后写入的订单')
+  expect(state.confirmations).toEqual(['/demo/orders/import/import-1/confirm'])
 })

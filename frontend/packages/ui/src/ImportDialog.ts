@@ -127,6 +127,9 @@ export const ImportDialog = defineComponent({
           state.error.value ? h('p', { role: 'alert' }, state.error.value) : null,
           h(IoTaskList, {
             tasks: state.recent.value,
+            page: state.page.value,
+            loading: state.loading.value,
+            onPageChange: state.refresh,
             membershipId: props.membershipId,
             allowConfirm: true,
             busy: state.busy.value,

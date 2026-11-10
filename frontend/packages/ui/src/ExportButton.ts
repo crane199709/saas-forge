@@ -59,7 +59,13 @@ export const ExportButton = defineComponent({
               reference: () =>
                 h(ElButton, { link: true, 'data-testid': 'export-history' }, () => t('io.history')),
               default: () =>
-                h(IoTaskList, { tasks: state.recent.value, onDownload: state.download }),
+                h(IoTaskList, {
+                  tasks: state.recent.value,
+                  page: state.page.value,
+                  loading: state.loading.value,
+                  onPageChange: state.refresh,
+                  onDownload: state.download,
+                }),
             },
           ),
           state.active.value

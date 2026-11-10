@@ -1,4 +1,4 @@
-import { ApiError } from '@crane199709/sdk'
+import { ApiError, type Page, type PageMeta } from '@crane199709/sdk'
 import { onMounted, onUnmounted, ref } from 'vue'
 
 /** 当前 Membership 在所属服务内的任务。 */
@@ -26,8 +26,8 @@ export interface IoTask {
 }
 /** 只绑定一个业务服务的本人任务接口。 */
 export interface IoTaskApi {
-  /** 最近任务，第一页即可。 */
-  list: () => Promise<IoTask[]>
+  /** 按页获取任务，页码从 1 开始。 */
+  list: (page: number) => Promise<Page<IoTask>>
   /** 获取本人的单个任务。 */
   get: (id: string) => Promise<IoTask>
   /** 现取下载票据；服务端校验归属与有效期。 */
@@ -50,6 +50,8 @@ export function useIoTasks(
   done?: (task: IoTask) => void,
 ) {
   const recent = ref<IoTask[]>([])
+  const page = ref<PageMeta>()
+  const loading = ref(false)
   const error = ref('')
   const active = ref<IoTask | null>(null)
   const busy = ref(false)
@@ -68,14 +70,16 @@ export function useIoTasks(
       if (!stopped) showError(cause)
     }
   }
-  async function refresh() {
+  async function refresh(number = page.value?.number ?? 1) {
     if (stopped) return
     const request = ++generation
+    loading.value = true
     if (timer) clearTimeout(timer)
     try {
-      const list = await api().list()
+      const list = await api().list(number)
       if (stopped || request !== generation) return
-      recent.value = list.filter((task) => task.type === type)
+      page.value = list.page
+      recent.value = list.items.filter((task) => task.type === type)
       if (tracked) {
         const task = await api().get(tracked)
         if (stopped || request !== generation) return
@@ -89,6 +93,8 @@ export function useIoTasks(
       }
     } catch (cause) {
       if (!stopped && request === generation) showError(cause)
+    } finally {
+      if (!stopped && request === generation) loading.value = false
     }
     if (
       !stopped &&
@@ -111,5 +117,5 @@ export function useIoTasks(
     stopped = true
     if (timer) clearTimeout(timer)
   })
-  return { recent, active, busy, error, track, refresh, download, showError }
+  return { recent, page, loading, active, busy, error, track, refresh, download, showError }
 }

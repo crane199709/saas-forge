@@ -29,7 +29,7 @@ const client = useTenantClient()
 const access = useAccessControl()
 const importOpen = ref(false)
 const ioTasks: IoTaskApi = {
-  list: async () => (await client.page<IoTask>('/demo/io/tasks?size=10')).items,
+  list: (page) => client.page<IoTask>(`/demo/io/tasks?page=${page}&size=10`),
   get: (id) => client.api<IoTask>(`/demo/io/tasks/${id}`),
   download: (id) => client.api<{ url: string }>(`/demo/io/tasks/${id}/download`),
 }

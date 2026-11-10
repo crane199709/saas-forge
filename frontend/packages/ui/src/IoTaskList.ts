@@ -1,5 +1,6 @@
 import { defineComponent, h, type PropType } from 'vue'
-import { ElButton } from 'element-plus'
+import type { PageMeta } from '@crane199709/sdk'
+import { ElButton, ElPagination } from 'element-plus'
 import type { IoTask } from './io-tasks'
 import { useUiI18n } from './i18n'
 export const IoTaskList = defineComponent({
@@ -7,6 +8,10 @@ export const IoTaskList = defineComponent({
   props: {
     /** 当前服务的最近任务。 */
     tasks: { type: Array as PropType<IoTask[]>, required: true },
+    /** 服务端分页元数据，保留全部方向的任务页。 */
+    page: Object as PropType<PageMeta>,
+    /** 当前页正在加载。 */
+    loading: Boolean,
     /** 当前会话的 Membership，用于隐藏他人任务的确认入口。 */
     membershipId: String,
     /** 调用方提供确认接口时才允许确认。 */
@@ -14,7 +19,11 @@ export const IoTaskList = defineComponent({
     /** 正在执行其他提交或确认。 */
     busy: Boolean,
   },
-  emits: { download: (_id: string) => true, confirm: (_id: string) => true },
+  emits: {
+    download: (_id: string) => true,
+    confirm: (_id: string) => true,
+    'page-change': (_number: number) => true,
+  },
   setup(props, { emit }) {
     const { t } = useUiI18n()
     return () =>
@@ -95,6 +104,28 @@ export const IoTaskList = defineComponent({
               }),
             )
           : h('p', t('io.empty')),
+        props.page && props.page.totalPages > 1
+          ? h(
+              'footer',
+              {
+                style: {
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  marginTop: 'var(--forge-space-4)',
+                },
+              },
+              [
+                h(ElPagination, {
+                  currentPage: props.page.number,
+                  pageSize: props.page.size,
+                  total: props.page.totalElements,
+                  disabled: props.loading,
+                  layout: 'prev, pager, next',
+                  'onUpdate:currentPage': (number: number) => emit('page-change', number),
+                }),
+              ],
+            )
+          : null,
       ])
   },
 })
