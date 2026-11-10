@@ -35,11 +35,7 @@ public class OrderIoService {
 
     public IoTask importFile(UUID source) {
         storage.completeUpload(source);
-        return excel.importFile(
-                OrderImportRow.class,
-                source,
-                row -> List.of(),
-                row -> orders.create(row.title(), row.amount(), row.customerSource()));
+        return excel.importFile(OrderImportRow.class, source, row -> List.of());
     }
 
     public IoTask export(PageQuery query) {

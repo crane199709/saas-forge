@@ -17,6 +17,14 @@ interface IoTaskMapper {
             @Param("summary") String summary);
     /** 查询本人任务；不受 Data Policy 过滤。 */
     IoTask own(@Param("id") UUID id, @Param("member") UUID member);
+    /** 查询当前租户内的确认元数据，用于区分提交人与其他成员；不受 Data Policy 过滤。 */
+    IoConfirmation confirmation(@Param("id") UUID id);
+    /** 抢占未过期的待确认导入，只有一个确认请求可成功；不受 Data Policy 过滤。 */
+    int confirm(
+            @Param("id") UUID id,
+            @Param("member") UUID member,
+            @Param("actor") UUID actor,
+            @Param("cutoff") OffsetDateTime cutoff);
     /** 分页查询本人任务；不受 Data Policy 过滤。 */
     List<IoTask> list(@Param("member") UUID member, @Param("limit") int limit, @Param("offset") long offset);
     /** 统计本人任务；不受 Data Policy 过滤。 */
@@ -25,7 +33,7 @@ interface IoTaskMapper {
     int start(@Param("id") UUID id, @Param("actor") UUID actor);
     /** 刷新仍在运行的任务心跳；不受 Data Policy 过滤。 */
     int heartbeat(@Param("id") UUID id, @Param("rows") long rows);
-    /** 完成仍在执行的任务，条件更新防止超时收尾被覆盖；不受 Data Policy 过滤。 */
+    /** 收尾本轮执行（含转待确认），条件更新防止超时收尾被覆盖；不受 Data Policy 过滤。 */
     int finish(
             @Param("id") UUID id,
             @Param("status") String status,
@@ -38,6 +46,8 @@ interface IoTaskMapper {
     List<IoRecoveryTask> staleTasks(@Param("cutoff") OffsetDateTime cutoff);
     /** 收尾本租户超时任务；不受 Data Policy 过滤。 */
     int interrupt(@Param("cutoff") OffsetDateTime cutoff);
+    /** 条件收尾超过 24 小时的待确认导入，与确认抢占互斥；不受 Data Policy 过滤。 */
+    int expireConfirmations(@Param("cutoff") OffsetDateTime cutoff);
     /** 取一批过期结果；不受 Data Policy 过滤。 */
     List<IoTask> expired(@Param("cutoff") OffsetDateTime cutoff);
     /** 删除结果登记引用，保留任务；不受 Data Policy 过滤。 */

@@ -14,6 +14,17 @@
         FROM forge_io_task
         WHERE NOT deleted AND id=#{id} AND membership_id=#{member}
     </select>
+    <select id="confirmation" resultType="io.saasforge.sdk.io.IoConfirmation">
+        SELECT membership_id,status,source_object_id,heartbeat_at
+        FROM forge_io_task
+        WHERE NOT deleted AND id=#{id}
+    </select>
+    <update id="confirm">
+        UPDATE forge_io_task
+        SET status='WAITING',heartbeat_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,updated_by=#{actor}
+        WHERE NOT deleted AND id=#{id} AND type='IMPORT' AND membership_id=#{member}
+        AND status='AWAITING_CONFIRM' AND heartbeat_at &gt; #{cutoff}
+    </update>
     <select id="list" resultType="io.saasforge.sdk.io.IoTask">
         SELECT
         <include refid="columns"/>
@@ -37,7 +48,8 @@
     <update id="finish">
         UPDATE forge_io_task
         SET status=#{status},row_count=#{rows},error_code=#{code},failure_reason=#{reason},result_object_id=#{result},
-        finished_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,updated_by=#{actor}
+        finished_at=CASE WHEN #{status}='AWAITING_CONFIRM' THEN NULL ELSE CURRENT_TIMESTAMP END,
+        heartbeat_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,updated_by=#{actor}
         WHERE NOT deleted AND id=#{id} AND status='RUNNING'
     </update>
     <select id="staleTasks" resultType="io.saasforge.sdk.io.IoRecoveryTask">
@@ -51,6 +63,12 @@
         SET status='FAILED',error_code='io.interrupted',failure_reason='执行中断，请重新提交',finished_at=CURRENT_TIMESTAMP,
         updated_at=CURRENT_TIMESTAMP,updated_by=NULL
         WHERE NOT deleted AND status IN ('WAITING','RUNNING') AND heartbeat_at &lt; #{cutoff}
+    </update>
+    <update id="expireConfirmations">
+        UPDATE forge_io_task
+        SET status='FAILED',error_code='io.confirmationExpired',failure_reason='超过24小时未确认，请重新提交',
+        finished_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,updated_by=NULL
+        WHERE NOT deleted AND type='IMPORT' AND status='AWAITING_CONFIRM' AND heartbeat_at &lt;= #{cutoff}
     </update>
     <select id="expired" resultType="io.saasforge.sdk.io.IoTask">
         SELECT
