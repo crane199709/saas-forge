@@ -88,6 +88,7 @@ const files: Record<string, string> = {
       type: 'module',
       scripts: {
         dev: 'vite',
+        [`start:${code}`]: `pnpm build && pnpm preview --host 127.0.0.1 --port ${port}`,
         build: 'pnpm lint && pnpm lint:style && vue-tsc --noEmit && vite build',
         preview: 'vite preview',
         typecheck: 'vue-tsc --noEmit',
@@ -433,6 +434,7 @@ for (const [label, width, height] of viewports) {
 ## 命令
 
 - \`pnpm dev\`：独立开发宿主 \`http://localhost:${port}\`，经代理访问本地网关
+- \`pnpm start:${code}\`：构建后在 \`http://127.0.0.1:${port}\` 预览，供租户 Shell 加载 \`remoteEntry.js\`；源码修改后重新执行
 - \`pnpm lint\`：隔离约定检查
 - \`pnpm lint:style\`：样式 token 检查
 - \`pnpm typecheck\`：类型检查
@@ -461,12 +463,14 @@ const next = workspace
   pnpm install
   pnpm --filter @forge/${code}-sub-app format    # 模板按默认编码排版，较长的编码会改变折行
   pnpm --filter @forge/${code}-sub-app dev       # 独立开发宿主 http://localhost:${port}
+  pnpm --filter @forge/${code}-sub-app start:${code} # 构建并预览，供租户 Shell 加载 http://127.0.0.1:${port}/remoteEntry.js
   pnpm --filter @forge/${code}-sub-app build     # 产物 dist/remoteEntry.js，入口地址登记到 App Registry`
   : `下一步：
   cd ${JSON.stringify(target)}
   pnpm install
   pnpm format    # 模板按默认编码排版，较长的编码会改变折行
   pnpm dev       # 独立开发宿主 http://localhost:${port}
+  pnpm start:${code} # 构建并预览，供租户 Shell 加载 http://127.0.0.1:${port}/remoteEntry.js
   pnpm build     # 产物 dist/remoteEntry.js，入口地址登记到 App Registry`
 console.log(`已生成 ${target}
 ${next}

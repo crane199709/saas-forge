@@ -31,6 +31,18 @@ cd orders-service
 
 维护模板时，在平台仓库执行 `cd backend && ./mvnw install -Parchetype-it`；该 profile 启用 archetype 自带的生成集成测试。普通 reactor `verify` 不运行这一独立 Maven 消费接缝，避免冷缓存下引用尚未安装的同次 SDK；已发布/安装 SDK 后也可单独 `./mvnw -pl forge-service-archetype clean verify -Parchetype-it`。CI 使用包含模板测试的 install 命令。
 
+## Sub-App 本地启动
+
+前端脚手架按创建时的应用编码和端口生成 `pnpm start:<应用编码>`。例如应用编码为 `lowcode`、端口为 `5176` 时，在生成的工程目录执行：
+
+```sh
+pnpm start:lowcode
+```
+
+该命令执行 `pnpm build && pnpm preview --host 127.0.0.1 --port 5176`，构建成功后提供 `http://127.0.0.1:5176/remoteEntry.js`，供本机租户 Shell 加载；将这个入口登记到 App Registry。源码修改后重新执行。`pnpm dev` 用于独立开发宿主，支持 HMR。
+
+通过平台仓库的 `pnpm create:sub-app` 生成时，在 `frontend` 下执行 `pnpm --filter @forge/lowcode-sub-app start:lowcode`。已生成工程不会自动补脚本，可按本工程编码和端口将上述命令加入 `package.json` 的 `scripts`。
+
 ## 从配置到租户菜单
 
 1. 与平台运维按[平台侧接入清单](service-onboarding-checklist.md)第 1 步准备目标数据库、schema、运行与迁移账号。业务开发者只维护 Flyway 迁移，不能用运行账号建表。租户表保留标准列、ENABLE + FORCE RLS、部分唯一索引与 `NOT deleted` 条件。
