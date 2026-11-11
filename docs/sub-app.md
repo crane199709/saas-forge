@@ -55,6 +55,8 @@ pnpm create:sub-app billing 5180
 
 开发模式不启用 Module Federation，Sub-App 直接使用自己的依赖副本，因此 HMR 照常生效；联邦加载与共享单例只在 build/preview 下由真实 Shell 验证（`pnpm test:e2e`）。
 
+本地通过 `tenant-app` 加载子应用时，还须在租户 Shell 的 `frontend/apps/tenant-app/vite.config.ts` 的 `server.proxy` 中追加该业务前缀到网关的代理，并重启 Shell 开发服务器。子应用的 `apiPrefixes` 只配置独立开发宿主，不能替代 Shell 代理；配置例子与验收方式见[平台侧接入清单](service-onboarding-checklist.md#4-nacos-网关路由与前缀声明)。
+
 ## 发布到租户 Shell
 
 1. 执行 `pnpm build`，部署整个 `dist` 到静态服务，确认 `remoteEntry.js` 与相对资源可访问，并允许目标 Shell 的跨源请求。

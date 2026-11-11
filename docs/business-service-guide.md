@@ -49,7 +49,8 @@ pnpm start:lowcode
 2. 按清单第 2 步登记服务专属 Manifest 令牌，第 3 步创建 `forge-tenant`、`forge-app`、`forge-audit`、`forge-notification` 及 `<serviceName>-order` Topic；platform 的 `forge.platform.provisioning.services` 加入服务注册名。
 3. 提供下表配置后执行 `mvn spring-boot:run`。确认 Flyway 成功、Nacos 注册成功、IAM Manifest 上报成功。服务仅导入 `forge-common.yaml`；如使用独立服务配置，必须显式添加其 dataId，不能只在 Nacos 创建文件。
 4. 按清单第 4—5 步追加网关路由和 `forge.gateway.services` 的 `prefix: /orders`、`realm: tenant`，重启网关。匿名访问业务接口得到 401，正确 Tenant Realm Token 按权限得到 200/403，OpenAPI 能访问且 servers 地址正确。
-5. 按清单第 6 步发布对应 Sub-App、登记 App Registry（示例 app 编码为 pathPrefix）、向套餐开放应用和权限，再向成员角色授予权限及 Data Policy。重新登录租户 Shell，确认看到菜单、加载前端资源并成功调用服务。只有后端 Manifest 并不会自动生成可用的前端页面。
+5. 本地通过租户 Shell 联调时，在 `frontend/apps/tenant-app/vite.config.ts` 的 `server.proxy` 中追加业务网关前缀到 `FORGE_DEV_GATEWAY`（默认 `http://localhost:8080`）的代理；Lowcode 例如 `'/lowcode': process.env.FORGE_DEV_GATEWAY ?? 'http://localhost:8080'`。保留前缀，由网关执行 `StripPrefix`，并重启租户 Shell 开发服务器。仅配置 Sub-App 的 `apiPrefixes` 不会更新 Shell 的代理，详见[接入清单第 4 节](service-onboarding-checklist.md#4-nacos-网关路由与前缀声明)。
+6. 按清单第 6 步发布对应 Sub-App、登记 App Registry（示例 app 编码为 pathPrefix）、向套餐开放应用和权限，再向成员角色授予权限及 Data Policy。重新登录租户 Shell，确认看到菜单、加载前端资源并成功调用服务。只有后端 Manifest 并不会自动生成可用的前端页面。
 
 ## 必须配置项
 

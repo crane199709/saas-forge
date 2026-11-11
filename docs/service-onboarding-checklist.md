@@ -91,6 +91,17 @@ forge:
 
 - [ ] **怎么确认**：发布配置并重启网关。前缀是单个小写路径段，可含数字、连字符；不允许重复或占用 `/actuator`、`/v3`、`/swagger-ui`、`/webjars`。漏配/非法配置启动失败。`/orders/<业务路径>` 无 Token 返回 401，有有效 Tenant Realm Token 按业务权限放行，Platform Realm Token 被拒；带有效 Token 访问 `/orders/internal/**` 仍被拒。未声明前缀不能访问。服务自身也必须验证 Token、issuer、权限；内部端点只允许服务直连网络访问。
 
+### 本地租户 Shell 开发代理（有 Sub-App 时）
+
+- [ ] **在哪里配**：通过本地 `tenant-app` 加载 Sub-App 联调时，在 [tenant-app/vite.config.ts](../frontend/apps/tenant-app/vite.config.ts) 的 `server.proxy` 中追加业务网关前缀，保留现有代理。例如 Lowcode：
+
+```ts
+'/lowcode': process.env.FORGE_DEV_GATEWAY ?? 'http://localhost:8080',
+```
+
+- [ ] **为什么需要**：Sub-App 的相对 API 请求发送到租户 Shell 所在的 `5174`，先由 Vite 转发到网关，再由网关转发到业务服务。这里保留 `/lowcode` 前缀，由网关执行 `StripPrefix=1`。Sub-App 自身 `vite.config.ts` 中的 `apiPrefixes` 只配置独立开发宿主的代理，不能替代租户 Shell 的代理。
+- [ ] **怎么确认**：重启租户 Shell 开发服务器，在 Shell 内发起业务请求，确认请求到达网关和业务服务，响应是预期 API JSON，而非 Vite 的 HTML 页面。此项是本地开发配置，仍须完成上面的 Nacos 路由和认证前缀登记。
+
 ## 5. OpenAPI 聚合
 
 - [ ] **做什么/在哪里配**：服务引入 SDK OpenAPI 能力，提供 `/v3/api-docs`；网关分组由上述 `forge.gateway.services` 自动产生，不另外维护 Swagger URL 列表。服务采用 `server.forward-headers-strategy: framework`，网关 `trusted-proxies` 按实际可信代理配置。

@@ -48,6 +48,7 @@ forge:
     manifest:
       tokens:
         demo-service: ${FORGE_DEMO_MANIFEST_TOKEN:local-demo-manifest-token}
+        lowcode-service: ${FORGE_LOWCODE_MANIFEST_TOKEN}
         # forge-platform 以此读取 GET /internal/permissions 与 /internal/permission-tree，供套餐的 Feature Pack 选择
         forge-platform: ${FORGE_PLATFORM_MANIFEST_TOKEN:local-platform-manifest-token}
     # 加密 TOTP 密钥的 AES-256 密钥（Base64）；本地开发值，部署时必须以 Nacos 或环境变量覆盖，多实例一致，代码中不设默认值。
