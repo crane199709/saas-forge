@@ -44,6 +44,16 @@ public final class ForgeArchitectureRules {
 
     /** SQL 注解、字符串 Wrapper 和 SQL 片段在 SDK 中也不豁免。 */
     public static ArchRule persistence() {
+        return persistence(Set.of());
+    }
+
+    /**
+     * 同 {@link #persistence()}，但允许指定类（含其内部类）依赖 JDBC，用于连接不属于平台的外部数据库；
+     * 这些类的 SQL 注解、字符串 Wrapper 与 SQL 片段限制不变。
+     *
+     * @param externalJdbc 豁免 JDBC 依赖的类全限定名
+     */
+    public static ArchRule persistence(Set<String> externalJdbc) {
         return classes().should(new ArchCondition<>("遵守 SQL 与持久层规范") {
             @Override
             public void check(JavaClass type, ConditionEvents events) {
@@ -67,7 +77,9 @@ public final class ForgeArchitectureRules {
                                     "com.baomidou.mybatisplus.extension.conditions.update.UpdateChainWrapper")) {
                         reject(events, type, dependency.getDescription());
                     }
-                    if (!type.getPackageName().startsWith(SDK) && JDBC.stream().anyMatch(target::isAssignableTo)) {
+                    if (!type.getPackageName().startsWith(SDK)
+                            && !externalJdbc(type, externalJdbc)
+                            && JDBC.stream().anyMatch(target::isAssignableTo)) {
                         reject(events, type, dependency.getDescription());
                     }
                 });
@@ -211,6 +223,12 @@ public final class ForgeArchitectureRules {
                         .forEach(m -> reject(events, type, m.getFullName() + " 未返回 ApiResponse"));
             }
         });
+    }
+
+    // 按名称而非包匹配，免得 JDBC 用法扩散到同包其他类；内部类与 lambda 所在类随外部类豁免
+    private static boolean externalJdbc(JavaClass type, Set<String> names) {
+        String name = type.getName();
+        return names.stream().anyMatch(exempt -> name.equals(exempt) || name.startsWith(exempt + "$"));
     }
 
     private static String[] location(JavaClass type, String root) {

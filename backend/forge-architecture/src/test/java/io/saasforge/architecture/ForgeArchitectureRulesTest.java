@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.lang.ArchRule;
+import fixtures.externaljdbc.ExternalConnector;
+import fixtures.externaljdbc.OtherJdbc;
 import fixtures.sql.BadSelect;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -39,6 +42,25 @@ class ForgeArchitectureRulesTest {
         var result =
                 ForgeArchitectureRules.persistence().evaluate(new ClassFileImporter().importClasses(BadSelect.class));
         assertThat(result.getFailureReport().toString()).contains("SQL 片段");
+    }
+
+    @Test
+    void externalJdbcExemptsOnlyNamedClassesAndOnlyJdbc() throws Exception {
+        var rule = ForgeArchitectureRules.persistence(Set.of("fixtures.externaljdbc.ExternalConnector"));
+        var importer = new ClassFileImporter();
+        assertThat(rule.evaluate(importer.importClasses(ExternalConnector.class))
+                        .hasViolation())
+                .isFalse();
+        assertThat(rule.evaluate(
+                                importer.importClasses(Class.forName("fixtures.externaljdbc.ExternalConnector$Nested")))
+                        .hasViolation())
+                .isFalse();
+        assertThat(rule.evaluate(importer.importClasses(ExternalConnector.WithWrapper.class))
+                        .getFailureReport()
+                        .toString())
+                .contains("QueryWrapper");
+        assertThat(rule.evaluate(importer.importClasses(OtherJdbc.class)).hasViolation())
+                .isTrue();
     }
 
     static Stream<Arguments> examples() {

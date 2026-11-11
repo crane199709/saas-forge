@@ -82,7 +82,7 @@ SDK 的配置类放在自动配置旁，以 `@EnableConfigurationProperties` 注
 
 各服务与 SDK 的 `ArchitectureTest` 都继承 `ForgeArchitectureTest`，测试类放在模块根包，例如 `io.saasforge.demo`。新增模块时，添加 `io.saasforge:forge-architecture` 的 test 依赖，并按通用规范添加 `ArchitectureTest`。
 
-除通用规范列出的规则外，还覆盖 SDK 依赖方向与包循环、IAM Mapper 的 tenantLine 标注；`@Scheduled` 限制只对 SDK 包之外生效。JDBC 基础设施仅在 SDK 包中豁免；SQL 注解与 Wrapper 限制对 SDK 同样生效。
+除通用规范列出的规则外，还覆盖 SDK 依赖方向与包循环、IAM Mapper 的 tenantLine 标注；`@Scheduled` 限制只对 SDK 包之外生效。JDBC 基础设施在 SDK 包中豁免，服务只能按类经 `externalJdbcClasses()` 豁免连接外部数据库的类；SQL 注解与 Wrapper 限制对 SDK 同样生效。
 
 快速执行全部模块的架构检查：
 

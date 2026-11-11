@@ -12,6 +12,7 @@
 - archetype 生成的工程自带 Maven Wrapper（与平台仓库同一份，`mvnw` 可执行），`AGENTS.md` 与接入指南的命令统一为 `./mvnw`。
 - archetype 迁移由八个演进版本合并为两份：`V1__forge_sdk.sql`（SDK 必需表）与 `V2__example_orders.sql`（示例业务表，删除示例时整体删除）。表结构与原八个迁移执行后的结果一致。
 - `forge-create-sub-app` 在仓库外生成时提示 `pnpm dev` / `pnpm build`；只有 `--workspace` 模式提示 `pnpm --filter`。
+- 规范 `business-service.md`「禁止」一节的 JDBC 规则新增例外：代 Tenant 连接不属于平台的外部数据库时可用原生 JDBC。`ForgeArchitectureTest` 新增可覆盖的 `externalJdbcClasses()`，`ForgeArchitectureRules` 新增 `persistence(Set<String>)`，只对列出的类（含内部类）放开 JDBC 依赖检查，SQL 注解、字符串 Wrapper 与 SQL 片段限制不变。已生成的工程如需此例外，重新复制 `docs/standards/` 并在 `ArchitectureTest` 中覆盖该方法。
 - 已生成的工程：主类名、Wrapper 可按需自行调整或从新生成的临时工程复制；**不要**把合并后的迁移复制进已执行过旧迁移的工程，Flyway 历史以已执行的版本为准。
 
 ## 0.1.0

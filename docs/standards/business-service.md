@@ -31,6 +31,7 @@
 - `QueryWrapper` / `UpdateWrapper` 等以字符串写列名的 Wrapper。
 - 接收 SQL 片段的 Wrapper 方法：`apply`、`last`、`inSql`、`notInSql`、`exists`、`notExists`、`having`、`setSql`、`select("...")`。
 - `JdbcTemplate`、`NamedParameterJdbcTemplate` 与原生 JDBC。它们绕过 MyBatis-Plus 拦截器，得不到租户隔离与数据权限保障。
+  例外：代 Tenant 连接不属于平台的外部数据库（如测试连接、预览查询）时，这类库没有租户列，只能用原生 JDBC。把外部连接收在少数专用类中，在 `ArchitectureTest` 覆盖 `externalJdbcClasses()` 列出这些类并注释理由，见「自动架构检查」。服务自己的库不适用此例外。
 
 ### Mapper XML 约定
 
@@ -298,5 +299,17 @@ class ArchitectureTest extends ForgeArchitectureTest {}
 ```
 
 规则覆盖 SQL 注解、字符串 Wrapper、SQL 片段调用及方法引用、JDBC 依赖、服务分层与功能包循环、REST 接口响应信封，以及 `@Scheduled` / `@EnableScheduling`（含组合注解与重复任务容器）。业务定时任务使用 `forge-sdk-scheduling` 的 `@GlobalTask` 或 `@TenantTask`。
+
+连接外部数据库的类可豁免 JDBC 依赖检查，豁免按类全限定名（含其内部类）生效，这些类的 SQL 注解、字符串 Wrapper 与 SQL 片段限制不变：
+
+```java
+class ArchitectureTest extends ForgeArchitectureTest {
+    @Override
+    protected Set<String> externalJdbcClasses() {
+        // 代 Tenant 连接其自有数据库，库中没有租户列，MyBatis-Plus 拦截器不适用
+        return Set.of("com.example.orders.datasource.service.ExternalJdbcConnector");
+    }
+}
+```
 
 Mapper XML 的 SQL 语义不属于字节码检查范围，仍需代码审查。
