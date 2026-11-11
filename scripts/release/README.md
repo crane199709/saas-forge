@@ -53,6 +53,8 @@ scripts/release/publish.sh local v0.2.0-SNAPSHOT  # 版本取当前源码
 
 Maven 用户名来自 `github.actor`，密码来自自动生成的 `GITHUB_TOKEN`，无需额外 Maven Secret。只有发布 job 授予 `contents: read` 和 `packages: write`；已有 Maven 包需允许当前仓库 Actions 写入。仓库外消费 GitHub Packages 时仍需配置读取凭证及 Maven server id `forge-release`。
 
+源码仓库已重命名为 `crane199709/saas-forge`，`MAVEN_RELEASE_URL` 使用 `https://maven.pkg.github.com/crane199709/saas-forge`。仓库外消费方若固定配置旧仓库地址，也应更新 Maven repository URL；Maven 坐标和 npm 包名保持不变。
+
 上述 Variables 与 npm Secret 全部未配置时，CI 使用临时仓库；自动提供的 GitHub 身份和 token 不触发正式发布。任一项配置后进入 remote，缺项会失败。remote 仅接受上述两个目标，npm 可见性不设默认值；本地模式固定 `restricted`，继续使用临时 Verdaccio。三个发布包使用已选定的 `@crane199709` scope；正式发布前须确认该 scope 的写权限并确定包可见性。
 
 目标、必填参数和 access 校验，以及 `npm whoami` 身份预检，都在 Maven deploy/npm publish 前执行。身份预检不代表已经确认目标 scope 的写权限、付费私有包资格或全部发布策略。临时 npmrc/settings.xml 只保存环境变量引用，不落盘密钥。
@@ -87,9 +89,9 @@ python3 -m unittest discover -s scripts/release -p 'test_*.py'
 
 ## 0.1.0 正式发布记录
 
-正式标签 `v0.1.0` 固定指向 `1e57298beed8f2aa53531afce29dfeb2f34ecf20`，不移动标签或覆盖同版本。[发布 run 41164401705](https://github.com/crane199709/saas-forge-v2/actions/runs/41164401705) 的四个质量门通过，Maven 制品与三个公开 npm 包上传成功，六个正式 `0.1.0` 镜像发布及按 digest 回拉通过。原 run 的发布 job 随后因 npm 安装元数据短暂 404 而失败；该失败记录保留，上传成功不作为消费验收成功。
+正式标签 `v0.1.0` 固定指向 `1e57298beed8f2aa53531afce29dfeb2f34ecf20`，不移动标签或覆盖同版本。[发布 run 41164401705](https://github.com/crane199709/saas-forge/actions/runs/41164401705) 的四个质量门通过，Maven 制品与三个公开 npm 包上传成功，六个正式 `0.1.0` 镜像发布及按 digest 回拉通过。原 run 的发布 job 随后因 npm 安装元数据短暂 404 而失败；该失败记录保留，上传成功不作为消费验收成功。
 
-[只消费恢复 run 41165936334](https://github.com/crane199709/saas-forge-v2/actions/runs/41165936334) 已成功，使用修复后的 `Verify published SDK` 等待并消费既有 `0.1.0`：隔离 Forge 缓存解析 Maven 依赖，安装三个 npm 包、编译类型示例、加载 Vite 配置并运行 lint CLI 全部通过。没有重新发布制品；不要再次运行上文的 `remote v0.1.0` 发布命令。另已在仓库外通过匿名公开 npm registry 执行：
+[只消费恢复 run 41165936334](https://github.com/crane199709/saas-forge/actions/runs/41165936334) 已成功，使用修复后的 `Verify published SDK` 等待并消费既有 `0.1.0`：隔离 Forge 缓存解析 Maven 依赖，安装三个 npm 包、编译类型示例、加载 Vite 配置并运行 lint CLI 全部通过。没有重新发布制品；不要再次运行上文的 `remote v0.1.0` 发布命令。另已在仓库外通过匿名公开 npm registry 执行：
 
 ```sh
 pnpm --package=@crane199709/sub-app-kit@0.1.0 dlx forge-create-sub-app billing 5180

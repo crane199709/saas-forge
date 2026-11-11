@@ -13,11 +13,13 @@ Redis 数据丢失后先重启 IAM 完成全量恢复，再恢复网关流量。
 
 ## GHCR 发布与验证
 
-仓库 Actions variable `IMAGE_PREFIX` 设置为 `ghcr.io/crane199709/saas-forge-v2`。工作流只接受 `ghcr.io/<当前仓库 owner>/<单段命名空间>`，不接受其他 registry 或 owner。未配置时仍构建六个镜像，不登录、不推送。
+仓库 Actions variable `IMAGE_PREFIX` 设置为 `ghcr.io/crane199709/saas-forge`。工作流只接受 `ghcr.io/<当前仓库 owner>/<单段命名空间>`，不接受其他 registry 或 owner。未配置时仍构建六个镜像，不登录、不推送。
+
+源码仓库与 GHCR 镜像命名空间统一为 `saas-forge`。新构建的 `org.opencontainers.image.source` 指向当前仓库；历史镜像通过保留 manifest digest 的复制迁移到新地址，保留原始镜像内容和构建元数据。部署配置应使用下文的新镜像地址。2026-11-11 的[迁移 run 42971139681](https://github.com/crane199709/saas-forge/actions/runs/42971139681) 已完成六个私有包、31 个历史版本的复制与 digest 校验，并从新地址完整拉取六个 `0.1.0` 镜像。
 
 发布标签 `v<统一版本>` 在完整质量门通过后调用共享的 `images.yml`，推送版本标签；Actions 中手动运行 **Build and publish images** 可单独验证六个镜像，不发布 Maven/npm，也不创建版本标签。手动运行始终使用 `sha-<完整提交 SHA>`，包括 main，避免覆盖正式版本。首次使用手动入口须先将工作流合入默认分支，然后可选择待验证分支。
 
-镜像名称为 `forge-gateway`、`forge-iam`、`forge-platform`、`demo-service`、`tenant-app`、`platform-console`，例如 `ghcr.io/crane199709/saas-forge-v2/forge-iam:0.1.0`。六个镜像均带 `org.opencontainers.image.source` 指向当前仓库。正式 `v0.1.0` 指向提交 `1e57298beed8f2aa53531afce29dfeb2f34ecf20`；[发布 run 41164401705](https://github.com/crane199709/saas-forge-v2/actions/runs/41164401705) 的四个质量门与六镜像发布、按 digest 回拉验证均通过。该 run 因独立的 npm 消费步骤遇到发布后元数据延迟而保留失败状态，不影响其中已成功的镜像发布记录。
+镜像名称为 `forge-gateway`、`forge-iam`、`forge-platform`、`demo-service`、`tenant-app`、`platform-console`，例如 `ghcr.io/crane199709/saas-forge/forge-iam:0.1.0`。新构建的六个镜像均带 `org.opencontainers.image.source` 指向当前仓库。正式 `v0.1.0` 指向提交 `1e57298beed8f2aa53531afce29dfeb2f34ecf20`；[发布 run 41164401705](https://github.com/crane199709/saas-forge/actions/runs/41164401705) 的四个质量门与六镜像发布、按 digest 回拉验证均通过。该 run 因独立的 npm 消费步骤遇到发布后元数据延迟而保留失败状态，不影响其中已成功的镜像发布记录。
 
 CI 使用自动生成的 `GITHUB_TOKEN` 登录；仅镜像 job 授予 `packages: write`，不配置额外 PAT。GHCR 新包默认私有，工作流在构建前及推送前后检查 private 与包名称、owner 身份；source 标签标记源码，当前仓库令牌的实际推拉验证访问权。API 返回 repository 时要求匹配当前仓库；未返回时不作为失败，也不据此声称已验证 UI 中的仓库关联。已有同名包需允许当前仓库 Actions 访问。工作流不会修改包可见性或权限。推送后记录 digest、删除本地标签，再按 digest 拉取并比对镜像 ID；摘要保留六个不可变拉取引用。此验证不代替服务健康与试点主链路验收。
 
@@ -25,7 +27,7 @@ CI 使用自动生成的 `GITHUB_TOKEN` 登录；仅镜像 job 授予 `packages:
 
 ```sh
 printf '%s' "$GHCR_READ_TOKEN" | docker login ghcr.io -u "$GITHUB_USERNAME" --password-stdin
-docker pull ghcr.io/crane199709/saas-forge-v2/forge-iam:0.1.0
+docker pull ghcr.io/crane199709/saas-forge/forge-iam:0.1.0
 ```
 
 生产部署优先使用工作流摘要里的 `镜像名@sha256:...`。参见 [GitHub Container registry 官方说明](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)。

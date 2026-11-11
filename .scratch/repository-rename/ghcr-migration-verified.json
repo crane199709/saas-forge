@@ -1,0 +1,126 @@
+[
+  {
+    "image": "ghcr.io/crane199709/saas-forge/forge-gateway:0.1.0",
+    "digest": "sha256:6677aea166997ddeb4144ddfd362565de096385d4f1acc06dc9aba723fae3946"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/forge-gateway:sha-1e57298beed8f2aa53531afce29dfeb2f34ecf20",
+    "digest": "sha256:5785a3bae87325fadd4839bd5b19917bd973c397afe2149b5833f85689b4ab0b"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/forge-gateway:sha-64210fb90a6d1c0f39e048b95f560486496cb1ff",
+    "digest": "sha256:92e92ed949cbc4b5d510cf5393ae6607290ff4d011e9188234f1f9caae5b17a0"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/forge-gateway:sha-291c88a72376b3162cd6f20a185a74594e738f67",
+    "digest": "sha256:f7973ad732ab70661ebe033807a5be6f8a3e9f36c0e000fe48412c79329e7585"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/forge-iam:0.1.0",
+    "digest": "sha256:05d6b25c5a889794089f24e9c0b41fcb6856806700775848d96b30b5eb4fcc1c"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/forge-iam:sha-1e57298beed8f2aa53531afce29dfeb2f34ecf20",
+    "digest": "sha256:cbde537b1142b9ce8502bfd2d2543834cee41f0e3c2c23bd5e731ffd5f2f5273"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/forge-iam:sha-64210fb90a6d1c0f39e048b95f560486496cb1ff",
+    "digest": "sha256:b6b69a6301de1176e7fb305bfe33dd466584f8a116942e45b6b2e131c49866fd"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/forge-platform:0.1.0",
+    "digest": "sha256:6145605c34994e09ed3c99a2cebfe5c345879ccef72f84973c47807644dd4bd7"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/forge-platform:sha-1e57298beed8f2aa53531afce29dfeb2f34ecf20",
+    "digest": "sha256:7dc605329a7da7bfad3a2e962c72662cbe044fdb45bb8db68a491361fe846f08"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/forge-platform:sha-64210fb90a6d1c0f39e048b95f560486496cb1ff",
+    "digest": "sha256:ae0b593d686a63a29e95e8a36bb411bd0fc4d60ccf09f64706414b33b104971f"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/demo-service:0.1.0",
+    "digest": "sha256:494b2f60eabb31c2f5b4ddefbe9d2329d68802aedba0f7e4df759d506873db65"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/demo-service:sha-1e57298beed8f2aa53531afce29dfeb2f34ecf20",
+    "digest": "sha256:9494e6ef5de7104a119c5ad58adfe79dbda68bb373acd661078f0d3c6f8b6861"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/demo-service:sha-64210fb90a6d1c0f39e048b95f560486496cb1ff",
+    "digest": "sha256:16642230047f1164d78fdb3594f1452519679651a256613bb7776c911de427a4"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/tenant-app:0.1.0",
+    "digest": "sha256:bbd20cb44a8196d6699f15d7e8b3ad032f217133728d3b15d311ffdbc4a67e81"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/tenant-app:migrated-sha256-d98a646031f7528de2cde759ff66735ae364fbc0ee7f16648088885e2f54a27f",
+    "digest": "sha256:d98a646031f7528de2cde759ff66735ae364fbc0ee7f16648088885e2f54a27f"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/tenant-app:migrated-sha256-a297140670f01503e12f9ec31884fb31700f191a86081fcb45f8619eab471857",
+    "digest": "sha256:a297140670f01503e12f9ec31884fb31700f191a86081fcb45f8619eab471857"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/tenant-app:sha-1e57298beed8f2aa53531afce29dfeb2f34ecf20",
+    "digest": "sha256:eae03474a5f7c00daa0f9703d2869824a1d428eae232298ad71b5646a87a24ff"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/tenant-app:migrated-sha256-ee65c1ae0c13e7fabaa69eb3d61c61c2c1ccb82ed578392543719198711cd59f",
+    "digest": "sha256:ee65c1ae0c13e7fabaa69eb3d61c61c2c1ccb82ed578392543719198711cd59f"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/tenant-app:migrated-sha256-376c0d1105ff740e79786b25d6d2573236ef12a732711925b8ca35e5c06a250c",
+    "digest": "sha256:376c0d1105ff740e79786b25d6d2573236ef12a732711925b8ca35e5c06a250c"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/tenant-app:sha-64210fb90a6d1c0f39e048b95f560486496cb1ff",
+    "digest": "sha256:4baf7607f3511ffd5defa77157748427cae5822f9964f5257b4094cdd48a8f9b"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/tenant-app:migrated-sha256-2e17cbaa03577aaa1dfc1429e219205bb54e5c68245b4c2eaec9c44e934a7159",
+    "digest": "sha256:2e17cbaa03577aaa1dfc1429e219205bb54e5c68245b4c2eaec9c44e934a7159"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/tenant-app:migrated-sha256-56eadcc3a5465c27cadea4098bd5f0be5aedfdee11453ef0009111d5bcd9e2e4",
+    "digest": "sha256:56eadcc3a5465c27cadea4098bd5f0be5aedfdee11453ef0009111d5bcd9e2e4"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/platform-console:0.1.0",
+    "digest": "sha256:6ca03aa5ede66224f36c684013bd5535f6e44bb51ae19130540b5575f1f2ed50"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/platform-console:migrated-sha256-3498bcb518263b77e86346b60ba5732711cc553fd206bdfa056733f9aba69350",
+    "digest": "sha256:3498bcb518263b77e86346b60ba5732711cc553fd206bdfa056733f9aba69350"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/platform-console:migrated-sha256-4cdf3f1a0346dc1527dd4460820d894c352954c6eaf85f2f5b4acdefb3972929",
+    "digest": "sha256:4cdf3f1a0346dc1527dd4460820d894c352954c6eaf85f2f5b4acdefb3972929"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/platform-console:sha-1e57298beed8f2aa53531afce29dfeb2f34ecf20",
+    "digest": "sha256:f4b25c74755a1595f62d97a3308a7de1d9dec45cd02408bf4bbcf5e50ef127ea"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/platform-console:migrated-sha256-a048d8d5bf9758c9f1a1df98ba2e75ca8f5d87559c39bbd8372832afdfd78407",
+    "digest": "sha256:a048d8d5bf9758c9f1a1df98ba2e75ca8f5d87559c39bbd8372832afdfd78407"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/platform-console:migrated-sha256-624b8cc69d61f7aba2ba355b1748f105334f0deb46efcb15964ad89a542d9626",
+    "digest": "sha256:624b8cc69d61f7aba2ba355b1748f105334f0deb46efcb15964ad89a542d9626"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/platform-console:sha-64210fb90a6d1c0f39e048b95f560486496cb1ff",
+    "digest": "sha256:ec89a4a98ea8919cca27545c7eb9a64307b87c48c27efcc07ade795340250827"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/platform-console:migrated-sha256-98e60e2cc94a07522c632d3ce5a381133d733e8cafd8be15a6044f98c2d92dc2",
+    "digest": "sha256:98e60e2cc94a07522c632d3ce5a381133d733e8cafd8be15a6044f98c2d92dc2"
+  },
+  {
+    "image": "ghcr.io/crane199709/saas-forge/platform-console:migrated-sha256-1c79d94b153ac5ae15966f43eeae0ac482edbfcb184404a2c771ee1c68fdd344",
+    "digest": "sha256:1c79d94b153ac5ae15966f43eeae0ac482edbfcb184404a2c771ee1c68fdd344"
+  }
+]
