@@ -1,6 +1,6 @@
 {
   "name": "@crane199709/ui",
-  "version": "0.1.0",
+  "version": "0.2.0-SNAPSHOT",
   "description": "SaaS Forge 共享组件与主题 token",
   "type": "module",
   "exports": {

@@ -1,6 +1,6 @@
 {
   "name": "@forge/platform-console",
-  "version": "0.1.0",
+  "version": "0.2.0-SNAPSHOT",
   "private": true,
   "description": "平台控制台 Shell App（Platform Realm）",
   "type": "module",

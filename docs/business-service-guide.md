@@ -1,6 +1,6 @@
 # Business Service 接入指南
 
-需要 JDK 17、Maven 3.9+、可用 Docker（Testcontainers）以及平台发布的 Maven 仓库。在 Maven settings.xml 配置该仓库和凭证，所有 Forge 制品须使用同一发布版本。以下以 SDK 0.1.0 为例。
+需要 JDK 17、Maven 3.9+（仅用于执行 archetype 生成，生成的工程自带 Maven Wrapper）、可用 Docker（Testcontainers）以及平台发布的 Maven 仓库。在 Maven settings.xml 配置该仓库和凭证，所有 Forge 制品须使用同一发布版本。以下以 SDK 0.1.0 为例。
 
 ## 生成与验证
 
@@ -13,7 +13,7 @@ mvn org.apache.maven.plugins:maven-archetype-plugin:3.4.1:generate -B \
   -Dversion=1.0.0-SNAPSHOT -Dpackage=com.example.orders \
   -DserviceName=orders-service -DpathPrefix=orders
 cd orders-service
-mvn verify
+./mvnw verify
 ```
 
 `serviceName` 是注册名和 Manifest 上报身份；`pathPrefix` 不带 `/`，是网关前缀及示例 Sub-App 编码。根包用 `package`。业务工程版本独立于 SDK 版本；BOM 的 forge.version 锁定 SDK 发布版本，升级时调整父 POM 版本。
@@ -22,7 +22,9 @@ mvn verify
 
 生成的工程带 `AGENTS.md`（规则摘要与构建、测试命令）和 `docs/standards/business-service.md`（业务服务编码规范，头部注明平台版本），供开发者与 Agent 改代码前阅读；规范副本不在业务工程修改，平台升级时按 CHANGELOG 重新复制。`SchemaCommentTest` 还检查 POM 中每个 SDK starter 自带 `schema.sql` 的表都已迁移，新增 starter 时漏复制迁移会失败。
 
-示例复用 demo-service 的订单 CRUD、分类 Provisioning、Outbox 通知和统一信封；不默认引入 storage。订单接口在服务内为 `/orders`，网关 StripPrefix 后外部为 `/orders/orders`。上线前把示例领域、全局权限码 `order:*`、Data Resource `order`、菜单、角色模板替换为本服务领域，避免与已有服务声明冲突。
+主类名由 `serviceName` 派生：去掉 `-service` 后缀转为 PascalCase 再加 `Application`，如 `orders-service` → `OrdersApplication`。工程自带与平台仓库同版本的 Maven Wrapper（`mvnw`、`mvnw.cmd`、`.mvn/wrapper/`），命令一律用 `./mvnw`。
+
+示例复用 demo-service 的订单 CRUD、分类 Provisioning、Outbox 通知和统一信封；不默认引入 storage。订单接口在服务内为 `/orders`，网关 StripPrefix 后外部为 `/orders/orders`。上线前把示例领域、全局权限码 `order:*`、Data Resource `order`、菜单、角色模板替换为本服务领域，避免与已有服务声明冲突。迁移只有两份：`V1__forge_sdk.sql` 是 SDK 必需表（Outbox、消费去重、Dead Event），始终保留；`V2__example_orders.sql` 是示例业务表，删除订单示例时连同代码整体删除，再从 V2 起编写本服务的迁移。
 
 维护模板时，在平台仓库执行 `cd backend && ./mvnw install -Parchetype-it`；该 profile 启用 archetype 自带的生成集成测试。普通 reactor `verify` 不运行这一独立 Maven 消费接缝，避免冷缓存下引用尚未安装的同次 SDK；已发布/安装 SDK 后也可单独 `./mvnw -pl forge-service-archetype clean verify -Parchetype-it`。CI 使用包含模板测试的 install 命令。
 

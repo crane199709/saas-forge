@@ -2,6 +2,17 @@
 
 后端 Maven 制品与前端 npm 包使用同一语义版本。1.0 之前的次版本可包含不兼容变更，升级前请检查本节。
 
+## 0.2.0（未发布）
+
+### 变更
+
+- 发布后源码立即进入下一个 `-SNAPSHOT` 开发版本，同一正式版本号只对应一份发布内容：`version.py set` 接受 `-SNAPSHOT`，新增 `version.py dev` 由分支 CI（Backend quality）检查源码处于统一的 SNAPSHOT 版本；`check` 与正式发布仍拒绝 SNAPSHOT，只有 `publish.sh local`（模板冒烟）以 `--allow-snapshot` 部署当前源码到临时仓库。版本同步范围新增 `@crane199709/sdk` 的 `sdkRuntime` 版本。当前源码为 `0.2.0-SNAPSHOT`。
+- archetype 生成的主类名由 `serviceName` 派生（`orders-service` → `OrdersApplication`），不再固定为 `DemoApplication`。
+- archetype 生成的工程自带 Maven Wrapper（与平台仓库同一份，`mvnw` 可执行），`AGENTS.md` 与接入指南的命令统一为 `./mvnw`。
+- archetype 迁移由八个演进版本合并为两份：`V1__forge_sdk.sql`（SDK 必需表）与 `V2__example_orders.sql`（示例业务表，删除示例时整体删除）。表结构与原八个迁移执行后的结果一致。
+- `forge-create-sub-app` 在仓库外生成时提示 `pnpm dev` / `pnpm build`；只有 `--workspace` 模式提示 `pnpm --filter`。
+- 已生成的工程：主类名、Wrapper 可按需自行调整或从新生成的临时工程复制；**不要**把合并后的迁移复制进已执行过旧迁移的工程，Flyway 历史以已执行的版本为准。
+
 ## 0.1.0
 
 ### 新增

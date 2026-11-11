@@ -36,6 +36,19 @@
             </includes>
         </fileSet>
         <fileSet filtered="false">
+            <directory></directory>
+            <includes>
+                <include>mvnw</include>
+                <include>mvnw.cmd</include>
+            </includes>
+        </fileSet>
+        <fileSet filtered="false">
+            <directory>.mvn</directory>
+            <includes>
+                <include>**/*</include>
+            </includes>
+        </fileSet>
+        <fileSet filtered="false">
             <directory>docs</directory>
             <includes>
                 <include>**/*.md</include>

@@ -415,10 +415,17 @@ for (const [file, content] of Object.entries(files)) {
   await mkdir(dirname(path), { recursive: true })
   await writeFile(path, content)
 }
-console.log(`已生成 ${target}
-下一步：
-  cd ${JSON.stringify(target)}
+// 仓库内工程属于 pnpm workspace，须在仓库根目录用 --filter 运行；仓库外工程独立安装，直接在工程目录运行。
+const next = workspace
+  ? `下一步（在仓库根目录 frontend 下执行）：
   pnpm install
   pnpm --filter @forge/${code}-sub-app dev       # 独立开发宿主 http://localhost:${port}
-  pnpm --filter @forge/${code}-sub-app build     # 产物 dist/remoteEntry.js，入口地址登记到 App Registry
+  pnpm --filter @forge/${code}-sub-app build     # 产物 dist/remoteEntry.js，入口地址登记到 App Registry`
+  : `下一步：
+  cd ${JSON.stringify(target)}
+  pnpm install
+  pnpm dev       # 独立开发宿主 http://localhost:${port}
+  pnpm build     # 产物 dist/remoteEntry.js，入口地址登记到 App Registry`
+console.log(`已生成 ${target}
+${next}
 并在业务服务的 manifest.json 菜单中以 "app": "${code}" 指向它，在 Plan 的 Feature Pack 中加入 ${code}。`)

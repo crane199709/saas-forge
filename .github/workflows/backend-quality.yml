@@ -18,6 +18,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      # 分支上的源码必须是 SNAPSHOT 开发版本，防止发布后源码停在已发布版本号；标签构建（发布）跳过。
+      - run: python3 scripts/release/version.py dev
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
       - id: changes
         uses: ./.github/actions/ci-scope
         with:

@@ -1,6 +1,6 @@
 {
   "name": "@crane199709/sub-app-kit",
-  "version": "0.1.0",
+  "version": "0.2.0-SNAPSHOT",
   "description": "Sub-App 脚手架：构建配置、隔离约定 lint 与独立开发用宿主",
   "type": "module",
   "exports": {

@@ -107,6 +107,10 @@ test('仓库外生成使用发布版本快照，支持目标目录且拒绝覆�
       })
     const generated = run()
     assert.equal(generated.status, 0, generated.stderr)
+    // 仓库外工程不在 pnpm workspace 中，提示的命令必须能在工程目录直接运行。
+    assert.match(generated.stdout, /^\s+pnpm dev\b/m)
+    assert.match(generated.stdout, /^\s+pnpm build\b/m)
+    assert.doesNotMatch(generated.stdout, /--filter/)
     const pkg = JSON.parse(await readFile(join(root, 'billing-sub-app/package.json'), 'utf8'))
     assert.equal(pkg.dependencies['@crane199709/sdk'], '0.8.2')
     assert.equal(pkg.dependencies['@crane199709/ui'], '0.8.2')
@@ -156,6 +160,7 @@ test('仓库命令继续默认生成到 apps 并支持独立编译配置', async
       { cwd: root, encoding: 'utf8' },
     )
     assert.equal(run.status, 0, run.stderr)
+    assert.match(run.stdout, /pnpm --filter @forge\/billing-sub-app dev/)
     const pkg = JSON.parse(await readFile(join(root, 'apps/billing-sub-app/package.json'), 'utf8'))
     assert.equal(pkg.dependencies['@crane199709/sdk'], '0.8.2')
     assert.equal(pkg.dependencies['@crane199709/ui'], '0.8.2')

@@ -18,7 +18,7 @@
 
 ## 命令
 
-工程未带 Maven Wrapper 时，把下文的 `./mvnw` 换成本机的 `mvn`。测试用 Testcontainers 启动 PostgreSQL 与 Redis，需要本机 Docker。
+测试用 Testcontainers 启动 PostgreSQL 与 Redis，需要本机 Docker。
 
 - `./mvnw verify`：编译并运行全部测试，含架构检查（`ArchitectureTest`）、表与字段注释检查和 SDK 表检查（`SchemaCommentTest`）。提交前必须通过。
 - `./mvnw test -Dtest=<测试类>`：迭代时只跑受影响的测试。

@@ -4,7 +4,12 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 mode=${1:?用法：publish.sh local|remote|consume v0.1.0}
 tag=${2:?缺少版本标签}
-version=$(python3 "$root/scripts/release/version.py" check "$tag")
+# 临时本地发布用于验证开发中的源码，允许 SNAPSHOT；remote 与 consume 只接受正式版本。
+if [[ "$mode" == local ]]; then
+  version=$(python3 "$root/scripts/release/version.py" check --allow-snapshot "$tag")
+else
+  version=$(python3 "$root/scripts/release/version.py" check "$tag")
+fi
 work=$(mktemp -d "${TMPDIR:-/tmp}/forge-release.XXXXXX")
 registry_container=
 cleanup() {

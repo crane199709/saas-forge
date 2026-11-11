@@ -30,4 +30,23 @@ assert agentsText.contains("适用平台版本：${version}") : 'AGENTS.md 未�
 assert agentsText.contains('./mvnw verify') : 'AGENTS.md 缺少构建命令'
 assert agentsText.contains('](docs/standards/business-service.md)') : 'AGENTS.md 缺少规范文档链接'
 assert !agentsText.contains('@project') : 'AGENTS.md 残留未替换的占位符'
+
+// 主类名按 serviceName 派生，模板中的占位类名不残留
+def javaDir = new File(project, 'src/main/java/com/example/sample')
+assert new File(javaDir, 'SampleApplication.java').getText('UTF-8').contains('public class SampleApplication') : '主类未按 serviceName 命名为 SampleApplication'
+assert !new File(javaDir, 'ServiceApplication.java').exists() : '模板占位主类 ServiceApplication 残留'
+assert !new File(javaDir, 'DemoApplication.java').exists() : '残留旧主类 DemoApplication'
+
+// Maven Wrapper 与平台仓库同一份，mvnw 可执行
+def mvnw = new File(project, 'mvnw')
+assert mvnw.isFile() && mvnw.canExecute() : '生成工程缺少可执行的 mvnw'
+assert new File(project, 'mvnw.cmd').isFile() : '生成工程缺少 mvnw.cmd'
+def wrapper = new File(project, '.mvn/wrapper/maven-wrapper.properties')
+assert wrapper.isFile() : '生成工程缺少 .mvn/wrapper/maven-wrapper.properties'
+assert wrapper.getText('UTF-8') == new File(repoRoot, 'backend/.mvn/wrapper/maven-wrapper.properties').getText('UTF-8') : 'Maven Wrapper 配置与平台仓库不一致'
+assert !agentsText.contains('未带 Maven Wrapper') : 'AGENTS.md 残留无 Wrapper 的说明'
+
+// 迁移只有两份：SDK 必需表与可整体删除的示例业务表，不带平台演进历史
+def migrations = new File(project, 'src/main/resources/db/migration').list().sort()
+assert migrations == ['V1__forge_sdk.sql', 'V2__example_orders.sql'] : "迁移脚本应只有 SDK 与示例两份：${migrations}"
 return true

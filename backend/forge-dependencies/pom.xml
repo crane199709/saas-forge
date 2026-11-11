@@ -12,7 +12,7 @@
 
     <groupId>io.saasforge</groupId>
     <artifactId>forge-dependencies</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Forge Dependencies</name>
     <description>SaaS Forge 版本清单（BOM），版本组合见 ADR-0013</description>
@@ -22,11 +22,16 @@
             <id>forge-release</id>
             <url>${forge.release.url}</url>
         </repository>
+        <!-- 只有 publish.sh local 会部署 SNAPSHOT（临时仓库的模板冒烟）；正式发布在版本检查阶段拒绝 SNAPSHOT。 -->
+        <snapshotRepository>
+            <id>forge-release</id>
+            <url>${forge.release.url}</url>
+        </snapshotRepository>
     </distributionManagement>
 
     <properties>
         <!-- 业务服务继承 BOM 时 project.version 是业务版本，SDK 必须保持发布版本。 -->
-        <forge.version>0.1.0</forge.version>
+        <forge.version>0.2.0-SNAPSHOT</forge.version>
         <spring-cloud.version>2025.1.4</spring-cloud.version>
         <spring-cloud-alibaba.version>2025.1.0.0</spring-cloud-alibaba.version>
         <springdoc.version>3.0.3</springdoc.version>

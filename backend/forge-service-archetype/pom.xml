@@ -4,7 +4,7 @@
     <parent>
         <groupId>io.saasforge</groupId>
         <artifactId>forge-parent</artifactId>
-        <version>0.1.0</version>
+        <version>0.2.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>forge-service-archetype</artifactId>
@@ -27,6 +27,17 @@
                 <directory>${project.basedir}/../../docs/standards</directory>
                 <includes>
                     <include>business-service.md</include>
+                </includes>
+            </resource>
+            <!-- Maven Wrapper 与平台仓库共用同一份，构建时复制进模板；mvnw 的可执行权限由 archetype-post-generate.groovy 恢复 -->
+            <resource>
+                <targetPath>archetype-resources</targetPath>
+                <filtering>false</filtering>
+                <directory>${project.basedir}/..</directory>
+                <includes>
+                    <include>mvnw</include>
+                    <include>mvnw.cmd</include>
+                    <include>.mvn/wrapper/maven-wrapper.properties</include>
                 </includes>
             </resource>
         </resources>

@@ -3,11 +3,21 @@
 在仓库根目录执行：
 
 ```sh
-python3 scripts/release/version.py set 0.1.0
-python3 scripts/release/version.py check v0.1.0
+python3 scripts/release/version.py set 0.2.0
+python3 scripts/release/version.py check v0.2.0
+# 打标签后立即进入下一个开发版本
+python3 scripts/release/version.py set 0.3.0-SNAPSHOT
+python3 scripts/release/version.py dev
 ```
 
-命令同步 backend reactor 中的 Forge 坐标和 frontend 根目录、packages、apps 的版本；不改第三方版本。发布标签必须为 `v<语义版本>`，拒绝 SNAPSHOT、标签与文件不一致。修改版本后更新根目录 CHANGELOG.md，单列不兼容变更，再提交与推送标签。
+命令同步 backend reactor 中的 Forge 坐标、frontend 根目录与 packages、apps 的版本，以及 `@crane199709/sdk` 源码中的 `sdkRuntime` 版本；不改第三方版本。
+
+分支上的源码始终是 `-SNAPSHOT` 开发版本，同一个正式版本号只对应一份发布内容。发布步骤：
+
+1. `set <正式版本>`，更新根目录 CHANGELOG.md（单列不兼容变更），提交并打标签 `v<正式版本>`。
+2. 紧接着 `set <下一版本>-SNAPSHOT` 并提交，再一起推送分支与标签。分支 CI（Backend quality）执行 `version.py dev`，源码不是统一的 SNAPSHOT 版本即失败；标签构建跳过这一检查。
+
+发布标签必须为 `v<语义版本>`，拒绝 SNAPSHOT、标签与文件不一致。只有 `publish.sh local`（含模板冒烟）以 `check --allow-snapshot` 接受当前 SNAPSHOT 源码，部署到临时仓库。
 
 标签工作流复用后端验证（含 archetype 生成测试）、前端完整检查与 mock E2E、真实主链路 E2E 和模板冒烟；所有质量门通过后才能发布。镜像工作流也依赖这些质量门；配置 `IMAGE_PREFIX` 时推送 GHCR 并验证拉取，未配置时只构建，参见 [镜像说明](../../deploy/images/README.md)。
 
@@ -20,7 +30,7 @@ npm 先构建再使用 `pnpm pack`，由 pnpm 将 `workspace:` 替换为实际�
 需要 JDK 17、Python 3、Node 24、pnpm 12.4.2 与 Docker，先执行 `pnpm --dir frontend install --frozen-lockfile`。本地复现：
 
 ```sh
-scripts/release/publish.sh local v0.1.0
+scripts/release/publish.sh local v0.2.0-SNAPSHOT  # 版本取当前源码
 ```
 
 完整模板冒烟执行 `bash deploy/template-smoke/run.sh`：在上述临时仓库存活期间生成仓库外服务和 Sub-App，运行构建与测试，并在新建隔离环境中验证 Manifest 上报、网关权限和内部接口拒绝。环境与日志说明见 [Business Service 接入指南](../../docs/business-service-guide.md)。
