@@ -25,6 +25,7 @@ export default defineConfig({
     proxy: {
       '/iam': process.env.FORGE_DEV_GATEWAY ?? 'http://localhost:8080',
       '/demo': process.env.FORGE_DEV_GATEWAY ?? 'http://localhost:8080',
+      '/lowcode': process.env.FORGE_DEV_GATEWAY ?? 'http://localhost:8080',
     },
   },
   test: {
