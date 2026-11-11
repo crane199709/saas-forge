@@ -54,9 +54,9 @@ async function assertMatchesArchetypeOrders(home: string, spec: string) {
   const responseFields = [
     ...controller.match(/record OrderResponse\(([^)]*)\)/)![1].matchAll(/\w+ (\w+)(?:,|$)/g),
   ].map((field) => field[1])
-  const sortable = [...controller.match(/@SortableFields\(\{([^}]*)\}\)/)![1].matchAll(/"(\w+)"/g)].map(
-    (field) => field[1],
-  )
+  const sortable = [
+    ...controller.match(/@SortableFields\(\{([^}]*)\}\)/)![1].matchAll(/"(\w+)"/g),
+  ].map((field) => field[1])
   const used = [...home.match(/interface Order \{([^}]*)\}/)![1].matchAll(/(\w+):/g)].map(
     (field) => field[1],
   )

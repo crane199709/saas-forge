@@ -60,11 +60,8 @@ PYMQ
 else
   "${COMPOSE[@]}" up -d --wait
 fi
-FORGE_VERSION=$(python3 - <<'PYVERSION'
-import xml.etree.ElementTree as ET
-print(ET.parse('backend/forge-dependencies/pom.xml').findtext('{http://maven.apache.org/POM/4.0.0}version'))
-PYVERSION
-)
+# 版本只在 maven.config 的 revision 维护，POM 中是占位符。
+FORGE_VERSION=$(sed -n 's/^-Drevision=//p' backend/.mvn/maven.config)
 # 每次隔离运行生成独立运维令牌；不继承开发凭据，也不把随机值写入日志。
 OPS_IAM_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
 OPS_PLATFORM_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
