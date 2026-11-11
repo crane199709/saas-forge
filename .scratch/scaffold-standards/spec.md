@@ -40,7 +40,7 @@ Status: ready-for-agent
   - `AGENTS.md`：规则摘要、本工程的构建 / 测试 / lint 命令、指向 `docs/standards/` 的链接。
   - `docs/standards/business-service.md`（后端）或 `docs/standards/sub-app.md`（前端）。
 - 文档在生成时复制，头部标注适用的平台版本。
-- archetype：构建时把 `docs/standards/business-service.md` 复制进模板资源；Markdown 与 `AGENTS.md` 在 `archetype-metadata.xml` 中标为 `filtered="false"`，否则 Velocity 会把行首 `##` 当注释吞掉标题。版本号按模块现有的 `@` 分隔符资源过滤写入。
+- archetype：构建时把 `docs/standards/business-service.md` 复制进模板资源；Markdown 与 `AGENTS.md` 在 `archetype-metadata.xml` 中标为 `filtered="false"`，否则 Velocity 会把行首 `##` 当注释吞掉标题。规范文档原文不含版本占位符，生成时由 `archetype-post-generate.groovy` 在头部注入平台版本注释（与 sub-app-kit 写法一致）；模板 `AGENTS.md` 仍按模块现有的 `@` 分隔符资源过滤写入版本。
 - sub-app-kit：把 `docs/standards/sub-app.md` 放进发布包（`files`），`create.ts` 在源码模式与发布模式下都复制到生成工程。
 
 ### 升级

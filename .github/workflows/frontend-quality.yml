@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_call:
+    inputs:
+      force-full:
+        description: 可复用调用默认执行完整验证。
+        type: boolean
+        default: true
   workflow_dispatch:
 jobs:
   verify:
@@ -15,24 +20,42 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: changes
+        uses: ./.github/actions/ci-scope
+        with:
+          scope: frontend
+          force-full: ${{ inputs.force-full || false }}
       - uses: pnpm/action-setup@v4
+        if: steps.changes.outputs.run == 'true'
         with:
           version: 12.4.2
       - uses: actions/setup-node@v4
+        if: steps.changes.outputs.run == 'true'
         with:
           node-version: '24'
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+        if: steps.changes.outputs.run == 'true'
       - run: pnpm typecheck
+        if: steps.changes.outputs.run == 'true'
       - run: pnpm test 2>&1 | tee unit-test.log
+        if: steps.changes.outputs.run == 'true'
       - run: pnpm format:check 2>&1 | tee format-check.log
+        if: steps.changes.outputs.run == 'true'
       - run: pnpm lint:style
+        if: steps.changes.outputs.run == 'true'
       - run: pnpm build
+        if: steps.changes.outputs.run == 'true'
       # mock E2E 会访问诊断页面并切换到子应用 v2，普通构建不包含这些产物。
       - run: pnpm build:spike
+        if: steps.changes.outputs.run == 'true'
       - run: pnpm exec playwright install --with-deps chromium
+        if: steps.changes.outputs.run == 'true'
       - run: pnpm test:e2e --reporter=line,html
+        if: steps.changes.outputs.run == 'true'
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

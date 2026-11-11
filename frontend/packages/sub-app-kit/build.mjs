@@ -1,4 +1,4 @@
-import { chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { chmod, copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { build } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import ts from 'typescript'
@@ -24,8 +24,9 @@ await writeFile(
   `import './sub-app-kit.css'\n${await readFile('dist/dev-host.js', 'utf8')}`,
 )
 await mkdir('dist/bin', { recursive: true })
-for (const name of ['create', 'lint', 'rules']) {
-  const source = await readFile(`bin/${name}.ts`, 'utf8')
+// stylelint 在 Node 中直接加载配置，不经 Vite；与 bin 一样只做类型擦除。
+for (const name of ['bin/create', 'bin/lint', 'bin/rules', 'src/stylelint']) {
+  const source = await readFile(`${name}.ts`, 'utf8')
   const { outputText } = ts.transpileModule(source, {
     compilerOptions: {
       target: ts.ScriptTarget.ES2022,
@@ -33,9 +34,13 @@ for (const name of ['create', 'lint', 'rules']) {
       rewriteRelativeImportExtensions: true,
     },
   })
-  await writeFile(`dist/bin/${name}.js`, outputText)
-  await chmod(`dist/bin/${name}.js`, 0o755)
+  const output = `dist/${name.replace(/^src\//, '')}.js`
+  await writeFile(output, outputText)
+  if (name.startsWith('bin/')) await chmod(output, 0o755)
 }
+// 规范只在仓库 docs/standards 维护；生成器在发布模式下从这份副本复制进新工程。
+await mkdir('dist/standards', { recursive: true })
+await copyFile('../../../docs/standards/sub-app.md', 'dist/standards/sub-app.md')
 
 // 生成器与发布包一起携带 Shell 的精确版本，仓库外不访问源码目录。
 const shell = JSON.parse(await readFile('../../apps/tenant-app/package.json', 'utf8'))
@@ -43,7 +48,13 @@ const kit = JSON.parse(await readFile('package.json', 'utf8'))
 const versions = {
   ...shell.dependencies,
   ...shell.devDependencies,
-  '@module-federation/vite': kit.devDependencies['@module-federation/vite'],
+  // 与 bin/create.ts 的 kitTools 一致：Shell 不依赖的构建与走查工具。
+  ...Object.fromEntries(
+    ['@module-federation/vite', '@playwright/test', 'postcss-html', 'stylelint'].map((name) => [
+      name,
+      kit.devDependencies[name],
+    ]),
+  ),
   ...Object.fromEntries(
     ['@crane199709/sdk', '@crane199709/ui', '@crane199709/sub-app-kit'].map((name) => [
       name,

@@ -28,5 +28,18 @@
                 <include>pom.xml</include>
             </includes>
         </fileSet>
+        <!-- Velocity 会把行首 ## 当注释吞掉 Markdown 标题；AGENTS.md 的平台版本在构建 archetype 时写入，规范文档的版本由 archetype-post-generate.groovy 注入 -->
+        <fileSet filtered="false">
+            <directory></directory>
+            <includes>
+                <include>AGENTS.md</include>
+            </includes>
+        </fileSet>
+        <fileSet filtered="false">
+            <directory>docs</directory>
+            <includes>
+                <include>**/*.md</include>
+            </includes>
+        </fileSet>
     </fileSets>
 </archetype-descriptor>
