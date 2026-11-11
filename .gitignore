@@ -71,3 +71,6 @@ deploy/e2e/run-*/
 
 # ---- VSCode Counter ----
 .VSCodeCounter/
+
+# flatten-maven-plugin 生成的已解析 POM
+.flattened-pom.xml

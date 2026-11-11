@@ -10,7 +10,9 @@ python3 scripts/release/version.py set 0.3.0-SNAPSHOT
 python3 scripts/release/version.py dev
 ```
 
-命令同步 backend reactor 中的 Forge 坐标、frontend 根目录与 packages、apps 的版本，以及 `@crane199709/sdk` 源码中的 `sdkRuntime` 版本；不改第三方版本。
+命令同步后端版本（`backend/.mvn/maven.config` 中的 `-Drevision`）、frontend 根目录与 packages、apps 的版本，以及 `@crane199709/sdk` 源码中的 `sdkRuntime` 版本；不改第三方版本。
+
+后端版本只维护在 `backend/.mvn/maven.config` 一处：各 POM 的 Forge 坐标与 BOM 的 `forge.version` 一律写 `${revision}`，改版本不需要改 POM。`flatten-maven-plugin`（`resolveCiFriendliesOnly`）在安装与发布时把 `${revision}` 替换为实际版本，仓库外工程解析到的是普通版本号。`check` / `dev` 同时检查 POM 中没有写死的 Forge 版本。
 
 分支上的源码始终是 `-SNAPSHOT` 开发版本，同一个正式版本号只对应一份发布内容。发布步骤：
 

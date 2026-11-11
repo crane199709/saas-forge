@@ -12,7 +12,7 @@
 
     <groupId>io.saasforge</groupId>
     <artifactId>forge-dependencies</artifactId>
-    <version>0.2.0-SNAPSHOT</version>
+    <version>${revision}</version>
     <packaging>pom</packaging>
     <name>Forge Dependencies</name>
     <description>SaaS Forge 版本清单（BOM），版本组合见 ADR-0013</description>
@@ -31,7 +31,7 @@
 
     <properties>
         <!-- 业务服务继承 BOM 时 project.version 是业务版本，SDK 必须保持发布版本。 -->
-        <forge.version>0.2.0-SNAPSHOT</forge.version>
+        <forge.version>${revision}</forge.version>
         <spring-cloud.version>2025.1.4</spring-cloud.version>
         <spring-cloud-alibaba.version>2025.1.0.0</spring-cloud-alibaba.version>
         <springdoc.version>3.0.3</springdoc.version>
@@ -210,9 +210,41 @@
                     <artifactId>spotless-maven-plugin</artifactId>
                     <version>${spotless-maven-plugin.version}</version>
                 </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>flatten-maven-plugin</artifactId>
+                    <version>1.7.3</version>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
+            <!-- 平台版本只在 .mvn/maven.config 的 revision 维护一处；安装与发布前把 ${revision} 替换为实际版本，
+                 否则仓库外工程无法解析父 POM 与 forge.version。不继承：业务服务以本 BOM 为父 POM，不需要这一步。 -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <inherited>false</inherited>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                        <phase>process-resources</phase>
+                    </execution>
+                    <execution>
+                        <id>flatten-clean</id>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                        <phase>clean</phase>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>

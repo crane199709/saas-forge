@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[2]
 NS = {'m': 'http://maven.apache.org/POM/4.0.0'}
 SEMVER = r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?'
 # sdkRuntime 写在源码里供运行时识别模块身份，不在 package.json 中，须随版本一起同步。
+MAVEN_CONFIG = ROOT / 'backend/.mvn/maven.config'
+REVISION_PATTERN = r'^-Drevision=(\S+)$'
 SDK_RUNTIME = ROOT / 'frontend/packages/sdk/src/index.ts'
 SDK_RUNTIME_PATTERN = r"(sdkRuntime = Object\.freeze\(\{ version: ')([^']+)('\s*\}\))"
 
@@ -24,32 +26,26 @@ def poms(path):
 def sync(version, write):
     """write 为真时把全部内部坐标改为 version，否则返回与 version 不一致之处。"""
     errors = []
+    # 后端版本只在 .mvn/maven.config 的 revision 维护；POM 中的 Forge 坐标一律写 ${revision}，由 flatten 在安装与发布时替换。
+    config = MAVEN_CONFIG.read_text()
+    match = re.search(REVISION_PATTERN, config, re.M)
+    if match is None:
+        errors.append(f'{MAVEN_CONFIG.relative_to(ROOT)}: 找不到 -Drevision')
+    elif write:
+        MAVEN_CONFIG.write_text(config[:match.start(1)] + version + config[match.end(1):])
+    elif match[1] != version:
+        errors.append(f'{MAVEN_CONFIG.relative_to(ROOT)}: revision {match[1]} != {version}')
     for path in poms(ROOT / 'backend/pom.xml'):
-        source = path.read_text()
-        # 只更新 io.saasforge 坐标；第三方依赖版本保持原样。
-        tree = ET.fromstring(source)
+        tree = ET.parse(path).getroot()
         for node in tree.iter():
             group = node.find('m:groupId', NS)
             value = node.find('m:version', NS)
-            if group is not None and group.text == 'io.saasforge' and value is not None:
-                if value.text in ('${project.version}', '${forge.version}'):
-                    continue
-                if write:
-                    source = re.sub(
-                        r'(<groupId>io\.saasforge</groupId>\s*<artifactId>[^<]+</artifactId>\s*<version>)'
-                        + re.escape(value.text) + r'(</version>)',
-                        lambda match: match[1] + version + match[2], source,
-                    )
-                elif value.text != version:
-                    errors.append(f'{path.relative_to(ROOT)}: {value.text} != {version}')
+            if group is not None and group.text == 'io.saasforge' and value is not None \
+                    and value.text not in ('${revision}', '${project.version}', '${forge.version}'):
+                errors.append(f'{path.relative_to(ROOT)}: Forge 坐标须写 ${{revision}}，实际为 {value.text}')
         sdk_version = tree.find('m:properties/m:forge.version', NS)
-        if sdk_version is not None:
-            if write:
-                source = re.sub(r'<forge.version>[^<]+</forge.version>', f'<forge.version>{version}</forge.version>', source)
-            elif sdk_version.text != version:
-                errors.append(f'{path.relative_to(ROOT)}: forge.version {sdk_version.text} != {version}')
-        if write:
-            path.write_text(source)
+        if sdk_version is not None and sdk_version.text != '${revision}':
+            errors.append(f'{path.relative_to(ROOT)}: forge.version 须为 ${{revision}}，实际为 {sdk_version.text}')
     packages = [ROOT / 'frontend/package.json', *sorted((ROOT / 'frontend/packages').glob('*/package.json')), *sorted((ROOT / 'frontend/apps').glob('*/package.json'))]
     for path in packages:
         data = json.loads(path.read_text())
