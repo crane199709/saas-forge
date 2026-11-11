@@ -41,6 +41,8 @@ for (const name of ['bin/create', 'bin/lint', 'bin/rules', 'src/stylelint']) {
 // 规范只在仓库 docs/standards 维护；生成器在发布模式下从这份副本复制进新工程。
 await mkdir('dist/standards', { recursive: true })
 await copyFile('../../../docs/standards/sub-app.md', 'dist/standards/sub-app.md')
+// 格式规则同理：只维护 frontend/.prettierrc.json 一份，生成器从这份副本复制。
+await copyFile('../../.prettierrc.json', 'dist/prettierrc.json')
 
 // 生成器与发布包一起携带 Shell 的精确版本，仓库外不访问源码目录。
 const shell = JSON.parse(await readFile('../../apps/tenant-app/package.json', 'utf8'))
@@ -50,10 +52,9 @@ const versions = {
   ...shell.devDependencies,
   // 与 bin/create.ts 的 kitTools 一致：Shell 不依赖的构建与走查工具。
   ...Object.fromEntries(
-    ['@module-federation/vite', '@playwright/test', 'postcss-html', 'stylelint'].map((name) => [
-      name,
-      kit.devDependencies[name],
-    ]),
+    ['@module-federation/vite', '@playwright/test', 'postcss-html', 'prettier', 'stylelint'].map(
+      (name) => [name, kit.devDependencies[name]],
+    ),
   ),
   ...Object.fromEntries(
     ['@crane199709/sdk', '@crane199709/ui', '@crane199709/sub-app-kit'].map((name) => [

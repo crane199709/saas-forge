@@ -38,6 +38,8 @@
                     <include>mvnw</include>
                     <include>mvnw.cmd</include>
                     <include>.mvn/wrapper/maven-wrapper.properties</include>
+                    <!-- 父 POM 的 XML 格式化规则从工程根目录读取 -->
+                    <include>spotless-xml.prefs</include>
                 </includes>
             </resource>
         </resources>

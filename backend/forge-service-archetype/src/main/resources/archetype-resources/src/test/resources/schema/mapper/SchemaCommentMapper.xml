@@ -4,26 +4,32 @@
     <!-- 当前 schema 的普通表与分区父表，不含分区子表与 Flyway 历史表；c 为 pg_class，n 为 pg_namespace -->
     <sql id="userTable">
         n.nspname = current_schema() AND c.relkind IN ('r', 'p') AND NOT c.relispartition
-            AND c.relname &lt;&gt; 'flyway_schema_history'
+        AND c.relname &lt;&gt; 'flyway_schema_history'
     </sql>
     <select id="countTables" resultType="int">
         SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE <include refid="userTable"/>
+        WHERE
+        <include refid="userTable"/>
     </select>
     <select id="selectTableNames" resultType="string">
         SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE <include refid="userTable"/>
+        WHERE
+        <include refid="userTable"/>
         ORDER BY 1
     </select>
     <select id="selectUncommented" resultType="string">
         SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE <include refid="userTable"/> AND obj_description(c.oid, 'pg_class') IS NULL
+        WHERE
+        <include refid="userTable"/>
+        AND obj_description(c.oid, 'pg_class') IS NULL
         UNION ALL
         SELECT c.relname || '.' || a.attname FROM pg_class c
         JOIN pg_namespace n ON n.oid = c.relnamespace
         JOIN pg_attribute a ON a.attrelid = c.oid
-        WHERE <include refid="userTable"/> AND a.attnum &gt; 0 AND NOT a.attisdropped
-            AND col_description(c.oid, a.attnum) IS NULL
+        WHERE
+        <include refid="userTable"/>
+        AND a.attnum &gt; 0 AND NOT a.attisdropped
+        AND col_description(c.oid, a.attnum) IS NULL
         ORDER BY 1
     </select>
 </mapper>

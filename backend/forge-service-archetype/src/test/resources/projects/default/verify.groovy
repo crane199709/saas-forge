@@ -46,6 +46,12 @@ assert wrapper.isFile() : '生成工程缺少 .mvn/wrapper/maven-wrapper.propert
 assert wrapper.getText('UTF-8') == new File(repoRoot, 'backend/.mvn/wrapper/maven-wrapper.properties').getText('UTF-8') : 'Maven Wrapper 配置与平台仓库不一致'
 assert !agentsText.contains('未带 Maven Wrapper') : 'AGENTS.md 残留无 Wrapper 的说明'
 
+// 格式规则在父 POM，XML 规则文件与平台仓库同一份；生成工程声明了 Spotless，verify 通过即说明模板本身已符合格式
+def prefs = new File(project, 'spotless-xml.prefs')
+assert prefs.isFile() : '生成工程缺少 spotless-xml.prefs'
+assert prefs.getText('UTF-8') == new File(repoRoot, 'backend/spotless-xml.prefs').getText('UTF-8') : 'spotless-xml.prefs 与平台仓库不一致'
+assert new File(project, 'pom.xml').getText('UTF-8').contains('<artifactId>spotless-maven-plugin</artifactId>') : '生成工程 POM 未声明 Spotless'
+
 // 迁移只有两份：SDK 必需表与可整体删除的示例业务表，不带平台演进历史
 def migrations = new File(project, 'src/main/resources/db/migration').list().sort()
 assert migrations == ['V1__forge_sdk.sql', 'V2__example_orders.sql'] : "迁移脚本应只有 SDK 与示例两份：${migrations}"

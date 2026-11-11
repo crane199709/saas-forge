@@ -32,7 +32,13 @@ if (await lstat(target).catch(() => null)) {
   process.exit(1)
 }
 // Shell 不依赖的构建与走查工具，版本取自 sub-app-kit 自身；build.mjs 写入发布快照时用同一份清单。
-const kitTools = ['@module-federation/vite', '@playwright/test', 'postcss-html', 'stylelint']
+const kitTools = [
+  '@module-federation/vite',
+  '@playwright/test',
+  'postcss-html',
+  'prettier',
+  'stylelint',
+]
 // 发布包只读取随包快照；源码模式使用同一发布版本与 Shell 依赖。
 const versions: Record<string, string> = workspace
   ? await (async () => {
@@ -67,6 +73,11 @@ const standards = await readFile(
   'utf8',
 )
 const platformVersion = version('@crane199709/sub-app-kit')
+// 格式规则与平台前端同一份（frontend/.prettierrc.json），发布包由 build.mjs 带上副本。
+const prettierConfig = await readFile(
+  workspace ? join(frontend, '.prettierrc.json') : new URL('../prettierrc.json', import.meta.url),
+  'utf8',
+)
 
 const files: Record<string, string> = {
   'package.json': `${JSON.stringify(
@@ -82,6 +93,8 @@ const files: Record<string, string> = {
         typecheck: 'vue-tsc --noEmit',
         lint: 'forge-sub-app-lint',
         'lint:style': 'stylelint "src/**/*.{vue,css}"',
+        format: 'prettier --write .',
+        'format:check': 'prettier --check .',
         'test:visual': 'playwright test -c playwright.visual.config.ts',
         'test:visual:update': 'playwright test -c playwright.visual.config.ts --update-snapshots',
       },
@@ -104,6 +117,7 @@ const files: Record<string, string> = {
             '@playwright/test',
             '@vitejs/plugin-vue',
             'postcss-html',
+            'prettier',
             'stylelint',
             'typescript',
             'vite',
@@ -132,7 +146,11 @@ const files: Record<string, string> = {
   'vite.config.ts': `import { defineSubAppConfig } from '@crane199709/sub-app-kit/vite'
 
 // 开发模式经 index.html 运行独立宿主；构建产物暴露 ./sub-app 的 remoteEntry.js，入口地址登记到 App Registry。
-export default defineSubAppConfig({ appCode: '${code}', port: ${port}, apiPrefixes: ['/${code}'] })
+export default defineSubAppConfig({
+  appCode: '${code}',
+  port: ${port},
+  apiPrefixes: ['/${code}'],
+})
 `,
   'index.html': `<!doctype html>
 <html lang="zh-CN">
@@ -151,14 +169,22 @@ export default defineSubAppConfig({ appCode: '${code}', port: ${port}, apiPrefix
 import { routes } from './sub-app'
 
 // 仅用于 pnpm dev：无需启动 Shell App 工程即可运行与调试，修改代码后经 HMR 更新。
-await startDevHost({ appCode: '${code}', routes, home: 'home' })
+await startDevHost({
+  appCode: '${code}',
+  routes,
+  home: 'home',
+})
 `,
   'src/sub-app.ts': `import type { RouteRecordRaw } from 'vue-router'
 import HomePage from './HomePage.vue'
 
 // Shell 把这些相对路由挂在 /apps/${code} 下；路由名以应用编码为前缀，保证全局唯一。
 export const routes: RouteRecordRaw[] = [
-  { path: 'home', name: '${routeName('home')}', component: HomePage },
+  {
+    path: 'home',
+    name: '${routeName('home')}',
+    component: HomePage,
+  },
 ]
 `,
   'src/HomePage.vue': `<script setup lang="ts">
@@ -236,7 +262,12 @@ onMounted(() => load())
     <PageHeader :title="t('title')" />
     <PageToolbar>
       <el-select v-model="sort" class="sort" :aria-label="t('sort')" @change="load(1)">
-        <el-option v-for="item in sorts" :key="item.value" :value="item.value" :label="t(item.label)" />
+        <el-option
+          v-for="item in sorts"
+          :key="item.value"
+          :value="item.value"
+          :label="t(item.label)"
+        />
       </el-select>
       <!-- 主操作（如新增）放在 #actions 插槽，靠右显示；每个区域只有一个实心主按钮。 -->
     </PageToolbar>
@@ -262,6 +293,14 @@ onMounted(() => load())
   width: 160px;
 }
 </style>
+`,
+  '.prettierrc.json': prettierConfig,
+  // 规范副本随平台版本复制、不在本工程修改，格式化不得改写它。
+  '.prettierignore': `dist
+test-results
+playwright-report
+pnpm-lock.yaml
+docs/standards
 `,
   'stylelint.config.mjs': `// 规则随 @crane199709/sub-app-kit 发布：间距、字号、圆角与颜色只用 --forge-* token 或 Element Plus 变量。
 export { default } from '@crane199709/sub-app-kit/stylelint'
@@ -397,6 +436,7 @@ for (const [label, width, height] of viewports) {
 - \`pnpm lint\`：隔离约定检查
 - \`pnpm lint:style\`：样式 token 检查
 - \`pnpm typecheck\`：类型检查
+- \`pnpm format\`：按平台统一的 Prettier 规则格式化；\`pnpm format:check\` 只检查，提交前须通过
 - \`pnpm build\`：依次执行 lint、lint:style、类型检查，产出 \`dist/remoteEntry.js\`
 - \`pnpm test:visual\`：视觉回归，与 \`e2e/visual/__screenshots__/\` 的基线比对
 - \`pnpm test:visual:update\`：生成或更新基线截图，逐张查看后与代码一同提交
@@ -419,11 +459,13 @@ for (const [file, content] of Object.entries(files)) {
 const next = workspace
   ? `下一步（在仓库根目录 frontend 下执行）：
   pnpm install
+  pnpm --filter @forge/${code}-sub-app format    # 模板按默认编码排版，较长的编码会改变折行
   pnpm --filter @forge/${code}-sub-app dev       # 独立开发宿主 http://localhost:${port}
   pnpm --filter @forge/${code}-sub-app build     # 产物 dist/remoteEntry.js，入口地址登记到 App Registry`
   : `下一步：
   cd ${JSON.stringify(target)}
   pnpm install
+  pnpm format    # 模板按默认编码排版，较长的编码会改变折行
   pnpm dev       # 独立开发宿主 http://localhost:${port}
   pnpm build     # 产物 dist/remoteEntry.js，入口地址登记到 App Registry`
 console.log(`已生成 ${target}

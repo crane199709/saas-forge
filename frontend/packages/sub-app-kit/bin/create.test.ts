@@ -7,6 +7,8 @@ import { test } from 'node:test'
 
 // 规范原文的替身：生成工程须原样带上标题，并在头部写入平台版本。
 const standards = '# Sub-App 页面规范\n\n## 改动页面的流程\n'
+// 格式规则的替身：生成工程须原样复制平台的 Prettier 配置。
+const prettierConfig = '{ "semi": false }\n'
 
 async function assertStandards(app: string, version: string) {
   const doc = await readFile(join(app, 'docs/standards/sub-app.md'), 'utf8')
@@ -19,6 +21,7 @@ async function assertStandards(app: string, version: string) {
     'pnpm lint',
     'pnpm lint:style',
     'pnpm typecheck',
+    'pnpm format',
     'pnpm build',
     'pnpm test:visual',
   ])
@@ -28,6 +31,11 @@ async function assertStandards(app: string, version: string) {
   assert.ok(pkg.scripts.build.includes('pnpm lint:style'), pkg.scripts.build)
   assert.ok(pkg.scripts['test:visual'].includes('playwright.visual.config.ts'))
   assert.ok(pkg.scripts['test:visual:update'].includes('--update-snapshots'))
+  assert.equal(pkg.scripts.format, 'prettier --write .')
+  assert.equal(pkg.scripts['format:check'], 'prettier --check .')
+  assert.equal(await readFile(join(app, '.prettierrc.json'), 'utf8'), prettierConfig)
+  // 规范副本不在业务工程修改，格式化必须跳过它。
+  assert.match(await readFile(join(app, '.prettierignore'), 'utf8'), /^docs\/standards$/m)
   assert.match(
     await readFile(join(app, 'stylelint.config.mjs'), 'utf8'),
     /@crane199709\/sub-app-kit\/stylelint/,
@@ -96,10 +104,12 @@ test('仓库外生成使用发布版本快照，支持目标目录且拒绝覆�
         stylelint: '18.0.0',
         'postcss-html': '2.0.0',
         '@playwright/test': '1.64.1',
+        prettier: '3.9.10',
       }),
     )
     await mkdir(join(root, 'kit/standards'), { recursive: true })
     await writeFile(join(root, 'kit/standards/sub-app.md'), standards)
+    await writeFile(join(root, 'kit/prettierrc.json'), prettierConfig)
     const run = (...args: string[]) =>
       spawnSync(process.execPath, ['kit/bin/create.ts', 'billing', '5180', ...args], {
         cwd: root,
@@ -121,6 +131,7 @@ test('仓库外生成使用发布版本快照，支持目标目录且拒绝覆�
     assert.equal(pkg.devDependencies.stylelint, '18.0.0')
     assert.equal(pkg.devDependencies['postcss-html'], '2.0.0')
     assert.equal(pkg.devDependencies['@playwright/test'], '1.64.1')
+    assert.equal(pkg.devDependencies.prettier, '3.9.10')
     assert.equal(run().status, 1)
     assert.equal(run('custom/app').status, 0)
     assert.equal(
@@ -138,6 +149,8 @@ test('仓库命令继续默认生成到 apps 并支持独立编译配置', async
   try {
     await mkdir(join(repo, 'docs/standards'), { recursive: true })
     await writeFile(join(repo, 'docs/standards/sub-app.md'), standards)
+    await mkdir(root, { recursive: true })
+    await writeFile(join(root, '.prettierrc.json'), prettierConfig)
     await mkdir(join(root, 'packages/sub-app-kit/bin'), { recursive: true })
     await mkdir(join(root, 'apps/tenant-app'), { recursive: true })
     await copyFile(
@@ -173,6 +186,7 @@ test('仓库命令继续默认生成到 apps 并支持独立编译配置', async
     await assertStandards(join(root, 'apps/billing-sub-app'), '0.8.2')
     assert.equal(pkg.devDependencies.stylelint, kit.devDependencies.stylelint)
     assert.equal(pkg.devDependencies['@playwright/test'], kit.devDependencies['@playwright/test'])
+    assert.equal(pkg.devDependencies.prettier, kit.devDependencies.prettier)
   } finally {
     await rm(repo, { recursive: true, force: true })
   }

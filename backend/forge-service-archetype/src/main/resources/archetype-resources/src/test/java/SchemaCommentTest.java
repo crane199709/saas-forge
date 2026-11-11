@@ -53,7 +53,8 @@ class SchemaCommentTest {
     void everyTableOfDeclaredSdkStartersExistsAfterMigration() throws Exception {
         String pom = Files.readString(Path.of("pom.xml"), StandardCharsets.UTF_8);
         List<String> starters = new ArrayList<>();
-        Matcher artifact = Pattern.compile("<artifactId>(forge-sdk-[a-z-]+)</artifactId>").matcher(pom);
+        Matcher artifact =
+                Pattern.compile("<artifactId>(forge-sdk-[a-z-]+)</artifactId>").matcher(pom);
         while (artifact.find()) {
             starters.add(artifact.group(1));
         }
@@ -72,7 +73,9 @@ class SchemaCommentTest {
                 required.add(table.group(1));
             }
         }
-        assertThat(required).as("默认的 forge-sdk-mq 带表，找不到说明 schema.sql 未按 POM 匹配").isNotEmpty();
+        assertThat(required)
+                .as("默认的 forge-sdk-mq 带表，找不到说明 schema.sql 未按 POM 匹配")
+                .isNotEmpty();
         assertThat(mapper.selectTableNames()).containsAll(required);
     }
 }

@@ -13,8 +13,11 @@ mvn org.apache.maven.plugins:maven-archetype-plugin:3.4.1:generate -B \
   -Dversion=1.0.0-SNAPSHOT -Dpackage=com.example.orders \
   -DserviceName=orders-service -DpathPrefix=orders
 cd orders-service
+./mvnw spotless:apply
 ./mvnw verify
 ```
+
+模板按示例包名排版，`spotless:apply` 按实际包名重排 import 与折行；`verify` 最后做格式检查，不合规时失败。格式规则在父 POM `forge-dependencies` 中，生成工程只声明 Spotless 插件，并带 XML 规则文件 `spotless-xml.prefs`。
 
 `serviceName` 是注册名和 Manifest 上报身份；`pathPrefix` 不带 `/`，是网关前缀及示例 Sub-App 编码。根包用 `package`。业务工程版本独立于 SDK 版本；BOM 的 forge.version 锁定 SDK 发布版本，升级时调整父 POM 版本。
 

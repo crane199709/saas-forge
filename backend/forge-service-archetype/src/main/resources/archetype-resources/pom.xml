@@ -4,11 +4,14 @@
 
     <parent>
         <groupId>io.saasforge</groupId>
-        <artifactId>forge-dependencies</artifactId><version>@project.version@</version>
+        <artifactId>forge-dependencies</artifactId>
+        <version>@project.version@</version>
         <relativePath/>
     </parent>
 
-    <groupId>${groupId}</groupId><artifactId>${artifactId}</artifactId><version>${version}</version>
+    <groupId>${groupId}</groupId>
+    <artifactId>${artifactId}</artifactId>
+    <version>${version}</version>
     <name>${serviceName}</name>
     <description>基于 Forge SDK 的 Business Service</description>
 
@@ -151,6 +154,11 @@
                         <name>${artifactId}:${version}</name>
                     </image>
                 </configuration>
+            </plugin>
+            <!-- 格式规则由父 POM 管理（Java 用 palantir-java-format，POM 排序，资源 XML 统一缩进），verify 时检查 -->
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

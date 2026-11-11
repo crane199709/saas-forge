@@ -13,6 +13,7 @@
 - archetype 迁移由八个演进版本合并为两份：`V1__forge_sdk.sql`（SDK 必需表）与 `V2__example_orders.sql`（示例业务表，删除示例时整体删除）。表结构与原八个迁移执行后的结果一致。
 - `forge-create-sub-app` 在仓库外生成时提示 `pnpm dev` / `pnpm build`；只有 `--workspace` 模式提示 `pnpm --filter`。
 - 规范 `business-service.md`「禁止」一节的 JDBC 规则新增例外：代 Tenant 连接不属于平台的外部数据库时可用原生 JDBC。`ForgeArchitectureTest` 新增可覆盖的 `externalJdbcClasses()`，`ForgeArchitectureRules` 新增 `persistence(Set<String>)`，只对列出的类（含内部类）放开 JDBC 依赖检查，SQL 注解、字符串 Wrapper 与 SQL 片段限制不变。已生成的工程如需此例外，重新复制 `docs/standards/` 并在 `ArchitectureTest` 中覆盖该方法。
+- 脚手架带入代码格式化：Spotless 规则从 `forge-parent` 移入 `forge-dependencies` 的 pluginManagement（平台仓库生效配置不变），archetype 生成的工程声明 Spotless 插件并带 `spotless-xml.prefs`，`verify` 末尾检查格式；`forge-create-sub-app` 生成的工程复制平台的 `.prettierrc.json`，新增 `prettier` 依赖与 `pnpm format` / `pnpm format:check` 脚本，`.prettierignore` 排除 `docs/standards/`。模板已按默认示例排版，包名或应用编码较长时生成后执行一次 `./mvnw spotless:apply` / `pnpm format`。规范 `business-service.md` 与 `sub-app.md` 各新增「代码格式」一节。已生成的工程如需接入：后端在 POM `build/plugins` 加 `com.diffplug.spotless:spotless-maven-plugin`（不写版本与配置）并从新生成的工程复制 `spotless-xml.prefs`，执行一次 `./mvnw spotless:apply`；前端复制 `.prettierrc.json`、`.prettierignore`，合入 `prettier` 依赖与两个脚本后执行 `pnpm format`；两者都重新复制 `docs/standards/`。
 - 已生成的工程：主类名、Wrapper 可按需自行调整或从新生成的临时工程复制；**不要**把合并后的迁移复制进已执行过旧迁移的工程，Flyway 历史以已执行的版本为准。
 
 ## 0.1.0

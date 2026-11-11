@@ -28,7 +28,6 @@
 
     <properties>
         <java.version>17</java.version>
-        <palantir-java-format.version>2.102.0</palantir-java-format.version>
     </properties>
 
     <build>
@@ -58,33 +57,17 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- 格式化规则在 forge-dependencies 的 pluginManagement 中，与业务服务共用；这里只补平台仓库特有的范围 -->
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
                 <configuration>
-                    <java>
-                        <removeUnusedImports/>
-                        <palantirJavaFormat>
-                            <version>${palantir-java-format.version}</version>
-                        </palantirJavaFormat>
-                    </java>
                     <formats>
                         <format>
-                            <includes>
-                                <include>src/main/resources/**/*.xml</include>
-                                <include>src/test/resources/**/*.xml</include>
-                            </includes>
                             <excludes>
                                 <!-- 脚手架模板含 Velocity 占位符，不是待格式化的成品 -->
                                 <exclude>src/main/resources/archetype-resources/**</exclude>
                             </excludes>
-                            <eclipseWtp>
-                                <type>XML</type>
-                                <!-- mapper 正文是手写 SQL：配置为不限行宽，否则格式化器会把 SQL 重新折行 -->
-                                <files>
-                                    <file>${maven.multiModuleProjectDirectory}/spotless-xml.prefs</file>
-                                </files>
-                            </eclipseWtp>
                         </format>
                     </formats>
                     <pom>
@@ -93,20 +76,8 @@
                             <include>pom.xml</include>
                             <include>forge-dependencies/pom.xml</include>
                         </includes>
-                        <sortPom>
-                            <nrOfIndentSpace>4</nrOfIndentSpace>
-                            <expandEmptyElements>false</expandEmptyElements>
-                        </sortPom>
                     </pom>
                 </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                        <phase>verify</phase>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>

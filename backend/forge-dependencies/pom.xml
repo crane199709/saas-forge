@@ -44,6 +44,7 @@
         <!-- 对象存储只走 S3 协议（ADR-0011），客户端用 AWS SDK for Java v2 -->
         <awssdk.version>2.39.2</awssdk.version>
         <spotless-maven-plugin.version>3.10.4</spotless-maven-plugin.version>
+        <palantir-java-format.version>2.102.0</palantir-java-format.version>
     </properties>
 
     <dependencyManagement>
@@ -204,11 +205,51 @@
     <build>
         <pluginManagement>
             <plugins>
-                <!-- 只声明版本：本模块排在 reactor 首位，命令行的 spotless: 前缀需要在这里就能解析；格式化规则在 forge-parent 中 -->
+                <!-- 格式化规则放在 BOM：平台仓库（forge-parent）与以本 BOM 为父 POM 的业务服务共用一份，
+                     使用方只需在 build/plugins 声明插件坐标即可在 verify 时检查格式。
+                     本模块排在 reactor 首位，命令行的 spotless: 前缀也需要在这里就能解析。 -->
                 <plugin>
                     <groupId>com.diffplug.spotless</groupId>
                     <artifactId>spotless-maven-plugin</artifactId>
                     <version>${spotless-maven-plugin.version}</version>
+                    <configuration>
+                        <java>
+                            <removeUnusedImports/>
+                            <palantirJavaFormat>
+                                <version>${palantir-java-format.version}</version>
+                            </palantirJavaFormat>
+                        </java>
+                        <formats>
+                            <format>
+                                <includes>
+                                    <include>src/main/resources/**/*.xml</include>
+                                    <include>src/test/resources/**/*.xml</include>
+                                </includes>
+                                <eclipseWtp>
+                                    <type>XML</type>
+                                    <!-- mapper 正文是手写 SQL：配置为不限行宽，否则格式化器会把 SQL 重新折行；
+                                         规则文件放在工程根目录（含 .mvn 的目录） -->
+                                    <files>
+                                        <file>${maven.multiModuleProjectDirectory}/spotless-xml.prefs</file>
+                                    </files>
+                                </eclipseWtp>
+                            </format>
+                        </formats>
+                        <pom>
+                            <sortPom>
+                                <nrOfIndentSpace>4</nrOfIndentSpace>
+                                <expandEmptyElements>false</expandEmptyElements>
+                            </sortPom>
+                        </pom>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <phase>verify</phase>
+                        </execution>
+                    </executions>
                 </plugin>
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>

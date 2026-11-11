@@ -40,6 +40,7 @@
             <includes>
                 <include>mvnw</include>
                 <include>mvnw.cmd</include>
+                <include>spotless-xml.prefs</include>
             </includes>
         </fileSet>
         <fileSet filtered="false">

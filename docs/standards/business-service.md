@@ -290,6 +290,16 @@ CREATE UNIQUE INDEX order_categories_name_key ON order_categories (name) WHERE N
 
 以上规则没有自动检查，由代码审查把关。
 
+## 代码格式
+
+格式交给 Spotless，规则由父 POM `forge-dependencies` 管理，服务 POM 只声明插件坐标，不覆盖规则：
+
+- Java 用 palantir-java-format，并移除未使用的 import。
+- `pom.xml` 统一元素顺序与 4 空格缩进。
+- `src/{main,test}/resources` 下的 XML 按工程根目录的 `spotless-xml.prefs` 统一缩进，不折行（SQL 换行规则见「Mapper XML 约定」）。该文件随平台版本复制，不在本工程修改。
+
+`./mvnw verify` 最后检查格式，不合规时失败；`./mvnw spotless:apply` 按规则改写。
+
 ## 自动架构检查
 
 `forge-architecture` 提供共享 ArchUnit 规则，服务的 `ArchitectureTest` 继承 `ForgeArchitectureTest`，随 Maven `test` / `verify` 执行。测试类放在模块根包，仅扫描生产类，测试夹具不受生产规则约束：

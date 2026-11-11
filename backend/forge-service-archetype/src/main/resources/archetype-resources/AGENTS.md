@@ -20,7 +20,8 @@
 
 测试用 Testcontainers 启动 PostgreSQL 与 Redis，需要本机 Docker。
 
-- `./mvnw verify`：编译并运行全部测试，含架构检查（`ArchitectureTest`）、表与字段注释检查和 SDK 表检查（`SchemaCommentTest`）。提交前必须通过。
+- `./mvnw verify`：编译并运行全部测试，含架构检查（`ArchitectureTest`）、表与字段注释检查和 SDK 表检查（`SchemaCommentTest`），最后做 Spotless 格式检查。提交前必须通过。
+- `./mvnw spotless:apply`：按父 POM 的规则格式化 Java、`pom.xml` 与 `src/{main,test}/resources` 下的 XML；XML 规则文件是根目录的 `spotless-xml.prefs`，不在本工程修改。
 - `./mvnw test -Dtest=<测试类>`：迭代时只跑受影响的测试。
 - `./mvnw verify -DforkCount=N`：调整测试并行的 JVM 数，默认 2。
 - `./mvnw spring-boot:run`：本地启动，所需环境变量见 `src/main/resources/application.yml` 中的注释。

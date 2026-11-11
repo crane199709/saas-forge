@@ -41,6 +41,7 @@
     "element-plus": "2.14.7",
     "pinia": "4.1.0",
     "postcss-html": "2.0.0",
+    "prettier": "3.9.10",
     "stylelint": "18.0.0",
     "typescript": "5.9.3",
     "vite": "8.3.5",

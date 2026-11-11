@@ -85,7 +85,8 @@ class OrderController {
 
     /** 约束与 orders 表一致，违反时由 SDK 返回 400 request.invalid 并逐项列出字段，不必等数据库报错。 */
     record OrderRequest(
-            @NotBlank @Size(max = 200) String title, @NotNull @PositiveOrZero BigDecimal amount) {}
+            @NotBlank @Size(max = 200) String title,
+            @NotNull @PositiveOrZero BigDecimal amount) {}
 
     /**
      * @param ownerId 数据归属的 Membership，系统创建的订单为 null
