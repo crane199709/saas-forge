@@ -1,4 +1,19 @@
 import { expect, test } from '@playwright/test'
+import { mkdir } from 'node:fs/promises'
+
+const evidence = '/private/tmp/service-onboarding-qa'
+const errors: string[] = []
+
+test.beforeAll(() => mkdir(evidence, { recursive: true }).then(() => {}))
+test.beforeEach(async ({ page }) => {
+  errors.length = 0
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text())
+  })
+})
+test.afterEach(() => expect(errors).toEqual([]))
 
 // 本文件只由 deploy/e2e/run.sh 的隔离接入验收模式启动；不拦截请求、不注入会话。
 test('真实控制台登记凭证、下一请求停用与一次性明文', async ({ page }) => {
@@ -35,6 +50,7 @@ test('真实控制台登记凭证、下一请求停用与一次性明文', async
     (await page.request.get('http://127.0.0.1:18101/internal/services', { headers })).status(),
   ).toBe(401)
   await expect(page.locator('body')).not.toContainText(credential)
+  await page.screenshot({ path: `${evidence}/real-credential-disabled.png` })
   expect(
     (await page.request.get('http://127.0.0.1:18000/iam/internal/onboarding-status')).status(),
   ).toBe(403)
@@ -59,4 +75,5 @@ test('真实 Shell 与远程子应用业务请求返回 JSON', async ({ page }) 
   await expect(page.locator('vite-error-overlay, #webpack-dev-server-client-overlay')).toHaveCount(
     0,
   )
+  await page.screenshot({ path: `${evidence}/real-shell-demo.png` })
 })
