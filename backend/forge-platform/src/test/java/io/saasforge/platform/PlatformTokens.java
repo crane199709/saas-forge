@@ -67,7 +67,8 @@ final class PlatformTokens {
             "platform:plan:manage",
             "platform:sub-app:manage",
             "platform:ops:read",
-            "platform:ops:manage");
+            "platform:ops:manage",
+            "platform:service-credential:manage");
 
     /** 模拟的 iam 权限码目录是否可用；改为 false 的测试须在结束时恢复。 */
     static volatile boolean catalogAvailable = true;
@@ -153,6 +154,7 @@ final class PlatformTokens {
             });
             JWKS.createContext("/internal/ops/dead-events", DeadEventOpsFixture::handle);
             JWKS.createContext("/internal/ops/tasks", TaskOpsFixture::handle);
+            JWKS.createContext("/internal/ops/service-credentials", ServiceCredentialOpsFixture::handle);
             JWKS.start();
             REDIS.start();
             var factory = new LettuceConnectionFactory(
@@ -189,6 +191,10 @@ final class PlatformTokens {
                 () -> "http://127.0.0.1:" + JWKS.getAddress().getPort());
         registry.add("forge.platform.iam.token", () -> IAM_TOKEN);
         registry.add("forge.platform.ops.tokens.demo-service", () -> "demo-ops-token");
+        registry.add("forge.platform.ops.tokens.forge-iam", () -> "test-iam-ops-token");
+        registry.add(
+                "spring.cloud.discovery.client.simple.instances.forge-iam[0].uri",
+                () -> "http://127.0.0.1:" + JWKS.getAddress().getPort());
         registry.add("forge.platform.ops.tokens.unsupported-service", () -> "unsupported-ops-token");
         registry.add("forge.platform.ops.tokens.offline-service", () -> "offline-ops-token");
         registry.add(

@@ -65,6 +65,12 @@ export const consolePages = [
     component: () => import('./audit/AuditPage.vue'),
   },
   {
+    path: '/service-credentials',
+    title: 'serviceCredential.title',
+    permission: permissions.serviceCredentialManage,
+    component: () => import('./servicecredential/ServiceCredentialPage.vue'),
+  },
+  {
     path: '/task-runs',
     title: 'taskRun.title',
     permission: permissions.opsRead,

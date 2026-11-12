@@ -4,6 +4,8 @@
 
 ## 0.2.0（未发布）
 
+- 平台控制台新增服务凭证登记、一次性环境变量片段复制、平滑轮换引导与立即停用；新增 `platform:service-credential:manage`。平台经独立 IAM Ops Token 和服务发现访问内部管理接口，操作人从验证后的 Operator 上下文提供，IAM 统一记录生命周期审计。凭证业务错误码统一为 `service-credential.*`。
+
 ### 变更
 
 - IAM 服务凭证改为数据库管理状态：支持同服务多凭证、逐条立即停用及原子紧急轮换，库内只存 SHA-256 摘要，生命周期与受限流保护的认证失败写 Platform Realm 审计；内部认证每请求查库，数据库不可用返回 503。`forge.iam.manifest.tokens` 降级为可空且已弃用的静态引导通道，移除应用自带默认凭证，已有本地环境需登记凭证或显式提供引导值。接入清单、服务指南和 archetype 的 `FORGE_MANIFEST_TOKEN` 说明同步更新；业务服务配置键不变。

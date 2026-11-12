@@ -3,10 +3,12 @@ package io.saasforge.iam.servicecredential.service;
 import io.saasforge.sdk.core.api.ErrorCode;
 
 public enum ServiceCredentialErrorCode implements ErrorCode {
-    NOT_FOUND("serviceCredential.notFound", 404),
-    INVALID_SERVICE("serviceCredential.invalidService", 400),
-    NOT_ACTIVE("serviceCredential.notActive", 409),
-    UNAVAILABLE("serviceCredential.unavailable", 503);
+    ACTOR_REQUIRED("service-credential.actorRequired", 400),
+    INVALID_STATUS("service-credential.invalidStatus", 400),
+    NOT_FOUND("service-credential.notFound", 404),
+    INVALID_SERVICE("service-credential.invalidService", 400),
+    NOT_ACTIVE("service-credential.notActive", 409),
+    UNAVAILABLE("service-credential.unavailable", 503);
     private final String code;
     private final int httpStatus;
 
