@@ -33,5 +33,5 @@
   - `backend/forge-platform/target/permission-manifests/forge-platform/resource-manifest.json`
 - IAM CLI 也可在模块编译产物和运行依赖组成的 classpath 上直接执行：`java -cp <classpath> io.saasforge.iam.permission.service.IamManifestCli --output-dir=<directory>`。
 - 测试接缝：Manifest 导出结果与构建/测试命令。两轮 red → green 分别记录了入口缺失、权限列表未排序的预期失败；`IamManifestExportTest` 与 `PlatformManifestExportTest` 共 4 个测试已通过，涵盖全部核心权限、名称、分组、版本、Realm、重复导出字节一致。Spotless 已通过。
-- 交付前唯一一次受影响模块全量测试已启动：`./mvnw -o -pl forge-iam,forge-platform test`，日志 `/tmp/permission-catalog-01-full-tests.log`。最终结论随全量测试完成补充。
+- 交付前唯一一次受影响模块全量测试通过：`./mvnw -o -pl forge-iam,forge-platform test`。IAM 316 项、Platform 63 项，共 379 项，失败、错误、跳过均为 0；耗时 2 分 32 秒。日志 `/tmp/permission-catalog-01-full-tests.log`。
 - 工单 02 可按 `*ManifestExportTest` 模式统一选择导出入口，收集上述三份核心产物；本工单没有修改 demo-service 或实现合并目录。
