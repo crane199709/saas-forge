@@ -12,6 +12,20 @@
     <name>Forge SDK Manifest</name>
     <description>Resource Manifest 收集与上报</description>
 
+    <properties>
+        <!-- 直接依赖变更须同步白名单与接入文档，含 optional、provided 和 test 声明。 -->
+        <forge.sdk.allowedDependencies>io.saasforge:forge-architecture,
+            io.saasforge:forge-sdk-core,
+            io.saasforge:forge-sdk-ops,
+            io.saasforge:forge-sdk-security,
+            org.slf4j:slf4j-api,
+            org.springframework.boot:spring-boot-autoconfigure,
+            org.springframework.boot:spring-boot-starter-test,
+            org.springframework.boot:spring-boot-starter-webmvc,
+            org.springframework:spring-web,
+            tools.jackson.core:jackson-databind</forge.sdk.allowedDependencies>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>

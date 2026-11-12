@@ -4,7 +4,7 @@
 
 **Blocked by:** —
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] `forge-dependencies` 配置 `bannedDependencies`，覆盖 Spring Data Redis、Redisson、RocketMQ 客户端、Nacos 客户端、XXL-JOB
 - [ ] 需要中间件的模块或平台服务通过 `forge.middleware.skip=true` 显式豁免

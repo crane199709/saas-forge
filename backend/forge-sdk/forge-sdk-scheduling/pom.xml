@@ -10,6 +10,19 @@
     <name>Forge SDK Scheduling</name>
     <description>声明式任务调度、Redis 互斥与可观测</description>
     <properties>
+        <!-- 直接依赖变更须同步白名单与接入文档，含 optional、provided 和 test 声明。 -->
+        <forge.sdk.allowedDependencies>io.micrometer:micrometer-core,
+            io.saasforge:forge-architecture,
+            io.saasforge:forge-sdk-ops,
+            io.saasforge:forge-sdk-security,
+            io.saasforge:forge-sdk-tenant,
+            io.saasforge:forge-sdk-web,
+            org.springframework.boot:spring-boot-starter-data-redis,
+            org.springframework.boot:spring-boot-starter-test,
+            org.springframework.boot:spring-boot-starter-webmvc,
+            org.springframework:spring-web,
+            org.testcontainers:testcontainers-junit-jupiter,
+            tools.jackson.core:jackson-databind</forge.sdk.allowedDependencies>
         <forkCount>2</forkCount>
     </properties>
     <dependencies>

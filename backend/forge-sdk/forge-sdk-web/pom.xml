@@ -12,6 +12,20 @@
     <name>Forge SDK Web</name>
     <description>Servlet 服务的响应信封：异常映射、traceId、分页参数与 springdoc 适配</description>
 
+    <properties>
+        <!-- 直接依赖变更须同步白名单与接入文档，含 optional、provided 和 test 声明。 -->
+        <forge.sdk.allowedDependencies>io.saasforge:forge-architecture,
+            io.saasforge:forge-sdk-core,
+            jakarta.servlet:jakarta.servlet-api,
+            org.springdoc:springdoc-openapi-starter-webmvc-api,
+            org.springframework.boot:spring-boot-starter-opentelemetry,
+            org.springframework.boot:spring-boot-starter-tomcat,
+            org.springframework.boot:spring-boot-starter-validation,
+            org.springframework.boot:spring-boot-starter-webmvc-test,
+            org.springframework.boot:spring-boot-webmvc,
+            org.springframework:spring-tx</forge.sdk.allowedDependencies>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.saasforge</groupId>

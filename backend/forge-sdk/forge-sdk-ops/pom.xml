@@ -9,6 +9,16 @@
     <artifactId>forge-sdk-ops</artifactId>
     <name>Forge SDK Ops</name>
     <description>服务内部运维通道与独立令牌认证</description>
+    <properties>
+        <!-- 直接依赖变更须同步白名单与接入文档，含 optional、provided 和 test 声明。 -->
+        <forge.sdk.allowedDependencies>io.saasforge:forge-architecture,
+            io.saasforge:forge-sdk-security,
+            jakarta.servlet:jakarta.servlet-api,
+            org.springframework.boot:spring-boot-starter-test,
+            org.springframework.boot:spring-boot-starter-webmvc,
+            org.springframework:spring-webmvc</forge.sdk.allowedDependencies>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.saasforge</groupId>

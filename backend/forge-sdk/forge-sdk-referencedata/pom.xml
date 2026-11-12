@@ -15,6 +15,17 @@
     <properties>
         <!-- 参考数据缓存读取 IAM 发布的 Redis 版本号，需要直接使用 Spring Data Redis API。 -->
         <forge.middleware.skip>true</forge.middleware.skip>
+        <!-- 直接依赖变更须同步白名单与接入文档，含 optional、provided 和 test 声明。 -->
+        <forge.sdk.allowedDependencies>io.saasforge:forge-architecture,
+            io.saasforge:forge-sdk-core,
+            jakarta.validation:jakarta.validation-api,
+            org.springframework.boot:spring-boot-autoconfigure,
+            org.springframework.boot:spring-boot-starter-data-redis,
+            org.springframework.boot:spring-boot-starter-test,
+            org.springframework.boot:spring-boot-starter-validation,
+            org.springframework.data:spring-data-redis,
+            org.springframework:spring-web,
+            org.testcontainers:testcontainers-junit-jupiter</forge.sdk.allowedDependencies>
     </properties>
 
     <dependencies>

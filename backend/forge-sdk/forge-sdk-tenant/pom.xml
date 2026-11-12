@@ -12,6 +12,16 @@
     <name>Forge SDK Tenant</name>
     <description>MyBatis-Plus 租户拦截与 RLS 会话变量</description>
 
+    <properties>
+        <!-- 直接依赖变更须同步白名单与接入文档，含 optional、provided 和 test 声明。 -->
+        <forge.sdk.allowedDependencies>com.baomidou:mybatis-plus-jsqlparser,
+            com.baomidou:mybatis-plus-spring-boot4-starter,
+            io.saasforge:forge-architecture,
+            io.saasforge:forge-sdk-core,
+            org.springframework.boot:spring-boot-starter-data-redis,
+            org.springframework.boot:spring-boot-starter-test</forge.sdk.allowedDependencies>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.saasforge</groupId>
