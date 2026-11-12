@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   page.on('pageerror', (error) => errors.push(error.message))
   page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text())
+    if (['error', 'warning'].includes(message.type())) errors.push(message.text())
   })
 })
 test.afterEach(() => expect(errors).toEqual([]))

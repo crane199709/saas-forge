@@ -114,6 +114,23 @@ else
 fi
 start forge-platform 18102 /actuator/health
 start forge-gateway 18000 /actuator/health
+# 上报异步执行，服务健康不等于权限目录已写入；种子角色必须等待本次清单登记。
+MANIFEST_SERVICE=demo-service
+if [[ -n "${FORGE_TEMPLATE_SERVICE:-}" ]]; then MANIFEST_SERVICE=smoke-service; fi
+MANIFESTS_READY=0
+for ((i=0; i<60; i++)); do
+  if curl --silent --fail -H 'Authorization: Bearer local-platform-manifest-token' \
+    http://127.0.0.1:18101/internal/services | python3 -c '
+import json, sys
+try:
+    services = json.load(sys.stdin).get("data", [])
+    sys.exit(0 if {sys.argv[1], "forge-platform"}.issubset(services) else 1)
+except (ValueError, TypeError):
+    sys.exit(1)
+' "$MANIFEST_SERVICE"; then MANIFESTS_READY=1; break; fi
+  sleep 1
+done
+if [[ "$MANIFESTS_READY" != 1 ]]; then echo 'E2E Manifest 登记超时' >&2; exit 1; fi
 if [[ -n "${FORGE_TEMPLATE_SERVICE:-}" ]]; then
   sed "s/search_path = demo/search_path = smoke/; s/'demo'/'smoke'/g" deploy/e2e/seed.sql | "${COMPOSE[@]}" exec -T postgres psql -U postgres -d forge -v ON_ERROR_STOP=1
 else
