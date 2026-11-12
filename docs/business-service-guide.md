@@ -46,7 +46,7 @@ pnpm start:lowcode
 ## 从配置到租户菜单
 
 1. 与平台运维按[平台侧接入清单](service-onboarding-checklist.md)第 1 步准备目标数据库、schema、运行与迁移账号。业务开发者只维护 Flyway 迁移，不能用运行账号建表。租户表保留标准列、ENABLE + FORCE RLS、部分唯一索引与 `NOT deleted` 条件。
-2. 按清单第 2 步登记服务专属 Manifest 令牌，第 3 步创建 `forge-tenant`、`forge-app`、`forge-audit`、`forge-notification` 及 `<serviceName>-order` Topic；platform 的 `forge.platform.provisioning.services` 加入服务注册名。
+2. 按清单第 2 步由 Operator 在控制台登记服务凭证，将仅显示一次的明文安全注入 `FORGE_MANIFEST_TOKEN`，无需重启 IAM；按第 3 步创建 `forge-tenant`、`forge-app`、`forge-audit`、`forge-notification` 及 `<serviceName>-order` Topic；platform 的 `forge.platform.provisioning.services` 加入服务注册名。
 3. 提供下表配置后执行 `mvn spring-boot:run`。确认 Flyway 成功、Nacos 注册成功、IAM Manifest 上报成功。服务仅导入 `forge-common.yaml`；如使用独立服务配置，必须显式添加其 dataId，不能只在 Nacos 创建文件。
 4. 按清单第 4—5 步追加网关路由和 `forge.gateway.services` 的 `prefix: /orders`、`realm: tenant`，重启网关。匿名访问业务接口得到 401，正确 Tenant Realm Token 按权限得到 200/403，OpenAPI 能访问且 servers 地址正确。
 5. 本地通过租户 Shell 联调时，SDK `api()` / `page()` 自动将 `/orders/orders` 变为浏览器 `/api/orders/orders`，Shell 剥掉 `/api` 后转发网关。开发 Shell、生产 Shell 与独立宿主固定代理 `/api` 和 `/iam`，新增服务不改前端代理；已生成 Sub-App 删除 `apiPrefixes`。网关路由与源码业务路径保持原样，详见[接入清单第 4 节](service-onboarding-checklist.md#4-nacos-网关路由与前缀声明)。
@@ -68,10 +68,12 @@ pnpm start:lowcode
 | FORGE_SECURITY_ISSUER | Tenant Realm 的公开 issuer，与 Token 一致 / 平台运维 |
 | FORGE_SECURITY_JWK_SET_URI | IAM JWKS 的服务直连 URL / 平台运维 |
 | FORGE_ROCKETMQ_ENDPOINTS | RocketMQ Proxy gRPC 地址 / 清单第 3 步 |
-| FORGE_IAM_URI、FORGE_MANIFEST_TOKEN | IAM 内部地址及专属令牌 / 清单第 2 步 |
+| FORGE_IAM_URI、FORGE_MANIFEST_TOKEN | IAM 内部地址及控制台登记后一次性交付的服务凭证 / 清单第 2 步 |
 | FORGE_OPS_TOKEN | 服务专属运维令牌，与平台 `forge.platform.ops.tokens.<serviceName>` 一致 / 平台运维 |
 
 环境如启用 Redis/Nacos/MQ 的认证，另按平台配置提供其凭证；本模板不内置任何共享环境凭证。`forge.manifest.version` 初始为 1，是清单版本，不是 Maven 版本。
+
+凭证轮换：为同一服务创建新凭证，更新服务配置并验证上报成功，再停用旧凭证。停用请求提交后旧凭证立即失效，多条有效凭证可以并存；登记、停用和轮换由 IAM 记录 Platform Realm 审计。不要依赖已弃用的 `forge.iam.manifest.tokens` 静态引导配置；应用已移除本地静态默认凭证，既有本地环境需自行登记数据库凭证或显式配置引导值，共享环境迁移单独执行。
 
 ## Manifest、Provisioning 与内部接口
 
@@ -278,7 +280,7 @@ Business Service 须提供带导入权限码的确认接口，调用 `ExcelIo.co
 | ltree 类型不存在 | DBA 是否在 extensions 安装扩展、账号 search_path 是否按准备脚本设置 |
 | JWT 401 | issuer 是否与实际 Tenant Realm Token 完全一致，JWKS 地址是否可达 |
 | 已认证却 403 / 列表为空 | 套餐、成员角色权限及 Data Policy；无 Data Policy 默认拒绝 |
-| Manifest 被拒 | 注册名与 IAM token 配置键是否一致、令牌和清单 version 是否正确 |
+| Manifest 被拒 | 注册名与凭证绑定服务是否一致、凭证是否有效、清单 version 是否正确；503 表示 IAM 凭证库不可用 |
 | MQ 启动失败 / 初始化 pending | 使用 Proxy gRPC 而非 nameserver 地址、Topic 是否创建、platform 是否登记服务 |
 | 看不到菜单或加载失败 | Manifest、App Registry、套餐、角色、远程入口地址与 CORS；参照清单第 6 步 |
 

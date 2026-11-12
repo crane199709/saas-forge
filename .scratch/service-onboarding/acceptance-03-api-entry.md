@@ -64,7 +64,7 @@ Browser plugin not available，使用已安装 Playwright Chromium。没有 `pag
 
 ## 外部 Lowcode 变更
 
-源码：`/Users/liuhuan/workspace/coding/sub/lowcode`，修改前 main 工作区干净。SDK/UI/kit 均为 `0.2.0-SNAPSHOT`。只将 `lowcode-sub-app/vite.config.ts` 的 `apiPrefixes: ['/lowcode']` 删除，保留未提交的外仓本地变更，未发布或替换其正式依赖。完整补丁见 [lowcode-api-entry.patch](lowcode-api-entry.patch)。
+源码：`/Users/liuhuan/workspace/coding/sub/lowcode`，修改前 main 工作区干净。SDK/UI/kit 均为 `0.2.0-SNAPSHOT`。只将 `lowcode-sub-app/vite.config.ts` 的 `apiPrefixes: ['/lowcode']` 删除，保留未提交的外仓本地变更，未发布或替换其正式依赖。完整补丁见 [lowcode-api-entry.patch](lowcode-api-entry.patch)（零上下文格式，可用 `git apply --unidiff-zero` 应用）。
 
 复制 Lowcode 到 `/private/tmp/onboarding-03-browser/lowcode`，链接本票 SDK/UI/kit，直接用本票 Vite 构建（原业务源码未改）；实际 Shell 联邦加载此产物，浏览器 `/api/lowcode/data-sources` 到上游成为 `/lowcode/data-sources`，行数据与刷新通过。已安装旧包不等于新协议已发布，不能据此声称外仓正式部署完成。
 

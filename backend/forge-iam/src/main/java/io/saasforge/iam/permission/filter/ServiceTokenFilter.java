@@ -1,34 +1,36 @@
 package io.saasforge.iam.permission.filter;
 
-import io.saasforge.iam.permission.config.ManifestProperties;
+import io.saasforge.iam.servicecredential.service.ServiceCredentialAuthentication;
+import io.saasforge.iam.servicecredential.service.ServiceCredentialErrorCode;
+import io.saasforge.iam.servicecredential.service.ServiceCredentialFailureAudit;
+import io.saasforge.sdk.web.EnvelopeErrorWriter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.TransactionException;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/**
- * 以服务专属的上报令牌认证清单上报请求，认证主体为令牌所属的服务名。令牌不匹配时不设置认证，由过滤链返回 401。
- *
- * <p>服务间调用不走 Tenant Realm 的 OAuth2：业务服务启动时没有用户身份，也不应持有可签发用户 Token 的凭证。
- */
+/** 服务间内部接口的凭证认证，数据库不可用时拒绝请求并返回 503。 */
 public final class ServiceTokenFilter extends OncePerRequestFilter {
     private static final String BEARER = "Bearer ";
+    private final ServiceCredentialAuthentication credentials;
+    private final EnvelopeErrorWriter errors;
+    private final ServiceCredentialFailureAudit failures;
 
-    private final Map<String, byte[]> tokens;
-
-    public ServiceTokenFilter(ManifestProperties properties) {
-        this.tokens = new HashMap<>();
-        properties.tokens().forEach((service, token) -> tokens.put(service, token.getBytes(StandardCharsets.UTF_8)));
+    public ServiceTokenFilter(
+            ServiceCredentialAuthentication credentials,
+            EnvelopeErrorWriter errors,
+            ServiceCredentialFailureAudit failures) {
+        this.credentials = credentials;
+        this.errors = errors;
+        this.failures = failures;
     }
 
     @Override
@@ -36,17 +38,27 @@ public final class ServiceTokenFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (header != null && header.startsWith(BEARER)) {
-            byte[] presented = header.substring(BEARER.length()).getBytes(StandardCharsets.UTF_8);
-            // 逐个以常量时间比较，响应时间不泄露令牌前缀。
-            String service = null;
-            for (var entry : tokens.entrySet()) {
-                if (MessageDigest.isEqual(entry.getValue(), presented)) service = entry.getKey();
+            String token = header.substring(BEARER.length());
+            // 兼容引导令牌；空值、控制字符、空白和超长令牌在进入数据库前拒绝。
+            if (!token.isEmpty() && token.length() <= 4096 && token.chars().allMatch(c -> c > 32 && c < 127)) {
+                String service;
+                try {
+                    service = credentials.authenticate(token, request.getRemoteAddr());
+                } catch (DataAccessException | TransactionException e) {
+                    errors.write(request, response, ServiceCredentialErrorCode.UNAVAILABLE, "Internal error");
+                    return;
+                }
+                if (service != null) {
+                    var context = SecurityContextHolder.createEmptyContext();
+                    context.setAuthentication(
+                            UsernamePasswordAuthenticationToken.authenticated(service, null, List.of()));
+                    SecurityContextHolder.setContext(context);
+                }
+            } else {
+                failures.record("unknown", request.getRemoteAddr(), null);
             }
-            if (service != null) {
-                var context = SecurityContextHolder.createEmptyContext();
-                context.setAuthentication(UsernamePasswordAuthenticationToken.authenticated(service, null, List.of()));
-                SecurityContextHolder.setContext(context);
-            }
+        } else {
+            failures.record("unknown", request.getRemoteAddr(), null);
         }
         chain.doFilter(request, response);
     }

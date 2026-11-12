@@ -43,11 +43,14 @@ spring:
 
 本地 compose 和主链路 E2E 都挂载 `deploy/postgres/init`，入口 `01-service-schemas.sql` 调用同一参数化脚本准备 iam/platform/demo。Testcontainers 复制同一目录。PostgreSQL 镜像只对空数据目录执行初始化；已有卷不会自动重跑。不要为接入新服务删除已有开发库。
 
-## 2. IAM Resource Manifest 上报令牌
+## 2. IAM 服务凭证
 
-- [ ] **做什么**：为新服务生成独立令牌，以准确的 `spring.application.name` 登记到 IAM；同时交给业务服务。
-- [ ] **在哪里配**：IAM 的 `forge.iam.manifest.tokens.<服务名>` 与服务的 `forge.manifest.token` 使用同一密钥。服务配置 `forge.manifest.iam-uri` 为 IAM 内部直连地址、`forge.manifest.version` 为清单版本。参考 `backend/forge-iam/src/main/resources/application.yml` 与 demo-service 配置；使用受控部署配置或服务实际导入的 Nacos 配置覆盖，不能只创建一个未被导入的 dataId。重启相关服务。
-- [ ] **怎么确认**：服务启动后向 IAM 的 `POST /internal/manifests` 上报成功，平台套餐的权限目录出现该服务的权限码；错误令牌上报被拒。该内部接口不能经网关访问。权限、菜单、角色模板或 Data Resource 改动时递增 version，否则不能按新内容更新。
+- [ ] **做什么**：持有 `platform:service-credential:manage` 的 Operator 在平台控制台按准确的 `spring.application.name` 登记服务凭证。服务名以小写字母开头，仅含小写字母、数字与连字符，最长 100 字符；尚未上报 Resource Manifest 也可登记。
+- [ ] **在哪里配**：创建响应只显示一次明文，将其安全交付给服务，注入 `FORGE_MANIFEST_TOKEN`（`forge.manifest.token`）。同时设置 `forge.manifest.iam-uri` 为 IAM 内部直连地址、`forge.manifest.version` 为清单版本。凭证只存 SHA-256 摘要，列表只显示前 8 位指纹。无需修改 IAM 配置或重启 IAM；服务使用受控部署配置或实际导入的 Nacos 配置，不把秘密写入版本库。
+- [ ] **轮换**：先创建同一服务的新凭证，部署到服务并验证上报，再显式停用旧凭证。停用立即生效，无自动宽限期；下一次使用旧凭证请求返回 401，同服务其他有效凭证继续可用。紧急轮换的原子接口会立即停旧，不能代替上述平滑部署顺序。
+- [ ] **怎么确认**：服务启动后 `POST /internal/manifests` 上报成功，平台套餐权限目录出现该服务的权限码；错误或已停用凭证被拒。核对最近使用时间及 Platform Realm 审计的操作者、服务名和指纹。IAM 数据库故障返回 503，不回退静态凭证。内部接口不能经网关访问。权限、菜单、角色模板或 Data Resource 改动时递增 version。
+
+`forge.iam.manifest.tokens.<服务名>` 已弃用，仅保留引导、本地与隔离 E2E 通道，静态命中会记录 WARN。该 Map 可为空；应用不再提供静态默认凭证，开发环境也须登记数据库凭证，或显式提供独立的引导环境变量。数据库中同值凭证已停用时，静态配置不能恢复它。已有环境不会自动迁移或改写凭证；共享环境迁移另行安排。
 
 运维通道另用独立令牌：服务的 `forge.ops.token`（脚手架环境变量 `FORGE_OPS_TOKEN`）与平台 `forge.platform.ops.tokens.<服务名>` 配成同一个随机密钥，不能复用 Manifest 令牌。令牌不设默认值；漏配须启动失败。平台从 IAM 的已上报清单目录取实际服务名，经服务发现调用 `/internal/ops`；运维令牌不会向浏览器或网关暴露。确认正确令牌直连探针返回 200、错误令牌返回 401，经网关访问内部路径仍被拒；Operator 没有 `platform:ops:read` 时不能读取运维服务列表。
 
