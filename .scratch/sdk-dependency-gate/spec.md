@@ -1,6 +1,6 @@
 # SDK 依赖分层门禁规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准：Forge SDK、Business Service、Service Prefix。本规格不单独记录 ADR，因为门禁是可回退的构建策略。
 
@@ -65,3 +65,24 @@ SDK 有 17 个模块，模块之间已有合理的依赖（例如 IO 依赖 ABAC
 - 门禁的目标是“显式变化”，不是“零依赖”；合理的新依赖通过更新白名单即可加入。
 - 豁免是可见的架构债务，新增豁免需要在评审中说明。
 - 负向 fixture 是门禁自身的测试，不能因为构建变慢而删除。
+
+## 实现与验收（2026-11-12）
+
+集成分支：`codex/sdk-dependency-gate`，基于 `301237d`；三张工单均已 resolved。主要实现提交：`74a4444`（SDK 白名单）、`9eb1344`（中间件禁令与脚手架同步）、`a6b6954`（持久 fixture、CI 与统一依赖表）。
+
+- 两层 Enforcer 在 validate 检查直接声明，包括 optional/test/provided；传递依赖不受误拦。中间件豁免只跳过自身 execution，SDK 白名单继续生效，ArchUnit 规则保留。
+- 根据实际 POM，业务 Boot Redis 与 Spring Cloud Nacos starter 保留；真正直引原生客户端的 MQ、Reference Data 显式豁免并注释，其他 SDK 与平台服务逐项登记为无豁免。
+- 统一清单见 [SDK 依赖与中间件门禁](../../docs/sdk-dependency-gate.md)。规范、archetype、Sub-App 脚手架提示、业务接入指南与 CHANGELOG 已同步。
+
+最终集成验证通过：
+
+```sh
+cd backend
+./mvnw -o --batch-mode --no-transfer-progress validate
+cd ..
+python3 backend/src/it/sdk-dependency-gate/check.py --offline
+```
+
+默认 26 模块全部 SUCCESS；15 项持久行为检查全部 PASS，日志在 `backend/target/sdk-dependency-gate/`。两个门禁退化实验均被回归脚本拒绝，依赖解析失败不会被视为成功。实施期间还完成真实 archetype 生成工程默认成功/直引原生 Redis 失败、相关 POM Spotless、Sub-App 生成测试/类型检查、Prettier、10 项 CI 选择测试。独立 Standards 与 Spec 审查均 0 项发现。
+
+本地验证已完成，远程 CI 未触发；本次为构建策略与文档变更，未重跑无关业务测试。
