@@ -6,7 +6,7 @@
 
 ### 变更
 
-- 在线敏感字段接入统一 Jackson 3 模块，按注解与 IAM Manifest 路径/分级匹配，嵌套对象、集合与 null 都校验规则；整个 JSON 响应在发送前完成，末尾字段失败也返回完整 500。demo 清单升 8，增加共享敏感字段 DTO、独立授权并审计的原文查看。新增 ArchUnit 规则拒绝业务自有在线 serializer 与常见手写掩码，普通字符串格式化仍允许；`docs/standards/`、archetype 配置提示、sub-app-kit 生成规则、业务接入指南及 E2E 配置同步。
+- 在线敏感字段接入统一 Jackson 3 模块，按注解与 IAM Manifest 路径/分级匹配，嵌套对象、集合与 null 都校验规则；整个 JSON 响应在发送前完成，末尾字段失败也返回完整 500。demo 清单升 8，增加在线/Excel/日志共用的敏感字段示例，以及独立授权并审计的原文查看。新增 ArchUnit 规则拒绝业务自有在线 serializer 与常见手写掩码，普通字符串格式化仍允许；`docs/standards/`、archetype 配置提示、sub-app-kit 生成规则、业务接入指南及 E2E 配置同步。
 
 - `ExcelIo.export` 按敏感列登记路径复用统一引擎，每任务一次不可变快照，零行也预检缺规则与 L4，失败以 `io.maskingFailed` 结束且不上传结果文件，导出成功与失败审计均省略可能含原文的查询摘要。`forge-sdk-security` 在 Boot 日志初始化前登记本地声明与 Logback `%m`/`%msg`/`%message`/`%kvp` converter，支持命名占位参数、结构化 key/value 与 `SensitiveLogValue.of`；包装对象字符串化始终安全。日志按事件 MDC 读取租户，独立一秒有效快照异步刷新，首次、过期、不可用或失败时丢值并写非递归 status 告警；不阻断业务，关闭应用释放线程和运行时。新增业务规范「敏感字段导出与日志」，同步 archetype、sub-app-kit 生成规则、子应用规范与服务指南；旧服务不新增必配项，SDK API 随未发布 `0.2.0-SNAPSHOT` 发布。
 

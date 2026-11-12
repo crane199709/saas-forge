@@ -23,8 +23,11 @@ import io.saasforge.sdk.io.IoMaintenance;
 import io.saasforge.sdk.io.IoStoragePurposes;
 import io.saasforge.sdk.io.IoTask;
 import io.saasforge.sdk.io.IoTasks;
+import io.saasforge.sdk.manifest.ResourceManifestCollector;
 import io.saasforge.sdk.mq.EventHandler;
 import io.saasforge.sdk.provisioning.TenantPlanChanged;
+import io.saasforge.sdk.security.EffectiveFieldPolicy;
+import io.saasforge.sdk.security.MaskingRule;
 import io.saasforge.sdk.security.SensitiveField;
 import io.saasforge.sdk.security.TenantContext;
 import io.saasforge.sdk.storage.ObjectStorage;
@@ -44,6 +47,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -175,6 +179,68 @@ class ObjectStorageTest {
     void newTenant() {
         tenant = UUID.randomUUID();
         TestGrants.publishAll(redisTemplate, tenant, TestTokens.MEMBERSHIP_ID);
+    }
+
+    @Test
+    void demoHttpExportUsesItsCollectedManifestAndFailsWithoutAResultWhenARuleIsMissing() throws Exception {
+        var manifest = ResourceManifestCollector.collect(
+                "demo-service", "8", "io.saasforge.demo.masking", getClass().getClassLoader());
+        Map<String, EffectiveFieldPolicy> policies = new LinkedHashMap<>();
+        for (var field : manifest.sensitiveFields()) {
+            policies.put(
+                    field.path(),
+                    new EffectiveFieldPolicy(
+                            field.path(),
+                            field.grade(),
+                            new MaskingRule(field.defaultRule(), null, null),
+                            !"L4".equals(field.grade())));
+        }
+        var json = JsonMapper.builder().build();
+        TestExportMasking.policies(tenant, json.writeValueAsString(policies));
+        TestGrants.publish(redisTemplate, tenant, TestTokens.MEMBERSHIP_ID, List.of("masking:read", "masking:export"));
+        var online = exchange(tenant, HttpMethod.GET, "/masking/profiles", null);
+        assertThat(online.toString())
+                .contains("138****5678", "110101********1234")
+                .doesNotContain("13812345678", "110101199001011234");
+        var submitted = exchange(tenant, HttpMethod.POST, "/masking/profiles/export", null);
+        assertThat(submitted.get("httpStatus")).isEqualTo(201);
+        String id = (String) ((Map<?, ?>) submitted.get("data")).get("id");
+        var task = awaitTask(id);
+        assertThat(task.get("status")).isEqualTo("SUCCEEDED");
+        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(downloadTaskFile(task)))) {
+            var row = workbook.getSheetAt(0).getRow(1);
+            assertThat(row.getCell(0).getStringCellValue()).isEqualTo("138****5678");
+            assertThat(row.getCell(1).getStringCellValue()).isEqualTo("110101********1234");
+            assertThat(row.getCell(2).getStringCellValue()).isEqualTo("公开说明");
+        }
+        var field = policies.values().stream()
+                .filter(policy -> "idcard".equals(policy.rule().strategy()))
+                .findFirst()
+                .orElseThrow();
+        policies.put(field.path(), new EffectiveFieldPolicy(field.path(), field.grade(), null, true));
+        TestExportMasking.policies(tenant, json.writeValueAsString(policies));
+        var rejected = exchange(tenant, HttpMethod.POST, "/masking/profiles/export", null);
+        String failedId = (String) ((Map<?, ?>) rejected.get("data")).get("id");
+        var failed = awaitTask(failedId);
+        assertThat(failed.get("status")).isEqualTo("FAILED");
+        assertThat(failed.get("errorCode")).isEqualTo("io.maskingFailed");
+        assertThat(failed.get("resultAvailable")).isEqualTo(false);
+        assertThat(exchange(tenant, HttpMethod.GET, "/io/tasks/" + failedId + "/download", null)
+                        .get("code"))
+                .isEqualTo("io.resultUnavailable");
+        List<String> audits = List.of();
+        for (int attempt = 0; attempt < 100; attempt++) {
+            audits = maskingAudit.payloads(tenant, "AuditEvent").stream()
+                    .filter(payload -> payload.contains(failedId))
+                    .toList();
+            if (!audits.isEmpty()) break;
+            Thread.sleep(10);
+        }
+        assertThat(audits)
+                .singleElement()
+                .satisfies(payload -> assertThat(payload)
+                        .contains("export.run", "io.maskingFailed")
+                        .doesNotContain("13812345678", "110101199001011234"));
     }
 
     @Autowired

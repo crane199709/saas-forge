@@ -2,23 +2,23 @@ package io.saasforge.demo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.OutputStreamAppender;
 import io.saasforge.demo.category.mapper.OutboxAuditMapper;
 import io.saasforge.demo.masking.model.MaskedProfile;
 import io.saasforge.demo.masking.service.MaskingDemoService;
 import io.saasforge.sdk.audit.AuditEvent;
 import io.saasforge.sdk.audit.AuditOutcome;
 import io.saasforge.sdk.core.api.ApiResponse;
-import java.util.List;
 import java.io.ByteArrayOutputStream;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
-import ch.qos.logback.core.OutputStreamAppender;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import org.slf4j.LoggerFactory;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
@@ -183,7 +183,9 @@ class FieldMaskingHttpTest {
         logger.addAppender(appender);
         try {
             for (int attempt = 0; attempt < 50; attempt++) {
-                RestClient.create("http://localhost:" + port).post().uri("/masking/profiles/log")
+                RestClient.create("http://localhost:" + port)
+                        .post()
+                        .uri("/masking/profiles/log")
                         .header("Authorization", "Bearer " + TestTokens.forTenant(tenant))
                         .exchange((req, response) -> {
                             assertThat(response.getStatusCode().value()).isEqualTo(200);
