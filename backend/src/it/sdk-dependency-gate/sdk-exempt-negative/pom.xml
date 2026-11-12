@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <!-- 必须读取本次源码的门禁，不能继承本地仓库中可能过期的已安装父 POM。 -->
+    <parent>
+        <groupId>io.saasforge</groupId>
+        <artifactId>forge-sdk</artifactId>
+        <version>${revision}</version>
+        <relativePath>../../../../forge-sdk/pom.xml</relativePath>
+    </parent>
+    <artifactId>sdk-gate-sdk-exempt-negative</artifactId>
+    <packaging>pom</packaging>
+    <properties>
+        <!-- 只豁免中间件门禁，故意漏配 SDK 白名单以验证两层门禁彼此独立。 -->
+        <forge.middleware.skip>true</forge.middleware.skip>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-client-java</artifactId>
+        </dependency>
+    </dependencies>
+</project>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <!-- 必须读取本次源码的门禁，不能继承本地仓库中可能过期的已安装父 POM。 -->
+    <parent>
+        <groupId>io.saasforge</groupId>
+        <artifactId>forge-sdk</artifactId>
+        <version>${revision}</version>
+        <relativePath>../../../../forge-sdk/pom.xml</relativePath>
+    </parent>
+    <artifactId>sdk-gate-sdk-positive</artifactId>
+    <packaging>pom</packaging>
+    <properties>
+        <!-- 同时覆盖逗号多行白名单与 Redis starter 的传递依赖。 -->
+        <forge.sdk.allowedDependencies>org.slf4j:slf4j-api,
+            com.fasterxml.jackson.core:jackson-annotations,
+            org.springframework.boot:spring-boot-starter-data-redis</forge.sdk.allowedDependencies>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+    </dependencies>
+</project>
