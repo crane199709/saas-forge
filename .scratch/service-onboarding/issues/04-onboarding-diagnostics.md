@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** claimed
+**Status:** resolved
 
 - [x] SDK `ManifestReporter` / `ManifestAutoConfiguration`：上报失败按 3 次退避重试（连接与读超时保持 5s/10s），仍失败则保留启动成功并进入后台补报（有上限、可停止）
 - [x] 失败原因分类：网络不可达、401 凭证被拒、403 服务名不匹配（`manifest.serviceMismatch`）、409 版本冲突（`manifest.versionConflict`）、400 清单非法；分类结果进入状态，而不是只拼一段日志
@@ -17,7 +17,7 @@
 
 ## Comments
 
-2026-11-12 集成验收复核：实现和定向测试已完成；工单 01 的全量验收尚未闭环，本票暂不关闭。待 01 完成验收后，再完成本票的最终集成验收并标为 resolved。
+2026-11-12 最终验收：工单 01 已在 `4084258` 完成 IAM 314 项全量验收并关闭；随后平台 61 项、诊断 SDK 57 项全量通过，真实隔离接入流程 3 项通过，本票现标为 resolved。详见 [集成验收](../acceptance.md)。
 
 （暂无）
 

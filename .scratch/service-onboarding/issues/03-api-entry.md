@@ -13,13 +13,15 @@
 - [x] `frontend/apps/demo-sub-app`、Lowcode 子应用：源码路径不变，通过 `/api` 正常访问；不改业务路径
 - [x] 验证同源约束仍生效：跨源绝对路径仍以 `auth.invalidPath` 失败
 - [x] 验证认证链路不受影响：登录、Refresh、OAuth2 回调、Cookie 语义与改动前一致；HMR、静态资源、未知路径不被 `/api` 抢走
-- [ ] 浏览器验证（真实 Shell + 子应用）：页面业务请求到达业务服务并返回 API JSON；刷新页面不落到 Vite HTML（本票已通过 HTTP 替身代理边界；真实 Java 服务由集成验收补齐）
+- [x] 浏览器验证（真实 Shell + 子应用）：页面业务请求到达业务服务并返回 API JSON；刷新页面不落到 Vite HTML（最终隔离 Java 全栈已验证 JSON 请求与整页刷新，见集成验收）
 - [x] 文档与脚手架同一变更内更新：`docs/sub-app.md`、`docs/service-onboarding-checklist.md` §4、`deploy/images/README.md`、`CHANGELOG.md`（破坏性）、`forge-service-archetype` 与 `sub-app-kit` 模板
 - [x] 反向检查：新增一个服务不再需要修改任何前端代理配置（在规格基线里记录为 0 处）
 
 ## Comments
 
 实现与代理边界验证已完成，见 [验收记录](../acceptance-03-api-entry.md)。真实浏览器覆盖 Vite/Nginx Shell 加载 Demo 和 Lowcode；上游使用 HTTP 替身，Java/IAM/业务服务全栈由集成验收负责人另补证据。外部 Lowcode 仅保留配置的一处未提交修改，未发布依赖或部署。
+
+最终集成补充：真实 Java/IAM/网关的原有主链路 3 项及接入流程 3 项均通过；Demo 请求为 `/api/demo/orders`，返回 JSON，整页刷新后订单仍正常显示。
 
 ## Answer
 

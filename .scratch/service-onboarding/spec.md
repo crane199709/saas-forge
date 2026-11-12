@@ -1,6 +1,6 @@
 # 服务接入成本：可管理的服务凭证与统一 API 入口
 
-Status: ready-for-agent（本文只记录设计；实施前需用户明确授权）
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准（Service Credential、Service Prefix、API Entry、Resource Manifest）。相关决策见 [ADR-0023](../../docs/adr/0023-service-credential-as-managed-state.md)、[ADR-0024](../../docs/adr/0024-api-entry-stripped-by-shell.md)。
 
@@ -110,13 +110,13 @@ Status: ready-for-agent（本文只记录设计；实施前需用户明确授权
 
 ## 文档与脚手架同步（在对应工单内同一变更完成）
 
-- [ ] `docs/service-onboarding-checklist.md` §2（凭证改为控制台登记；静态 Map 标注 deprecated）、§4（Shell 代理改为 `/api`）
-- [ ] `docs/business-service-guide.md`（凭证获取与轮换步骤）
-- [ ] `docs/sub-app.md`（`/api` 约定，删除 `apiPrefixes`）
-- [ ] `deploy/images/README.md`（删除 `FORGE_API_PREFIXES`，改为固定 `/api`）
-- [ ] `CHANGELOG.md`（破坏性：`/api` 入口、`FORGE_API_PREFIXES` 移除）
-- [ ] `forge-service-archetype` 与 `sub-app-kit` 模板（代理固定、`FORGE_MANIFEST_TOKEN` 说明）
-- [ ] `GLOSSARY.md` 已加 Service Credential / Service Prefix / API Entry
+- [x] `docs/service-onboarding-checklist.md` §2（凭证改为控制台登记；静态 Map 标注 deprecated）、§4（Shell 代理改为 `/api`）
+- [x] `docs/business-service-guide.md`（凭证获取与轮换步骤）
+- [x] `docs/sub-app.md`（`/api` 约定，删除 `apiPrefixes`）
+- [x] `deploy/images/README.md`（删除 `FORGE_API_PREFIXES`，改为固定 `/api`）
+- [x] `CHANGELOG.md`（破坏性：`/api` 入口、`FORGE_API_PREFIXES` 移除）
+- [x] `forge-service-archetype` 与 `sub-app-kit` 模板（代理固定、`FORGE_MANIFEST_TOKEN` 说明）
+- [x] `GLOSSARY.md` 已加 Service Credential / Service Prefix / API Entry
 
 ## Non-goals
 
