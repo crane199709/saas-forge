@@ -45,6 +45,11 @@ forge:
       issuer: http://127.0.0.1:18000/iam/platform
       jwk-set-uri: http://127.0.0.1:18101/platform/oauth2/jwks
   iam:
+    # 仅隔离 E2E 使用静态引导凭证，不依赖应用自带默认密钥。
+    manifest:
+      tokens:
+        demo-service: local-demo-manifest-token
+        forge-platform: local-platform-manifest-token
     redirect-uri: http://127.0.0.1:15174/
   manifest:
     iam-uri: http://127.0.0.1:18101

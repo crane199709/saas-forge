@@ -4,7 +4,7 @@
 
 **Blocked by:** 无
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] Flyway 迁移新增 `service_credential`：`id`（UUIDv7）、`service`、`digest`、`status`、`last_used_at` 与标准列；表和全部字段写 `COMMENT ON`；`digest` 用 `WHERE NOT deleted` 的部分唯一索引；`service` 上建查询索引
 - [ ] 手写 SQL 只写在 mapper XML；摘要比较沿用 `MessageDigest.isEqual`

@@ -44,7 +44,8 @@ forge:
     endpoints: ${dollar}{FORGE_ROCKETMQ_ENDPOINTS}
   manifest:
     version: 1
-    ${hash} IAM 内部地址与本服务专属上报令牌：接入清单 Manifest 步骤
+    ${hash} IAM 内部地址；凭证由 Operator 在控制台登记，明文只显示一次，注入 FORGE_MANIFEST_TOKEN。
+    ${hash} 轮换先建新、部署验证、再停旧；无需修改或重启 IAM，不使用已弃用的静态 token Map。
     iam-uri: ${dollar}{FORGE_IAM_URI}
     token: ${dollar}{FORGE_MANIFEST_TOKEN}
 mybatis-plus:

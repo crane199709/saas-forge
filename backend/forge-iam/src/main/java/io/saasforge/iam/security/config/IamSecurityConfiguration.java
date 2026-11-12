@@ -11,12 +11,13 @@ import io.saasforge.iam.membership.service.MembershipStateService;
 import io.saasforge.iam.operator.model.ActiveOperator;
 import io.saasforge.iam.operator.service.OperatorService;
 import io.saasforge.iam.operator.service.OperatorStateService;
-import io.saasforge.iam.permission.config.ManifestProperties;
 import io.saasforge.iam.permission.filter.ServiceTokenFilter;
 import io.saasforge.iam.security.filter.EnvelopeSecurityErrorHandler;
 import io.saasforge.iam.security.filter.TokenGrantLockFilter;
 import io.saasforge.iam.security.service.MfaAuthority;
 import io.saasforge.iam.security.service.RedisAuthorizationService;
+import io.saasforge.iam.servicecredential.service.ServiceCredentialAuthentication;
+import io.saasforge.iam.servicecredential.service.ServiceCredentialFailureAudit;
 import io.saasforge.iam.tenant.service.TenantIpAllowlistService;
 import io.saasforge.iam.tenant.service.TenantSecurityService;
 import io.saasforge.iam.tenant.service.TenantStateService;
@@ -391,7 +392,12 @@ class IamSecurityConfiguration {
     @Bean
     @Order(4)
     SecurityFilterChain manifestSecurity(
-            HttpSecurity http, ManifestProperties manifest, EnvelopeSecurityErrorHandler errors) throws Exception {
+            HttpSecurity http,
+            ServiceCredentialAuthentication credentials,
+            EnvelopeSecurityErrorHandler errors,
+            EnvelopeErrorWriter errorWriter,
+            ServiceCredentialFailureAudit failures)
+            throws Exception {
         // 业务服务以上报令牌调用（上报清单、读取权限码目录与授权树、读取租户参考数据与租户目录、预览 Plan 变更的影响），无状态、不使用 Cookie，因此无需 CSRF 防护。
         http.securityMatcher(
                         "/internal/manifests",
@@ -403,7 +409,7 @@ class IamSecurityConfiguration {
                         "/internal/tenants/*/plan-impact")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.disable())
-                .addFilterBefore(new ServiceTokenFilter(manifest), AuthorizationFilter.class)
+                .addFilterBefore(new ServiceTokenFilter(credentials, errorWriter, failures), AuthorizationFilter.class)
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
                 .exceptionHandling(exceptions ->
                         exceptions.authenticationEntryPoint(errors).accessDeniedHandler(errors));

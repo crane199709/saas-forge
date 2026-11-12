@@ -6,6 +6,8 @@
 
 ### 变更
 
+- IAM 服务凭证改为数据库管理状态：支持同服务多凭证、逐条立即停用及原子紧急轮换，库内只存 SHA-256 摘要，生命周期与受限流保护的认证失败写 Platform Realm 审计；内部认证每请求查库，数据库不可用返回 503。`forge.iam.manifest.tokens` 降级为可空且已弃用的静态引导通道，移除应用自带默认凭证，已有本地环境需登记凭证或显式提供引导值。接入清单、服务指南和 archetype 的 `FORGE_MANIFEST_TOKEN` 说明同步更新；业务服务配置键不变。
+
 - 发布后源码立即进入下一个 `-SNAPSHOT` 开发版本，同一正式版本号只对应一份发布内容：`version.py set` 接受 `-SNAPSHOT`，新增 `version.py dev` 由分支 CI（Backend quality）检查源码处于统一的 SNAPSHOT 版本；`check` 与正式发布仍拒绝 SNAPSHOT，只有 `publish.sh local`（模板冒烟）以 `--allow-snapshot` 部署当前源码到临时仓库。版本同步范围新增 `@crane199709/sdk` 的 `sdkRuntime` 版本。当前源码为 `0.2.0-SNAPSHOT`。
 - 后端版本只维护在 `backend/.mvn/maven.config` 的 `revision`：POM 中的 Forge 坐标与 `forge.version` 改为 `${revision}`，由 `flatten-maven-plugin` 在安装与发布时解析为实际版本；发布的制品坐标不变，仓库外工程无需调整。
 - archetype 生成的主类名由 `serviceName` 派生（`orders-service` → `OrdersApplication`），不再固定为 `DemoApplication`。
