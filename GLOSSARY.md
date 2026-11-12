@@ -110,6 +110,10 @@ _Avoid_: 菜单配置、菜单权限
 **Resource Manifest（资源清单）**:
 业务服务按版本向平台申报的 Permission Code、Data Resource 与菜单的集合。
 
+**Permission Catalog（权限目录）**:
+由 IAM 中 Permission Code 生成的确定性清单，供前端、外部 Sub-App 与 CI 消费和校验；运行时权威仍是 Resource Manifest 与 IAM 的权限记录，不是第二事实源。
+_Avoid_: 权限清单、权限表
+
 ## 账号安全
 
 **First Factor（第一因素）**:
@@ -148,6 +152,24 @@ _Avoid_: 账号冻结、封号、停用
 Tenant 限定其 Membership 可从哪些 IP 地址或网段进入该 Tenant 的规则；不限制全局登录，也不影响同一 Identity 进入其他 Tenant。
 _Avoid_: 白名单、IP 策略
 
+## 数据安全
+
+**Data Grade（数据分级）**:
+对敏感字段的分类，决定字段的默认脱敏规则与导出限制；不参与功能权限或数据权限判断。
+_Avoid_: 密级、敏感级别
+
+**Sensitive Field（敏感字段）**:
+Business Service 在 Resource Manifest 中声明、需要在导出、日志或指定在线接口中脱敏的字段。
+_Avoid_: 敏感列、隐私字段
+
+**Masking Rule（脱敏规则）**:
+把敏感值转换为不可还原展示值的规则；由平台预置，Tenant 可覆盖。
+_Avoid_: 脱敏策略、掩码
+
+**Field Masking（字段脱敏）**:
+按 Masking Rule 替换敏感字段原值的处理，覆盖导出、日志与声明的在线接口；不是加密，原文不能由脱敏值还原。
+_Avoid_: 数据脱敏、加密
+
 ## 通知与待办
 
 **Notification（通知）**:
@@ -175,6 +197,10 @@ _Avoid_: 选项、字典值
 **Extensible Dictionary（可扩展字典）**:
 允许 Tenant 新增自定义项、停用内置项、调整排序与显示名的 Dictionary；其余 Dictionary 对 Tenant 只读。
 _Avoid_: 自定义字典、租户字典
+
+**Dictionary Change History（字典变更历史）**:
+Tenant 对 Dictionary 的覆盖设置按次留存的历史快照，用于查看变更与比较差异；不包含 Business Service 在 Resource Manifest 中的字典声明演进。
+_Avoid_: 字典版本、字典日志
 
 **Parameter（参数）**:
 Business Service 声明的一个有类型、有默认值的设置项；声明为可修改时，Tenant 可在取值范围内覆盖默认值。
@@ -224,6 +250,10 @@ _Avoid_: 导入样例、模板文件
 导入校验未通过时生成的、在原文件每行后附上错误原因的 Excel 文件。
 _Avoid_: 失败明细、导入日志
 
+**Import Rollback（导入回滚）**:
+把一次覆盖导入中被覆盖的业务数据恢复为导入前取值的操作；不删除该次导入新增的数据，也不等同于 Restore。
+_Avoid_: 撤销导入、导入还原、回滚
+
 ## 系统构成
 
 **Platform Core（平台核心）**:
@@ -255,6 +285,10 @@ _Avoid_: 基座、门户
 **Shell Page（内置页）**:
 由 Shell App 自身提供、不来自 Resource Manifest 的页面，如租户端的成员管理与平台端的全部管理页。
 
+**Workbench（工作台）**:
+Shell App 首页的只读聚合页，汇总当前 Membership 的待办、未读通知与公告；不是 Sub-App，也不是可配置的仪表盘。
+_Avoid_: 首页、仪表盘、Dashboard
+
 **Sub-App（子应用）**:
 独立构建、独立部署、在运行时被 Shell App 加载的业务前端。
 _Avoid_: 微应用、插件
@@ -285,6 +319,10 @@ _Avoid_: 失败消息、毒消息
 **Storage Purpose（存储用途）**:
 Business Service 声明的一类文件用途，规定该类文件可接受的类型与大小以及下载链接时长；Tenant 与 Operator 不能修改。
 _Avoid_: 文件类型、文件分类、业务类型
+
+**File Retention（文件保留期）**:
+Storage Purpose 规定的文件可保留时长；到期后文件记录先标记失效，宽限期结束后再删除存储对象。
+_Avoid_: 文件过期时间、TTL
 
 **Restore（恢复）**:
 使已被逻辑删除的资源重新对常规查询可见的操作；不存在集中回收站，也不提供彻底删除。
