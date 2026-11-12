@@ -28,5 +28,5 @@
 - 外部 CLI 示例：`python3 scripts/permissions/catalog.py --manifest /tmp/orders/resource-manifest.json --expected-service orders --previous docs/contracts/permission-catalog.json --output /tmp/orders-catalog.json`。
 - TDD 按已批准的“生成命令 + 产物”接缝逐个 red → green。`python3 -m unittest discover -s scripts/permissions -p 'test_*.py' -v`：9 项通过，覆盖合并排序、UTF-8/LF、重复字节一致、完全一致去重、归属和展示元数据冲突、缺失文件/期待服务、非法码、历史停用/恢复、历史归属冲突、无效历史和 SDK 空分组兼容。测试全部通过外部 CLI 执行。
 - 真实根命令 `python3 scripts/permissions/catalog.py --offline` 连续两次成功，5 个 Java 导出测试通过，两次目录 `cmp` 字节一致。根命令的源码构建同时通过 Spotless 检查。已合入集成分支 `ca5b29b`。
-- 交付前唯一一次 Demo 模块全量测试已启动：`./mvnw -o -pl examples/demo-service test`，日志 `/tmp/permission-catalog-02-demo-full-tests.log`；最终结论随测试完成补充。IAM 与 Platform 全量沿用工单 01 已通过的 379 项，不重复执行。
+- 交付前唯一一次 Demo 模块全量测试完成：`./mvnw -o -pl examples/demo-service test`，共 106 项通过，0 失败、0 错误、0 跳过；日志 `/tmp/permission-catalog-02-demo-full-tests.log`。IAM 与 Platform 全量沿用工单 01 已通过的 379 项，不重复执行。
 - 本工单不实现动作词策略、`--check`、CI 或消费文档；工单 03 可直接在上述 CLI 与字段结构上扩展。
