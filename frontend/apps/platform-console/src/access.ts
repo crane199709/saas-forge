@@ -24,6 +24,8 @@ export const permissions = Object.freeze({
   opsRead: 'platform:ops:read',
   opsManage: 'platform:ops:manage',
   identityMfaReset: 'platform:identity-mfa:reset',
+  dataSecurityRead: 'platform:data-security:read',
+  dataSecurityManage: 'platform:data-security:manage',
   menuManage: 'platform:menu:manage',
 })
 

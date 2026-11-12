@@ -26,6 +26,12 @@ export function shellPages(t: Translate): ShellPage[] {
     { key: 'roles', path: '/roles', title: t('role.nav'), permission: 'iam:role:manage' },
     { key: 'audit', path: '/audit', title: t('audit.nav'), permission: 'iam:audit:read' },
     {
+      key: 'data-security',
+      path: '/data-security',
+      title: t('dataSecurity.title'),
+      permission: 'iam:data-security:read',
+    },
+    {
       key: 'dictionaries',
       path: '/dictionaries',
       title: t('referenceData.dictionary.nav'),

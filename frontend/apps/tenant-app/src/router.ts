@@ -99,6 +99,11 @@ export function createShellRouter(history: RouterHistory) {
         meta: { permission: 'iam:role:manage' },
       },
       {
+        path: '/data-security',
+        component: () => import('./data-security/DataSecurityPage.vue'),
+        meta: { permission: 'iam:data-security:read' },
+      },
+      {
         path: '/dictionaries',
         component: () => import('./referencedata/DictionaryPage.vue'),
         meta: { permission: 'iam:reference-data:manage' },
