@@ -94,6 +94,12 @@ export const consolePages = [
     permission: permissions.announcementManage,
     component: () => import('./announcement/AnnouncementPage.vue'),
   },
+  {
+    path: '/data-security',
+    title: 'dataSecurity.title',
+    permission: permissions.dataSecurityRead,
+    component: () => import('./data-security/DataSecurityPage.vue'),
+  },
   // 菜单管理页在默认导航中放在最后。
   {
     path: '/menu-layout',

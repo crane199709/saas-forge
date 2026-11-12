@@ -513,5 +513,47 @@
     "resetImpact": "全体成员的导航将恢复默认顺序，自定义分组会被删除。",
     "resetConfirm": "恢复默认",
     "cancel": "取消"
+  },
+  "dataSecurity": {
+    "title": "数据安全",
+    "refresh": "刷新",
+    "retry": "重试",
+    "empty": "暂无已登记的敏感字段",
+    "service": "服务",
+    "path": "字段路径",
+    "grade": "数据分级",
+    "effectiveRule": "生效规则",
+    "status": "状态",
+    "export": "导出",
+    "allowed": "允许导出",
+    "blocked": "禁止导出",
+    "preview": "预览",
+    "grades": {
+      "L1": "L1 公开",
+      "L2": "L2 内部",
+      "L3": "L3 敏感",
+      "L4": "L4 极敏感"
+    },
+    "statuses": {
+      "active": "生效中",
+      "missing-rule": "缺少规则"
+    },
+    "setRule": "设置规则",
+    "reset": "恢复默认",
+    "overridden": "租户覆盖",
+    "rule": "脱敏规则",
+    "previewTitle": "脱敏预览",
+    "sample": "样例值",
+    "result": "脱敏结果",
+    "previewFailed": "预览失败，请重试",
+    "cancel": "取消",
+    "save": "保存",
+    "close": "关闭",
+    "previewErrors": {
+      "invalidRule": "规则无效，请选择其他规则",
+      "unknownStrategy": "规则使用了不支持的策略，请联系平台管理员",
+      "unchanged": "规则未改变样例值，请调整样例或规则",
+      "unknown": "预览失败，请稍后重试"
+    }
   }
 }
