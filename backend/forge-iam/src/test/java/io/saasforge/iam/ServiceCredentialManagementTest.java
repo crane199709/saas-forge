@@ -2,6 +2,7 @@ package io.saasforge.iam;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -56,12 +57,32 @@ class ServiceCredentialManagementTest {
     }
 
     @Test
-    void invalidServiceAndMissingTrustedActorAreRejected() {
-        assertThat(post("", Map.of("service", "Invalid_Name", "actor", ACTOR), 400)
-                        .get("code"))
-                .isEqualTo("service-credential.invalidService");
-        post("", Map.of("service", "valid-service"), 400);
-        post("", Map.of("service", "a".repeat(101), "actor", ACTOR), 400);
+    void invalidServicesReturnFieldValidationErrors() {
+        for (String[] invalid : new String[][] {
+            {null, "validation.notBlank"},
+            {"", "validation.notBlank"},
+            {"  ", "validation.notBlank"},
+            {"Invalid_Name", "validation.pattern"},
+            {"a".repeat(101), "validation.size"}
+        }) {
+            var request = invalid[0] == null ? Map.of("actor", ACTOR) : Map.of("service", invalid[0], "actor", ACTOR);
+            assertValidationError(post("", request, 400), "service", invalid[1]);
+        }
+    }
+
+    @Test
+    void missingTrustedActorReturnsFieldValidationErrorsForAllWriteOperations() {
+        for (String path : List.of(
+                "", "/019a0110-0000-7000-8000-000000000001/disable", "/019a0110-0000-7000-8000-000000000001/rotate")) {
+            assertValidationError(post(path, Map.of("service", "valid-service"), 400), "actor", "validation.notNull");
+        }
+    }
+
+    private static void assertValidationError(Map response, String field, String code) {
+        assertThat(response).containsEntry("code", "request.invalid").containsEntry("httpStatus", 400);
+        assertThat((List<Map<String, Object>>) response.get("errors"))
+                .anySatisfy(
+                        error -> assertThat(error).containsEntry("field", field).containsEntry("code", code));
     }
 
     @Test

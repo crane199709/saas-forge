@@ -1,9 +1,10 @@
 import { defineConfig } from '@playwright/test'
 import mainFlow from './playwright.main-flow.config'
 
-export default defineConfig(mainFlow, {
+export default defineConfig({
+  ...mainFlow,
   testMatch: '**/service-onboarding.spec.ts',
-  use: { baseURL: 'http://127.0.0.1:15173' },
+  use: { ...mainFlow.use, baseURL: 'http://127.0.0.1:15173' },
   webServer: [
     ...(Array.isArray(mainFlow.webServer) ? mainFlow.webServer : []),
     {

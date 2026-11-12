@@ -4,6 +4,10 @@ import io.saasforge.platform.servicecredential.model.*;
 import io.saasforge.platform.servicecredential.service.ServiceCredentialAdminService;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.security.RequiresPermission;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,7 +28,7 @@ class ServiceCredentialAdminController {
 
     @RequiresPermission("platform:service-credential:manage")
     @PostMapping
-    ApiResponse<IssuedServiceCredentialResponse> create(@RequestBody CreateRequest request) {
+    ApiResponse<IssuedServiceCredentialResponse> create(@Valid @RequestBody CreateRequest request) {
         return credentials.create(request.service());
     }
 
@@ -40,5 +44,7 @@ class ServiceCredentialAdminController {
         return credentials.rotate(id);
     }
 
-    record CreateRequest(String service) {}
+    record CreateRequest(
+            @NotBlank @Size(max = 100) @Pattern(regexp = "[a-z][a-z0-9-]*")
+            String service) {}
 }

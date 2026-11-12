@@ -10,6 +10,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,6 +21,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /** 服务间内部接口的凭证认证，数据库不可用时拒绝请求并返回 503。 */
 public final class ServiceTokenFilter extends OncePerRequestFilter {
+    private static final Logger log = LoggerFactory.getLogger(ServiceTokenFilter.class);
     private static final String BEARER = "Bearer ";
     private final ServiceCredentialAuthentication credentials;
     private final EnvelopeErrorWriter errors;
@@ -45,6 +48,7 @@ public final class ServiceTokenFilter extends OncePerRequestFilter {
                 try {
                     service = credentials.authenticate(token, request.getRemoteAddr());
                 } catch (DataAccessException | TransactionException e) {
+                    log.warn("Service credential authentication database unavailable", e);
                     errors.write(request, response, ServiceCredentialErrorCode.UNAVAILABLE, "Internal error");
                     return;
                 }

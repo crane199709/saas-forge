@@ -4,6 +4,11 @@ import io.saasforge.iam.servicecredential.model.*;
 import io.saasforge.iam.servicecredential.service.*;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.core.api.ForgeException;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.*;
@@ -29,22 +34,20 @@ class ServiceCredentialController {
     }
 
     @PostMapping
-    ApiResponse<IssuedServiceCredentialResponse> create(@RequestBody CreateRequest request) {
-        requireActor(request.actor());
+    ApiResponse<IssuedServiceCredentialResponse> create(@Valid @RequestBody CreateRequest request) {
         boolean reported = credentials.manifestReported(request.service());
         return ApiResponse.created(issued(credentials.create(request.service(), request.actor()), reported));
     }
 
     @PostMapping("/{id}/disable")
-    ApiResponse<Void> disable(@PathVariable UUID id, @RequestBody ActorRequest request) {
-        requireActor(request.actor());
+    ApiResponse<Void> disable(@PathVariable UUID id, @Valid @RequestBody ActorRequest request) {
         credentials.disable(id, request.actor());
         return ApiResponse.ok();
     }
     /** 紧急吊销并换发；常规轮换使用登记、部署、显式停旧三个步骤。 */
     @PostMapping("/{id}/rotate")
-    ApiResponse<IssuedServiceCredentialResponse> rotate(@PathVariable UUID id, @RequestBody ActorRequest request) {
-        requireActor(request.actor());
+    ApiResponse<IssuedServiceCredentialResponse> rotate(
+            @PathVariable UUID id, @Valid @RequestBody ActorRequest request) {
         var result = credentials.rotate(id, request.actor());
         return ApiResponse.created(
                 issued(result, credentials.manifestReported(result.credential().service())));
@@ -54,11 +57,11 @@ class ServiceCredentialController {
         return new IssuedServiceCredentialResponse(result.credential(), result.token(), reported);
     }
 
-    private static void requireActor(UUID actor) {
-        if (actor == null) throw new ForgeException(ServiceCredentialErrorCode.ACTOR_REQUIRED);
-    }
+    record CreateRequest(
+            @NotBlank @Size(max = 100) @Pattern(regexp = "[a-z][a-z0-9-]*")
+            String service,
 
-    record CreateRequest(String service, UUID actor) {}
+            @NotNull UUID actor) {}
 
-    record ActorRequest(UUID actor) {}
+    record ActorRequest(@NotNull UUID actor) {}
 }

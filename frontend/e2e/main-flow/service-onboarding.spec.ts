@@ -51,8 +51,16 @@ test('真实控制台登记凭证、下一请求停用与一次性明文', async
   ).toBe(401)
   await expect(page.locator('body')).not.toContainText(credential)
   await page.screenshot({ path: `${evidence}/real-credential-disabled.png` })
+  const accessToken = await page.evaluate(
+    () => JSON.parse(localStorage.getItem('forge.platform.session')!).accessToken as string,
+  )
+  expect(accessToken).toBeTruthy()
   expect(
-    (await page.request.get('http://127.0.0.1:18000/iam/internal/onboarding-status')).status(),
+    (
+      await page.request.get('http://127.0.0.1:18000/platform/internal/onboarding-status', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+    ).status(),
   ).toBe(403)
 })
 

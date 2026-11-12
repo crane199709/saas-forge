@@ -6,6 +6,7 @@ import static org.mockito.Mockito.reset;
 
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.ThrowableProxyUtil;
 import ch.qos.logback.core.read.ListAppender;
 import io.saasforge.iam.provisioning.mapper.OutboxAuditMapper;
 import io.saasforge.iam.servicecredential.service.ServiceCredentialAuthentication;
@@ -162,15 +163,47 @@ class ServiceTokenFilterTest {
     void databaseFailureReturns503EvenForAValidStaticTokenWhileMalformedHeadersRemain401() throws Exception {
         DataSource pool = dataSource.unwrap(DataSource.class);
         doThrow(new SQLException("database unavailable")).when(pool).getConnection();
+        var logger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        var appender = new ListAppender<ILoggingEvent>() {
+            @Override
+            protected void append(ILoggingEvent event) {
+                event.prepareForDeferredProcessing();
+                super.append(event);
+            }
+        };
+        appender.start();
+        logger.addAppender(appender);
         try {
             var response = get("legacy-service-token");
             assertThat(response.getStatusCode().value()).isEqualTo(503);
             assertThat(response.getBody()).containsEntry("code", "service-credential.unavailable");
             assertThat(response.getBody().get("errorMessage")).isEqualTo("Internal error");
+            assertThat(response.getBody().get("traceId")).isEqualTo("0af7651916cd43dd8448eb211c80319c");
+            var events = List.copyOf(appender.list);
+            assertThat(events).anySatisfy(event -> {
+                assertThat(event.getMDCPropertyMap()).containsEntry("traceId", "0af7651916cd43dd8448eb211c80319c");
+                assertThat(event.getThrowableProxy()).isNotNull();
+                assertThat(ThrowableProxyUtil.asString(event.getThrowableProxy()))
+                        .contains("java.sql.SQLException: database unavailable", "\tat ");
+            });
+            assertThat(events).allSatisfy(event -> {
+                String logged = event.getFormattedMessage()
+                        + (event.getThrowableProxy() == null
+                                ? ""
+                                : ThrowableProxyUtil.asString(event.getThrowableProxy()));
+                assertThat(logged)
+                        .doesNotContain(
+                                "legacy-service-token",
+                                "Authorization",
+                                "Bearer ",
+                                "1a0d8da2e559e06639bbf03383844222ea491f312e650dbb39265373726dd944");
+            });
             for (String invalid : new String[] {null, "", "token with space"}) {
                 assertThat(get(invalid).getStatusCode().value()).isEqualTo(401);
             }
         } finally {
+            logger.detachAppender(appender);
+            appender.stop();
             reset(pool);
         }
     }
@@ -179,6 +212,7 @@ class ServiceTokenFilterTest {
         return RestClient.create("http://127.0.0.1:" + port)
                 .get()
                 .uri("/internal/services")
+                .header("traceparent", "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01")
                 .headers(headers -> {
                     if (token != null) headers.setBearerAuth(token);
                 })

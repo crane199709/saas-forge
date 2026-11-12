@@ -38,6 +38,24 @@ class ServiceCredentialOpsTest extends PlatformIntegrationTest {
     }
 
     @Test
+    void invalidServicesReturnFieldValidationErrorsBeforeCallingIam() throws Exception {
+        for (String[] invalid : new String[][] {
+            {null, "validation.notBlank"},
+            {"", "validation.notBlank"},
+            {"  ", "validation.notBlank"},
+            {"Invalid_Name", "validation.pattern"},
+            {"a".repeat(101), "validation.size"}
+        }) {
+            var request = invalid[0] == null ? Map.of() : Map.of("service", invalid[0]);
+            var response = call(PlatformTokens.operator(), "POST", "", request, 400);
+            assertThat(response).containsEntry("code", "request.invalid").containsEntry("httpStatus", 400);
+            assertThat((List<Map<String, Object>>) response.get("errors"))
+                    .anySatisfy(error ->
+                            assertThat(error).containsEntry("field", "service").containsEntry("code", invalid[1]));
+        }
+    }
+
+    @Test
     void iamUnavailabilityIsReportedAsServiceState() throws Exception {
         try {
             ServiceCredentialOpsFixture.available = false;
