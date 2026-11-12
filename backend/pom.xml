@@ -82,6 +82,19 @@
         </plugins>
     </build>
     <profiles>
+        <!-- 门禁自身的正负样例由 check.py 单独选择，默认 reactor 不包含它们。 -->
+        <profile>
+            <id>sdk-dependency-gate</id>
+            <modules>
+                <module>src/it/sdk-dependency-gate/sdk-exempt-negative</module>
+                <module>src/it/sdk-dependency-gate/sdk-exempt-positive</module>
+                <module>src/it/sdk-dependency-gate/sdk-service-negative</module>
+                <module>src/it/sdk-dependency-gate/sdk-negative</module>
+                <module>src/it/sdk-dependency-gate/sdk-positive</module>
+                <module>src/it/sdk-dependency-gate/business-negative</module>
+                <module>src/it/sdk-dependency-gate/business-positive</module>
+            </modules>
+        </profile>
         <profile>
             <id>images</id>
             <properties>

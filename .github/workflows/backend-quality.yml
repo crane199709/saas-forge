@@ -38,6 +38,10 @@ jobs:
       - run: ./mvnw --batch-mode install -Parchetype-it
         if: steps.changes.outputs.run == 'true'
         working-directory: backend
+      - name: Verify SDK dependency gates
+        if: steps.changes.outputs.run == 'true'
+        run: python3 src/it/sdk-dependency-gate/check.py
+        working-directory: backend
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -45,4 +49,5 @@ jobs:
           path: |
             backend/**/target/surefire-reports/
             backend/**/target/failsafe-reports/
+            backend/target/sdk-dependency-gate/*.log
           retention-days: 7
