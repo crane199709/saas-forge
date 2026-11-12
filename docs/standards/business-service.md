@@ -276,6 +276,14 @@ Platform 通过专属 `forge-platform.yaml` 的 `forge.platform.ops.tokens.<spri
 - 其他匿名接口必须在网关显式列出，同时在服务的安全链中放行，不靠推断。
 - 只供同进程或服务间直连调用的接口放在 `/internal/` 下，网关显式拒绝。
 
+## 敏感字段登记
+
+需要脱敏的字段在 Resource Manifest 的 `sensitiveFields` 声明 `path`、`grade` 与可选 `defaultRule`，或在 DTO 字段、record component、getter 上使用 `io.saasforge.sdk.security.SensitiveField` 注解。两种声明合并：服务内字段路径唯一，文件与注解重复声明也会失败；同一 record component 传播到字段和 accessor 的注解只计一次。
+
+`path` 是点分普通标识符，各段满足 `[A-Za-z_][A-Za-z0-9_]{0,62}`，不接受数组索引或表达式；`grade` 只能是 `L1` 公开、`L2` 内部、`L3` 敏感、`L4` 极敏感。分级只决定默认脱敏规则与导出限制，不参与权限判断。`defaultRule` 填平台预置规则编码，省略时使用分级默认规则。
+
+SDK 在构建期 CLI、启动生成与上报前校验声明，IAM 接收时再使用相同契约校验。新增、移除或调整路径、分级、默认规则（含注解）都必须递增 `forge.manifest.version`，同版本内容不可变；未登记的服务不增加必配项，空声明不改变已生成的旧清单内容。声明负责登记，实际脱敏还需对应执行通道；未声明字段保持原样。
+
 ## 启动上报与内部状态
 
 引入 `forge-sdk-manifest` 的 Servlet 服务必须配置独立 `forge.ops.token`；该模块带入 Ops 安全链，令牌漏配时启动失败，包括关闭上报的服务。Service Credential（`forge.manifest.token`）只用于向 IAM 上报，不能读取 `/internal/onboarding-status`，也不能与 Ops Token 混用。脚手架已包含两个模块与各自配置项。

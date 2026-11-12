@@ -45,6 +45,7 @@ forge:
     endpoints: ${dollar}{FORGE_ROCKETMQ_ENDPOINTS}
   # SDK 异步有限重试与补报；只读 /internal/onboarding-status 由独立 forge.ops.token 保护
   manifest:
+    ${hash} 权限、菜单、Data Resource 或 sensitiveFields（含 @SensitiveField 注解）变化时递增。
     version: 1
     ${hash} IAM 内部地址；凭证由 Operator 在控制台登记，明文只显示一次，注入 FORGE_MANIFEST_TOKEN。
     ${hash} 轮换先建新、部署验证、再停旧；无需修改或重启 IAM，不使用已弃用的静态 token Map。

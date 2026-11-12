@@ -6,6 +6,8 @@
 
 ### 变更
 
+- Resource Manifest 新增可选 `sensitiveFields`（路径、L1–L4 分级、可选默认规则），SDK 提供 `@SensitiveField` 并在 CLI/启动生成时合并字段与 getter 声明，上报前再次校验；重复路径、非法路径与分级拒绝。业务规范新增「敏感字段登记」，声明变化须升 `forge.manifest.version`；空声明保持旧清单内容兼容，不增加必配项。archetype 带空声明与版本提示，sub-app-kit 配套规范新增服务端脱敏值展示规则，生成的 AGENTS 摘要与服务接入指南同步。SDK 保持当前 `0.2.0-SNAPSHOT` 开发版本。
+
 - **破坏性**：IAM、Platform、Demo 服务端统一使用 `FORGE_OPS_TOKEN`，Platform/Demo 的清单及 IAM 目录访问统一使用 `FORGE_MANIFEST_TOKEN`，移除本地静态默认凭证。Platform 不再内置服务令牌列表，完整映射通过专属 `forge-platform.yaml` 提供。新增独立服务环境文件与映射样例；本地启动、隔离 E2E、业务服务规范、archetype、sub-app-kit 配套规范、中英文 README 同步。既有环境须保留原值迁移到各服务私有文件，不能共用通用变量文件；IAM 已弃用的静态引导 Map 仍保留兼容。
 
 - SDK Manifest 上报改为异步初次 + 三次退避重试，之后每五分钟最多补报十二次，成功/关闭即停止；增加结构化失败分类及独立 Ops Token 保护的 `/internal/onboarding-status`。平台新增 `platform:onboarding:read` 与只读“服务接入诊断”：读取 Nacos 客户端配置、lb 实例状态及真实网关 OpenAPI 身份证据；新增必配网关 origin，应用配置与隔离 E2E 地址同步。SDK OpenAPI 输出 `x-forge-service`。`docs/standards/business-service.md` 新增启动上报与内部状态规则：Servlet 服务引入 manifest 也须配置独立 Ops Token（包括关闭上报时），脚手架已具备该配置；服务指南与 archetype 状态说明同步，archetype 构建携带更新后的业务服务规范。前端设计规则不变。

@@ -17,6 +17,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.databind.json.JsonMapper;
 
 class ResourceManifestCollectorTest {
@@ -58,6 +59,121 @@ class ResourceManifestCollectorTest {
         assertThat(ResourceManifestCollector.dataResources(
                         ResourceManifestCollectorTest.class.getClassLoader(), "manifests/valid.json"))
                 .isEqualTo(manifest.dataResources());
+    }
+
+    @Test
+    void sensitiveFieldsAreIncludedInThePublicManifestContract() {
+        ResourceManifest manifest = collect("manifests/sensitive-fields.json");
+
+        assertThat(JSON.readTree(JSON.writeValueAsString(manifest))
+                        .path("sensitiveFields")
+                        .toString())
+                .isEqualTo("[{\"path\":\"customer.name\",\"grade\":\"L2\"},"
+                        + "{\"path\":\"customer.phone\",\"grade\":\"L3\",\"defaultRule\":\"phone\"}]");
+        assertThat(JSON.writeValueAsString(collect("manifests/valid.json"))).doesNotContain("sensitiveFields");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"L1", "L2", "L3", "L4"})
+    void allFourDataGradesAreAcceptedByThePublicContract(String grade) {
+        ResourceManifest manifest = JSON.readValue("""
+                {"service":"demo-service","version":"1","permissions":[],"menus":[],
+                 "sensitiveFields":[{"path":"customer.phone","grade":"%s"}]}
+                """.formatted(grade), ResourceManifest.class);
+
+        manifest.validate();
+        assertThat(manifest.sensitiveFields())
+                .containsExactly(new ResourceManifest.SensitiveField("customer.phone", grade, null));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"L0", "L5", "l3", "confidential"})
+    void unknownDataGradesAreRejectedAtThePublicContract(String grade) {
+        ResourceManifest manifest = JSON.readValue("""
+                {"service":"demo-service","version":"1","permissions":[],"menus":[],
+                 "sensitiveFields":[{"path":"customer.phone","grade":"%s"}]}
+                """.formatted(grade), ResourceManifest.class);
+
+        assertThatThrownBy(manifest::validate)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("grade")
+                .hasMessageContaining(grade);
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "",
+                "customer..phone",
+                ".phone",
+                "customer.",
+                "customer[0].phone",
+                "customer/phone",
+                "1phone",
+                "customer.phone;DROP"
+            })
+    void invalidSensitiveFieldPathsAreRejectedAtThePublicContract(String path) {
+        ResourceManifest manifest = JSON.readValue("""
+                {"service":"demo-service","version":"1","permissions":[],"menus":[],
+                 "sensitiveFields":[{"path":"%s","grade":"L3"}]}
+                """.formatted(path), ResourceManifest.class);
+
+        assertThatThrownBy(manifest::validate)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("path");
+    }
+
+    @Test
+    void duplicateSensitiveFieldDeclarationsAreRejectedEvenWhenTheyAgree() {
+        assertThatThrownBy(() -> collect("manifests/sensitive-fields-duplicate.json"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Duplicate Sensitive Field path: customer.phone");
+    }
+
+    @Test
+    void annotatedRecordFieldsAndGettersAreMergedWithFileDeclarationsWithoutInitializingClasses() {
+        ResourceManifest manifest = ResourceManifestCollector.collect(
+                "demo-service",
+                "2",
+                "io.saasforge.sdk.sensitivefixture.valid",
+                getClass().getClassLoader(),
+                "manifests/sensitive-fields-extra.json");
+
+        assertThat(manifest.sensitiveFields())
+                .extracting(
+                        ResourceManifest.SensitiveField::path,
+                        ResourceManifest.SensitiveField::grade,
+                        ResourceManifest.SensitiveField::defaultRule)
+                .containsExactly(
+                        tuple("contact.email", "L3", "email"),
+                        tuple("customer.name", "L2", null),
+                        tuple("customer.phone", "L3", "phone"),
+                        tuple("invoice.receiver", "L1", null));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"duplicate,Duplicate Sensitive Field path", "invalidpath,path", "invalidgrade,grade"})
+    void invalidAnnotatedSensitiveFieldsFailManifestGeneration(String fixture, String reason) {
+        assertThatThrownBy(() -> ResourceManifestCollector.collect(
+                        "demo-service",
+                        "2",
+                        "io.saasforge.sdk.sensitivefixture." + fixture,
+                        getClass().getClassLoader(),
+                        "missing.json"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(reason);
+    }
+
+    @Test
+    void annotationAndManifestFileCannotBothDeclareTheSameSensitiveField() {
+        assertThatThrownBy(() -> ResourceManifestCollector.collect(
+                        "demo-service",
+                        "2",
+                        "io.saasforge.sdk.sensitivefixture.valid",
+                        getClass().getClassLoader(),
+                        "manifests/sensitive-fields.json"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Duplicate Sensitive Field path: customer.");
     }
 
     @Test

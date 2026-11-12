@@ -1,0 +1,5 @@
+{
+  "sensitiveFields": [
+    {"path": "invoice.receiver", "grade": "L1"}
+  ]
+}

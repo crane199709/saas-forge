@@ -1,0 +1,6 @@
+{
+  "sensitiveFields": [
+    {"path": "customer.phone", "grade": "L3", "defaultRule": "phone"},
+    {"path": "customer.phone", "grade": "L3", "defaultRule": "phone"}
+  ]
+}
