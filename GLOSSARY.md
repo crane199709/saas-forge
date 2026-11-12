@@ -233,6 +233,18 @@ _Avoid_: 失败明细、导入日志
 开发者基于 Forge SDK 搭建、接入平台的业务后端服务。
 _Avoid_: 应用服务、子系统
 
+**Service Credential（服务凭证）**:
+一个 Business Service 用来向平台证明自身服务身份的随机凭证；有状态、可轮换、可停用，与 Resource Manifest、运维令牌相互独立。
+_Avoid_: 上报令牌、Manifest Token、API Key
+
+**Service Prefix（服务前缀）**:
+平台为每个 Business Service 分配、出现在网关外部路径里的单个路径段，决定路由、Realm 与 OpenAPI 分组。
+_Avoid_: 服务名、应用编码
+
+**API Entry（统一接口入口）**:
+浏览器侧访问 Business Service 的统一路径前缀，由 Shell App 去除后再转发网关；它不随服务数量增加而变化。
+_Avoid_: 网关前缀、baseURL
+
 **Forge SDK**:
 供 Business Service 引入的一组后端能力包与供前端使用的前端包的总称。
 
