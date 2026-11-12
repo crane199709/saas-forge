@@ -4,9 +4,9 @@
 
 ## 0.2.0（未发布）
 
-- 平台控制台新增服务凭证登记、一次性环境变量片段复制、平滑轮换引导与立即停用；新增 `platform:service-credential:manage`。平台经独立 IAM Ops Token 和服务发现访问内部管理接口，操作人从验证后的 Operator 上下文提供，IAM 统一记录生命周期审计。凭证业务错误码统一为 `service-credential.*`。
-
 ### 变更
+
+- 平台控制台新增服务凭证登记、一次性环境变量片段复制、平滑轮换引导与立即停用；新增 `platform:service-credential:manage`。平台经独立 IAM Ops Token 和服务发现访问内部管理接口，操作人从验证后的 Operator 上下文提供，IAM 统一记录生命周期审计。凭证业务错误码统一为 `service-credential.*`。
 
 - **破坏性**：前端 SDK `api()` / `page()` 强制添加浏览器 `/api` 入口；Shell 开发 Vite、生产 Nginx 与 sub-app-kit 独立宿主固定代理 `/api`（剥离入口段）与 `/iam`（认证透传）。移除 `FORGE_API_PREFIXES` 与 `apiPrefixes`，不保留逐服务前缀兼容代理。升级时配套部署 Shell、SDK、sub-app-kit，已生成 Sub-App 删除 `apiPrefixes`；业务源码路径、网关路由、认证路径与 Cookie 语义保持原样。`docs/standards/sub-app.md` 新增「接口入口」，`business-service.md` 补充浏览器与直连网关路径区别；两套脚手架随构建携带新规范，Sub-App 模板与视觉用例同步。新增服务前端代理改动为 0 处。
 - IAM 服务凭证改为数据库管理状态：支持同服务多凭证、逐条立即停用及原子紧急轮换，库内只存 SHA-256 摘要，生命周期与受限流保护的认证失败写 Platform Realm 审计；内部认证每请求查库，数据库不可用返回 503。`forge.iam.manifest.tokens` 降级为可空且已弃用的静态引导通道，移除应用自带默认凭证，已有本地环境需登记凭证或显式提供引导值。接入清单、服务指南和 archetype 的 `FORGE_MANIFEST_TOKEN` 说明同步更新；业务服务配置键不变。
