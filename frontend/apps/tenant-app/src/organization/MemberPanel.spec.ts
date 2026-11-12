@@ -64,7 +64,7 @@ it('列出成员的部门与岗位，保存时整体提交分配', async () => {
   await flushPromises()
 
   const [url, init] = fetcher.mock.calls[1]!
-  expect(url).toBe(`${location.origin}/iam/org/memberships/m1/assignment`)
+  expect(url).toBe(`${location.origin}/api/iam/org/memberships/m1/assignment`)
   expect(JSON.parse(init.body)).toEqual({
     primaryDepartmentId: 'b',
     departmentIds: ['a'],

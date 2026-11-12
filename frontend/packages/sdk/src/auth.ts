@@ -301,7 +301,7 @@ export function createTenantClient(storage: Storage) {
   async function bindingCall<T>(path: string, body: object): Promise<T> {
     if (!core.session()) return core.sessionPost<T>(path, body)
     try {
-      return await core.api<T>(path, jsonPost(body))
+      return await core.authApi<T>(path, jsonPost(body))
     } catch (error) {
       if (error instanceof ApiError && error.code === 'auth.mfaRequired')
         return core.sessionPost<T>(path, body)
@@ -342,17 +342,17 @@ export function createTenantClient(storage: Storage) {
 
   /** 当前身份是否已绑定 Authenticator。 */
   function mfaStatus(): Promise<{ bound: boolean }> {
-    return core.api(`${tenantRealm.authPath}/mfa`)
+    return core.authApi(`${tenantRealm.authPath}/mfa`)
   }
 
   /** 验证动态码后重新生成 Recovery Code，旧的一组全部作废。 */
   function regenerateRecoveryCodes(code: string): Promise<RecoveryCodes> {
-    return core.api(`${tenantRealm.authPath}/mfa/recovery-codes/regenerate`, jsonPost({ code }))
+    return core.authApi(`${tenantRealm.authPath}/mfa/recovery-codes/regenerate`, jsonPost({ code }))
   }
 
   /** 验证动态码后解绑 Authenticator，Recovery Code 一并作废。 */
   async function unbindMfa(code: string): Promise<void> {
-    await core.api(`${tenantRealm.authPath}/mfa/unbind`, jsonPost({ code }))
+    await core.authApi(`${tenantRealm.authPath}/mfa/unbind`, jsonPost({ code }))
   }
 
   /**
@@ -360,7 +360,7 @@ export function createTenantClient(storage: Storage) {
    * 当前 Access Token 随之被拒，下次请求遇到 401 时自动刷新并继续使用。
    */
   async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    await core.api(
+    await core.authApi(
       `${tenantRealm.authPath}/password/change`,
       jsonPost({ currentPassword, newPassword }),
     )
@@ -900,17 +900,32 @@ function createRealmClient<S extends RealmSession>(
     return response
   }
 
-  /** 经 `request` 调用信封接口，成功返回 `data`，失败抛出 `ApiError`。 */
-  async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  // 认证调用沿用 /iam/auth 与原 Cookie 路径，不经过业务 API Entry。
+  async function authApi<T>(path: string, init: RequestInit = {}): Promise<T> {
     return (await readEnvelope<T>(await request(path, init))).data as T
+  }
+
+  function apiPath(path: string): string {
+    // 加前缀前先校验原始路径，不能把跨源地址伪装为合法的 /api/... 路径。
+    const target = new URL(path, location.origin)
+    if (!path.startsWith('/') || target.origin !== location.origin) {
+      throw new Error('auth.invalidPath')
+    }
+    return `/api${target.pathname}${target.search}${target.hash}`
+  }
+
+  /** 经同源 `/api` 入口调用信封接口；调用方仍传网关路径，成功返回 `data`。 */
+  async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+    return authApi<T>(apiPath(path), init)
   }
 
   /** 经 `request` 调用分页接口，返回条目与 `meta.page`，失败抛出 `ApiError`。 */
   async function page<T>(path: string, init: RequestInit = {}): Promise<Page<T>> {
-    return readPage<T>(await request(path, init))
+    return readPage<T>(await request(apiPath(path), init))
   }
 
   return {
+    authApi,
     api,
     page,
     authenticate,

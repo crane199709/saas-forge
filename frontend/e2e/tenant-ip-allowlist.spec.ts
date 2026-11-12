@@ -53,7 +53,7 @@ async function seed(page: Page) {
 }
 async function common(page: Page) {
   await page.route('**/iam/**', async (route) => {
-    const path = new URL(route.request().url()).pathname
+    const path = new URL(route.request().url()).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/iam/auth/access')
       return route.fulfill(ok({ permissions: ['iam:security:manage'], menus: [], subApps: [] }))
     if (path === '/iam/auth/memberships') {

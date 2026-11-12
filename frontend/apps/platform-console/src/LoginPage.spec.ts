@@ -95,7 +95,7 @@ it('运营账号经 Platform Realm 登录，凭证存于 Platform Realm 的存�
   expect(authorize.searchParams.get('client_id')).toBe('platform-console')
   expect(authorize.searchParams.get('scope')).toBe('platform')
   expect(fetcher.mock.calls[2]![0]).toBe('/iam/platform/auth/exchange')
-  expect(fetcher.mock.calls[3]![0]).toBe(location.origin + '/iam/platform/access')
+  expect(fetcher.mock.calls[3]![0]).toBe(location.origin + '/api/iam/platform/access')
   const headers = new Headers((fetcher.mock.calls[3]![1] as RequestInit).headers)
   expect(headers.get('Authorization')).toBe('Bearer platform-access')
   // 两个 Realm 的凭证分开存放，平台登录不会写入 Tenant Realm 的会话。

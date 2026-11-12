@@ -6,6 +6,8 @@
 
 ### 变更
 
+- **破坏性**：前端 SDK `api()` / `page()` 强制添加浏览器 `/api` 入口；Shell 开发 Vite、生产 Nginx 与 sub-app-kit 独立宿主固定代理 `/api`（剥离入口段）与 `/iam`（认证透传）。移除 `FORGE_API_PREFIXES` 与 `apiPrefixes`，不保留逐服务前缀兼容代理。升级时配套部署 Shell、SDK、sub-app-kit，已生成 Sub-App 删除 `apiPrefixes`；业务源码路径、网关路由、认证路径与 Cookie 语义保持原样。`docs/standards/sub-app.md` 新增「接口入口」，`business-service.md` 补充浏览器与直连网关路径区别；两套脚手架随构建携带新规范，Sub-App 模板与视觉用例同步。新增服务前端代理改动为 0 处。
+
 - 发布后源码立即进入下一个 `-SNAPSHOT` 开发版本，同一正式版本号只对应一份发布内容：`version.py set` 接受 `-SNAPSHOT`，新增 `version.py dev` 由分支 CI（Backend quality）检查源码处于统一的 SNAPSHOT 版本；`check` 与正式发布仍拒绝 SNAPSHOT，只有 `publish.sh local`（模板冒烟）以 `--allow-snapshot` 部署当前源码到临时仓库。版本同步范围新增 `@crane199709/sdk` 的 `sdkRuntime` 版本。当前源码为 `0.2.0-SNAPSHOT`。
 - 后端版本只维护在 `backend/.mvn/maven.config` 的 `revision`：POM 中的 Forge 坐标与 `forge.version` 改为 `${revision}`，由 `flatten-maven-plugin` 在安装与发布时解析为实际版本；发布的制品坐标不变，仓库外工程无需调整。
 - archetype 生成的主类名由 `serviceName` 派生（`orders-service` → `OrdersApplication`），不再固定为 `DemoApplication`。

@@ -47,7 +47,7 @@ async function session(page: Page, permissions: string[]) {
     ),
   )
   await page.route('**/iam/**', (route) => {
-    const path = new URL(route.request().url()).pathname
+    const path = new URL(route.request().url()).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/iam/auth/access')
       return route.fulfill(
         ok({
@@ -116,6 +116,7 @@ test('订单切换重置页码，恢复末页最后一条后回到有效页并�
   await page.route('**/demo/orders**', (route) => {
     const request = route.request()
     const url = new URL(request.url())
+    url.pathname = url.pathname.replace(/^\/api(?=\/)/, '')
     if (request.method() === 'POST') {
       expect(url.pathname).toBe('/demo/orders/d21/restore')
       active.unshift(deleted.pop()!)
@@ -183,6 +184,7 @@ async function roleFixture(page: Page, conflict = false) {
   const deleted = [original]
   await page.route('**/iam/roles**', (route) => {
     const url = new URL(route.request().url())
+    url.pathname = url.pathname.replace(/^\/api(?=\/)/, '')
     if (url.pathname === '/iam/roles')
       return route.fulfill(ok(url.searchParams.get('deleted') === 'true' ? deleted : active))
     if (url.pathname.endsWith('/restore')) {
@@ -285,6 +287,7 @@ test('部门平铺呈现父级受阻，先恢复父再恢复子，岗位允许�
   const deletedPositions = [{ id: 'old-engineer', name: '工程师' }]
   await page.route('**/iam/org/**', (route) => {
     const url = new URL(route.request().url())
+    url.pathname = url.pathname.replace(/^\/api(?=\/)/, '')
     const positions = url.pathname.includes('/positions')
     const active = positions ? activePositions : activeDepartments
     const deleted = positions ? deletedPositions : deletedDepartments
@@ -436,6 +439,7 @@ test('有删除权限时可删除订单，删除后出现在已删除视图；�
   await page.route('**/demo/orders**', (route) => {
     const request = route.request()
     const url = new URL(request.url())
+    url.pathname = url.pathname.replace(/^\/api(?=\/)/, '')
     if (request.method() === 'DELETE') {
       deletes.push(url.pathname)
       const index = active.findIndex((order) => url.pathname.endsWith(`/${order.id}`))
