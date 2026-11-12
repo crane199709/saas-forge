@@ -129,6 +129,10 @@ forge:
 
 两项地址和凭证随环境注入，启用后漏配会启动失败。凭证与本服务清单上报相同，IAM 按其认证的服务身份限制字段范围。平台“数据安全”维护固定策略库与四级分级默认，租户“数据安全”只能选择字段规则；生效优先级为租户覆盖 > 字段默认 > 分级默认，L4 禁止导出。预览共用执行引擎，失败时不回显样例原文。配置与字段登记变更写审计，预览样例不入审计；引用规则不能删除。策略按请求直接读取 IAM，修改从下次读取起生效；IAM 不可用时执行通道必须失败关闭。
 
+在线通道使用 DTO 上的 `@SensitiveField` 与 IAM 登记共同决定脱敏，适用于嵌套对象和集合。SDK 在写出前完成整个 JSON 响应，缺字段、缺规则、null 下的缺规则或执行失败均为 500；一次响应复用一份快照。响应在内存中形成 JSON 树，列表应分页，文件下载和流式输出走各自管线。业务代码不自定义在线脱敏 serializer 或手拼掩码；完整要求见 [在线敏感字段](standards/business-service.md#在线敏感字段)。
+
+demo-service 的 `/masking/profiles` 返回手机号、身份证与普通说明，同一个 `MaskedProfile` 声明供在线与 Excel 导出复用；`/masking/profiles/raw` 使用独立的 `masking:viewRaw` Permission Code 与不含原文的 `profile.viewRaw` 审计。原文 DTO 使用固定安全 `toString()`，普通查看即使持有原文权限仍返回脱敏值。demo 清单版本为 8，运行时复用 `forge.manifest.iam-uri` 和本服务凭证；隔离 E2E 的 IAM 地址覆盖也自动供该通道使用。
+
 `OrderCategoryService` 实现 `TenantInitializer`，SDK 订阅 TenantCreated、恢复 CurrentTenant 并在初始化事务中调用它；业务层不自行处理租户 ID。初始化只补齐缺少的分类，部分唯一索引兜底并发，SDK 的消费去重与事务确保重投不会产生重复结果。失败时让异常传播以触发重试，不吞掉错误；已有初始化数据不得被重试覆盖。清理实现 `TenantDataCleaner`，保持逻辑删除。用平台测试租户确认初始化状态成功，纯 HTTP 测试不能证明真实 MQ 投递。
 
 `forge-sdk-ops` 为 `/internal/ops` 及其子路径建立独立运维令牌认证，`forge.ops.token` 无默认值，漏配即启动失败；普通业务接口继续验证本服务 Realm 的 JWT。平台通过已上报 Manifest 的服务目录及 `lb://<serviceName>` 直连服务，Operator 须有 `platform:ops:read` 或 `platform:ops:manage` 才能使用对应功能。服务未引入能力、无实例、令牌未配或不一致时，仅标记该服务不可用。

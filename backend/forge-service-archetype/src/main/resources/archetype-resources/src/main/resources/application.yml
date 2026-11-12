@@ -41,6 +41,7 @@ forge:
     issuer: ${dollar}{FORGE_SECURITY_ISSUER}
     jwk-set-uri: ${dollar}{FORGE_SECURITY_JWK_SET_URI}
   ${hash} 使用统一脱敏执行通道时按 docs/standards/business-service.md 显式启用；无声明的旧服务不新增必配项。
+  ${hash} 在线 DTO 的 String 属性使用 @SensitiveField，嵌套/集合自动生效；独立原文操作按规范授权并审计。
   ${hash} field-masking:
   ${hash}   enabled: true
   ${hash}   iam-uri: ${dollar}{FORGE_IAM_URI}

@@ -9,6 +9,12 @@ import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
+import com.tngtech.archunit.thirdparty.org.objectweb.asm.ClassReader;
+import com.tngtech.archunit.thirdparty.org.objectweb.asm.ClassVisitor;
+import com.tngtech.archunit.thirdparty.org.objectweb.asm.Handle;
+import com.tngtech.archunit.thirdparty.org.objectweb.asm.MethodVisitor;
+import com.tngtech.archunit.thirdparty.org.objectweb.asm.Opcodes;
+import java.io.IOException;
 import java.util.Set;
 
 /** 各模块共享的生产字节码约束，测试样例不参与生产扫描。 */
@@ -129,6 +135,123 @@ public final class ForgeArchitectureRules {
                 }
             }
         });
+    }
+
+    /**
+     * 在线脱敏只经统一序列化器；精确检查自定义序列化入口与常见手写掩码，不限制普通字符串格式化。
+     *
+     * <p>静态规则覆盖重复掩码字面量与截取/替换/重复的组合，不能证明任意计算的展示值安全。
+     */
+    public static ArchRule fieldMasking() {
+        return classes().should(new ArchCondition<>("业务字段脱敏使用统一执行通道") {
+            @Override
+            public void check(JavaClass type, ConditionEvents events) {
+                if (type.getPackageName().startsWith(SDK)) return;
+                if (type.isAssignableTo("tools.jackson.databind.ValueSerializer")
+                        || type.isAssignableTo("com.fasterxml.jackson.databind.JsonSerializer")) {
+                    reject(events, type, type.getName() + " 定义业务自有 Jackson 序列化器");
+                }
+                type.getAnnotations().forEach(annotation -> rejectSerializerAnnotation(type, annotation, events));
+                type.getFields()
+                        .forEach(field -> field.getAnnotations()
+                                .forEach(annotation -> rejectSerializerAnnotation(type, annotation, events)));
+                type.getMethods()
+                        .forEach(method -> method.getAnnotations()
+                                .forEach(annotation -> rejectSerializerAnnotation(type, annotation, events)));
+                String resource = type.getName().replace('.', '/') + ".class";
+                try (var input = ForgeArchitectureRules.class.getClassLoader().getResourceAsStream(resource)) {
+                    if (input == null) throw new IllegalStateException("Cannot inspect " + type.getName());
+                    new ClassReader(input)
+                            .accept(
+                                    new ClassVisitor(Opcodes.ASM9) {
+                                        @Override
+                                        public MethodVisitor visitMethod(
+                                                int access,
+                                                String name,
+                                                String descriptor,
+                                                String signature,
+                                                String[] exceptions) {
+                                            return new MethodVisitor(Opcodes.ASM9) {
+                                                boolean repeatedMask;
+                                                boolean singleMask;
+                                                boolean substring;
+                                                boolean replace;
+                                                boolean repeat;
+
+                                                void literal(Object value) {
+                                                    if (value instanceof String text) {
+                                                        repeatedMask |= text.contains("**")
+                                                                || text.contains("••")
+                                                                || text.contains("●●");
+                                                        singleMask |= text.equals("*")
+                                                                || text.equals("•")
+                                                                || text.equals("●");
+                                                    }
+                                                }
+
+                                                @Override
+                                                public void visitLdcInsn(Object value) {
+                                                    literal(value);
+                                                }
+
+                                                @Override
+                                                public void visitInvokeDynamicInsn(
+                                                        String method, String desc, Handle bootstrap, Object... args) {
+                                                    for (Object arg : args) literal(arg);
+                                                }
+
+                                                @Override
+                                                public void visitMethodInsn(
+                                                        int opcode,
+                                                        String owner,
+                                                        String method,
+                                                        String desc,
+                                                        boolean isInterface) {
+                                                    if (owner.equals("java/lang/String")) {
+                                                        substring |= method.equals("substring");
+                                                        replace |=
+                                                                method.equals("replace") || method.equals("replaceAll");
+                                                        repeat |= method.equals("repeat");
+                                                    }
+                                                }
+
+                                                @Override
+                                                public void visitEnd() {
+                                                    boolean namedMask = name.toLowerCase(java.util.Locale.ROOT)
+                                                            .contains("mask");
+                                                    if ((repeatedMask && (namedMask || substring || replace))
+                                                            || (singleMask && repeat && (namedMask || substring))) {
+                                                        reject(
+                                                                events,
+                                                                type,
+                                                                type.getName() + "." + name + " 手写掩码绕过统一引擎");
+                                                    }
+                                                }
+                                            };
+                                        }
+                                    },
+                                    ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+                } catch (IOException error) {
+                    throw new IllegalStateException("Cannot inspect " + type.getName());
+                }
+            }
+        });
+    }
+
+    private static void rejectSerializerAnnotation(
+            JavaClass type, com.tngtech.archunit.core.domain.JavaAnnotation<?> annotation, ConditionEvents events) {
+        if (Set.of(
+                        "tools.jackson.databind.annotation.JsonSerialize",
+                        "com.fasterxml.jackson.databind.annotation.JsonSerialize")
+                .contains(annotation.getRawType().getName())) {
+            for (String property : Set.of("using", "contentUsing", "keyUsing", "converter", "contentConverter")) {
+                Object adapter = annotation.get(property).orElse(null);
+                if (adapter instanceof JavaClass implementation
+                        && !implementation.getName().endsWith("$None")) {
+                    reject(events, type, type.getName() + " 使用业务自定义 JsonSerialize 绕过统一序列化入口");
+                }
+            }
+        }
     }
 
     /** SDK 不能反向依赖服务，core 不能依赖其他能力包。 */

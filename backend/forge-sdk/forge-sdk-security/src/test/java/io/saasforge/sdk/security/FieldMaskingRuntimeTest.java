@@ -13,7 +13,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.test.context.FilteredClassLoader;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import tools.jackson.databind.JacksonModule;
 
 /** 以 IAM HTTP 边界替身验证真实客户端、自动配置与启动要求。 */
 class FieldMaskingRuntimeTest {
@@ -90,6 +92,14 @@ class FieldMaskingRuntimeTest {
                         .getFailure()
                         .rootCause()
                         .hasMessageContaining("forge.field-masking.token"));
+    }
+
+    @Test
+    void jacksonModuleDoesNotRequireTheOptionalMvcRuntime() {
+        enabled()
+                .withConfiguration(AutoConfigurations.of(FieldMaskingJacksonAutoConfiguration.class))
+                .withClassLoader(new FilteredClassLoader("org.springframework.web.servlet"))
+                .run(context -> assertThat(context).hasNotFailed().hasSingleBean(JacksonModule.class));
     }
 
     ApplicationContextRunner base() {

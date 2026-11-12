@@ -11,18 +11,22 @@ import com.nimbusds.jwt.SignedJWT;
 import io.saasforge.iam.audit.service.AuditService;
 import io.saasforge.iam.provisioning.mapper.OutboxAuditMapper;
 import io.saasforge.sdk.audit.AuditEvent;
+import io.saasforge.sdk.security.FieldMaskingAutoConfiguration;
+import io.saasforge.sdk.security.FieldMaskingPolicyProvider;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
@@ -152,6 +156,30 @@ class DataSecurityTest {
                         "/internal/field-masking/019a0110-0000-7000-8000-000000000001",
                         null)))
                 .isEmpty();
+        // 消费真实 IAM 的 HTTP 与 JSON 契约，避免服务端和 SDK 各自只对替身通过。
+        new ApplicationContextRunner()
+                .withUserConfiguration(FieldMaskingAutoConfiguration.class)
+                .withPropertyValues(
+                        "forge.field-masking.enabled=true",
+                        "forge.field-masking.iam-uri=http://127.0.0.1:" + port,
+                        "forge.field-masking.token=" + SERVICE_TOKEN)
+                .run(context -> {
+                    var provider = context.getBean(FieldMaskingPolicyProvider.class);
+                    var effective = provider.policies(UUID.fromString("019a0110-0000-7000-8000-000000000001"));
+                    assertThat(effective.get("person.phone").rule().strategy()).isEqualTo("name");
+                    assertThat(effective.get("person.secret").exportAllowed()).isFalse();
+                    var other = provider.policies(UUID.fromString("019a0110-0000-7000-8000-0000000000c1"));
+                    assertThat(other.get("person.phone").rule().strategy()).isEqualTo("phone");
+                });
+        new ApplicationContextRunner()
+                .withUserConfiguration(FieldMaskingAutoConfiguration.class)
+                .withPropertyValues(
+                        "forge.field-masking.enabled=true",
+                        "forge.field-masking.iam-uri=http://127.0.0.1:" + port,
+                        "forge.field-masking.token=test-masking-other-token")
+                .run(context -> assertThat(context.getBean(FieldMaskingPolicyProvider.class)
+                                .policies(UUID.fromString("019a0110-0000-7000-8000-000000000001")))
+                        .isEmpty());
         assertThat(call(
                                 "wrong-token",
                                 HttpMethod.GET,

@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -22,6 +23,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
  * 在信封写出前填入当前 traceId，并让 HTTP 状态码与信封的 {@code httpStatus} 一致。不自动包装非信封的返回值（ADR-0015）。
  */
 @RestControllerAdvice
+@Order(0)
 class EnvelopeResponseAdvice implements ResponseBodyAdvice<Object> {
 
     private static final Logger log = LoggerFactory.getLogger(EnvelopeResponseAdvice.class);

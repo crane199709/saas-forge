@@ -63,6 +63,9 @@ forge:
     redirect-uri: http://127.0.0.1:15174/
   manifest:
     iam-uri: http://127.0.0.1:18101
+  # demo 已启用统一在线脱敏，沿用该服务 Manifest 地址与凭证，不另加默认密钥。
+  field-masking:
+    iam-uri: ${forge.manifest.iam-uri}
   reference-data:
     iam-uri: http://127.0.0.1:18101
   platform:

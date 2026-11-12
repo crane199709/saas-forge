@@ -6,6 +6,8 @@
 
 ### 变更
 
+- 在线敏感字段接入统一 Jackson 3 模块，按注解与 IAM Manifest 路径/分级匹配，嵌套对象、集合与 null 都校验规则；整个 JSON 响应在发送前完成，末尾字段失败也返回完整 500。demo 清单升 8，增加共享敏感字段 DTO、独立授权并审计的原文查看。新增 ArchUnit 规则拒绝业务自有在线 serializer 与常见手写掩码，普通字符串格式化仍允许；`docs/standards/`、archetype 配置提示、sub-app-kit 生成规则、业务接入指南及 E2E 配置同步。
+
 - Shell 新增租户端与运营端数据安全页面，IAM 新增数据安全：平台固定 L1–L4（L4 禁止导出）、九种预置策略规则及 CRUD/预览，租户可为 Manifest 敏感字段选择或恢复规则；按租户覆盖 > 字段默认 > 分级默认解析。新增独立读/管理权限码并升级 IAM 清单版本，规则和登记变更写不含原文的审计；强制租户 RLS 与全租户引用检查、统一事务锁防止并发删除被引用规则。`forge-sdk-security` 新增无缓存 IAM HTTP 策略提供方；业务规范新增可选运行时配置：显式启用 `forge.field-masking.enabled=true` 时必须提供 `iam-uri` 与 `token`，旧服务不新增必配项。archetype 配置说明、sub-app-kit 生成说明与配套规范、业务服务指南同步，前端不得持有服务凭证。API 随未发布 `0.2.0-SNAPSHOT` 发布。
 
 - `forge-sdk-security` 新增固定 `MaskingRule`、纯 `MaskingEngine.validate/apply/preview`、安全预览结果与通道共用的生效字段策略端口。九种策略统一按 Unicode 码点保留字符，严格拒绝未知策略和无关参数；固定保留范围覆盖短值时全部掩码，`keepFirst` 保留整值及所有非空未改变结果失败，异常不包含原文。新增 API 保持现有调用兼容，随当前未发布 `0.2.0-SNAPSHOT` 发布；未新增配置、业务编码规则或脚手架必需项。

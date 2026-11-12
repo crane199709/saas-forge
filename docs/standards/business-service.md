@@ -286,6 +286,14 @@ IAM 还会校验字段默认规则存在；保存规则、分级默认与租户�
 
 SDK 在构建期 CLI、启动生成与上报前校验声明，IAM 接收时再使用相同契约校验。新增、移除或调整路径、分级、默认规则（含注解）都必须递增 `forge.manifest.version`，同版本内容不可变；未登记的服务不增加必配项，空声明不改变已生成的旧清单内容。声明负责登记，实际脱敏还需对应执行通道；未声明字段保持原样。
 
+### 在线敏感字段
+
+启用脱敏运行时后，在线 DTO 的 `String` 属性用 `@SensitiveField` 标注并与 IAM 当前 Manifest 中的路径和分级匹配；嵌套对象和集合共用统一 Jackson 序列化器。未标注字段保持原样；缺少提供方、字段、规则或执行失败时整次响应返回 500，null 值也必须先校验规则。一个响应复用一个不可变快照，不因角色或权限码返回原文。
+
+JSON 响应在发送前完整序列化到内存中的 JSON 树，发送阶段不再查规则；内存占用随响应大小增长，列表应分页。文件下载与流式输出不经过此通道，导出走 `ExcelIo`。含原值的 DTO 覆写 `toString()` 为固定安全文本。确需原文时使用独立未注解 DTO、独立 Permission Code 与审计操作，审计不记录原值。
+
+业务代码通过统一通道脱敏，不自行定义 Jackson serializer、以 `@JsonSerialize` 指定 serializer/converter 或拼接掩码。共享 ArchUnit 检查自定义序列化入口及常见重复星号字面量与截取、替换、重复的组合；普通 `String.replace`、`repeat` 不受限制，静态规则不能证明任意计算安全，仍须验证真实 HTTP 输出。
+
 ## 启动上报与内部状态
 
 引入 `forge-sdk-manifest` 的 Servlet 服务必须配置独立 `forge.ops.token`；该模块带入 Ops 安全链，令牌漏配时启动失败，包括关闭上报的服务。Service Credential（`forge.manifest.token`）只用于向 IAM 上报，不能读取 `/internal/onboarding-status`，也不能与 Ops Token 混用。脚手架已包含两个模块与各自配置项。
