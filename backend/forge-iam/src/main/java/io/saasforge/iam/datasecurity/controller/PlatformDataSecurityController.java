@@ -1,11 +1,17 @@
 package io.saasforge.iam.datasecurity.controller;
 
 import io.saasforge.iam.datasecurity.model.GradeResponse;
+import io.saasforge.iam.datasecurity.model.MaskingPreviewRequest;
 import io.saasforge.iam.datasecurity.model.RuleResponse;
 import io.saasforge.iam.datasecurity.service.DataSecurityService;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.security.MaskingPreview;
+import io.saasforge.sdk.security.MaskingRule;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -37,8 +43,7 @@ class PlatformDataSecurityController {
 
     @PostMapping("/rules")
     @ResponseStatus(HttpStatus.CREATED)
-    ApiResponse<RuleResponse> create(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody DataSecurityRequests.CreateRule request) {
+    ApiResponse<RuleResponse> create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CreateRuleRequest request) {
         return ApiResponse.created(
                 security.createRule(actor(jwt), request.code(), request.name().strip(), request.rule()));
     }
@@ -47,7 +52,7 @@ class PlatformDataSecurityController {
     ApiResponse<RuleResponse> update(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable String code,
-            @Valid @RequestBody DataSecurityRequests.UpdateRule request) {
+            @Valid @RequestBody UpdateRuleRequest request) {
         return ApiResponse.ok(
                 security.updateRule(actor(jwt), code, request.name().strip(), request.rule()));
     }
@@ -60,7 +65,7 @@ class PlatformDataSecurityController {
 
     @PostMapping("/preview")
     ApiResponse<MaskingPreview> preview(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody DataSecurityRequests.Preview request) {
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody MaskingPreviewRequest request) {
         return ApiResponse.ok(security.platformPreview(actor(jwt), request.ruleCode(), request.value()));
     }
 
@@ -68,7 +73,7 @@ class PlatformDataSecurityController {
     ApiResponse<GradeResponse> grade(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable String grade,
-            @Valid @RequestBody DataSecurityRequests.GradeDefault request) {
+            @Valid @RequestBody GradeDefaultRequest request) {
         return ApiResponse.ok(security.updateGrade(actor(jwt), grade, request.defaultRule()));
     }
 
@@ -80,4 +85,17 @@ class PlatformDataSecurityController {
     ApiResponse<List<GradeResponse>> grades(@AuthenticationPrincipal Jwt jwt) {
         return ApiResponse.ok(security.platformGrades(UUID.fromString(jwt.getSubject())));
     }
+
+    record CreateRuleRequest(
+            @NotBlank @Pattern(regexp = "[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
+            String code,
+
+            @NotBlank @Size(max = 120) String name,
+            @NotNull @Valid MaskingRule rule) {}
+
+    record UpdateRuleRequest(
+            @NotBlank @Size(max = 120) String name,
+            @NotNull @Valid MaskingRule rule) {}
+
+    record GradeDefaultRequest(@NotBlank @Size(max = 64) String defaultRule) {}
 }

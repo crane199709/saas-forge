@@ -197,17 +197,18 @@ class ObjectStorageTest {
         }
         var json = JsonMapper.builder().build();
         TestExportMasking.policies(tenant, json.writeValueAsString(policies));
-        TestGrants.publish(redisTemplate, tenant, TestTokens.MEMBERSHIP_ID, List.of("masking:read", "masking:export"));
-        var online = exchange(tenant, HttpMethod.GET, "/masking/profiles", null);
+        UUID member = UUID.randomUUID();
+        TestGrants.publish(redisTemplate, tenant, member, List.of("masking:read", "masking:export"));
+        var online = exchangeAs(member, HttpMethod.GET, "/masking/profiles", null);
         assertThat(online.toString())
                 .contains("138****5678", "110101********1234")
                 .doesNotContain("13812345678", "110101199001011234");
-        var submitted = exchange(tenant, HttpMethod.POST, "/masking/profiles/export", null);
+        var submitted = exchangeAs(member, HttpMethod.POST, "/masking/profiles/export", null);
         assertThat(submitted.get("httpStatus")).isEqualTo(201);
         String id = (String) ((Map<?, ?>) submitted.get("data")).get("id");
-        var task = awaitTask(id);
+        var task = awaitTask(member, id);
         assertThat(task.get("status")).isEqualTo("SUCCEEDED");
-        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(downloadTaskFile(task)))) {
+        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(downloadTaskFile(task, member)))) {
             var row = workbook.getSheetAt(0).getRow(1);
             assertThat(row.getCell(0).getStringCellValue()).isEqualTo("138****5678");
             assertThat(row.getCell(1).getStringCellValue()).isEqualTo("110101********1234");
@@ -219,13 +220,13 @@ class ObjectStorageTest {
                 .orElseThrow();
         policies.put(field.path(), new EffectiveFieldPolicy(field.path(), field.grade(), null, true));
         TestExportMasking.policies(tenant, json.writeValueAsString(policies));
-        var rejected = exchange(tenant, HttpMethod.POST, "/masking/profiles/export", null);
+        var rejected = exchangeAs(member, HttpMethod.POST, "/masking/profiles/export", null);
         String failedId = (String) ((Map<?, ?>) rejected.get("data")).get("id");
-        var failed = awaitTask(failedId);
+        var failed = awaitTask(member, failedId);
         assertThat(failed.get("status")).isEqualTo("FAILED");
         assertThat(failed.get("errorCode")).isEqualTo("io.maskingFailed");
         assertThat(failed.get("resultAvailable")).isEqualTo(false);
-        assertThat(exchange(tenant, HttpMethod.GET, "/io/tasks/" + failedId + "/download", null)
+        assertThat(exchangeAs(member, HttpMethod.GET, "/io/tasks/" + failedId + "/download", null)
                         .get("code"))
                 .isEqualTo("io.resultUnavailable");
         List<String> audits = List.of();
@@ -1346,7 +1347,11 @@ class ObjectStorageTest {
     }
 
     private byte[] downloadTaskFile(Map<?, ?> task) throws Exception {
-        var ticket = (Map<?, ?>) exchange(tenant, HttpMethod.GET, "/io/tasks/" + task.get("id") + "/download", null)
+        return downloadTaskFile(task, TestTokens.MEMBERSHIP_ID);
+    }
+
+    private byte[] downloadTaskFile(Map<?, ?> task, UUID member) throws Exception {
+        var ticket = (Map<?, ?>) exchangeAs(member, HttpMethod.GET, "/io/tasks/" + task.get("id") + "/download", null)
                 .get("data");
         var file = HTTP.send(
                 HttpRequest.newBuilder(URI.create((String) ticket.get("url"))).build(),

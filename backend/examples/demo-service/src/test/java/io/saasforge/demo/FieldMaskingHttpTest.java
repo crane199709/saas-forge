@@ -14,6 +14,7 @@ import io.saasforge.sdk.audit.AuditEvent;
 import io.saasforge.sdk.audit.AuditOutcome;
 import io.saasforge.sdk.core.api.ApiResponse;
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -71,8 +72,7 @@ class FieldMaskingHttpTest {
                 .header("Authorization", "Bearer " + TestTokens.forTenant(tenant))
                 .exchange((req, response) -> {
                     assertThat(response.getStatusCode().value()).isEqualTo(200);
-                    String body =
-                            new String(response.getBody().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                    String body = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
                     var data = JSON.readTree(body).path("data");
                     assertThat(data.path("profiles").get(0).path("phone").asString())
                             .isEqualTo("138****5678");
@@ -191,12 +191,12 @@ class FieldMaskingHttpTest {
                             assertThat(response.getStatusCode().value()).isEqualTo(200);
                             return null;
                         });
-                String text = output.toString(java.nio.charset.StandardCharsets.UTF_8);
+                String text = output.toString(StandardCharsets.UTF_8);
                 assertThat(text).doesNotContain("13812345678", "110101199001011234");
                 if (text.contains("138****5678") && text.contains("110101********1234")) break;
                 Thread.sleep(100);
             }
-            assertThat(output.toString(java.nio.charset.StandardCharsets.UTF_8))
+            assertThat(output.toString(StandardCharsets.UTF_8))
                     .contains("138****5678", "110101********1234", "公开说明")
                     .doesNotContain("13812345678", "110101199001011234");
         } finally {
@@ -217,7 +217,7 @@ class FieldMaskingHttpTest {
                 .header("Authorization", "Bearer " + TestTokens.forMembership(tenant, member))
                 .exchange((req, response) -> {
                     assertThat(response.getStatusCode().value()).isEqualTo(status);
-                    return new String(response.getBody().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                    return new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
                 });
     }
 

@@ -2,6 +2,7 @@ package io.saasforge.iam.datasecurity.controller;
 
 import io.saasforge.iam.datasecurity.model.FieldResponse;
 import io.saasforge.iam.datasecurity.model.GradeResponse;
+import io.saasforge.iam.datasecurity.model.MaskingPreviewRequest;
 import io.saasforge.iam.datasecurity.model.RuleResponse;
 import io.saasforge.iam.datasecurity.service.DataSecurityService;
 import io.saasforge.iam.membership.model.TenantActor;
@@ -9,6 +10,8 @@ import io.saasforge.sdk.core.CurrentTenant;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.security.MaskingPreview;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -53,7 +56,7 @@ class TenantDataSecurityController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable String service,
             @PathVariable String path,
-            @Valid @RequestBody DataSecurityRequests.RuleSelection request) {
+            @Valid @RequestBody RuleSelectionRequest request) {
         TenantActor actor = TenantActor.of(jwt);
         try (var ignored = CurrentTenant.bind(actor.tenantId())) {
             return ApiResponse.ok(security.override(actor, service, path, request.ruleCode()));
@@ -71,7 +74,9 @@ class TenantDataSecurityController {
 
     @PostMapping("/preview")
     ApiResponse<MaskingPreview> preview(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody DataSecurityRequests.Preview request) {
+            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody MaskingPreviewRequest request) {
         return ApiResponse.ok(security.tenantPreview(TenantActor.of(jwt), request.ruleCode(), request.value()));
     }
+
+    record RuleSelectionRequest(@NotBlank @Size(max = 64) String ruleCode) {}
 }

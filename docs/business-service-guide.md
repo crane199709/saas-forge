@@ -131,7 +131,7 @@ forge:
 
 导出敏感列在 record component 上使用 `@SensitiveField` 对应登记路径，`ExcelIo.export` 自动在写单元格前执行规则；零行也检查规则和 L4 禁止导出。缺规则或执行失败的任务为 `FAILED`，不生成结果文件，并记录不含原文的失败审计。导入、模板与错误报告保留原行为。日志按 `log.info("customer.phone={}", phone)` 或 `SensitiveLogValue.of("customer.phone", phone)` 传参；SLF4J `addKeyValue` 经 `%kvp` 同样处理，包装对象的 `toString()` 永不输出原值。SDK 在 Boot 日志初始化前注册全部消息别名，不依赖 IAM 启动。支持范围与异步 MDC、失败占位语义见 [敏感字段导出与日志](standards/business-service.md#敏感字段导出与日志)。
 
-在线通道使用 DTO 上的 `@SensitiveField` 与 IAM 登记共同决定脱敏，适用于嵌套对象和集合。SDK 在写出前完成整个 JSON 响应，缺字段、缺规则、null 下的缺规则或执行失败均为 500；一次响应复用一份快照。响应在内存中形成 JSON 树，列表应分页，文件下载和流式输出走各自管线。业务代码不自定义在线脱敏 serializer 或手拼掩码；完整要求见 [在线敏感字段](standards/business-service.md#在线敏感字段)。
+在线通道使用 DTO 上的 `@SensitiveField` 与 IAM 登记共同决定脱敏，适用于嵌套对象和集合。SDK 在写出前完成整个 JSON 响应，缺字段、缺规则、null 下的缺规则或执行失败均为 500；一次响应复用一份快照。响应由实际选中的 JSON 转换器序列化到内存缓冲，保留原有视图、过滤器与声明类型；列表应分页，文件下载和流式输出走各自管线。业务代码不自定义在线脱敏 serializer 或手拼掩码；完整要求见 [在线敏感字段](standards/business-service.md#在线敏感字段)。
 
 demo-service 的 `/masking/profiles` 返回手机号、身份证与普通说明，同一个 `MaskedProfile` 声明供在线与 `POST /masking/profiles/export` 的 Excel 导出复用（独立 `masking:export` 权限）；`POST /masking/profiles/log` 使用 `masking:read` 并通过 `SensitiveLogValue.of` 输出命名日志；`/masking/profiles/raw` 使用独立的 `masking:viewRaw` Permission Code 与不含原文的 `profile.viewRaw` 审计。原文 DTO 使用固定安全 `toString()`，普通查看即使持有原文权限仍返回脱敏值。demo 清单版本为 8，运行时复用 `forge.manifest.iam-uri` 和本服务凭证；隔离 E2E 的 IAM 地址覆盖也自动供该通道使用。
 

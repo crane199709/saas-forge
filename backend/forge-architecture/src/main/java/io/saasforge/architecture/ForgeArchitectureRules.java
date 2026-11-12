@@ -3,6 +3,7 @@ package io.saasforge.architecture;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
+import com.tngtech.archunit.core.domain.JavaAnnotation;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.lang.ArchCondition;
@@ -15,6 +16,7 @@ import com.tngtech.archunit.thirdparty.org.objectweb.asm.Handle;
 import com.tngtech.archunit.thirdparty.org.objectweb.asm.MethodVisitor;
 import com.tngtech.archunit.thirdparty.org.objectweb.asm.Opcodes;
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Set;
 
 /** 各模块共享的生产字节码约束，测试样例不参与生产扫描。 */
@@ -217,7 +219,7 @@ public final class ForgeArchitectureRules {
 
                                                 @Override
                                                 public void visitEnd() {
-                                                    boolean namedMask = name.toLowerCase(java.util.Locale.ROOT)
+                                                    boolean namedMask = name.toLowerCase(Locale.ROOT)
                                                             .contains("mask");
                                                     if ((repeatedMask && (namedMask || substring || replace))
                                                             || (singleMask && repeat && (namedMask || substring))) {
@@ -239,7 +241,7 @@ public final class ForgeArchitectureRules {
     }
 
     private static void rejectSerializerAnnotation(
-            JavaClass type, com.tngtech.archunit.core.domain.JavaAnnotation<?> annotation, ConditionEvents events) {
+            JavaClass type, JavaAnnotation<?> annotation, ConditionEvents events) {
         if (Set.of(
                         "tools.jackson.databind.annotation.JsonSerialize",
                         "com.fasterxml.jackson.databind.annotation.JsonSerialize")

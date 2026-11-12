@@ -20,10 +20,17 @@ public final class FieldMaskingJacksonAutoConfiguration {
         return new FieldMaskingJacksonModule(provider);
     }
 
-    /** HTTP 响应在发送前形成完整 JSON 树；无需 Servlet 全局缓冲过滤器。 */
+    /** 仅为选中的 JSON 响应启用原子缓冲，不预先改变业务对象。 */
     @Bean
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-    FieldMaskingResponseAdvice fieldMaskingResponseAdvice(JsonMapper mapper) {
-        return new FieldMaskingResponseAdvice(mapper);
+    FieldMaskingResponseAdvice fieldMaskingResponseAdvice() {
+        return new FieldMaskingResponseAdvice();
+    }
+
+    /** 默认透传响应，JSON advice 选中后才缓冲真实转换器输出。 */
+    @Bean
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+    FieldMaskingResponseFilter fieldMaskingResponseFilter() {
+        return new FieldMaskingResponseFilter();
     }
 }
