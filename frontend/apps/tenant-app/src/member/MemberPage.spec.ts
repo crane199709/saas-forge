@@ -75,7 +75,7 @@ it('按状态展示成员与可用操作，Owner 不可停用或移除；停用�
   await flushPromises()
 
   const [url, init] = fetcher.mock.calls[1]!
-  expect(url).toBe(`${location.origin}/iam/members/alice/suspend`)
+  expect(url).toBe(`${location.origin}/api/iam/members/alice/suspend`)
   expect(init.method).toBe('POST')
   expect(fetcher).toHaveBeenCalledTimes(3)
 })
@@ -89,7 +89,7 @@ it('搜索与筛选作为查询参数提交，从第一页开始', async () => {
   await flushPromises()
 
   expect(fetcher.mock.calls.at(-1)![0]).toBe(
-    `${location.origin}/iam/members?page=1&size=20&keyword=alice`,
+    `${location.origin}/api/iam/members?page=1&size=20&keyword=alice`,
   )
 })
 
@@ -127,7 +127,7 @@ it('邀请时按权限展示预设角色，提交联系方式与所选角色', a
   await wrapper.get('[data-testid="member-invite"]').trigger('click')
   await flushPromises()
   // 没有组织管理权限时不加载部门；Owner 不可预设。
-  expect(fetcher.mock.calls[1]![0]).toBe(`${location.origin}/iam/roles`)
+  expect(fetcher.mock.calls[1]![0]).toBe(`${location.origin}/api/iam/roles`)
   expect(document.querySelector('[data-testid="member-invite-role-owner"]')).toBeNull()
   expect(document.querySelector('[data-testid="member-invite-department"]')).toBeNull()
 
@@ -144,7 +144,7 @@ it('邀请时按权限展示预设角色，提交联系方式与所选角色', a
   await flushPromises()
 
   const [url, init] = fetcher.mock.calls[2]!
-  expect(url).toBe(`${location.origin}/iam/members/invitations`)
+  expect(url).toBe(`${location.origin}/api/iam/members/invitations`)
   expect(JSON.parse(init.body)).toEqual({
     contact: 'new@example.com',
     roleIds: ['r-viewer'],

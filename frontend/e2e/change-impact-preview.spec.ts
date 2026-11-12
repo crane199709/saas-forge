@@ -78,7 +78,7 @@ async function openRoleEditor(
   )
   await page.route('**/iam/**', (route) => {
     const request = route.request()
-    const path = new URL(request.url()).pathname
+    const path = new URL(request.url()).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/iam/auth/access')
       return route.fulfill(ok({ permissions: ['iam:role:manage'], menus: [], subApps: [] }))
     if (path === '/iam/auth/memberships')
@@ -249,6 +249,7 @@ async function openTenantDetail(page: Page, impact: (route: Route) => Promise<vo
   await page.route('**/platform/tenants**', (route) => {
     const request = route.request()
     const url = new URL(request.url())
+    url.pathname = url.pathname.replace(/^\/api(?=\/)/, '')
     const detail = {
       tenant: tenantRow,
       initializations: [],

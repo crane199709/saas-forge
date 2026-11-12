@@ -58,8 +58,8 @@ const attachments = [
 
 async function open(page: Page, url: string) {
   // 只拦截接口：页面地址 /apps/demo/... 同样含 demo 段。
-  await page.route(/:\d+\/demo\//, (route) => {
-    const path = new URL(route.request().url()).pathname
+  await page.route(/:\d+\/api\/demo\//, (route) => {
+    const path = new URL(route.request().url()).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/demo/orders') return route.fulfill(onePage(orders))
     if (path === '/demo/orders/o1/attachments') return route.fulfill(ok(attachments))
     if (path === '/demo/context')

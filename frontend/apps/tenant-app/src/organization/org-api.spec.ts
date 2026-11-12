@@ -38,13 +38,15 @@ it('以 JSON 调用 IAM 组织接口并带上当前 Token', async () => {
 
   await api.moveDepartment('b', null)
   const [url, init] = fetcher.mock.calls[0]!
-  expect(url).toBe(`${location.origin}/iam/org/departments/b/parent`)
+  expect(url).toBe(`${location.origin}/api/iam/org/departments/b/parent`)
   expect(init.method).toBe('PUT')
   expect(JSON.parse(init.body)).toEqual({ parentId: null })
   expect(new Headers(init.headers).get('Content-Type')).toBe('application/json')
   expect(new Headers(init.headers).get('Authorization')).toBe('Bearer access-a')
 
   const page = await api.members(2, 20)
-  expect(fetcher.mock.calls[1]![0]).toBe(`${location.origin}/iam/org/memberships?page=2&size=20`)
+  expect(fetcher.mock.calls[1]![0]).toBe(
+    `${location.origin}/api/iam/org/memberships?page=2&size=20`,
+  )
   expect(page.page.totalElements).toBe(21)
 })

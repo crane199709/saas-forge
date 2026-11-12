@@ -64,7 +64,7 @@ async function tenant(page: Page, permissions: string[] = []) {
     ),
   )
   await page.route('**/iam/**', (route) => {
-    const path = new URL(route.request().url()).pathname
+    const path = new URL(route.request().url()).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/iam/auth/access')
       return route.fulfill(
         ok({
@@ -109,7 +109,7 @@ test('通知、公告已读、错误重试与待办进入业务后关单', async
     link: { appCode: 'demo', route: '/overview' },
   })
   await page.route('**/iam/notifications**', async (route) => {
-    const path = new URL(route.request().url()).pathname
+    const path = new URL(route.request().url()).pathname.replace(/^\/api(?=\/)/, '')
     if (path.endsWith('/unread-count'))
       return route.fulfill(ok({ count: Number(!read1) + Number(!read2) }))
     if (path.endsWith('/n1/read')) {
@@ -127,7 +127,7 @@ test('通知、公告已读、错误重试与待办进入业务后关单', async
     return route.fulfill(paged([notification('n1', read1), notification('n2', read2)]))
   })
   await page.route('**/iam/announcements**', (route) => {
-    const path = new URL(route.request().url()).pathname
+    const path = new URL(route.request().url()).pathname.replace(/^\/api(?=\/)/, '')
     if (path.endsWith('/unread-count'))
       return route.fulfill(ok({ count: Number(!announcementRead) }))
     if (path.endsWith('/read')) {
@@ -165,7 +165,9 @@ test('通知、公告已读、错误重试与待办进入业务后关单', async
   )
   await page.route('**/demo/orders**', (route) => {
     if (route.request().method() === 'POST') {
-      expect(new URL(route.request().url()).pathname).toBe('/demo/orders/o1/close')
+      expect(new URL(route.request().url()).pathname.replace(/^\/api(?=\/)/, '')).toBe(
+        '/demo/orders/o1/close',
+      )
       closed = true
       return route.fulfill(ok({ id: 'o1', status: 'closed' }))
     }

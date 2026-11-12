@@ -17,7 +17,7 @@ export function fakeFetch(routes: Record<string, FakeRoute>) {
     Object.entries({ '/platform/tenants': () => page([]), ...routes }),
   )
   return (input: string) => {
-    const path = new URL(input, location.origin).pathname
+    const path = new URL(input, location.origin).pathname.replace(/^\/api(?=\/)/, '')
     const value = pending.get(path)
     if (typeof value === 'function') return Promise.resolve(value(input))
     const data = Array.isArray(value) ? (value.length > 1 ? value.shift() : value[0]) : []

@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { webcrypto } from 'node:crypto'
 beforeEach(() => vi.stubGlobal('crypto', webcrypto))
-import { ApiError, createTenantClient } from '@crane199709/sdk'
+import { ApiError, createTenantClient, createPlatformClient } from '@crane199709/sdk'
 
 function envelope(body: object, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -966,4 +966,48 @@ it('已退出后迟到的 exchange 拒绝不恢复租户拒绝状态', async () 
   finish(fail('tenant.ipNotAllowed', 403))
   await expect(pending).rejects.toThrow('auth.sessionChanged')
   expect(client.ipDenial()).toBeNull()
+})
+
+describe('API Entry', () => {
+  for (const createClient of [createTenantClient, createPlatformClient]) {
+    it(`${createClient.name} 的 api 与 page 自动使用 /api 并保留查询参数`, async () => {
+      const fetcher = vi.fn().mockImplementation(() =>
+        envelope({
+          code: 'ok',
+          httpStatus: 200,
+          data: [],
+          meta: { page: { number: 2, size: 20, totalElements: 0, totalPages: 0 } },
+        }),
+      )
+      vi.stubGlobal('fetch', fetcher)
+      const client = createClient(sessionStorage)
+      await client.api('/new-service/orders?title=%E8%AE%A2%E5%8D%95')
+      await client.page('/new-service/orders?page=2')
+      expect(
+        fetcher.mock.calls.map(([path]) => new URL(path).pathname + new URL(path).search),
+      ).toEqual([
+        '/api/new-service/orders?title=%E8%AE%A2%E5%8D%95',
+        '/api/new-service/orders?page=2',
+      ])
+    })
+  }
+})
+
+it('业务 API Entry 在加前缀前拒绝跨源地址且不发送凭证', async () => {
+  signedIn()
+  const fetcher = vi.fn()
+  vi.stubGlobal('fetch', fetcher)
+  const client = createTenantClient(sessionStorage)
+  for (const method of ['api', 'page'] as const) {
+    for (const path of [
+      'https://outside.test/demo',
+      '//outside.test/demo',
+      '/\\outside.test/demo',
+      '/\t/outside.test/demo',
+      'demo/orders',
+    ]) {
+      await expect(client[method](path)).rejects.toThrow('auth.invalidPath')
+    }
+  }
+  expect(fetcher).not.toHaveBeenCalled()
 })

@@ -52,7 +52,7 @@ it('在选中的部门下新建下级部门，完成后通知刷新', async () =
   await flushPromises()
 
   const [url, init] = fetcher.mock.calls[0]!
-  expect(url).toBe(`${location.origin}/iam/org/departments`)
+  expect(url).toBe(`${location.origin}/api/iam/org/departments`)
   expect(JSON.parse(init.body)).toEqual({ name: '市场', parentId: 'a' })
   expect(wrapper.emitted('changed')).toHaveLength(1)
 })
@@ -73,7 +73,7 @@ it('编辑时只提交变化的字段，没有变化不发请求', async () => {
   await wrapper.get('[data-testid="dept-save"]').trigger('click')
   await flushPromises()
   expect(fetcher.mock.calls).toHaveLength(1)
-  expect(fetcher.mock.calls[0]![0]).toBe(`${location.origin}/iam/org/departments/b`)
+  expect(fetcher.mock.calls[0]![0]).toBe(`${location.origin}/api/iam/org/departments/b`)
   expect(JSON.parse(fetcher.mock.calls[0]![1].body)).toEqual({ name: '研发中心' })
 })
 

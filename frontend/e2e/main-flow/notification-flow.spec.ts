@@ -36,7 +36,7 @@ async function headers(page: Page) {
   return { Authorization: `Bearer ${token}` }
 }
 async function read(page: Page, path: string) {
-  const response = await page.request.get(path, { headers: await headers(page) })
+  const response = await page.request.get(`/api${path}`, { headers: await headers(page) })
   expect(response.status()).toBe(200)
   return (await response.json()).data as Array<{
     id: string
@@ -92,7 +92,7 @@ test.beforeAll(() => mkdir(evidence, { recursive: true }).then(() => {}))
 test('真实MQ：订单通知、已读、处理待办、租户切换隔离', async ({ page }) => {
   await login(page)
   const title = `MQ闭环订单-${Date.now()}`
-  const response = await page.request.post('/demo/orders', {
+  const response = await page.request.post('/api/demo/orders', {
     headers: await headers(page),
     data: { title, amount: 25 },
   })

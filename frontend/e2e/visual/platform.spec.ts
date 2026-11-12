@@ -391,7 +391,12 @@ async function open(
     ),
   )
   await page.route('**/platform/**', (route) =>
-    respond(new URL(route.request().url()).pathname, route, layout, overrides),
+    respond(
+      new URL(route.request().url()).pathname.replace(/^\/api(?=\/)/, ''),
+      route,
+      layout,
+      overrides,
+    ),
   )
   await page.goto(url)
 }

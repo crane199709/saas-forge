@@ -71,7 +71,7 @@ it('Owner 不可分配；保存时提交多选的其余角色', async () => {
   await flushPromises()
 
   const [url, init] = fetcher.mock.calls[1]!
-  expect(url).toBe(`${location.origin}/iam/roles/memberships/m1`)
+  expect(url).toBe(`${location.origin}/api/iam/roles/memberships/m1`)
   expect(JSON.parse(init.body)).toEqual({ roleIds: ['viewer', 'approver'] })
   expect(wrapper.emitted('changed')).toHaveLength(1)
 })

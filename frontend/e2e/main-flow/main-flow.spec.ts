@@ -39,7 +39,7 @@ test('双 Membership 登录、数据范围与租户切换', async ({ page }) => 
   await expect(page.getByTestId('create-order')).toBeHidden()
   await expect(page.getByTestId('order-title')).toHaveText(['B 本人订单', 'B 他人订单'])
   // 按钮隐藏之外，真实服务也必须拒绝未授权写入。
-  const denied = await page.request.post('/demo/orders', {
+  const denied = await page.request.post('/api/demo/orders', {
     headers: { Authorization: `Bearer ${await token(page)}` },
     data: { title: '不应创建', amount: 1 },
   })
@@ -49,7 +49,7 @@ test('双 Membership 登录、数据范围与租户切换', async ({ page }) => 
 test('Tenant Realm 无法访问 platform-console 接口', async ({ page }) => {
   await login(page)
   const authorization = `Bearer ${await token(page)}`
-  const allowed = await page.request.get('/demo/orders', { headers: { authorization } })
+  const allowed = await page.request.get('/api/demo/orders', { headers: { authorization } })
   expect(allowed.status()).toBe(200)
   for (const path of ['/platform/operators/current', '/iam/platform/roles']) {
     const denied = await page.request.get(`http://127.0.0.1:18000${path}`, {
@@ -70,7 +70,7 @@ test('管理员停用成员后下一次操作立即登出', async ({ page, brows
     await page.getByTestId('menu-demo.overview').click()
     await expect(page.getByTestId('order-title')).toHaveText(['A 本人订单'])
     const accessToken = await token(page)
-    const suspended = await admin.request.post(`/iam/members/${memberA}/suspend`, { headers })
+    const suspended = await admin.request.post(`/api/iam/members/${memberA}/suspend`, { headers })
     expect(suspended.status()).toBe(200)
     try {
       const rejected = page.waitForResponse(
@@ -81,12 +81,12 @@ test('管理员停用成员后下一次操作立即登出', async ({ page, brows
       await expect(page.getByLabel('账号或邮箱')).toBeVisible()
       await expect(page.getByTestId('order-title')).toHaveCount(0)
       expect(await page.evaluate(() => localStorage.getItem('forge.tenant.session'))).toBeNull()
-      const replay = await page.request.get('/demo/orders', {
+      const replay = await page.request.get('/api/demo/orders', {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
       expect(replay.status()).toBe(401)
     } finally {
-      const resumed = await admin.request.post(`/iam/members/${memberA}/resume`, { headers })
+      const resumed = await admin.request.post(`/api/iam/members/${memberA}/resume`, { headers })
       expect(resumed.status()).toBe(200)
     }
   } finally {

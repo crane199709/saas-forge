@@ -80,8 +80,8 @@ for (const [label, width, height] of viewports) {
     for (const [state, tasks] of Object.entries(states)) {
       test(`导入确认-${state}`, async ({ page }) => {
         await page.clock.setFixedTime(new Date('2026-11-10T02:00:00Z'))
-        await page.route(/:\d+\/demo\//, (route) => {
-          const path = new URL(route.request().url()).pathname
+        await page.route(/:\d+\/api\/demo\//, (route) => {
+          const path = new URL(route.request().url()).pathname.replace(/^\/api(?=\/)/, '')
           if (path === '/demo/io/tasks') {
             if (state !== 'paging') return route.fulfill(onePage(tasks))
             const number = Number(new URL(route.request().url()).searchParams.get('page') ?? 1)

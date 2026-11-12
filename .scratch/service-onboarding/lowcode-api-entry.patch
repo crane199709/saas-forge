@@ -1,0 +1,7 @@
+diff --git a/lowcode-sub-app/vite.config.ts b/lowcode-sub-app/vite.config.ts
+index 391f074..be3be07 100644
+--- a/lowcode-sub-app/vite.config.ts
++++ b/lowcode-sub-app/vite.config.ts
+@@ -4 +4 @@ import { defineSubAppConfig } from '@crane199709/sub-app-kit/vite'
+-export default defineSubAppConfig({ appCode: 'lowcode', port: 5176, apiPrefixes: ['/lowcode'] })
++export default defineSubAppConfig({ appCode: 'lowcode', port: 5176 })

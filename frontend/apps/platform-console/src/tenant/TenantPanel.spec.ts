@@ -41,6 +41,7 @@ const page = { page: { number: 1, size: 20, totalElements: 1, totalPages: 1 } }
 // SDK 按当前源解析请求地址，断言只比较路径与查询串
 function path(url: string) {
   const parsed = new URL(url, location.origin)
+  parsed.pathname = parsed.pathname.replace(/^\/api(?=\/)/, '')
   return parsed.pathname + parsed.search
 }
 
