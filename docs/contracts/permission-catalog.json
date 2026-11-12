@@ -1,0 +1,229 @@
+{
+  "schemaVersion": 1,
+  "permissions": [
+    {
+      "service": "forge-iam",
+      "code": "announcement:manage",
+      "name": "管理公告",
+      "group": "租户管理",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam",
+      "code": "iam:audit:read",
+      "name": "查看审计",
+      "group": "租户管理",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam",
+      "code": "iam:member:manage",
+      "name": "管理成员",
+      "group": "租户管理",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam",
+      "code": "iam:menu:manage",
+      "name": "管理菜单",
+      "group": "租户管理",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam",
+      "code": "iam:org:manage",
+      "name": "管理组织",
+      "group": "租户管理",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam",
+      "code": "iam:reference-data:manage",
+      "name": "管理字典与参数",
+      "group": "租户管理",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam",
+      "code": "iam:role:manage",
+      "name": "管理角色",
+      "group": "租户管理",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam",
+      "code": "iam:security:manage",
+      "name": "管理安全设置",
+      "group": "租户管理",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "demo-service",
+      "code": "order:create",
+      "name": "创建订单",
+      "group": "订单",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "demo-service",
+      "code": "order:delete",
+      "name": "删除订单",
+      "group": "订单",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "demo-service",
+      "code": "order:export",
+      "name": "导出订单",
+      "group": "订单",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "demo-service",
+      "code": "order:import",
+      "name": "导入订单",
+      "group": "订单",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "demo-service",
+      "code": "order:read",
+      "name": "查看订单",
+      "group": "订单",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "demo-service",
+      "code": "order:update",
+      "name": "修改订单",
+      "group": "订单",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam-platform",
+      "code": "platform:announcement:manage",
+      "name": "管理平台公告",
+      "group": "平台管理",
+      "realm": "platform",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam-platform",
+      "code": "platform:audit:read",
+      "name": "查看平台审计",
+      "group": "平台管理",
+      "realm": "platform",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam-platform",
+      "code": "platform:identity-mfa:reset",
+      "name": "重置身份 MFA",
+      "group": "平台管理",
+      "realm": "platform",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam-platform",
+      "code": "platform:menu:manage",
+      "name": "管理平台菜单",
+      "group": "平台管理",
+      "realm": "platform",
+      "status": "active"
+    },
+    {
+      "service": "forge-platform",
+      "code": "platform:onboarding:read",
+      "name": "查看服务接入诊断",
+      "group": "平台运维",
+      "realm": "platform",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam-platform",
+      "code": "platform:operator:manage",
+      "name": "管理运营账号",
+      "group": "平台管理",
+      "realm": "platform",
+      "status": "active"
+    },
+    {
+      "service": "forge-platform",
+      "code": "platform:ops:manage",
+      "name": "处置运维事件与任务",
+      "group": "平台运维",
+      "realm": "platform",
+      "status": "active"
+    },
+    {
+      "service": "forge-platform",
+      "code": "platform:ops:read",
+      "name": "查看运维数据",
+      "group": "平台运维",
+      "realm": "platform",
+      "status": "active"
+    },
+    {
+      "service": "forge-platform",
+      "code": "platform:plan:manage",
+      "name": "管理套餐",
+      "group": "套餐与应用",
+      "realm": "platform",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam-platform",
+      "code": "platform:role:manage",
+      "name": "管理平台角色",
+      "group": "平台管理",
+      "realm": "platform",
+      "status": "active"
+    },
+    {
+      "service": "forge-platform",
+      "code": "platform:service-credential:manage",
+      "name": "管理服务凭证",
+      "group": "平台运维",
+      "realm": "platform",
+      "status": "active"
+    },
+    {
+      "service": "forge-platform",
+      "code": "platform:sub-app:manage",
+      "name": "管理应用注册表",
+      "group": "套餐与应用",
+      "realm": "platform",
+      "status": "active"
+    },
+    {
+      "service": "forge-platform",
+      "code": "platform:tenant:manage",
+      "name": "管理租户",
+      "group": "租户",
+      "realm": "platform",
+      "status": "active"
+    },
+    {
+      "service": "forge-platform",
+      "code": "platform:tenant:read",
+      "name": "查看租户",
+      "group": "租户",
+      "realm": "platform",
+      "status": "active"
+    }
+  ]
+}
