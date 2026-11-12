@@ -9,6 +9,21 @@
     <artifactId>forge-sdk-io</artifactId>
     <name>Forge SDK IO</name>
     <description>异步 Excel 导入导出</description>
+    <properties>
+        <!-- 直接依赖变更须同步白名单与接入文档，含 optional、provided 和 test 声明。 -->
+        <forge.sdk.allowedDependencies>io.saasforge:forge-architecture,
+            io.saasforge:forge-sdk-abac,
+            io.saasforge:forge-sdk-audit,
+            io.saasforge:forge-sdk-referencedata,
+            io.saasforge:forge-sdk-scheduling,
+            io.saasforge:forge-sdk-security,
+            io.saasforge:forge-sdk-storage,
+            io.saasforge:forge-sdk-web,
+            org.apache.poi:poi-ooxml,
+            org.springframework.boot:spring-boot-starter-test,
+            org.springframework.boot:spring-boot-starter-validation</forge.sdk.allowedDependencies>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.saasforge</groupId>

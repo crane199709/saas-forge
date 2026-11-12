@@ -12,6 +12,23 @@
     <name>Forge SDK ABAC</name>
     <description>ABAC 策略表达式树、SQL 编译器、内存求值器与数据权限拦截器</description>
 
+    <properties>
+        <!-- 直接依赖变更须同步白名单与接入文档，含 optional、provided 和 test 声明。 -->
+        <forge.sdk.allowedDependencies>com.baomidou:mybatis-plus-jsqlparser,
+            com.baomidou:mybatis-plus-spring-boot4-starter,
+            io.saasforge:forge-architecture,
+            io.saasforge:forge-sdk-core,
+            io.saasforge:forge-sdk-manifest,
+            io.saasforge:forge-sdk-security,
+            org.assertj:assertj-core,
+            org.junit.jupiter:junit-jupiter,
+            org.postgresql:postgresql,
+            org.springframework.boot:spring-boot-starter-test,
+            org.testcontainers:testcontainers-junit-jupiter,
+            org.testcontainers:testcontainers-postgresql,
+            tools.jackson.core:jackson-databind</forge.sdk.allowedDependencies>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.saasforge</groupId>

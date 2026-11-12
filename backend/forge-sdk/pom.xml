@@ -32,4 +32,41 @@
         <module>forge-sdk-openapi</module>
         <module>forge-sdk-manifest</module>
     </modules>
+
+    <properties>
+        <!-- 新模块未声明白名单时不允许任何直接依赖，避免漏配后静默放行。 -->
+        <forge.sdk.allowedDependencies/>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>${maven-enforcer-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>enforce-sdk-dependency-allowlist</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <phase>validate</phase>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>*:*</exclude>
+                                    </excludes>
+                                    <!-- Maven 将逗号分隔的属性绑定为列表；不能包在单个 include 中。 -->
+                                    <includes>${forge.sdk.allowedDependencies}</includes>
+                                    <searchTransitive>false</searchTransitive>
+                                    <message>${project.artifactId} 声明了白名单外的直接依赖；请审查依赖方向并更新本模块 POM 的 forge.sdk.allowedDependencies 与接入文档。</message>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>
