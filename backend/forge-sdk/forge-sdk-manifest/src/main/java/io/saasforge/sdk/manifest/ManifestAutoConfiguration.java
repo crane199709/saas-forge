@@ -29,12 +29,13 @@ public final class ManifestAutoConfiguration {
     /**
      * 扫描应用根包（{@code @SpringBootApplication} 所在包）中的 {@code @RequiresPermission}。
      *
-     * <p>清单错误（如菜单引用未声明的权限码）在生成阶段即启动失败；上报失败只记录错误、不阻止启动：
+     * <p>清单错误（如菜单引用未声明的权限码）在生成阶段即启动失败；上报失败记录到状态、不阻止启动：
      * iam 暂时不可用不应拖垮业务服务，后台有限补报。
      *
      * @param properties 上报配置
      * @param environment 读取 {@code spring.application.name}
      * @param beanFactory 读取应用根包
+     * @param reporting 本实例上报生命周期
      * @return 启动完成监听器
      */
     @Bean

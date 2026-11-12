@@ -270,6 +270,12 @@ CREATE UNIQUE INDEX order_categories_name_key ON order_categories (name) WHERE N
 - 其他匿名接口必须在网关显式列出，同时在服务的安全链中放行，不靠推断。
 - 只供同进程或服务间直连调用的接口放在 `/internal/` 下，网关显式拒绝。
 
+## 启动上报与内部状态
+
+引入 `forge-sdk-manifest` 的 Servlet 服务必须配置独立 `forge.ops.token`；该模块带入 Ops 安全链，令牌漏配时启动失败，包括关闭上报的服务。Service Credential（`forge.manifest.token`）只用于向 IAM 上报，不能读取 `/internal/onboarding-status`，也不能与 Ops Token 混用。脚手架已包含两个模块与各自配置项。
+
+SDK 在启动完成后异步上报，失败后按 1、2、4 秒退避重试三次，随后每五分钟最多补报十二次；成功或应用关闭即停止。IAM 不可达不阻塞业务服务启动；`/internal/onboarding-status` 返回本实例上报阶段、成功版本和最近成功/失败时间，网关继续拒绝该内部路径。清单生成错误仍启动失败。
+
 ## 注释
 
 不设注释占比指标，按以下规则写。

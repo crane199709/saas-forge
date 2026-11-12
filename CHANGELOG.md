@@ -6,7 +6,7 @@
 
 ### 变更
 
-- SDK Manifest 上报改为异步初次 + 三次退避重试，之后每五分钟最多补报十二次，成功/关闭即停止；增加结构化失败分类及独立 Ops Token 保护的 `/internal/onboarding-status`。平台新增 `platform:onboarding:read` 与只读“服务接入诊断”：读取 Nacos 客户端配置、lb 实例状态及真实网关 OpenAPI 身份证据；新增必配网关 origin，应用配置与隔离 E2E 地址同步。SDK OpenAPI 输出 `x-forge-service`。业务服务上报配置键和前端设计规则不变，服务指南与 archetype 的状态说明同步更新。
+- SDK Manifest 上报改为异步初次 + 三次退避重试，之后每五分钟最多补报十二次，成功/关闭即停止；增加结构化失败分类及独立 Ops Token 保护的 `/internal/onboarding-status`。平台新增 `platform:onboarding:read` 与只读“服务接入诊断”：读取 Nacos 客户端配置、lb 实例状态及真实网关 OpenAPI 身份证据；新增必配网关 origin，应用配置与隔离 E2E 地址同步。SDK OpenAPI 输出 `x-forge-service`。`docs/standards/business-service.md` 新增启动上报与内部状态规则：Servlet 服务引入 manifest 也须配置独立 Ops Token（包括关闭上报时），脚手架已具备该配置；服务指南与 archetype 状态说明同步，archetype 构建携带更新后的业务服务规范。前端设计规则不变。
 
 - **破坏性**：前端 SDK `api()` / `page()` 强制添加浏览器 `/api` 入口；Shell 开发 Vite、生产 Nginx 与 sub-app-kit 独立宿主固定代理 `/api`（剥离入口段）与 `/iam`（认证透传）。移除 `FORGE_API_PREFIXES` 与 `apiPrefixes`，不保留逐服务前缀兼容代理。升级时配套部署 Shell、SDK、sub-app-kit，已生成 Sub-App 删除 `apiPrefixes`；业务源码路径、网关路由、认证路径与 Cookie 语义保持原样。`docs/standards/sub-app.md` 新增「接口入口」，`business-service.md` 补充浏览器与直连网关路径区别；两套脚手架随构建携带新规范，Sub-App 模板与视觉用例同步。新增服务前端代理改动为 0 处。
 - IAM 服务凭证改为数据库管理状态：支持同服务多凭证、逐条立即停用及原子紧急轮换，库内只存 SHA-256 摘要，生命周期与受限流保护的认证失败写 Platform Realm 审计；内部认证每请求查库，数据库不可用返回 503。`forge.iam.manifest.tokens` 降级为可空且已弃用的静态引导通道，移除应用自带默认凭证，已有本地环境需登记凭证或显式提供引导值。接入清单、服务指南和 archetype 的 `FORGE_MANIFEST_TOKEN` 说明同步更新；业务服务配置键不变。
