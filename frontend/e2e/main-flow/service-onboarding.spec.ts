@@ -50,7 +50,9 @@ test('真实控制台登记凭证、下一请求停用与一次性明文', async
     (await page.request.get('http://127.0.0.1:18101/internal/services', { headers })).status(),
   ).toBe(401)
   await expect(page.locator('body')).not.toContainText(credential)
-  await page.screenshot({ path: `${evidence}/real-credential-disabled.png` })
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0)
+  await page.screenshot({ path: `${evidence}/real-credential-disabled.png`, animations: 'disabled' })
   const accessToken = await page.evaluate(
     () => JSON.parse(localStorage.getItem('forge.platform.session')!).accessToken as string,
   )
@@ -83,7 +85,8 @@ test('真实 Shell 与远程子应用业务请求返回 JSON', async ({ page }) 
   await expect(page.locator('vite-error-overlay, #webpack-dev-server-client-overlay')).toHaveCount(
     0,
   )
-  await page.screenshot({ path: `${evidence}/real-shell-demo.png` })
+  await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0)
+  await page.screenshot({ path: `${evidence}/real-shell-demo.png`, animations: 'disabled' })
 })
 
 test('真实诊断读取运行状态，Nacos关闭时不推断配置成功', async ({ page }) => {
@@ -105,5 +108,6 @@ test('真实诊断读取运行状态，Nacos关闭时不推断配置成功', asy
   const document = await response.json()
   expect(document['x-forge-service']).toBe('demo-service')
   expect(document.openapi).toMatch(/^3\./)
-  await page.screenshot({ path: `${evidence}/real-onboarding-status.png` })
+  await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0)
+  await page.screenshot({ path: `${evidence}/real-onboarding-status.png`, animations: 'disabled' })
 })

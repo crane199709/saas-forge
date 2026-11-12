@@ -48,7 +48,7 @@ trap 'exit 130' INT TERM
 if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 || "${FORGE_ONBOARDING_E2E:-}" == 1 ]]; then
   (cd frontend && pnpm --filter @forge/platform-console build)
 fi
-(cd backend && ./mvnw -B -DskipTests package) >"$RUN_DIR/build.log" 2>&1
+(cd backend && ./mvnw -B -DskipTests clean package) >"$RUN_DIR/build.log" 2>&1
 if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 ]]; then
   "${COMPOSE[@]}" up -d --wait postgres redis rocketmq-namesrv rocketmq-broker rocketmq-proxy
   "${COMPOSE[@]}" run --rm rocketmq-init >"$RUN_DIR/rocketmq-init.log" 2>&1

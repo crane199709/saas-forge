@@ -28,3 +28,26 @@
 - 通过 TypeScript transpileModule 加载真实配置并检查：webServer 仅有 15174、15175、15173；全部 `reuseExistingServer=false`；保留 `channel=chromium`、`trace=retain-on-failure`、`screenshot=only-on-failure`，onboarding baseURL 为 15173。
 
 本修复未运行全栈 `deploy/e2e/run.sh`，未启动或复用用户服务器，未改界面及截图。依赖顺序的模块全量、真实全栈 E2E 与最终工单关闭由集成负责人完成；本记录不将其计为通过。
+
+
+## 真实 E2E 续验：陈旧 Demo 可执行 JAR（2026-11-12）
+
+集成负责人在 `4084258` 运行完整隔离 E2E：真实登记/立即停用、有效 Platform JWT 的内部路径 403、Shell 业务 JSON 与刷新均通过；诊断中 Demo 状态请求返回 401（`/private/tmp/service-onboarding-e2e-final.log`，2 通过、1 失败）。失败截图同时显示 forge-platform 自身“运行已加载”。
+
+诊断反馈循环用完整 Demo 自动配置的真实 HTTP 请求核对：正确独立 Ops Token 读取状态 200，有效 Tenant JWT 与错误 Token 均 401（`/private/tmp/onboarding-status-demo-repro.log`）。该循环不复现失败，说明不能据此修改 SDK 安全链；临时测试与已有 SDK 状态 HTTP seam 重复，已删除。再加载真实 E2E 配置也为 1/1 通过（`/private/tmp/onboarding-status-demo-e2e-config-repro.log`），不能据此推断完整打包链路已通过。
+
+集成负责人随后对实际运行 fat JAR 做内存解包，定位到 Demo JAR 陈旧。复核只输出布尔值，不读取或输出任何秘密：
+
+| 实际运行可执行 JAR | 嵌套 OpsAutoConfiguration 含状态路径 | 嵌套 Manifest 含状态 Controller |
+| --- | --- | --- |
+| `backend/examples/demo-service/target/demo-service-0.2.0-SNAPSHOT.jar` | false | false |
+| `backend/forge-platform/target/forge-platform-0.2.0-SNAPSHOT.jar` | true | true |
+
+复核方法：Python `zipfile.ZipFile` 读取可执行 JAR，`io.BytesIO` 在内存打开 `BOOT-INF/lib/forge-sdk-ops-*.jar` 与 `forge-sdk-manifest-*.jar`；只检查 OpsAutoConfiguration.class 是否包含 `/internal/onboarding-status`，以及是否存在 OnboardingStatusController.class。以上差异解释了 Demo 请求落到旧安全链并返回 401，而 Platform 状态可读。Demo 源码未变，原 `package` 沿用了旧的已 repackage JAR，没有更新其中的 SDK 依赖。
+
+最小修复：`deploy/e2e/run.sh` 后端构建改为 `./mvnw -B -DskipTests clean package`，保证隔离验收使用当前源码重新生成的可执行 JAR。SDK、凭证配置与安全链不变；各服务独立随机令牌及服务端/Platform 对应配置的一致性保持。按本次授权，不为低风险构建脚本添加镜像测试。
+
+验证：`bash -n deploy/e2e/run.sh`、`git diff --check` 通过；提交前合入最新集成分支。新一轮真实全栈及重新打包后两个 JAR 的 true/true 证据由集成负责人完成，本记录不将其计为已通过。未改工单状态。
+
+
+同轮补齐真实截图的稳定等待：凭证截图前等待关闭所有可见 dialog；三张截图前都等待可见 `.el-loading-mask` 数量归零，并设置 `animations: disabled`。使用可观测状态等待，无固定 sleep；不改生产 UI 或 fixture 视觉基线。Playwright `--list`、tools typecheck、Prettier 均通过，真实截图由下一轮隔离 E2E 生成并走查。
