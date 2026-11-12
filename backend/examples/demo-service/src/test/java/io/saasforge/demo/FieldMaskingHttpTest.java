@@ -9,6 +9,13 @@ import io.saasforge.sdk.audit.AuditEvent;
 import io.saasforge.sdk.audit.AuditOutcome;
 import io.saasforge.sdk.core.api.ApiResponse;
 import java.util.List;
+import java.io.ByteArrayOutputStream;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
+import ch.qos.logback.core.OutputStreamAppender;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import org.slf4j.LoggerFactory;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -155,6 +162,46 @@ class FieldMaskingHttpTest {
             assertThat(event.tenantId()).isEqualTo(tenant);
             assertThat(event.resourceId()).isEqualTo("demo");
         });
+    }
+
+    @Test
+    void realLogbackEncoderUsesTheSameRulesAsTheOnlineResponse() throws Exception {
+        UUID tenant = UUID.randomUUID();
+        TestGrants.publish(redisTemplate, tenant, TestTokens.MEMBERSHIP_ID, List.of("masking:read"));
+        var logger = (Logger) LoggerFactory.getLogger(MaskingDemoService.class);
+        var context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        var output = new ByteArrayOutputStream();
+        var encoder = new PatternLayoutEncoder();
+        encoder.setContext(context);
+        encoder.setPattern("%message%n");
+        encoder.start();
+        var appender = new OutputStreamAppender<ILoggingEvent>();
+        appender.setContext(context);
+        appender.setEncoder(encoder);
+        appender.setOutputStream(output);
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            for (int attempt = 0; attempt < 50; attempt++) {
+                RestClient.create("http://localhost:" + port).post().uri("/masking/profiles/log")
+                        .header("Authorization", "Bearer " + TestTokens.forTenant(tenant))
+                        .exchange((req, response) -> {
+                            assertThat(response.getStatusCode().value()).isEqualTo(200);
+                            return null;
+                        });
+                String text = output.toString(java.nio.charset.StandardCharsets.UTF_8);
+                assertThat(text).doesNotContain("13812345678", "110101199001011234");
+                if (text.contains("138****5678") && text.contains("110101********1234")) break;
+                Thread.sleep(100);
+            }
+            assertThat(output.toString(java.nio.charset.StandardCharsets.UTF_8))
+                    .contains("138****5678", "110101********1234", "公开说明")
+                    .doesNotContain("13812345678", "110101199001011234");
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+            encoder.stop();
+        }
     }
 
     private String get(UUID tenant, String path, int status) throws Exception {

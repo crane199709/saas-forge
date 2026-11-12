@@ -30,7 +30,7 @@ final class TestMasking {
                 UUID tenant = UUID.fromString(
                         exchange.getRequestURI().getPath().substring("/internal/field-masking/".length()));
                 var manifest = ResourceManifestCollector.collect(
-                        "demo-service", "8", "io.saasforge.demo", TestMasking.class.getClassLoader());
+                        "demo-service", "8", "io.saasforge.demo.masking", TestMasking.class.getClassLoader());
                 Map<String, EffectiveFieldPolicy> policies = new LinkedHashMap<>();
                 for (var field : manifest.sensitiveFields()) {
                     policies.put(

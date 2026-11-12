@@ -4,6 +4,10 @@ import io.saasforge.demo.masking.model.MaskedProfile;
 import io.saasforge.demo.masking.model.RawProfile;
 import io.saasforge.demo.masking.service.MaskingDemoService;
 import io.saasforge.sdk.core.api.ApiResponse;
+import io.saasforge.sdk.io.IoTask;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import io.saasforge.sdk.security.RequiresPermission;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +32,18 @@ public class MaskingDemoController {
     @GetMapping("/profiles/raw")
     public ApiResponse<RawProfile> viewRaw() {
         return ApiResponse.ok(service.viewRaw());
+    }
+
+    @PostMapping("/profiles/export")
+    @RequiresPermission("masking:export")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<IoTask> export() { return ApiResponse.created(service.export()); }
+
+    @PostMapping("/profiles/log")
+    @RequiresPermission("masking:read")
+    public ApiResponse<Void> logSample() {
+        service.logSample();
+        return ApiResponse.ok();
     }
 
     public record Profiles(List<MaskedProfile> profiles) {}

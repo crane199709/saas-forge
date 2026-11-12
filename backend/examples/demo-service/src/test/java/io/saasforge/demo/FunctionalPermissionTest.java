@@ -95,6 +95,7 @@ class FunctionalPermissionTest {
 
         assertThat(manifest.permissions())
                 .containsExactly(
+                        new Permission("masking:export", "导出脱敏样例", "数据安全示例"),
                         new Permission("masking:read", "查看脱敏样例", "数据安全示例"),
                         new Permission("masking:viewRaw", "查看样例原文", "数据安全示例"),
                         new Permission("order:create", "创建订单", "订单"),
