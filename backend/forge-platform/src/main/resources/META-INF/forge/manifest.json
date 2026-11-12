@@ -28,6 +28,10 @@
     "platform:onboarding:read": {
       "name": "查看服务接入诊断",
       "group": "平台运维"
+    },
+    "platform:service-credential:manage": {
+      "name": "管理服务凭证",
+      "group": "平台运维"
     }
   },
   "dataResources": [

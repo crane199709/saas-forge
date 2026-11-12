@@ -1,4 +1,4 @@
-package io.saasforge.iam.permission.filter;
+package io.saasforge.iam.servicecredential.filter;
 
 import io.saasforge.iam.servicecredential.service.ServiceCredentialAuthentication;
 import io.saasforge.iam.servicecredential.service.ServiceCredentialErrorCode;

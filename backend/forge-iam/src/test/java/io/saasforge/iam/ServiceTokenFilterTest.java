@@ -165,7 +165,7 @@ class ServiceTokenFilterTest {
         try {
             var response = get("legacy-service-token");
             assertThat(response.getStatusCode().value()).isEqualTo(503);
-            assertThat(response.getBody()).containsEntry("code", "serviceCredential.unavailable");
+            assertThat(response.getBody()).containsEntry("code", "service-credential.unavailable");
             assertThat(response.getBody().get("errorMessage")).isEqualTo("Internal error");
             for (String invalid : new String[] {null, "", "token with space"}) {
                 assertThat(get(invalid).getStatusCode().value()).isEqualTo(401);

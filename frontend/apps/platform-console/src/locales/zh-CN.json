@@ -466,5 +466,34 @@
       "UNSUPPORTED": "未提供状态端点",
       "OPS_CREDENTIAL_REJECTED": "运维凭证被拒绝"
     }
+  },
+  "serviceCredential": {
+    "title": "服务凭证",
+    "register": "登记凭证",
+    "submit": "登记",
+    "service": "服务名",
+    "status": "状态",
+    "active": "启用",
+    "disabled": "已停用",
+    "fingerprint": "指纹",
+    "createdAt": "创建时间",
+    "lastUsedAt": "最后使用时间",
+    "actions": "操作",
+    "refresh": "刷新",
+    "empty": "尚未登记服务凭证",
+    "unavailable": "IAM 服务当前不可用，请稍后刷新重试",
+    "rotate": "轮换",
+    "disable": "停用",
+    "confirmDisable": "确认停用",
+    "disableHint": "停用 {service} 的凭证（指纹 {fingerprint}）后，该凭证立即失效，无法恢复。请确认服务已部署新凭证。",
+    "rotationHint": "先登记新凭证并部署到服务，再停用旧凭证。当前旧凭证会继续有效。",
+    "once": "明文仅显示一次。关闭或刷新后无法再次查看，请立即保存到服务配置。",
+    "unreported": "该服务尚未上报 Resource Manifest，可先部署凭证再启动服务。",
+    "copy": "复制片段",
+    "copied": "已复制",
+    "copyFailed": "复制失败，请手动复制片段",
+    "saved": "已保存，关闭",
+    "cancel": "取消",
+    "invalidService": "小写字母开头，仅含小写字母、数字和连字符，最多 100 字符"
   }
 }

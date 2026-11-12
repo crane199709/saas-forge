@@ -73,6 +73,8 @@ pnpm start:lowcode
 
 环境如启用 Redis/Nacos/MQ 的认证，另按平台配置提供其凭证；本模板不内置任何共享环境凭证。`forge.manifest.version` 初始为 1，是清单版本，不是 Maven 版本。
 
+凭证管理入口为平台控制台“服务凭证”（`/service-credentials`），仅持有 `platform:service-credential:manage` 的 Operator 可进入。点击“登记凭证”并填写服务名，复制一次性的 `FORGE_MANIFEST_TOKEN=...` 片段；关闭对话框或刷新后不能再次查看。尚未上报 Manifest 只提示，不阻止登记。IAM 不可用时该页标记不可用，其他平台功能仍可使用。
+
 凭证轮换：为同一服务创建新凭证，更新服务配置并验证上报成功，再停用旧凭证。停用请求提交后旧凭证立即失效，多条有效凭证可以并存；登记、停用和轮换由 IAM 记录 Platform Realm 审计。不要依赖已弃用的 `forge.iam.manifest.tokens` 静态引导配置；应用已移除本地静态默认凭证，既有本地环境需自行登记数据库凭证或显式配置引导值，共享环境迁移单独执行。
 
 ### 服务接入诊断

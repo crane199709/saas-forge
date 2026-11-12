@@ -1,5 +1,6 @@
 package io.saasforge.iam.servicecredential.service;
 
+import io.saasforge.iam.permission.service.PermissionService;
 import io.saasforge.iam.servicecredential.mapper.ServiceCredentialMapper;
 import io.saasforge.iam.servicecredential.model.CreatedServiceCredentialResponse;
 import io.saasforge.iam.servicecredential.model.ServiceCredentialResponse;
@@ -22,11 +23,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class ServiceCredentialService {
     private final ServiceCredentialMapper mapper;
     private final AuditRecorder audits;
+    private final PermissionService permissions;
     private final SecureRandom random = new SecureRandom();
 
-    ServiceCredentialService(ServiceCredentialMapper mapper, AuditRecorder audits) {
+    ServiceCredentialService(ServiceCredentialMapper mapper, AuditRecorder audits, PermissionService permissions) {
         this.mapper = mapper;
         this.audits = audits;
+        this.permissions = permissions;
     }
     /** 登记服务无需先上报清单；操作者必须来自经过验证的 Operator 身份。 */
     @Transactional
@@ -37,6 +40,10 @@ public class ServiceCredentialService {
         var created = issue(service, actor);
         audit("serviceCredential.create", created.credential(), actor);
         return created;
+    }
+
+    public boolean manifestReported(String service) {
+        return permissions.reportedServices().contains(service);
     }
 
     public List<ServiceCredentialResponse> list(String service) {

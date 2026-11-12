@@ -45,7 +45,7 @@ spring:
 
 ## 2. IAM 服务凭证
 
-- [ ] **做什么**：持有 `platform:service-credential:manage` 的 Operator 在平台控制台按准确的 `spring.application.name` 登记服务凭证。服务名以小写字母开头，仅含小写字母、数字与连字符，最长 100 字符；尚未上报 Resource Manifest 也可登记。
+- [ ] **做什么**：持有 `platform:service-credential:manage` 的 Operator 在平台控制台“服务凭证”（`/service-credentials`）点击“登记凭证”，按准确的 `spring.application.name` 登记服务凭证。服务名以小写字母开头，仅含小写字母、数字与连字符，最长 100 字符；尚未上报 Resource Manifest 也可登记。
 - [ ] **在哪里配**：创建响应只显示一次明文，将其安全交付给服务，注入 `FORGE_MANIFEST_TOKEN`（`forge.manifest.token`）。同时设置 `forge.manifest.iam-uri` 为 IAM 内部直连地址、`forge.manifest.version` 为清单版本。凭证只存 SHA-256 摘要，列表只显示前 8 位指纹。无需修改 IAM 配置或重启 IAM；服务使用受控部署配置或实际导入的 Nacos 配置，不把秘密写入版本库。
 - [ ] **轮换**：先创建同一服务的新凭证，部署到服务并验证上报，再显式停用旧凭证。停用立即生效，无自动宽限期；下一次使用旧凭证请求返回 401，同服务其他有效凭证继续可用。紧急轮换的原子接口会立即停旧，不能代替上述平滑部署顺序。
 - [ ] **怎么确认**：服务启动后 `POST /internal/manifests` 上报成功，平台套餐权限目录出现该服务的权限码；错误或已停用凭证被拒。核对最近使用时间及 Platform Realm 审计的操作者、服务名和指纹。IAM 数据库故障返回 503，不回退静态凭证。内部接口不能经网关访问。权限、菜单、角色模板或 Data Resource 改动时递增 version。

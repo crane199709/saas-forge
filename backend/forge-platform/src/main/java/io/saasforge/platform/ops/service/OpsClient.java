@@ -38,7 +38,20 @@ public class OpsClient {
     /** 读取所属服务的运维资源，path 为 /internal/ops 下的固定相对路径，可带查询参数；保留分页与业务失败信封。 */
     public <T> ApiResponse<T> get(
             String service, String path, ParameterizedTypeReference<ApiResponse<T>> responseType) {
-        requireService(service);
+        return get(service, path, responseType, true);
+    }
+
+    /** 固定 IAM 管理通道：新服务登记不能依赖其已有清单；仍使用 IAM 独立 Ops Token。 */
+    public <T> ApiResponse<T> iamGet(String path, ParameterizedTypeReference<ApiResponse<T>> responseType) {
+        return get("forge-iam", path, responseType, false);
+    }
+
+    private <T> ApiResponse<T> get(
+            String service,
+            String path,
+            ParameterizedTypeReference<ApiResponse<T>> responseType,
+            boolean requireReported) {
+        if (requireReported) requireService(service);
         try {
             return requireResponse(client.get()
                     .uri(uri(service, path))
@@ -56,7 +69,22 @@ public class OpsClient {
     /** 在所属服务执行运维命令；调用方在平台校验 manage 权限；结构化业务拒绝原样返回，带审计的操作须将失败转换为业务异常。 */
     public <T> ApiResponse<T> post(
             String service, String path, Object body, ParameterizedTypeReference<ApiResponse<T>> responseType) {
-        requireService(service);
+        return post(service, path, body, responseType, true);
+    }
+
+    /** 固定 IAM 管理通道；调用方必须校验管理权限并从 OperatorContext 取得 actor。 */
+    public <T> ApiResponse<T> iamPost(
+            String path, Object body, ParameterizedTypeReference<ApiResponse<T>> responseType) {
+        return post("forge-iam", path, body, responseType, false);
+    }
+
+    private <T> ApiResponse<T> post(
+            String service,
+            String path,
+            Object body,
+            ParameterizedTypeReference<ApiResponse<T>> responseType,
+            boolean requireReported) {
+        if (requireReported) requireService(service);
         try {
             return requireResponse(client.post()
                     .uri(uri(service, path))
