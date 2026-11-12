@@ -1,197 +1,288 @@
 # SaaS Forge
 
-多租户 SaaS 平台核心与 Forge SDK。规格见 [.scratch/saas-forge-mvp/spec.md](.scratch/saas-forge-mvp/spec.md)，术语见 [GLOSSARY.md](GLOSSARY.md)，关键决策见 [docs/adr/](docs/adr/)。
+**多租户 SaaS 平台与业务开发 SDK**
 
-## 仓库结构
+简体中文 | [English](README-en.md)
 
+SaaS Forge 提供运营端、租户端、身份与权限服务，以及按能力拆分的 Spring Boot Starter 和 Vue 子应用工具。业务团队可以在独立仓库开发后端服务与前端子应用，复用租户隔离、认证授权、菜单、审计和消息等基础能力。
+
+[本地运行](#本地运行) · [业务接入](#开发业务服务与子应用) · [SDK](#forge-sdk) · [验证与 CI](#验证与-ci) · [文档](#文档)
+
+## 已实现能力
+
+| 领域           | 能力                                                                                                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| 身份与账号安全 | 全局身份与租户成员关系、多租户切换；运营与租户双 Realm；OAuth2 授权码 + PKCE、刷新轮换、即时失效、TOTP MFA、登录锁定与密码管理 |
+| 租户运营       | 租户开通、初始化、停用与删除流程；套餐与 Feature Pack；运营账号、平台角色与应用注册表                                          |
+| 组织与权限     | 成员邀请、部门、岗位、扩展属性；RBAC 功能权限、ABAC 数据权限；租户 IP 允许列表、按权限与套餐裁剪菜单                           |
+| 租户隔离       | PostgreSQL 共享 schema 模式；MyBatis-Plus 租户条件与 PostgreSQL RLS；缓存、消息和任务中的租户上下文                            |
+| 日常协作       | 站内通知、业务待办、公告、审计日志、字典与参数、菜单布局管理                                                                   |
+| 业务与运维     | S3 对象存储、异步 Excel 导入导出、业务编号、租户定时任务与运行记录；Outbox、幂等消费、死信查询与重放                           |
+| 业务扩展       | 后端 Maven archetype、前端 Sub-App 生成器、Module Federation 动态加载、共享 SDK/UI 与接入规范                                  |
+
+仓库内的 `demo-service` 与 `demo-sub-app` 演示订单、附件、导入导出、通知与待办等能力的组合使用。
+
+<details>
+<summary>界面预览：运营端租户管理</summary>
+
+![运营端租户管理](frontend/e2e/visual/__screenshots__/platform-tenants-desktop.png)
+
+截图来自仓库的视觉回归基线，使用测试数据；当前界面文案以简体中文为主。
+
+</details>
+
+## 架构与目录
+
+```mermaid
+flowchart LR
+    Console[运营端 Shell] --> Gateway[forge-gateway]
+    Tenant[租户端 Shell] --> Gateway
+    Tenant -. Module Federation .-> SubApp[业务 Sub-App]
+    SubApp --> Gateway
+    Gateway --> IAM[forge-iam]
+    Gateway --> Platform[forge-platform]
+    Gateway --> Business[业务服务 / demo-service]
+    Business -. Resource Manifest .-> IAM
 ```
-backend/                 Maven 多模块（JDK 17、Spring Boot 4.0.9、Spring Cloud 2025.1.4、SCA 2025.1.0.0）
-  forge-dependencies/    BOM
-  forge-sdk/             SDK starter（forge-sdk-*）
-  forge-gateway/         网关，聚合 OpenAPI
-  forge-iam/             身份与权限服务
-  forge-platform/        平台服务
-  examples/demo-service/ SDK 端到端验收用例
-frontend/                pnpm workspace
-  apps/platform-console/ 平台侧 Shell App
-  apps/tenant-app/       租户侧 Shell App
-  packages/ui/           @crane199709/ui
-  packages/sdk/          @crane199709/sdk
-deploy/                  本地依赖的 docker compose
+
+网关负责路由与认证入口，IAM 管理身份、权限和租户访问上下文，Platform 管理租户运营与服务运维。业务服务通过 Forge SDK 接入，并向 IAM 上报权限、菜单和数据资源声明；租户 Shell 根据权限、套餐和 App Registry 加载子应用。
+
+```text
+backend/                       Maven 多模块
+  forge-dependencies/          BOM 与共享构建配置
+  forge-architecture/          可复用的 ArchUnit 架构规则
+  forge-sdk/                   17 个按能力拆分的 SDK 模块
+  forge-gateway/               API 网关与聚合 OpenAPI
+  forge-iam/                   身份、权限与租户侧基础能力
+  forge-platform/              平台运营与运维服务
+  forge-service-archetype/     仓库外 Business Service 脚手架
+  examples/demo-service/       示例业务服务
+frontend/                      pnpm workspace
+  apps/platform-console/      运营端 Shell
+  apps/tenant-app/             租户端 Shell
+  apps/demo-sub-app/           示例子应用
+  packages/sdk/               @crane199709/sdk
+  packages/ui/                @crane199709/ui
+  packages/sub-app-kit/       @crane199709/sub-app-kit
+deploy/                        本地依赖、镜像说明与隔离验收环境
+scripts/                       CI 范围选择、版本发布与镜像构建
+docs/                          接入指南、规范与 ADR
 ```
 
-## 环境要求
+| 层次     | 技术栈                                                                                                   |
+| -------- | -------------------------------------------------------------------------------------------------------- |
+| 后端     | Java 17、Spring Boot 4.0.9、Spring Cloud 2025.1.4、Spring Cloud Alibaba 2025.1.0.0、MyBatis-Plus、Flyway |
+| 前端     | Vue 3、TypeScript 5.9、Vite、Element Plus、Pinia、Module Federation                                      |
+| 基础设施 | PostgreSQL 17、Redis 8、Nacos 3、RocketMQ 5、S3 兼容对象存储                                             |
+| 验证     | JUnit、Testcontainers、ArchUnit、Vitest、Playwright、Spotless、Prettier、Stylelint                       |
 
-- JDK 17（Maven 用仓库自带的 `backend/mvnw`，也可用本机 Maven 3.9+）
-- Docker（含 Compose v2）
-- Node.js 24+、pnpm 12
+当前源码统一开发版本为 `0.2.0-SNAPSHOT`，后端以 `backend/.mvn/maven.config` 中的 `revision` 为准。仓库外接入须使用与目标平台配套的发布版本，版本管理见[发布指南](scripts/release/README.md)。
 
-## 本地启动
+## 本地运行
+
+以下命令默认从仓库根目录执行，用于独立的本地演示环境。
+
+### 环境要求
+
+- JDK 17；使用仓库自带的 `backend/mvnw`。
+- Node.js 24+、pnpm 12.4.2。
+- Docker 与 Compose v2。
+- Bash、OpenSSL；E2E 与发布脚本还需要 Python 3。
 
 ### 1. 启动依赖
 
 ```bash
 docker compose -f deploy/docker-compose.yml up -d
+docker compose -f deploy/docker-compose.yml ps -a
 ```
 
-启动 PostgreSQL 17、Redis、Nacos 3、RocketMQ 5（独立的 cluster 模式 proxy，宿主机经 8081 连接）、S3 兼容存储，`nacos-init` 会把 `deploy/nacos/config/` 下的配置发布到 Nacos，`rocketmq-init` 会创建 `deploy/rocketmq/create-topics.sh` 中列出的 Topic。数据卷位于 `deploy/data/`（已忽略），删除该目录即可重置。
+Compose 启动数据库、缓存、注册配置中心、消息队列和对象存储。一次性任务 `nacos-init`、`rocketmq-init`、`s3-init` 分别发布配置、创建 Topic 和创建 bucket，应以退出码 0 完成。
 
-| 依赖 | 宿主机端口 | 说明 |
-|---|---|---|
-| PostgreSQL | 5432 | 库 `forge`，超级用户 `postgres/postgres` |
-| Redis | 6379 | |
-| Nacos | 8848、9848，控制台 18080 | 控制台账号 `nacos/nacos` |
-| RocketMQ proxy | 8081 | gRPC，供 `rocketmq-client-java` 使用 |
-| S3 | 9000 | `forge` / `forge-local-secret` |
+| 依赖           | 默认宿主机端口           | 本地说明                                                                   |
+| -------------- | ------------------------ | -------------------------------------------------------------------------- |
+| PostgreSQL     | 5432                     | 数据库 `forge`；为 iam、platform、demo 分别准备 schema、迁移账号与运行账号 |
+| Redis          | 6379                     | 会话、权限版本、租户状态等                                                 |
+| Nacos          | 8848、9848；控制台 18080 | [控制台](http://localhost:18080)，本地账号 `nacos/nacos`                   |
+| RocketMQ Proxy | 8081                     | Java 原生客户端使用的 gRPC 入口                                            |
+| S3 兼容存储    | 9000                     | 本地使用 silo，bucket 为 `forge`                                           |
 
-端口冲突时可用环境变量覆盖，如 `FORGE_PG_PORT=15432`，变量名见 `deploy/docker-compose.yml`。
+数据保存在被 Git 忽略的 `deploy/data/`。PostgreSQL 初始化只对空数据目录执行；已有库接入新服务时按[平台侧接入清单](docs/service-onboarding-checklist.md)准备 schema 和账号。端口覆盖变量见 [Compose 配置](deploy/docker-compose.yml)，调整端口后须同步应用连接配置。
 
-初始化脚本为每个服务创建独立 schema（`iam`、`platform`、`demo`）和两个账号：
-
-- `<schema>_migrator`：schema 所有者，只供 Flyway 执行迁移；
-- `<schema>_app`：只有数据读写权限、不拥有表，供应用连接。
-
-初始化脚本只在数据目录为空时执行；修改脚本后需删除 `deploy/data/postgres` 重建。修改 Nacos 配置后重新执行 `docker compose -f deploy/docker-compose.yml up nacos-init`。
-
-### 2. 启动后端
+### 2. 构建并准备本地令牌
 
 ```bash
-cd backend
-./mvnw install -DskipTests
+(cd backend && ./mvnw install -DskipTests)
+pnpm --dir frontend install --frozen-lockfile
 ```
 
-回到仓库根目录，为本地环境生成三个独立的运维令牌（只需生成一次，文件已被 Git 忽略）：
+生成服务专属运维令牌与本地配置引用的 Lowcode Manifest 令牌。下面的命令只补充缺少的变量，保留已有值：
 
 ```bash
-cd ..
-if [ ! -f .env.ops.local ]; then
-  (
-    umask 077
-    cat > .env.ops.local <<EOF
-FORGE_IAM_OPS_TOKEN=$(openssl rand -hex 32)
-FORGE_PLATFORM_OPS_TOKEN=$(openssl rand -hex 32)
-FORGE_DEMO_OPS_TOKEN=$(openssl rand -hex 32)
-EOF
-  )
-fi
+(
+  umask 077
+  touch .env.ops.local
+  for name in FORGE_IAM_OPS_TOKEN FORGE_PLATFORM_OPS_TOKEN FORGE_DEMO_OPS_TOKEN FORGE_LOWCODE_MANIFEST_TOKEN; do
+    if ! grep -q "^${name}=" .env.ops.local; then
+      printf '%s=%s\n' "$name" "$(openssl rand -hex 32)" >> .env.ops.local
+    fi
+  done
+)
+```
+
+`.env.ops.local` 已被 Git 忽略。IAM、Platform 和 Demo 各自使用独立运维令牌，Platform 同时需要这三个值来调用服务内部运维接口。IAM 当前还引用 `FORGE_LOWCODE_MANIFEST_TOKEN`；仓库不包含 Lowcode 服务模块，接入外部 Lowcode 服务时须让双方使用相同的 Manifest 令牌。
+
+### 3. 启动后端
+
+**每个后端终端**先在仓库根目录加载变量并读取当前构建版本：
+
+```bash
 set -a
 source .env.ops.local
 set +a
+FORGE_VERSION=$(sed -n 's/^-Drevision=//p' backend/.mvn/maven.config)
 ```
 
-三个服务都要求显式配置运维令牌，漏配、空值或未解析的占位符会导致启动失败，例如 `forge.ops.token must be set`。`forge-platform` 同时需要三个变量，以匹配各服务的内部运维认证。
-
-然后分别启动四个服务（各开一个终端；新终端须在仓库根目录重新执行上面的 `set -a`、`source`、`set +a`）：
+再分别在四个终端执行：
 
 ```bash
-java -jar backend/forge-iam/target/forge-iam-0.1.0.jar
-```
-
-```bash
-java -jar backend/forge-platform/target/forge-platform-0.1.0.jar
+java -jar "backend/forge-iam/target/forge-iam-${FORGE_VERSION}.jar" --spring.profiles.active=demo
 ```
 
 ```bash
-java -jar backend/examples/demo-service/target/demo-service-0.1.0.jar
+java -jar "backend/forge-platform/target/forge-platform-${FORGE_VERSION}.jar"
 ```
 
 ```bash
-java -jar backend/forge-gateway/target/forge-gateway-0.1.0.jar
+java -jar "backend/examples/demo-service/target/demo-service-${FORGE_VERSION}.jar"
 ```
 
-使用 IDEA 时，在各模块的 `*Application` 运行配置的 **Environment variables** 中设置 `.env.ops.local` 中的三个同名变量，工作目录设为仓库根目录。IDEA 从界面启动时不会自动加载该文件；也不要把含真实令牌的运行配置提交到 Git。更换令牌后，须同步更新服务和 `forge-platform` 的运行配置并重启。
+```bash
+java -jar "backend/forge-gateway/target/forge-gateway-${FORGE_VERSION}.jar"
+```
 
-| 服务 | 端口 | 经网关访问 |
-|---|---|---|
-| forge-gateway | 8080 | — |
-| forge-iam | 8101 | `/iam/**` |
-| forge-platform | 8102 | `/platform/**` |
-| demo-service | 8201 | `/demo/**` |
+> [!IMPORTANT]
+> `demo` profile 会写入已知密码的演示账号，只用于独立本地环境。默认启动不加载演示账号；同一个数据库执行过演示迁移后，后续启动须继续启用该 profile，否则 Flyway 校验会失败。
 
-服务启动时以迁移账号执行本服务的 Flyway 迁移，再以运行账号连接数据库；配置通过 `spring.config.import` 从 Nacos 读取（共享的 `forge-common.yaml`，网关另有 `forge-gateway.yaml`）。
+| 服务           | 默认端口 | 网关前缀    |
+| -------------- | -------- | ----------- |
+| forge-gateway  | 8080     | —           |
+| forge-iam      | 8101     | `/iam`      |
+| forge-platform | 8102     | `/platform` |
+| demo-service   | 8201     | `/demo`     |
 
-连接池及租户会话数据源不参与配置热刷新；修改数据库连接或连接池参数后，需重启对应服务。
+服务启动时以迁移账号执行 Flyway，以运行账号访问数据。共享配置读取 Nacos 的 `forge-common.yaml`，网关另读 `forge-gateway.yaml`。连接池和租户会话数据源不参与热刷新，数据库连接配置变更后需重启服务。
 
-验证：
+使用 IDEA 启动时，在运行配置中设置相同环境变量，工作目录设为仓库根目录；IAM 添加 `demo` profile。IDEA 不会自动加载 `.env.ops.local`，含真实令牌的运行配置不要提交。
 
-- Nacos 控制台 <http://localhost:18080> 的服务列表中可见四个服务
-- 聚合的接口文档：<http://localhost:8080/swagger-ui.html>（右上角切换服务）
-- 示例 i18n 文案：登录后使用 `curl -H "Authorization: Bearer <accessToken>" http://localhost:8080/demo/greeting`；业务接口现在要求 Tenant Realm Token。
+### 4. 启动前端并登录
 
-### 3. 启动前端
+在三个终端分别运行：
+
+```bash
+pnpm --dir frontend dev:platform
+```
+
+```bash
+pnpm --dir frontend dev:tenant
+```
+
+```bash
+pnpm --dir frontend start:demo
+```
+
+| 入口          | 地址                                                   | 演示账号                        | 演示密码                 |
+| ------------- | ------------------------------------------------------ | ------------------------------- | ------------------------ |
+| 运营端        | [localhost:5173](http://localhost:5173)                | `operator`                      | `Operator-password-123!` |
+| 租户端        | [localhost:5174](http://localhost:5174)                | `demo`                          | `Demo-password-123!`     |
+| 示例 Sub-App  | [remoteEntry.js](http://127.0.0.1:5175/remoteEntry.js) | 由租户 Shell 加载，共用租户会话 | —                        |
+| 聚合 API 文档 | [Swagger UI](http://localhost:8080/swagger-ui.html)    | 按服务切换                      | —                        |
+
+`start:demo` 先构建再预览，源码修改后需重新执行。IAM 的演示数据已登记 `local` 环境的示例入口；可登录租户端查看订单页面。账号与认证详情见[租户登录](docs/tenant-login.md)和[运营登录](docs/platform-login.md)。
+
+常见排查入口：
+
+- 出现 `forge.ops.token must be set`：检查当前终端或 IDE 的环境变量；更换令牌后同步更新 Platform 与对应服务并重启。
+- 网关没有路由：确认 `nacos-init` 成功；修改仓库中的 Nacos 配置后执行 `docker compose -f deploy/docker-compose.yml up nacos-init` 重新发布。
+- 子应用未显示或加载失败：检查 `start:demo`、入口地址、IAM 的 `FORGE_ENVIRONMENT`（默认 `local`）以及成员权限与套餐范围。
+
+## 开发业务服务与子应用
+
+后端与前端可在仓库外独立开发：
+
+1. 使用 `io.saasforge:forge-service-archetype` 生成 Business Service，继承 `forge-dependencies`，按需组合 SDK。完整命令与必配项见[业务服务接入指南](docs/business-service-guide.md)。
+2. 使用 `@crane199709/sub-app-kit` 的 `forge-create-sub-app` 生成 Sub-App，复用 `@crane199709/sdk` 和 `@crane199709/ui`。仓库外生成、独立开发宿主与发布步骤见[子应用指南](docs/sub-app.md)。
+3. 由平台侧准备数据库账号、Manifest 令牌、Topic、网关路由与认证前缀，并登记 App Registry、配置套餐和角色权限。按[接入清单](docs/service-onboarding-checklist.md)逐项验证。
+
+仓库内创建子应用的示例：
 
 ```bash
 cd frontend
+pnpm create:sub-app billing 5180
 pnpm install
-pnpm dev:platform
+pnpm --filter @forge/billing-sub-app dev
 ```
 
+独立开发宿主支持 HMR；实际的联邦加载通过构建产物与租户 Shell 验证。新业务前缀还需加入 Shell 的开发代理；只设置 Sub-App 的 `apiPrefixes` 不会更新 Shell 代理。Shell、Sub-App 与共享包使用同一配套版本，共享依赖不单独升级。
+
+## Forge SDK
+
+后端制品使用 `io.saasforge` 坐标，由 `forge-dependencies` 统一管理版本。
+
+| 模块（省略 `forge-sdk-` 前缀） | 职责                                                   |
+| ------------------------------ | ------------------------------------------------------ |
+| `core`、`web`、`openapi`       | 租户上下文、统一响应与错误、分页、业务时区、OpenAPI    |
+| `security`、`tenant`、`abac`   | JWT 验签、功能权限、租户 SQL 隔离与 RLS 会话、数据策略 |
+| `manifest`、`provisioning`     | 权限与菜单声明上报、租户初始化与清理扩展点             |
+| `mq`、`notification`           | RocketMQ、事务 Outbox、幂等消费、死信、通知与待办事件  |
+| `audit`、`ops`、`scheduling`   | 审计事件、独立令牌运维通道、声明式定时任务与运行历史   |
+| `storage`、`io`                | 按用途约束的 S3 存储、异步 Excel 导入校验与确认、导出  |
+| `numbering`、`referencedata`   | 业务编号、当前租户生效的字典与参数                     |
+
+前端三个发布包分别提供会话与 API 客户端、共享 UI 组件，以及生成器、构建配置和隔离检查。接入约束见[后端规范](docs/standards/business-service.md)与[前端规范](docs/standards/sub-app.md)。
+
+## 验证与 CI
+
+| 质量工作流       | 覆盖内容                                                                          |
+| ---------------- | --------------------------------------------------------------------------------- |
+| Backend quality  | Maven 测试、Testcontainers 集成测试、ArchUnit、Spotless 与 archetype 生成工程验证 |
+| Frontend quality | 类型检查、单测、Prettier、Stylelint、构建与 mock 浏览器回归                       |
+| Main flow E2E    | 真实登录与子应用加载、双租户隔离、功能与数据权限、即时失效、Realm 隔离            |
+| Template smoke   | 临时 Maven/npm 发布、仓库外生成工程、构建与运行接入验证                           |
+
+PR 与 `main` 推送按变更范围选择重检查；手动触发与发布标签执行全量。普通 Markdown 改动跳过重检查，规则见 [CI 说明](docs/ci.md)。
+
+常用本地命令：
+
 ```bash
-pnpm dev:tenant
-```
-
-platform-console 运行在 <http://localhost:5173>，tenant-app 运行在 <http://localhost:5174>。
-
-租户登录的演示账号、IAM `demo` profile、签名密钥和接口说明见 [Tenant Realm 最小登录](docs/tenant-login.md)。演示数据需显式启用，默认迁移不插入已知密码的身份。运营登录（Platform Realm）的演示账号与差异见 [Platform Realm 与运营登录](docs/platform-login.md)。业务服务声明 Data Resource、角色上的 Data Scope 与自定义条件、默认拒绝规则见 [数据权限](docs/data-permission.md)。
-
-## 构建与测试
-
-每个 PR、main 分支推送与手动触发都会独立运行三个 GitHub Actions 工作流，可并行执行，各自超时为 30 分钟：
-
-| 工作流 | 检查内容 | 失败报告（保留 7 天） |
-| --- | --- | --- |
-| Backend quality | Maven `verify`：单测、Testcontainers 集成测试、ArchUnit 架构规则、Spotless 格式检查 | Surefire / Failsafe 报告 |
-| Frontend quality | 类型检查、单测、Prettier 格式检查、构建、mock E2E | 单测与格式检查日志、Playwright HTML 报告、测试结果与失败 trace |
-| Main flow E2E | 独立容器环境中的真实主链路 E2E | Playwright 报告、测试结果与服务日志 |
-
-本地使用 JDK 17、Node 24、pnpm 12.4.2 和可用的 Docker，按以下命令复现（从仓库根目录执行）：
-
-```bash
+# 后端完整验证，包含生成工程的独立消费测试
 (cd backend && ./mvnw --batch-mode install -Parchetype-it)
 
-(
-  cd frontend
-  pnpm install --frozen-lockfile &&
-  pnpm typecheck &&
-  pnpm test &&
-  pnpm format:check &&
-  pnpm build &&
-  pnpm build:spike &&
-  pnpm exec playwright install --with-deps chromium &&
-  pnpm test:e2e --reporter=line,html
-)
+# 前端类型、单测、格式、样式与构建
+(cd frontend && pnpm typecheck && pnpm test && pnpm format:check && pnpm lint:style && pnpm build)
 
+# mock 浏览器回归；build:spike 准备诊断页面与子应用 v2
+(cd frontend && pnpm build:spike && pnpm exec playwright install --with-deps chromium && pnpm test:e2e)
+
+# 独立容器环境中的真实主链路与模板冒烟（分别运行）
 deploy/e2e/run.sh
+deploy/template-smoke/run.sh
+
+# 通知与待办专项真实 E2E，当前为手动运行
+pnpm --dir frontend test:e2e:notification
 ```
 
-`build:spike` 为 mock E2E 准备诊断页面与子应用 v2。真实主链路脚本会创建并清理独立容器与数据卷；所需端口见 [E2E 脚本](deploy/e2e/run.sh)。格式检查等早期步骤失败时可能尚无测试报告，原因见对应工作流日志。
+迭代后端模块时，先在 `backend` 执行 `./mvnw -o -pl <模块> -am install -DskipTests`，再用 `./mvnw -o -pl <模块> test -Dtest=<测试类>` 定向验证；离线命令要求依赖已缓存。格式修复使用 `(cd backend && ./mvnw spotless:apply)` 与 `pnpm --dir frontend format`，视觉回归使用 `pnpm --dir frontend test:visual`。
 
-## 代码格式化
+主链路 E2E 使用独立 PostgreSQL/Redis 容器，退出后清理本次容器与卷，日志保留在 `deploy/e2e/run-*`。该套用例关闭 MQ 与 Nacos；验证边界、端口和报告位置见[主链路 E2E](docs/main-flow-e2e.md)。Linux 首次运行真实 E2E 前需安装 Playwright Chromium 系统依赖。
 
-后端使用 Spotless：Java 用 palantir-java-format 并移除未使用的 import，POM 统一排序与缩进，`src/{main,test}/resources` 下的 XML 用 Eclipse WTP 统一缩进（规则见 `backend/spotless-xml.prefs`，保留 SQL 的手写换行，脚手架模板除外）。格式不合规时 `verify` 失败。规则在 `forge-dependencies` 的 pluginManagement 中，与 archetype 生成的 Business Service 共用；`forge-create-sub-app` 生成的工程复制 `frontend/.prettierrc.json`，带 `pnpm format` / `pnpm format:check`。
+## 文档
 
-```bash
-cd backend && ./mvnw spotless:apply
-```
-
-前端使用 Prettier（版本锁定，配置在 `frontend/.prettierrc.json`），不依赖 Java 工具链。
-
-```bash
-cd frontend && pnpm format
-```
-
-```bash
-cd frontend && pnpm format:check
-```
-
-## 版本说明
-
-SDK 当前统一版本为 `0.1.0`。版本同步、标签发布与临时仓库自检见 [发布指南](scripts/release/README.md)，升级说明见 [变更日志](CHANGELOG.md)。
-
-- 版本组合锁定见 [ADR-0013](docs/adr/0013-pin-spring-boot-4-0.md)，全部由 `forge-dependencies` 管理。
-- 前端 TypeScript 锁定 5.9：TypeScript 7 是原生重写版本，vue-tsc 依赖的编译器 JS API 尚未就绪。
-- 本地 S3 使用 MinIO 的社区分支 silo（MinIO 社区版已停止发布二进制，见 ADR-0011），代码只依赖 S3 协议。
-
-真实主链路浏览器验收（双租户、权限、数据范围、即时失效、Realm 隔离）：见 [主链路 E2E](docs/main-flow-e2e.md)，一键执行 `deploy/e2e/run.sh`。
-
-后端普通 `verify` 可在冷缓存执行；`install -Parchetype-it` 还会验证新服务模板，先安装本次 SDK，再让生成工程独立执行 `verify`。业务服务接入见 [接入指南](docs/business-service-guide.md)。
+| 需要了解       | 入口                                                                                                                                                 |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 术语与架构决策 | [领域术语](GLOSSARY.md) · [ADR](docs/adr/)                                                                                                           |
+| 后端服务接入   | [业务服务指南](docs/business-service-guide.md) · [平台侧接入清单](docs/service-onboarding-checklist.md)                                              |
+| 前端子应用接入 | [Sub-App 与 App Registry](docs/sub-app.md) · [前端规范](docs/standards/sub-app.md)                                                                   |
+| 身份与账号安全 | [租户登录](docs/tenant-login.md) · [运营登录](docs/platform-login.md)                                                                                |
+| 权限与审计     | [平台权限](docs/platform-permission.md) · [数据权限](docs/data-permission.md) · [审计](docs/audit.md)                                                |
+| 开发与验收     | [后端规范](docs/standards/business-service.md) · [前端设计](docs/agents/frontend-design.md) · [主链路 E2E](docs/main-flow-e2e.md) · [CI](docs/ci.md) |
+| 版本与部署     | [SDK 发布指南](scripts/release/README.md) · [镜像构建与运行配置](deploy/images/README.md)                                                            |
