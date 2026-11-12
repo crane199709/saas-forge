@@ -26,4 +26,9 @@
 
 ## 验证结果
 
-待实现及集成验证后填写。未执行的检查不得记为通过。
+- 工单 01 定向 9 项通过：`ServiceTokenFilterTest`、`EmptyServiceCredentialStoreTest`、`ServiceCredentialArchitectureTest`、`ArchitectureTest`；Spotless 通过。实现提交 `26ab186` 已合入。
+- 工单 01 单独全量在 subagent 结束交接时未留下完成标记，进程已经结束，不能计为通过；合并后由主 agent 完整执行受影响模块全量。
+- 隔离全栈入口：`FORGE_ONBOARDING_E2E=1 deploy/e2e/run.sh`；以真实密码登录、管理 API 和数据库验证登记/立即停用，并验证真实 Shell 和远程 Demo 的 `/api` JSON 请求。不 mock 网络、不注入会话。Nginx 生产入口另由工单 03 的独立容器验收覆盖。
+- Browser 插件不可用，采用仓库现有 Playwright；真实链路截图输出 `/private/tmp/service-onboarding-qa/`，页面基线由对应 UI 工单提交。
+
+其余结果待合并验证后补齐。未执行的检查不得记为通过。
