@@ -12,6 +12,13 @@
     <name>Forge SDK Numbering</name>
     <description>按本地声明的 Numbering Rule 在业务事务内生成 Business Number</description>
 
+    <properties>
+        <!-- 直接依赖变更须同步白名单与接入文档，含 optional、provided 和 test 声明。 -->
+        <forge.sdk.allowedDependencies>io.saasforge:forge-architecture,
+            io.saasforge:forge-sdk-provisioning,
+            org.springframework.boot:spring-boot-starter-test</forge.sdk.allowedDependencies>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.saasforge</groupId>

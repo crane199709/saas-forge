@@ -12,6 +12,17 @@
     <name>Forge SDK Core</name>
     <description>租户上下文、响应信封与错误模型、框架级错误码文案、Business Time Zone 配置</description>
 
+    <properties>
+        <!-- 直接依赖变更须同步白名单与接入文档，含 optional、provided 和 test 声明。 -->
+        <forge.sdk.allowedDependencies>com.fasterxml.jackson.core:jackson-annotations,
+            io.micrometer:micrometer-tracing,
+            io.saasforge:forge-architecture,
+            org.slf4j:slf4j-api,
+            org.springframework.boot:spring-boot,
+            org.springframework.boot:spring-boot-starter-test,
+            tools.jackson.core:jackson-databind</forge.sdk.allowedDependencies>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.saasforge</groupId>

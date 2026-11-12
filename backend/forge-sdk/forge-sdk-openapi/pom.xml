@@ -12,6 +12,14 @@
     <name>Forge SDK OpenAPI</name>
     <description>springdoc 默认配置</description>
 
+    <properties>
+        <!-- 直接依赖变更须同步白名单与接入文档，含 optional、provided 和 test 声明。 -->
+        <forge.sdk.allowedDependencies>io.saasforge:forge-architecture,
+            org.springdoc:springdoc-openapi-starter-webmvc-api,
+            org.springframework.boot:spring-boot-starter-test,
+            org.springframework.boot:spring-boot-starter-webmvc</forge.sdk.allowedDependencies>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
