@@ -5,12 +5,16 @@ cd "$ROOT"
 if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 && -n "${FORGE_TEMPLATE_SERVICE:-}" ]]; then
   echo '通知 E2E 与模板 E2E 不能同时启用' >&2; exit 1
 fi
+if [[ "${FORGE_ONBOARDING_E2E:-}" == 1 && ( "${FORGE_NOTIFICATION_E2E:-}" == 1 || -n "${FORGE_TEMPLATE_SERVICE:-}" ) ]]; then
+  echo '接入 E2E 不能与通知或模板 E2E 同时启用' >&2; exit 1
+fi
 for tool in docker java pnpm python3 curl; do command -v "$tool" >/dev/null || { echo "缺少 $tool" >&2; exit 1; }; done
 # 不接收外部数据库目标；初始化只经本次创建的容器执行。
 python3 - <<'PY'
 import os, socket
 ports = [15432,16379,18000,18101,18102,18201,15174,15175]
 if os.environ.get('FORGE_NOTIFICATION_E2E') == '1': ports += [15173,18081]
+if os.environ.get('FORGE_ONBOARDING_E2E') == '1': ports += [15173]
 for port in ports:
     with socket.socket() as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -41,7 +45,7 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT TERM
 (cd frontend && pnpm install --frozen-lockfile && pnpm exec playwright install chromium && pnpm build:spike)
-if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 ]]; then
+if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 || "${FORGE_ONBOARDING_E2E:-}" == 1 ]]; then
   (cd frontend && pnpm --filter @forge/platform-console build)
 fi
 (cd backend && ./mvnw -B -DskipTests package) >"$RUN_DIR/build.log" 2>&1
@@ -98,6 +102,8 @@ fi
 NOTIFICATION_ARGS=()
 if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 ]]; then
   NOTIFICATION_ARGS=(--forge.mq.enabled=true --forge.mq.endpoints=127.0.0.1:18081 --forge.mq.ssl=false --forge.iam.platform.redirect-uri=http://127.0.0.1:15173/)
+elif [[ "${FORGE_ONBOARDING_E2E:-}" == 1 ]]; then
+  NOTIFICATION_ARGS=(--forge.iam.platform.redirect-uri=http://127.0.0.1:15173/)
 fi
 start forge-iam 18101 /oauth2/jwks
 if [[ -n "${FORGE_TEMPLATE_SERVICE:-}" ]]; then
@@ -120,6 +126,9 @@ fi
 if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 ]]; then
   "${COMPOSE[@]}" exec -T postgres psql -U postgres -d forge -v ON_ERROR_STOP=1 < deploy/e2e/seed.notification.sql
   (cd frontend && pnpm exec playwright test -c playwright.notification.config.ts "$@")
+elif [[ "${FORGE_ONBOARDING_E2E:-}" == 1 ]]; then
+  "${COMPOSE[@]}" exec -T postgres psql -U postgres -d forge -v ON_ERROR_STOP=1 < deploy/e2e/seed.onboarding.sql
+  (cd frontend && pnpm exec playwright test -c playwright.onboarding.config.ts "$@")
 else
   (cd frontend && pnpm exec playwright test -c playwright.main-flow.config.ts "$@")
 fi
