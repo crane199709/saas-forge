@@ -108,52 +108,46 @@ Compose starts the database, cache, service registry and configuration center, m
 
 Data is stored under the Git-ignored `deploy/data/` directory. PostgreSQL initialization runs only on an empty data directory. For a new service on an existing database, follow the [platform onboarding checklist](docs/service-onboarding-checklist.md) to provision its schema and users. Port overrides are listed in the [Compose configuration](deploy/docker-compose.yml); update application connection settings when changing ports.
 
-### 2. Build and prepare local tokens
+### 2. Build and prepare private service configuration
 
 ```bash
-(cd backend && ./mvnw install -DskipTests)
+(cd backend && ./mvnw clean install -DskipTests)
 pnpm --dir frontend install --frozen-lockfile
+umask 077
+cp -n .env.iam.example .env.iam.local
+cp -n .env.platform.example .env.platform.local
+cp -n .env.demo.example .env.demo.local
+mkdir -p deploy/data
+cp -n deploy/config/forge-platform.example.yaml deploy/data/forge-platform.yaml
 ```
 
-Generate a separate operations token for each service and the Lowcode manifest token referenced by the local configuration. This command adds missing variables and preserves existing values:
+Set a separate random `FORGE_OPS_TOKEN` for each service (`openssl rand -hex 32`). Platform and Demo also need a `FORGE_MANIFEST_TOKEN` registered with IAM; use a separate value from the operations token. IAM registers its own manifests internally and only needs its operations token. Preserve existing values when migrating an environment.
 
-```bash
-(
-  umask 077
-  touch .env.ops.local
-  for name in FORGE_IAM_OPS_TOKEN FORGE_PLATFORM_OPS_TOKEN FORGE_DEMO_OPS_TOKEN FORGE_LOWCODE_MANIFEST_TOKEN; do
-    if ! grep -q "^${name}=" .env.ops.local; then
-      printf '%s=%s\n' "$name" "$(openssl rand -hex 32)" >> .env.ops.local
-    fi
-  done
-)
-```
+Keep the complete Platform operations map in private `deploy/data/forge-platform.yaml`. Each key is the target's actual `spring.application.name`; its value must match that service's `FORGE_OPS_TOKEN`. Built-in and external services such as Lowcode use the same map. Platform's own entry may reference `${FORGE_OPS_TOKEN}`. `.env.*.local` and `deploy/data/` are Git-ignored.
 
-`.env.ops.local` is Git-ignored. IAM, Platform, and Demo use separate operations tokens. Platform needs all three to call internal service operations endpoints. IAM also references `FORGE_LOWCODE_MANIFEST_TOKEN`; this repository contains no Lowcode service module. When integrating an external Lowcode service, configure the same manifest token on both sides.
+On a fresh environment, start IAM, register credentials for Platform and Demo, fill their private files, then start those services. Before Platform can report its manifest, an administrator holding the IAM Ops Token can register credentials through `POST /internal/ops/service-credentials`; see the [service guide](docs/business-service-guide.md#服务凭证获取与轮换).
 
 ### 3. Start backend services
 
-In **each backend terminal**, load the variables and read the current build version from the repository root:
+In each terminal, read the build version from the repository root and load only that service's environment file:
 
 ```bash
-set -a
-source .env.ops.local
-set +a
 FORGE_VERSION=$(sed -n 's/^-Drevision=//p' backend/.mvn/maven.config)
 ```
 
-Then run one of the following commands in each of four terminals:
-
 ```bash
-java -jar "backend/forge-iam/target/forge-iam-${FORGE_VERSION}.jar" --spring.profiles.active=demo
+(set -a; source .env.iam.local; set +a
+ java -jar "backend/forge-iam/target/forge-iam-${FORGE_VERSION}.jar" --spring.profiles.active=demo)
 ```
 
 ```bash
-java -jar "backend/forge-platform/target/forge-platform-${FORGE_VERSION}.jar"
+(set -a; source .env.platform.local; set +a
+ java -jar "backend/forge-platform/target/forge-platform-${FORGE_VERSION}.jar")
 ```
 
 ```bash
-java -jar "backend/examples/demo-service/target/demo-service-${FORGE_VERSION}.jar"
+(set -a; source .env.demo.local; set +a
+ java -jar "backend/examples/demo-service/target/demo-service-${FORGE_VERSION}.jar")
 ```
 
 ```bash
@@ -170,9 +164,9 @@ java -jar "backend/forge-gateway/target/forge-gateway-${FORGE_VERSION}.jar"
 | forge-platform | 8102         | `/platform`    |
 | demo-service   | 8201         | `/demo`        |
 
-Services run Flyway using migration credentials and access application data with runtime credentials. They import `forge-common.yaml` from Nacos; the gateway also imports `forge-gateway.yaml`. Connection pools and tenant session data sources do not participate in hot refresh. Restart services after changing database connection settings.
+Services run Flyway using migration credentials and access application data using runtime credentials. They import `forge-common.yaml` from Nacos; the gateway also imports `forge-gateway.yaml`. Platform additionally imports controlled `forge-platform.yaml`, using the same structure as the complete local map. Connection pools and tenant session data sources do not participate in hot refresh. Restart services after database configuration changes.
 
-For IDEA run configurations, set the same environment variables and use the repository root as the working directory. Enable the `demo` profile for IAM. IDEA does not automatically load `.env.ops.local`; do not commit run configurations containing real tokens.
+In IDEA, assign `.env.iam.local`, `.env.platform.local`, and `.env.demo.local` to IamApplication, PlatformApplication, and DemoApplication respectively. Use the repository root as the working directory and enable IAM's `demo` profile. Services must not share a file containing generic credential variable names. External Lowcode continues to use its own `.env.local`.
 
 ### 4. Start the frontend and sign in
 

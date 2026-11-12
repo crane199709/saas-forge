@@ -28,7 +28,7 @@ spring:
       port: ${FORGE_REDIS_PORT:6379}
 forge:
   ops:
-    token: ${FORGE_DEMO_OPS_TOKEN}
+    token: ${FORGE_OPS_TOKEN}
   # 本地开发地址；代码中不设默认值，部署时以 Nacos 或环境变量覆盖，漏配则启动失败
   security:
     issuer: http://localhost:8080/iam
@@ -36,15 +36,15 @@ forge:
   mq:
     endpoints: ${FORGE_ROCKETMQ_ENDPOINTS:127.0.0.1:8081}
   # 启动时向 iam 上报 Resource Manifest；改动权限码、名称、菜单、角色模板或 Data Resource 时升级 version。iam-uri 是直连 iam 的内部地址，
-  # token 须与 iam forge.iam.manifest.tokens.demo-service 一致
+  # token 来自 IAM 登记的本服务凭证，所有业务服务使用同名环境变量。
   manifest:
     version: 7
     iam-uri: http://localhost:8101
-    token: ${FORGE_DEMO_MANIFEST_TOKEN:local-demo-manifest-token}
+    token: ${FORGE_MANIFEST_TOKEN}
   # 从 iam 内部接口读取租户生效的字典与参数，令牌与清单上报相同（iam 按服务识别）；缓存过期时间缺省 10 分钟
   reference-data:
     iam-uri: http://localhost:8101
-    token: ${FORGE_DEMO_MANIFEST_TOKEN:local-demo-manifest-token}
+    token: ${FORGE_MANIFEST_TOKEN}
   scheduling:
     iam-uri: ${forge.manifest.iam-uri}
     token: ${forge.manifest.token}

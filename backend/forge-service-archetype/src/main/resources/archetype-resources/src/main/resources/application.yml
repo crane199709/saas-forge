@@ -34,6 +34,7 @@ spring:
       port: ${dollar}{FORGE_REDIS_PORT}
 forge:
   ops:
+    # 仅注入本服务的令牌；Platform 在统一映射中配置同一个值。
     token: ${dollar}{FORGE_OPS_TOKEN}
   security:
     ${hash} Tenant Realm 签发者（网关公开地址）与直连 IAM JWKS 地址：平台运维

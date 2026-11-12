@@ -8,6 +8,8 @@
 
 业务请求经共享 SDK 的 `client.api()` / `client.page()`，源码仍使用网关路径（如 `/orders/orders`）；SDK 强制添加 `/api`，Shell 剥离入口段后转发网关。开发 Shell、生产 Shell 与独立宿主固定代理 `/api` 和 `/iam`，新增服务不追加代理配置；Sub-App 配置不再接受 `apiPrefixes`。登录、OAuth2 回调与 Refresh 保持 `/iam` 原路径及 Cookie 语义。Shell、SDK 与 sub-app-kit 须配套升级，跨源业务路径仍拒绝。
 
+后端服务统一通过自己的 `FORGE_OPS_TOKEN`、`FORGE_MANIFEST_TOKEN` 配置凭证，Platform 的运维映射集中维护。Sub-App 继续使用 Shell 提供的用户会话；服务端凭证不进入 Vite 环境变量、浏览器配置或联邦产物。
+
 ## 改动页面的流程
 
 按顺序走完三步，功能和设计分开做。

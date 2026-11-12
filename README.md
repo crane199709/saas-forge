@@ -108,52 +108,46 @@ Compose 启动数据库、缓存、注册配置中心、消息队列和对象存
 
 数据保存在被 Git 忽略的 `deploy/data/`。PostgreSQL 初始化只对空数据目录执行；已有库接入新服务时按[平台侧接入清单](docs/service-onboarding-checklist.md)准备 schema 和账号。端口覆盖变量见 [Compose 配置](deploy/docker-compose.yml)，调整端口后须同步应用连接配置。
 
-### 2. 构建并准备本地令牌
+### 2. 构建并准备各服务的私有配置
 
 ```bash
-(cd backend && ./mvnw install -DskipTests)
+(cd backend && ./mvnw clean install -DskipTests)
 pnpm --dir frontend install --frozen-lockfile
+umask 077
+cp -n .env.iam.example .env.iam.local
+cp -n .env.platform.example .env.platform.local
+cp -n .env.demo.example .env.demo.local
+mkdir -p deploy/data
+cp -n deploy/config/forge-platform.example.yaml deploy/data/forge-platform.yaml
 ```
 
-生成服务专属运维令牌与本地配置引用的 Lowcode Manifest 令牌。下面的命令只补充缺少的变量，保留已有值：
+每个服务的 `FORGE_OPS_TOKEN` 填独立随机值（可用 `openssl rand -hex 32` 生成）。Platform、Demo 的 `FORGE_MANIFEST_TOKEN` 填在 IAM 登记的服务凭证，不能用运维令牌替代。IAM 自身直接登记清单，只需要自己的运维令牌。已有环境迁移时保留现有值，不重新生成。
 
-```bash
-(
-  umask 077
-  touch .env.ops.local
-  for name in FORGE_IAM_OPS_TOKEN FORGE_PLATFORM_OPS_TOKEN FORGE_DEMO_OPS_TOKEN FORGE_LOWCODE_MANIFEST_TOKEN; do
-    if ! grep -q "^${name}=" .env.ops.local; then
-      printf '%s=%s\n' "$name" "$(openssl rand -hex 32)" >> .env.ops.local
-    fi
-  done
-)
-```
+Platform 的完整运维映射统一维护在私有 `deploy/data/forge-platform.yaml`：键为真实 `spring.application.name`，值与目标服务的 `FORGE_OPS_TOKEN` 一致。内置服务和外部 Lowcode 都在这一份映射中配置；Platform 自身条目可引用 `${FORGE_OPS_TOKEN}`。`.env.*.local` 和 `deploy/data/` 被 Git 忽略。
 
-`.env.ops.local` 已被 Git 忽略。IAM、Platform 和 Demo 各自使用独立运维令牌，Platform 同时需要这三个值来调用服务内部运维接口。IAM 当前还引用 `FORGE_LOWCODE_MANIFEST_TOKEN`；仓库不包含 Lowcode 服务模块，接入外部 Lowcode 服务时须让双方使用相同的 Manifest 令牌。
+首次启动顺序为 IAM → 登记 Platform/Demo 凭证 → 填写各自环境文件 → 启动 Platform/Demo。平台自身尚不能上报时，由持有 IAM Ops Token 的管理员通过 `POST /internal/ops/service-credentials` 登记，步骤见[服务指南](docs/business-service-guide.md#服务凭证获取与轮换)。
 
 ### 3. 启动后端
 
-**每个后端终端**先在仓库根目录加载变量并读取当前构建版本：
+各终端在仓库根目录读取构建版本，再只加载对应服务的环境文件：
 
 ```bash
-set -a
-source .env.ops.local
-set +a
 FORGE_VERSION=$(sed -n 's/^-Drevision=//p' backend/.mvn/maven.config)
 ```
 
-再分别在四个终端执行：
-
 ```bash
-java -jar "backend/forge-iam/target/forge-iam-${FORGE_VERSION}.jar" --spring.profiles.active=demo
+(set -a; source .env.iam.local; set +a
+ java -jar "backend/forge-iam/target/forge-iam-${FORGE_VERSION}.jar" --spring.profiles.active=demo)
 ```
 
 ```bash
-java -jar "backend/forge-platform/target/forge-platform-${FORGE_VERSION}.jar"
+(set -a; source .env.platform.local; set +a
+ java -jar "backend/forge-platform/target/forge-platform-${FORGE_VERSION}.jar")
 ```
 
 ```bash
-java -jar "backend/examples/demo-service/target/demo-service-${FORGE_VERSION}.jar"
+(set -a; source .env.demo.local; set +a
+ java -jar "backend/examples/demo-service/target/demo-service-${FORGE_VERSION}.jar")
 ```
 
 ```bash
@@ -170,9 +164,9 @@ java -jar "backend/forge-gateway/target/forge-gateway-${FORGE_VERSION}.jar"
 | forge-platform | 8102     | `/platform` |
 | demo-service   | 8201     | `/demo`     |
 
-服务启动时以迁移账号执行 Flyway，以运行账号访问数据。共享配置读取 Nacos 的 `forge-common.yaml`，网关另读 `forge-gateway.yaml`。连接池和租户会话数据源不参与热刷新，数据库连接配置变更后需重启服务。
+服务启动时以迁移账号执行 Flyway，以运行账号访问数据。共享配置读取 Nacos 的 `forge-common.yaml`，网关另读 `forge-gateway.yaml`；Platform 另读受控的 `forge-platform.yaml`，与本地完整映射结构一致。连接池和租户会话数据源不参与热刷新，数据库连接配置变更后需重启服务。
 
-使用 IDEA 启动时，在运行配置中设置相同环境变量，工作目录设为仓库根目录；IAM 添加 `demo` profile。IDEA 不会自动加载 `.env.ops.local`，含真实令牌的运行配置不要提交。
+IDEA 中将 IamApplication、PlatformApplication、DemoApplication 的环境文件分别设为 `.env.iam.local`、`.env.platform.local`、`.env.demo.local`，工作目录均为仓库根目录；IAM 启用 `demo` profile。不要让多个服务加载同一份含通用变量名的文件。外部 Lowcode 已使用自身 `.env.local`，继续保持独立。
 
 ### 4. 启动前端并登录
 

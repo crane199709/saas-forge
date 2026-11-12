@@ -6,6 +6,8 @@
 
 ### 变更
 
+- **破坏性**：IAM、Platform、Demo 服务端统一使用 `FORGE_OPS_TOKEN`，Platform/Demo 的清单及 IAM 目录访问统一使用 `FORGE_MANIFEST_TOKEN`，移除本地静态默认凭证。Platform 不再内置服务令牌列表，完整映射通过专属 `forge-platform.yaml` 提供。新增独立服务环境文件与映射样例；本地启动、隔离 E2E、业务服务规范、archetype、sub-app-kit 配套规范、中英文 README 同步。既有环境须保留原值迁移到各服务私有文件，不能共用通用变量文件；IAM 已弃用的静态引导 Map 仍保留兼容。
+
 - SDK Manifest 上报改为异步初次 + 三次退避重试，之后每五分钟最多补报十二次，成功/关闭即停止；增加结构化失败分类及独立 Ops Token 保护的 `/internal/onboarding-status`。平台新增 `platform:onboarding:read` 与只读“服务接入诊断”：读取 Nacos 客户端配置、lb 实例状态及真实网关 OpenAPI 身份证据；新增必配网关 origin，应用配置与隔离 E2E 地址同步。SDK OpenAPI 输出 `x-forge-service`。`docs/standards/business-service.md` 新增启动上报与内部状态规则：Servlet 服务引入 manifest 也须配置独立 Ops Token（包括关闭上报时），脚手架已具备该配置；服务指南与 archetype 状态说明同步，archetype 构建携带更新后的业务服务规范。前端设计规则不变。
 - 平台控制台新增服务凭证登记、一次性环境变量片段复制、平滑轮换引导与立即停用；新增 `platform:service-credential:manage`。平台经独立 IAM Ops Token 和服务发现访问内部管理接口，操作人从验证后的 Operator 上下文提供，IAM 统一记录生命周期审计。凭证业务错误码统一为 `service-credential.*`。
 

@@ -52,7 +52,7 @@ spring:
 
 `forge.iam.manifest.tokens.<服务名>` 已弃用，仅保留引导、本地与隔离 E2E 通道，静态命中会记录 WARN。该 Map 可为空；应用不再提供静态默认凭证，开发环境也须登记数据库凭证，或显式提供独立的引导环境变量。数据库中同值凭证已停用时，静态配置不能恢复它。已有环境不会自动迁移或改写凭证；共享环境迁移另行安排。
 
-运维通道另用独立令牌：服务的 `forge.ops.token`（脚手架环境变量 `FORGE_OPS_TOKEN`）与平台 `forge.platform.ops.tokens.<服务名>` 配成同一个随机密钥，不能复用 Manifest 令牌。令牌不设默认值；漏配须启动失败。平台从 IAM 的已上报清单目录取实际服务名，经服务发现调用 `/internal/ops`；运维令牌不会向浏览器或网关暴露。确认正确令牌直连探针返回 200、错误令牌返回 401，经网关访问内部路径仍被拒；Operator 没有 `platform:ops:read` 时不能读取运维服务列表。
+运维通道另用独立令牌：所有服务的 `forge.ops.token` 统一读取 `FORGE_OPS_TOKEN`，与平台专属 `forge-platform.yaml` 中的 `forge.platform.ops.tokens.<服务名>` 配成同一个随机密钥，不能复用 Manifest 令牌。令牌不设默认值；漏配须启动失败。清单凭证统一读取 `FORGE_MANIFEST_TOKEN`；本地各服务加载自己的私有环境文件，Platform 的完整运维映射集中维护，新增内置或外部服务使用同一入口。平台从 IAM 的已上报清单目录取实际服务名，经服务发现调用 `/internal/ops`；运维令牌不会向浏览器或网关暴露。确认正确令牌直连探针返回 200、错误令牌返回 401，经网关访问内部路径仍被拒；Operator 没有 `platform:ops:read` 时不能读取运维服务列表。
 
 ## 3. RocketMQ 与租户开通
 

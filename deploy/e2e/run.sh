@@ -70,12 +70,41 @@ FORGE_VERSION=$(sed -n 's/^-Drevision=//p' backend/.mvn/maven.config)
 OPS_IAM_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
 OPS_PLATFORM_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
 OPS_DEMO_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
+# 与实际部署使用相同的集中映射；每个服务进程只接收自己的通用凭证变量。
+E2E_IAM_OPS_TOKEN="$OPS_IAM_TOKEN" E2E_PLATFORM_OPS_TOKEN="$OPS_PLATFORM_TOKEN" E2E_DEMO_OPS_TOKEN="$OPS_DEMO_TOKEN" \
+  python3 - "$RUN_DIR/forge-platform.yaml" <<'PYOPS'
+import json, os, sys
+service = 'smoke-service' if os.environ.get('FORGE_TEMPLATE_SERVICE') else 'demo-service'
+tokens = {
+    'forge-iam': os.environ['E2E_IAM_OPS_TOKEN'],
+    'forge-platform': os.environ['E2E_PLATFORM_OPS_TOKEN'],
+    service: os.environ['E2E_DEMO_OPS_TOKEN'],
+}
+fd = os.open(sys.argv[1], os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+with os.fdopen(fd, 'w') as output:
+    json.dump({'forge': {'platform': {'ops': {'tokens': tokens}}}}, output)
+PYOPS
 start() {
   local module=$1 port=$2 probe=$3
+  local service_ops_token= service_manifest_token= config_locations="file:$E2E_CONFIG"
+  case "$module" in
+    forge-iam) service_ops_token=$OPS_IAM_TOKEN ;;
+    forge-platform)
+      service_ops_token=$OPS_PLATFORM_TOKEN
+      service_manifest_token=local-platform-manifest-token
+      config_locations+=",file:$RUN_DIR/forge-platform.yaml"
+      ;;
+    examples/demo-service)
+      service_ops_token=$OPS_DEMO_TOKEN
+      service_manifest_token=local-demo-manifest-token
+      ;;
+    forge-gateway) ;;
+    *) echo "未知 E2E 模块：$module" >&2; return 1 ;;
+  esac
   # 不继承开发环境的 Spring/数据库覆盖项，防止 Flyway 或服务误连共享资源。
   env -i PATH="$PATH" HOME="$HOME" JAVA_HOME="${JAVA_HOME:-}" \
-    FORGE_IAM_OPS_TOKEN="$OPS_IAM_TOKEN" FORGE_PLATFORM_OPS_TOKEN="$OPS_PLATFORM_TOKEN" FORGE_DEMO_OPS_TOKEN="$OPS_DEMO_TOKEN" java -Xms64m -Xmx256m -XX:ActiveProcessorCount=2 -jar "backend/$module/target/${module##*/}-$FORGE_VERSION.jar" \
-    "--spring.config.additional-location=file:$E2E_CONFIG" \
+    FORGE_OPS_TOKEN="$service_ops_token" FORGE_MANIFEST_TOKEN="$service_manifest_token" java -Xms64m -Xmx256m -XX:ActiveProcessorCount=2 -jar "backend/$module/target/${module##*/}-$FORGE_VERSION.jar" \
+    "--spring.config.additional-location=$config_locations" \
     "--server.port=$port" ${NOTIFICATION_ARGS[@]+"${NOTIFICATION_ARGS[@]}"} ${TEMPLATE_ARGS[@]+"${TEMPLATE_ARGS[@]}"} \
     "--forge.iam.signing-key-file=$RUN_DIR/tenant.jwk" \
     "--forge.iam.platform.signing-key-file=$RUN_DIR/platform.jwk" \

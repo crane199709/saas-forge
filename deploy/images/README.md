@@ -39,11 +39,13 @@ docker pull ghcr.io/crane199709/saas-forge/forge-iam:0.1.0
 | 服务 | 必须提供的属性 |
 | --- | --- |
 | gateway | forge.security.issuer/jwk-set-uri、forge.security.platform.issuer/jwk-set-uri、forge.gateway.services 和 Spring Cloud Gateway 路由；网关前有反向代理（如 Shell 镜像的 nginx）时，spring.cloud.gateway.server.webflux.trusted-proxies 须包含代理地址，否则全部用户共用代理的 IP，会一起触发 Login Lockout 的 IP 限速 |
-| iam | forge.security.issuer、forge.security.platform.issuer、forge.iam.signing-key-file、forge.iam.platform.signing-key-file、forge.iam.mfa.encryption-key（Base64 编码的 256 位密钥，可用 `openssl rand -base64 32` 生成，多实例一致，更换后已绑定的 Authenticator 失效）、forge.iam.invitation.accept-url、forge.iam.sub-app.environment、forge.iam.manifest.tokens |
+| iam | forge.security.issuer、forge.security.platform.issuer、forge.iam.signing-key-file、forge.iam.platform.signing-key-file、forge.iam.mfa.encryption-key（Base64 编码的 256 位密钥，可用 `openssl rand -base64 32` 生成，多实例一致，更换后已绑定的 Authenticator 失效）、forge.iam.invitation.accept-url、forge.iam.sub-app.environment；forge.iam.manifest.tokens 仅可选引导 |
 | platform | forge.security.realm=platform、forge.security.platform.issuer/jwk-set-uri、forge.manifest.iam-uri/token/version、forge.platform.iam.uri/token、forge.platform.provisioning.services、forge.tenant.ignore-tables |
 | demo-service | forge.security.issuer/jwk-set-uri、forge.manifest.iam-uri/token/version、forge.reference-data.iam-uri/token、forge.storage.endpoint/bucket/access-key/secret-key |
 
-iam/platform/demo 另需 spring.datasource.url/username/password、spring.flyway.user/password/schemas/default-schema/create-schemas=false、forge.mq.endpoints、mybatis-plus.mapper-locations（classpath*:/*/mapper/**/*.xml）。iam 需要 mybatis-plus.configuration.arg-name-based-constructor-auto-mapping=true。标准 Spring 环境变量规则：点替换下划线、删除连字符、转大写，例如 FORGE_SECURITY_JWKSETURI、SPRING_DATASOURCE_PASSWORD。列表与 token map 建议使用挂载 YAML。非环境不变量如 manifest version、ignore-tables、mapper 扫描路径参照各服务 application.yml 保留；环境地址和密码全部替换。数据库账号和 schema 按接入指南预建；IAM 密钥使用持久化可写卷。issuer 浏览器可达，JWKS/Manifest 使用容器间地址。
+IAM、Platform、Demo 与外部服务的运维凭证统一使用 `forge.ops.token` / `FORGE_OPS_TOKEN`；上报清单的服务使用 `forge.manifest.token` / `FORGE_MANIFEST_TOKEN`，各服务分别注入自己的值。Platform 的完整 `forge.platform.ops.tokens` 单独放在受控 `forge-platform.yaml` 中，内置和外部服务一致；挂载完整配置或显式导入该文件，不能依赖镜像预置服务列表。参考 `deploy/config/forge-platform.example.yaml`，真实映射和环境文件均不入库。
+
+iam/platform/demo 另需 spring.datasource.url/username/password、spring.flyway.user/password/schemas/default-schema/create-schemas=false、forge.mq.endpoints、mybatis-plus.mapper-locations（`classpath*:/*/mapper/**/*.xml`）。iam 需要 mybatis-plus.configuration.arg-name-based-constructor-auto-mapping=true。标准 Spring 环境变量规则：点替换下划线、删除连字符、转大写，例如 FORGE_SECURITY_JWKSETURI、SPRING_DATASOURCE_PASSWORD。列表与 token map 建议使用挂载 YAML。非环境不变量如 manifest version、ignore-tables、mapper 扫描路径参照各服务 application.yml 保留；环境地址和密码全部替换。数据库账号和 schema 按接入指南预建；IAM 密钥使用持久化可写卷。issuer 浏览器可达，JWKS/Manifest 使用容器间地址。
 
 ## Shell
 

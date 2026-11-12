@@ -73,7 +73,11 @@ pnpm start:lowcode
 
 环境如启用 Redis/Nacos/MQ 的认证，另按平台配置提供其凭证；本模板不内置任何共享环境凭证。`forge.manifest.version` 初始为 1，是清单版本，不是 Maven 版本。
 
+### 服务凭证获取与轮换
+
 凭证管理入口为平台控制台“服务凭证”（`/service-credentials`），仅持有 `platform:service-credential:manage` 的 Operator 可进入。点击“登记凭证”并填写服务名，复制一次性的 `FORGE_MANIFEST_TOKEN=...` 片段；关闭对话框或刷新后不能再次查看。尚未上报 Manifest 只提示，不阻止登记。IAM 不可用时该页标记不可用，其他平台功能仍可使用。
+
+平台首次接入的引导：先启动 IAM，由持有独立 IAM Ops Token 的管理员直连 `POST /internal/ops/service-credentials`，请求体为 `{"service":"forge-platform","actor":"<已验证 Operator UUID>"}`，Authorization 使用 IAM 的 Ops Token。将响应的一次性 `data.token` 写入 Platform 私有环境文件的 `FORGE_MANIFEST_TOKEN` 后启动 Platform。Demo 等其他服务使用相同流程，或在控制台可用后登记；不要直接改权限表或关闭网关认证。
 
 凭证轮换：为同一服务创建新凭证，更新服务配置并验证上报成功，再停用旧凭证。停用请求提交后旧凭证立即失效，多条有效凭证可以并存；登记、停用和轮换由 IAM 记录 Platform Realm 审计。不要依赖已弃用的 `forge.iam.manifest.tokens` 静态引导配置；应用已移除本地静态默认凭证，既有本地环境需自行登记数据库凭证或显式配置引导值，共享环境迁移单独执行。
 
@@ -95,15 +99,11 @@ Manifest 上报在启动完成后异步执行，不等待 IAM 恢复：初次尝
 
 `forge-sdk-ops` 为 `/internal/ops` 及其子路径建立独立运维令牌认证，`forge.ops.token` 无默认值，漏配即启动失败；普通业务接口继续验证本服务 Realm 的 JWT。平台通过已上报 Manifest 的服务目录及 `lb://<serviceName>` 直连服务，Operator 须有 `platform:ops:read` 或 `platform:ops:manage` 才能使用对应功能。服务未引入能力、无实例、令牌未配或不一致时，仅标记该服务不可用。
 
-本仓库本地启动 IAM、platform 与 demo-service 前，须分别设置独立随机值；平台和服务从同名环境变量读取对应令牌。以下变量只在当前终端生成，不写入版本库；其他终端启动时应使用同一组值：
+所有服务端统一使用 `FORGE_OPS_TOKEN`；使用 SDK 上报清单的服务统一使用 `FORGE_MANIFEST_TOKEN`。IAM、Platform、Demo 与生成服务不再使用服务名前缀的变量名。两类凭证独立，各服务的值也独立，漏配时启动失败；环境文件必须按服务分开加载。
 
-```sh
-export FORGE_IAM_OPS_TOKEN="$(openssl rand -hex 32)"
-export FORGE_PLATFORM_OPS_TOKEN="$(openssl rand -hex 32)"
-export FORGE_DEMO_OPS_TOKEN="$(openssl rand -hex 32)"
-```
+Platform 的全部 `forge.platform.ops.tokens` 统一配置在专属 `forge-platform.yaml` 中，按真实服务名映射到目标服务的 Ops Token，内置和外部服务使用同一入口。部署可使用受控 Nacos dataId `forge-platform.yaml`；本地复制 `deploy/config/forge-platform.example.yaml` 到私有 `deploy/data/forge-platform.yaml`，由 `.env.platform.local` 的 `SPRING_CONFIG_ADDITIONAL_LOCATION` 加载。新增服务只在这份映射中增加条目，不在应用 YAML 追加服务特例。
 
-新业务服务在自己的部署中提供 `FORGE_OPS_TOKEN`，并在平台的 `forge.platform.ops.tokens.<serviceName>` 配置同一个值；不要复用 Manifest 上报令牌。E2E runner 会为隔离运行自动生成随机运维令牌。
+本地 IAM、Platform、Demo 分别加载 `.env.iam.local`、`.env.platform.local`、`.env.demo.local`；样例位于仓库根目录 `.env.<服务>.example`。迁移既有环境时保留当前令牌值，再切换变量名与加载路径，验证成功后移除旧共享文件和临时覆盖配置。E2E runner 使用同一结构，随机生成的隔离令牌不继承开发凭据。
 
 内部 HTTP 接口必须放在 `/internal/` 下，网关拒绝该前缀；网络访问控制与服务自身认证仍由部署和实现保障。不要把内部接口改成其他路径绕过网关限制。
 

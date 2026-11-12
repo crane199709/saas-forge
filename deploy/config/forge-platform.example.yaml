@@ -1,0 +1,11 @@
+# 复制到 deploy/data/forge-platform.yaml，或在受控配置中心使用 dataId forge-platform.yaml。
+# 填入各服务的 FORGE_OPS_TOKEN；空值会导致 Platform 启动失败。
+forge:
+  platform:
+    ops:
+      tokens:
+        forge-iam:
+        forge-platform: ${FORGE_OPS_TOKEN}
+        demo-service:
+        # 接入外部服务时在同一份映射中增加真实 spring.application.name。
+        # lowcode-service:

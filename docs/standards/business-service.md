@@ -182,6 +182,12 @@ CREATE UNIQUE INDEX order_categories_name_key ON order_categories (name) WHERE N
 - 随环境变化的地址、issuer、密钥或证书文件路径不在代码中设默认值：本地值写在服务的 `application.yml`，漏配必须启动失败。框架对空值不报错时（如授权服务器 issuer 为空会改为按请求推断），在配置类的构造器中检查。
 - Spring 自带的属性（如 `spring.application.name`）沿用框架的绑定方式。设计不变量（分页上限、与列宽绑定的长度、锁时长）保留为常量，出现按环境调整的需求时再改为配置。
 
+### 服务凭证与运维凭证
+
+服务端 `forge.ops.token` 统一绑定 `FORGE_OPS_TOKEN`；使用 Manifest SDK 的 `forge.manifest.token` 统一绑定 `FORGE_MANIFEST_TOKEN`。两类凭证分别用于 Platform 调用服务、服务向 IAM 上报，不复用值，不设置静态默认密钥。每个服务独立注入自己的变量，本地也使用独立私有环境文件。
+
+Platform 通过专属 `forge-platform.yaml` 的 `forge.platform.ops.tokens.<spring.application.name>` 集中维护完整运维映射，内置服务和仓库外服务采用同一配置方式。真实凭证只由受控配置源提供，不写入模板或版本库；配置改动后的启动验证必须检查实际 HTTP 认证和上报状态。
+
 ## Java 模型
 
 ### 类型引用
