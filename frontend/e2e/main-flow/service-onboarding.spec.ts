@@ -52,7 +52,10 @@ test('真实控制台登记凭证、下一请求停用与一次性明文', async
   await expect(page.locator('body')).not.toContainText(credential)
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.locator('.el-loading-mask:visible')).toHaveCount(0)
-  await page.screenshot({ path: `${evidence}/real-credential-disabled.png`, animations: 'disabled' })
+  await page.screenshot({
+    path: `${evidence}/real-credential-disabled.png`,
+    animations: 'disabled',
+  })
   const accessToken = await page.evaluate(
     () => JSON.parse(localStorage.getItem('forge.platform.session')!).accessToken as string,
   )
