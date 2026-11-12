@@ -42,6 +42,7 @@ forge:
   mq:
     ${hash} RocketMQ Proxy gRPC 地址：接入清单 Topic 准备步骤
     endpoints: ${dollar}{FORGE_ROCKETMQ_ENDPOINTS}
+  # SDK 异步有限重试与补报；只读 /internal/onboarding-status 由独立 forge.ops.token 保护
   manifest:
     version: 1
     ${hash} IAM 内部地址；凭证由 Operator 在控制台登记，明文只显示一次，注入 FORGE_MANIFEST_TOKEN。

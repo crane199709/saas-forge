@@ -75,6 +75,16 @@ pnpm start:lowcode
 
 凭证轮换：为同一服务创建新凭证，更新服务配置并验证上报成功，再停用旧凭证。停用请求提交后旧凭证立即失效，多条有效凭证可以并存；登记、停用和轮换由 IAM 记录 Platform Realm 审计。不要依赖已弃用的 `forge.iam.manifest.tokens` 静态引导配置；应用已移除本地静态默认凭证，既有本地环境需自行登记数据库凭证或显式配置引导值，共享环境迁移单独执行。
 
+### 服务接入诊断
+
+控制台“服务接入诊断”（`/onboarding`）由 `platform:onboarding:read` 权限控制，只能刷新读取。配置层读取与网关相同 namespace/group 下的 Nacos `forge-gateway.yaml` 路由与认证前缀；读取前后客户端必须为 UP，否则显示未知。来源标为 `NACOS_CLIENT` 并带检查时间：客户端仍可能使用 snapshot/failover，不能据此证明远端最新配置或网关运行时已加载。
+
+运行层经 `lb://<service>/internal/onboarding-status` 使用该服务独立 Ops Token 读取本实例上报状态；不透传 Operator JWT，也不使用 Service Credential。状态包含是否启用、已上报版本、最近成功/失败时间、失败分类和阶段，不输出令牌或 IAM 地址。未成功上报的服务仍可由 Nacos 路由或平台配置的 Ops Token 进入候选列表；IAM 目录失败只影响目录完整性，单服务不可达不掩盖其他服务。IAM 自身直接登记清单，未引入 reporter 时不提供此状态端点。负载均衡读取只代表选中的实例，不代表全副本一致。
+
+请求层每次刷新向环境配置 `forge.platform.onboarding.gateway-uri`（本地 `FORGE_ONBOARDING_GATEWAY_URI`）指定的真实网关发出 `GET /<prefix>/v3/api-docs`。只有 HTTP 200、JSON OpenAPI 结构和 `x-forge-service` 服务身份都匹配才显示已验证；HTML 或其他服务的 200 不通过。SDK OpenAPI 自动加入身份扩展。无可读取的 Nacos 前缀时显示未探测；本层只证明该次网关接口文档路由，不证明业务授权或 Shell `/api` rewrite。四个并发探针、单次排队/执行最长十二秒，繁忙或超时显示未探测。
+
+Manifest 上报在启动完成后异步执行，不等待 IAM 恢复：初次尝试失败后再退避重试三次（1、2、4 秒），连接/读取超时保持 5/10 秒；仍失败则每五分钟补报一次，最多十二次。成功即停止，应用关闭取消等待与进行中的请求；到达上限后保留失败状态，修正配置后重启服务重新上报。失败区分网络、凭证被拒、服务名不匹配、版本冲突、清单非法和其他响应；最近成功与最近失败各自保留。内部状态端点受 Ops Token 链保护，网关继续拒绝 `/internal/`。
+
 ## Manifest、Provisioning 与内部接口
 
 权限码、名称、菜单、角色模板、Data Resource 或资源属性变化时递增 `forge.manifest.version`，与新清单一起发布；相同版本不能用于覆盖不同内容。JSON 在 `META-INF/forge/manifest.json`，权限注解与清单必须一致。

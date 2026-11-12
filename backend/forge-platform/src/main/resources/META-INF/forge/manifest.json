@@ -24,6 +24,10 @@
     "platform:ops:manage": {
       "name": "处置运维事件与任务",
       "group": "平台运维"
+    },
+    "platform:onboarding:read": {
+      "name": "查看服务接入诊断",
+      "group": "平台运维"
     }
   },
   "dataResources": [

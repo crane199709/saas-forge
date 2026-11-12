@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] SDK `ManifestReporter` / `ManifestAutoConfiguration`：上报失败按 3 次退避重试（连接与读超时保持 5s/10s），仍失败则保留启动成功并进入后台补报（有上限、可停止）
 - [ ] 失败原因分类：网络不可达、401 凭证被拒、403 服务名不匹配（`manifest.serviceMismatch`）、409 版本冲突（`manifest.versionConflict`）、400 清单非法；分类结果进入状态，而不是只拼一段日志
@@ -18,3 +18,9 @@
 ## Comments
 
 （暂无）
+
+## 页面简报（按已批准规格）
+
+平台 Operator 用此页定位服务接入缺项；主任务为逐服务比较配置、运行状态与真实请求三份独立证据。主操作只有“刷新”，没有写操作。首屏显示服务名、三级状态、具体缺项；上报版本、最近成功/失败时间与探测时间在展开行中查看。采用列表原型：PageHeader → PageToolbar → el-table，沿用权限导航。
+
+测试 seams：真实HTTP上报失败分类和生命周期、Ops保护状态端点、平台真实HTTP权限/局部失败、外部ConfigService源与真实三级probe。Browser plugin not available，浏览器走查使用现有Playwright，1440/1024截图基线提交。

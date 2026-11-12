@@ -28,7 +28,7 @@ public final class OpsAutoConfiguration {
             throws Exception {
         var entry = new EnvelopeAuthenticationEntryPoint(tracer);
         var denied = new EnvelopeAccessDeniedHandler(tracer);
-        return http.securityMatcher("/internal/ops", "/internal/ops/**")
+        return http.securityMatcher("/internal/ops", "/internal/ops/**", "/internal/onboarding-status")
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(new OpsTokenFilter(properties), AuthorizationFilter.class)

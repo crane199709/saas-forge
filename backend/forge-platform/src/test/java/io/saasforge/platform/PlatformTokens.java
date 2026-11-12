@@ -67,10 +67,13 @@ final class PlatformTokens {
             "platform:plan:manage",
             "platform:sub-app:manage",
             "platform:ops:read",
-            "platform:ops:manage");
+            "platform:ops:manage",
+            "platform:onboarding:read");
 
     /** 模拟的 iam 权限码目录是否可用；改为 false 的测试须在结束时恢复。 */
     static volatile boolean catalogAvailable = true;
+
+    static volatile boolean servicesAvailable = true;
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final RSAKey KEY;
@@ -99,7 +102,8 @@ final class PlatformTokens {
                         "{\"code\":\"ok\",\"httpStatus\":200,\"data\":[\"demo-service\",\"offline-service\",\"unsupported-service\",\"unreachable-service\",\"unconfigured-service\"]}"
                                 .getBytes(StandardCharsets.UTF_8);
                 exchange.getResponseHeaders().add("Content-Type", "application/json");
-                exchange.sendResponseHeaders(authorized ? 200 : 401, authorized ? body.length : -1);
+                exchange.sendResponseHeaders(
+                        authorized ? (servicesAvailable ? 200 : 503) : 401, authorized ? body.length : -1);
                 if (authorized) exchange.getResponseBody().write(body);
                 exchange.close();
             });
@@ -153,6 +157,42 @@ final class PlatformTokens {
             });
             JWKS.createContext("/internal/ops/dead-events", DeadEventOpsFixture::handle);
             JWKS.createContext("/internal/ops/tasks", TaskOpsFixture::handle);
+            JWKS.createContext("/internal/onboarding-status", exchange -> {
+                boolean valid = "Bearer demo-ops-token"
+                        .equals(exchange.getRequestHeaders().getFirst("Authorization"));
+                byte[] body =
+                        "{\"code\":\"ok\",\"httpStatus\":200,\"data\":{\"enabled\":true,\"reportedVersion\":\"1\",\"lastSuccessAt\":\"2026-11-12T00:00:00Z\",\"attempts\":1,\"phase\":\"REPORTED\"}}"
+                                .getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().add("Content-Type", "application/json");
+                exchange.sendResponseHeaders(valid ? 200 : 401, body.length);
+                exchange.getResponseBody().write(body);
+                exchange.close();
+            });
+            JWKS.createContext("/demo/v3/api-docs", exchange -> {
+                byte[] body =
+                        "{\"openapi\":\"3.1.0\",\"info\":{\"title\":\"Demo\",\"version\":\"1\"},\"paths\":{},\"x-forge-service\":\"demo-service\"}"
+                                .getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().add("Content-Type", "application/json");
+                exchange.sendResponseHeaders(200, body.length);
+                exchange.getResponseBody().write(body);
+                exchange.close();
+            });
+            JWKS.createContext("/html/v3/api-docs", exchange -> {
+                byte[] body = "<html>Vite</html>".getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().add("Content-Type", "text/html");
+                exchange.sendResponseHeaders(200, body.length);
+                exchange.getResponseBody().write(body);
+                exchange.close();
+            });
+            JWKS.createContext("/wrong/v3/api-docs", exchange -> {
+                byte[] body =
+                        "{\"openapi\":\"3.1.0\",\"info\":{\"title\":\"Other\",\"version\":\"1\"},\"paths\":{},\"x-forge-service\":\"other-service\"}"
+                                .getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().add("Content-Type", "application/json");
+                exchange.sendResponseHeaders(200, body.length);
+                exchange.getResponseBody().write(body);
+                exchange.close();
+            });
             JWKS.start();
             REDIS.start();
             var factory = new LettuceConnectionFactory(
@@ -186,6 +226,9 @@ final class PlatformTokens {
                 () -> "http://127.0.0.1:" + JWKS.getAddress().getPort() + "/jwks");
         registry.add(
                 "forge.platform.iam.uri",
+                () -> "http://127.0.0.1:" + JWKS.getAddress().getPort());
+        registry.add(
+                "forge.platform.onboarding.gateway-uri",
                 () -> "http://127.0.0.1:" + JWKS.getAddress().getPort());
         registry.add("forge.platform.iam.token", () -> IAM_TOKEN);
         registry.add("forge.platform.ops.tokens.demo-service", () -> "demo-ops-token");

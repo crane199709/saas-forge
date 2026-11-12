@@ -65,6 +65,12 @@ export const consolePages = [
     component: () => import('./audit/AuditPage.vue'),
   },
   {
+    path: '/onboarding',
+    title: 'onboarding.title',
+    permission: permissions.onboardingRead,
+    component: () => import('./onboarding/OnboardingPage.vue'),
+  },
+  {
     path: '/task-runs',
     title: 'taskRun.title',
     permission: permissions.opsRead,

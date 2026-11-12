@@ -1,7 +1,5 @@
 package io.saasforge.sdk.manifest;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigurationPackages;
@@ -15,13 +13,24 @@ import org.springframework.core.env.Environment;
 @AutoConfiguration
 @EnableConfigurationProperties(ForgeManifestProperties.class)
 public final class ManifestAutoConfiguration {
-    private static final Logger log = LoggerFactory.getLogger(ManifestAutoConfiguration.class);
+    /** 创建可随应用关闭的有限上报任务。 */
+    @Bean(destroyMethod = "close")
+    public ManifestReporting manifestReporting(ForgeManifestProperties properties) {
+        return new ManifestReporting(
+                properties.enabled(),
+                properties.enabled() ? new ManifestReporter(properties.iamUri(), properties.token()) : null);
+    }
+    /** 状态端点由 Ops 独立安全链保护。 */
+    @Bean
+    public OnboardingStatusController onboardingStatusController(ManifestReporting reporting) {
+        return new OnboardingStatusController(reporting);
+    }
 
     /**
      * 扫描应用根包（{@code @SpringBootApplication} 所在包）中的 {@code @RequiresPermission}。
      *
      * <p>清单错误（如菜单引用未声明的权限码）在生成阶段即启动失败；上报失败只记录错误、不阻止启动：
-     * iam 暂时不可用不应拖垮业务服务，下次启动或 CI 上报会补齐。
+     * iam 暂时不可用不应拖垮业务服务，后台有限补报。
      *
      * @param properties 上报配置
      * @param environment 读取 {@code spring.application.name}
@@ -30,7 +39,10 @@ public final class ManifestAutoConfiguration {
      */
     @Bean
     public ApplicationListener<ApplicationReadyEvent> forgeManifestReporter(
-            ForgeManifestProperties properties, Environment environment, BeanFactory beanFactory) {
+            ForgeManifestProperties properties,
+            Environment environment,
+            BeanFactory beanFactory,
+            ManifestReporting reporting) {
         return event -> {
             if (!properties.enabled()) return;
             String service = environment.getRequiredProperty("spring.application.name");
@@ -39,12 +51,7 @@ public final class ManifestAutoConfiguration {
                     properties.version(),
                     AutoConfigurationPackages.get(beanFactory).get(0),
                     event.getApplicationContext().getClassLoader());
-            try {
-                new ManifestReporter(properties.iamUri(), properties.token()).report(manifest);
-                log.info("Reported resource manifest {}@{}", service, properties.version());
-            } catch (RuntimeException error) {
-                log.error("Failed to report resource manifest {}@{}", service, properties.version(), error);
-            }
+            reporting.start(manifest);
         };
     }
 }

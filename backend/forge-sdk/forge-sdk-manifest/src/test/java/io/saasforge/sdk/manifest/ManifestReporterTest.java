@@ -25,7 +25,7 @@ class ManifestReporterTest {
 
     @AfterEach
     void stop() {
-        iam.stop(0);
+        if (iam != null) iam.stop(0);
     }
 
     @Test
@@ -44,13 +44,50 @@ class ManifestReporterTest {
     }
 
     @Test
-    void rejectedReportFailsWithTheErrorCode() throws Exception {
+    void rejectionClassifiesOnlyRecognizedStatusAndBusinessCodePairs() throws Exception {
         String base = start(409, "{\"code\":\"manifest.versionConflict\",\"httpStatus\":409}");
-
         assertThatThrownBy(() -> new ManifestReporter(base, "demo-token").report(MANIFEST))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("409")
-                .hasMessageContaining("manifest.versionConflict");
+                .isInstanceOf(ManifestReportException.class)
+                .satisfies(error -> assertThat(((ManifestReportException) error).reason())
+                        .isEqualTo(ManifestFailure.VERSION_CONFLICT));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+        "401,auth.unauthenticated,CREDENTIAL_REJECTED",
+        "403,manifest.serviceMismatch,SERVICE_MISMATCH",
+        "403,auth.forbidden,HTTP_REJECTED",
+        "409,other.conflict,HTTP_REJECTED",
+        "400,request.invalid,INVALID_MANIFEST",
+        "503,system.unavailable,HTTP_REJECTED"
+    })
+    void classifiesHttpFailures(int status, String code, ManifestFailure expected) throws Exception {
+        String base = start(status, "{\"code\":\"" + code + "\"}");
+        assertThatThrownBy(() -> new ManifestReporter(base, "secret-token").report(MANIFEST))
+                .isInstanceOf(ManifestReportException.class)
+                .satisfies(error ->
+                        assertThat(((ManifestReportException) error).reason()).isEqualTo(expected))
+                .hasMessageNotContaining("secret-token")
+                .hasMessageNotContaining(base);
+    }
+
+    @Test
+    void unreachableIamIsClassified() throws Exception {
+        String base = start(200, "{}");
+        iam.stop(0);
+        assertThatThrownBy(() -> new ManifestReporter(base, "secret-token").report(MANIFEST))
+                .isInstanceOf(ManifestReportException.class)
+                .satisfies(error -> assertThat(((ManifestReportException) error).reason())
+                        .isEqualTo(ManifestFailure.NETWORK_UNREACHABLE));
+    }
+
+    @Test
+    void htmlSuccessIsNotAnAcceptedManifestReport() throws Exception {
+        String base = start(200, "<html>Vite</html>");
+        assertThatThrownBy(() -> new ManifestReporter(base, "demo-token").report(MANIFEST))
+                .isInstanceOf(ManifestReportException.class)
+                .satisfies(error -> assertThat(((ManifestReportException) error).reason())
+                        .isEqualTo(ManifestFailure.UNEXPECTED_RESPONSE));
     }
 
     private String start(int status, String response) throws Exception {

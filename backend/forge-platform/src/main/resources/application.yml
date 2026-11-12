@@ -43,7 +43,7 @@ forge:
   # 启动时向 iam 上报 Platform Realm 的 Resource Manifest（realm 写在清单文件中）；改动权限码、名称或 Data Resource 时升级 version。
   # token 与读取权限码目录的 forge.platform.iam.token 相同，须与 iam forge.iam.manifest.tokens.forge-platform 一致
   manifest:
-    version: 2
+    version: 3
     iam-uri: http://localhost:8101
     token: ${FORGE_PLATFORM_MANIFEST_TOKEN:local-platform-manifest-token}
   # 平台数据不属于任何租户。消费各服务的初始化回报时 SDK 会恢复该租户的上下文，这些表也不能被注入租户条件
@@ -57,6 +57,8 @@ forge:
       - sub_app_entry
       - sub_app_requirement
   platform:
+    onboarding:
+      gateway-uri: ${FORGE_ONBOARDING_GATEWAY_URI:http://localhost:8080}
     ops:
       tokens:
         forge-iam: ${FORGE_IAM_OPS_TOKEN}

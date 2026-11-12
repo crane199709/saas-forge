@@ -14,6 +14,16 @@
 
     <dependencies>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- 状态端点强制使用独立 Ops 令牌链，避免退入业务 JWT 链。 -->
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-ops</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.saasforge</groupId>
             <artifactId>forge-architecture</artifactId>
             <version>${project.version}</version>

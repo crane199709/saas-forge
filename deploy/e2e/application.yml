@@ -1,6 +1,16 @@
 # 主链路只依赖 DB、Redis 和 HTTP。MQ/发现另有集成测试；认证、权限、RLS 均保持开启。
 spring:
   cloud:
+    discovery:
+      client:
+        simple:
+          instances:
+            forge-iam:
+              - uri: http://127.0.0.1:18101
+            forge-platform:
+              - uri: http://127.0.0.1:18102
+            demo-service:
+              - uri: http://127.0.0.1:18201
     nacos:
       config:
         enabled: false
@@ -56,5 +66,7 @@ forge:
   reference-data:
     iam-uri: http://127.0.0.1:18101
   platform:
+    onboarding:
+      gateway-uri: http://127.0.0.1:18000
     iam:
       uri: http://127.0.0.1:18101

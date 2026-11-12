@@ -6,6 +6,8 @@
 
 ### 变更
 
+- SDK Manifest 上报改为异步初次 + 三次退避重试，之后每五分钟最多补报十二次，成功/关闭即停止；增加结构化失败分类及独立 Ops Token 保护的 `/internal/onboarding-status`。平台新增 `platform:onboarding:read` 与只读“服务接入诊断”：读取 Nacos 客户端配置、lb 实例状态及真实网关 OpenAPI 身份证据；新增必配网关 origin，应用配置与隔离 E2E 地址同步。SDK OpenAPI 输出 `x-forge-service`。业务服务上报配置键和前端设计规则不变，服务指南与 archetype 的状态说明同步更新。
+
 - IAM 服务凭证改为数据库管理状态：支持同服务多凭证、逐条立即停用及原子紧急轮换，库内只存 SHA-256 摘要，生命周期与受限流保护的认证失败写 Platform Realm 审计；内部认证每请求查库，数据库不可用返回 503。`forge.iam.manifest.tokens` 降级为可空且已弃用的静态引导通道，移除应用自带默认凭证，已有本地环境需登记凭证或显式提供引导值。接入清单、服务指南和 archetype 的 `FORGE_MANIFEST_TOKEN` 说明同步更新；业务服务配置键不变。
 
 - 发布后源码立即进入下一个 `-SNAPSHOT` 开发版本，同一正式版本号只对应一份发布内容：`version.py set` 接受 `-SNAPSHOT`，新增 `version.py dev` 由分支 CI（Backend quality）检查源码处于统一的 SNAPSHOT 版本；`check` 与正式发布仍拒绝 SNAPSHOT，只有 `publish.sh local`（模板冒烟）以 `--allow-snapshot` 部署当前源码到临时仓库。版本同步范围新增 `@crane199709/sdk` 的 `sdkRuntime` 版本。当前源码为 `0.2.0-SNAPSHOT`。

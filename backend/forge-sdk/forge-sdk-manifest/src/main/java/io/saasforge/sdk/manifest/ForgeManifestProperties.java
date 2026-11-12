@@ -11,7 +11,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param enabled 是否在启动时上报；不连接 iam 的测试可关闭
  * @param version 清单版本，改动权限码、名称或菜单时必须升级
  * @param iamUri iam 的内部地址，不经网关
- * @param token 本服务的上报令牌，须与 iam {@code forge.iam.manifest.tokens} 中本服务的值一致
+ * @param token 本服务的上报令牌，由管理员登记并一次性交付，不能替代 Ops Token
  */
 @ConfigurationProperties("forge.manifest")
 public record ForgeManifestProperties(

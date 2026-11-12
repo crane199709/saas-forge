@@ -48,7 +48,7 @@ class OpsHttpTest {
     @Test
     void wrongOrMissingTokenIsUnauthorizedForEveryOpsRoute() {
         var client = RestClient.create("http://localhost:" + port);
-        for (String path : List.of("/internal/ops", "/internal/ops/future-resource")) {
+        for (String path : List.of("/internal/ops", "/internal/ops/future-resource", "/internal/onboarding-status")) {
             for (String token : List.of("wrong-token", "")) {
                 var response = client.get()
                         .uri(path)
