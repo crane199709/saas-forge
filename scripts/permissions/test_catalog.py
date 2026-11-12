@@ -58,6 +58,102 @@ class CatalogCommandTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.output.read_bytes(), first)
 
+    def test_check_compares_bytes_without_modifying_the_catalog(self):
+        manifest = self.manifest("orders.json", "orders", [
+            {"code": "order:read", "name": "查看订单"},
+        ])
+        result = self.run_catalog(manifest, extra=("--check",))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("python3 scripts/permissions/catalog.py", result.stderr)
+        self.assertFalse(self.output.exists())
+
+        result = self.run_catalog(manifest)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        canonical = self.output.read_bytes()
+        for content, succeeds in [(canonical, True), (canonical.replace(b"\n", b"\r\n"), False),
+                                  (b" " + canonical, False)]:
+            with self.subTest(content=content):
+                self.output.write_bytes(content)
+                modified = self.output.stat().st_mtime_ns
+                result = self.run_catalog(manifest, extra=("--check",))
+                self.assertEqual(result.returncode == 0, succeeds, result.stderr)
+                if not succeeds:
+                    self.assertIn("python3 scripts/permissions/catalog.py", result.stderr)
+                self.assertEqual(self.output.read_bytes(), content)
+                self.assertEqual(self.output.stat().st_mtime_ns, modified)
+
+    def test_check_of_a_malformed_catalog_keeps_it_and_explains_regeneration(self):
+        manifest = self.manifest("orders.json", "orders", [{"code": "order:read", "name": "查看订单"}])
+        self.output.write_bytes(b"invalid JSON\n")
+        self.previous = self.output
+        result = self.run_catalog(manifest, extra=("--check",))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("python3 scripts/permissions/catalog.py", result.stderr)
+        self.assertEqual(self.output.read_bytes(), b"invalid JSON\n")
+
+    def test_new_actions_require_an_approved_action_with_a_reason(self):
+        manifest = self.manifest("orders.json", "orders", [
+            {"code": "order:approve", "name": "审核订单"},
+        ])
+        result = self.run_catalog(manifest)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("order:approve", result.stderr)
+        self.assertFalse(self.output.exists())
+
+        policy = self.write("policy.json", {"actions": {"approve": "   "}, "historicalExceptions": {}})
+        result = self.run_catalog(manifest, extra=("--policy", str(policy)))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("reason", result.stderr.lower())
+        self.assertFalse(self.output.exists())
+
+        self.write("policy.json", {"actions": {"approve": "订单需要独立的审核操作"}, "historicalExceptions": {}})
+        result = self.run_catalog(manifest, extra=("--policy", str(policy)))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(self.output.read_bytes())["permissions"][0]["code"], "order:approve")
+
+    def test_historical_exceptions_require_exact_codes_reasons_and_previous_history(self):
+        old = {"service": "orders", "code": "legacy:oldverb", "name": "旧动作", "group": None,
+               "realm": "tenant", "status": "active"}
+        self.previous = self.write("previous.json", {"schemaVersion": 1, "permissions": [old]})
+        manifest = self.manifest("orders.json", "orders", [])
+        policy = self.write("policy.json", {
+            "actions": {"read": "查询资源"}, "historicalExceptions": {"legacy:oldverb": "已有的历史权限码"},
+        })
+        result = self.run_catalog(manifest, extra=("--policy", str(policy)))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(self.output.read_bytes())["permissions"], [{**old, "status": "inactive"}])
+
+        for exceptions in [{}, {"legacy:*": "按前缀放行"}, {"legacy:oldverb": " "}]:
+            with self.subTest(exceptions=exceptions):
+                self.write("policy.json", {"actions": {"read": "查询资源"}, "historicalExceptions": exceptions})
+                result = self.run_catalog(manifest, extra=("--policy", str(policy)))
+                self.assertNotEqual(result.returncode, 0)
+                self.assertNotIn("Traceback", result.stderr)
+
+        self.write("previous.json", {"schemaVersion": 1, "permissions": []})
+        self.write("policy.json", {
+            "actions": {"read": "查询资源"}, "historicalExceptions": {"legacy:oldverb": "自称历史的新码"},
+        })
+        self.manifest("orders.json", "orders", [{"code": "legacy:oldverb", "name": "新动作"}])
+        result = self.run_catalog(manifest, extra=("--policy", str(policy)))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("legacy:oldverb", result.stderr)
+        self.assertIn("previous", result.stderr.lower())
+
+    def test_actions_match_the_complete_last_colon_segment(self):
+        accepted = self.manifest("orders.json", "orders", [
+            {"code": "iam:role:manage", "name": "管理角色"},
+            {"code": "order:read", "name": "查看订单"},
+        ])
+        result = self.run_catalog(accepted)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for code in ["read", "order:", "order:read:invented", "order:read-extra", "order:Read"]:
+            with self.subTest(code=code):
+                invalid = self.manifest("invalid.json", "orders", [{"code": code, "name": "违规动作"}])
+                result = self.run_catalog(invalid)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(code, result.stderr)
+
     def test_identical_permission_declarations_are_deduplicated(self):
         manifest = self.manifest("orders.json", "orders", [
             {"code": "order:read", "name": "查看订单", "group": "订单"},
@@ -181,9 +277,9 @@ class CatalogCommandTest(unittest.TestCase):
                 self.assertNotIn("Traceback", result.stderr)
                 self.assertFalse(self.output.exists())
 
-    def test_accepts_the_sdk_permission_syntax_and_empty_groups(self):
+    def test_keeps_sdk_resource_characters_and_empty_groups(self):
         manifest = self.manifest("orders.json", "orders", [
-            {"code": "Legacy.Resource_Action", "name": "历史动作", "group": ""},
+            {"code": "Legacy.Resource_Action:read", "name": "历史动作", "group": ""},
             {"code": "order:read", "name": "查看订单", "group": "   "},
         ], realm=None)
         result = self.run_catalog(manifest)

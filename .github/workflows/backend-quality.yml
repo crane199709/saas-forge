@@ -27,11 +27,17 @@ jobs:
           scope: backend
           force-full: ${{ inputs.force-full || false }}
       - uses: actions/setup-java@v4
-        if: steps.changes.outputs.run == 'true'
         with:
           distribution: temurin
           java-version: '17'
           cache: maven
+      # 目录与策略属于 docs，scope 可跳过重检查；目录门禁始终执行并沿用 release 的复用链。
+      - name: Test permission catalog commands
+        run: python3 -m unittest discover -s scripts/permissions -p 'test_*.py' -v
+      - name: Extract permission catalog Git baseline
+        run: python3 scripts/permissions/ci_previous.py --output "$RUNNER_TEMP/permission-catalog-previous.json"
+      - name: Check permission catalog bytes
+        run: python3 scripts/permissions/catalog.py --check --previous "$RUNNER_TEMP/permission-catalog-previous.json"
       - run: docker info
         if: steps.changes.outputs.run == 'true'
       # install 包含 verify，并让生成工程的独立 Maven 进程能解析本次 SDK 制品。

@@ -2,6 +2,8 @@
 
 工单：[22](../.scratch/saas-forge-mvp/issues/22-platform-side-permissions.md)，决策见 [ADR-0003](adr/0003-iam-dual-realm.md)、[ADR-0005](adr/0005-immediate-revocation-via-membership-version.md)、[ADR-0006](adr/0006-rbac-functional-abac-data-permissions.md)。平台侧与租户侧共用同一套权限引擎（Resource Manifest、`@RequiresPermission`、按版本发布的明细、ABAC 表达式树与 SQL 拦截器），数据完全分离。
 
+构建期的完整 Permission Code 快照、生成命令与前端/外部 Sub-App 消费方式见 [权限目录](permission-catalog.md)。
+
 ## 数据分离
 
 | | Tenant Realm | Platform Realm |

@@ -6,12 +6,14 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG = ROOT / "docs/contracts/permission-catalog.json"
-# 与 SDK ResourceManifest.validate() 的语法和列宽保持一致；动作词策略由独立门禁负责。
+POLICY = ROOT / "docs/contracts/permission-policy.json"
+# 保留 SDK ResourceManifest.validate() 的语法和列宽，动作词另按目录策略校验。
 PERMISSION_CODE = re.compile(r"[A-Za-z0-9][A-Za-z0-9:._-]{0,127}")
 MANIFESTS = {
     "forge-iam": ROOT / "backend/forge-iam/target/permission-manifests/forge-iam/resource-manifest.json",
@@ -61,7 +63,34 @@ def add_permission(permissions, entry):
     permissions[entry["code"]] = entry
 
 
-def generate(manifests, expected_services, previous):
+def validate_actions(permissions, historical_permissions, policy):
+    actions = policy.get("actions")
+    if not isinstance(actions, dict) or not actions:
+        raise ValueError("Invalid action policy: expected nonempty actions mapping")
+    for action, reason in actions.items():
+        if not isinstance(action, str) or not re.fullmatch(r"[A-Za-z0-9._-]+", action):
+            raise ValueError(f"Invalid action in policy: {action}")
+        require_text(reason, f"reason for action {action}", 1000)
+    exceptions = policy.get("historicalExceptions")
+    if not isinstance(exceptions, dict):
+        raise ValueError("Invalid action policy: expected historicalExceptions mapping")
+    for code, reason in exceptions.items():
+        if not isinstance(code, str) or not PERMISSION_CODE.fullmatch(code):
+            raise ValueError(f"Invalid historical exception Permission Code: {code}")
+        require_text(reason, f"reason for historical exception {code}", 1000)
+        if code not in historical_permissions:
+            raise ValueError(f"Historical exception {code} is absent from the previous catalog; "
+                             "new actions require an approved action and reason")
+    for code in permissions:
+        if code in exceptions:
+            continue
+        resource, separator, action = code.rpartition(":")
+        if not resource or not separator or action not in actions:
+            raise ValueError(f"Unapproved action in Permission Code: {code}. "
+                             "Add the action and its reason to docs/contracts/permission-policy.json")
+
+
+def generate(manifests, expected_services, previous, policy):
     permissions = {}
     services = set()
     for path in manifests:
@@ -78,11 +107,11 @@ def generate(manifests, expected_services, previous):
     missing = set(expected_services) - services
     if missing:
         raise ValueError("Missing expected service Manifest: " + ", ".join(sorted(missing)))
+    historical_permissions = {}
     if previous is not None:
         history = read_document(previous)
         if history.get("schemaVersion") != 1 or not isinstance(history.get("permissions"), list):
             raise ValueError(f"Invalid previous catalog schema: {previous}")
-        historical_permissions = {}
         for old in history["permissions"]:
             if not isinstance(old, dict):
                 raise ValueError(f"Invalid previous permission: {old}")
@@ -94,6 +123,7 @@ def generate(manifests, expected_services, previous):
                 raise ValueError(f"Historical permission conflict for {code}: {old} vs {current}")
             if current is None:
                 permissions[code] = {**old, "status": "inactive"}
+    validate_actions(permissions, historical_permissions, policy)
     return {"schemaVersion": 1, "permissions": sorted(permissions.values(), key=lambda item: item["code"])}
 
 
@@ -103,8 +133,8 @@ def export_manifests(offline):
     if offline:
         command.append("-o")
     modules = "forge-iam,forge-platform,examples/demo-service"
-    # 先安装本次源码，确保单模块导出不误用本机旧 SDK。
-    subprocess.run([*command, "-pl", modules, "-am", "install", "-DskipTests"], cwd=backend, check=True)
+    # 清理已删除类并安装本次源码，避免 collector 扫到旧声明或单模块导出误用旧 SDK。
+    subprocess.run([*command, "-pl", modules, "-am", "clean", "install", "-DskipTests"], cwd=backend, check=True)
     # 导出测试被删除或未执行时不能沿用旧文件掩盖缺失。
     for path in MANIFESTS.values():
         path.unlink(missing_ok=True)
@@ -121,19 +151,32 @@ def main():
                         help="必须存在的服务，可重复")
     parser.add_argument("--output", type=Path, default=CATALOG, help="目录输出路径")
     parser.add_argument("--previous", type=Path, help="上一版入库目录（默认仓内目录，首次不存在时为空）")
+    parser.add_argument("--policy", type=Path, default=POLICY, help="动作词与历史例外策略")
+    parser.add_argument("--check", action="store_true", help="临时生成并逐字节检查入库目录，不修改输出文件")
     args = parser.parse_args()
     try:
+        checked_bytes = args.output.read_bytes() if args.check and args.output.is_file() else None
         if not args.manifest and not args.skip_export:
             export_manifests(args.offline)
         paths = args.manifest or list(MANIFESTS.values())
         expected = args.expected_service if args.manifest else [*MANIFESTS, *args.expected_service]
         previous = args.previous or (CATALOG if CATALOG.exists() else None)
-        document = generate(paths, expected, previous)
+        document = generate(paths, expected, previous, read_document(args.policy))
+        content = (json.dumps(document, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+        if args.check:
+            with tempfile.TemporaryDirectory(prefix="permission-catalog-") as directory:
+                generated = Path(directory) / "permission-catalog.json"
+                generated.write_bytes(content)
+                if checked_bytes is None or checked_bytes != generated.read_bytes():
+                    raise ValueError(f"Catalog missing or out of date: {args.output}")
+        else:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_bytes(content)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f"Permission catalog: {error}", file=sys.stderr)
+        if args.check:
+            print("Run from repository root: python3 scripts/permissions/catalog.py", file=sys.stderr)
         return 1
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes((json.dumps(document, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
     return 0
 
 

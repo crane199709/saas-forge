@@ -111,7 +111,7 @@ _Avoid_: 菜单配置、菜单权限
 业务服务按版本向平台申报的 Permission Code、Data Resource 与菜单的集合。
 
 **Permission Catalog（权限目录）**:
-由 IAM 中 Permission Code 生成的确定性清单，供前端、外部 Sub-App 与 CI 消费和校验；运行时权威仍是 Resource Manifest 与 IAM 的权限记录，不是第二事实源。
+汇集仓内服务与核心组件声明的 Permission Code 的确定性清单，供前端、外部 Sub-App 与 CI 消费和校验；运行时权威仍是 Resource Manifest 与 IAM 的权限记录，不是第二事实源。
 _Avoid_: 权限清单、权限表
 
 ## 账号安全
