@@ -18,7 +18,7 @@ it('有权限时发布并撤回公告，管理历史保留正文和状态', asyn
     revoked = false
   const commands: unknown[] = []
   vi.stubGlobal('fetch', async (input: string, init?: RequestInit) => {
-    const path = new URL(input, location.origin).pathname
+    const path = new URL(input, location.origin).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/iam/platform/access')
       return ok({ roles: [], permissions: ['platform:announcement:manage'] })
     if (path.endsWith('/revoke')) {

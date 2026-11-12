@@ -109,7 +109,7 @@ it('编辑时带出当前名称，提交改名', async () => {
   await wrapper.get('[data-testid="position-save"]').trigger('click')
   await flushPromises()
 
-  expect(fetcher.mock.calls[0]![0]).toBe(`${location.origin}/iam/org/positions/p1`)
+  expect(fetcher.mock.calls[0]![0]).toBe(`${location.origin}/api/iam/org/positions/p1`)
   expect(fetcher.mock.calls[0]![1].method).toBe('PUT')
   wrapper.unmount()
 })

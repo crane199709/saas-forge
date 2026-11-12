@@ -28,7 +28,7 @@ const failed = () => respond(500, { code: 'system.error', userTip: '服务暂时
 async function mountPage(reads: Response[], writes: Response[] = []) {
   const calls: { path: string; init?: RequestInit }[] = []
   vi.stubGlobal('fetch', (input: string, init?: RequestInit) => {
-    const path = new URL(input, location.origin).pathname
+    const path = new URL(input, location.origin).pathname.replace(/^\/api(?=\/)/, '')
     calls.push({ path, init })
     if (path === '/iam/platform/access') return Promise.resolve(ok(grants(permissions.menuManage)))
     if (path === '/iam/platform/navigation-layout') {

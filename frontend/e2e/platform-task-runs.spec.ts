@@ -117,6 +117,7 @@ test('按服务查看规则、最近任务运行与问题运行，读取失败�
     const request = route.request()
     expect(request.headers().authorization).toBe('Bearer operator-access')
     const url = new URL(request.url())
+    url.pathname = url.pathname.replace(/^\/api(?=\/)/, '')
     if (url.pathname.endsWith('/tasks')) return route.fulfill(ok(definitions))
     expect(decodeURIComponent(url.pathname)).toBe(
       '/platform/ops/services/orders/tasks/租户 清理/runs',
@@ -182,6 +183,7 @@ test('手动触发和失败租户重跑须确认，展示已在运行拒绝及�
   await page.route('**/platform/ops/services/orders/tasks**', async (route) => {
     const request = route.request()
     const url = new URL(request.url())
+    url.pathname = url.pathname.replace(/^\/api(?=\/)/, '')
     expect(request.headers().authorization).toBe('Bearer operator-access')
     if (url.pathname.endsWith('/trigger')) {
       expect(decodeURIComponent(url.pathname)).toBe(
@@ -313,6 +315,7 @@ test('关闭历史后切换任务和运行视图，旧请求不能覆盖当前�
   let viewPending = false
   await page.route('**/platform/ops/services/orders/tasks**', async (route) => {
     const url = new URL(route.request().url())
+    url.pathname = url.pathname.replace(/^\/api(?=\/)/, '')
     if (url.pathname.endsWith('/tasks')) return route.fulfill(ok(definitions))
     if (decodeURIComponent(url.pathname).includes('/租户 清理/')) {
       taskPending = true
@@ -380,7 +383,9 @@ test('已知不可用和请求中故障的服务均有提示，仍可切回正�
   await services(page)
   const queried: string[] = []
   await page.route('**/platform/ops/services/*/tasks', async (route) => {
-    const selected = new URL(route.request().url()).pathname.split('/')[4]!
+    const selected = new URL(route.request().url()).pathname
+      .replace(/^\/api(?=\/)/, '')
+      .split('/')[4]!
     queried.push(selected)
     if (selected === 'shipping')
       return fail(route, 503, 'ops.serviceUnavailable', '服务暂不可用，请稍后重试')
@@ -404,7 +409,11 @@ test('read 控制入口和直接路由，read-only 可查看失败租户但不�
   await services(page)
   await page.route('**/platform/ops/services/orders/tasks**', (route) =>
     route.fulfill(
-      ok(new URL(route.request().url()).pathname.endsWith('/runs') ? [run] : definitions),
+      ok(
+        new URL(route.request().url()).pathname.replace(/^\/api(?=\/)/, '').endsWith('/runs')
+          ? [run]
+          : definitions,
+      ),
     ),
   )
   await page.goto('/task-runs')

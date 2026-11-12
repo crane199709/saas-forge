@@ -173,7 +173,7 @@ it('编辑角色时整体提交勾选的权限码', async () => {
 
   expect(fetcher).toHaveBeenCalledTimes(2)
   const [url, init] = fetcher.mock.calls[1]!
-  expect(url).toBe(`${location.origin}/iam/roles/r-viewer/permissions`)
+  expect(url).toBe(`${location.origin}/api/iam/roles/r-viewer/permissions`)
   expect(JSON.parse(init.body)).toEqual({ permissions: ['order:approve'] })
   expect(wrapper.emitted('changed')).toHaveLength(1)
 })
@@ -189,7 +189,7 @@ it('编辑角色时提交改动后的数据范围，未配置的数据资源不�
   await flushPromises()
 
   const [url, init] = fetcher.mock.calls.at(-1)!
-  expect(url).toBe(`${location.origin}/iam/roles/r-viewer/data-policies`)
+  expect(url).toBe(`${location.origin}/api/iam/roles/r-viewer/data-policies`)
   expect(init.method).toBe('PUT')
   expect(JSON.parse(init.body)).toEqual({ policies: [{ resource: 'order', scope: 'self' }] })
 
@@ -229,7 +229,7 @@ it('新建角色时授权与数据范围一次提交', async () => {
 
   expect(fetcher).toHaveBeenCalledTimes(1)
   const [url, init] = fetcher.mock.calls[0]!
-  expect(url).toBe(`${location.origin}/iam/roles`)
+  expect(url).toBe(`${location.origin}/api/iam/roles`)
   expect(JSON.parse(init.body)).toEqual({
     code: 'order-auditor',
     name: '订单审计',
@@ -251,7 +251,7 @@ it('自定义条件读回编辑器，修改取值后整体提交表达式树', a
   ;(document.querySelector('[data-testid="role-save"]') as HTMLElement).click()
   await flushPromises()
   expect(fetcher.mock.calls.map(([url]) => url)).not.toContain(
-    `${location.origin}/iam/roles/r-large/data-policies`,
+    `${location.origin}/api/iam/roles/r-large/data-policies`,
   )
 
   await wrapper.get('[data-testid="role-edit-large-orders"]').trigger('click')
@@ -270,7 +270,7 @@ it('自定义条件读回编辑器，修改取值后整体提交表达式树', a
   await flushPromises()
 
   const [url, init] = fetcher.mock.calls.at(-1)!
-  expect(url).toBe(`${location.origin}/iam/roles/r-large/data-policies`)
+  expect(url).toBe(`${location.origin}/api/iam/roles/r-large/data-policies`)
   expect(JSON.parse(init.body)).toEqual({
     policies: [
       {
@@ -355,7 +355,7 @@ it('预览以所选成员对样例数据求值并展示命中情况', async () =
   await flushPromises()
 
   const [url, init] = fetcher.mock.calls.at(-1)!
-  expect(url).toBe(`${location.origin}/iam/roles/data-policies/preview`)
+  expect(url).toBe(`${location.origin}/api/iam/roles/data-policies/preview`)
   expect(JSON.parse(init.body)).toEqual({
     policy: { resource: 'order', scope: 'custom', condition: largeInMyDepartments },
     membershipId: 'm-1',
@@ -534,7 +534,7 @@ it('新建角色按分组全选，跨页面共用的页面及操作权限传递�
   ;(document.querySelector('[data-testid="role-save"]') as HTMLElement).click()
   await flushPromises()
   const [url, init] = fetcher.mock.calls.at(-1)!
-  expect(url).toBe(`${location.origin}/iam/roles`)
+  expect(url).toBe(`${location.origin}/api/iam/roles`)
   expect(JSON.parse(init.body)).toEqual({
     code: 'tree-role',
     name: '树角色',
@@ -545,7 +545,7 @@ it('新建角色按分组全选，跨页面共用的页面及操作权限传递�
 
 it('角色页从授权树接口加载菜单及功能权限', async () => {
   const fetcher = vi.fn().mockImplementation((url: string) => {
-    const path = new URL(url).pathname
+    const path = new URL(url).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/iam/roles') return Promise.resolve(ok(roles))
     if (path.endsWith('/permission-tree'))
       return Promise.resolve(
@@ -643,7 +643,7 @@ it('权限变更有净影响时列出成员与失去的权限，确认后才提�
   await click('[data-testid="role-save"]')
 
   const [url, init] = fetcher.mock.calls[0]!
-  expect(url).toBe(`${location.origin}/iam/roles/r-viewer/permissions/impact`)
+  expect(url).toBe(`${location.origin}/api/iam/roles/r-viewer/permissions/impact`)
   expect(init.method).toBe('POST')
   expect(JSON.parse(init.body)).toEqual({ permissions: [] })
   expect(writes(fetcher)).toEqual([])
@@ -658,7 +658,7 @@ it('权限变更有净影响时列出成员与失去的权限，确认后才提�
 
   await click('[data-testid="role-impact-confirm"]')
 
-  expect(writes(fetcher)).toEqual([`${location.origin}/iam/roles/r-viewer/permissions`])
+  expect(writes(fetcher)).toEqual([`${location.origin}/api/iam/roles/r-viewer/permissions`])
   expect(JSON.parse(fetcher.mock.calls.at(-1)![1].body)).toEqual({ permissions: [] })
   expect(impactDialog()).toBeNull()
   expect(wrapper.emitted('changed')).toHaveLength(1)
@@ -698,7 +698,7 @@ it('权限净影响为 0 时不打断保存；未修改权限和数据范围时�
   await click('[data-testid="role-save"]')
 
   expect(impactDialog()).toBeNull()
-  expect(writes(fetcher)).toEqual([`${location.origin}/iam/roles/r-viewer/permissions`])
+  expect(writes(fetcher)).toEqual([`${location.origin}/api/iam/roles/r-viewer/permissions`])
 
   fetcher.mockClear()
   await wrapper.get('[data-testid="role-edit-order-viewer"]').trigger('click')
@@ -706,7 +706,7 @@ it('权限净影响为 0 时不打断保存；未修改权限和数据范围时�
   await click('[data-testid="role-save"]')
 
   expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
-    `${location.origin}/iam/roles/r-viewer/permissions`,
+    `${location.origin}/api/iam/roles/r-viewer/permissions`,
   ])
 })
 
@@ -724,7 +724,7 @@ it('数据范围变更列出持有者，并说明不判断具体数据行', asyn
   await click('[data-testid="role-save"]')
 
   const [url, init] = fetcher.mock.calls[0]!
-  expect(url).toBe(`${location.origin}/iam/roles/r-viewer/data-policies/impact`)
+  expect(url).toBe(`${location.origin}/api/iam/roles/r-viewer/data-policies/impact`)
   expect(JSON.parse(init.body)).toEqual({ policies: [{ resource: 'order', scope: 'self' }] })
   expect(writes(fetcher)).toEqual([])
   expect(impactDialog()!.textContent).toContain('Bob')
@@ -733,8 +733,8 @@ it('数据范围变更列出持有者，并说明不判断具体数据行', asyn
   await click('[data-testid="role-impact-confirm"]')
 
   expect(writes(fetcher)).toEqual([
-    `${location.origin}/iam/roles/r-viewer/permissions`,
-    `${location.origin}/iam/roles/r-viewer/data-policies`,
+    `${location.origin}/api/iam/roles/r-viewer/permissions`,
+    `${location.origin}/api/iam/roles/r-viewer/data-policies`,
   ])
 })
 
@@ -747,7 +747,7 @@ it('数据范围变更没有持有者时不打断保存', async () => {
   await click('[data-testid="role-save"]')
 
   expect(impactDialog()).toBeNull()
-  expect(writes(fetcher)).toContain(`${location.origin}/iam/roles/r-viewer/data-policies`)
+  expect(writes(fetcher)).toContain(`${location.origin}/api/iam/roles/r-viewer/data-policies`)
 })
 
 function failure() {
@@ -782,7 +782,7 @@ it('预览失败时明确提示且不显示零影响，由用户决定继续保�
   confirm.click()
   await flushPromises()
 
-  expect(writes(fetcher)).toEqual([`${location.origin}/iam/roles/r-viewer/permissions`])
+  expect(writes(fetcher)).toEqual([`${location.origin}/api/iam/roles/r-viewer/permissions`])
 })
 
 it('预览失败时取消不提交', async () => {
@@ -894,7 +894,7 @@ it('角色已删除视图保留删除信息，确认恢复后移除记录并通�
       restored = true
       return ok(null)
     }
-    expect(url).toBe(`${location.origin}/iam/roles?deleted=true`)
+    expect(url).toBe(`${location.origin}/api/iam/roles?deleted=true`)
     return ok(restored ? [] : [deletedRole])
   })
   const wrapper = await mountPanel(fetcher)

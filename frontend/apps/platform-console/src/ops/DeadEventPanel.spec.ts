@@ -55,7 +55,8 @@ afterEach(() => {
 it('按服务读取待处置分页元数据，展示错误与次数但不展示消息体', async () => {
   const fetcher = vi.fn((url: string) =>
     Promise.resolve(
-      new URL(url, location.origin).pathname === '/platform/ops/services'
+      new URL(url, location.origin).pathname.replace(/^\/api(?=\/)/, '') ===
+        '/platform/ops/services'
         ? ok([{ service: 'orders', available: true }])
         : events([{ ...event, payload: 'secret-message-body' }], 1, 21),
     ),
@@ -73,6 +74,7 @@ it('按服务读取待处置分页元数据，展示错误与次数但不展示�
   expect(wrapper.text()).not.toContain('secret-message-body')
   expect(wrapper.get('[data-testid="list-page-total"]').text()).toContain('21')
   const query = new URL(fetcher.mock.calls[1]![0], location.origin)
+  query.pathname = query.pathname.replace(/^\/api(?=\/)/, '')
   expect(query.pathname).toBe('/platform/ops/services/orders/dead-events')
   expect(Object.fromEntries(query.searchParams)).toEqual({
     status: 'PENDING',
@@ -95,6 +97,7 @@ async function choose(wrapper: ReturnType<typeof mountPanel>, id: string, text: 
 it('切换服务或状态重置分页，服务不可用仍可切回其他服务', async () => {
   const fetcher = vi.fn((url: string) => {
     const request = new URL(url, location.origin)
+    request.pathname = request.pathname.replace(/^\/api(?=\/)/, '')
     return Promise.resolve(
       request.pathname === '/platform/ops/services'
         ? ok([
@@ -149,7 +152,7 @@ it('重放必填原因，业务失败保留原因并允许重试，成功后刷�
   let replayed = false
   let attempts = 0
   const fetcher = vi.fn((url: string, init?: RequestInit) => {
-    const path = new URL(url, location.origin).pathname
+    const path = new URL(url, location.origin).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/platform/ops/services')
       return Promise.resolve(ok([{ service: 'orders', available: true }]))
     if (path.endsWith('/replay')) {
@@ -201,7 +204,7 @@ it('重放必填原因，业务失败保留原因并允许重试，成功后刷�
 it('查看最新元数据，再填写原因放弃，已处置记录只保留查看', async () => {
   let abandoned = false
   const fetcher = vi.fn((url: string, init?: RequestInit) => {
-    const path = new URL(url, location.origin).pathname
+    const path = new URL(url, location.origin).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/platform/ops/services')
       return Promise.resolve(ok([{ service: 'orders', available: true }]))
     if (path.endsWith('/abandon')) {
@@ -250,7 +253,7 @@ it('切换服务后忽略旧请求，当前服务完成前持续显示加载状�
   let finishOrders!: (value: Response) => void
   let finishShipping!: (value: Response) => void
   vi.stubGlobal('fetch', (url: string) => {
-    const path = new URL(url, location.origin).pathname
+    const path = new URL(url, location.origin).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/platform/ops/services')
       return Promise.resolve(
         ok([

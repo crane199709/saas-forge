@@ -19,7 +19,7 @@ export function fakeFetch(
 ) {
   const pending = new Map(Object.entries(routes).map(([path, value]) => [path, value]))
   return (input: string) => {
-    const path = new URL(input, location.origin).pathname
+    const path = new URL(input, location.origin).pathname.replace(/^\/api(?=\/)/, '')
     const value = pending.get(path)
     if (Array.isArray(value)) {
       const next = value.length > 1 ? value.shift()! : value[0]!.clone()

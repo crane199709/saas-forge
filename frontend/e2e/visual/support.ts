@@ -41,7 +41,7 @@ export async function openAsAdmin(
     ),
   )
   await page.route('**/iam/**', (route) => {
-    const path = new URL(route.request().url()).pathname
+    const path = new URL(route.request().url()).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/iam/auth/access')
       return route.fulfill(
         ok({

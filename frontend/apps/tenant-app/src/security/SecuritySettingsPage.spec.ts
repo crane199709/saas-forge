@@ -36,7 +36,7 @@ it('持有 iam:security:manage 时菜单显示安全设置，开关保存 MFA Re
   await flushPromises()
   const calls = fetcher.mock.calls as unknown as [string, RequestInit | undefined][]
   const put = calls.find(([, init]) => init?.method === 'PUT')!
-  expect(new URL(put[0]).pathname).toBe('/iam/security-settings')
+  expect(new URL(put[0]).pathname.replace(/^\/api(?=\/)/, '')).toBe('/iam/security-settings')
   expect(JSON.parse(put[1]!.body as string)).toEqual({ mfaRequired: true })
   expect(
     wrapper.get('[data-testid="mfa-required"] [role="switch"]').attributes('aria-checked'),
@@ -53,7 +53,7 @@ it('没有 iam:security:manage 时菜单不显示安全设置，直接访问进�
 
 it('显示可信当前 IP 与生效提示，保存规则并定位服务端条目错误', async () => {
   const fetcher = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-    const path = new URL(url, location.origin).pathname
+    const path = new URL(url, location.origin).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/iam/security-settings') return Promise.resolve(ok({ mfaRequired: false }))
     if (path === '/iam/security-settings/ip-allowlist') {
       if (init?.method === 'PUT')
@@ -86,14 +86,15 @@ it('显示可信当前 IP 与生效提示，保存规则并定位服务端条目
   )
   const put = fetcher.mock.calls.find(
     ([url, init]) =>
-      new URL(url, location.origin).pathname.endsWith('ip-allowlist') && init?.method === 'PUT',
+      new URL(url, location.origin).pathname.replace(/^\/api(?=\/)/, '').endsWith('ip-allowlist') &&
+      init?.method === 'PUT',
   )!
   expect(JSON.parse(put[1]!.body as string)).toEqual({ rules: ['192.0.2.1', 'bad'] })
 })
 
 it.each([undefined, '', ' \t '])('字段提示为 %j 时显示通用提示，不暴露错误码', async (userTip) => {
   vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
-    const path = new URL(url, location.origin).pathname
+    const path = new URL(url, location.origin).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/iam/security-settings') return Promise.resolve(ok({ mfaRequired: false }))
     if (path === '/iam/security-settings/ip-allowlist') {
       if (init?.method === 'PUT')
@@ -161,7 +162,7 @@ it('IP 规则保存失败后重试成功，清除错误文案与追踪 ID', asyn
 
 it('修正出错的 IP 条目后，清除该条目与本次提交的旧错误', async () => {
   vi.stubGlobal('fetch', (url: string, init?: RequestInit) => {
-    const path = new URL(url, location.origin).pathname
+    const path = new URL(url, location.origin).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/iam/security-settings') return Promise.resolve(ok({ mfaRequired: false }))
     if (path === '/iam/security-settings/ip-allowlist') {
       if (init?.method === 'PUT')

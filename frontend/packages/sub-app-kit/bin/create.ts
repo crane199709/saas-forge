@@ -150,7 +150,6 @@ const files: Record<string, string> = {
 export default defineSubAppConfig({
   appCode: '${code}',
   port: ${port},
-  apiPrefixes: ['/${code}'],
 })
 `,
   'index.html': `<!doctype html>
@@ -385,12 +384,12 @@ async function open(page: Page, items: unknown[]) {
     json: { code: 'ok', httpStatus: 200, data, meta, traceId: 'visual' },
   })
   await page.route(
-    (url) => url.pathname.startsWith('/iam/'),
+    (url) => url.pathname.startsWith('/iam/') || url.pathname.startsWith('/api/iam/'),
     (route) => route.fulfill(ok({ permissions: [], menus: [], subApps: [], layout: null })),
   )
   // 只拦截接口：页面地址 /apps/${code}/... 不以 /${code}/ 开头。
   await page.route(
-    (url) => url.pathname.startsWith('/${code}/'),
+    (url) => url.pathname.startsWith('/api/${code}/'),
     (route) =>
       route.fulfill(
         ok(items, {

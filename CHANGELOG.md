@@ -8,6 +8,7 @@
 
 ### 变更
 
+- **破坏性**：前端 SDK `api()` / `page()` 强制添加浏览器 `/api` 入口；Shell 开发 Vite、生产 Nginx 与 sub-app-kit 独立宿主固定代理 `/api`（剥离入口段）与 `/iam`（认证透传）。移除 `FORGE_API_PREFIXES` 与 `apiPrefixes`，不保留逐服务前缀兼容代理。升级时配套部署 Shell、SDK、sub-app-kit，已生成 Sub-App 删除 `apiPrefixes`；业务源码路径、网关路由、认证路径与 Cookie 语义保持原样。`docs/standards/sub-app.md` 新增「接口入口」，`business-service.md` 补充浏览器与直连网关路径区别；两套脚手架随构建携带新规范，Sub-App 模板与视觉用例同步。新增服务前端代理改动为 0 处。
 - IAM 服务凭证改为数据库管理状态：支持同服务多凭证、逐条立即停用及原子紧急轮换，库内只存 SHA-256 摘要，生命周期与受限流保护的认证失败写 Platform Realm 审计；内部认证每请求查库，数据库不可用返回 503。`forge.iam.manifest.tokens` 降级为可空且已弃用的静态引导通道，移除应用自带默认凭证，已有本地环境需登记凭证或显式提供引导值。接入清单、服务指南和 archetype 的 `FORGE_MANIFEST_TOKEN` 说明同步更新；业务服务配置键不变。
 
 - 发布后源码立即进入下一个 `-SNAPSHOT` 开发版本，同一正式版本号只对应一份发布内容：`version.py set` 接受 `-SNAPSHOT`，新增 `version.py dev` 由分支 CI（Backend quality）检查源码处于统一的 SNAPSHOT 版本；`check` 与正式发布仍拒绝 SNAPSHOT，只有 `publish.sh local`（模板冒烟）以 `--allow-snapshot` 部署当前源码到临时仓库。版本同步范围新增 `@crane199709/sdk` 的 `sdkRuntime` 版本。当前源码为 `0.2.0-SNAPSHOT`。
