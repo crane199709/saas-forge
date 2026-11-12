@@ -112,7 +112,7 @@ async function openPlatformTenant(page: Page) {
     initializations: [{ service: 'demo-service', status: 'failed', error: '初始化未完成' }],
   }
   await page.route('**/platform/**', (route) => {
-    const path = new URL(route.request().url()).pathname
+    const path = new URL(route.request().url()).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/iam/platform/access')
       return route.fulfill(
         ok({

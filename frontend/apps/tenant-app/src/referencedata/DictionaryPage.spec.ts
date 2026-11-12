@@ -115,7 +115,7 @@ it('可扩展字典新增自定义项：编码提示 custom. 前缀，提交不�
 
   const [url, init] = writes()[0]!
   expect(url).toBe(
-    `${location.origin}/iam/reference-data/dictionaries/crm-service/customer-source/items`,
+    `${location.origin}/api/iam/reference-data/dictionaries/crm-service/customer-source/items`,
   )
   expect(init.method).toBe('POST')
   expect(JSON.parse(init.body as string)).toEqual({ code: 'expo2', name: '展会' })
@@ -168,7 +168,7 @@ it('修改内置项的显示名与排序', async () => {
 
   const [url, init] = writes()[0]!
   expect(url).toBe(
-    `${location.origin}/iam/reference-data/dictionaries/crm-service/customer-source/items/web`,
+    `${location.origin}/api/iam/reference-data/dictionaries/crm-service/customer-source/items/web`,
   )
   expect(init.method).toBe('PUT')
   expect(JSON.parse(init.body as string)).toEqual({ name: '公司官网', sort: 5 })
@@ -183,7 +183,7 @@ it('停用启用中的项，启用已停用的项；已下线的项不可操作'
   await wrapper.get('[data-testid="item-enable-custom.expo"]').trigger('click')
   await flushPromises()
 
-  const base = `${location.origin}/iam/reference-data/dictionaries/crm-service/customer-source/items`
+  const base = `${location.origin}/api/iam/reference-data/dictionaries/crm-service/customer-source/items`
   expect(writes().map(([url, init]) => [init.method, url])).toEqual([
     ['POST', `${base}/web/disable`],
     ['POST', `${base}/custom.expo/enable`],

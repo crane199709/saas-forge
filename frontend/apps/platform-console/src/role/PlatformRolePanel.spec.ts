@@ -54,7 +54,7 @@ function ok(data: unknown, httpStatus = 200) {
 }
 
 function route(url: string, init?: RequestInit) {
-  return `${init?.method ?? 'GET'} ${new URL(url, location.origin).pathname}`
+  return `${init?.method ?? 'GET'} ${new URL(url, location.origin).pathname.replace(/^\/api(?=\/)/, '')}`
 }
 
 function mountPanel(fetcher: ReturnType<typeof vi.fn>) {

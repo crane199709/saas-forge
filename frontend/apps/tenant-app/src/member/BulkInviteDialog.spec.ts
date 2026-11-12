@@ -43,7 +43,7 @@ const failure = (code: string, status: number, userTip: string) =>
 /** 邀请接口按联系方式应答，其余接口给出列表数据；记录每个请求。 */
 function backend(invitations: Record<string, () => Response>) {
   return vi.fn((url: string, init?: RequestInit) => {
-    const path = new URL(url).pathname
+    const path = new URL(url).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/iam/members/invitations') {
       const { contact } = JSON.parse(String(init!.body)) as { contact: string }
       return Promise.resolve(invitations[contact]!())
@@ -139,7 +139,9 @@ it('预览有效人数与错误明细，只发送有效行，结束后显示各�
   expect($('member-bulk-preview').textContent).toContain('联系方式格式不正确')
   expect($('member-bulk-preview').textContent).toContain('不能预设所有者')
 
-  const listCalls = fetcher.mock.calls.filter(([url]) => new URL(url).pathname === '/iam/members')
+  const listCalls = fetcher.mock.calls.filter(
+    ([url]) => new URL(url).pathname.replace(/^\/api(?=\/)/, '') === '/iam/members',
+  )
   $('member-bulk-send').click()
   await vi.waitFor(() => {
     if (!$('member-bulk-result')) throw new Error('pending')
@@ -147,7 +149,9 @@ it('预览有效人数与错误明细，只发送有效行，结束后显示各�
   await flushPromises()
 
   const invited = fetcher.mock.calls
-    .filter(([url]) => new URL(url).pathname === '/iam/members/invitations')
+    .filter(
+      ([url]) => new URL(url).pathname.replace(/^\/api(?=\/)/, '') === '/iam/members/invitations',
+    )
     .map(([, init]) => JSON.parse(String(init!.body)))
   expect(invited).toHaveLength(4)
   expect(invited).toContainEqual({
@@ -162,7 +166,9 @@ it('预览有效人数与错误明细，只发送有效行，结束后显示各�
   expect(result).toMatch(/失败\s*3/)
   expect(result).toContain('成员数已达上限')
   expect(
-    fetcher.mock.calls.filter(([url]) => new URL(url).pathname === '/iam/members'),
+    fetcher.mock.calls.filter(
+      ([url]) => new URL(url).pathname.replace(/^\/api(?=\/)/, '') === '/iam/members',
+    ),
   ).toHaveLength(listCalls.length + 1)
 })
 
@@ -171,7 +177,9 @@ it('没有有效行时不能确认；缺少角色与组织管理权限时填了�
   const wrapper = await mountPage(fetcher, ['iam:member:manage'])
   await open(wrapper)
   // 没有对应权限时不加载角色与部门。
-  expect(fetcher.mock.calls.map(([url]) => new URL(url).pathname)).not.toContain('/iam/roles')
+  expect(
+    fetcher.mock.calls.map(([url]) => new URL(url).pathname.replace(/^\/api(?=\/)/, '')),
+  ).not.toContain('/iam/roles')
 
   await upload(
     await workbook([headers, ['a@example.com', '销售', null], ['b@example.com', null, '总部']]),
@@ -186,7 +194,7 @@ it('发送中不可关闭且有离开提示；停止后其余行未处理，失�
   const pending: Array<(response: Response) => void> = []
   const hang = () => new Promise<Response>((resolve) => pending.push(resolve))
   const fetcher = vi.fn((url: string) => {
-    const path = new URL(url).pathname
+    const path = new URL(url).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/iam/members/invitations') return hang()
     if (path === '/iam/roles') return Promise.resolve(ok(roles))
     if (path === '/iam/org/departments') return Promise.resolve(ok(departments))

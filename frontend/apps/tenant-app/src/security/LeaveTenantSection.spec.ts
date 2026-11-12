@@ -57,7 +57,7 @@ it('被拒绝时展示原因并留在页面，确认离开后结束会话并重�
     }
   }
 
-  expect(fetcher.mock.calls[1]![0]).toBe(`${location.origin}/iam/members/me/leave`)
+  expect(fetcher.mock.calls[1]![0]).toBe(`${location.origin}/api/iam/members/me/leave`)
   expect(sessionStorage.getItem('forge.tenant.session')).toBeNull()
   expect(reload).toHaveBeenCalledOnce()
 })

@@ -35,6 +35,7 @@ it('成员可切换通知、公告和待办，按公开分页读取、标记已�
   const requests: string[] = []
   vi.stubGlobal('fetch', async (input: string, init?: RequestInit) => {
     const url = new URL(input, location.origin)
+    url.pathname = url.pathname.replace(/^\/api(?=\/)/, '')
     requests.push(`${init?.method ?? 'GET'} ${url.pathname}${url.search}`)
     if (url.pathname.endsWith('/unread-count')) return ok({ count: read ? 0 : 1 })
     if (url.pathname === '/iam/notifications/n1/read') {
@@ -94,7 +95,7 @@ it('切换列表后旧通知慢响应不能覆盖当前待办', async () => {
     release = resolve
   })
   vi.stubGlobal('fetch', async (input: string) => {
-    const path = new URL(input, location.origin).pathname
+    const path = new URL(input, location.origin).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/iam/notifications') return pending
     if (path === '/iam/todos')
       return ok([{ id: 'todo-current', title: '当前待办', body: '业务正文' }], {
@@ -124,7 +125,7 @@ it('点击整行展开全文，操作按钮不触发展开', async () => {
     JSON.stringify({ accessToken: 'a', refreshToken: 'r', membershipId: 'm' }),
   )
   vi.stubGlobal('fetch', async (input: string) => {
-    const path = new URL(input, location.origin).pathname
+    const path = new URL(input, location.origin).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/iam/notifications')
       return ok([notice], { number: 1, size: 20, totalElements: 1, totalPages: 1 })
     if (path.endsWith('/unread-count')) return ok({ count: 1 })

@@ -23,9 +23,11 @@ export default defineConfig({
     port: 5174,
     strictPort: true,
     proxy: {
-      '/iam': process.env.FORGE_DEV_GATEWAY ?? 'http://localhost:8080',
-      '/demo': process.env.FORGE_DEV_GATEWAY ?? 'http://localhost:8080',
-      '/lowcode': process.env.FORGE_DEV_GATEWAY ?? 'http://localhost:8080',
+      '^/api(?:/|\\?|$)': {
+        target: process.env.FORGE_DEV_GATEWAY ?? 'http://localhost:8080',
+        rewrite: (path) => path.replace(/^\/api(?:\/|(?=\?|$))/, '/'),
+      },
+      '^/iam(?:/|\\?|$)': process.env.FORGE_DEV_GATEWAY ?? 'http://localhost:8080',
     },
   },
   test: {

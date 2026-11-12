@@ -33,7 +33,7 @@ pnpm dev
 
 生成器使用随 sub-app-kit 发布的版本表（构建时取自同版本 tenant-app），共享依赖使用精确版本，三个 `@crane199709/*` 包使用统一发布版本；无需平台源码或父目录 tsconfig。不要单独升级共享依赖，混合版本兼容不在当前支持范围内。
 
-首页按列表原型 `PageHeader` → `PageToolbar` → `ListPage` 搭好，带标题筛选、分页、加载状态与错误提示，空值显示 `—`、时间用 `formatDateTime`，默认请求 `/billing/orders`，请按业务接口修改路径与行字段。生成的工程还带 `AGENTS.md`、`docs/standards/sub-app.md`（头部注明平台版本）、`pnpm lint:style`（接入 `build`）与 `e2e/visual/` 示例视觉用例；不带基线截图，首次运行 `pnpm test:visual:update` 生成，逐张查看后提交。开发宿主通过 `vite.config.ts` 的 `apiPrefixes` 代理业务前缀，`gateway`、`shellOrigins` 按环境设置。未接入后端时列表展示加载错误，不伪造业务数据。
+首页按列表原型 `PageHeader` → `PageToolbar` → `ListPage` 搭好，带标题筛选、分页、加载状态与错误提示，空值显示 `—`、时间用 `formatDateTime`，默认请求 `/billing/orders`，请按业务接口修改路径与行字段。生成的工程还带 `AGENTS.md`、`docs/standards/sub-app.md`（头部注明平台版本）、`pnpm lint:style`（接入 `build`）与 `e2e/visual/` 示例视觉用例；不带基线截图，首次运行 `pnpm test:visual:update` 生成，逐张查看后提交。开发宿主固定代理 `/api`（剥离入口段）与 `/iam`（认证透传），`gateway`、`shellOrigins` 按环境设置。未接入后端时列表展示加载错误，不伪造业务数据。
 
 ### monorepo 内开发
 
@@ -47,7 +47,7 @@ pnpm create:sub-app billing 5180
 
 | 命令 | 作用 |
 | --- | --- |
-| `pnpm --filter @forge/billing-sub-app dev` | 独立开发宿主，`http://localhost:5180`，支持 HMR，不需要启动 tenant-app。宿主按 Shell 的方式创建应用实例，提供登录栏，经开发服务器把 `/iam` 与 `apiPrefixes` 代理到本地网关 |
+| `pnpm --filter @forge/billing-sub-app dev` | 独立开发宿主，`http://localhost:5180`，支持 HMR，不需要启动 tenant-app。宿主按 Shell 的方式创建应用实例，提供登录栏，经开发服务器把 `/api`（剥离入口段）与 `/iam`（认证透传）代理到本地网关 |
 | `pnpm --filter @forge/billing-sub-app lint` | 隔离约定检查（`forge-sub-app-lint`），`build` 前自动执行 |
 | `pnpm --filter @forge/billing-sub-app lint:style` | 样式 token 检查（规则来自 `@crane199709/sub-app-kit/stylelint`），`build` 前自动执行 |
 | `pnpm --filter @forge/billing-sub-app test:visual` | 示例视觉用例，开发宿主 + `page.route` mock，不需要后端 |
@@ -55,7 +55,9 @@ pnpm create:sub-app billing 5180
 
 开发模式不启用 Module Federation，Sub-App 直接使用自己的依赖副本，因此 HMR 照常生效；联邦加载与共享单例只在 build/preview 下由真实 Shell 验证（`pnpm test:e2e`）。
 
-本地通过 `tenant-app` 加载子应用时，还须在租户 Shell 的 `frontend/apps/tenant-app/vite.config.ts` 的 `server.proxy` 中追加该业务前缀到网关的代理，并重启 Shell 开发服务器。子应用的 `apiPrefixes` 只配置独立开发宿主，不能替代 Shell 代理；配置例子与验收方式见[平台侧接入清单](service-onboarding-checklist.md#4-nacos-网关路由与前缀声明)。
+SDK 的 `api()` / `page()` 强制为业务路径添加 `/api`：源码仍传 `/billing/orders`，浏览器请求 `/api/billing/orders`，Shell 剥掉 `/api` 后网关收到 `/billing/orders`。开发 Vite、生产 Nginx 与独立开发宿主均固定两条代理 `/api`、`/iam`；新增服务无需改前端代理。认证登录、OAuth2 回调、Refresh 和 Cookie 继续使用 `/iam` 原路径。跨源地址仍被 SDK 拒绝。
+
+这是一次性切换：升级 Shell、SDK 与 sub-app-kit 时同步部署，已生成工程删除 `apiPrefixes`；生产移除 `FORGE_API_PREFIXES`。直接调用网关仍用原服务前缀，不添加 `/api`。配置与验收见[平台侧接入清单](service-onboarding-checklist.md#4-nacos-网关路由与前缀声明)。
 
 ## 发布到租户 Shell
 

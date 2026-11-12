@@ -23,7 +23,7 @@ const demo = {
 }
 
 function path(url: string) {
-  return new URL(url, location.origin).pathname
+  return new URL(url, location.origin).pathname.replace(/^\/api(?=\/)/, '')
 }
 
 function ok(data: unknown, httpStatus = 200) {

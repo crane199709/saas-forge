@@ -47,13 +47,15 @@ iam/platform/demo 另需 spring.datasource.url/username/password、spring.flyway
 
 ## Shell
 
-监听 8080，必填 FORGE_GATEWAY_URL（内部 http(s) origin，无路径或尾斜杠）和 FORGE_API_PREFIXES（空格分隔路径段）。tenant 使用 `iam demo`，platform-console 使用 `iam platform`，新服务加入对应前缀。SDK 保持同源，启动时生成 nginx API 代理配置；修改变量重新创建容器即生效。
+监听 8080，只需 `FORGE_GATEWAY_URL`（内部 http(s) origin，无路径或尾斜杠）。固定代理 `/api`（剥离入口段后转发网关）与 `/iam`（认证原路径透传）；新增服务无需改 Shell 配置。`FORGE_API_PREFIXES` 已移除，旧变量不再参与配置生成。Shell 与新 SDK 须同步升级；浏览器业务请求带 `/api`，直连网关仍使用原服务前缀。
 
 ```sh
-docker run --rm -p 5174:8080 -e FORGE_GATEWAY_URL=http://gateway:8080 -e 'FORGE_API_PREFIXES=iam demo' forge/tenant-app:0.1.0
+docker run --rm -p 5174:8080 -e FORGE_GATEWAY_URL=http://gateway:8080 forge/tenant-app:0.2.0
 ```
 
-API 前缀不能与 Shell 页面路由重名。嵌套路由回退到 index.html；入口、fallback、runtime-config.json 为 no-store；assets 下 Vite hash 资源长期缓存。runtime-config.json 只公布同源模式，不公布内部地址。边缘 TLS 与 forwarded header 策略由部署环境配置。
+代理限定完整路径段，`/apiXYZ`、`/iamXYZ` 与其他未知页面仍按 SPA 回退。嵌套路由回退到 index.html；入口、fallback、runtime-config.json 为 no-store；assets 下 Vite hash 资源长期缓存。runtime-config.json 只公布同源模式，不公布内部地址。登录、OAuth2 回调、Refresh 与 Cookie 路径保持 `/iam`。边缘 TLS 与 forwarded header 策略由部署环境配置。
+
+生产代理回归：`node --test deploy/images/shell-entrypoint.test.mjs`，需要本地 Docker 与 Shell 镜像；默认使用 `forge/tenant-app:0.1.0` 的 Nginx 运行时，可由 `FORGE_NGINX_TEST_IMAGE` 指定。测试挂载当前入口脚本，只创建并清理独立容器，不连接平台数据库。
 
 ## npm scope 兼容性
 

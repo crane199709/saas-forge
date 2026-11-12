@@ -52,7 +52,7 @@ it('查询 Platform Realm 审计并按条件筛选', async () => {
   await flushPromises()
 
   expect(fetcher.mock.calls[0]![0]).toBe(
-    `${location.origin}/iam/platform/audit/events?page=1&size=20`,
+    `${location.origin}/api/iam/platform/audit/events?page=1&size=20`,
   )
   const text = wrapper.text()
   expect(text).toContain('演示运营（operator）')
@@ -65,7 +65,7 @@ it('查询 Platform Realm 审计并按条件筛选', async () => {
   await flushPromises()
 
   expect(fetcher.mock.calls[1]![0]).toBe(
-    `${location.origin}/iam/platform/audit/events?page=1&size=20&resourceId=t1`,
+    `${location.origin}/api/iam/platform/audit/events?page=1&size=20&resourceId=t1`,
   )
   expect(wrapper.text()).toContain('没有符合条件的审计记录')
 })

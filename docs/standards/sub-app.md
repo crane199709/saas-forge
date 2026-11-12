@@ -4,6 +4,10 @@
 
 页面组件（`PageHeader`、`PageToolbar`、`ListPage`、`overlaySize`、`formatDateTime`）与 `--forge-*` 样式 token 由平台的 `@crane199709/ui` 提供；页面都落在主应用布局提供的同一块内容面上。
 
+## 接口入口
+
+业务请求经共享 SDK 的 `client.api()` / `client.page()`，源码仍使用网关路径（如 `/orders/orders`）；SDK 强制添加 `/api`，Shell 剥离入口段后转发网关。开发 Shell、生产 Shell 与独立宿主固定代理 `/api` 和 `/iam`，新增服务不追加代理配置；Sub-App 配置不再接受 `apiPrefixes`。登录、OAuth2 回调与 Refresh 保持 `/iam` 原路径及 Cookie 语义。Shell、SDK 与 sub-app-kit 须配套升级，跨源业务路径仍拒绝。
+
 ## 改动页面的流程
 
 按顺序走完三步，功能和设计分开做。

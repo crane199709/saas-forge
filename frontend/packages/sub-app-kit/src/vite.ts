@@ -11,8 +11,6 @@ export interface SubAppOptions {
   port: number
   /** 加载本 Sub-App 的 Shell 源，preview 与部署时须允许其跨源请求入口与资源。 */
   shellOrigins?: string[]
-  /** 独立开发时宿主代理的接口前缀，转发到本地网关，如 `['/demo']`；`/iam` 总是代理，供宿主登录。 */
-  apiPrefixes?: string[]
   /** 网关地址，默认 `http://localhost:8080`。 */
   gateway?: string
 }
@@ -63,9 +61,13 @@ export function defineSubAppConfig(
         server: {
           port: options.port,
           strictPort: true,
-          proxy: Object.fromEntries(
-            ['/iam', ...(options.apiPrefixes ?? [])].map((prefix) => [prefix, gateway]),
-          ),
+          proxy: {
+            '^/api(?:/|\\?|$)': {
+              target: gateway,
+              rewrite: (path) => path.replace(/^\/api(?:\/|(?=\?|$))/, '/'),
+            },
+            '^/iam(?:/|\\?|$)': gateway,
+          },
         },
         preview: { port: options.port, strictPort: true, cors: { origin: origins } },
       } satisfies UserConfig,

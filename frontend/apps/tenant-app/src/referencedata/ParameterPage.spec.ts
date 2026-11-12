@@ -96,7 +96,9 @@ it('覆盖整数参数时按数字提交，完成后重读', async () => {
   await flushPromises()
 
   const [url, init] = writes()[0]!
-  expect(url).toBe(`${location.origin}/iam/reference-data/parameters/demo-service/order.max-lines`)
+  expect(url).toBe(
+    `${location.origin}/api/iam/reference-data/parameters/demo-service/order.max-lines`,
+  )
   expect(init.method).toBe('PUT')
   expect(JSON.parse(init.body as string)).toEqual({ value: 120 })
   expect(fetcher.mock.calls.filter(([input]) => input.endsWith('/parameters'))).toHaveLength(2)
@@ -138,6 +140,8 @@ it('已覆盖的参数可恢复默认，未覆盖的不提供', async () => {
   await flushPromises()
 
   const [url, init] = writes()[0]!
-  expect(url).toBe(`${location.origin}/iam/reference-data/parameters/demo-service/order.max-lines`)
+  expect(url).toBe(
+    `${location.origin}/api/iam/reference-data/parameters/demo-service/order.max-lines`,
+  )
   expect(init.method).toBe('DELETE')
 })

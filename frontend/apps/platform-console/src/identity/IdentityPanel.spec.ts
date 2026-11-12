@@ -57,7 +57,9 @@ it('按登录标识精确查找，展示已绑定并经确认后重置 MFA', asy
   await search(wrapper, ' zhang@example.com ')
 
   const lookup = fetcher.mock.calls[0]!
-  expect(new URL(lookup[0], location.origin).pathname).toBe('/iam/platform/identities/lookup')
+  expect(new URL(lookup[0], location.origin).pathname.replace(/^\/api(?=\/)/, '')).toBe(
+    '/iam/platform/identities/lookup',
+  )
   expect(JSON.parse(lookup[1]!.body as string)).toEqual({ identifier: 'zhang@example.com' })
   expect(wrapper.text()).toContain('张三')
   expect(wrapper.get('[data-testid="identity-mfa-status"]').text()).toBe('已绑定')
@@ -70,7 +72,9 @@ it('按登录标识精确查找，展示已绑定并经确认后重置 MFA', asy
   await flushPromises()
 
   const reset = fetcher.mock.calls[1]!
-  expect(new URL(reset[0], location.origin).pathname).toBe('/iam/platform/identities/i1/mfa/reset')
+  expect(new URL(reset[0], location.origin).pathname.replace(/^\/api(?=\/)/, '')).toBe(
+    '/iam/platform/identities/i1/mfa/reset',
+  )
   expect(reset[1]!.method).toBe('POST')
   expect(wrapper.get('[data-testid="identity-mfa-status"]').text()).toBe('未绑定')
   expect(wrapper.text()).toContain('已重置')

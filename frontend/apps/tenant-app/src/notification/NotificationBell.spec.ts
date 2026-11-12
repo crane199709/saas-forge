@@ -21,7 +21,7 @@ function setup() {
   let announcements = 3
   const reads: string[] = []
   vi.stubGlobal('fetch', async (input: string) => {
-    const path = new URL(input, location.origin).pathname
+    const path = new URL(input, location.origin).pathname.replace(/^\/api(?=\/)/, '')
     reads.push(path)
     if (path === '/iam/notifications/unread-count') return response({ count: notifications })
     if (path === '/iam/announcements/unread-count') return response({ count: announcements })
@@ -75,7 +75,7 @@ it('更晚的可见页面读取生效，隐藏前慢响应和退出后的结果�
   })
   let first = true
   vi.stubGlobal('fetch', async (input: string) => {
-    const path = new URL(input, location.origin).pathname
+    const path = new URL(input, location.origin).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/iam/notifications/unread-count') {
       if (first) {
         first = false

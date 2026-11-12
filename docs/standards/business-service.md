@@ -263,6 +263,8 @@ CREATE UNIQUE INDEX order_categories_name_key ON order_categories (name) WHERE N
 
 ### 经网关暴露
 
+浏览器业务调用由前端 SDK 添加 `/api`（如 `/api/orders/orders`），Shell 剥离 `/api` 后再转发网关；网关路由与服务 Controller 保持原路径。服务间、诊断与运维直连网关时不添加 `/api`，新增服务不需要修改 Shell 的前端代理。
+
 网关只做粗粒度判断：要求哪个 Realm 的 Token、能否匿名、是否暴露。服务接入时向平台登记路径前缀（如 `/orders`）与 Realm，前缀下的接口默认要求该 Realm 的 Token，新增接口不改网关。功能权限由服务自己判断，用 `@RequiresPermission` 标注接口。
 
 - 其他匿名接口必须在网关显式列出，同时在服务的安全链中放行，不靠推断。

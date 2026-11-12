@@ -76,7 +76,7 @@ it('展示审计记录的操作人、对象与结果，按条件重新查询', a
   })
   await flushPromises()
 
-  expect(fetcher.mock.calls[0]![0]).toBe(`${location.origin}/iam/audit/events?page=1&size=20`)
+  expect(fetcher.mock.calls[0]![0]).toBe(`${location.origin}/api/iam/audit/events?page=1&size=20`)
   const success = tableRow(wrapper, 'audit-a').text()
   expect(success).toContain('业务操作')
   expect(success).toContain('爱丽丝（alice）')
@@ -93,7 +93,7 @@ it('展示审计记录的操作人、对象与结果，按条件重新查询', a
   await flushPromises()
 
   expect(fetcher.mock.calls[1]![0]).toBe(
-    `${location.origin}/iam/audit/events?page=1&size=20&actor=alice&action=order.create`,
+    `${location.origin}/api/iam/audit/events?page=1&size=20&actor=alice&action=order.create`,
   )
   expect(wrapper.text()).toContain('没有符合条件的审计记录')
 })
