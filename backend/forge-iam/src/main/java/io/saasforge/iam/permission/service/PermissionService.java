@@ -36,11 +36,17 @@ public class PermissionService {
     private final ResourceManifestMapper manifests;
     private final PermissionMapper permissions;
     private final JsonMapper json;
+    private final List<ManifestPolicy> policies;
 
-    PermissionService(ResourceManifestMapper manifests, PermissionMapper permissions, JsonMapper json) {
+    PermissionService(
+            ResourceManifestMapper manifests,
+            PermissionMapper permissions,
+            JsonMapper json,
+            List<ManifestPolicy> policies) {
         this.manifests = manifests;
         this.permissions = permissions;
         this.json = json;
+        this.policies = List.copyOf(policies);
     }
 
     /**
@@ -55,6 +61,7 @@ public class PermissionService {
     public boolean report(String reporter, ResourceManifest manifest) {
         if (!reporter.equals(manifest.service())) throw new ForgeException(ManifestErrorCode.SERVICE_MISMATCH);
         validate(manifest);
+        policies.forEach(policy -> policy.validate(manifest));
         String content = json.writeValueAsString(manifest);
         manifests.lockService(manifest.service());
         Boolean same = manifests.sameContent(manifest.service(), manifest.version(), content);
@@ -63,6 +70,10 @@ public class PermissionService {
             return false;
         }
         requireOwnDataResources(manifest);
+        ResourceManifest previous = currentManifests().stream()
+                .filter(value -> value.service().equals(manifest.service()))
+                .findFirst()
+                .orElse(null);
         manifests.clearCurrent(manifest.service());
         manifests.insertCurrent(UuidV7.generate(), manifest.service(), manifest.version(), content);
         Set<String> codes = new HashSet<>();
@@ -78,6 +89,7 @@ public class PermissionService {
             if (changed == 0) throw new ForgeException(ManifestErrorCode.PERMISSION_CONFLICT, permission.code());
         }
         permissions.deactivateMissing(manifest.service(), codes);
+        policies.forEach(policy -> policy.registered(previous, manifest));
         return true;
     }
 
@@ -208,6 +220,17 @@ public class PermissionService {
                         .map(parameter -> new ServiceParameter(manifest.service(), parameter)))
                 .toList();
     }
+
+    /** 当前有效清单的敏感字段；调用方只经此服务边界读取登记。 */
+    public List<ServiceSensitiveField> currentSensitiveFields() {
+        return currentManifests().stream()
+                .flatMap(manifest -> manifest.sensitiveFields().stream()
+                        .map(field -> new ServiceSensitiveField(manifest.service(), field)))
+                .toList();
+    }
+
+    /** 敏感字段的服务限定，字段路径只在同一服务内唯一。 */
+    public record ServiceSensitiveField(String service, ResourceManifest.SensitiveField field) {}
 
     private static List<ServiceDictionary> dictionariesOf(List<ResourceManifest> manifests) {
         return manifests.stream()

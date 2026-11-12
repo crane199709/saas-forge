@@ -38,6 +38,11 @@ public class TenantService {
         return tenants.countByStatus(statuses);
     }
 
+    /** 全部未删除租户，供平台在不绕过 RLS 的前提下逐租户检查配置引用。 */
+    public List<UUID> ids() {
+        return tenants.findAllIds();
+    }
+
     /** 租户名称，用于邀请等发给成员的通知；租户须已登记。 */
     public String name(UUID tenantId) {
         return tenants.findName(tenantId);

@@ -6,6 +6,8 @@
 
 ### 变更
 
+- IAM 新增数据安全：平台固定 L1–L4（L4 禁止导出）、九种预置策略规则及 CRUD/预览，租户可为 Manifest 敏感字段选择或恢复规则；按租户覆盖 > 字段默认 > 分级默认解析。新增独立读/管理权限码并升级 IAM 清单版本，规则和登记变更写不含原文的审计；强制租户 RLS 与全租户引用检查、统一事务锁防止并发删除被引用规则。`forge-sdk-security` 新增无缓存 IAM HTTP 策略提供方；业务规范新增可选运行时配置：显式启用 `forge.field-masking.enabled=true` 时必须提供 `iam-uri` 与 `token`，旧服务不新增必配项。archetype 配置说明、sub-app-kit 生成说明与配套规范、业务服务指南同步，前端不得持有服务凭证。API 随未发布 `0.2.0-SNAPSHOT` 发布。
+
 - `forge-sdk-security` 新增固定 `MaskingRule`、纯 `MaskingEngine.validate/apply/preview`、安全预览结果与通道共用的生效字段策略端口。九种策略统一按 Unicode 码点保留字符，严格拒绝未知策略和无关参数；固定保留范围覆盖短值时全部掩码，`keepFirst` 保留整值及所有非空未改变结果失败，异常不包含原文。新增 API 保持现有调用兼容，随当前未发布 `0.2.0-SNAPSHOT` 发布；未新增配置、业务编码规则或脚手架必需项。
 
 - Resource Manifest 新增可选 `sensitiveFields`（路径、L1–L4 分级、可选默认规则），SDK 提供 `@SensitiveField` 并在 CLI/启动生成时合并字段与 getter 声明，上报前再次校验；重复路径、非法路径与分级拒绝。业务规范新增「敏感字段登记」，声明变化须升 `forge.manifest.version`；空声明保持旧清单内容兼容，不增加必配项。archetype 带空声明与版本提示，sub-app-kit 配套规范新增服务端脱敏值展示规则，生成的 AGENTS 摘要与服务接入指南同步。SDK 保持当前 `0.2.0-SNAPSHOT` 开发版本。

@@ -40,6 +40,11 @@ forge:
     ${hash} Tenant Realm 签发者（网关公开地址）与直连 IAM JWKS 地址：平台运维
     issuer: ${dollar}{FORGE_SECURITY_ISSUER}
     jwk-set-uri: ${dollar}{FORGE_SECURITY_JWK_SET_URI}
+  ${hash} 使用统一脱敏执行通道时按 docs/standards/business-service.md 显式启用；无声明的旧服务不新增必配项。
+  ${hash} field-masking:
+  ${hash}   enabled: true
+  ${hash}   iam-uri: ${dollar}{FORGE_IAM_URI}
+  ${hash}   token: ${dollar}{FORGE_MANIFEST_TOKEN}
   mq:
     ${hash} RocketMQ Proxy gRPC 地址：接入清单 Topic 准备步骤
     endpoints: ${dollar}{FORGE_ROCKETMQ_ENDPOINTS}

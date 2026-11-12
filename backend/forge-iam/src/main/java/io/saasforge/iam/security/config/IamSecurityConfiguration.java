@@ -331,6 +331,7 @@ class IamSecurityConfiguration {
                                 "/todos/**",
                                 "/notifications/**",
                                 "/reference-data/**",
+                                "/data-security/**",
                                 "/security-settings/**",
                                 "/navigation-layout",
                                 "/announcements/**"))
@@ -375,6 +376,7 @@ class IamSecurityConfiguration {
                         "/platform/access",
                         "/platform/navigation-layout",
                         "/platform/audit/**",
+                        "/platform/data-security/**",
                         "/platform/announcements/**",
                         "/platform/auth/password/change",
                         "/platform/auth/mfa/**")
@@ -405,6 +407,7 @@ class IamSecurityConfiguration {
                         "/internal/permission-tree",
                         "/internal/services",
                         "/internal/reference-data/**",
+                        "/internal/field-masking/**",
                         "/internal/tenants",
                         "/internal/tenants/*/plan-impact")
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -117,6 +117,18 @@ public record CustomerResponse(
 
 同一路径只选一种声明来源；多 DTO 重复登记同一路径也会失败，可把登记集中到共享 DTO。record component 传播到字段与 accessor 的同一注解只计一次。路径每段遵循普通标识符规则（最多 63 字符），不支持数组索引；分级固定 L1–L4，默认规则可省略。路径、分级或默认规则变化时升清单版本，例如 `7` 改为 `8`，然后重新构建并发布；相同版本不能覆盖不同内容。无声明时不输出 `sensitiveFields`，升级 SDK 本身无需改清单版本。登记与实际脱敏执行分开，接口展示与导出仍需接入统一执行通道；完整约束见 [敏感字段登记](standards/business-service.md#敏感字段登记)。
 
+启用统一脱敏执行通道的服务还需配置以下内容；空声明且未使用通道的旧服务无需添加：
+
+```yaml
+forge:
+  field-masking:
+    enabled: true
+    iam-uri: ${FORGE_IAM_URI}
+    token: ${FORGE_MANIFEST_TOKEN}
+```
+
+两项地址和凭证随环境注入，启用后漏配会启动失败。凭证与本服务清单上报相同，IAM 按其认证的服务身份限制字段范围。平台“数据安全”维护固定策略库与四级分级默认，租户“数据安全”只能选择字段规则；生效优先级为租户覆盖 > 字段默认 > 分级默认，L4 禁止导出。预览共用执行引擎，失败时不回显样例原文。配置与字段登记变更写审计，预览样例不入审计；引用规则不能删除。策略按请求直接读取 IAM，修改从下次读取起生效；IAM 不可用时执行通道必须失败关闭。
+
 `OrderCategoryService` 实现 `TenantInitializer`，SDK 订阅 TenantCreated、恢复 CurrentTenant 并在初始化事务中调用它；业务层不自行处理租户 ID。初始化只补齐缺少的分类，部分唯一索引兜底并发，SDK 的消费去重与事务确保重投不会产生重复结果。失败时让异常传播以触发重试，不吞掉错误；已有初始化数据不得被重试覆盖。清理实现 `TenantDataCleaner`，保持逻辑删除。用平台测试租户确认初始化状态成功，纯 HTTP 测试不能证明真实 MQ 投递。
 
 `forge-sdk-ops` 为 `/internal/ops` 及其子路径建立独立运维令牌认证，`forge.ops.token` 无默认值，漏配即启动失败；普通业务接口继续验证本服务 Realm 的 JWT。平台通过已上报 Manifest 的服务目录及 `lb://<serviceName>` 直连服务，Operator 须有 `platform:ops:read` 或 `platform:ops:manage` 才能使用对应功能。服务未引入能力、无实例、令牌未配或不一致时，仅标记该服务不可用。

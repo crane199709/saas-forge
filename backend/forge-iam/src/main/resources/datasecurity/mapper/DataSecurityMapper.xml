@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.datasecurity.mapper.DataSecurityMapper">
+    <select id="lock" resultType="int">
+        SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtext('field_masking'))) AS locked
+    </select>
+    <select id="rules" resultType="io.saasforge.iam.datasecurity.model.RuleRow">
+        SELECT code, name, strategy, keep_first, replacement FROM masking_rule WHERE NOT deleted ORDER BY code
+    </select>
+    <select id="rule" resultType="io.saasforge.iam.datasecurity.model.RuleRow">
+        SELECT code, name, strategy, keep_first, replacement FROM masking_rule WHERE code = #{code} AND NOT deleted
+    </select>
+    <insert id="createRule">
+        INSERT INTO masking_rule (id, code, name, strategy, keep_first, replacement, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{code}, #{name}, #{rule.strategy}, #{rule.keepFirst}, #{rule.replacement}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
+    </insert>
+    <update id="updateRule">
+        UPDATE masking_rule SET name = #{name}, strategy = #{rule.strategy}, keep_first = #{rule.keepFirst}, replacement = #{rule.replacement}, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
+        WHERE code = #{code} AND NOT deleted
+    </update>
+    <update id="deleteRule">
+        UPDATE masking_rule SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
+        WHERE code = #{code} AND NOT deleted
+    </update>
+    <select id="grades" resultType="io.saasforge.iam.datasecurity.model.GradeResponse">
+        SELECT grade, name, default_rule, export_allowed FROM data_grade WHERE NOT deleted ORDER BY grade
+    </select>
+    <update id="updateGrade">
+        UPDATE data_grade SET default_rule = #{code}, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
+        WHERE grade = #{grade} AND NOT deleted
+    </update>
+    <select id="overrides" resultType="io.saasforge.iam.datasecurity.model.FieldOverrideRow">
+        SELECT service, path, rule_code FROM field_masking_override WHERE tenant_id = #{tenantId} AND NOT deleted
+    </select>
+    <insert id="saveOverride">
+        INSERT INTO field_masking_override (id, tenant_id, service, path, rule_code, created_at, updated_at, created_by, updated_by)
+        VALUES (#{id}, #{tenantId}, #{service}, #{path}, #{code}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
+        ON CONFLICT (tenant_id, service, path) WHERE NOT deleted
+        DO UPDATE SET rule_code = EXCLUDED.rule_code, updated_at = CURRENT_TIMESTAMP, updated_by = EXCLUDED.updated_by
+    </insert>
+    <update id="resetOverride">
+        UPDATE field_masking_override SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
+        WHERE tenant_id = #{tenantId} AND service = #{service} AND path = #{path} AND NOT deleted
+    </update>
+    <update id="deleteTenant">
+        UPDATE field_masking_override SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = NULL
+        WHERE tenant_id = #{tenantId} AND NOT deleted
+    </update>
+</mapper>

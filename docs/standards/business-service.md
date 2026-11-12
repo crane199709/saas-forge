@@ -282,6 +282,8 @@ Platform 通过专属 `forge-platform.yaml` 的 `forge.platform.ops.tokens.<spri
 
 `path` 是点分普通标识符，各段满足 `[A-Za-z_][A-Za-z0-9_]{0,62}`，不接受数组索引或表达式；`grade` 只能是 `L1` 公开、`L2` 内部、`L3` 敏感、`L4` 极敏感。分级只决定默认脱敏规则与导出限制，不参与权限判断。`defaultRule` 填平台预置规则编码，省略时使用分级默认规则。
 
+IAM 还会校验字段默认规则存在；保存规则、分级默认与租户选择时再次校验，启动时校验已保存的规则和全部引用。当前 Manifest、分级默认和任一租户的当前字段覆盖引用的规则不能删除。
+
 SDK 在构建期 CLI、启动生成与上报前校验声明，IAM 接收时再使用相同契约校验。新增、移除或调整路径、分级、默认规则（含注解）都必须递增 `forge.manifest.version`，同版本内容不可变；未登记的服务不增加必配项，空声明不改变已生成的旧清单内容。声明负责登记，实际脱敏还需对应执行通道；未声明字段保持原样。
 
 ## 启动上报与内部状态
@@ -345,3 +347,10 @@ class ArchitectureTest extends ForgeArchitectureTest {
 ```
 
 Mapper XML 的 SQL 语义不属于字节码检查范围，仍需代码审查。
+
+
+### 脱敏运行时配置
+
+使用统一脱敏执行通道时显式设置 `forge.field-masking.enabled=true`，并提供 `forge.field-masking.iam-uri`（IAM 内部 HTTP(S) 地址）与 `forge.field-masking.token`（本服务的 Service Credential）。地址和凭证不设默认值，启用后漏配会启动失败；未启用的旧服务不增加必配项。可复用本服务清单上报使用的 `FORGE_IAM_URI` 与 `FORGE_MANIFEST_TOKEN`，不得在浏览器环境注入这些凭证。
+
+`FieldMaskingPolicyProvider` 经 `/internal/field-masking/{tenantId}` 获取本服务当前租户的不可变策略快照，服务身份由 IAM 从凭证推导。首版不跨请求缓存，平台和租户修改提交后下次读取即生效。生效规则按租户覆盖、字段默认、分级默认依次选择；L4 禁止导出。IAM 不可用或配置破损时显式失败，不能将失败伪装为空规则或原文。一次导出或在线响应复用同一快照，避免处理中途切换规则。
