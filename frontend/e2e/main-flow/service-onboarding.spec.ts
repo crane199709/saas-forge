@@ -84,7 +84,7 @@ test('真实诊断读取运行状态，Nacos关闭时不推断配置成功', asy
   await page.getByLabel('密码', { exact: true }).fill('Demo-password-123!')
   await page.getByRole('button', { name: '登录', exact: true }).click()
   await expect(page.getByRole('heading', { name: '服务接入诊断', exact: true })).toBeVisible()
-  const demo = page.getByTestId('onboarding-demo-service')
+  const demo = page.getByRole('row').filter({ hasText: 'demo-service' })
   await expect(demo).toContainText('配置未知')
   await expect(demo).toContainText('运行已加载')
   await page.getByRole('button', { name: '刷新', exact: true }).click()
