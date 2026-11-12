@@ -10,6 +10,8 @@
 
 后端服务统一通过自己的 `FORGE_OPS_TOKEN`、`FORGE_MANIFEST_TOKEN` 配置凭证，Platform 的运维映射集中维护。Sub-App 继续使用 Shell 提供的用户会话；服务端凭证不进入 Vite 环境变量、浏览器配置或联邦产物。
 
+配套 Business Service 以 `forge-dependencies` 为父 POM，继承构建期中间件依赖门禁，通过受支持的后端 starter 接入中间件；Sub-App 通过上述 HTTP 入口使用这些能力。
+
 ## 改动页面的流程
 
 按顺序走完三步，功能和设计分开做。

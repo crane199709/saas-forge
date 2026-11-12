@@ -6,6 +6,8 @@
 
 ### 变更
 
+- `forge-dependencies` 新增 `validate` 阶段的中间件直引门禁，禁止 Spring Data Redis、Redisson、Lettuce、Jedis、RocketMQ/Nacos 原生客户端与 XXL-JOB；Boot Redis、Spring Cloud Nacos 及 Forge MQ / Scheduling starter 入口保留，传递依赖不受影响。仅 SDK MQ 与 Reference Data 按需显式豁免，平台三个服务与其他 SDK 模块继续受约束。业务服务规范新增「中间件依赖入口」，archetype、sub-app-kit 配套规范与接入指南同步。已有业务工程升级父 POM 后自动启用；直引原生客户端的工程先改用相应 starter，再按 CHANGELOG 重新复制 `docs/standards/`。
+
 - **破坏性**：IAM、Platform、Demo 服务端统一使用 `FORGE_OPS_TOKEN`，Platform/Demo 的清单及 IAM 目录访问统一使用 `FORGE_MANIFEST_TOKEN`，移除本地静态默认凭证。Platform 不再内置服务令牌列表，完整映射通过专属 `forge-platform.yaml` 提供。新增独立服务环境文件与映射样例；本地启动、隔离 E2E、业务服务规范、archetype、sub-app-kit 配套规范、中英文 README 同步。既有环境须保留原值迁移到各服务私有文件，不能共用通用变量文件；IAM 已弃用的静态引导 Map 仍保留兼容。
 
 - SDK Manifest 上报改为异步初次 + 三次退避重试，之后每五分钟最多补报十二次，成功/关闭即停止；增加结构化失败分类及独立 Ops Token 保护的 `/internal/onboarding-status`。平台新增 `platform:onboarding:read` 与只读“服务接入诊断”：读取 Nacos 客户端配置、lb 实例状态及真实网关 OpenAPI 身份证据；新增必配网关 origin，应用配置与隔离 E2E 地址同步。SDK OpenAPI 输出 `x-forge-service`。`docs/standards/business-service.md` 新增启动上报与内部状态规则：Servlet 服务引入 manifest 也须配置独立 Ops Token（包括关闭上报时），脚手架已具备该配置；服务指南与 archetype 状态说明同步，archetype 构建携带更新后的业务服务规范。前端设计规则不变。

@@ -13,6 +13,8 @@
     <description>RocketMQ 封装、Outbox、幂等消费与租户上下文透传</description>
 
     <properties>
+        <!-- 本模块封装 RocketMQ 传输，必须直接依赖原生客户端；业务服务通过本 starter 接入。 -->
+        <forge.middleware.skip>true</forge.middleware.skip>
         <forkCount>2</forkCount>
     </properties>
 

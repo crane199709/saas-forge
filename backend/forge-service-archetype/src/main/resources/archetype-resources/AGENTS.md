@@ -9,6 +9,7 @@
 - 手写 SQL 只能写在 mapper XML，禁止 `@Select` 等注解、`QueryWrapper`、带 SQL 片段的 Wrapper 方法与 `JdbcTemplate`；仅允许 `BaseMapper` 主键 CRUD 与单表 `LambdaQueryWrapper`。
 - 手写 SQL 用 SQL-99 标准写法，PostgreSQL 特性限规范白名单。
 - Flyway `CREATE TABLE` 用 `COMMENT ON` 写表和全部字段的中文描述，`ADD COLUMN` 写新字段的中文描述；分区子表只注释父表。
+- 中间件按规范通过 Boot Redis、Spring Cloud Nacos 与 Forge MQ / Scheduling starter 接入；`./mvnw validate` 检查原生客户端直引，业务服务保持默认门禁。
 - 类按 `<根包>.<功能包>.<层>` 组织，层名限白名单，跨功能包只经由对方 `service` 访问数据。
 - 对外接口与消息体禁止直接使用数据库实体，接口模型用 `record`，不引入 Lombok。
 - 自定义配置用 `@ConfigurationProperties` 的 `record` 绑定，不用 `@Value`；随环境变化的地址与密钥不在代码中设默认值，漏配须启动失败。

@@ -41,6 +41,8 @@ SDK 不允许出现循环依赖，模块级与包级都不允许。循环会让�
 - 出现双向需求时，把共用部分下沉到更底层的模块，或由底层模块定义接口（扩展点），上层模块实现，不要直接反向引用。
 - 前端 `@crane199709/sdk`、`@crane199709/ui` 同样适用：包内模块之间不循环 import，共享包不依赖 `apps/` 下的应用。
 
+中间件直引门禁从 `forge-dependencies` 继承，SDK 与平台服务同样适用；支持的 starter 入口见通用规范「中间件依赖入口」。只有原生客户端实现模块按需设置 `forge.middleware.skip=true`，属性旁注释原因，新增依赖时同步 [SDK 依赖与中间件豁免清单](../sdk-dependency-gate.md)。当前仅 MQ 与 Reference Data 豁免，gateway、iam、platform、tenant 等模块仍受门禁约束。
+
 ## 服务模块包结构
 
 通用规范的包结构适用于 `forge-iam`、`forge-platform`、`forge-gateway` 与 `examples/*`，例如 `io.saasforge.iam.session.service`；层名白名单需要新增时先修改通用规范与 `ForgeArchitectureRules`。`forge-sdk-*` 按能力一个包组织，包即对外 API，不适用该节。

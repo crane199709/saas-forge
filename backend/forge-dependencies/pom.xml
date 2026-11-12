@@ -43,6 +43,8 @@
         <rocketmq-client-java.version>5.2.2</rocketmq-client-java.version>
         <!-- 对象存储只走 S3 协议（ADR-0011），客户端用 AWS SDK for Java v2 -->
         <awssdk.version>2.39.2</awssdk.version>
+        <forge.middleware.skip>false</forge.middleware.skip>
+        <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
         <spotless-maven-plugin.version>3.10.4</spotless-maven-plugin.version>
         <palantir-java-format.version>2.102.0</palantir-java-format.version>
     </properties>
@@ -259,6 +261,38 @@
             </plugins>
         </pluginManagement>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>${maven-enforcer-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>enforce-middleware-boundary</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <phase>validate</phase>
+                        <configuration>
+                            <skip>${forge.middleware.skip}</skip>
+                            <rules>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>org.springframework.data:spring-data-redis</exclude>
+                                        <exclude>org.redisson:*</exclude>
+                                        <exclude>io.lettuce:*</exclude>
+                                        <exclude>redis.clients:jedis</exclude>
+                                        <exclude>org.apache.rocketmq:*</exclude>
+                                        <exclude>com.alibaba.nacos:*</exclude>
+                                        <exclude>com.xuxueli:xxl-job-*</exclude>
+                                    </excludes>
+                                    <searchTransitive>false</searchTransitive>
+                                    <message>Do not depend on middleware clients directly. Use spring-boot-starter-data-redis with forge-sdk-tenant / forge-sdk-security, forge-sdk-mq for RocketMQ, Spring Cloud Nacos starters for discovery/config, and forge-sdk-scheduling for scheduled tasks.</message>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <!-- 平台版本只在 .mvn/maven.config 的 revision 维护一处；安装与发布前把 ${revision} 替换为实际版本，
                  否则仓库外工程无法解析父 POM 与 forge.version。不继承：业务服务以本 BOM 为父 POM，不需要这一步。 -->
             <plugin>

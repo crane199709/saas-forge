@@ -12,6 +12,11 @@
     <name>Forge SDK Reference Data</name>
     <description>读取当前租户生效的 Dictionary 与 Parameter，按租户缓存并按 iam 在 Redis 发布的版本号失效</description>
 
+    <properties>
+        <!-- 参考数据缓存读取 IAM 发布的 Redis 版本号，需要直接使用 Spring Data Redis API。 -->
+        <forge.middleware.skip>true</forge.middleware.skip>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.saasforge</groupId>

@@ -8,6 +8,16 @@
 - **Realm**：Token 的签发域。租户用户的 Token 属于 Tenant Realm，平台运营人员（Operator）的 Token 属于 Platform Realm，两者互不通用。
 - **标准表**：带审计标准列并使用逻辑删除的表，范围见「建表与标准列」。
 
+## 中间件依赖入口
+
+业务工程以 `forge-dependencies` 为父 POM，自动继承 `validate` 阶段的中间件依赖门禁；仅以 BOM `import` 方式管理版本不会继承构建插件。直接声明的依赖即使是 optional 或 test scope，也受检查。
+
+- Redis 连接通过 `spring-boot-starter-data-redis` 接入，租户前缀与安全能力使用 `forge-sdk-tenant`、`forge-sdk-security`。这两个 Forge starter 的 Redis 依赖是 optional，需要 Redis 的服务仍须显式引入 Boot starter。
+- RocketMQ 使用 `forge-sdk-mq`；任务调度使用 `forge-sdk-scheduling`。
+- Nacos 发现与配置使用 `spring-cloud-starter-alibaba-nacos-discovery`、`spring-cloud-starter-alibaba-nacos-config`。
+
+门禁禁止直接声明 Spring Data Redis、Redisson、Lettuce、Jedis、RocketMQ 与 Nacos 原生客户端、XXL-JOB。上述 starter 带入的传递依赖不受禁令影响。基础设施实现模块只有确需直引时才可设置 `forge.middleware.skip=true`，在属性旁写明原因，并同步平台的中间件豁免清单；业务服务保持默认门禁。
+
 ## SQL 与持久层
 
 手写 SQL 只能写在 mapper XML 中。这样 SQL 集中在一处便于审查；SDK 通过 MyBatis-Plus 拦截器自动注入租户过滤与数据权限条件，SQL 集中在 mapper 中，拦截器对 SQL 的改写才可预期。SDK 只支持 MyBatis-Plus，不支持 JPA 等其他持久层，用其他持久层得不到自动隔离保障。

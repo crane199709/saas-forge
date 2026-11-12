@@ -31,6 +31,14 @@ cd orders-service
 
 维护模板时，在平台仓库执行 `cd backend && ./mvnw install -Parchetype-it`；该 profile 启用 archetype 自带的生成集成测试。普通 reactor `verify` 不运行这一独立 Maven 消费接缝，避免冷缓存下引用尚未安装的同次 SDK；已发布/安装 SDK 后也可单独 `./mvnw -pl forge-service-archetype clean verify -Parchetype-it`。CI 使用包含模板测试的 install 命令。
 
+## 中间件依赖门禁
+
+生成工程以 `forge-dependencies` 为父 POM，无须额外声明插件，执行 `./mvnw validate` 即检查直接依赖；`test`、`verify` 等后续阶段也会先运行门禁。只 import BOM 不会继承门禁。
+
+Redis 保留模板的 `spring-boot-starter-data-redis`，配合 `forge-sdk-tenant` / `forge-sdk-security`；RocketMQ 使用 `forge-sdk-mq`，调度使用 `forge-sdk-scheduling`；Nacos 使用模板中的 Spring Cloud discovery/config starter。门禁只拦原生客户端的直接声明，不拦 starter 的传递依赖。直接加入 `org.springframework.data:spring-data-redis`、Redisson、Lettuce、Jedis、RocketMQ/Nacos 原生客户端或 XXL-JOB 时，构建在 `validate` 失败并列出依赖及替代 starter；optional 与 test scope 同样检查。
+
+基础设施模块确需直引时，在模块 POM 显式设置 `forge.middleware.skip=true` 并注释原因；SDK MQ 的 RocketMQ 传输与 Reference Data 的 Redis 版本缓存是当前两处豁免。平台 gateway、iam、platform 及 tenant 等模块经受支持的 starter 接入，继续受门禁约束。新增或变更豁免时同步[SDK 依赖与中间件豁免清单](sdk-dependency-gate.md)。业务服务保持默认门禁。
+
 ## Sub-App 本地启动
 
 前端脚手架按创建时的应用编码和端口生成 `pnpm start:<应用编码>`。例如应用编码为 `lowcode`、端口为 `5176` 时，在生成的工程目录执行：
