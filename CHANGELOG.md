@@ -6,6 +6,8 @@
 
 ### 变更
 
+- `ExcelIo.export` 按敏感列登记路径复用统一引擎，每任务一次不可变快照，零行也预检缺规则与 L4，失败以 `io.maskingFailed` 结束且不上传结果文件，导出成功与失败审计均省略可能含原文的查询摘要。`forge-sdk-security` 在 Boot 日志初始化前登记本地声明与 Logback `%m`/`%msg`/`%message`/`%kvp` converter，支持命名占位参数、结构化 key/value 与 `SensitiveLogValue.of`；包装对象字符串化始终安全。日志按事件 MDC 读取租户，独立一秒有效快照异步刷新，首次、过期、不可用或失败时丢值并写非递归 status 告警；不阻断业务，关闭应用释放线程和运行时。新增业务规范「敏感字段导出与日志」，同步 archetype、sub-app-kit 生成规则、子应用规范与服务指南；旧服务不新增必配项，SDK API 随未发布 `0.2.0-SNAPSHOT` 发布。
+
 - Shell 新增租户端与运营端数据安全页面，IAM 新增数据安全：平台固定 L1–L4（L4 禁止导出）、九种预置策略规则及 CRUD/预览，租户可为 Manifest 敏感字段选择或恢复规则；按租户覆盖 > 字段默认 > 分级默认解析。新增独立读/管理权限码并升级 IAM 清单版本，规则和登记变更写不含原文的审计；强制租户 RLS 与全租户引用检查、统一事务锁防止并发删除被引用规则。`forge-sdk-security` 新增无缓存 IAM HTTP 策略提供方；业务规范新增可选运行时配置：显式启用 `forge.field-masking.enabled=true` 时必须提供 `iam-uri` 与 `token`，旧服务不新增必配项。archetype 配置说明、sub-app-kit 生成说明与配套规范、业务服务指南同步，前端不得持有服务凭证。API 随未发布 `0.2.0-SNAPSHOT` 发布。
 
 - `forge-sdk-security` 新增固定 `MaskingRule`、纯 `MaskingEngine.validate/apply/preview`、安全预览结果与通道共用的生效字段策略端口。九种策略统一按 Unicode 码点保留字符，严格拒绝未知策略和无关参数；固定保留范围覆盖短值时全部掩码，`keepFirst` 保留整值及所有非空未改变结果失败，异常不包含原文。新增 API 保持现有调用兼容，随当前未发布 `0.2.0-SNAPSHOT` 发布；未新增配置、业务编码规则或脚手架必需项。

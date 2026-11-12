@@ -18,6 +18,12 @@
     </properties>
 
     <dependencies>
+        <!-- 日志适配可选，不强制非 Logback 应用采用此日志后端。 -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <optional>true</optional>
+        </dependency>
         <dependency>
             <groupId>io.saasforge</groupId>
             <artifactId>forge-architecture</artifactId>

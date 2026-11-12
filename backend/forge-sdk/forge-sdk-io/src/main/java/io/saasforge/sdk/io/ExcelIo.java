@@ -3,6 +3,10 @@ package io.saasforge.sdk.io;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.referencedata.ReferenceData;
 import io.saasforge.sdk.referencedata.TenantDictionaryItem;
+import io.saasforge.sdk.security.EffectiveFieldPolicy;
+import io.saasforge.sdk.security.FieldMaskingPolicyProvider;
+import io.saasforge.sdk.security.MaskingRule;
+import io.saasforge.sdk.security.TenantContext;
 import io.saasforge.sdk.storage.ObjectStorage;
 import io.saasforge.sdk.storage.StoredObject;
 import jakarta.validation.Validator;
@@ -17,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -40,6 +45,7 @@ public final class ExcelIo {
     private final Validator validator;
     private final IoProperties properties;
     private final TransactionTemplate transaction;
+    private final FieldMaskingPolicyProvider masking;
 
     ExcelIo(
             IoTasks tasks,
@@ -47,20 +53,25 @@ public final class ExcelIo {
             ReferenceData reference,
             Validator validator,
             IoProperties properties,
-            TransactionTemplate transaction) {
+            TransactionTemplate transaction,
+            FieldMaskingPolicyProvider masking) {
         this.tasks = tasks;
         this.storage = storage;
         this.reference = reference;
         this.validator = validator;
         this.properties = properties;
         this.transaction = transaction;
+        this.masking = masking;
     }
     /**
      * 按提交时的数据权限异步导出。业务方须在 read 中沿用列表的查询条件，逐页或游标调用 consumer，不能整体加载全部数据。
      *
+     * <p>敏感列用 {@code @SensitiveField} 指定登记路径；每任务一份策略快照，零行也预检规则与 L4 限制。
+     * 失败任务无结果文件，导入、模板与错误报告不受影响。
+     *
      * @param model 导出 record 类型
      * @param filename 结果文件名，以 .xlsx 结尾
-     * @param querySummary 查询条件摘要，写入审计
+     * @param querySummary 不含敏感原文的查询条件摘要，写入审计
      * @param read 流式数据来源
      * @return 等待中的任务
      */
@@ -68,6 +79,17 @@ public final class ExcelIo {
         requireXlsx(filename);
         var columns = new ExcelModel<T>(model, reference);
         return tasks.submit("EXPORT", null, querySummary, progress -> {
+            // 任务只读取一次不可变快照；空导出也在创建文件前检查所有列。
+            final List<MaskingRule> rules;
+            try {
+                var snapshot = masking == null
+                        ? Map.<String, EffectiveFieldPolicy>of()
+                        : Map.copyOf(masking.policies(TenantContext.current().tenantId()));
+                rules = columns.exportRules(snapshot);
+            } catch (RuntimeException error) {
+                // 不保留外部客户端或反射异常的 cause，避免任务日志带出原文。
+                throw new ForgeException(IoErrorCode.MASKING_FAILED);
+            }
             Path output = Files.createTempFile("forge-export-", ".xlsx");
             try (var workbook = new StreamingWorkbook()) {
                 workbook.setCompressTempFiles(true);
@@ -75,7 +97,7 @@ public final class ExcelIo {
                 columns.header(sheet, false);
                 read.read(value -> {
                     if (progress.next() > properties.exportLimit()) throw new ForgeException(IoErrorCode.ROW_LIMIT);
-                    columns.write(sheet.createRow((int) progress.rows()), value);
+                    columns.write(sheet.createRow((int) progress.rows()), value, rules);
                 });
                 try (var stream = Files.newOutputStream(output)) {
                     workbook.write(stream);

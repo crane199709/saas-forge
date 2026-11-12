@@ -3,9 +3,11 @@ package io.saasforge.sdk.io;
 import io.saasforge.sdk.abac.data.DataPermission;
 import io.saasforge.sdk.audit.AuditRecorder;
 import io.saasforge.sdk.referencedata.ReferenceData;
+import io.saasforge.sdk.security.FieldMaskingPolicyProvider;
 import io.saasforge.sdk.storage.ObjectStorage;
 import jakarta.validation.Validator;
 import org.mybatis.spring.SqlSessionTemplate;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.MessageSource;
@@ -22,7 +24,8 @@ import org.springframework.transaction.support.TransactionTemplate;
             "StorageAutoConfiguration",
             "DataPermissionAutoConfiguration",
             "AuditAutoConfiguration",
-            "ReferenceDataAutoConfiguration"
+            "ReferenceDataAutoConfiguration",
+            "io.saasforge.sdk.security.FieldMaskingAutoConfiguration"
         })
 @EnableConfigurationProperties(IoProperties.class)
 public final class IoAutoConfiguration {
@@ -80,8 +83,16 @@ public final class IoAutoConfiguration {
             ReferenceData reference,
             Validator validator,
             IoProperties properties,
-            PlatformTransactionManager manager) {
-        return new ExcelIo(tasks, storage, reference, validator, properties, new TransactionTemplate(manager));
+            PlatformTransactionManager manager,
+            ObjectProvider<FieldMaskingPolicyProvider> masking) {
+        return new ExcelIo(
+                tasks,
+                storage,
+                reference,
+                validator,
+                properties,
+                new TransactionTemplate(manager),
+                masking.getIfAvailable());
     }
 
     // REQUIRES_NEW：任务行须在交给线程池前提交。工作线程用另一条连接执行 start，读不到调用方事务中未提交的行，任务会被直接跳过。
