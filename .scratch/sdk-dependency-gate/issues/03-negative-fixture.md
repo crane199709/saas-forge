@@ -4,7 +4,7 @@
 
 **Blocked by:** 01, 02
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] 负向 fixture 放在独立 profile 下，故意声明被禁止的依赖
 - [ ] CI 在指定 profile 下构建 fixture 并断言失败
