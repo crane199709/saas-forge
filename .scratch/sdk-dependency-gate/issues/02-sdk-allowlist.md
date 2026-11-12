@@ -4,7 +4,7 @@
 
 **Blocked by:** —
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] SDK 父 POM 配置 Enforcer：`bannedDependencies` 以模块白名单为 `includes`，`searchTransitive=false`
 - [ ] 每个模块在 POM 声明允许的直接依赖；新增依赖必须更新白名单
