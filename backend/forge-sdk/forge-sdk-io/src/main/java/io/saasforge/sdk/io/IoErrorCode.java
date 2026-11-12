@@ -24,6 +24,8 @@ public enum IoErrorCode implements ErrorCode {
     VALIDATION_FAILED("io.validationFailed", 400),
     /** 实例中断或任务超时。 */
     INTERRUPTED("io.interrupted", 500),
+    /** 字段策略缺失、禁止导出或执行失败；不得回退为原文。 */
+    MASKING_FAILED("io.maskingFailed", 500),
     /** 执行异常。 */
     FAILED("io.failed", 500);
     private final String code;

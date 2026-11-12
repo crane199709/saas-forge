@@ -9,11 +9,11 @@ import io.saasforge.sdk.core.ResourceManifest.Permission;
 import io.saasforge.sdk.core.ResourceManifest.RoleTemplate;
 import io.saasforge.sdk.core.ResourceManifest.SensitiveField;
 import io.saasforge.sdk.security.RequiresPermission;
+import io.saasforge.sdk.security.SensitiveFieldDeclarations;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -92,7 +92,7 @@ public final class ResourceManifestCollector {
             permissions.add(new Permission(code, name, info == null ? null : info.group()));
         }
         List<SensitiveField> sensitiveFields = new ArrayList<>(file.sensitiveFields());
-        sensitiveFields.addAll(scanSensitiveFields(basePackage, classLoader));
+        sensitiveFields.addAll(SensitiveFieldDeclarations.annotated(basePackage, classLoader));
         sensitiveFields.sort(
                 Comparator.comparing(SensitiveField::path, Comparator.nullsFirst(Comparator.naturalOrder())));
         var manifest = new ResourceManifest(
@@ -159,50 +159,6 @@ public final class ResourceManifestCollector {
             }
         }
         return codes;
-    }
-
-    private static List<SensitiveField> scanSensitiveFields(String basePackage, ClassLoader classLoader) {
-        var scanner = new ClassPathScanningCandidateComponentProvider(false) {
-            @Override
-            protected boolean isCandidateComponent(AnnotatedBeanDefinition definition) {
-                return true;
-            }
-        };
-        scanner.setResourceLoader(new DefaultResourceLoader(classLoader));
-        scanner.addIncludeFilter((reader, factory) -> true);
-        List<SensitiveField> fields = new ArrayList<>();
-        for (var candidate : scanner.findCandidateComponents(basePackage)) {
-            try {
-                // 字段注解不在 Spring 的类元数据中；只加载类型，不执行静态初始化，CI 生成清单无需启动业务类。
-                Class<?> type = Class.forName(candidate.getBeanClassName(), false, classLoader);
-                Map<String, io.saasforge.sdk.security.SensitiveField> recordFields = new HashMap<>();
-                for (var field : type.getDeclaredFields()) {
-                    var annotation = field.getAnnotation(io.saasforge.sdk.security.SensitiveField.class);
-                    if (annotation == null) continue;
-                    fields.add(declaration(annotation));
-                    if (type.isRecord()) recordFields.put(field.getName(), annotation);
-                }
-                for (var method : type.getDeclaredMethods()) {
-                    var annotation = method.getAnnotation(io.saasforge.sdk.security.SensitiveField.class);
-                    if (annotation == null) continue;
-                    // record component 的同一声明同时出现在 backing field 与 accessor 上，不是两次登记。
-                    if (method.getParameterCount() == 0 && annotation.equals(recordFields.get(method.getName())))
-                        continue;
-                    fields.add(declaration(annotation));
-                }
-            } catch (ClassNotFoundException | LinkageError error) {
-                throw new IllegalStateException(
-                        "Cannot scan Sensitive Field declarations in " + candidate.getBeanClassName(), error);
-            }
-        }
-        return fields;
-    }
-
-    private static SensitiveField declaration(io.saasforge.sdk.security.SensitiveField annotation) {
-        return new SensitiveField(
-                annotation.path(),
-                annotation.grade(),
-                annotation.defaultRule().isEmpty() ? null : annotation.defaultRule());
     }
 
     private static ManifestFile read(ClassLoader classLoader, String location) {

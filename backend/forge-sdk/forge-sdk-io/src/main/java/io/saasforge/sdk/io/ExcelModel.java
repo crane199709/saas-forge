@@ -1,8 +1,13 @@
 package io.saasforge.sdk.io;
 
+import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.referencedata.DictionaryValue;
 import io.saasforge.sdk.referencedata.ReferenceData;
 import io.saasforge.sdk.referencedata.TenantDictionaryItem;
+import io.saasforge.sdk.security.EffectiveFieldPolicy;
+import io.saasforge.sdk.security.MaskingEngine;
+import io.saasforge.sdk.security.MaskingRule;
+import io.saasforge.sdk.security.SensitiveField;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
@@ -11,8 +16,10 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.poi.ss.usermodel.Row;
@@ -66,7 +73,28 @@ final class ExcelModel<T> {
         sheet.createFreezePane(0, 1);
     }
 
-    void write(Row row, T value) {
+    List<MaskingRule> exportRules(Map<String, EffectiveFieldPolicy> snapshot) {
+        var engine = new MaskingEngine();
+        var rules = new ArrayList<MaskingRule>();
+        for (var column : columns) {
+            var annotation = column.component.getAnnotation(SensitiveField.class);
+            String path = annotation == null ? column.component.getName() : annotation.path();
+            var field = snapshot.get(path);
+            if (annotation != null && field == null) throw new ForgeException(IoErrorCode.MASKING_FAILED);
+            if (field != null) {
+                if (!field.exportAllowed()
+                        || "L4".equals(field.grade())
+                        || (annotation != null && "L4".equals(annotation.grade()))) {
+                    throw new ForgeException(IoErrorCode.MASKING_FAILED);
+                }
+                engine.validate(field.rule());
+            }
+            rules.add(field == null ? null : field.rule());
+        }
+        return Collections.unmodifiableList(rules);
+    }
+
+    void write(Row row, T value, List<MaskingRule> rules) {
         for (int i = 0; i < columns.size(); i++) {
             var column = columns.get(i);
             try {
@@ -80,9 +108,10 @@ final class ExcelModel<T> {
                             .findFirst()
                             .orElse(text);
                 }
+                if (rules.get(i) != null) text = new MaskingEngine().apply(rules.get(i), text);
                 row.createCell(i).setCellValue(text);
-            } catch (ReflectiveOperationException error) {
-                throw new IllegalArgumentException(error);
+            } catch (ReflectiveOperationException | RuntimeException error) {
+                throw new ForgeException(IoErrorCode.MASKING_FAILED);
             }
         }
     }

@@ -294,6 +294,22 @@ JSON 响应在发送前完整序列化到内存中的 JSON 树，发送阶段不
 
 业务代码通过统一通道脱敏，不自行定义 Jackson serializer、以 `@JsonSerialize` 指定 serializer/converter 或拼接掩码。共享 ArchUnit 检查自定义序列化入口及常见重复星号字面量与截取、替换、重复的组合；普通 `String.replace`、`repeat` 不受限制，静态规则不能证明任意计算安全，仍须验证真实 HTTP 输出。
 
+## 敏感字段导出与日志
+
+导出 record 的敏感列用 `@SensitiveField(path = "customer.phone", grade = "L3")` 对应已登记路径，继续调用 `ExcelIo.export`。未注解的列只按 record component 名精确匹配已登记路径；未匹配列保持原样。一个导出任务只取一次租户生效快照，在创建结果文件前预检全部列（包括零行导出），字典列先翻译显示名再脱敏。已注解但未登记、缺规则、规则执行失败或 L4 字段均以 `io.maskingFailed` 结束任务，不提供结果文件；导出成功与失败的审计都只包含任务与错误码等元数据，不记录自由文本查询摘要。查询摘要、文件名与其他审计详情使用不含敏感原文的说明。导入、模板与错误报告不走导出脱敏。
+
+Logback 的 `%m`、`%msg`、`%message` 与 `%kvp` 由 SDK 在日志初始化前注册。支持两种参数契约：
+
+```java
+log.info("customer.phone={} order={}", phone, orderNumber);
+log.info("customer={}", SensitiveLogValue.of("customer.phone", phone));
+log.atInfo().addKeyValue("customer.phone", phone).log("customer updated");
+```
+
+第一种使用完整路径或唯一的字段短名（如 `phone={}`），名称紧邻 `=` 或 `:` 与 `{}`；短名有歧义时丢弃值。第二种使用 `io.saasforge.sdk.security.SensitiveLogValue`，其 `toString()` 始终为 `[redacted]`。结构化 key/value 经 `%kvp` 使用同样的字段名和包装契约。普通参数保持原样。敏感原值均通过上述契约传递；字符串拼接、预先格式化的消息、无名称的位置参数、整个 DTO、异常消息与自定义 JSON 日志 encoder 不在自动识别范围内，调用方须使用安全参数，保留 SDK 的消息及 key/value converter。
+
+日志字段名由应用包注解与本地 Manifest 提前登记，不等待 IAM。日志转换只读取事件捕获的 `tenant_id` MDC 和最长有效一秒的不可变快照，异步刷新 IAM，不在请求或 Logback 线程执行 HTTP。首次日志可能使用 `[redacted]`；配置变更至多一秒收敛。快照过期、缺规则、IAM 不可用、租户上下文缺失或执行失败时立即丢弃原值，并通过非递归的 Logback status 通道告警，不阻断请求。日志这一秒快照不用于导出或在线响应；两者仍按每次执行读取 IAM。关闭应用会释放日志工作线程、快照和策略提供方，停机阶段仍丢弃敏感原值。
+
 ## 启动上报与内部状态
 
 引入 `forge-sdk-manifest` 的 Servlet 服务必须配置独立 `forge.ops.token`；该模块带入 Ops 安全链，令牌漏配时启动失败，包括关闭上报的服务。Service Credential（`forge.manifest.token`）只用于向 IAM 上报，不能读取 `/internal/onboarding-status`，也不能与 Ops Token 混用。脚手架已包含两个模块与各自配置项。

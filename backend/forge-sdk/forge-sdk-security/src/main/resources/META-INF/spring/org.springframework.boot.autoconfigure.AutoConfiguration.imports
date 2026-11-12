@@ -3,3 +3,4 @@ io.saasforge.sdk.security.MembershipGrantsAutoConfiguration
 io.saasforge.sdk.security.PermissionAutoConfiguration
 io.saasforge.sdk.security.FieldMaskingAutoConfiguration
 io.saasforge.sdk.security.FieldMaskingJacksonAutoConfiguration
+io.saasforge.sdk.security.FieldMaskingLoggingAutoConfiguration

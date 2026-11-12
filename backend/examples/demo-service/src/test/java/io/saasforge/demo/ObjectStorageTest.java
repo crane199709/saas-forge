@@ -3,10 +3,13 @@ package io.saasforge.demo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.saasforge.demo.category.mapper.OutboxAuditMapper;
 import io.saasforge.demo.order.model.OrderImportRow;
 import io.saasforge.demo.order.service.OrderService;
 import io.saasforge.sdk.abac.DataScope;
 import io.saasforge.sdk.abac.data.DataPermission;
+import io.saasforge.sdk.audit.AuditEvent;
+import io.saasforge.sdk.audit.AuditOutcome;
 import io.saasforge.sdk.core.CurrentActorProvider;
 import io.saasforge.sdk.core.CurrentTenant;
 import io.saasforge.sdk.core.MembershipStateKeys;
@@ -22,6 +25,7 @@ import io.saasforge.sdk.io.IoTask;
 import io.saasforge.sdk.io.IoTasks;
 import io.saasforge.sdk.mq.EventHandler;
 import io.saasforge.sdk.provisioning.TenantPlanChanged;
+import io.saasforge.sdk.security.SensitiveField;
 import io.saasforge.sdk.security.TenantContext;
 import io.saasforge.sdk.storage.ObjectStorage;
 import io.saasforge.sdk.storage.StorageErrorCode;
@@ -84,6 +88,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.S3Object;
+import tools.jackson.databind.json.JsonMapper;
 
 /** 订单附件经 SDK 对象存储上传、下载与删除（工单 24）：key 前缀由 SDK 强制、跨租户访问被拒、超出存储容量 Quota 的上传被拒。 */
 @Testcontainers
@@ -130,6 +135,7 @@ class ObjectStorageTest {
         registry.add("forge.storage.access-key", () -> ACCESS_KEY);
         registry.add("forge.storage.secret-key", () -> SECRET_KEY);
         TestTokens.register(registry);
+        TestExportMasking.register(registry);
     }
 
     @BeforeAll
@@ -860,6 +866,134 @@ class ObjectStorageTest {
         assertThat(task.get("errorCode")).isEqualTo("io.validationFailed");
         assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
                 .isEmpty();
+    }
+
+    public record MaskedExportRow(
+            @ExcelColumn(value = "手机号", order = 1) @SensitiveField(path = "exportSample.phone", grade = "L3")
+            String phone,
+
+            @ExcelColumn(value = "备注", order = 2) String note) {}
+
+    @Test
+    void sensitiveExportMasksCellsAndLeavesUndeclaredColumnsUntouched() throws Exception {
+        TestExportMasking.policies(tenant, """
+                {"exportSample.phone":{"path":"exportSample.phone","grade":"L3","rule":{"strategy":"phone"},"exportAllowed":true}}
+                """);
+        var submitted = asMember(() -> excel.export(
+                MaskedExportRow.class,
+                "脱敏.xlsx",
+                "phone=13812345678",
+                rows -> rows.accept(new MaskedExportRow("13812345678", "ORD-UNCHANGED"))));
+        var task = awaitTask(submitted.id().toString());
+        assertThat(task.get("status")).isEqualTo("SUCCEEDED");
+        List<String> audits = List.of();
+        for (int i = 0; i < 100; i++) {
+            audits = maskingAudit.payloads(tenant, "AuditEvent").stream()
+                    .filter(payload -> payload.contains(submitted.id().toString()))
+                    .toList();
+            if (!audits.isEmpty()) break;
+            Thread.sleep(10);
+        }
+        assertThat(audits)
+                .singleElement()
+                .satisfies(payload -> assertThat(payload).contains("export.run").doesNotContain("13812345678"));
+        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(downloadTaskFile(task)))) {
+            assertThat(workbook.getSheetAt(0).getRow(1).getCell(0).getStringCellValue())
+                    .isEqualTo("138****5678");
+            assertThat(workbook.getSheetAt(0).getRow(1).getCell(1).getStringCellValue())
+                    .isEqualTo("ORD-UNCHANGED");
+        }
+    }
+
+    @Test
+    void sensitiveExportRejectsMissingRulesAndL4EvenWithZeroRows() throws Exception {
+        for (String policy : List.of("{}", """
+                {"exportSample.phone":{"path":"exportSample.phone","grade":"L3","exportAllowed":true}}
+                """, """
+                {"exportSample.phone":{"path":"exportSample.phone","grade":"L4","rule":{"strategy":"phone"},"exportAllowed":false}}
+                """)) {
+            TestExportMasking.policies(tenant, policy);
+            var submitted = asMember(() -> excel.export(MaskedExportRow.class, "禁止.xlsx", "safe query", rows -> {}));
+            var task = awaitTask(submitted.id().toString());
+            assertThat(task.get("status")).isEqualTo("FAILED");
+            assertThat(task.get("errorCode")).isEqualTo("io.maskingFailed");
+            assertThat(task.get("resultObjectId")).isNull();
+            assertThat(exchange(tenant, HttpMethod.GET, "/io/tasks/" + submitted.id() + "/download", null)
+                            .get("code"))
+                    .isEqualTo("io.resultUnavailable");
+        }
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(storage.usage().usedBytes()).isZero();
+        }
+    }
+
+    @Autowired
+    OutboxAuditMapper maskingAudit;
+
+    @Test
+    void exportExecutionFailureProducesNoFileAndAuditsOnlySafeMetadata() throws Exception {
+        TestExportMasking.policies(tenant, """
+                {"exportSample.phone":{"path":"exportSample.phone","grade":"L3","rule":{"strategy":"keepFirst","keepFirst":99},"exportAllowed":true}}
+                """);
+        var submitted = asMember(() -> excel.export(
+                MaskedExportRow.class,
+                "失败.xlsx",
+                "phone=13812345678",
+                rows -> rows.accept(new MaskedExportRow("13812345678", "safe-note"))));
+        var task = awaitTask(submitted.id().toString());
+        assertThat(task.get("status")).isEqualTo("FAILED");
+        assertThat(task.get("resultObjectId")).isNull();
+        List<AuditEvent> events = List.of();
+        for (int i = 0; i < 100; i++) {
+            events = maskingAudit.payloads(tenant, "AuditEvent").stream()
+                    .map(payload -> JsonMapper.builder().build().readValue(payload, AuditEvent.class))
+                    .filter(event -> submitted.id().toString().equals(event.resourceId()))
+                    .toList();
+            if (!events.isEmpty()) break;
+            Thread.sleep(10);
+        }
+        assertThat(events).singleElement().satisfies(event -> {
+            assertThat(event.action()).isEqualTo("export.run");
+            assertThat(event.outcome()).isEqualTo(AuditOutcome.FAILURE);
+            assertThat(event.errorCode()).isEqualTo("io.maskingFailed");
+            assertThat(JsonMapper.builder().build().writeValueAsString(event)).doesNotContain("13812345678");
+        });
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(storage.usage().usedBytes()).isZero();
+        }
+    }
+
+    @Test
+    void exportUsesOneSnapshotAndNextTaskObservesConfigurationChanges() throws Exception {
+        String phonePolicy = """
+                {"exportSample.phone":{"path":"exportSample.phone","grade":"L3","rule":{"strategy":"phone"},"exportAllowed":true}}
+                """;
+        String replacement = """
+                {"exportSample.phone":{"path":"exportSample.phone","grade":"L3","rule":{"strategy":"replace","replacement":"[changed]"},"exportAllowed":true}}
+                """;
+        TestExportMasking.policies(tenant, phonePolicy);
+        var submitted = asMember(() -> excel.export(MaskedExportRow.class, "快照.xlsx", "safe query", rows -> {
+            rows.accept(new MaskedExportRow("13812345678", "one"));
+            TestExportMasking.policies(tenant, replacement);
+            rows.accept(new MaskedExportRow("13912345678", "two"));
+        }));
+        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(
+                downloadTaskFile(awaitTask(submitted.id().toString()))))) {
+            assertThat(workbook.getSheetAt(0).getRow(1).getCell(0).getStringCellValue())
+                    .isEqualTo("138****5678");
+            assertThat(workbook.getSheetAt(0).getRow(2).getCell(0).getStringCellValue())
+                    .isEqualTo("139****5678");
+        }
+        submitted = asMember(() -> excel.export(
+                MaskedExportRow.class,
+                "新规则.xlsx",
+                "safe query",
+                rows -> rows.accept(new MaskedExportRow("13812345678", "one"))));
+        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(
+                downloadTaskFile(awaitTask(submitted.id().toString()))))) {
+            assertThat(workbook.getSheetAt(0).getRow(1).getCell(0).getStringCellValue())
+                    .isEqualTo("[changed]");
+        }
     }
 
     @Test
