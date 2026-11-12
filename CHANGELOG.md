@@ -6,6 +6,8 @@
 
 ### 变更
 
+- `forge-sdk-security` 新增固定 `MaskingRule`、纯 `MaskingEngine.validate/apply/preview`、安全预览结果与通道共用的生效字段策略端口。九种策略统一按 Unicode 码点保留字符，严格拒绝未知策略和无关参数；固定保留范围覆盖短值时全部掩码，`keepFirst` 保留整值及所有非空未改变结果失败，异常不包含原文。新增 API 保持现有调用兼容，随当前未发布 `0.2.0-SNAPSHOT` 发布；未新增配置、业务编码规则或脚手架必需项。
+
 - Resource Manifest 新增可选 `sensitiveFields`（路径、L1–L4 分级、可选默认规则），SDK 提供 `@SensitiveField` 并在 CLI/启动生成时合并字段与 getter 声明，上报前再次校验；重复路径、非法路径与分级拒绝。业务规范新增「敏感字段登记」，声明变化须升 `forge.manifest.version`；空声明保持旧清单内容兼容，不增加必配项。archetype 带空声明与版本提示，sub-app-kit 配套规范新增服务端脱敏值展示规则，生成的 AGENTS 摘要与服务接入指南同步。SDK 保持当前 `0.2.0-SNAPSHOT` 开发版本。
 
 - **破坏性**：IAM、Platform、Demo 服务端统一使用 `FORGE_OPS_TOKEN`，Platform/Demo 的清单及 IAM 目录访问统一使用 `FORGE_MANIFEST_TOKEN`，移除本地静态默认凭证。Platform 不再内置服务令牌列表，完整映射通过专属 `forge-platform.yaml` 提供。新增独立服务环境文件与映射样例；本地启动、隔离 E2E、业务服务规范、archetype、sub-app-kit 配套规范、中英文 README 同步。既有环境须保留原值迁移到各服务私有文件，不能共用通用变量文件；IAM 已弃用的静态引导 Map 仍保留兼容。
