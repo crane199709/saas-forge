@@ -1,6 +1,6 @@
 # 权限目录契约规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准：Permission Code、Resource Manifest、Permission Catalog。本规格不单独记录 ADR，因为目录是构建期快照，移除或替换不影响运行时语义。
 
@@ -69,3 +69,7 @@ Permission Code 分散在各服务的 Resource Manifest、注解和 IAM 的权�
 - 目录是“可审查快照”，不是授权数据源；删除某个权限码仍走 IAM 的停用流程。
 - 动作词表先覆盖现有常用动作，新增动作需要更新白名单并说明理由。
 - 外部 Sub-App 若需要冲突检查，使用发布后的目录文件；平台不承诺目录包含尚未上报的外部服务。
+
+## 验收
+
+- 2026-11-12：工单 01–03 已完成并合入 `codex/permission-catalog`。测试、双轴审查与验证边界见 [验收记录](acceptance.md)。
