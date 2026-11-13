@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.saasforge.demo.category.mapper.OutboxAuditMapper;
 import io.saasforge.demo.order.model.OrderImportRow;
 import io.saasforge.demo.order.model.OrderOverwriteRow;
+import io.saasforge.demo.order.service.OrderIoService;
 import io.saasforge.demo.order.service.OrderService;
 import io.saasforge.sdk.abac.DataScope;
 import io.saasforge.sdk.abac.data.DataPermission;
@@ -53,6 +54,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -1350,50 +1352,31 @@ class ObjectStorageTest {
 
     @Test
     void expiryPreservesCommittedRecoveryCountsEvenWhenTheExecutionWasInterruptedBeforeItsSummary() throws Exception {
-        String source = uploadWorkbook(new String[][] {{"external-one", "1", "线上"}, {"external-two", "2", "线上"}});
-        asMember(() -> {
-            storage.completeUpload(UUID.fromString(source));
-            return null;
-        });
-        try (var instance = anotherIoInstance(Map.of("forge.io.backup-retention", "2s"))) {
-            var shortLived = instance.getBean(ExcelIo.class);
-            var submitted = asMember(
-                    () -> shortLived.importFile(OrderImportRow.class, UUID.fromString(source), row -> List.of()));
+        String first = createOrder(tenant);
+        String second = createOrder(tenant);
+        String source = uploadWorkbook(
+                new String[] {"标题 *", "金额 *", "客户来源", "订单ID"},
+                new String[][] {{"覆盖一", "2", "线上", first}, {"覆盖二", "3", "线上", second}});
+        try (var instance = anotherIoInstance(Map.of("forge.io.backup-retention", "3s"))) {
+            var shortLived = new OrderIoService(orderService, instance.getBean(ExcelIo.class), storage, rollbacks);
+            var submitted = asMember(() -> shortLived.importOverwrite(UUID.fromString(source)));
             awaitValidation(submitted.id().toString());
-            asMember(() -> shortLived.confirmImport(
-                    submitted.id(), OrderImportRow.class, row -> List.of(), new ImportWriter<>() {
-                        @Override
-                        public ImportSnapshot beforeWrite(OrderImportRow row) {
-                            return new ImportSnapshot(row.title(), Map.of("title", "old"));
-                        }
-
-                        @Override
-                        public String write(OrderImportRow row) {
-                            return "v1";
-                        }
-                    }));
+            asMember(() -> shortLived.confirmOverwrite(submitted.id()));
             awaitTask(submitted.id().toString());
             var task = asMember(() -> ioTasks.get(submitted.id()));
+            var startedAt = Instant.now();
             var recoveries = new AtomicInteger();
+            var restoredId = new AtomicReference<String>();
+            var interruptedId = new AtomicReference<String>();
             assertThatThrownBy(() -> asMember(() ->
-                            rollbacks.execute(task.id(), OrderImportRow.class, false, new ImportRollbackWriter() {
-                                @Override
-                                public String readVersion(String id) {
-                                    return "v1";
+                            rollbacks.execute(task.id(), OrderOverwriteRow.class, false, rollbackWriter(backup -> {
+                                restoreBackup(backup);
+                                if (recoveries.incrementAndGet() == 2) {
+                                    interruptedId.set(backup.recordId());
+                                    throw new AssertionError("Interrupted before summary");
                                 }
-
-                                @Override
-                                public String lockAndReadVersion(String id) {
-                                    return "v1";
-                                }
-
-                                @Override
-                                public void restore(ImportBackup backup) {
-                                    if (recoveries.incrementAndGet() == 2) {
-                                        throw new AssertionError("Interrupted before summary");
-                                    }
-                                }
-                            })))
+                                restoredId.set(backup.recordId());
+                            }))))
                     .isInstanceOf(AssertionError.class);
             while (task.snapshotExpiresAt().isAfter(OffsetDateTime.now())) {
                 Thread.sleep(25);
@@ -1405,6 +1388,52 @@ class ObjectStorageTest {
             assertThat(history.rollbackStatus()).isEqualTo("PARTIAL");
             assertThat(history.snapshotCount()).isEqualTo(2);
             assertThat(asMember(() -> backups.list(task.id(), 100, 0))).isEmpty();
+            assertThat(((Map<?, ?>) exchange(tenant, HttpMethod.GET, "/orders/" + restoredId.get(), null)
+                                    .get("data"))
+                            .get("title"))
+                    .isEqualTo("附件订单");
+            assertThat(((Map<?, ?>) exchange(tenant, HttpMethod.GET, "/orders/" + interruptedId.get(), null)
+                                    .get("data"))
+                            .get("title"))
+                    .isIn("覆盖一", "覆盖二");
+            assertThat(rollbackAuditEvents(task.id().toString()))
+                    .singleElement()
+                    .satisfies(event -> {
+                        assertThat(event.tenantId()).isEqualTo(tenant);
+                        assertThat(event.actorId()).isEqualTo(TestTokens.IDENTITY_ID);
+                        assertThat(event.resourceId()).isEqualTo(task.id().toString());
+                        assertThat(event.occurredAt()).isBetween(startedAt, Instant.now());
+                        assertThat(event.outcome()).isEqualTo(AuditOutcome.SUCCESS);
+                        assertThat(event.detail())
+                                .containsEntry("taskId", task.id().toString())
+                                .containsEntry("restoredCount", 1)
+                                .containsEntry("skippedCount", 0)
+                                .containsEntry("failedCount", 0);
+                    });
+            for (int attempt = 0; attempt < 2; attempt++) {
+                assertThat(exchange(
+                                        tenant,
+                                        HttpMethod.POST,
+                                        "/orders/import/" + task.id() + "/rollback",
+                                        Map.of("skipConflicts", false))
+                                .get("code"))
+                        .isEqualTo("io.rollbackUnavailable");
+            }
+            var events = rollbackAuditEvents(task.id().toString());
+            assertThat(events).hasSize(3);
+            assertThat(events.stream()
+                            .mapToLong(event -> ((Number) event.detail().get("restoredCount")).longValue())
+                            .sum())
+                    .isEqualTo(1);
+            assertThat(events.subList(1, 3)).allSatisfy(event -> {
+                assertThat(event.actorId()).isEqualTo(TestTokens.IDENTITY_ID);
+                assertThat(event.resourceId()).isEqualTo(task.id().toString());
+                assertThat(event.errorCode()).isEqualTo("io.rollbackUnavailable");
+                assertThat(event.detail())
+                        .containsEntry("restoredCount", 0)
+                        .containsEntry("skippedCount", 0)
+                        .containsEntry("failedCount", 0);
+            });
         }
     }
 
@@ -1524,9 +1553,15 @@ class ObjectStorageTest {
                 .map(payload -> JsonMapper.builder().build().readValue(payload, AuditEvent.class))
                 .filter(event -> event.action().equals("io.importRollback"))
                 .toList();
-        assertThat(events).hasSize(2);
-        assertThat(events.get(0).detail()).containsEntry("restoredCount", 1).containsEntry("failedCount", 1);
-        assertThat(events.get(1).detail()).containsEntry("restoredCount", 1).containsEntry("failedCount", 0);
+        assertThat(events).hasSize(3);
+        assertThat(events.stream().map(AuditEvent::detail).toList())
+                .containsExactlyInAnyOrder(
+                        Map.of("taskId", taskId, "restoredCount", 1, "skippedCount", 0, "failedCount", 0),
+                        Map.of("taskId", taskId, "restoredCount", 0, "skippedCount", 0, "failedCount", 1),
+                        Map.of("taskId", taskId, "restoredCount", 1, "skippedCount", 0, "failedCount", 0));
+        assertThat(events.stream().filter(event -> event.outcome() == AuditOutcome.FAILURE))
+                .singleElement()
+                .satisfies(event -> assertThat(event.errorCode()).isEqualTo("io.failed"));
     }
 
     @Test
@@ -1534,6 +1569,7 @@ class ObjectStorageTest {
         String taskId = submitOverwrite(
                 new String[][] {{"覆盖一", "2", "线上", createOrder(tenant)}, {"覆盖二", "3", "线上", createOrder(tenant)}});
         confirmOverwrite(taskId);
+        var startedAt = Instant.now();
         var steps = new AtomicInteger();
         var restoredId = new AtomicReference<String>();
         assertThatThrownBy(() -> asMember(() -> rollbacks.execute(
@@ -1546,6 +1582,20 @@ class ObjectStorageTest {
                         }))))
                 .isInstanceOf(AssertionError.class)
                 .hasMessage("Simulated process interruption");
+        var interruptedEvents = rollbackAuditEvents(taskId);
+        assertThat(interruptedEvents).singleElement().satisfies(event -> {
+            assertThat(event.tenantId()).isEqualTo(tenant);
+            assertThat(event.actorId()).isEqualTo(TestTokens.IDENTITY_ID);
+            assertThat(event.resourceType()).isEqualTo("ioTask");
+            assertThat(event.resourceId()).isEqualTo(taskId);
+            assertThat(event.occurredAt()).isBetween(startedAt, Instant.now());
+            assertThat(event.outcome()).isEqualTo(AuditOutcome.SUCCESS);
+            assertThat(event.detail())
+                    .containsEntry("taskId", taskId)
+                    .containsEntry("restoredCount", 1)
+                    .containsEntry("skippedCount", 0)
+                    .containsEntry("failedCount", 0);
+        });
         var beforeRetry = (Map<?, ?>) exchange(tenant, HttpMethod.GET, "/orders/" + restoredId.get(), null)
                 .get("data");
         var preview =
@@ -1561,6 +1611,29 @@ class ObjectStorageTest {
                                 .get("data"))
                         .get("updatedAt"))
                 .isEqualTo(beforeRetry.get("updatedAt"));
+        assertThat(rollbackAuditEvents(taskId)).hasSize(2).allSatisfy(event -> {
+            assertThat(event.actorId()).isEqualTo(TestTokens.IDENTITY_ID);
+            assertThat(event.resourceId()).isEqualTo(taskId);
+            assertThat(event.detail()).containsEntry("taskId", taskId).containsEntry("restoredCount", 1);
+        });
+        exchange(tenant, HttpMethod.POST, "/orders/import/" + taskId + "/rollback", Map.of("skipConflicts", false));
+        var repeatedEvents = rollbackAuditEvents(taskId);
+        assertThat(repeatedEvents).hasSize(3);
+        assertThat(repeatedEvents.stream()
+                        .mapToLong(event -> ((Number) event.detail().get("restoredCount")).longValue())
+                        .sum())
+                .isEqualTo(2);
+        assertThat(repeatedEvents.get(2).detail())
+                .containsEntry("restoredCount", 0)
+                .containsEntry("skippedCount", 0)
+                .containsEntry("failedCount", 0);
+    }
+
+    private List<AuditEvent> rollbackAuditEvents(String taskId) {
+        return maskingAudit.payloads(tenant, "AuditEvent").stream()
+                .map(payload -> JsonMapper.builder().build().readValue(payload, AuditEvent.class))
+                .filter(event -> event.action().equals("io.importRollback") && taskId.equals(event.resourceId()))
+                .toList();
     }
 
     @Test
@@ -1720,7 +1793,7 @@ class ObjectStorageTest {
                 .map(payload -> JsonMapper.builder().build().readValue(payload, AuditEvent.class))
                 .filter(event -> event.action().equals("io.importRollback"))
                 .toList();
-        assertThat(events).hasSize(2);
+        assertThat(events).hasSize(3);
         assertThat(events).allSatisfy(event -> {
             assertThat(event.tenantId()).isEqualTo(tenant);
             assertThat(event.actorId()).isEqualTo(TestTokens.IDENTITY_ID);
@@ -1732,10 +1805,10 @@ class ObjectStorageTest {
                 .containsEntry("restoredCount", 0)
                 .containsEntry("skippedCount", 0)
                 .containsEntry("failedCount", 0);
-        assertThat(events.get(1).detail())
-                .containsEntry("restoredCount", 1)
-                .containsEntry("skippedCount", 1)
-                .containsEntry("failedCount", 0);
+        assertThat(events.subList(1, 3).stream().map(AuditEvent::detail).toList())
+                .containsExactlyInAnyOrder(
+                        Map.of("taskId", taskId, "restoredCount", 1, "skippedCount", 0, "failedCount", 0),
+                        Map.of("taskId", taskId, "restoredCount", 0, "skippedCount", 1, "failedCount", 0));
     }
 
     @Test
@@ -2258,6 +2331,23 @@ class ObjectStorageTest {
                     .satisfies(
                             backup -> assertThat(backup.values().get("balance").toString())
                                     .isEqualTo("12345678901234567890.12345678901234567890"));
+        }
+    }
+
+    @Test
+    void importRequiresAnObjectIdAndReturnsAFieldErrorBeforeAccessingStorage() throws Exception {
+        Map<String, Object> explicitNull = new LinkedHashMap<>();
+        explicitNull.put("objectId", null);
+        for (String path : List.of("/orders/import/overwrite", "/orders/import")) {
+            for (var body : List.of(Map.of(), explicitNull)) {
+                var response = exchange(tenant, HttpMethod.POST, path, body);
+                assertThat(response.get("httpStatus")).isEqualTo(400);
+                assertThat(response.get("code")).isEqualTo("request.invalid");
+                assertThat((List<?>) response.get("errors")).singleElement().satisfies(error -> {
+                    assertThat(((Map<?, ?>) error).get("field")).isEqualTo("objectId");
+                    assertThat(((Map<?, ?>) error).get("code")).isEqualTo("validation.notNull");
+                });
+            }
         }
     }
 

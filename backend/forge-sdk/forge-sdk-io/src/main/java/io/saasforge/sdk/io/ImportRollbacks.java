@@ -135,7 +135,8 @@ public final class ImportRollbacks {
 
     /**
      * 执行本人任务的回滚，默认在当前冲突报告阻断时一条不恢复；显式 skipConflicts 才跳过冲突。
-     * 每条记录独立事务，业务恢复与 RESTORED 标记共同提交；失败和中断后可重试，已恢复记录不再读取业务版本或写入。
+     * 每条记录独立事务，业务恢复与 RESTORED 标记共同提交，并在该事务提交后记录实际处理数的审计。
+     * 失败和中断后可重试，已恢复记录不再读取业务版本或写入；拒绝或无操作的调用另记零计数审计。
      * 业务回调禁止改动快照以外字段。公开 HTTP 接口仍须检查独立回滚权限。
      */
     public ImportRollbackResult execute(
@@ -181,11 +182,13 @@ public final class ImportRollbacks {
                                             != 1) {
                                         throw new IllegalStateException("Rollback success marker was not persisted");
                                     }
+                                    recordAudit(taskId, 1, 0, 0, null);
                                 } else if (skipConflicts) {
                                     mapper.rollbackRecord(
                                             backup.id(),
                                             "SKIPPED",
                                             TenantContext.current().identityId());
+                                    recordAudit(taskId, 0, 1, 0, IoErrorCode.ROLLBACK_CONFLICTS);
                                 }
                                 return checked;
                             });
@@ -199,10 +202,13 @@ public final class ImportRollbacks {
                                 skipped++;
                             }
                         } catch (RuntimeException error) {
-                            transaction.executeWithoutResult(recordStatus -> mapper.rollbackRecord(
-                                    backup.id(),
-                                    "FAILED",
-                                    TenantContext.current().identityId()));
+                            transaction.executeWithoutResult(recordStatus -> {
+                                mapper.rollbackRecord(
+                                        backup.id(),
+                                        "FAILED",
+                                        TenantContext.current().identityId());
+                                recordAudit(taskId, 0, 0, 1, IoErrorCode.FAILED);
+                            });
                             failed++;
                         }
                     }
@@ -216,21 +222,17 @@ public final class ImportRollbacks {
             }
             mapper.rollbackTask(taskId, outcome, TenantContext.current().identityId());
             var task = tasks.get(taskId);
-            var event = AuditEvent.builder(AuditRealm.TENANT, AuditCategory.OPERATION, "io.importRollback")
-                    .tenant(CurrentTenant.require())
-                    .actor(TenantContext.current().identityId())
-                    .resource("ioTask", taskId)
-                    .detail("taskId", taskId.toString())
-                    .detail("restoredCount", restored)
-                    .detail("skippedCount", skipped)
-                    .detail("failedCount", failed);
-            if (!"SUCCEEDED".equals(outcome)) {
-                event.failure(
+            // 已提交记录各自审计，外层回滚不会漏掉它们；整轮只补拒绝/无操作事件，避免重复计数。
+            if ("UNAVAILABLE".equals(outcome) || "BLOCKED".equals(outcome) || restored + skipped + failed == 0) {
+                recordAudit(
+                        taskId,
+                        0,
+                        0,
+                        0,
                         "UNAVAILABLE".equals(outcome)
-                                ? IoErrorCode.ROLLBACK_UNAVAILABLE.code()
-                                : (failed > 0 ? IoErrorCode.FAILED.code() : IoErrorCode.ROLLBACK_CONFLICTS.code()));
+                                ? IoErrorCode.ROLLBACK_UNAVAILABLE
+                                : ("BLOCKED".equals(outcome) ? IoErrorCode.ROLLBACK_CONFLICTS : null));
             }
-            audit.record(event.build());
             return new ImportRollbackResult(
                     taskId,
                     outcome,
@@ -240,6 +242,21 @@ public final class ImportRollbacks {
                     task.failedCount(),
                     List.copyOf(conflicts));
         });
+    }
+
+    private void recordAudit(UUID taskId, long restored, long skipped, long failed, IoErrorCode error) {
+        var event = AuditEvent.builder(AuditRealm.TENANT, AuditCategory.OPERATION, "io.importRollback")
+                .tenant(CurrentTenant.require())
+                .actor(TenantContext.current().identityId())
+                .resource("ioTask", taskId)
+                .detail("taskId", taskId.toString())
+                .detail("restoredCount", restored)
+                .detail("skippedCount", skipped)
+                .detail("failedCount", failed);
+        if (error != null) {
+            event.failure(error.code());
+        }
+        audit.record(event.build());
     }
 
     private static ImportRollbackReason unavailable(IoTask task, Class<?> model) {
