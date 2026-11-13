@@ -50,7 +50,7 @@ async function submit(wrapper: Awaited<ReturnType<typeof mountShell>>['wrapper']
   await flushPromises()
 }
 
-it('账号登录后进入首页，展示下游返回的身份、租户与成员关系', async () => {
+it('账号登录后进入工作台，展示当前身份与租户的问候语', async () => {
   vi.stubGlobal(
     'fetch',
     fakeFetch({
@@ -76,11 +76,10 @@ it('账号登录后进入首页，展示下游返回的身份、租户与成员�
   const { wrapper, router } = await mountShell('/login')
   await submit(wrapper)
   await vi.waitFor(() =>
-    expect(wrapper.find('[data-testid="home-identity"]').text()).toBe('演示身份'),
+    expect(wrapper.find('[data-testid="workbench-greeting"]').text()).toBe('演示身份 · 演示租户'),
   )
   expect(router.currentRoute.value.fullPath).toBe('/')
-  expect(wrapper.find('[data-testid="home-tenant"]').text()).toBe('演示租户')
-  expect(wrapper.text()).toContain('membership-a')
+  expect(wrapper.text()).not.toContain('membership-a')
   expect(wrapper.find('input[name="password"]').exists()).toBe(false)
 })
 
@@ -170,7 +169,9 @@ it('多个 Membership 时进入选择租户页，选择后进入该租户', asyn
   expect(fetcher).toHaveBeenCalledTimes(1)
   await wrapper.get('[data-testid="tenant-option-membership-b"]').trigger('click')
   await flushPromises()
-  await vi.waitFor(() => expect(wrapper.find('[data-testid="home-tenant"]').text()).toBe('租户 B'))
+  await vi.waitFor(() =>
+    expect(wrapper.find('[data-testid="workbench-greeting"]').text()).toBe('多成员身份 · 租户 B'),
+  )
   const exchange = fetcher.mock.calls.find(([path]) => path === '/iam/auth/exchange')!
   expect(
     JSON.parse((exchange as unknown as [string, RequestInit])[1].body as string),

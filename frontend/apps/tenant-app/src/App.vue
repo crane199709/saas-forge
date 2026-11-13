@@ -27,8 +27,10 @@ const route = useRoute()
 
 const menu = computed<MenuItem[]>(() => [
   { key: 'home', title: t('app.home'), path: '/' },
-  { key: 'notifications', title: '通知中心', path: '/notifications' },
-  // 首页与通知中心固定在顶部，其余按租户的导航布局排列。
+  ...(access.has(['todo:read', 'notification:read', 'announcement:read'])
+    ? [{ key: 'notifications', title: '通知中心', path: '/notifications' }]
+    : []),
+  // 工作台与通知中心固定在顶部，其余按租户的导航布局排列。
   ...arrangeNavigation(
     defaultNavigation(
       // Shell 自带的租户管理页按 iam 的管理权限码显示，授权被撤销后随权限刷新隐藏。

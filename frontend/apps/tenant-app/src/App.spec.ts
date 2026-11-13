@@ -36,7 +36,7 @@ function signedIn() {
 }
 
 describe('App 布局', () => {
-  it('首页带顶栏与侧边菜单，显示欢迎语、当前租户与登录名', async () => {
+  it('工作台带顶栏与侧边菜单，问候语只显示当前身份名与租户名', async () => {
     signedIn()
     const { wrapper } = await mountShell('/')
 
@@ -44,8 +44,9 @@ describe('App 布局', () => {
     expect(wrapper.get('[data-testid="user-menu"]').text()).toBe('演示身份')
     expect(wrapper.find('[data-testid="tenant-switcher"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="menu-home"]').attributes('href')).toBe('/')
-    expect(wrapper.text()).toContain('欢迎使用 SaaS Forge 租户端')
-    expect(wrapper.find('[data-testid="home-tenant"]').text()).toBe('演示租户')
+    expect(wrapper.get('.page-header h2').text()).toBe('工作台')
+    expect(wrapper.get('[data-testid="workbench-greeting"]').text()).toBe('演示身份 · 演示租户')
+    expect(wrapper.find('.el-descriptions').exists()).toBe(false)
   })
 
   it('登录与异常页不带布局', async () => {
@@ -94,7 +95,7 @@ describe('App 布局', () => {
     expect(link.text()).toBe('订单概览')
     expect(link.attributes('href')).toBe('/apps/demo/overview')
     expect(wrapper.find('[data-testid="menu-report.monthly"]').exists()).toBe(false)
-    expect(wrapper.get('.el-menu-item.is-active').text()).toBe('首页')
+    expect(wrapper.get('.el-menu-item.is-active').text()).toBe('工作台')
 
     vi.stubGlobal('fetch', fakeFetch({ '/iam/members': ok([]) }))
     await router.push('/members')
@@ -144,7 +145,12 @@ describe('App 布局', () => {
     }
     const { wrapper } = await mountShell('/', {
       access: async () => ({
-        permissions: ['iam:member:manage', 'iam:role:manage', 'iam:audit:read'],
+        permissions: [
+          'iam:member:manage',
+          'iam:role:manage',
+          'iam:audit:read',
+          'notification:read',
+        ],
         menus,
         subApps,
         layout,
@@ -153,7 +159,7 @@ describe('App 布局', () => {
     })
 
     expect(wrapper.findAll('.shell-menu .menu-link').map((link) => link.text())).toEqual([
-      '首页',
+      '工作台',
       '通知中心',
       '订单概览',
       '角色管理',
@@ -233,3 +239,24 @@ describe('App 布局', () => {
     expect(wrapper.get('[data-testid="menu-menu-layout"]').text()).toBe('菜单管理')
   })
 })
+
+it.each(['todo:read', 'notification:read', 'announcement:read'])(
+  '通知中心入口在拥有 %s 时显示，撤销读取权限后隐藏',
+  async (permission) => {
+    signedIn()
+    let permissions: string[] = []
+    const { wrapper, access } = await mountShell('/', { access: async () => ({ permissions }) })
+    expect(wrapper.find('[data-testid="menu-notifications"]').exists()).toBe(false)
+
+    permissions = [permission]
+    await access.load()
+    await nextTick()
+    expect(wrapper.get('[data-testid="menu-notifications"]').attributes('href')).toBe(
+      '/notifications',
+    )
+
+    access.clear()
+    await nextTick()
+    expect(wrapper.find('[data-testid="menu-notifications"]').exists()).toBe(false)
+  },
+)
