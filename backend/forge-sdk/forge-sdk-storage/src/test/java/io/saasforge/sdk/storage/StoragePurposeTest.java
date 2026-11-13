@@ -19,6 +19,22 @@ class StoragePurposeTest {
     }
 
     @Test
+    void retentionIsOptionalAndInvalidRetentionPreventsServiceStartup() {
+        Assertions.assertNull(new StoragePurpose("permanent", Set.of("pdf"), 1, Duration.ofMinutes(1)).retentionDays());
+        Assertions.assertEquals(
+                30, new StoragePurpose("temporary", Set.of("pdf"), 1, Duration.ofMinutes(1), 30).retentionDays());
+        for (int days : new int[] {0, -1}) {
+            try (var context = new org.springframework.context.annotation.AnnotationConfigApplicationContext()) {
+                context.registerBean(
+                        StoragePurpose.class,
+                        () -> new StoragePurpose("temporary", Set.of("pdf"), 1, Duration.ofMinutes(1), days));
+                Assertions.assertThrows(
+                        org.springframework.beans.factory.BeanCreationException.class, context::refresh);
+            }
+        }
+    }
+
+    @Test
     void invalidDeclarationFailsBeforeItCanBeUsed() {
         for (String code :
                 new String[] {"", "Order", "order/attachment", "order--attachment", "a".repeat(65), "unspecified"}) {

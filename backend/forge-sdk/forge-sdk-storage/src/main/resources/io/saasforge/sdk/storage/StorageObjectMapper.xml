@@ -9,25 +9,44 @@
             <arg column="filename" javaType="string"/>
             <arg column="content_type" javaType="string"/>
             <arg column="size" javaType="_long"/>
-            <arg column="status" javaType="string"/>
+            <arg column="status" javaType="io.saasforge.sdk.storage.StorageObjectStatus"/>
             <arg column="upload_expires_at" javaType="java.time.OffsetDateTime"/>
             <arg column="stored_at" javaType="java.time.OffsetDateTime"/>
+            <arg column="retention_expires_at" javaType="java.time.OffsetDateTime"/>
+            <arg column="expired_at" javaType="java.time.OffsetDateTime"/>
         </constructor>
     </resultMap>
 
     <insert id="insertPending">
-        INSERT INTO forge_storage_object (id, object_key, purpose, filename, content_type, size, status, upload_expires_at)
-        VALUES (#{id}, #{objectKey}, #{purpose}, #{filename}, #{contentType}, #{size}, 'PENDING', #{uploadExpiresAt})
+        INSERT INTO forge_storage_object (id, object_key, purpose, filename, content_type, size, status, upload_expires_at, retention_expires_at)
+        VALUES (#{id}, #{objectKey}, #{purpose}, #{filename}, #{contentType}, #{size}, 'PENDING', #{uploadExpiresAt}, #{retentionExpiresAt})
     </insert>
 
     <select id="findById" resultMap="object">
-        SELECT id, object_key, purpose, filename, content_type, size, status, upload_expires_at, stored_at
+        SELECT id, object_key, purpose, filename, content_type, size, status, upload_expires_at, stored_at, retention_expires_at, expired_at
         FROM forge_storage_object WHERE id = #{id}
     </select>
 
+    <select id="findByIdForUpdate" resultMap="object">
+        SELECT id, object_key, purpose, filename, content_type, size, status, upload_expires_at, stored_at, retention_expires_at, expired_at
+        FROM forge_storage_object WHERE id = #{id} FOR UPDATE
+    </select>
+
+    <update id="renewRetention">
+        UPDATE forge_storage_object
+        SET status = CASE WHEN stored_at IS NULL THEN 'PENDING' ELSE 'STORED' END,
+        retention_expires_at = #{retentionExpiresAt}, expired_at = NULL
+        WHERE id = #{id} AND status IN ('PENDING', 'STORED', 'EXPIRED')
+    </update>
+
+    <update id="markExpired">
+        UPDATE forge_storage_object SET status = 'EXPIRED', expired_at = #{now}
+        WHERE id = #{id} AND status IN ('PENDING', 'STORED')
+    </update>
+
     <select id="usedBytes" resultType="_long">
         SELECT coalesce(sum(size), 0) FROM forge_storage_object
-        WHERE (status = 'STORED' OR upload_expires_at &gt; #{now})
+        WHERE status &lt;&gt; 'DELETED'
         <if test="excludeId != null">AND id &lt;&gt; #{excludeId}</if>
     </select>
 
@@ -40,7 +59,13 @@
     </select>
 
     <update id="markStored">
-        UPDATE forge_storage_object SET status = 'STORED', stored_at = CURRENT_TIMESTAMP WHERE id = #{id} AND status = 'PENDING'
+        UPDATE forge_storage_object SET status = 'STORED', stored_at = #{now} WHERE id = #{id} AND status = 'PENDING'
+    </update>
+
+    <update id="expireDue">
+        UPDATE forge_storage_object SET status = 'EXPIRED', expired_at = #{now}
+        WHERE id = #{id} AND status IN ('PENDING', 'STORED')
+        AND (retention_expires_at &lt;= #{now} OR (status = 'PENDING' AND upload_expires_at &lt;= #{now}))
     </update>
 
     <delete id="delete">

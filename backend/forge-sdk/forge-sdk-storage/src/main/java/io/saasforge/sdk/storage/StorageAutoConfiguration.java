@@ -5,6 +5,7 @@ import io.saasforge.sdk.mq.MqAutoConfiguration;
 import io.saasforge.sdk.provisioning.TenantPlanChanged;
 import java.time.Clock;
 import org.mybatis.spring.SqlSessionTemplate;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -57,6 +58,7 @@ public final class StorageAutoConfiguration {
      *
      * @param sqlSession 参与 Spring 事务的 SqlSession
      * @param transactionManager 用于 Quota 校验与对象登记的事务；调用方已在事务中时加入调用方的事务
+     * @param clocks 可选时钟；未声明时使用 UTC 系统时钟
      */
     @Bean
     public ObjectStorage objectStorage(
@@ -65,7 +67,8 @@ public final class StorageAutoConfiguration {
             SqlSessionTemplate sqlSession,
             PlatformTransactionManager transactionManager,
             StorageProperties properties,
-            Environment environment) {
+            Environment environment,
+            ObjectProvider<Clock> clocks) {
         return new ObjectStorage(
                 forgeS3Client,
                 forgeS3Presigner,
@@ -73,7 +76,7 @@ public final class StorageAutoConfiguration {
                 new TransactionTemplate(transactionManager),
                 properties,
                 environment.getRequiredProperty("spring.application.name"),
-                Clock.systemUTC());
+                clocks.getIfAvailable(Clock::systemUTC));
     }
 
     @Bean

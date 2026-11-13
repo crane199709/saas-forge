@@ -6,6 +6,8 @@
 
 ### 变更
 
+- `forge-sdk-storage` 的 `StoragePurpose` 增加可选 `retentionDays`（必须大于零），四参用途与存量文件继续永久保留；文件登记增加保留截止与实际失效时间，生命周期支持失效与待删除。`ObjectStorage.delete` 改为先标记失效，七天宽限内保留 S3 与配额；失效后禁止新的读取与下载签名。已有 storage 服务新增迁移复制 `upgrade-retention.sql`（demo V18），不修改历史迁移。通用业务规范、接入指南与脚手架可选 storage 提示同步；默认 archetype/sub-app-kit 不启用 storage。
+
 - `forge-sdk-io` 增加逐记录回滚执行与到期清理：数据库任务锁串行化重复调用，业务行与快照锁内重查，恢复和成功标记同事务，失败/中断可重试；默认冲突零恢复，显式跳过才处理其余记录。任务保留原导入状态并追加回滚结果与计数，独立审计 `io.importRollback` 按逐记录事务提交记录实际三项计数，拒绝/无操作调用另记零计数事件，外层中断不撤销已提交恢复的审计；90 天默认可配，正常及停用租户到期均清空旧值，保留任务历史与中断前已提交的恢复统计。Demo 新增独立权限的执行接口，冲突/不可用返回 409；已有服务新增迁移复制 `upgrade-import-rollback-execution.sql`（V17），新服务使用当前 `schema.sql`。通用业务规范、接入指南与 archetype 可选 IO 模板提示同步，默认 archetype/sub-app-kit 未启用 IO，不新增可选表、配置或页面。
 
 - `forge-sdk-io` 新增 `ImportRollbacks` 只读冲突预览：按当前数据权限核对修改标记、按实际覆盖先后识别同模型同记录的后续导入，报告只含主键、原因和数量；冲突默认阻断，过期或无快照明确不可回滚。执行方须在业务行锁与同一事务内调用公开 `check` 重查，预览不能作为写入许可。已有 IO 服务新增迁移复制 `upgrade-import-rollback-preview.sql`（demo V16），新服务复制当前 `schema.sql`。Demo 新增独立 `order:importRollback` 与预览接口，清单升 9，保持本人任务访问边界。通用业务规范、archetype 可选 IO 接入提示与指南同步；默认 archetype/sub-app-kit 不使用 IO，不引入可选表、配置或页面。

@@ -18,6 +18,12 @@
 
 门禁禁止直接声明 Spring Data Redis、Redisson、Lettuce、Jedis、RocketMQ 与 Nacos 原生客户端、XXL-JOB。上述 starter 带入的传递依赖不受禁令影响。基础设施实现模块只有确需直引时才可设置 `forge.middleware.skip=true`，在属性旁写明原因，并同步平台的中间件豁免清单；业务服务保持默认门禁。
 
+## 文件保留与生命周期
+
+使用 `forge-sdk-storage` 的新服务复制当前 `schema.sql`；已有文件表新增迁移复制 `upgrade-retention.sql`（demo V18），不要改已执行迁移。迁移保留旧上传状态，旧文件的保留截止时间为空，不追溯应用新策略。默认 starter 未引入 storage，不预建可选表或配置。
+
+`StoragePurpose` 的可选第五参 `retentionDays` 由可信服务代码声明，必须大于零；四参声明永久保留，Tenant 与 Operator 不能修改。新上传从申请登记时起计算保留截止时间，服务端写入从登记时起计算。未确认上传在上传凭证到期后也可进入治理，申请登记在物理删除前持续占用容量。文件失效后停止读取和新签名，固定七天宽限期内保留对象和容量；`ObjectStorage.delete` 也只标记失效，最终删除须检查业务引用。已签发下载 URL 在原有效期内仍可使用。恢复与延长仅限有效文件或宽限期内文件，业务公开接口自行校验权限。
+
 ## 覆盖导入快照
 
 使用 `forge-sdk-io` 时，服务迁移须包含 SDK 当前 `schema.sql`；已经创建 IO 任务表的服务升级时新增迁移复制 `upgrade-import-backup.sql`，不要修改已执行迁移。默认 starter 不引入 IO，未使用该能力的生成工程不创建 IO 表。

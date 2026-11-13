@@ -2,8 +2,8 @@
 -- 两张表都按租户启用 RLS：读写都在租户上下文中进行，SDK 的 SQL 另经租户拦截注入 tenant_id 条件。
 -- 属于 SDK 基础设施表，不带标准列：对象登记随 S3 对象一起存在，不做逻辑删除。
 
--- 本服务登记的对象。PENDING 是已签发上传 URL、尚未确认上传的对象，在 upload_expires_at 之前占用存储容量，
--- 过期后不再计入；STORED 是已确认上传的对象。
+-- 本服务登记的对象。PENDING 是已签发上传 URL、尚未确认上传的对象；
+-- PENDING、STORED、EXPIRED 与 PURGE_PENDING 在物理删除前均继续计入容量。
 CREATE TABLE forge_storage_object (
     id uuid PRIMARY KEY,
     tenant_id uuid NOT NULL,
@@ -15,7 +15,9 @@ CREATE TABLE forge_storage_object (
     status varchar(16) NOT NULL,
     upload_expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    stored_at TIMESTAMP WITH TIME ZONE
+    stored_at TIMESTAMP WITH TIME ZONE,
+    retention_expires_at TIMESTAMP WITH TIME ZONE,
+    expired_at TIMESTAMP WITH TIME ZONE
 );
 COMMENT ON TABLE forge_storage_object IS '对象存储登记：记录本服务租户的对象及其上传状态';
 COMMENT ON COLUMN forge_storage_object.id IS '对象 ID，UUIDv7';
@@ -25,10 +27,12 @@ COMMENT ON COLUMN forge_storage_object.purpose IS '存储用途编码，unspecif
 COMMENT ON COLUMN forge_storage_object.filename IS '原始文件名';
 COMMENT ON COLUMN forge_storage_object.content_type IS '内容类型';
 COMMENT ON COLUMN forge_storage_object.size IS '对象大小，单位字节';
-COMMENT ON COLUMN forge_storage_object.status IS '状态：PENDING 已签发上传地址未确认，STORED 已确认上传';
-COMMENT ON COLUMN forge_storage_object.upload_expires_at IS '上传地址过期时间，PENDING 对象在此之前占用存储容量';
+COMMENT ON COLUMN forge_storage_object.status IS '状态：PENDING 待确认，STORED 可读取，EXPIRED 已失效，PURGE_PENDING 待删除，DELETED 已删除，HELD 预留冻结';
+COMMENT ON COLUMN forge_storage_object.upload_expires_at IS '上传地址过期时间，未确认对象此后可进入失效治理';
 COMMENT ON COLUMN forge_storage_object.created_at IS '登记时间';
 COMMENT ON COLUMN forge_storage_object.stored_at IS '确认上传时间，未确认时为 NULL';
+COMMENT ON COLUMN forge_storage_object.retention_expires_at IS '服务声明的保留截止时间，NULL 表示永久保留';
+COMMENT ON COLUMN forge_storage_object.expired_at IS '实际失效时间，七天宽限期从此时起算';
 CREATE INDEX forge_storage_object_tenant_id_idx ON forge_storage_object (tenant_id);
 
 ALTER TABLE forge_storage_object ENABLE ROW LEVEL SECURITY;

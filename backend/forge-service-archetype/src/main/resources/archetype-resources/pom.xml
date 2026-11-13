@@ -27,7 +27,8 @@
          回滚须独立授权并读取当前数据权限，恢复仅写快照字段且与成功标记同事务，约定见 docs/standards/business-service.md。
          默认 starter 不使用 IO，不预建可选表。 -->
     <!-- 按需接入 storage：添加 forge-sdk-storage，复制当前 schema.sql 为 Flyway 迁移，
-         并在服务代码声明 StoragePurpose；已有表升级复制 upgrade-purpose.sql，不修改旧迁移。
+         并在服务代码声明 StoragePurpose（可选 retentionDays，省略永久保留）；已有表升级复制 upgrade-purpose.sql、
+         upgrade-retention.sql，不修改旧迁移。delete 先失效，七天宽限期内不释放配额。
          IO 上传复用 IoStoragePurposes.SOURCE。配置与示例见 docs/business-service-guide.md。 -->
     <dependencies>
         <dependency>

@@ -38,7 +38,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequ
  * 一样得到 {@link StorageErrorCode#OBJECT_NOT_FOUND}。文件内容不经过服务：上传与下载都由客户端凭预签名 URL 直接访问存储。
  *
  * <p>上传分两步：{@link #prepareUpload} 校验存储容量 Quota、登记对象并签发上传 URL；客户端上传后调用 {@link #completeUpload}
- * 确认，对象此后才可下载。已用容量包含尚未过期的上传申请，并发申请不会合计超出 Quota；{@link #delete} 删除对象后释放容量。
+ * 确认，对象此后才可下载。已用容量包含上传申请与失效对象，物理删除后才释放；并发申请不会合计超出 Quota。
  *
  * <p>所有方法都要求已绑定租户上下文。
  */
@@ -110,10 +110,11 @@ public class ObjectStorage {
         OffsetDateTime expiresAt = now.plus(properties.uploadUrlTtl());
         transaction.executeWithoutResult(status -> {
             Long quota = mapper.lockQuota();
-            if (quota != null && mapper.usedBytes(now, null) + size > quota) {
+            if (quota != null && mapper.usedBytes(null) + size > quota) {
                 throw quotaExceeded(quota);
             }
-            mapper.insertPending(id, key, purpose.code(), filename, type, size, expiresAt);
+            mapper.insertPending(
+                    id, key, purpose.code(), filename, type, size, expiresAt, retentionDeadline(purpose, now));
         });
         PresignedPutObjectRequest presigned =
                 presigner.presignPutObject(request -> request.signatureDuration(properties.uploadUrlTtl())
@@ -137,7 +138,7 @@ public class ObjectStorage {
      * @param objectId {@link UploadTicket#objectId()}
      * @return 已确认的对象
      * @throws ForgeException 对象不存在或属于其他租户时为 {@link StorageErrorCode#OBJECT_NOT_FOUND}；尚未上传或大小不一致时为
-     *     {@link StorageErrorCode#UPLOAD_INCOMPLETE}；超出 Quota 时为 {@link StorageErrorCode#QUOTA_EXCEEDED}，对象随之删除
+     *     {@link StorageErrorCode#UPLOAD_INCOMPLETE}；超出 Quota 时为 {@link StorageErrorCode#QUOTA_EXCEEDED}，对象进入失效治理
      */
     public StoredObject completeUpload(UUID objectId) {
         StorageObjectRecord object = mapper.findById(objectId);
@@ -146,6 +147,9 @@ public class ObjectStorage {
         }
         if (object.stored()) {
             return object.toStoredObject();
+        }
+        if (object.status() != StorageObjectStatus.PENDING) {
+            throw notFound(objectId);
         }
         HeadObjectResponse head;
         try {
@@ -162,16 +166,15 @@ public class ObjectStorage {
         OffsetDateTime now = OffsetDateTime.now(clock);
         Long rejectedQuota = transaction.execute(status -> {
             Long quota = mapper.lockQuota();
-            if (quota != null && mapper.usedBytes(now, objectId) + object.size() > quota) {
-                mapper.delete(objectId);
+            if (quota != null && mapper.usedBytes(objectId) + object.size() > quota) {
+                mapper.markExpired(objectId, now);
                 return quota;
             }
-            mapper.markStored(objectId);
+            mapper.markStored(objectId, now);
             return null;
         });
         if (rejectedQuota != null) {
-            // 登记已随事务删除；对象删除失败只会在存储中留下不再计入容量、也无法访问的孤儿
-            s3.deleteObject(request -> request.bucket(properties.bucket()).key(object.objectKey()));
+            // 拒绝确认也不能绕过宽限期；外层业务事务若回滚，原 PENDING 登记仍由后续治理处理。
             throw quotaExceeded(rejectedQuota);
         }
         return get(objectId);
@@ -249,10 +252,18 @@ public class ObjectStorage {
         return transaction.execute(status -> {
             var now = OffsetDateTime.now(clock);
             Long quota = mapper.lockQuota();
-            if (quota != null && mapper.usedBytes(now, null) + size > quota) {
+            if (quota != null && mapper.usedBytes(null) + size > quota) {
                 throw quotaExceeded(quota);
             }
-            mapper.insertPending(id, key, purpose.code(), filename, type, size, now.plus(properties.uploadUrlTtl()));
+            mapper.insertPending(
+                    id,
+                    key,
+                    purpose.code(),
+                    filename,
+                    type,
+                    size,
+                    now.plus(properties.uploadUrlTtl()),
+                    retentionDeadline(purpose, now));
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCompletion(int completion) {
@@ -269,7 +280,7 @@ public class ObjectStorage {
             s3.putObject(
                     request -> request.bucket(properties.bucket()).key(key).contentType(type),
                     RequestBody.fromInputStream(content, size));
-            mapper.markStored(id);
+            mapper.markStored(id, now);
             return get(id);
         });
     }
@@ -303,33 +314,117 @@ public class ObjectStorage {
     }
 
     /**
-     * 删除对象：删除登记，并在事务提交后删除存储中的文件，释放其占用的存储容量。已确认与尚未确认上传的对象都可删除。
-     *
-     * <p>调用方在事务中时，登记随调用方事务一起提交或回滚，文件只在提交后删除，回滚不会留下没有文件的登记。文件删除失败只记日志：
-     * 登记已不存在，文件不再计入容量也无法访问。
+     * 将当前租户对象标记失效，七天宽限期后经引用检查才物理删除。已确认与未确认上传的对象都可失效。
+     * 登记随调用方事务提交或回滚；宽限期内保留存储对象和容量，重复调用不延后宽限期。
+     * 已签发的下载凭证在原有效期内仍然有效。
      *
      * @param objectId 对象 ID
      * @throws ForgeException 对象不存在或属于其他租户时为 {@link StorageErrorCode#OBJECT_NOT_FOUND}
      */
     public void delete(UUID objectId) {
+        transaction.executeWithoutResult(status -> {
+            StorageObjectRecord object = mapper.findByIdForUpdate(objectId);
+            if (object == null) {
+                throw notFound(objectId);
+            }
+            mapper.markExpired(objectId, OffsetDateTime.now(clock));
+        });
+    }
+
+    /**
+     * 读取当前租户文件的生命周期，包括尚未确认和已失效的登记。
+     *
+     * @param objectId 对象 ID
+     * @return 生命周期元数据
+     * @throws ForgeException 对象不存在或属于其他租户时为 {@link StorageErrorCode#OBJECT_NOT_FOUND}
+     */
+    public StorageObjectLifecycle lifecycle(UUID objectId) {
         StorageObjectRecord object = mapper.findById(objectId);
         if (object == null) {
             throw notFound(objectId);
         }
-        transaction.executeWithoutResult(status -> {
-            mapper.delete(objectId);
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    try {
-                        s3.deleteObject(
-                                request -> request.bucket(properties.bucket()).key(object.objectKey()));
-                    } catch (SdkException e) {
-                        log.warn("Failed to delete object {} from storage, left as orphan", object.objectKey(), e);
-                    }
-                }
-            });
+        return object.lifecycle();
+    }
+
+    /**
+     * 对已到保留截止时间或上传凭证已过期的未确认文件标记失效；调用方须先检查业务引用。
+     * 不删除存储对象，不释放容量；重复调用不重置七天宽限期。
+     *
+     * @param objectId 对象 ID
+     * @return 本次是否将文件标记为失效
+     */
+    public boolean expire(UUID objectId) {
+        return transaction.execute(status -> mapper.expireDue(objectId, OffsetDateTime.now(clock)) == 1);
+    }
+
+    /**
+     * 在七天宽限期内恢复当前租户文件，按服务声明从当前时间重新计算保留截止时间。
+     * 恢复未确认上传时仍须完成原上传并确认，不会直接变为可下载文件。
+     *
+     * @param purpose 可信服务声明的原文件用途
+     * @param objectId 对象 ID
+     * @return 恢复后的生命周期
+     * @throws ForgeException 用途不同为 {@link StorageErrorCode#PURPOSE_MISMATCH}；非失效状态或宽限期结束为
+     *     {@link StorageErrorCode#RETENTION_UNAVAILABLE}
+     */
+    public StorageObjectLifecycle restore(StoragePurpose purpose, UUID objectId) {
+        Objects.requireNonNull(purpose, "purpose");
+        return transaction.execute(status -> {
+            StorageObjectRecord object = mapper.findByIdForUpdate(objectId);
+            if (object == null) {
+                throw notFound(objectId);
+            }
+            if (!purpose.code().equals(object.purpose())) {
+                throw new ForgeException(StorageErrorCode.PURPOSE_MISMATCH);
+            }
+            OffsetDateTime now = OffsetDateTime.now(clock);
+            if (object.status() != StorageObjectStatus.EXPIRED
+                    || !now.isBefore(object.expiredAt().plus(StorageObjectLifecycle.PURGE_GRACE_PERIOD))) {
+                throw new ForgeException(StorageErrorCode.RETENTION_UNAVAILABLE);
+            }
+            mapper.renewRetention(objectId, retentionDeadline(purpose, now));
+            return mapper.findById(objectId).lifecycle();
         });
+    }
+
+    /**
+     * 延长当前租户文件的保留截止时间，失效文件在七天宽限期内随之恢复原上传状态。
+     * 永久保留文件无须延长；延长不会改变存储内容与已用容量。
+     *
+     * @param objectId 对象 ID
+     * @param retentionExpiresAt 新截止时间，必须晚于现在与原截止时间
+     * @return 延长后的生命周期
+     * @throws ForgeException 截止时间非法为 request.invalid；不可延长的状态或宽限期结束为
+     *     {@link StorageErrorCode#RETENTION_UNAVAILABLE}
+     */
+    public StorageObjectLifecycle extendRetention(UUID objectId, OffsetDateTime retentionExpiresAt) {
+        return transaction.execute(status -> {
+            StorageObjectRecord object = mapper.findByIdForUpdate(objectId);
+            if (object == null) {
+                throw notFound(objectId);
+            }
+            OffsetDateTime now = OffsetDateTime.now(clock);
+            boolean active =
+                    object.status() == StorageObjectStatus.STORED || object.status() == StorageObjectStatus.PENDING;
+            boolean restorable = object.status() == StorageObjectStatus.EXPIRED
+                    && now.isBefore(object.expiredAt().plus(StorageObjectLifecycle.PURGE_GRACE_PERIOD));
+            if ((!active && !restorable) || object.retentionExpiresAt() == null) {
+                throw new ForgeException(StorageErrorCode.RETENTION_UNAVAILABLE);
+            }
+            if (retentionExpiresAt == null
+                    || !retentionExpiresAt.isAfter(now)
+                    || !retentionExpiresAt.isAfter(object.retentionExpiresAt())) {
+                throw ForgeException.withErrorMessage(
+                        FrameworkErrorCode.REQUEST_INVALID,
+                        "Retention deadline must be later than now and the current deadline");
+            }
+            mapper.renewRetention(objectId, retentionExpiresAt);
+            return mapper.findById(objectId).lifecycle();
+        });
+    }
+
+    private static OffsetDateTime retentionDeadline(StoragePurpose purpose, OffsetDateTime now) {
+        return purpose.retentionDays() == null ? null : now.plusDays(purpose.retentionDays());
     }
 
     /**
@@ -338,7 +433,7 @@ public class ObjectStorage {
      * @return 已用容量与 Quota
      */
     public StorageUsage usage() {
-        return new StorageUsage(mapper.usedBytes(OffsetDateTime.now(clock), null), mapper.quota());
+        return new StorageUsage(mapper.usedBytes(null), mapper.quota());
     }
 
     private StorageObjectRecord requirePurpose(StoragePurpose purpose, UUID objectId) {
