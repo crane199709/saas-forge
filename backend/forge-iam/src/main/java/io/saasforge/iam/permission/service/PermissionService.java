@@ -124,12 +124,13 @@ public class PermissionService {
     }
 
     /**
-     * 可纳入套餐 Feature Pack 的权限码：业务服务申报的有效权限码，不含 iam 自身的管理权限码（它们不受套餐限制）。
+     * 可纳入套餐 Feature Pack 的权限码：业务服务与 IAM 成员消息读取的有效权限码，不含 IAM 的管理权限码（它们不受套餐限制）。
      * 排序同 {@link #activePermissions()}。
      */
     public List<PermissionRow> planScopedPermissions() {
         return activePermissions().stream()
-                .filter(permission -> !IamPermissions.SERVICE.equals(permission.service()))
+                .filter(permission -> (!IamPermissions.SERVICE.equals(permission.service())
+                        || IamPermissions.planScoped(permission.code())))
                 .toList();
     }
 

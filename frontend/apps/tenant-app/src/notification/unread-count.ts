@@ -1,7 +1,21 @@
-import { inject, onMounted, onUnmounted, readonly, ref, type InjectionKey } from 'vue'
-import type { TenantClient } from '@crane199709/sdk'
+import {
+  inject,
+  onMounted,
+  onUnmounted,
+  readonly,
+  ref,
+  computed,
+  watch,
+  type InjectionKey,
+} from 'vue'
+import { useAccessControl, type TenantClient } from '@crane199709/sdk'
 
 export function useUnreadCount(client: TenantClient) {
+  const access = useAccessControl()
+  const visible = computed(() =>
+    access.has(['notification:read', 'announcement:read', 'todo:read']),
+  )
+  let permissionsReady = true
   const count = ref<number | null>(null)
   const failed = ref(false)
   let generation = 0
@@ -11,13 +25,24 @@ export function useUnreadCount(client: TenantClient) {
   let unsubscribe: (() => void) | undefined
   let membership = client.session()?.membershipId
   async function refresh() {
-    if (!mounted || !client.session() || client.ipDenial() || document.visibilityState === 'hidden')
+    if (
+      !mounted ||
+      !permissionsReady ||
+      !visible.value ||
+      !client.session() ||
+      client.ipDenial() ||
+      document.visibilityState === 'hidden'
+    )
       return
     const started = ++generation
     try {
       const [notifications, announcements] = await Promise.all([
-        client.api<{ count: number }>('/iam/notifications/unread-count'),
-        client.api<{ count: number }>('/iam/announcements/unread-count'),
+        access.has('notification:read')
+          ? client.api<{ count: number }>('/iam/notifications/unread-count')
+          : Promise.resolve({ count: 0 }),
+        access.has('announcement:read')
+          ? client.api<{ count: number }>('/iam/announcements/unread-count')
+          : Promise.resolve({ count: 0 }),
       ])
       if (started !== generation || !mounted) return
       count.value = notifications.count + announcements.count
@@ -33,11 +58,31 @@ export function useUnreadCount(client: TenantClient) {
   }
   function resume() {
     stop()
-    if (!mounted || !client.session() || client.ipDenial() || document.visibilityState === 'hidden')
+    if (
+      !mounted ||
+      !permissionsReady ||
+      !visible.value ||
+      !client.session() ||
+      client.ipDenial() ||
+      document.visibilityState === 'hidden'
+    )
       return
     void refresh()
     timer = setInterval(() => void refresh(), 60_000)
   }
+  watch(
+    () => [
+      access.has('notification:read'),
+      access.has('announcement:read'),
+      access.has('todo:read'),
+    ],
+    () => {
+      permissionsReady = true
+      count.value = null
+      failed.value = false
+      resume()
+    },
+  )
   onMounted(() => {
     mounted = true
     unsubscribeIp = client.onIpNotAllowed(stop)
@@ -45,6 +90,7 @@ export function useUnreadCount(client: TenantClient) {
     unsubscribe = client.onSessionChange((session) => {
       if (membership === session?.membershipId) return
       membership = session?.membershipId
+      permissionsReady = false
       count.value = null
       failed.value = false
       resume()
@@ -58,7 +104,7 @@ export function useUnreadCount(client: TenantClient) {
     unsubscribeIp?.()
     document.removeEventListener('visibilitychange', resume)
   })
-  return { count: readonly(count), failed: readonly(failed), refresh }
+  return { count: readonly(count), failed: readonly(failed), visible, refresh }
 }
 export const unreadCountKey: InjectionKey<ReturnType<typeof useUnreadCount>> =
   Symbol('inbox.unread')

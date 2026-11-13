@@ -5,6 +5,7 @@ import io.saasforge.iam.membership.model.TenantActor;
 import io.saasforge.iam.membership.service.MembershipService;
 import io.saasforge.iam.notification.mapper.NotificationMapper;
 import io.saasforge.iam.notification.model.NotificationResponse;
+import io.saasforge.iam.permission.service.IamPermissions;
 import io.saasforge.iam.role.service.RoleService;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.core.api.FrameworkErrorCode;
@@ -111,6 +112,7 @@ public class NotificationService implements TenantDataCleaner {
                 .isEmpty()) {
             throw new ForgeException(FrameworkErrorCode.AUTH_FORBIDDEN);
         }
+        roles.requirePermission(actor.membershipId(), IamPermissions.NOTIFICATION_READ);
         notifications.bindTenant(actor.tenantId());
     }
 

@@ -3,6 +3,7 @@ package io.saasforge.iam.todo.service;
 import io.saasforge.iam.membership.model.MembershipStatus;
 import io.saasforge.iam.membership.model.TenantActor;
 import io.saasforge.iam.membership.service.MembershipService;
+import io.saasforge.iam.permission.service.IamPermissions;
 import io.saasforge.iam.plan.service.PlanService;
 import io.saasforge.iam.role.service.RoleService;
 import io.saasforge.iam.todo.mapper.TodoMapper;
@@ -83,6 +84,7 @@ public class TodoService implements TenantDataCleaner {
                 .isPresent()) {
             throw new ForgeException(FrameworkErrorCode.AUTH_FORBIDDEN);
         }
+        roles.requirePermission(actor.membershipId(), IamPermissions.TODO_READ);
         // Token 与 Redis 的旧版本快照仍可能存在；待办资格须与本次请求时的角色、Plan 一致。
         var visibility = new TodoVisibility(
                 actor.tenantId(),

@@ -1,6 +1,10 @@
 import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, expect, it, vi } from 'vitest'
-import { mountShell } from '../test-shell'
+import { mountShell as mountBaseShell } from '../test-shell'
+
+const readPermissions = ['todo:read', 'notification:read', 'announcement:read']
+const mountShell = (path: string) =>
+  mountBaseShell(path, { access: async () => ({ permissions: readPermissions }) })
 
 enableAutoUnmount(afterEach)
 afterEach(() => {
@@ -146,4 +150,37 @@ it('点击整行展开全文，操作按钮不触发展开', async () => {
 
   await row().trigger('click')
   expect(title()).toBe('false')
+})
+
+it('只展示并请求授权类型，支持公告深链并在权限更新后清除旧内容', async () => {
+  sessionStorage.setItem(
+    'forge.tenant.session',
+    JSON.stringify({ accessToken: 'a', refreshToken: 'r', membershipId: 'm' }),
+  )
+  let permissions = ['announcement:read']
+  const paths: string[] = []
+  vi.stubGlobal('fetch', async (input: string) => {
+    const path = new URL(input, location.origin).pathname.replace(/^\/api(?=\/)/, '')
+    paths.push(path)
+    if (path === '/iam/announcements')
+      return ok([{ id: 'a1', title: '公告深链', body: '展开正文', read: false }])
+    if (path.endsWith('/unread-count')) return ok({ count: 1 })
+    return ok([])
+  })
+  const { wrapper, access } = await mountBaseShell('/notifications?tab=announcements&item=a1', {
+    access: async () => ({ permissions }),
+  })
+  expect(wrapper.find('[data-testid="tab-notifications"]').exists()).toBe(false)
+  expect(wrapper.find('[data-testid="tab-todos"]').exists()).toBe(false)
+  expect(wrapper.get('[data-testid="inbox-a1"] button.title').attributes('aria-expanded')).toBe(
+    'true',
+  )
+  expect(paths).not.toContain('/iam/notifications')
+  expect(paths).not.toContain('/iam/notifications/unread-count')
+  expect(paths).not.toContain('/iam/todos')
+  permissions = []
+  await access.load()
+  await flushPromises()
+  expect(wrapper.text()).not.toContain('公告深链')
+  expect(wrapper.find('[data-testid="notification-bell"]').exists()).toBe(false)
 })

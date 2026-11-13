@@ -68,7 +68,7 @@ async function tenant(page: Page, permissions: string[] = []) {
     if (path === '/iam/auth/access')
       return route.fulfill(
         ok({
-          permissions,
+          permissions: [...permissions, 'todo:read', 'notification:read', 'announcement:read'],
           menus: [{ code: 'demo.overview', name: '订单概览', app: 'demo', path: 'overview' }],
           subApps: [
             {

@@ -24,7 +24,7 @@ class IamManifestExportTest {
         ResourceManifest tenant = JSON.readValue(tenantJson, ResourceManifest.class);
         tenant.validate();
         assertThat(tenant.service()).isEqualTo("forge-iam");
-        assertThat(tenant.version()).isEqualTo("9");
+        assertThat(tenant.version()).isEqualTo("10");
         assertThat(JSON.readTree(tenantJson).path("realm").asText()).isEqualTo("tenant");
         assertThat(tenant.permissions()).contains(new Permission("iam:member:manage", "管理成员", "租户管理"));
         assertThat(tenant.permissions())
@@ -38,6 +38,9 @@ class IamManifestExportTest {
                         "iam:dictionary-history:read",
                         "iam:security:manage",
                         "announcement:manage",
+                        "todo:read",
+                        "notification:read",
+                        "announcement:read",
                         "iam:menu:manage",
                         "iam:data-security:read",
                         "iam:data-security:manage");
