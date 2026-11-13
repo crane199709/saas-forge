@@ -5,4 +5,9 @@ VALUES (CAST('019b0110-0000-7000-8000-000000000098' AS uuid),
     CAST('019b0110-0000-7000-8000-000000000099' AS uuid),
     '019b0110-0000-7000-8000-000000000099/demo-service/019b0110-0000-7000-8000-000000000098',
     'legacy.pdf', 'application/pdf', 4, 'STORED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT INTO forge_storage_object (id, tenant_id, object_key, filename, content_type, size, status, upload_expires_at)
+VALUES (CAST('019b0110-0000-7000-8000-000000000097' AS uuid),
+    CAST('019b0110-0000-7000-8000-000000000099' AS uuid),
+    '019b0110-0000-7000-8000-000000000099/demo-service/019b0110-0000-7000-8000-000000000097',
+    'legacy-pending.pdf', 'application/pdf', 4, 'PENDING', CURRENT_TIMESTAMP + INTERVAL '1' DAY);
 SELECT set_config('app.tenant_id', '', false);

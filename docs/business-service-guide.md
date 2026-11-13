@@ -310,6 +310,14 @@ var download = storage.prepareDownload(ATTACHMENT, objectId);
 
 已有服务升级时，把 `io/saasforge/sdk/storage/upgrade-purpose.sql` 复制为新的 Flyway 迁移（demo 为 V14），不要改已执行的建表迁移。脚本增加必填 `purpose` 列、把旧行回填为 `unspecified`，随后移除列默认值；新登记必须显式提供用途。未知用途旧对象仍保留，普通用途不能下载；只有可信业务关联能够明确归类时，才在独立迁移中更新编码，不能根据扩展名猜用途。全局 `forge.storage.download-url-ttl` 已删除，改用用途的 `downloadUrlTtl`。参考 demo-service 的 attachment 功能及 V8/V14 迁移。
 
+用途可声明第五参 `retentionDays`（正整数），例如 `new StoragePurpose("temporary-report", Set.of("pdf"), 1024, Duration.ofMinutes(5), 30)`；原四参构造表示永久保留。保留期属于服务声明，Tenant 与 Operator 不能覆盖；新对象从申请上传或服务端写入登记时开始计时，不追溯改变历史文件。
+
+已有 storage 服务新增迁移复制 `io/saasforge/sdk/storage/upgrade-retention.sql`（demo V18）。它增加 `retention_expires_at` 和 `expired_at`，保留原 `STORED`/`PENDING` 状态，旧文件保留截止时间为空。`lifecycle(id)` 可读取包括未确认、失效对象的状态；失效文件不再由 `get`、`open`、`prepareDownload` 返回，重复确认上传也不能使其恢复。`delete(id)` 改为标记 `EXPIRED`，不立即删除 S3 或释放容量，七天宽限期内仍占用配额；已签发下载 URL 按原有效期失效。最终物理删除须经过业务引用检查，逻辑删除的业务记录仍视为引用。默认 archetype 与 sub-app-kit 不引入 storage，不增加可选表、配置或页面。
+
+宽限期内可调用 `restore(purpose, id)` 恢复，SDK 持对象行锁核对用途并从当前时间重算声明的保留期；未确认对象恢复后仍须确认上传。`extendRetention(id, newDeadline)` 只接受比原截止和当前时间都晚的日期，失效文件随之恢复，永久保留文件无须延长。超过七天或进入待删除状态后均返回 `storage.retentionUnavailable`。物理删除须使用同一对象行锁，与恢复、延长串行；调用前的只读生命周期信息不能充当删除许可。
+
+未确认上传在上传凭证到期后可进入失效治理。包括已过期上传申请在内的全部未物理删除登记持续计入容量，避免未确认但已经上传的文件漏计；即使确认因套餐降级被拒，也保留文件供安全治理，未上传的预留容量同样须由后续清理释放。
+
 需要 Business Number 时添加 `io.saasforge:forge-sdk-numbering`，把 SDK 中 `io/saasforge/sdk/numbering/schema.sql` 复制到 Flyway 迁移，在保存业务数据的事务中调用 `BusinessNumbers.next(rule)`。日期段按 Nacos 共享配置中的 `forge.business-zone` 计算，漏配时启动失败。参考 demo-service 的订单编号及 V9 迁移。
 
 需要字典或参数时在 Resource Manifest 中声明 `dictionaries`/`parameters`（内容变化须升 `forge.manifest.version`），添加 `io.saasforge:forge-sdk-referencedata`（脚手架已带 `spring-boot-starter-validation`），配置 `forge.reference-data.iam-uri` 与 `token`（同清单上报令牌，无默认值，漏配启动失败）。经 `ReferenceData` 读取当前租户的字典与按类型的参数，在请求体字段上用 `@DictionaryValue("<字典编码>")` 并在控制器参数加 `@Valid` 校验取值；引用其他服务的字典写作 `服务:编码`。结果按租户缓存，每次读取先比对 iam 在 Redis 发布的租户参考数据版本号（`ReferenceDataKeys`，同 ADR-0005 的做法），版本变化即重新拉取，另有 `forge.reference-data.cache-ttl`（默认 10 分钟）兜底。参考 demo-service 订单的客户来源及 V10 迁移。

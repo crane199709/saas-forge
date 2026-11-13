@@ -15,7 +15,9 @@ public enum StorageErrorCode implements ErrorCode {
     /** 文件大小超过用途的上限。 */
     FILE_TOO_LARGE("storage.fileTooLarge", 400),
     /** 当前租户对象的用途与业务预期用途不同。 */
-    PURPOSE_MISMATCH("storage.purposeMismatch", 400);
+    PURPOSE_MISMATCH("storage.purposeMismatch", 400),
+    /** 文件处于不可恢复或不可延长的状态，或七天宽限期已经结束。 */
+    RETENTION_UNAVAILABLE("storage.retentionUnavailable", 409);
 
     private final String code;
     private final int httpStatus;

@@ -42,6 +42,7 @@ import io.saasforge.sdk.security.SensitiveField;
 import io.saasforge.sdk.security.TenantContext;
 import io.saasforge.sdk.storage.ObjectStorage;
 import io.saasforge.sdk.storage.StorageErrorCode;
+import io.saasforge.sdk.storage.StorageObjectStatus;
 import io.saasforge.sdk.storage.StoragePurpose;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -53,10 +54,13 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -82,9 +86,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
@@ -113,6 +120,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /** 订单附件经 SDK 对象存储上传、下载与删除（工单 24）：key 前缀由 SDK 强制、跨租户访问被拒、超出存储容量 Quota 的上传被拒。 */
 @Testcontainers
+@Import(ObjectStorageTest.RetentionClockConfiguration.class)
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
@@ -196,12 +204,156 @@ class ObjectStorageTest {
     @Autowired
     ImportRollbacks rollbacks;
 
+    @Autowired
+    MutableStorageClock retentionClock;
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class RetentionClockConfiguration {
+        @Bean
+        MutableStorageClock storageClock() {
+            return new MutableStorageClock();
+        }
+    }
+
+    static final class MutableStorageClock extends Clock {
+        private volatile Instant current = Instant.now();
+
+        void at(String instant) {
+            current = Instant.parse(instant);
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneOffset.UTC;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return Clock.fixed(current, zone);
+        }
+
+        @Override
+        public Instant instant() {
+            return current;
+        }
+    }
+
     private UUID tenant;
 
     @BeforeEach
     void newTenant() {
+        retentionClock.current = Instant.now();
         tenant = UUID.randomUUID();
         TestGrants.publishAll(redisTemplate, tenant, TestTokens.MEMBERSHIP_ID);
+    }
+
+    @Test
+    void retentionDeadlineExpiresWithoutDeletingTheFileOrReleasingQuota() {
+        var purpose = new StoragePurpose("temporary-document", Set.of("pdf"), 4, Duration.ofMinutes(2), 2);
+        retentionClock.at("2026-11-01T00:00:00Z");
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            UUID id = storage.write(purpose, "temporary.pdf", null, 4, new ByteArrayInputStream(new byte[4]))
+                    .id();
+            assertThat(storage.lifecycle(id).retentionExpiresAt()).isEqualTo("2026-11-03T00:00:00Z");
+            retentionClock.at("2026-11-02T23:59:59Z");
+            assertThat(storage.expire(id)).isFalse();
+            assertThat(storage.get(purpose, id).size()).isEqualTo(4);
+            retentionClock.at("2026-11-03T00:00:00Z");
+            assertThat(storage.expire(id)).isTrue();
+            assertThat(storage.lifecycle(id).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            assertThat(storage.lifecycle(id).expiredAt()).isEqualTo("2026-11-03T00:00:00Z");
+            assertThat(storage.lifecycle(id).purgeAfter()).isEqualTo("2026-11-10T00:00:00Z");
+            assertThat(storage.usage().usedBytes()).isEqualTo(4);
+            assertThat(objectKeys()).contains(tenant + "/demo-service/" + id);
+            assertThatThrownBy(() -> storage.get(purpose, id)).isInstanceOf(ForgeException.class);
+            assertThatThrownBy(() -> storage.completeUpload(id)).isInstanceOf(ForgeException.class);
+        }
+    }
+
+    @Test
+    void expiredFileCanBeRestoredDuringGraceWithAFreshDeclaredRetention() {
+        var purpose = new StoragePurpose("temporary-document", Set.of("pdf"), 4, Duration.ofMinutes(2), 2);
+        retentionClock.at("2026-11-01T00:00:00Z");
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            UUID id = storage.write(purpose, "temporary.pdf", null, 4, new ByteArrayInputStream(new byte[4]))
+                    .id();
+            retentionClock.at("2026-11-03T00:00:00Z");
+            storage.expire(id);
+            retentionClock.at("2026-11-09T00:00:00Z");
+            assertThat(storage.restore(purpose, id).status()).isEqualTo(StorageObjectStatus.STORED);
+            assertThat(storage.lifecycle(id).retentionExpiresAt()).isEqualTo("2026-11-11T00:00:00Z");
+            assertThat(storage.lifecycle(id).expiredAt()).isNull();
+            assertThat(storage.get(purpose, id).size()).isEqualTo(4);
+            assertThat(storage.usage().usedBytes()).isEqualTo(4);
+        }
+    }
+
+    @Test
+    void retentionExtensionReactivatesAnExpiredFileButCannotShortenOrBypassGrace() {
+        var purpose = new StoragePurpose("temporary-document", Set.of("pdf"), 4, Duration.ofMinutes(2), 2);
+        retentionClock.at("2026-11-01T00:00:00Z");
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            UUID id = storage.write(purpose, "temporary.pdf", null, 4, new ByteArrayInputStream(new byte[4]))
+                    .id();
+            retentionClock.at("2026-11-03T00:00:00Z");
+            storage.expire(id);
+            assertThat(storage.extendRetention(id, OffsetDateTime.parse("2026-12-01T00:00:00Z"))
+                            .status())
+                    .isEqualTo(StorageObjectStatus.STORED);
+            assertThat(storage.lifecycle(id).retentionExpiresAt()).isEqualTo("2026-12-01T00:00:00Z");
+            assertThat(storage.get(purpose, id).size()).isEqualTo(4);
+            assertThatThrownBy(() -> storage.extendRetention(id, OffsetDateTime.parse("2026-11-20T00:00:00Z")))
+                    .isInstanceOf(ForgeException.class);
+            retentionClock.at("2026-12-01T00:00:00Z");
+            storage.expire(id);
+            retentionClock.at("2026-12-08T00:00:00Z");
+            assertThatThrownBy(() -> storage.extendRetention(id, OffsetDateTime.parse("2027-01-01T00:00:00Z")))
+                    .isInstanceOfSatisfying(
+                            ForgeException.class,
+                            error -> assertThat(error.errorCode()).isEqualTo(StorageErrorCode.RETENTION_UNAVAILABLE));
+            assertThatThrownBy(() -> storage.restore(purpose, id)).isInstanceOf(ForgeException.class);
+            assertThat(storage.lifecycle(id).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+        }
+    }
+
+    @Test
+    void unconfirmedUploadCanExpireAtItsUploadDeadlineAndRestoreStillNeedsConfirmation() {
+        var purpose = new StoragePurpose("pending-document", Set.of("pdf"), 4, Duration.ofMinutes(2));
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            var upload = storage.prepareUpload(purpose, "pending.pdf", null, 4);
+            UUID id = upload.objectId();
+            try (var client = s3Client()) {
+                client.putObject(
+                        request -> request.bucket(BUCKET).key(tenant + "/demo-service/" + id),
+                        RequestBody.fromBytes(new byte[4]));
+            }
+            assertThat(storage.lifecycle(id).status()).isEqualTo(StorageObjectStatus.PENDING);
+            retentionClock.current = upload.expiresAt().toInstant();
+            assertThat(storage.usage().usedBytes()).isEqualTo(4);
+            assertThat(storage.expire(id)).isTrue();
+            assertThat(storage.lifecycle(id).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            assertThat(storage.usage().usedBytes()).isEqualTo(4);
+            assertThat(objectKeys()).contains(tenant + "/demo-service/" + id);
+            assertThatThrownBy(() -> storage.completeUpload(id)).isInstanceOf(ForgeException.class);
+            assertThat(storage.restore(purpose, id).status()).isEqualTo(StorageObjectStatus.PENDING);
+            assertThatThrownBy(() -> storage.get(purpose, id)).isInstanceOf(ForgeException.class);
+            assertThat(storage.completeUpload(id).size()).isEqualTo(4);
+            assertThat(storage.get(purpose, id).size()).isEqualTo(4);
+        }
+    }
+
+    @Test
+    void purposeWithoutRetentionKeepsConfirmedFilesPermanently() {
+        var purpose = new StoragePurpose("permanent-document", Set.of("pdf"), 4, Duration.ofMinutes(2));
+        retentionClock.at("2026-11-01T00:00:00Z");
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            UUID id = storage.write(purpose, "permanent.pdf", null, 4, new ByteArrayInputStream(new byte[4]))
+                    .id();
+            retentionClock.at("2036-11-01T00:00:00Z");
+            assertThat(storage.expire(id)).isFalse();
+            assertThat(storage.lifecycle(id).retentionExpiresAt()).isNull();
+            assertThat(storage.get(purpose, id).size()).isEqualTo(4);
+        }
     }
 
     @Test
@@ -519,7 +671,7 @@ class ObjectStorageTest {
 
     @Test
     @Sql("/fixtures/io-confirmation-expiry.sql")
-    void unconfirmedImportsExpireAfter24HoursAndRecoveryDeletesTheirSource() throws Exception {
+    void unconfirmedImportsExpireAfter24HoursAndRecoveryExpiresTheirSource() throws Exception {
         tenant = UUID.fromString("019c0110-0000-7000-8000-000000000099");
         TestGrants.publishAll(redisTemplate, tenant, TestTokens.MEMBERSHIP_ID);
         UUID expired = UUID.fromString("019c0110-0000-7000-8000-000000000091");
@@ -551,10 +703,11 @@ class ObjectStorageTest {
             assertThatThrownBy(() -> storage.get(expiredSource)).isInstanceOf(ForgeException.class);
             assertThat(storage.get(IoStoragePurposes.SOURCE, recentSource).filename())
                     .isEqualTo("recent.xlsx");
-            assertThat(storage.usage().usedBytes()).isEqualTo(1);
+            assertThat(storage.lifecycle(expiredSource).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            assertThat(storage.usage().usedBytes()).isEqualTo(2);
         }
         assertThat(objectKeys())
-                .doesNotContain(tenant + "/demo-service/" + expiredSource)
+                .contains(tenant + "/demo-service/" + expiredSource)
                 .contains(tenant + "/demo-service/" + recentSource);
     }
 
@@ -850,6 +1003,13 @@ class ObjectStorageTest {
         UUID legacyObject = UUID.fromString("019b0110-0000-7000-8000-000000000098");
         try (var ignored = CurrentTenant.bind(legacyTenant)) {
             assertThat(storage.get(legacyObject).filename()).isEqualTo("legacy.pdf");
+            assertThat(storage.lifecycle(legacyObject).status()).isEqualTo(StorageObjectStatus.STORED);
+            assertThat(storage.lifecycle(legacyObject).retentionExpiresAt()).isNull();
+            assertThat(storage.expire(legacyObject)).isFalse();
+            UUID pending = UUID.fromString("019b0110-0000-7000-8000-000000000097");
+            assertThat(storage.lifecycle(pending).status()).isEqualTo(StorageObjectStatus.PENDING);
+            assertThat(storage.lifecycle(pending).retentionExpiresAt()).isNull();
+            assertThat(storage.lifecycle(pending).expiredAt()).isNull();
             assertThatThrownBy(() -> storage.get(purpose, legacyObject))
                     .isInstanceOfSatisfying(
                             ForgeException.class,
@@ -1191,16 +1351,20 @@ class ObjectStorageTest {
     }
 
     @Test
-    void expiredResultsAreDeletedButTaskHistoryRemains() throws Exception {
+    void expiredResultsEnterGraceAndKeepCapacityWhileTaskHistoryRemains() throws Exception {
         createOrder(tenant);
         String id = (String) ((Map<?, ?>) exchange(tenant, HttpMethod.POST, "/orders/export", Map.of())
                         .get("data"))
                 .get("id");
         assertThat(awaitTask(id).get("status")).isEqualTo("SUCCEEDED");
         Thread.sleep(2200);
+        UUID result = asMember(() -> ioTasks.get(UUID.fromString(id))).resultObjectId();
         try (var ignored = CurrentTenant.bind(tenant)) {
+            long usedBytes = storage.usage().usedBytes();
             maintenance.expire();
-            assertThat(storage.usage().usedBytes()).isZero();
+            assertThat(storage.lifecycle(result).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            assertThat(storage.usage().usedBytes()).isEqualTo(usedBytes).isPositive();
+            assertThat(objectKeys()).contains(tenant + "/demo-service/" + result);
         }
         assertThat(exchange(tenant, HttpMethod.GET, "/io/tasks/" + id + "/download", null)
                         .get("code"))
@@ -2872,7 +3036,7 @@ class ObjectStorageTest {
     }
 
     @Test
-    void uploadConfirmedAfterDowngradeBeyondQuotaIsRejectedAndRemoved() throws Exception {
+    void uploadConfirmedAfterDowngradeBeyondQuotaIsRejectedWithoutPrematurePhysicalDeletion() throws Exception {
         String orderId = createOrder(tenant);
         int size = 600 * 1024;
         Map<?, ?> first = prepareUpload(tenant, orderId, "first.txt", size);
@@ -2885,7 +3049,12 @@ class ObjectStorageTest {
         Map<String, Object> rejected =
                 exchange(tenant, HttpMethod.POST, attachments(orderId), Map.of("objectId", second.get("objectId")));
         assertThat(rejected.get("code")).isEqualTo("storage.quotaExceeded");
-        assertThat(objectKeys()).doesNotContain(tenant + "/demo-service/" + second.get("objectId"));
+        assertThat(objectKeys()).contains(tenant + "/demo-service/" + second.get("objectId"));
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(storage.usage().usedBytes()).isEqualTo(2L * size);
+            assertThatThrownBy(() -> storage.get(UUID.fromString((String) second.get("objectId"))))
+                    .isInstanceOf(ForgeException.class);
+        }
         // 降级前已确认的对象不受影响
         assertThat((List<?>) exchange(tenant, HttpMethod.GET, attachments(orderId), null)
                         .get("data"))
@@ -2893,7 +3062,7 @@ class ObjectStorageTest {
     }
 
     @Test
-    void deletingAttachmentRemovesFileAndFreesQuotaButOnlyWithinOwnTenant() throws Exception {
+    void deletingAttachmentStartsGracePeriodAndKeepsQuotaButOnlyWithinOwnTenant() throws Exception {
         deliver(planChanged(1L, 1));
         String orderId = createOrder(tenant);
         int size = 600 * 1024;
@@ -2937,13 +3106,17 @@ class ObjectStorageTest {
         assertThat((List<?>) exchange(tenant, HttpMethod.GET, attachments(orderId), null)
                         .get("data"))
                 .isEmpty();
-        assertThat(objectKeys()).doesNotContain(tenant + "/demo-service/" + objectId);
+        assertThat(objectKeys()).contains(tenant + "/demo-service/" + objectId);
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(storage.lifecycle(UUID.fromString(objectId)).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            assertThat(storage.usage().usedBytes()).isEqualTo(size);
+        }
         assertThat(exchange(tenant, HttpMethod.GET, attachments(orderId) + "/" + attachmentId + "/download", null)
                         .get("code"))
                 .isEqualTo("attachment.notFound");
         assertThat(exchange(tenant, HttpMethod.POST, uploads(orderId), uploadRequest("second.txt", size))
-                        .get("httpStatus"))
-                .isEqualTo(201);
+                        .get("code"))
+                .isEqualTo("storage.quotaExceeded");
     }
 
     private TenantPlanChanged planChanged(Long storageQuotaMb, long version) {
