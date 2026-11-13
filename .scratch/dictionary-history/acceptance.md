@@ -117,3 +117,8 @@ IAM 全量前已执行 `./mvnw -o -pl forge-iam -am install -DskipTests` 更新�
 - **Spec**：初审与修复复核均 **0 项**；姓名为查询时上下文，不改变持久化快照、版本或 diff。
 
 最终真实截图还保存在 `/Users/liuhuan/.codex/visualizations/2026/11/13/01a1d394-5beb-7663-8a55-b7b702981157/dictionary-history-e2e.png`。交付仍遵守上文验证边界，未推送或操作开发数据库。
+
+
+### 工作区清理
+
+票据 01、02、03 的托管工作区已通过 `archive_worktree` 归档并保留可恢复快照。审查修复工作区 `/Users/liuhuan/.codex/worktrees/dictionary-history-review-fixes/saas-forge` 已被应用设为本聊天主工作区；归档工具明确返回 `The task's primary checkout cannot be removed.`，因此保留该干净副本，未绕过保护手工删除。修复分支全部提交均已合入集成分支，集成工作目录仍为 `/Users/liuhuan/workspace/coding/saas-forge`。
