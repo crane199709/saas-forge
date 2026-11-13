@@ -56,6 +56,7 @@ public class ReferenceDataService {
             .thenComparing(TenantDictionaryItem::code);
 
     private final DictionaryItemMapper items;
+    private final DictionaryHistoryService history;
     private final ParameterOverrideMapper overrides;
     private final PermissionService permissions;
     private final RoleService roles;
@@ -66,6 +67,7 @@ public class ReferenceDataService {
 
     ReferenceDataService(
             DictionaryItemMapper items,
+            DictionaryHistoryService history,
             ParameterOverrideMapper overrides,
             PermissionService permissions,
             RoleService roles,
@@ -74,6 +76,7 @@ public class ReferenceDataService {
             TransactionTemplate transactions,
             JsonMapper json) {
         this.items = items;
+        this.history = history;
         this.overrides = overrides;
         this.permissions = permissions;
         this.roles = roles;
@@ -192,6 +195,7 @@ public class ReferenceDataService {
                     == 0) {
                 throw new ForgeException(ReferenceDataErrorCode.ITEM_CODE_TAKEN, full);
             }
+            history.append(actor, service, dictionary, "新增字典项 " + full);
             changed(
                     actor,
                     itemAudit(actor, "dictionary.itemCreate", service, dictionary, full)
@@ -207,6 +211,9 @@ public class ReferenceDataService {
         return transactions.execute(status -> {
             TenantDictionary current = lockExtensible(actor, service, dictionary);
             TenantDictionaryItem item = requireItem(current, code);
+            if (name.equals(item.name()) && sort == item.sort()) {
+                return item;
+            }
             // 名称不变时不查重名：服务新版本可能引入与该项同名的内置项，冲突项须仍能调整排序。
             if (item.selectable() && !name.equals(item.name())) {
                 requireNameFree(current, name, code);
@@ -221,6 +228,14 @@ public class ReferenceDataService {
                     name,
                     sort,
                     actor.identityId());
+            List<String> fields = new ArrayList<>();
+            if (!name.equals(item.name())) {
+                fields.add("显示名");
+            }
+            if (sort != item.sort()) {
+                fields.add("排序");
+            }
+            history.append(actor, service, dictionary, "修改字典项 " + code + "：" + String.join("、", fields));
             changed(
                     actor,
                     itemAudit(actor, "dictionary.itemUpdate", service, dictionary, code)
@@ -246,6 +261,9 @@ public class ReferenceDataService {
         return transactions.execute(status -> {
             TenantDictionary current = lockExtensible(actor, service, dictionary);
             TenantDictionaryItem item = requireItem(current, code);
+            if (enabled == item.selectable()) {
+                return item;
+            }
             if (enabled) {
                 requireNameFree(current, item.name(), code);
             } else {
@@ -264,6 +282,7 @@ public class ReferenceDataService {
                     enabled,
                     actor.identityId());
             String action = enabled ? "dictionary.itemEnable" : "dictionary.itemDisable";
+            history.append(actor, service, dictionary, (enabled ? "启用字典项 " : "停用字典项 ") + code);
             changed(actor, itemAudit(actor, action, service, dictionary, code));
             return new TenantDictionaryItem(code, item.name(), item.sort(), item.custom(), status(enabled));
         });

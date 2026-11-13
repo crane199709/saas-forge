@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.iam.referencedata.mapper.DictionaryHistoryMapper">
+    <select id="list" resultType="io.saasforge.iam.referencedata.model.DictionaryHistoryRow">
+        SELECT version, summary, created_by AS changedBy, created_at AS changedAt, CAST(snapshot AS text) AS snapshot
+        FROM dictionary_history
+        WHERE tenant_id = #{tenantId} AND service = #{service} AND dictionary = #{dictionary} AND NOT deleted
+        ORDER BY version DESC
+    </select>
+    <insert id="append">
+        INSERT INTO dictionary_history (id, tenant_id, service, dictionary, version, snapshot, summary,
+        created_at, updated_at, created_by, updated_by)
+        SELECT #{id}, #{tenantId}, #{service}, #{dictionary}, COALESCE(MAX(version), 0) + 1,
+        CAST(#{snapshot} AS jsonb), #{summary}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor}
+        FROM dictionary_history
+        WHERE tenant_id = #{tenantId} AND service = #{service} AND dictionary = #{dictionary} AND NOT deleted
+    </insert>
+    <update id="deleteTenant">
+        UPDATE dictionary_history SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = NULL
+        WHERE tenant_id = #{tenantId} AND NOT deleted
+    </update>
+</mapper>
