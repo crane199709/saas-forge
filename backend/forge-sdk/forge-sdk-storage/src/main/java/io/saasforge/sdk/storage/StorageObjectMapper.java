@@ -2,6 +2,7 @@ package io.saasforge.sdk.storage;
 
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.apache.ibatis.annotations.Param;
 
@@ -72,6 +73,27 @@ interface StorageObjectMapper {
 
     /** 仅将保留截止已到或待上传期限已到的对象标记失效，重复调用不重置宽限期。 */
     int expireDue(@Param("id") UUID id, @Param("now") OffsetDateTime now);
+
+    /** 当前租户中仍可能需要治理的用途，包括历史用途与永久用途的主动失效。 */
+    List<String> retentionPurposes();
+
+    /** 按对象 ID 稳定游标读取一个用途的到期有效登记，跳过批次仍可继续向后扫描。 */
+    List<StorageObjectRecord> expiryCandidates(
+            @Param("purpose") String purpose,
+            @Param("now") OffsetDateTime now,
+            @Param("after") UUID after,
+            @Param("limit") int limit);
+
+    /** 按对象 ID 稳定游标读取宽限已结束且上传凭证已失效的登记，包含待删除重试。 */
+    List<StorageObjectRecord> purgeCandidates(
+            @Param("purpose") String purpose,
+            @Param("now") OffsetDateTime now,
+            @Param("graceCutoff") OffsetDateTime graceCutoff,
+            @Param("after") UUID after,
+            @Param("limit") int limit);
+
+    /** 持有对象行锁且完成引用与期限复查后进入待删除状态；删除失败保留此状态重试。 */
+    void markPurgePending(@Param("id") UUID id);
 
     /** 物理删除成功后移除当前租户登记；仅供最终清理调用，不用于业务失效。 */
     void delete(@Param("id") UUID id);

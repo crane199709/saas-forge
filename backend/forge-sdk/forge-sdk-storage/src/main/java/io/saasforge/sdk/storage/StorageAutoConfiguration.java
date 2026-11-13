@@ -1,10 +1,13 @@
 package io.saasforge.sdk.storage;
 
+import io.saasforge.sdk.audit.AuditRecorder;
+import io.saasforge.sdk.core.CurrentActorProvider;
 import io.saasforge.sdk.mq.EventHandler;
 import io.saasforge.sdk.mq.MqAutoConfiguration;
 import io.saasforge.sdk.provisioning.TenantPlanChanged;
 import java.time.Clock;
 import java.util.List;
+import java.util.Optional;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -60,6 +63,8 @@ public final class StorageAutoConfiguration {
      * @param sqlSession 参与 Spring 事务的 SqlSession
      * @param transactionManager 用于 Quota 校验与对象登记的事务；调用方已在事务中时加入调用方的事务
      * @param clocks 可选时钟；未声明时使用 UTC 系统时钟
+     * @param audit 生命周期实际变化提交后写入审计
+     * @param actors 当前操作人；后台任务或未引入认证时为空
      */
     @Bean
     public ObjectStorage objectStorage(
@@ -69,7 +74,9 @@ public final class StorageAutoConfiguration {
             PlatformTransactionManager transactionManager,
             StorageProperties properties,
             Environment environment,
-            ObjectProvider<Clock> clocks) {
+            ObjectProvider<Clock> clocks,
+            AuditRecorder audit,
+            ObjectProvider<CurrentActorProvider> actors) {
         return new ObjectStorage(
                 forgeS3Client,
                 forgeS3Presigner,
@@ -77,7 +84,9 @@ public final class StorageAutoConfiguration {
                 new TransactionTemplate(transactionManager),
                 properties,
                 environment.getRequiredProperty("spring.application.name"),
-                clocks.getIfAvailable(Clock::systemUTC));
+                clocks.getIfAvailable(Clock::systemUTC),
+                audit,
+                actors.getIfAvailable(() -> Optional::empty));
     }
 
     /** 注册供失效与物理删除共用的批量引用检查入口。 */
@@ -85,6 +94,16 @@ public final class StorageAutoConfiguration {
     public FileReferenceChecks fileReferenceChecks(
             List<FileReferenceChecker> checkers, StorageRetentionProperties properties) {
         return new FileReferenceChecks(checkers, properties);
+    }
+
+    /** 注册业务服务内按 Tenant 运行的文件治理任务。 */
+    @Bean
+    public StorageMaintenance storageMaintenance(
+            ObjectStorage storage,
+            SqlSessionTemplate sqlSession,
+            FileReferenceChecks references,
+            ObjectProvider<Clock> clocks) {
+        return new StorageMaintenance(storage, mapper(sqlSession), references, clocks.getIfAvailable(Clock::systemUTC));
     }
 
     @Bean

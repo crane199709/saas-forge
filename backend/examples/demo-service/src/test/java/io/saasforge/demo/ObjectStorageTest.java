@@ -40,14 +40,18 @@ import io.saasforge.sdk.security.EffectiveFieldPolicy;
 import io.saasforge.sdk.security.MaskingRule;
 import io.saasforge.sdk.security.SensitiveField;
 import io.saasforge.sdk.security.TenantContext;
+import io.saasforge.sdk.storage.FileReferenceChecker;
 import io.saasforge.sdk.storage.ObjectStorage;
 import io.saasforge.sdk.storage.StorageErrorCode;
+import io.saasforge.sdk.storage.StorageMaintenance;
 import io.saasforge.sdk.storage.StorageObjectStatus;
 import io.saasforge.sdk.storage.StoragePurpose;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -69,11 +73,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -85,6 +91,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -92,6 +99,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
@@ -112,9 +120,11 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -191,6 +201,9 @@ class ObjectStorageTest {
     ObjectStorage storage;
 
     @Autowired
+    StorageMaintenance storageMaintenance;
+
+    @Autowired
     io.saasforge.sdk.storage.FileReferenceChecks fileReferenceChecks;
 
     @Autowired
@@ -211,12 +224,85 @@ class ObjectStorageTest {
     @Autowired
     MutableStorageClock retentionClock;
 
+    @Autowired
+    StorageFaults storageFaults;
+
+    @Autowired
+    CleanupReferences cleanupReferences;
+
     @TestConfiguration(proxyBeanMethods = false)
     static class RetentionClockConfiguration {
+        @Bean
+        CleanupReferences cleanupReferences() {
+            return new CleanupReferences();
+        }
+
+        @Bean
+        StorageFaults storageFaults() {
+            return new StorageFaults();
+        }
+
+        @Bean(destroyMethod = "")
+        @Primary
+        S3Client retentionFaultClient(@Qualifier("forgeS3Client") S3Client delegate, StorageFaults faults) {
+            return (S3Client) Proxy.newProxyInstance(
+                    S3Client.class.getClassLoader(), new Class<?>[] {S3Client.class}, (proxy, method, args) -> {
+                        if (method.getName().equals("deleteObject")) {
+                            DeleteObjectRequest request;
+                            if (args[0] instanceof Consumer<?> consumer) {
+                                var builder = DeleteObjectRequest.builder();
+                                @SuppressWarnings("unchecked")
+                                var customize = (Consumer<DeleteObjectRequest.Builder>) consumer;
+                                customize.accept(builder);
+                                request = builder.build();
+                            } else {
+                                request = (DeleteObjectRequest) args[0];
+                            }
+                            if (faults.failures.contains(request.key())) {
+                                throw SdkClientException.create("Injected S3 failure");
+                            }
+                            if (request.key().equals(faults.blockedKey)) {
+                                faults.started.countDown();
+                                if (!faults.release.await(10, TimeUnit.SECONDS)) {
+                                    throw SdkClientException.create("Injected S3 timeout");
+                                }
+                            }
+                            return delegate.deleteObject(request);
+                        }
+                        try {
+                            return method.invoke(delegate, args);
+                        } catch (InvocationTargetException error) {
+                            throw error.getCause();
+                        }
+                    });
+        }
+
         @Bean
         MutableStorageClock storageClock() {
             return new MutableStorageClock();
         }
+    }
+
+    static final class CleanupReferences implements FileReferenceChecker {
+        final Map<UUID, BiFunction<String, List<UUID>, Set<UUID>>> policies = new ConcurrentHashMap<>();
+
+        @Override
+        public Set<String> purposes() {
+            return Set.of("cleanup-a", "cleanup-b", "cleanup-batched", "cleanup-pending");
+        }
+
+        @Override
+        public Set<UUID> referencedObjects(String purpose, List<UUID> candidates) {
+            return policies.getOrDefault(CurrentTenant.require(), (code, ids) -> Set.of())
+                    .apply(purpose, candidates);
+        }
+    }
+
+    static final class StorageFaults {
+        final Set<String> failures = ConcurrentHashMap.newKeySet();
+        volatile String blockedKey;
+        volatile CountDownLatch started = new CountDownLatch(1);
+        volatile CountDownLatch release = new CountDownLatch(1);
     }
 
     static final class MutableStorageClock extends Clock {
@@ -249,6 +335,388 @@ class ObjectStorageTest {
         retentionClock.current = Instant.now();
         tenant = UUID.randomUUID();
         TestGrants.publishAll(redisTemplate, tenant, TestTokens.MEMBERSHIP_ID);
+    }
+
+    @Test
+    void databaseRollbackAfterS3DeletionKeepsRegistrationForAnIdempotentRetry() {
+        var purpose = new StoragePurpose("order-attachment", Set.of("pdf"), 4, Duration.ofMinutes(2));
+        retentionClock.at("2026-11-01T00:00:00Z");
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            UUID id = storage.write(purpose, "rollback.pdf", null, 4, new ByteArrayInputStream(new byte[4]))
+                    .id();
+            storage.delete(id);
+            retentionClock.at("2026-11-08T00:00:00Z");
+            transaction.executeWithoutResult(status -> {
+                storageMaintenance.clean();
+                status.setRollbackOnly();
+            });
+            assertThat(storage.lifecycle(id).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            assertThat(storage.usage().usedBytes()).isEqualTo(4);
+            assertThat(objectKeys()).doesNotContain(tenant + "/demo-service/" + id);
+            assertThat(storageAudits(id)).extracting(AuditEvent::action).containsExactly("storage.expire");
+            storageMaintenance.clean();
+            assertThatThrownBy(() -> storage.lifecycle(id)).isInstanceOf(ForgeException.class);
+            assertThat(storage.usage().usedBytes()).isZero();
+            assertThat(storageAudits(id))
+                    .extracting(AuditEvent::action)
+                    .containsExactlyInAnyOrder("storage.expire", "storage.purge");
+        }
+    }
+
+    @Test
+    @Sql("/fixtures/storage-retention-boundaries.sql")
+    void purgeKeepsForeignKeysAndWaitsForOutstandingUploadCredential() {
+        UUID fixtureTenant = UUID.fromString("019d0110-0000-7000-8000-000000000099");
+        UUID foreign = UUID.fromString("019d0110-0000-7000-8000-000000000081");
+        UUID foreignService = UUID.fromString("019d0110-0000-7000-8000-000000000082");
+        UUID outstanding = UUID.fromString("019d0110-0000-7000-8000-000000000083");
+        String foreignKey = "019d0110-0000-7000-8000-000000000098/demo-service/" + foreign;
+        String foreignServiceKey = fixtureTenant + "/other-service/" + foreignService;
+        String ownKey = fixtureTenant + "/demo-service/" + outstanding;
+        try (var client = s3Client()) {
+            for (String key : List.of(foreignKey, foreignServiceKey, ownKey)) {
+                client.putObject(request -> request.bucket(BUCKET).key(key), RequestBody.fromBytes(new byte[1]));
+            }
+        }
+        retentionClock.at("2026-11-08T00:00:00Z");
+        try (var ignored = CurrentTenant.bind(fixtureTenant)) {
+            storageMaintenance.clean();
+            assertThat(objectKeys()).contains(foreignKey, foreignServiceKey, ownKey);
+            assertThat(storage.lifecycle(outstanding).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            assertThat(storage.usage().usedBytes()).isEqualTo(3);
+            retentionClock.at("2026-11-10T00:00:00Z");
+            storageMaintenance.clean();
+            assertThat(objectKeys()).contains(foreignKey, foreignServiceKey).doesNotContain(ownKey);
+            assertThat(storage.lifecycle(foreign).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            assertThat(storage.lifecycle(foreignService).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            assertThatThrownBy(() -> storage.lifecycle(outstanding)).isInstanceOf(ForgeException.class);
+            assertThat(storage.usage().usedBytes()).isEqualTo(2);
+        }
+    }
+
+    @Test
+    void cleanupPurgesUnconfirmedAndNeverUploadedReservationsWithoutCrossingTenants() {
+        var purpose = new StoragePurpose("cleanup-pending", Set.of("pdf"), 4, Duration.ofMinutes(2));
+        retentionClock.at("2026-11-01T00:00:00Z");
+        UUID otherTenant = UUID.randomUUID();
+        UUID other;
+        try (var ignored = CurrentTenant.bind(otherTenant)) {
+            other = storage.prepareUpload(purpose, "foreign.pdf", null, 4).objectId();
+        }
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            var uploaded = storage.prepareUpload(purpose, "uploaded.pdf", null, 4);
+            UUID neverUploaded =
+                    storage.prepareUpload(purpose, "missing.pdf", null, 4).objectId();
+            try (var client = s3Client()) {
+                client.putObject(
+                        request -> request.bucket(BUCKET).key(tenant + "/demo-service/" + uploaded.objectId()),
+                        RequestBody.fromBytes(new byte[4]));
+            }
+            storageMaintenance.clean();
+            assertThat(storage.lifecycle(uploaded.objectId()).status()).isEqualTo(StorageObjectStatus.PENDING);
+            retentionClock.current = uploaded.expiresAt().toInstant();
+            storageMaintenance.clean();
+            assertThat(storage.lifecycle(uploaded.objectId()).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            assertThat(storage.lifecycle(neverUploaded).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            assertThat(storage.usage().usedBytes()).isEqualTo(8);
+            retentionClock.current = uploaded.expiresAt().plusDays(7).toInstant();
+            storageMaintenance.clean();
+            assertThatThrownBy(() -> storage.lifecycle(uploaded.objectId())).isInstanceOf(ForgeException.class);
+            assertThatThrownBy(() -> storage.lifecycle(neverUploaded)).isInstanceOf(ForgeException.class);
+            assertThat(storage.usage().usedBytes()).isZero();
+            assertThat(objectKeys()).doesNotContain(tenant + "/demo-service/" + uploaded.objectId());
+        }
+        try (var ignored = CurrentTenant.bind(otherTenant)) {
+            assertThat(storage.lifecycle(other).status()).isEqualTo(StorageObjectStatus.PENDING);
+            assertThat(storage.usage().usedBytes()).isEqualTo(4);
+        }
+    }
+
+    @Test
+    void extensionCommittedAfterCandidateSelectionPreventsExpiry() throws Exception {
+        var purpose = new StoragePurpose("cleanup-a", Set.of("pdf"), 4, Duration.ofMinutes(2), 1);
+        retentionClock.at("2026-11-01T00:00:00Z");
+        UUID id;
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            id = storage.write(purpose, "extended.pdf", null, 4, new ByteArrayInputStream(new byte[4]))
+                    .id();
+        }
+        var selected = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        cleanupReferences.policies.put(tenant, (code, candidates) -> {
+            selected.countDown();
+            try {
+                if (!release.await(3, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("test reference timeout");
+                }
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(error);
+            }
+            return Set.of();
+        });
+        retentionClock.at("2026-11-02T00:00:00Z");
+        var cleaning = CompletableFuture.runAsync(() -> CurrentTenant.run(tenant, storageMaintenance::clean));
+        try {
+            assertThat(selected.await(3, TimeUnit.SECONDS)).isTrue();
+            try (var ignored = CurrentTenant.bind(tenant)) {
+                storage.extendRetention(id, OffsetDateTime.parse("2026-12-01T00:00:00Z"));
+            }
+        } finally {
+            release.countDown();
+        }
+        cleaning.get(5, TimeUnit.SECONDS);
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(storage.get(purpose, id).size()).isEqualTo(4);
+            assertThat(storage.lifecycle(id).retentionExpiresAt()).isEqualTo("2026-12-01T00:00:00Z");
+            assertThat(storageAudits(id)).extracting(AuditEvent::action).containsExactly("storage.retentionExtend");
+        }
+    }
+
+    @Test
+    void purgeSerializesRestoreAndExtensionAndConcurrentCleanupIsIdempotent() throws Exception {
+        var purpose = new StoragePurpose("order-attachment", Set.of("pdf"), 4, Duration.ofMinutes(2), 1);
+        retentionClock.at("2026-11-01T00:00:00Z");
+        UUID id;
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            id = storage.write(purpose, "race.pdf", null, 4, new ByteArrayInputStream(new byte[4]))
+                    .id();
+            storage.delete(id);
+        }
+        retentionClock.at("2026-11-08T00:00:00Z");
+        storageFaults.started = new CountDownLatch(1);
+        storageFaults.release = new CountDownLatch(1);
+        storageFaults.blockedKey = tenant + "/demo-service/" + id;
+        var purging = CompletableFuture.runAsync(() -> CurrentTenant.run(tenant, storageMaintenance::clean));
+        try {
+            assertThat(storageFaults.started.await(3, TimeUnit.SECONDS)).isTrue();
+            var attempts = new CountDownLatch(2);
+            var restoring = CompletableFuture.supplyAsync(() -> {
+                try (var ignored = CurrentTenant.bind(tenant)) {
+                    attempts.countDown();
+                    try {
+                        storage.restore(purpose, id);
+                        return null;
+                    } catch (ForgeException error) {
+                        return error.errorCode();
+                    }
+                }
+            });
+            var extending = CompletableFuture.supplyAsync(() -> {
+                try (var ignored = CurrentTenant.bind(tenant)) {
+                    attempts.countDown();
+                    try {
+                        storage.extendRetention(id, OffsetDateTime.parse("2026-12-01T00:00:00Z"));
+                        return null;
+                    } catch (ForgeException error) {
+                        return error.errorCode();
+                    }
+                }
+            });
+            var duplicate = CompletableFuture.runAsync(() -> CurrentTenant.run(tenant, storageMaintenance::clean));
+            assertThat(attempts.await(3, TimeUnit.SECONDS)).isTrue();
+            assertThatThrownBy(() -> restoring.get(150, TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+            assertThatThrownBy(() -> extending.get(150, TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+            storageFaults.release.countDown();
+            purging.get(5, TimeUnit.SECONDS);
+            duplicate.get(5, TimeUnit.SECONDS);
+            assertThat(restoring.get(5, TimeUnit.SECONDS)).isEqualTo(StorageErrorCode.OBJECT_NOT_FOUND);
+            assertThat(extending.get(5, TimeUnit.SECONDS)).isEqualTo(StorageErrorCode.OBJECT_NOT_FOUND);
+            assertThat(objectKeys()).doesNotContain(tenant + "/demo-service/" + id);
+            assertThat(storageAudits(id))
+                    .extracting(AuditEvent::action)
+                    .containsExactlyInAnyOrder("storage.expire", "storage.purge");
+        } finally {
+            storageFaults.release.countDown();
+            storageFaults.blockedKey = null;
+        }
+    }
+
+    @Test
+    void missingAndFailingCheckerPurposesKeepTheirFilesWhileAnotherPurposeIsPurged() {
+        retentionClock.at("2026-11-01T00:00:00Z");
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            var ids = new LinkedHashMap<String, UUID>();
+            for (String code : List.of("cleanup-a", "cleanup-b", "uncovered-cleanup")) {
+                var purpose = new StoragePurpose(code, Set.of("pdf"), 4, Duration.ofMinutes(2), 1);
+                ids.put(
+                        code,
+                        storage.write(purpose, "purpose.pdf", null, 4, new ByteArrayInputStream(new byte[4]))
+                                .id());
+            }
+            cleanupReferences.policies.put(tenant, (code, candidates) -> {
+                if (code.equals("cleanup-a")) {
+                    throw new IllegalStateException("private checker details");
+                }
+                return Set.of();
+            });
+            retentionClock.at("2026-11-02T00:00:00Z");
+            storageMaintenance.clean();
+            assertThat(storage.lifecycle(ids.get("cleanup-a")).status()).isEqualTo(StorageObjectStatus.STORED);
+            assertThat(storage.lifecycle(ids.get("uncovered-cleanup")).status()).isEqualTo(StorageObjectStatus.STORED);
+            assertThat(storage.lifecycle(ids.get("cleanup-b")).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            retentionClock.at("2026-11-09T00:00:00Z");
+            storageMaintenance.clean();
+            assertThat(storage.get(ids.get("cleanup-a")).size()).isEqualTo(4);
+            assertThat(storage.get(ids.get("uncovered-cleanup")).size()).isEqualTo(4);
+            assertThatThrownBy(() -> storage.lifecycle(ids.get("cleanup-b"))).isInstanceOf(ForgeException.class);
+            assertThat(storage.usage().usedBytes()).isEqualTo(8);
+        }
+    }
+
+    @Test
+    void skippedFirstBatchDoesNotStarveLaterOrphansAndPurgeRechecksNewReferences() {
+        var purpose = new StoragePurpose("cleanup-batched", Set.of("pdf"), 4, Duration.ofMinutes(2), 1);
+        retentionClock.at("2026-11-01T00:00:00Z");
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            var ids = new ArrayList<UUID>();
+            for (int i = 0; i < 4; i++) {
+                ids.add(storage.write(purpose, "batch.pdf", null, 4, new ByteArrayInputStream(new byte[4]))
+                        .id());
+            }
+            ids.sort(UUID::compareTo);
+            var referenced = new AtomicReference<>(Set.copyOf(ids.subList(0, 2)));
+            cleanupReferences.policies.put(
+                    tenant,
+                    (code, candidates) -> candidates.stream()
+                            .filter(referenced.get()::contains)
+                            .collect(java.util.stream.Collectors.toSet()));
+            retentionClock.at("2026-11-02T00:00:00Z");
+            storageMaintenance.clean();
+            assertThat(ids.subList(0, 2))
+                    .allSatisfy(
+                            id -> assertThat(storage.get(purpose, id).size()).isEqualTo(4));
+            assertThat(ids.subList(2, 4))
+                    .allSatisfy(
+                            id -> assertThat(storage.lifecycle(id).status()).isEqualTo(StorageObjectStatus.EXPIRED));
+            referenced.set(Set.copyOf(ids));
+            retentionClock.at("2026-11-09T00:00:00Z");
+            storageMaintenance.clean();
+            assertThat(storage.usage().usedBytes()).isEqualTo(16);
+            assertThat(objectKeys())
+                    .containsAll(ids.stream()
+                            .map(id -> tenant + "/demo-service/" + id)
+                            .toList());
+            referenced.set(Set.of());
+            storageMaintenance.clean();
+            assertThat(ids.subList(0, 2))
+                    .allSatisfy(
+                            id -> assertThat(storage.lifecycle(id).status()).isEqualTo(StorageObjectStatus.EXPIRED));
+            assertThat(ids.subList(2, 4))
+                    .allSatisfy(id ->
+                            assertThatThrownBy(() -> storage.lifecycle(id)).isInstanceOf(ForgeException.class));
+            assertThat(storage.usage().usedBytes()).isEqualTo(8);
+        }
+    }
+
+    @Test
+    void s3FailurePreservesPendingPurgeAndQuotaUntilRetrySucceeds() {
+        var purpose = new StoragePurpose("order-attachment", Set.of("pdf"), 4, Duration.ofMinutes(2));
+        retentionClock.at("2026-11-01T00:00:00Z");
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            UUID id = storage.write(purpose, "retry.pdf", null, 4, new ByteArrayInputStream(new byte[4]))
+                    .id();
+            String key = tenant + "/demo-service/" + id;
+            storage.delete(id);
+            retentionClock.at("2026-11-08T00:00:00Z");
+            storageFaults.failures.add(key);
+            try {
+                storageMaintenance.clean();
+                assertThat(storage.lifecycle(id).status()).isEqualTo(StorageObjectStatus.PURGE_PENDING);
+                assertThat(storage.usage().usedBytes()).isEqualTo(4);
+                assertThat(objectKeys()).contains(key);
+                assertThat(storageAudits(id)).extracting(AuditEvent::action).containsExactly("storage.expire");
+            } finally {
+                storageFaults.failures.remove(key);
+            }
+            storageMaintenance.clean();
+            assertThatThrownBy(() -> storage.lifecycle(id)).isInstanceOf(ForgeException.class);
+            assertThat(objectKeys()).doesNotContain(key);
+            assertThat(storage.usage().usedBytes()).isZero();
+            assertThat(storageAudits(id))
+                    .extracting(AuditEvent::action)
+                    .containsExactlyInAnyOrder("storage.expire", "storage.purge");
+        }
+    }
+
+    @Test
+    void lifecycleAuditsOnlyCommittedChangesAndDoesNotExposeFileContent() {
+        var purpose = new StoragePurpose("order-attachment", Set.of("pdf"), 20, Duration.ofMinutes(2), 2);
+        retentionClock.at("2026-11-01T00:00:00Z");
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            UUID id = storage.write(
+                            purpose,
+                            "sensitive-filename.pdf",
+                            null,
+                            12,
+                            new ByteArrayInputStream("private-body".getBytes(StandardCharsets.UTF_8)))
+                    .id();
+            transaction.executeWithoutResult(status -> {
+                storage.delete(id);
+                status.setRollbackOnly();
+            });
+            assertThat(storage.lifecycle(id).status()).isEqualTo(StorageObjectStatus.STORED);
+            assertThat(storageAudits(id)).isEmpty();
+            storage.delete(id);
+            storage.delete(id);
+            storage.restore(purpose, id);
+            storage.extendRetention(id, OffsetDateTime.parse("2026-11-05T00:00:00Z"));
+            retentionClock.at("2026-11-05T00:00:00Z");
+            storageMaintenance.clean();
+            retentionClock.at("2026-11-12T00:00:00Z");
+            storageMaintenance.clean();
+            storageMaintenance.clean();
+            var events = storageAudits(id);
+            assertThat(events)
+                    .extracting(AuditEvent::action)
+                    .containsExactlyInAnyOrder(
+                            "storage.expire",
+                            "storage.retentionExtend",
+                            "storage.retentionExtend",
+                            "storage.expire",
+                            "storage.purge");
+            assertThat(events).allSatisfy(event -> {
+                assertThat(event.tenantId()).isEqualTo(tenant);
+                assertThat(event.resourceType()).isEqualTo("storageObject");
+                assertThat(event.resourceId()).isEqualTo(id.toString());
+                assertThat(event.outcome()).isEqualTo(AuditOutcome.SUCCESS);
+                assertThat(event.detail()).containsEntry("purpose", "order-attachment");
+                assertThat(JsonMapper.builder().build().writeValueAsString(event))
+                        .doesNotContain("private-body", "sensitive-filename", SECRET_KEY);
+            });
+        }
+    }
+
+    private List<AuditEvent> storageAudits(UUID id) {
+        return maskingAudit.payloads(tenant, "AuditEvent").stream()
+                .map(payload -> JsonMapper.builder().build().readValue(payload, AuditEvent.class))
+                .filter(event -> id.toString().equals(event.resourceId())
+                        && event.action().startsWith("storage."))
+                .toList();
+    }
+
+    @Test
+    void cleanupExpiresAnOrphanAndOnlyPurgesAfterSevenDaysReleasingQuota() {
+        var purpose = new StoragePurpose("order-attachment", Set.of("pdf"), 4, Duration.ofMinutes(2), 2);
+        retentionClock.at("2026-11-01T00:00:00Z");
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            UUID id = storage.write(purpose, "orphan.pdf", null, 4, new ByteArrayInputStream(new byte[4]))
+                    .id();
+            retentionClock.at("2026-11-03T00:00:00Z");
+            storageMaintenance.clean();
+            assertThat(storage.lifecycle(id).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            assertThat(storage.usage().usedBytes()).isEqualTo(4);
+            assertThat(objectKeys()).contains(tenant + "/demo-service/" + id);
+            retentionClock.at("2026-11-09T23:59:59Z");
+            storageMaintenance.clean();
+            assertThat(storage.lifecycle(id).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            assertThat(objectKeys()).contains(tenant + "/demo-service/" + id);
+            retentionClock.at("2026-11-10T00:00:00Z");
+            storageMaintenance.clean();
+            assertThatThrownBy(() -> storage.lifecycle(id)).isInstanceOf(ForgeException.class);
+            assertThat(objectKeys()).doesNotContain(tenant + "/demo-service/" + id);
+            assertThat(storage.usage().usedBytes()).isZero();
+        }
     }
 
     @Test
@@ -3095,6 +3563,10 @@ class ObjectStorageTest {
             assertThat(fileReferenceChecks.unreferenced("order-attachment", List.of(referenced, orphan), "purge"))
                     .containsExactly(orphan);
             assertThat(storage.lifecycle(referenced).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            retentionClock.current = storage.lifecycle(referenced).purgeAfter().toInstant();
+            storageMaintenance.clean();
+            assertThat(storage.lifecycle(referenced).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            assertThat(storage.usage().usedBytes()).isEqualTo(content.length);
         }
         try (var ignored = CurrentTenant.bind(UUID.randomUUID())) {
             assertThat(fileReferenceChecks.unreferenced("order-attachment", List.of(referenced), "purge"))

@@ -310,6 +310,12 @@ var download = storage.prepareDownload(ATTACHMENT, objectId);
 
 已有服务升级时，把 `io/saasforge/sdk/storage/upgrade-purpose.sql` 复制为新的 Flyway 迁移（demo 为 V14），不要改已执行的建表迁移。脚本增加必填 `purpose` 列、把旧行回填为 `unspecified`，随后移除列默认值；新登记必须显式提供用途。未知用途旧对象仍保留，普通用途不能下载；只有可信业务关联能够明确归类时，才在独立迁移中更新编码，不能根据扩展名猜用途。全局 `forge.storage.download-url-ttl` 已删除，改用用途的 `downloadUrlTtl`。参考 demo-service 的 attachment 功能及 V8/V14 迁移。
 
+storage 现在同时引入 `forge-sdk-audit` 与 `forge-sdk-scheduling`。除存储表外，须有基础 SDK 的 MQ 必需表、`forge-audit` Topic 和可用 Redis；配置 `forge.scheduling.iam-uri`、`forge.scheduling.token`，可分别引用 `${forge.manifest.iam-uri}`、`${forge.manifest.token}`。任务 `forge-storage-retention` 每小时在各试用/正常 Tenant 上运行，也可由现有任务运维入口触发。默认脚手架仍不启用 storage，不预加这些可选配置。
+
+治理按用途和对象 ID 稳定游标分批，首批全部被引用或检查失败也继续后批；各用途故障隔离。扫描包含永久用途的主动删除、上传 URL 到期的未确认登记，以及 `PURGE_PENDING` 重试。S3 删除成功后才移除登记并释放容量；S3 或最终数据库事务失败保留可重试登记，重复 S3 删除幂等。即使宽限结束，原上传凭证仍有效也先保留，避免客户端再次 PUT 产生孤儿。最终删除同时核对当前租户/服务的对象 key，并与 restore/extend 使用相同对象行锁重查状态、宽限与上传期限。
+
+`storage.expire` 覆盖显式删除、到期失效与配额拒绝导致的实际失效，`storage.retentionExtend` 覆盖延长与宽限内恢复，`storage.purge` 只在对象与登记清除成功提交后记录。重复无变化调用不新增事件；元数据只含用途、对象 ID、变更原因与期限，不含文件名、内容或凭证。沿用 `AuditRecorder` 事务提交后独立写 Outbox 的既有保证：业务回滚不记录成功事件，审计写失败仅告警，业务提交与审计之间进程终止仍可能丢事件。
+
 用途可声明第五参 `retentionDays`（正整数），例如 `new StoragePurpose("temporary-report", Set.of("pdf"), 1024, Duration.ofMinutes(5), 30)`；原四参构造表示永久保留。保留期属于服务声明，Tenant 与 Operator 不能覆盖；新对象从申请上传或服务端写入登记时开始计时，不追溯改变历史文件。
 
 已有 storage 服务新增迁移复制 `io/saasforge/sdk/storage/upgrade-retention.sql`（demo V18）。它增加 `retention_expires_at` 和 `expired_at`，保留原 `STORED`/`PENDING` 状态，旧文件保留截止时间为空。`lifecycle(id)` 可读取包括未确认、失效对象的状态；失效文件不再由 `get`、`open`、`prepareDownload` 返回，重复确认上传也不能使其恢复。`delete(id)` 改为标记 `EXPIRED`，不立即删除 S3 或释放容量，七天宽限期内仍占用配额；已签发下载 URL 按原有效期失效。最终物理删除须经过业务引用检查，逻辑删除的业务记录仍视为引用。默认 archetype 与 sub-app-kit 不引入 storage，不增加可选表、配置或页面。

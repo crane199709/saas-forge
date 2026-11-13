@@ -15,7 +15,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param accessKey 访问密钥 ID
  * @param secretKey 访问密钥
  * @param pathStyle 是否以路径形式（{@code endpoint/bucket/key}）访问；多数自建 S3 兼容实现只支持路径形式
- * @param uploadUrlTtl 上传预签名 URL 的有效期，也是未确认上传的对象占用容量的时长
+ * @param uploadUrlTtl 上传预签名 URL 的有效期；未确认对象此后可失效，容量在最终物理删除后才释放
  */
 @ConfigurationProperties("forge.storage")
 public record StorageProperties(

@@ -1,5 +1,10 @@
 package io.saasforge.sdk.storage;
 
+import io.saasforge.sdk.audit.AuditCategory;
+import io.saasforge.sdk.audit.AuditEvent;
+import io.saasforge.sdk.audit.AuditRealm;
+import io.saasforge.sdk.audit.AuditRecorder;
+import io.saasforge.sdk.core.CurrentActorProvider;
 import io.saasforge.sdk.core.CurrentTenant;
 import io.saasforge.sdk.core.UuidV7;
 import io.saasforge.sdk.core.api.ForgeException;
@@ -63,6 +68,8 @@ public class ObjectStorage {
     private final StorageProperties properties;
     private final String service;
     private final Clock clock;
+    private final AuditRecorder audit;
+    private final CurrentActorProvider actors;
 
     ObjectStorage(
             S3Client s3,
@@ -71,7 +78,9 @@ public class ObjectStorage {
             TransactionTemplate transaction,
             StorageProperties properties,
             String service,
-            Clock clock) {
+            Clock clock,
+            AuditRecorder audit,
+            CurrentActorProvider actors) {
         if (service.isBlank() || service.contains("/")) {
             throw new IllegalArgumentException(
                     "spring.application.name must be a single object key segment: " + service);
@@ -83,6 +92,8 @@ public class ObjectStorage {
         this.properties = properties;
         this.service = service;
         this.clock = clock;
+        this.audit = audit;
+        this.actors = actors;
     }
 
     /**
@@ -167,7 +178,9 @@ public class ObjectStorage {
         Long rejectedQuota = transaction.execute(status -> {
             Long quota = mapper.lockQuota();
             if (quota != null && mapper.usedBytes(objectId) + object.size() > quota) {
-                mapper.markExpired(objectId, now);
+                if (mapper.markExpired(objectId, now) == 1) {
+                    recordAudit("storage.expire", object, "quota", object.retentionExpiresAt());
+                }
                 return quota;
             }
             mapper.markStored(objectId, now);
@@ -327,7 +340,9 @@ public class ObjectStorage {
             if (object == null) {
                 throw notFound(objectId);
             }
-            mapper.markExpired(objectId, OffsetDateTime.now(clock));
+            if (mapper.markExpired(objectId, OffsetDateTime.now(clock)) == 1) {
+                recordAudit("storage.expire", object, "delete", object.retentionExpiresAt());
+            }
         });
     }
 
@@ -354,7 +369,14 @@ public class ObjectStorage {
      * @return 本次是否将文件标记为失效
      */
     public boolean expire(UUID objectId) {
-        return transaction.execute(status -> mapper.expireDue(objectId, OffsetDateTime.now(clock)) == 1);
+        return transaction.execute(status -> {
+            StorageObjectRecord object = mapper.findByIdForUpdate(objectId);
+            if (object == null || mapper.expireDue(objectId, OffsetDateTime.now(clock)) != 1) {
+                return false;
+            }
+            recordAudit("storage.expire", object, "deadline", object.retentionExpiresAt());
+            return true;
+        });
     }
 
     /**
@@ -382,7 +404,9 @@ public class ObjectStorage {
                     || !now.isBefore(object.expiredAt().plus(StorageObjectLifecycle.PURGE_GRACE_PERIOD))) {
                 throw new ForgeException(StorageErrorCode.RETENTION_UNAVAILABLE);
             }
-            mapper.renewRetention(objectId, retentionDeadline(purpose, now));
+            OffsetDateTime deadline = retentionDeadline(purpose, now);
+            mapper.renewRetention(objectId, deadline);
+            recordAudit("storage.retentionExtend", object, "restore", deadline);
             return mapper.findById(objectId).lifecycle();
         });
     }
@@ -419,8 +443,60 @@ public class ObjectStorage {
                         "Retention deadline must be later than now and the current deadline");
             }
             mapper.renewRetention(objectId, retentionExpiresAt);
+            recordAudit("storage.retentionExtend", object, "extend", retentionExpiresAt);
             return mapper.findById(objectId).lifecycle();
         });
+    }
+
+    // 与 restore/extendRetention 共用对象行锁；S3 成功之前绝不移除登记或释放容量。
+    void purge(UUID objectId, String purpose) {
+        transaction.executeWithoutResult(status -> {
+            StorageObjectRecord object = mapper.findByIdForUpdate(objectId);
+            OffsetDateTime now = OffsetDateTime.now(clock);
+            if (object == null
+                    || !purpose.equals(object.purpose())
+                    || (object.status() != StorageObjectStatus.EXPIRED
+                            && object.status() != StorageObjectStatus.PURGE_PENDING)
+                    || object.expiredAt() == null
+                    || now.isBefore(object.expiredAt().plus(StorageObjectLifecycle.PURGE_GRACE_PERIOD))
+                    || now.isBefore(object.uploadExpiresAt())) {
+                return;
+            }
+            // 租户 RLS 之外再限制 S3 的租户/服务前缀，损坏登记也不能删除别处的对象。
+            if (!object.objectKey().equals(prefix(CurrentTenant.require()) + object.id())) {
+                log.warn(
+                        "Storage retention skipped tenant={} purpose={} phase=purge reason=invalid-key",
+                        CurrentTenant.require(),
+                        purpose);
+                return;
+            }
+            mapper.markPurgePending(objectId);
+            try {
+                s3.deleteObject(request -> request.bucket(properties.bucket()).key(object.objectKey()));
+            } catch (SdkException error) {
+                // 在事务内保留 PURGE_PENDING，下一轮重复幂等删除；不输出客户端异常中的地址或凭证。
+                log.warn(
+                        "Storage retention skipped tenant={} purpose={} phase=purge reason=storage-failure",
+                        CurrentTenant.require(),
+                        purpose);
+                return;
+            }
+            mapper.delete(objectId);
+            recordAudit("storage.purge", object, "grace-ended", object.retentionExpiresAt());
+        });
+    }
+
+    private void recordAudit(String action, StorageObjectRecord object, String reason, OffsetDateTime deadline) {
+        audit.record(AuditEvent.builder(AuditRealm.TENANT, AuditCategory.OPERATION, action)
+                .tenant(CurrentTenant.require())
+                .actor(actors.currentActor().orElse(null))
+                .resource("storageObject", object.id())
+                .detail("purpose", object.purpose())
+                .detail("reason", reason)
+                .detail("previousStatus", object.status().name())
+                .detail("previousRetentionExpiresAt", object.retentionExpiresAt())
+                .detail("retentionExpiresAt", deadline)
+                .build());
     }
 
     private static OffsetDateTime retentionDeadline(StoragePurpose purpose, OffsetDateTime now) {
