@@ -89,3 +89,16 @@ WITH CHECK (tenant_id = CAST(nullif(current_setting('app.tenant_id',true),'') AS
 
 ALTER TABLE forge_import_backup ADD COLUMN superseded_by_task_id uuid;
 COMMENT ON COLUMN forge_import_backup.superseded_by_task_id IS '在本次覆盖后实际再次覆盖同模型同记录的任务 ID，不按任务创建时间推断';
+
+ALTER TABLE forge_import_backup ADD COLUMN rollback_status varchar(16) NOT NULL DEFAULT 'PENDING';
+COMMENT ON COLUMN forge_import_backup.rollback_status IS '逐记录回滚状态 PENDING、RESTORED、SKIPPED、FAILED，成功后不重复恢复';
+ALTER TABLE forge_io_task ADD COLUMN rollback_status varchar(16) NOT NULL DEFAULT 'NONE';
+COMMENT ON COLUMN forge_io_task.rollback_status IS '回滚状态 NONE、SUCCEEDED、PARTIAL、BLOCKED，快照不可用时保留既有结果，不改变导入状态';
+ALTER TABLE forge_io_task ADD COLUMN rollback_attempts bigint NOT NULL DEFAULT 0;
+COMMENT ON COLUMN forge_io_task.rollback_attempts IS '已完成的回滚执行调用次数，重复幂等调用也计数';
+ALTER TABLE forge_io_task ADD COLUMN restored_count bigint NOT NULL DEFAULT 0;
+COMMENT ON COLUMN forge_io_task.restored_count IS '累计已恢复记录数';
+ALTER TABLE forge_io_task ADD COLUMN skipped_count bigint NOT NULL DEFAULT 0;
+COMMENT ON COLUMN forge_io_task.skipped_count IS '当前因冲突跳过的记录数，重试后重新汇总';
+ALTER TABLE forge_io_task ADD COLUMN failed_count bigint NOT NULL DEFAULT 0;
+COMMENT ON COLUMN forge_io_task.failed_count IS '当前恢复失败的记录数，重试成功后清除';

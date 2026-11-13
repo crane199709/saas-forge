@@ -5,16 +5,21 @@ import io.saasforge.demo.order.model.OrderImportRow;
 import io.saasforge.demo.order.model.OrderOverwriteRow;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.io.ExcelIo;
+import io.saasforge.sdk.io.ImportBackup;
 import io.saasforge.sdk.io.ImportRollbackPreview;
+import io.saasforge.sdk.io.ImportRollbackResult;
+import io.saasforge.sdk.io.ImportRollbackWriter;
 import io.saasforge.sdk.io.ImportRollbacks;
 import io.saasforge.sdk.io.ImportSnapshot;
 import io.saasforge.sdk.io.ImportWriter;
+import io.saasforge.sdk.io.IoErrorCode;
 import io.saasforge.sdk.io.IoStoragePurposes;
 import io.saasforge.sdk.io.IoTask;
 import io.saasforge.sdk.storage.ObjectStorage;
 import io.saasforge.sdk.storage.UploadTicket;
 import io.saasforge.sdk.web.PageQuery;
 import java.io.OutputStream;
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -100,6 +105,51 @@ public class OrderIoService {
                 throw error;
             }
         });
+    }
+
+    public ImportRollbackResult rollback(UUID taskId, boolean skipConflicts) {
+        var result = rollbacks.execute(taskId, OrderOverwriteRow.class, skipConflicts, new ImportRollbackWriter() {
+            @Override
+            public String readVersion(String recordId) {
+                return version(recordId, false);
+            }
+
+            @Override
+            public String lockAndReadVersion(String recordId) {
+                return version(recordId, true);
+            }
+
+            @Override
+            public void restore(ImportBackup backup) {
+                var values = backup.values();
+                orders.overwriteImported(
+                        UUID.fromString(backup.recordId()),
+                        (String) values.get("title"),
+                        new BigDecimal(values.get("amount").toString()),
+                        (String) values.get("customerSource"));
+            }
+        });
+        if ("BLOCKED".equals(result.status())) {
+            throw new ForgeException(IoErrorCode.ROLLBACK_CONFLICTS);
+        }
+        if ("UNAVAILABLE".equals(result.status())) {
+            throw new ForgeException(IoErrorCode.ROLLBACK_UNAVAILABLE);
+        }
+        return result;
+    }
+
+    private String version(String recordId, boolean lock) {
+        try {
+            UUID id = UUID.fromString(recordId);
+            return lock
+                    ? orders.lockRollbackVersion(id)
+                    : orders.get(id).getUpdatedAt().toString();
+        } catch (ForgeException error) {
+            if (error.errorCode() == OrderErrorCode.NOT_FOUND) {
+                return null;
+            }
+            throw error;
+        }
     }
 
     private List<String> validateOverwrite(OrderOverwriteRow row) {

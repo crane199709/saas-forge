@@ -3,12 +3,14 @@ package io.saasforge.demo.order.controller;
 import io.saasforge.demo.order.service.OrderIoService;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.saasforge.sdk.io.ImportRollbackPreview;
+import io.saasforge.sdk.io.ImportRollbackResult;
 import io.saasforge.sdk.io.IoTask;
 import io.saasforge.sdk.security.RequiresPermission;
 import io.saasforge.sdk.storage.UploadTicket;
 import io.saasforge.sdk.web.PageQuery;
 import io.saasforge.sdk.web.SortableFields;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import java.io.ByteArrayOutputStream;
 import java.util.Base64;
 import java.util.UUID;
@@ -90,6 +92,15 @@ class OrderIoController {
     ApiResponse<ImportRollbackPreview> previewRollback(@PathVariable UUID taskId) {
         return ApiResponse.ok(service.previewRollback(taskId));
     }
+
+    @Operation(summary = "恢复覆盖导入的旧字段，可显式跳过冲突")
+    @PostMapping("/import/{taskId}/rollback")
+    @RequiresPermission("order:importRollback")
+    ApiResponse<ImportRollbackResult> rollback(@PathVariable UUID taskId, @Valid @RequestBody RollbackRequest request) {
+        return ApiResponse.ok(service.rollback(taskId, request.skipConflicts()));
+    }
+
+    record RollbackRequest(boolean skipConflicts) {}
 
     record UploadRequest(String filename, String contentType, long size) {}
 

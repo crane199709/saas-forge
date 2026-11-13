@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.saasforge.sdk.io.IoTaskMapper">
     <sql id="columns">
-        id,type,import_model,status,membership_id,row_count,error_code,failure_reason,result_object_id,heartbeat_at,created_at,finished_at,snapshot_count,snapshot_expires_at
+        id,type,import_model,status,membership_id,row_count,error_code,failure_reason,result_object_id,heartbeat_at,created_at,finished_at,snapshot_count,snapshot_expires_at,rollback_status,rollback_attempts,restored_count,skipped_count,failed_count
     </sql>
     <insert id="insert">
         INSERT INTO forge_io_task (id,type,status,membership_id,source_object_id,query_summary,created_by,updated_by,import_model)

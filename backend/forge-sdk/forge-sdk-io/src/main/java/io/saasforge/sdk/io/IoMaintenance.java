@@ -21,6 +21,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 /** 中断任务与过期文件的定时收尾；按租户恢复 RLS，不需要跨租户数据库权限。 */
 public final class IoMaintenance {
     private static final Logger LOG = LoggerFactory.getLogger(IoMaintenance.class);
+    private final ImportBackupMapper backups;
     private final AuditRecorder audit;
     private final IoTaskMapper mapper;
     private final ObjectStorage storage;
@@ -30,6 +31,7 @@ public final class IoMaintenance {
     private final TransactionTemplate transaction;
 
     IoMaintenance(
+            ImportBackupMapper backups,
             AuditRecorder audit,
             IoTaskMapper mapper,
             ObjectStorage storage,
@@ -37,6 +39,7 @@ public final class IoMaintenance {
             StringRedisTemplate redis,
             IoTasks tasks,
             TransactionTemplate transaction) {
+        this.backups = backups;
         this.audit = audit;
         this.mapper = mapper;
         this.storage = storage;
@@ -55,6 +58,7 @@ public final class IoMaintenance {
                     TenantWriteGuard.exempt(() -> {
                         interruptTenant();
                         cleanSources();
+                        expireSnapshots();
                     });
                 } catch (RuntimeException error) {
                     LOG.warn("IO recovery failed for tenant {}", tenant, error);
@@ -97,9 +101,10 @@ public final class IoMaintenance {
             });
         }
     }
-    /** 删除过期结果，任务记录保留；分批处理避免把任务历史整体加载。 */
+    /** 清空到期快照旧值并删除过期结果，保留任务历史；按任务分批处理。 */
     @TenantTask(name = "forge-io-expired-results", fixedDelay = "1h")
     public void expire() {
+        expireSnapshots();
         var cutoff = OffsetDateTime.now().minus(properties.retention());
         while (true) {
             var expired = mapper.expired(cutoff);
@@ -110,6 +115,23 @@ public final class IoMaintenance {
                 transaction.executeWithoutResult(status -> {
                     delete(task.resultObjectId());
                     mapper.clearResult(task.id());
+                });
+            }
+        }
+    }
+
+    private void expireSnapshots() {
+        while (true) {
+            var expiredTasks = backups.expiredTasks();
+            if (expiredTasks.isEmpty()) {
+                break;
+            }
+            for (var taskId : expiredTasks) {
+                transaction.executeWithoutResult(status -> {
+                    // 执行持有任务锁直至汇总提交，清理不能在恢复成功与计数之间移除快照。
+                    backups.lockExpiryTask(taskId);
+                    backups.preserveRollbackResults(taskId);
+                    backups.expire(taskId);
                 });
             }
         }

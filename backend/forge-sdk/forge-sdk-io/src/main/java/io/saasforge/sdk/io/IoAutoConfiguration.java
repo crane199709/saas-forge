@@ -56,8 +56,13 @@ public final class IoAutoConfiguration {
     }
 
     @Bean
-    ImportRollbacks importRollbacks(IoTasks tasks, ImportBackups backups, ImportBackupMapper mapper) {
-        return new ImportRollbacks(tasks, backups, mapper);
+    ImportRollbacks importRollbacks(
+            IoTasks tasks,
+            ImportBackups backups,
+            ImportBackupMapper mapper,
+            PlatformTransactionManager manager,
+            AuditRecorder audit) {
+        return new ImportRollbacks(tasks, backups, mapper, independent(manager), audit);
     }
 
     @Bean
@@ -93,6 +98,7 @@ public final class IoAutoConfiguration {
 
     @Bean
     IoMaintenance ioMaintenance(
+            ImportBackupMapper backups,
             AuditRecorder audit,
             IoTaskMapper mapper,
             ObjectStorage storage,
@@ -100,7 +106,8 @@ public final class IoAutoConfiguration {
             StringRedisTemplate redis,
             IoTasks tasks,
             PlatformTransactionManager manager) {
-        return new IoMaintenance(audit, mapper, storage, properties, redis, tasks, new TransactionTemplate(manager));
+        return new IoMaintenance(
+                backups, audit, mapper, storage, properties, redis, tasks, new TransactionTemplate(manager));
     }
 
     @Bean

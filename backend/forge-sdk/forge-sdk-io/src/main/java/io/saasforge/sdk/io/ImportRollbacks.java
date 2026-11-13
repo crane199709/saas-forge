@@ -1,21 +1,39 @@
 package io.saasforge.sdk.io;
 
+import io.saasforge.sdk.audit.AuditCategory;
+import io.saasforge.sdk.audit.AuditEvent;
+import io.saasforge.sdk.audit.AuditRealm;
+import io.saasforge.sdk.audit.AuditRecorder;
+import io.saasforge.sdk.core.CurrentTenant;
+import io.saasforge.sdk.core.api.ForgeException;
+import io.saasforge.sdk.security.TenantContext;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import org.springframework.transaction.support.TransactionTemplate;
 
-/** 覆盖导入的安全只读预览；业务服务负责公开接口的独立回滚权限与当前数据权限。 */
+/** 覆盖导入的安全预览与逐记录回滚；业务服务负责公开接口的独立回滚权限与当前数据权限。 */
 public final class ImportRollbacks {
     private final IoTasks tasks;
     private final ImportBackups backups;
     private final ImportBackupMapper mapper;
 
-    ImportRollbacks(IoTasks tasks, ImportBackups backups, ImportBackupMapper mapper) {
+    private final TransactionTemplate transaction;
+    private final AuditRecorder audit;
+
+    ImportRollbacks(
+            IoTasks tasks,
+            ImportBackups backups,
+            ImportBackupMapper mapper,
+            TransactionTemplate transaction,
+            AuditRecorder audit) {
         this.tasks = tasks;
         this.backups = backups;
         this.mapper = mapper;
+        this.transaction = transaction;
+        this.audit = audit;
     }
 
     /**
@@ -32,10 +50,16 @@ public final class ImportRollbacks {
         }
         var conflicts = new ArrayList<ImportRollbackConflict>();
         long count = 0;
+        long restored = 0;
         for (long offset = 0; ; offset += 1000) {
             var page = backups.list(taskId, 1000, offset);
             for (var backup : page) {
                 count++;
+                var state = mapper.state(taskId, backup.recordId());
+                if (state != null && "RESTORED".equals(state.rollbackStatus())) {
+                    restored++;
+                    continue;
+                }
                 var conflict = check(backup, reader);
                 if (conflict != null) {
                     conflicts.add(conflict);
@@ -76,7 +100,7 @@ public final class ImportRollbacks {
                 null,
                 !conflicts.isEmpty(),
                 count,
-                count - conflicts.size(),
+                count - restored - conflicts.size(),
                 conflicts.size(),
                 task.snapshotExpiresAt(),
                 List.copyOf(conflicts));
@@ -107,6 +131,115 @@ public final class ImportRollbacks {
             }
         }
         return reason == null ? null : new ImportRollbackConflict(backup.recordId(), reason);
+    }
+
+    /**
+     * 执行本人任务的回滚，默认在当前冲突报告阻断时一条不恢复；显式 skipConflicts 才跳过冲突。
+     * 每条记录独立事务，业务恢复与 RESTORED 标记共同提交；失败和中断后可重试，已恢复记录不再读取业务版本或写入。
+     * 业务回调禁止改动快照以外字段。公开 HTTP 接口仍须检查独立回滚权限。
+     */
+    public ImportRollbackResult execute(
+            UUID taskId, Class<?> model, boolean skipConflicts, ImportRollbackWriter writer) {
+        Objects.requireNonNull(writer, "A current data-permission-aware rollback writer is required");
+        tasks.get(taskId);
+        return transaction.execute(status -> {
+            if (mapper.lockTask(taskId, TenantContext.current().membershipId()) == null) {
+                throw new ForgeException(IoErrorCode.NOT_FOUND);
+            }
+            var preview = preview(taskId, model, writer);
+            long restored = 0;
+            long skipped = 0;
+            long failed = 0;
+            var conflicts = new ArrayList<ImportRollbackConflict>();
+            String outcome;
+            if (!preview.available()) {
+                outcome = "UNAVAILABLE";
+            } else if (preview.blocked() && !skipConflicts) {
+                outcome = "BLOCKED";
+                conflicts.addAll(preview.conflicts());
+            } else {
+                records:
+                for (long offset = 0; ; offset += 1000) {
+                    var page = backups.list(taskId, 1000, offset);
+                    for (var backup : page) {
+                        var state = mapper.state(taskId, backup.recordId());
+                        if (state != null && "RESTORED".equals(state.rollbackStatus())) {
+                            continue;
+                        }
+                        try {
+                            var conflict = transaction.execute(recordStatus -> {
+                                // 与覆盖导入保持业务行 -> 快照的锁顺序；重查使用持锁后读取的实际版本。
+                                String version = writer.lockAndReadVersion(backup.recordId());
+                                mapper.lockState(taskId, backup.recordId());
+                                var checked = check(backup, id -> version);
+                                if (checked == null) {
+                                    writer.restore(backup);
+                                    if (mapper.rollbackRecord(
+                                                    backup.id(),
+                                                    "RESTORED",
+                                                    TenantContext.current().identityId())
+                                            != 1) {
+                                        throw new IllegalStateException("Rollback success marker was not persisted");
+                                    }
+                                } else if (skipConflicts) {
+                                    mapper.rollbackRecord(
+                                            backup.id(),
+                                            "SKIPPED",
+                                            TenantContext.current().identityId());
+                                }
+                                return checked;
+                            });
+                            if (conflict == null) {
+                                restored++;
+                            } else {
+                                conflicts.add(conflict);
+                                if (!skipConflicts) {
+                                    break records;
+                                }
+                                skipped++;
+                            }
+                        } catch (RuntimeException error) {
+                            transaction.executeWithoutResult(recordStatus -> mapper.rollbackRecord(
+                                    backup.id(),
+                                    "FAILED",
+                                    TenantContext.current().identityId()));
+                            failed++;
+                        }
+                    }
+                    if (page.size() < 1000) {
+                        break;
+                    }
+                }
+                outcome = !skipConflicts && !conflicts.isEmpty()
+                        ? "BLOCKED"
+                        : (failed == 0 && skipped == 0 ? "SUCCEEDED" : "PARTIAL");
+            }
+            mapper.rollbackTask(taskId, outcome, TenantContext.current().identityId());
+            var task = tasks.get(taskId);
+            var event = AuditEvent.builder(AuditRealm.TENANT, AuditCategory.OPERATION, "io.importRollback")
+                    .tenant(CurrentTenant.require())
+                    .actor(TenantContext.current().identityId())
+                    .resource("ioTask", taskId)
+                    .detail("taskId", taskId.toString())
+                    .detail("restoredCount", restored)
+                    .detail("skippedCount", skipped)
+                    .detail("failedCount", failed);
+            if (!"SUCCEEDED".equals(outcome)) {
+                event.failure(
+                        "UNAVAILABLE".equals(outcome)
+                                ? IoErrorCode.ROLLBACK_UNAVAILABLE.code()
+                                : (failed > 0 ? IoErrorCode.FAILED.code() : IoErrorCode.ROLLBACK_CONFLICTS.code()));
+            }
+            audit.record(event.build());
+            return new ImportRollbackResult(
+                    taskId,
+                    outcome,
+                    preview.unavailableReason(),
+                    task.restoredCount(),
+                    task.skippedCount(),
+                    task.failedCount(),
+                    List.copyOf(conflicts));
+        });
     }
 
     private static ImportRollbackReason unavailable(IoTask task, Class<?> model) {

@@ -23,8 +23,8 @@
     </properties>
 
     <!-- 按需接入 IO：添加 forge-sdk-io，并复制其当前 schema.sql 到新 Flyway 迁移；
-         已有 IO 服务按升级阶段复制 upgrade-import-backup.sql 与 upgrade-import-rollback-preview.sql，
-         回滚预览须独立授权并读取当前数据权限，约定见 docs/standards/business-service.md。
+         已有 IO 服务按升级阶段复制 upgrade-import-backup.sql、upgrade-import-rollback-preview.sql 与 upgrade-import-rollback-execution.sql，
+         回滚须独立授权并读取当前数据权限，恢复仅写快照字段且与成功标记同事务，约定见 docs/standards/business-service.md。
          默认 starter 不使用 IO，不预建可选表。 -->
     <!-- 按需接入 storage：添加 forge-sdk-storage，复制当前 schema.sql 为 Flyway 迁移，
          并在服务代码声明 StoragePurpose；已有表升级复制 upgrade-purpose.sql，不修改旧迁移。

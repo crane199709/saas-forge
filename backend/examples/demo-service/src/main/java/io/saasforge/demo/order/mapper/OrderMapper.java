@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import io.saasforge.demo.order.entity.Order;
 import io.saasforge.demo.order.model.OrderSort;
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -32,8 +33,9 @@ public interface OrderMapper extends BaseMapper<Order> {
     int overwriteImported(
             @Param("id") UUID id,
             @Param("title") String title,
-            @Param("amount") java.math.BigDecimal amount,
-            @Param("customerSource") String customerSource);
+            @Param("amount") BigDecimal amount,
+            @Param("customerSource") String customerSource,
+            @Param("actor") UUID actor);
 
     /** 分页查询已删除订单；排序白名单与普通列表一致，租户与 Data Policy 条件由 SDK 注入。 */
     List<Order> selectDeletedPage(

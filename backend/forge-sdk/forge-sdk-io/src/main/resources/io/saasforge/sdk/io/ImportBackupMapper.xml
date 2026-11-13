@@ -21,8 +21,12 @@
         )
     </update>
     <select id="state" resultType="io.saasforge.sdk.io.ImportBackupState">
-        SELECT imported_version,expires_at,superseded_by_task_id FROM forge_import_backup
+        SELECT imported_version,expires_at,superseded_by_task_id,rollback_status FROM forge_import_backup
         WHERE NOT deleted AND task_id=#{taskId} AND record_id=#{recordId}
+    </select>
+    <select id="lockState" resultType="io.saasforge.sdk.io.ImportBackupState">
+        SELECT imported_version,expires_at,superseded_by_task_id,rollback_status FROM forge_import_backup
+        WHERE NOT deleted AND task_id=#{taskId} AND record_id=#{recordId} FOR UPDATE
     </select>
     <select id="list" resultType="io.saasforge.sdk.io.ImportBackupData">
         SELECT id,task_id,record_id,CAST(field_values AS text) AS values_json,imported_version,expires_at
@@ -36,8 +40,45 @@
         snapshot_expires_at=(SELECT MIN(expires_at) FROM forge_import_backup WHERE NOT deleted AND task_id=#{taskId}),updated_at=CURRENT_TIMESTAMP,updated_by=NULL
         WHERE NOT deleted AND id=#{taskId}
     </update>
+    <select id="lockTask" resultType="java.util.UUID">
+        SELECT id FROM forge_io_task WHERE NOT deleted AND id=#{taskId} AND membership_id=#{member} FOR UPDATE
+    </select>
+    <update id="rollbackRecord">
+        UPDATE forge_import_backup SET rollback_status=#{status},updated_at=CURRENT_TIMESTAMP,updated_by=#{actor}
+        WHERE NOT deleted AND id=#{id} AND rollback_status &lt;&gt; 'RESTORED'
+    </update>
+    <update id="rollbackTask">
+        UPDATE forge_io_task SET rollback_status=CASE WHEN #{status}='UNAVAILABLE' THEN rollback_status ELSE #{status} END,rollback_attempts=rollback_attempts+1,
+        restored_count=CASE WHEN #{status}='UNAVAILABLE' THEN restored_count ELSE (SELECT COUNT(*) FROM forge_import_backup WHERE NOT deleted AND task_id=#{taskId} AND rollback_status='RESTORED') END,
+        skipped_count=CASE WHEN #{status}='UNAVAILABLE' THEN skipped_count ELSE (SELECT COUNT(*) FROM forge_import_backup WHERE NOT deleted AND task_id=#{taskId} AND rollback_status='SKIPPED') END,
+        failed_count=CASE WHEN #{status}='UNAVAILABLE' THEN failed_count ELSE (SELECT COUNT(*) FROM forge_import_backup WHERE NOT deleted AND task_id=#{taskId} AND rollback_status='FAILED') END,
+        updated_at=CURRENT_TIMESTAMP,updated_by=#{actor} WHERE NOT deleted AND id=#{taskId}
+    </update>
+    <select id="expiredTasks" resultType="java.util.UUID">
+        SELECT DISTINCT task_id FROM forge_import_backup
+        WHERE NOT deleted AND expires_at &lt;= CURRENT_TIMESTAMP ORDER BY task_id LIMIT 100
+    </select>
+    <select id="lockExpiryTask" resultType="java.util.UUID">
+        SELECT id FROM forge_io_task WHERE NOT deleted AND id=#{taskId} FOR UPDATE
+    </select>
+    <update id="preserveRollbackResults">
+        UPDATE forge_io_task SET
+        rollback_status=CASE
+        WHEN snapshot_count &gt; 0 AND snapshot_count=(SELECT COUNT(*) FROM forge_import_backup WHERE NOT deleted AND task_id=#{taskId} AND rollback_status='RESTORED') THEN 'SUCCEEDED'
+        WHEN rollback_status='NONE' AND EXISTS (SELECT 1 FROM forge_import_backup WHERE NOT deleted AND task_id=#{taskId} AND rollback_status &lt;&gt; 'PENDING') THEN 'PARTIAL'
+        ELSE rollback_status END,
+        restored_count=(SELECT COUNT(*) FROM forge_import_backup WHERE NOT deleted AND task_id=#{taskId} AND rollback_status='RESTORED'),
+        skipped_count=(SELECT COUNT(*) FROM forge_import_backup WHERE NOT deleted AND task_id=#{taskId} AND rollback_status='SKIPPED'),
+        failed_count=(SELECT COUNT(*) FROM forge_import_backup WHERE NOT deleted AND task_id=#{taskId} AND rollback_status='FAILED'),
+        updated_at=CURRENT_TIMESTAMP,updated_by=NULL WHERE NOT deleted AND id=#{taskId}
+        AND EXISTS (SELECT 1 FROM forge_import_backup WHERE NOT deleted AND task_id=#{taskId})
+    </update>
+    <update id="expire">
+        UPDATE forge_import_backup SET field_values=CAST('{}' AS jsonb),deleted=true,updated_at=CURRENT_TIMESTAMP,updated_by=NULL
+        WHERE NOT deleted AND task_id=#{taskId} AND expires_at &lt;= CURRENT_TIMESTAMP
+    </update>
     <update id="markTenantDeleted">
-        UPDATE forge_import_backup SET deleted=true,updated_at=CURRENT_TIMESTAMP,updated_by=NULL WHERE NOT deleted
+        UPDATE forge_import_backup SET field_values=CAST('{}' AS jsonb),deleted=true,updated_at=CURRENT_TIMESTAMP,updated_by=NULL WHERE NOT deleted
     </update>
     <update id="clearTaskSnapshots">
         UPDATE forge_io_task SET snapshot_count=0,snapshot_expires_at=NULL,updated_at=CURRENT_TIMESTAMP,updated_by=NULL
