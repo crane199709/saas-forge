@@ -26,7 +26,7 @@ const { t } = useI18n()
 const route = useRoute()
 
 const menu = computed<MenuItem[]>(() => [
-  { key: 'home', title: t('app.home'), path: '/' },
+  { key: 'home', title: t('app.workbench'), path: '/' },
   ...(access.has(['todo:read', 'notification:read', 'announcement:read'])
     ? [{ key: 'notifications', title: '通知中心', path: '/notifications' }]
     : []),

@@ -11,7 +11,7 @@ const router = useRouter()
 <template>
   <main>
     <ResultPage :status="status">
-      <el-button type="primary" @click="router.push('/')">{{ t('result.home') }}</el-button>
+      <el-button type="primary" @click="router.push('/')">{{ t('result.workbench') }}</el-button>
     </ResultPage>
   </main>
 </template>

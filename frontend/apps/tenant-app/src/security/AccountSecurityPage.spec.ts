@@ -37,7 +37,6 @@ it('从用户菜单进入账号安全页，修改密码时展示 password.* 错�
   const fetcher = vi.fn(
     fakeFetch({
       '/iam/auth/memberships': ok([]),
-      '/demo/context': ok({}),
       '/iam/auth/mfa': ok({ bound: false }),
       '/iam/auth/password/change': [fail('password.currentInvalid', 400, '原密码错误'), ok()],
     }),
@@ -67,7 +66,6 @@ it('未绑定时可绑定验证器，保存恢复码后显示已绑定', async (
   const fetcher = vi.fn(
     fakeFetch({
       '/iam/auth/memberships': ok([]),
-      '/demo/context': ok({}),
       '/iam/auth/mfa': [ok({ bound: false }), ok({ bound: true })],
       '/iam/auth/mfa/bind/start': ok({ otpauthUri: 'otpauth://totp/x?secret=ABCDEF' }),
       '/iam/auth/mfa/bind/confirm': ok({ recoveryCodes: ['AAAA-BBBB-CCCC-DDDD'] }),
@@ -98,7 +96,6 @@ it('已绑定时可重新生成恢复码（只展示一次，可复制）并解�
   const fetcher = vi.fn(
     fakeFetch({
       '/iam/auth/memberships': ok([]),
-      '/demo/context': ok({}),
       '/iam/auth/mfa': [ok({ bound: true }), ok({ bound: false })],
       '/iam/auth/mfa/recovery-codes/regenerate': ok({
         recoveryCodes: ['NEW1-NEW1-NEW1-NEW1', 'NEW2-NEW2-NEW2-NEW2'],
@@ -125,4 +122,90 @@ it('已绑定时可重新生成恢复码（只展示一次，可复制）并解�
   await flushPromises()
   expect(wrapper.text()).toContain('未绑定验证器')
   expect(pathsOf(fetcher)).toContain('/iam/auth/mfa/unbind')
+})
+
+it('没有功能读取权限的已登录成员仍能查看本人的当前会话字段', async () => {
+  sessionStorage.setItem(
+    'forge.tenant.session',
+    JSON.stringify({
+      accessToken: `header.${btoa(JSON.stringify({ sub: 'identity-1' }))}.signature`,
+      refreshToken: 'refresh-a',
+      identityName: '陈晓',
+      tenantId: 'tenant-a',
+      tenantName: '青禾科技',
+      membershipId: 'membership-a',
+    }),
+  )
+  vi.stubGlobal(
+    'fetch',
+    fakeFetch({
+      '/iam/auth/memberships': ok([]),
+      '/iam/auth/mfa': ok({ bound: false }),
+    }),
+  )
+  const { wrapper } = await mountShell('/account/security')
+  const session = wrapper.get('section[aria-label="当前会话"]')
+
+  expect(session.findAll('.el-descriptions__label').map((label) => label.text())).toEqual([
+    '身份名',
+    '租户名',
+    'Identity ID',
+    'Tenant ID',
+    'Membership ID',
+  ])
+  expect(session.findAll('.el-descriptions__content').map((value) => value.text())).toEqual([
+    '陈晓',
+    '青禾科技',
+    'identity-1',
+    'tenant-a',
+    'membership-a',
+  ])
+})
+
+it('切换租户后当前会话与工作台同步使用新的租户和成员关系', async () => {
+  const accessToken = `header.${btoa(JSON.stringify({ sub: 'identity-1' }))}.signature`
+  sessionStorage.setItem(
+    'forge.tenant.session',
+    JSON.stringify({
+      accessToken,
+      refreshToken: 'refresh-a',
+      identityName: '陈晓',
+      tenantId: 'tenant-a',
+      tenantName: '青禾科技',
+      membershipId: 'membership-a',
+    }),
+  )
+  vi.stubGlobal(
+    'fetch',
+    fakeFetch({
+      '/iam/auth/memberships': ok([]),
+      '/iam/auth/mfa': ok({ bound: false }),
+      '/iam/auth/switch': ok({
+        accessToken,
+        refreshToken: 'refresh-b',
+        identityName: '陈晓',
+        tenantId: 'tenant-b',
+        tenantName: '远山工作室',
+        membershipId: 'membership-b',
+      }),
+    }),
+  )
+  const { wrapper, client, router } = await mountShell('/account/security')
+  await client.switchTenant('membership-b')
+  await flushPromises()
+
+  const session = wrapper.get('section[aria-label="当前会话"]')
+  expect(session.findAll('.el-descriptions__content').map((value) => value.text())).toEqual([
+    '陈晓',
+    '远山工作室',
+    'identity-1',
+    'tenant-b',
+    'membership-b',
+  ])
+  expect(session.text()).not.toContain('青禾科技')
+  expect(session.text()).not.toContain('membership-a')
+
+  await router.push('/')
+  await flushPromises()
+  expect(wrapper.get('[data-testid="workbench-greeting"]').text()).toBe('陈晓 · 远山工作室')
 })

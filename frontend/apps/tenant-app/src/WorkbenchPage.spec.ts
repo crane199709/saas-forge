@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import ElementPlus from 'element-plus'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createAccessControl, createTenantClient, tenantClientKey } from '@crane199709/sdk'
-import HomePage from './HomePage.vue'
+import WorkbenchPage from './WorkbenchPage.vue'
 import { i18n } from './i18n'
 
 enableAutoUnmount(afterEach)
@@ -69,7 +69,7 @@ async function workbench(
     ],
   })
   await router.push('/')
-  const wrapper = mount(HomePage, {
+  const wrapper = mount(WorkbenchPage, {
     global: {
       plugins: [i18n, ElementPlus, router, access],
       provide: { [tenantClientKey]: client },

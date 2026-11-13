@@ -4,20 +4,14 @@
   },
   "app": {
     "title": "SaaS Forge 租户端",
-    "welcome": "欢迎使用 SaaS Forge 租户端",
     "product": "SaaS Forge",
-    "home": "工作台"
+    "workbench": "工作台"
   },
   "auth": {
     "title": "租户登录",
     "account": "账号或邮箱",
     "password": "密码",
     "login": "登录",
-    "identity": "当前身份",
-    "tenant": "当前租户",
-    "identityId": "Identity ID",
-    "tenantId": "Tenant ID",
-    "membershipId": "Membership ID",
     "loginAgain": "重新登录",
     "logout": "退出",
     "logoutFailed": "本地凭证已清除，但 IAM 退出失败，浏览器仍可能保持登录。请重试退出。",
@@ -47,7 +41,7 @@
     "unknown": "请求失败，请稍后重试"
   },
   "result": {
-    "home": "返回首页"
+    "workbench": "返回工作台"
   },
   "tenant": {
     "selectTitle": "选择租户",
@@ -492,6 +486,14 @@
       "regenerateHint": "重新生成后，原有恢复码全部作废。",
       "unbind": "解绑验证器",
       "unbindHint": "解绑后将无法进入要求两步验证的租户。"
+    },
+    "session": {
+      "title": "当前会话",
+      "identityName": "身份名",
+      "tenantName": "租户名",
+      "identityId": "Identity ID",
+      "tenantId": "Tenant ID",
+      "membershipId": "Membership ID"
     },
     "danger": {
       "title": "危险操作"
