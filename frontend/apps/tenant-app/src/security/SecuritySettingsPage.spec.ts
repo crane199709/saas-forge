@@ -44,7 +44,7 @@ it('持有 iam:security:manage 时菜单显示安全设置，开关保存 MFA Re
 })
 
 it('没有 iam:security:manage 时菜单不显示安全设置，直接访问进入 403', async () => {
-  vi.stubGlobal('fetch', fakeFetch({ '/iam/auth/memberships': ok([]), '/demo/context': ok({}) }))
+  vi.stubGlobal('fetch', fakeFetch({ '/iam/auth/memberships': ok([]) }))
   const { wrapper, router } = await mountShell('/')
   expect(wrapper.text()).not.toContain('安全设置')
   await router.push('/security-settings')

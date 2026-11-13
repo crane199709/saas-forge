@@ -30,7 +30,6 @@ function signedIn() {
     'fetch',
     fakeFetch({
       '/iam/auth/memberships': ok([{ membershipId: 'm', tenantId: 't', tenantName: '演示租户' }]),
-      '/demo/context': ok({ identityId: 'i', tenantId: 't', membershipId: 'm' }),
     }),
   )
 }

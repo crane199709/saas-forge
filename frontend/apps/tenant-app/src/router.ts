@@ -26,7 +26,7 @@ export function createShellRouter(history: RouterHistory) {
   return createRouter({
     history,
     routes: [
-      { path: '/', component: () => import('./HomePage.vue') },
+      { path: '/', component: () => import('./WorkbenchPage.vue') },
       {
         path: '/login',
         component: () => import('./LoginPage.vue'),

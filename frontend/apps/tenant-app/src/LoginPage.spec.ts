@@ -66,11 +66,6 @@ it('账号登录后进入工作台，展示当前身份与租户的问候语', a
         membershipId: 'membership-a',
       }),
       '/iam/auth/memberships': ok([memberships[0]]),
-      '/demo/context': ok({
-        identityId: 'identity-1',
-        tenantId: 't',
-        membershipId: 'membership-a',
-      }),
     }),
   )
   const { wrapper, router } = await mountShell('/login')
@@ -123,7 +118,6 @@ it('从用户菜单退出后回到登录页；IAM 退出失败时提示并可重
     'fetch',
     fakeFetch({
       '/iam/auth/memberships': ok([]),
-      '/demo/context': ok({}),
       '/iam/auth/logout': [fail('system.error', 500, '系统繁忙', 'trace-500'), ok()],
     }),
   )
@@ -157,7 +151,6 @@ it('多个 Membership 时进入选择租户页，选择后进入该租户', asyn
         membershipId: 'membership-b',
       }),
       '/iam/auth/memberships': ok(memberships),
-      '/demo/context': ok({ identityId: 'i', tenantId: 'tenant-b', membershipId: 'membership-b' }),
     }),
   )
   vi.stubGlobal('fetch', fetcher)
@@ -245,7 +238,6 @@ it('已绑定 Authenticator 时进入 MFA 步骤，可改用 Recovery Code 后�
       '/iam/oauth2/authorize': authorizeRedirect,
       '/iam/auth/exchange': signedInTokens,
       '/iam/auth/memberships': ok([memberships[0]]),
-      '/demo/context': ok({}),
     }),
   )
   vi.stubGlobal('fetch', fetcher)
@@ -301,7 +293,6 @@ it('租户要求 MFA 时当场绑定：扫码、输入首个动态码、保存 R
         recoveryCodes: ['AAAA-BBBB-CCCC-DDDD', 'EEEE-FFFF-GGGG-HHHH'],
       }),
       '/iam/auth/memberships': ok([memberships[0]]),
-      '/demo/context': ok({}),
     }),
   )
   vi.stubGlobal('fetch', fetcher)
@@ -355,7 +346,6 @@ it('选择的租户要求 MFA 时在选择页当场绑定，保存 Recovery Code
       '/iam/auth/mfa/bind/start': ok({ otpauthUri: 'otpauth://totp/x?secret=ABCDEF' }),
       '/iam/auth/mfa/bind/confirm': ok({ recoveryCodes: ['AAAA-BBBB-CCCC-DDDD'] }),
       '/iam/auth/memberships': ok(memberships),
-      '/demo/context': ok({}),
     }),
   )
   vi.stubGlobal('fetch', fetcher)

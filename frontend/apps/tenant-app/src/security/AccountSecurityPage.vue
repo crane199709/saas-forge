@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTenantClient } from '@crane199709/sdk'
 import { ErrorAlert, PageHeader, RecoveryCodeList } from '@crane199709/ui'
@@ -7,9 +7,25 @@ import { errorTip, type ErrorTip } from '../error-tip'
 import LeaveTenantSection from './LeaveTenantSection.vue'
 import MfaBindForm from './MfaBindForm.vue'
 
-// 当前 Identity 的个人安全设置：与租户无关，进入任何租户都看到同一份。
+// 密码与验证器属于 Identity，当前会话信息随 Active Tenant 变化。
 const { t } = useI18n()
 const client = useTenantClient()
+const session = ref(client.session())
+const unsubscribe = client.onSessionChange((value) => {
+  session.value = value
+})
+onUnmounted(unsubscribe)
+const identityId = computed(() => {
+  // IAM 签发的当前 Access Token 以 sub 标识 Identity；这里只展示，不据此判断权限。
+  const payload = session.value?.accessToken.split('.')[1]
+  if (!payload) return null
+  try {
+    const { sub } = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
+    return typeof sub === 'string' && sub ? sub : null
+  } catch {
+    return null
+  }
+})
 const error = ref<ErrorTip | null>(null)
 const busy = ref(false)
 
@@ -168,6 +184,27 @@ function unbind() {
       </template>
     </section>
 
+    <section v-if="session" class="block current-session" :aria-label="t('account.session.title')">
+      <h3>{{ t('account.session.title') }}</h3>
+      <el-descriptions :column="1" border>
+        <el-descriptions-item :label="t('account.session.identityName')">
+          {{ session.identityName || '—' }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('account.session.tenantName')">
+          {{ session.tenantName || '—' }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('account.session.identityId')">
+          {{ identityId || '—' }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('account.session.tenantId')">
+          {{ session.tenantId || '—' }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('account.session.membershipId')">
+          {{ session.membershipId || '—' }}
+        </el-descriptions-item>
+      </el-descriptions>
+    </section>
+
     <LeaveTenantSection class="block" />
   </section>
 </template>
@@ -187,6 +224,16 @@ h3 {
   margin: 0 0 var(--forge-space-3);
   font-size: var(--forge-font-size-md);
   font-weight: 600;
+}
+.current-session :deep(.el-descriptions__table) {
+  table-layout: fixed;
+}
+.current-session :deep(.el-descriptions__label) {
+  width: 140px;
+  white-space: nowrap;
+}
+.current-session :deep(.el-descriptions__content) {
+  overflow-wrap: anywhere;
 }
 .hint {
   color: var(--el-text-color-secondary);
