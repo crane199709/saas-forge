@@ -1,13 +1,22 @@
 package io.saasforge.sdk.storage;
 
-import static org.junit.jupiter.api.Assertions.*;
-
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.saasforge.sdk.core.CurrentTenant;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 class FileReferenceChecksTest {
     @Test
@@ -21,16 +30,17 @@ class FileReferenceChecksTest {
             }
 
             public Set<UUID> referencedObjects(String purpose, List<UUID> candidates) {
-                assertEquals(tenant, CurrentTenant.require());
-                assertEquals("attachment", purpose);
-                assertEquals(List.of(referenced, orphan), candidates);
+                Assertions.assertEquals(tenant, CurrentTenant.require());
+                Assertions.assertEquals("attachment", purpose);
+                Assertions.assertEquals(List.of(referenced, orphan), candidates);
                 return Set.of(referenced);
             }
         };
         try (var checks = new FileReferenceChecks(List.of(checker), properties());
                 var ignored = CurrentTenant.bind(tenant)) {
-            assertEquals(Set.of(orphan), checks.unreferenced("attachment", List.of(referenced, orphan), "expire"));
-            assertEquals(3, checks.batchSize());
+            Assertions.assertEquals(
+                    Set.of(orphan), checks.unreferenced("attachment", List.of(referenced, orphan), "expire"));
+            Assertions.assertEquals(3, checks.batchSize());
         }
     }
 
@@ -41,7 +51,7 @@ class FileReferenceChecksTest {
                 List.of(List.<FileReferenceChecker>of(), List.of(checker("attachment", candidates -> Set.of())))) {
             try (var checks = new FileReferenceChecks(checkers, properties());
                     var ignored = CurrentTenant.bind(UUID.randomUUID())) {
-                assertEquals(Set.of(), checks.unreferenced("io-result", List.of(id), "purge"));
+                Assertions.assertEquals(Set.of(), checks.unreferenced("io-result", List.of(id), "purge"));
             }
         }
     }
@@ -49,14 +59,14 @@ class FileReferenceChecksTest {
     @Test
     void everyCoveringCheckerMustSucceedWithAValidCandidateSubset() {
         UUID id = UUID.randomUUID();
-        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(FileReferenceChecks.class);
-        var appender = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        var logger = (Logger) LoggerFactory.getLogger(FileReferenceChecks.class);
+        var appender = new ListAppender<ILoggingEvent>();
         appender.start();
         logger.addAppender(appender);
-        List<java.util.function.Function<List<UUID>, Set<UUID>>> failures = List.of(
+        List<Function<List<UUID>, Set<UUID>>> failures = List.of(
                 candidates -> null,
                 candidates -> Set.of(UUID.randomUUID()),
-                candidates -> new java.util.HashSet<>(java.util.Arrays.asList(id, null)),
+                candidates -> new HashSet<>(Arrays.asList(id, null)),
                 candidates -> {
                     throw new IllegalStateException("private-business-data");
                 });
@@ -66,14 +76,14 @@ class FileReferenceChecksTest {
                                 List.of(checker("attachment", candidates -> Set.of()), checker("attachment", failure)),
                                 properties());
                         var ignored = CurrentTenant.bind(UUID.randomUUID())) {
-                    assertEquals(Set.of(), checks.unreferenced("attachment", List.of(id), "expire"));
+                    Assertions.assertEquals(Set.of(), checks.unreferenced("attachment", List.of(id), "expire"));
                 }
             }
-            assertTrue(appender.list.stream()
+            Assertions.assertTrue(appender.list.stream()
                     .anyMatch(event -> event.getFormattedMessage().contains("reason=invalid-result")));
-            assertTrue(appender.list.stream()
+            Assertions.assertTrue(appender.list.stream()
                     .anyMatch(event -> event.getFormattedMessage().contains("reason=checker-failed")));
-            assertTrue(appender.list.stream()
+            Assertions.assertTrue(appender.list.stream()
                     .noneMatch(event -> event.getFormattedMessage().contains("private-business-data")
                             || event.getThrowableProxy() != null));
         } finally {
@@ -93,33 +103,34 @@ class FileReferenceChecksTest {
                                 checker("attachment", candidates -> Set.of(second))),
                         properties());
                 var ignored = CurrentTenant.bind(UUID.randomUUID())) {
-            assertEquals(Set.of(orphan), checks.unreferenced("attachment", List.of(first, second, orphan), "purge"));
+            Assertions.assertEquals(
+                    Set.of(orphan), checks.unreferenced("attachment", List.of(first, second, orphan), "purge"));
         }
     }
 
     @Test
     void aTimedOutUninterruptibleCheckerDoesNotBlockAnotherPurposeOrLeakTenants() {
-        var release = new java.util.concurrent.CountDownLatch(1);
+        var release = new CountDownLatch(1);
         UUID firstTenant = UUID.randomUUID();
         UUID secondTenant = UUID.randomUUID();
         UUID id = UUID.randomUUID();
         var stuck = checker("stuck", candidates -> {
-            assertEquals(firstTenant, CurrentTenant.require());
+            Assertions.assertEquals(firstTenant, CurrentTenant.require());
             awaitIgnoringInterrupts(release);
             return Set.of();
         });
         var healthy = checker("healthy", candidates -> {
-            assertEquals(secondTenant, CurrentTenant.require());
+            Assertions.assertEquals(secondTenant, CurrentTenant.require());
             return Set.of();
         });
         try (var checks = new FileReferenceChecks(List.of(stuck, healthy), properties())) {
-            assertTimeoutPreemptively(Duration.ofSeconds(2), () -> {
+            Assertions.assertTimeoutPreemptively(Duration.ofSeconds(2), () -> {
                 try (var ignored = CurrentTenant.bind(firstTenant)) {
-                    assertEquals(Set.of(), checks.unreferenced("stuck", List.of(id), "expire"));
+                    Assertions.assertEquals(Set.of(), checks.unreferenced("stuck", List.of(id), "expire"));
                 }
             });
             try (var ignored = CurrentTenant.bind(secondTenant)) {
-                assertEquals(Set.of(id), checks.unreferenced("healthy", List.of(id), "purge"));
+                Assertions.assertEquals(Set.of(id), checks.unreferenced("healthy", List.of(id), "purge"));
             }
         } finally {
             release.countDown();
@@ -128,7 +139,7 @@ class FileReferenceChecksTest {
 
     @Test
     void oversizedBatchesAreNotSentToBusinessQueriesAndInvalidLimitsFailStartup() {
-        var invoked = new java.util.concurrent.atomic.AtomicBoolean();
+        var invoked = new AtomicBoolean();
         try (var checks = new FileReferenceChecks(
                         List.of(checker("attachment", candidates -> {
                             invoked.set(true);
@@ -136,27 +147,29 @@ class FileReferenceChecksTest {
                         })),
                         properties());
                 var ignored = CurrentTenant.bind(UUID.randomUUID())) {
-            assertEquals(
+            Assertions.assertEquals(
                     Set.of(),
                     checks.unreferenced(
                             "attachment",
                             List.of(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()),
                             "purge"));
-            assertFalse(invoked.get());
+            Assertions.assertFalse(invoked.get());
         }
-        assertThrows(IllegalArgumentException.class, () -> new StorageRetentionProperties(0, Duration.ofSeconds(1)));
-        assertThrows(IllegalArgumentException.class, () -> new StorageRetentionProperties(1, Duration.ZERO));
-        assertThrows(IllegalArgumentException.class, () -> new StorageRetentionProperties(1, Duration.ofNanos(1)));
+        Assertions.assertThrows(
+                IllegalArgumentException.class, () -> new StorageRetentionProperties(0, Duration.ofSeconds(1)));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new StorageRetentionProperties(1, Duration.ZERO));
+        Assertions.assertThrows(
+                IllegalArgumentException.class, () -> new StorageRetentionProperties(1, Duration.ofNanos(1)));
     }
 
     @Test
     void hungCheckersHaveBoundedConcurrencyAndSkipWithASafeDiagnostic() {
-        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(FileReferenceChecks.class);
-        var appender = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        var logger = (Logger) LoggerFactory.getLogger(FileReferenceChecks.class);
+        var appender = new ListAppender<ILoggingEvent>();
         appender.start();
         logger.addAppender(appender);
-        var release = new java.util.concurrent.CountDownLatch(1);
-        var started = new java.util.concurrent.atomic.AtomicInteger();
+        var release = new CountDownLatch(1);
+        var started = new AtomicInteger();
         UUID tenant = UUID.randomUUID();
         UUID id = UUID.randomUUID();
         try (var checks = new FileReferenceChecks(
@@ -168,10 +181,10 @@ class FileReferenceChecksTest {
                         properties());
                 var ignored = CurrentTenant.bind(tenant)) {
             for (int attempt = 0; attempt < 8; attempt++) {
-                assertEquals(Set.of(), checks.unreferenced("stuck", List.of(id), "purge"));
+                Assertions.assertEquals(Set.of(), checks.unreferenced("stuck", List.of(id), "purge"));
             }
-            assertEquals(2, started.get());
-            assertTrue(appender.list.stream()
+            Assertions.assertEquals(2, started.get());
+            Assertions.assertTrue(appender.list.stream()
                     .anyMatch(event -> event.getFormattedMessage()
                             .contains("tenant=" + tenant + " purpose=stuck phase=purge reason=capacity-exhausted")));
         } finally {
@@ -181,7 +194,7 @@ class FileReferenceChecksTest {
         }
     }
 
-    private static void awaitIgnoringInterrupts(java.util.concurrent.CountDownLatch release) {
+    private static void awaitIgnoringInterrupts(CountDownLatch release) {
         boolean done = false;
         while (!done) {
             try {
@@ -193,8 +206,7 @@ class FileReferenceChecksTest {
         }
     }
 
-    private static FileReferenceChecker checker(
-            String purpose, java.util.function.Function<List<UUID>, Set<UUID>> result) {
+    private static FileReferenceChecker checker(String purpose, Function<List<UUID>, Set<UUID>> result) {
         return new FileReferenceChecker() {
             public Set<String> purposes() {
                 return Set.of(purpose);

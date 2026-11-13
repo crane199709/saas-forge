@@ -3,6 +3,8 @@ package io.saasforge.demo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.saasforge.demo.attachment.service.OrderAttachmentReferences;
+import io.saasforge.demo.attachment.service.OrderAttachmentService;
 import io.saasforge.demo.category.mapper.OutboxAuditMapper;
 import io.saasforge.demo.order.model.OrderImportRow;
 import io.saasforge.demo.order.model.OrderOverwriteRow;
@@ -41,6 +43,7 @@ import io.saasforge.sdk.security.MaskingRule;
 import io.saasforge.sdk.security.SensitiveField;
 import io.saasforge.sdk.security.TenantContext;
 import io.saasforge.sdk.storage.FileReferenceChecker;
+import io.saasforge.sdk.storage.FileReferenceChecks;
 import io.saasforge.sdk.storage.ObjectStorage;
 import io.saasforge.sdk.storage.StorageErrorCode;
 import io.saasforge.sdk.storage.StorageMaintenance;
@@ -83,6 +86,7 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.util.AreaReference;
@@ -90,6 +94,8 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -111,6 +117,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
@@ -203,8 +210,14 @@ class ObjectStorageTest {
     @Autowired
     StorageMaintenance storageMaintenance;
 
+    @MockitoSpyBean
+    OrderAttachmentReferences attachmentReferences;
+
     @Autowired
-    io.saasforge.sdk.storage.FileReferenceChecks fileReferenceChecks;
+    OrderAttachmentService attachmentService;
+
+    @Autowired
+    FileReferenceChecks fileReferenceChecks;
 
     @Autowired
     IoTasks ioTasks;
@@ -433,7 +446,125 @@ class ObjectStorageTest {
     }
 
     @Test
-    void extensionCommittedAfterCandidateSelectionPreventsExpiry() throws Exception {
+    void attachmentBindingCannotSucceedAfterExpiryHasConfirmedNoReferences() throws Exception {
+        String orderId = createOrder(tenant);
+        byte[] content = "racing attachment".getBytes(StandardCharsets.UTF_8);
+        retentionClock.at("2026-11-01T00:00:00Z");
+        Map<?, ?> ticket = prepareUpload(tenant, orderId, "race.txt", content.length);
+        assertThat(put(ticket, content)).isEqualTo(200);
+        UUID id = UUID.fromString((String) ticket.get("objectId"));
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            storage.completeUpload(id);
+        }
+        var checked = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        Mockito.doAnswer(invocation -> {
+                    Object snapshot = invocation.callRealMethod();
+                    checked.countDown();
+                    if (!release.await(3, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("test reference timeout");
+                    }
+                    return snapshot;
+                })
+                .when(attachmentReferences)
+                .referencedObjects(ArgumentMatchers.eq("order-attachment"), ArgumentMatchers.anyList());
+        retentionClock.at("2026-12-01T00:00:00Z");
+        var cleaning = CompletableFuture.runAsync(() -> CurrentTenant.run(tenant, storageMaintenance::clean));
+        try {
+            assertThat(checked.await(3, TimeUnit.SECONDS)).isTrue();
+            var binding = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return exchange(tenant, HttpMethod.POST, attachments(orderId), Map.of("objectId", id));
+                } catch (Exception error) {
+                    throw new IllegalStateException(error);
+                }
+            });
+            // 旧实现可在此成功提交附件，新实现会等到失效事务提交后明确拒绝。
+            try {
+                binding.get(300, TimeUnit.MILLISECONDS);
+            } catch (TimeoutException expected) {
+                // 允许绑定等待正在进行的生命周期决定。
+            } finally {
+                release.countDown();
+            }
+            cleaning.get(5, TimeUnit.SECONDS);
+            assertThat(binding.get(5, TimeUnit.SECONDS).get("code")).isEqualTo("storage.objectNotFound");
+            assertThat((List<?>) exchange(tenant, HttpMethod.GET, attachments(orderId), null)
+                            .get("data"))
+                    .isEmpty();
+            try (var ignored = CurrentTenant.bind(tenant)) {
+                assertThat(storage.lifecycle(id).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            }
+        } finally {
+            release.countDown();
+        }
+    }
+
+    @Test
+    void attachmentCommittedWhileCleanupWaitsRemainsReadable() throws Exception {
+        String orderId = createOrder(tenant);
+        byte[] content = "bound before cleanup".getBytes(StandardCharsets.UTF_8);
+        retentionClock.at("2026-11-01T00:00:00Z");
+        Map<?, ?> ticket = prepareUpload(tenant, orderId, "bound.txt", content.length);
+        assertThat(put(ticket, content)).isEqualTo(200);
+        UUID id = UUID.fromString((String) ticket.get("objectId"));
+        var attached = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        var binding = CompletableFuture.supplyAsync(() -> asMember(() -> transaction.execute(status -> {
+            var attachment = attachmentService.attach(UUID.fromString(orderId), id);
+            attached.countDown();
+            try {
+                if (!release.await(5, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("test attachment timeout");
+                }
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(error);
+            }
+            return attachment.getId();
+        })));
+        try {
+            assertThat(attached.await(3, TimeUnit.SECONDS)).isTrue();
+            retentionClock.at("2026-12-01T00:00:00Z");
+            var cleaning = CompletableFuture.runAsync(() -> CurrentTenant.run(tenant, storageMaintenance::clean));
+            assertThatThrownBy(() -> cleaning.get(150, TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+            release.countDown();
+            UUID attachmentId = binding.get(5, TimeUnit.SECONDS);
+            cleaning.get(5, TimeUnit.SECONDS);
+            try (var ignored = CurrentTenant.bind(tenant)) {
+                assertThat(storage.lifecycle(id).status()).isEqualTo(StorageObjectStatus.STORED);
+                assertThat(storage.get(id).size()).isEqualTo(content.length);
+            }
+            Map<String, Object> response =
+                    exchange(tenant, HttpMethod.GET, attachments(orderId) + "/" + attachmentId + "/download", null);
+            assertThat(response.get("httpStatus")).isEqualTo(200);
+            var download = (Map<?, ?>) response.get("data");
+            var file = HTTP.send(
+                    HttpRequest.newBuilder(URI.create((String) download.get("url")))
+                            .build(),
+                    HttpResponse.BodyHandlers.ofByteArray());
+            assertThat(file.statusCode()).isEqualTo(200);
+            assertThat(file.body()).isEqualTo(content);
+        } finally {
+            release.countDown();
+        }
+    }
+
+    @Test
+    void purposeCheckedGetStillWorksInAReadOnlyTransaction() {
+        var purpose = new StoragePurpose("order-attachment", Set.of("pdf"), 4, Duration.ofMinutes(2));
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            UUID id = storage.write(purpose, "read.pdf", null, 4, new ByteArrayInputStream(new byte[4]))
+                    .id();
+            var readOnly = new TransactionTemplate(transaction.getTransactionManager());
+            readOnly.setReadOnly(true);
+            assertThat(readOnly.execute(status -> storage.get(purpose, id)).size())
+                    .isEqualTo(4);
+        }
+    }
+
+    @Test
+    void extensionWaitsForExpiryDecisionThenRestoresWithTheNewDeadline() throws Exception {
         var purpose = new StoragePurpose("cleanup-a", Set.of("pdf"), 4, Duration.ofMinutes(2), 1);
         retentionClock.at("2026-11-01T00:00:00Z");
         UUID id;
@@ -459,9 +590,11 @@ class ObjectStorageTest {
         var cleaning = CompletableFuture.runAsync(() -> CurrentTenant.run(tenant, storageMaintenance::clean));
         try {
             assertThat(selected.await(3, TimeUnit.SECONDS)).isTrue();
-            try (var ignored = CurrentTenant.bind(tenant)) {
-                storage.extendRetention(id, OffsetDateTime.parse("2026-12-01T00:00:00Z"));
-            }
+            var extending = CompletableFuture.runAsync(() -> CurrentTenant.run(
+                    tenant, () -> storage.extendRetention(id, OffsetDateTime.parse("2026-12-01T00:00:00Z"))));
+            assertThatThrownBy(() -> extending.get(150, TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+            release.countDown();
+            extending.get(5, TimeUnit.SECONDS);
         } finally {
             release.countDown();
         }
@@ -469,7 +602,9 @@ class ObjectStorageTest {
         try (var ignored = CurrentTenant.bind(tenant)) {
             assertThat(storage.get(purpose, id).size()).isEqualTo(4);
             assertThat(storage.lifecycle(id).retentionExpiresAt()).isEqualTo("2026-12-01T00:00:00Z");
-            assertThat(storageAudits(id)).extracting(AuditEvent::action).containsExactly("storage.retentionExtend");
+            assertThat(storageAudits(id))
+                    .extracting(AuditEvent::action)
+                    .containsExactly("storage.expire", "storage.retentionExtend");
         }
     }
 
@@ -580,7 +715,7 @@ class ObjectStorageTest {
                     tenant,
                     (code, candidates) -> candidates.stream()
                             .filter(referenced.get()::contains)
-                            .collect(java.util.stream.Collectors.toSet()));
+                            .collect(Collectors.toSet()));
             retentionClock.at("2026-11-02T00:00:00Z");
             storageMaintenance.clean();
             assertThat(ids.subList(0, 2))

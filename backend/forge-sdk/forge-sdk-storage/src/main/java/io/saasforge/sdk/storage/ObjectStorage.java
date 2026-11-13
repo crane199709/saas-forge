@@ -207,6 +207,9 @@ public class ObjectStorage {
     /**
      * 核对用途后读取当前租户已确认对象，供导入或绑定业务资源之前检查。
      *
+     * <p>在可写事务内读取时持对象行锁至事务结束；建立业务引用须在同一事务内先调用本方法再写入引用，
+     * 与治理的最终引用检查和失效互斥。无事务或只读事务只读取，不为后续绑定提供保证。
+     *
      * <p>存量 unspecified 对象不匹配任何可声明用途；服务必须先按可信业务关联显式迁移用途。
      *
      * @param purpose 业务预期用途
@@ -216,6 +219,18 @@ public class ObjectStorage {
      *     {@link StorageErrorCode#PURPOSE_MISMATCH}
      */
     public StoredObject get(StoragePurpose purpose, UUID objectId) {
+        Objects.requireNonNull(purpose, "purpose");
+        if (TransactionSynchronizationManager.isActualTransactionActive()
+                && !TransactionSynchronizationManager.isCurrentTransactionReadOnly()) {
+            StorageObjectRecord object = mapper.findByIdForUpdate(objectId);
+            if (object == null || !object.stored()) {
+                throw notFound(objectId);
+            }
+            if (!purpose.code().equals(object.purpose())) {
+                throw new ForgeException(StorageErrorCode.PURPOSE_MISMATCH);
+            }
+            return object.toStoredObject();
+        }
         return requirePurpose(purpose, objectId).toStoredObject();
     }
 
@@ -362,7 +377,7 @@ public class ObjectStorage {
     }
 
     /**
-     * 对已到保留截止时间或上传凭证已过期的未确认文件标记失效；调用方须先检查业务引用。
+     * 对已到保留截止时间或上传凭证已过期的未确认文件标记失效；自动治理须在持候选对象行锁的同一事务内先检查业务引用。
      * 不删除存储对象，不释放容量；重复调用不重置七天宽限期。
      *
      * @param objectId 对象 ID

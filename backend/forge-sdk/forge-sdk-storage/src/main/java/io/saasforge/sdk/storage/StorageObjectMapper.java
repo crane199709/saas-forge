@@ -37,6 +37,9 @@ interface StorageObjectMapper {
     /** 读取并锁定当前租户的对象登记，生命周期变更与后续物理删除共用本行锁。 */
     StorageObjectRecord findByIdForUpdate(@Param("id") UUID id);
 
+    /** 按对象 ID 顺序锁定当前租户的候选，供批量引用检查与后续生命周期变更共同持锁。 */
+    List<UUID> lockCandidates(@Param("ids") List<UUID> ids);
+
     /** 持有对象行锁时恢复原上传状态并重设保留截止时间。 */
     int renewRetention(@Param("id") UUID id, @Param("retentionExpiresAt") OffsetDateTime retentionExpiresAt);
 

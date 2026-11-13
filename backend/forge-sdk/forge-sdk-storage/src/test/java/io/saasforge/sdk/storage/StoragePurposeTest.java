@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.BeanCreationException;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 class StoragePurposeTest {
     @Test
@@ -24,12 +26,11 @@ class StoragePurposeTest {
         Assertions.assertEquals(
                 30, new StoragePurpose("temporary", Set.of("pdf"), 1, Duration.ofMinutes(1), 30).retentionDays());
         for (int days : new int[] {0, -1}) {
-            try (var context = new org.springframework.context.annotation.AnnotationConfigApplicationContext()) {
+            try (var context = new AnnotationConfigApplicationContext()) {
                 context.registerBean(
                         StoragePurpose.class,
                         () -> new StoragePurpose("temporary", Set.of("pdf"), 1, Duration.ofMinutes(1), days));
-                Assertions.assertThrows(
-                        org.springframework.beans.factory.BeanCreationException.class, context::refresh);
+                Assertions.assertThrows(BeanCreationException.class, context::refresh);
             }
         }
     }

@@ -32,6 +32,12 @@
         FROM forge_storage_object WHERE id = #{id} FOR UPDATE
     </select>
 
+    <select id="lockCandidates" resultType="java.util.UUID">
+        SELECT id FROM forge_storage_object WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY id FOR UPDATE
+    </select>
+
     <update id="renewRetention">
         UPDATE forge_storage_object
         SET status = CASE WHEN stored_at IS NULL THEN 'PENDING' ELSE 'STORED' END,

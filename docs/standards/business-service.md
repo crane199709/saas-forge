@@ -24,13 +24,15 @@
 
 `StoragePurpose` 的可选第五参 `retentionDays` 由可信服务代码声明，必须大于零；四参声明永久保留，Tenant 与 Operator 不能修改。新上传从申请登记时起计算保留截止时间，服务端写入从登记时起计算。未确认上传在上传凭证到期后也可进入治理，申请登记在物理删除前持续占用容量。文件失效后停止读取和新签名，固定七天宽限期内保留对象和容量；`ObjectStorage.delete` 也只标记失效，最终删除须检查业务引用。已签发下载 URL 在原有效期内仍可使用。恢复与延长仅限有效文件或宽限期内文件，业务公开接口自行校验权限。
 
+建立文件业务引用时，先独立调用 `completeUpload` 确认上传，再在同一个可写事务内调用 `get(purpose, id)` 核对用途并写入引用。该重载在可写事务内持对象行锁直至提交，已失效时明确拒绝；无事务或只读事务只读取，不能把其结果用于后续绑定。治理每批按对象 ID 顺序锁定候选后，才批量检查已提交的业务引用，并在同一事务内失效或物理删除；先提交的绑定保持可读，先失效的文件不能再成功绑定。检查器只查询引用，不再反向锁文件，避免与治理互相等待。
+
 文件治理通过 `FileReferenceChecker` Bean 批量查询业务引用。`purposes()` 显式声明完整覆盖的用途，`referencedObjects(purpose, candidates)` 返回候选中仍被引用的 ID；多个覆盖检查器合并引用，任一实现失败、超时、返回 null 或候选外 ID，都跳过整批并告警。逻辑删除的业务行仍算引用，查询保留租户拦截/RLS，按本规范的引用专用查询例外包含 deleted 行。附件检查器只声明附件用途；IO 或其他未覆盖用途跳过治理。
 
 storage 同时引入 audit 与 scheduling。服务须准备 MQ 必需表与 `forge-audit` Topic、可用 Redis 连接，并配置 `forge.scheduling.iam-uri` 和 `forge.scheduling.token`（可引用 manifest 同名配置）；治理任务 `forge-storage-retention` 每小时按 Tenant 执行。默认 starter 不启用 storage，不为此预加可选配置。
 
 清理按用途和对象 ID 稳定游标分批，跳过批次后继续后续候选；永久用途主动删除与上传凭证过期的 PENDING 同样纳入治理。S3 删除成功后才删除登记与释放配额；失败保留 `PURGE_PENDING` 重试。上传凭证仍有效时不得物理删除；purge、restore 与 extend 使用同一对象行锁并复查状态和期限。`storage.expire`、`storage.purge`、`storage.retentionExtend` 只记录实际提交的变化，沿用 AuditRecorder 提交后独立事务契约，审计写失败仅告警；不记录文件名或内容。
 
-`forge.storage.retention.batch-size` 默认 100 且必须大于零，`reference-check-timeout` 默认 5s 且至少 1ms。检查线程显式携带 `CurrentTenant`，不携带请求身份或调用方事务；检查器须自行设置数据库查询超时并响应中断。最多两个检查同时运行且不排队，不响应中断的实现占满线程时后续批次继续跳过并告警，修复检查器后才恢复处理。失效与物理删除前分别检查，不能复用过期的引用结果。
+`forge.storage.retention.batch-size` 默认 100 且必须大于零，`reference-check-timeout` 默认 5s 且至少 1ms。检查线程显式携带 `CurrentTenant`，不携带请求身份或调用方事务；检查器须自行设置数据库查询超时并响应中断（demo 引用查询的 Mapper XML 设置 `timeout="3"` 秒，独立于默认 5s 的外围等待上限）。最多两个检查同时运行且不排队，不响应中断的实现占满线程时后续批次继续跳过并告警，修复检查器后才恢复处理。失效与物理删除前分别检查，不能复用过期的引用结果。
 
 ## 覆盖导入快照
 
