@@ -11,6 +11,7 @@ import io.saasforge.sdk.web.PageQuery;
 import io.saasforge.sdk.web.SortableFields;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.io.ByteArrayOutputStream;
 import java.util.Base64;
 import java.util.UUID;
@@ -49,7 +50,7 @@ class OrderIoController {
     @PostMapping("/import")
     @RequiresPermission("order:import")
     @ResponseStatus(HttpStatus.CREATED)
-    ApiResponse<IoTask> importFile(@RequestBody ImportRequest request) {
+    ApiResponse<IoTask> importFile(@Valid @RequestBody ImportRequest request) {
         return ApiResponse.created(service.importFile(request.objectId()));
     }
 
@@ -75,7 +76,7 @@ class OrderIoController {
     @PostMapping("/import/overwrite")
     @RequiresPermission("order:import")
     @ResponseStatus(HttpStatus.CREATED)
-    ApiResponse<IoTask> importOverwrite(@RequestBody ImportRequest request) {
+    ApiResponse<IoTask> importOverwrite(@Valid @RequestBody ImportRequest request) {
         return ApiResponse.created(service.importOverwrite(request.objectId()));
     }
 
@@ -104,7 +105,7 @@ class OrderIoController {
 
     record UploadRequest(String filename, String contentType, long size) {}
 
-    record ImportRequest(UUID objectId) {}
+    record ImportRequest(@NotNull UUID objectId) {}
 
     record TemplateResponse(String filename, String base64) {}
 

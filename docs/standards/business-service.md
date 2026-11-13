@@ -31,7 +31,7 @@
 已有 IO 服务再新增迁移复制 `upgrade-import-rollback-preview.sql`（demo V16），不能修改 V15 等已执行迁移。SDK 在 `ImportWriter.beforeWrite` 持有的业务行锁与原确认事务内，按模型与记录主键标记已存在的其他覆盖快照，判断顺序取实际覆盖，不能取任务创建时间。执行回滚时先按当前数据权限锁定业务行，再调用 `ImportRollbacks.check(backup, reader)` 重查最新快照状态，并在同一事务持锁期间核对修改标记与恢复；预览报告不能跨事务作为写入许可。默认 starter 未使用 IO，不增加可选表或配置。
 
 
-回滚执行调用 `ImportRollbacks.execute(taskId, model, skipConflicts, writer)`，其中 `ImportRollbackWriter` 按当前 Data Policy 提供只读 `readVersion`、事务内 `lockAndReadVersion` 与仅恢复快照字段的 `restore`。SDK 以数据库任务锁串行化重复请求，并在逐记录独立事务中按“业务行 → 快照”锁定、重新检查、恢复、保存成功标记；失败共同回滚，重试跳过已恢复记录。默认冲突报告有冲突时零恢复，执行中才发现新冲突时停止后续记录；只有显式 `skipConflicts=true` 才继续跳过冲突。原导入状态不变，任务附加回滚状态、完成调用次数与累计恢复/当前跳过/当前失败数。公开接口对冲突与不可用返回 409，逐记录部分完成返回 200 的执行报告；回滚需要独立 Permission Code，SDK 审计 `io.importRollback` 记录当前任务、Identity、Tenant 与本次实际三项计数，不记录旧字段原文。
+回滚执行调用 `ImportRollbacks.execute(taskId, model, skipConflicts, writer)`，其中 `ImportRollbackWriter` 按当前 Data Policy 提供只读 `readVersion`、事务内 `lockAndReadVersion` 与仅恢复快照字段的 `restore`。SDK 以数据库任务锁串行化重复请求，并在逐记录独立事务中按“业务行 → 快照”锁定、重新检查、恢复、保存成功标记；失败共同回滚，重试跳过已恢复记录。默认冲突报告有冲突时零恢复，执行中才发现新冲突时停止后续记录；只有显式 `skipConflicts=true` 才继续跳过冲突。原导入状态不变，任务附加回滚状态、完成调用次数与累计恢复/当前跳过/当前失败数。公开接口对冲突与不可用返回 409，逐记录部分完成返回 200 的执行报告；回滚需要独立 Permission Code，SDK 审计 `io.importRollback` 按逐记录事务提交记录当前任务、Identity、Tenant 与该条实际恢复/跳过/失败三项计数；整轮拒绝或无操作另记零计数事件，不叠加整轮实际计数，也不记录旧字段原文。
 
 已有 IO 服务新增迁移复制 `upgrade-import-rollback-execution.sql`（demo V17），新服务使用当前 `schema.sql`。`forge.io.backup-retention` 默认 `90d`，`IoMaintenance.expire` 按租户维护清空到期字段旧值并逻辑删除快照，与执行任务锁互斥；任务、原始快照总数、实际截止时间与既有回滚结果保留，过期预览明确返回 `SNAPSHOT_EXPIRED`。进程结束会释放数据库锁，不保存需要人工解除的占用状态。默认 archetype 与 sub-app-kit 不使用 IO，不增加可选表、配置或页面。
 

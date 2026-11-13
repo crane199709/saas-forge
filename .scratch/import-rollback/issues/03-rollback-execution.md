@@ -25,7 +25,7 @@
 - 整次调用持有数据库本人任务行锁，重复/并发请求串行化，连接或事务结束自动释放，不保存永久占用状态。每条恢复与 RESTORED 标记在独立事务共同提交，成功标记须实际更新一行；失败共同回滚并记 FAILED，重试排除已恢复记录，也不会把自身恢复产生的新版本误报为冲突。模拟执行中断后可继续，先前已提交恢复不再执行。
 - `IoTask` 原始导入状态不变，追加 `rollbackStatus`（NONE/SUCCEEDED/PARTIAL/BLOCKED）、`rollbackAttempts`、`restoredCount`、`skippedCount`、`failedCount`。次数统计完成的调用；响应和任务展示累计恢复数及当前跳过/失败数。SDK 不可用报告为 UNAVAILABLE，任务保留既有回滚结果。`snapshotAvailable` 在全部恢复后为 false。
 - Demo 新增 `POST /orders/import/{taskId}/rollback`，请求 `{"skipConflicts": false}`，沿用 Manifest v9 的独立 `order:importRollback`。成功或逐记录部分完成返回 200 的 SUCCEEDED/PARTIAL 报告；默认冲突返回 409 `io.rollbackConflicts`，过期、无快照、模型不支持等返回 409 `io.rollbackUnavailable`，精确原因/冲突由 GET 预览重新获取。当前租户和本人任务边界保持：只有导入权限为 403，跨租户/他人任务为 404；当前数据权限不可见的记录统一为 RECORD_UNAVAILABLE，不覆盖。
-- SDK 写独立 `io.importRollback` 审计，含 taskId、当前 actor/tenant 与本次实际恢复/跳过/失败三项计数；幂等重复调用实际恢复数为 0，不重复计算为新恢复。错误使用 IoErrorCode 的明确 lowerCamelCase 码。
+- SDK 写独立 `io.importRollback` 审计，含 taskId、当前 actor/tenant 与逐记录事务提交后的实际恢复/跳过/失败三项计数；整轮拒绝或无操作另记零计数事件，不再叠加整轮实际计数。幂等重复调用实际恢复数为 0，不重复计算为新恢复。错误使用 IoErrorCode 的明确 lowerCamelCase 码。
 - `forge.io.backup-retention` 默认 90 天可配置。到期先锁任务、汇总逐记录已提交结果，再清空字段旧值并逻辑删除快照；保留任务、快照总数、实际截止时间及回滚历史，过期明确 SNAPSHOT_EXPIRED。进程中断尚未完成汇总的成功计数也会在清理前保留。普通 Tenant Task 仅运行 trial/active，因此同时复用既有 GlobalTask 的已提交租户扫描和基础设施维护豁免，停用租户也会清理，不扩大业务写入豁免。租户删除同样清空旧值并逻辑删除。
 - Demo 新增 V17，未改 V15/V16；SDK 当前 schema.sql 与 `upgrade-import-rollback-execution.sql`、业务规范、archetype 可选 IO 提示、接入指南和 CHANGELOG 同步。默认 archetype/sub-app-kit 不使用 IO，不添加可选表、依赖、配置或页面。
 
@@ -37,3 +37,12 @@
 - 首次整组回归的两项新增夹具错误已查证修复：覆盖模型要求四列表头；回滚外层事务内完成源对象上传会使其状态未提交给异步校验。改为完整四列文件，并在回滚前通过 HTTP 提交/验证后续任务，预检回调仅确认真实后续覆盖。相关两项独立通过后，最终上述同组整体重验全部通过；首跑证据 `/private/tmp/import-rollback-03-targeted.log`，独立重验 `/private/tmp/import-rollback-03-later-and-expiry-green.log`。
 - Checkstyle、SDK/服务架构、中文表/列注释、相关模块及 archetype 的 Spotless、V17 与 SDK 升级脚本一致性、`git diff --check` 通过。格式日志 `/private/tmp/import-rollback-03-format-final.log`。
 - 按集成约定，本票未跑模块全量或浏览器；模块全量由集成统一运行，真实浏览器链路由工单 04 验收。没有页面改动。
+
+
+### 两轴复核修正（2026-11-13）
+
+- 修复覆盖导入请求缺少校验：共用 `ImportRequest.objectId` 增加 `@NotNull`，覆盖与追加两个入口均加 `@Valid`；`{}` 和显式 null 现在返回 400 `request.invalid`，字段错误为 `objectId` / `validation.notNull`，不进入存储查询。真实 HTTP TDD 先观察旧实现 404，再转绿。
+- 修复执行中断后已提交恢复漏审计：恢复、跳过、失败分别在对应逐记录事务中注册审计，提交后写真实 Outbox；整轮仅为拒绝或无操作写零计数事件。任务/响应继续展示累计恢复及当前跳过/失败数，事件不叠加整轮计数。中断→重试的测试先观察已恢复 1 条而审计 0 条，修正后中断当下已审计 1 条，重试累计 2 条，再次幂等调用不增加恢复计数。
+- 直接到期测试使用真实订单覆盖/恢复：第二条在写入后抛 `AssertionError`，其业务修改回滚且不记成功；第一条提交后留下 actor、tenant、taskId、时间与恢复数 1 的审计。到期清理及两次过期拒绝后累计仍为 1。失败重试、冲突跳过和并发事件断言同步为逐记录口径。
+- 修正后整组重验：`./mvnw -o -pl forge-sdk/forge-sdk-io,examples/demo-service test -Dtest=ArchitectureTest,SchemaCommentTest,FunctionalPermissionTest,DemoManifestExportTest,ObjectStorageTest -Dsurefire.failIfNoSpecifiedTests=false`，SDK 1 + demo 84，共 85 项（ObjectStorageTest 79），0 失败/错误/跳过；Checkstyle 与相关模块/archetype Spotless、`git diff --check` 通过。日志为 `/private/tmp/import-rollback-review-targeted-final.log`、`/private/tmp/import-rollback-review-format-final.log`；TDD 日志为 `/private/tmp/import-rollback-review-validation-{red,green}.log`、`/private/tmp/import-rollback-review-interrupted-{red,green}.log`。
+- 审计保持既有 `AuditRecorder` 契约：业务提交后再用独立事务写 Outbox，写入失败仅记日志；业务提交与审计写入之间真正进程终止仍可能丢事件。本次通过公开业务回调模拟 Error，未进行 OS kill 或 MQ 投递测试；没有修改通用审计 SDK。后端模块最终全量由集成统一执行，前端未变。
