@@ -24,6 +24,10 @@
 
 `StoragePurpose` 的可选第五参 `retentionDays` 由可信服务代码声明，必须大于零；四参声明永久保留，Tenant 与 Operator 不能修改。新上传从申请登记时起计算保留截止时间，服务端写入从登记时起计算。未确认上传在上传凭证到期后也可进入治理，申请登记在物理删除前持续占用容量。文件失效后停止读取和新签名，固定七天宽限期内保留对象和容量；`ObjectStorage.delete` 也只标记失效，最终删除须检查业务引用。已签发下载 URL 在原有效期内仍可使用。恢复与延长仅限有效文件或宽限期内文件，业务公开接口自行校验权限。
 
+文件治理通过 `FileReferenceChecker` Bean 批量查询业务引用。`purposes()` 显式声明完整覆盖的用途，`referencedObjects(purpose, candidates)` 返回候选中仍被引用的 ID；多个覆盖检查器合并引用，任一实现失败、超时、返回 null 或候选外 ID，都跳过整批并告警。逻辑删除的业务行仍算引用，查询保留租户拦截/RLS，按本规范的引用专用查询例外包含 deleted 行。附件检查器只声明附件用途；IO 或其他未覆盖用途跳过治理。
+
+`forge.storage.retention.batch-size` 默认 100 且必须大于零，`reference-check-timeout` 默认 5s 且至少 1ms。检查线程显式携带 `CurrentTenant`，不携带请求身份或调用方事务；检查器须自行设置数据库查询超时并响应中断。最多两个检查同时运行且不排队，不响应中断的实现占满线程时后续批次继续跳过并告警，修复检查器后才恢复处理。失效与物理删除前分别检查，不能复用过期的引用结果。
+
 ## 覆盖导入快照
 
 使用 `forge-sdk-io` 时，服务迁移须包含 SDK 当前 `schema.sql`；已经创建 IO 任务表的服务升级时新增迁移复制 `upgrade-import-backup.sql`，不要修改已执行迁移。默认 starter 不引入 IO，未使用该能力的生成工程不创建 IO 表。
@@ -180,7 +184,7 @@ CREATE UNIQUE INDEX order_categories_name_key ON order_categories (name) WHERE N
 
 1. mapper XML 中手写的 INSERT/UPDATE：自己维护 `updated_at`、`updated_by`，INSERT 还要维护 `created_at`、`created_by`。
 2. 不带实体的更新，例如 `update(null, wrapper)`：同上。
-3. mapper XML 中手写的查询：每张标准表（包括 JOIN 进来的表）都必须带 `NOT deleted`。
+3. mapper XML 中手写的查询：每张标准表（包括 JOIN 进来的表）都必须带 `NOT deleted`。文件治理的引用专用查询是窄例外：必须包含逻辑删除行以保护可恢复资源，仅按当前租户/RLS 隔离，不按成员 Data Policy 缩窄，也不复用普通业务可见性查询。
 4. 标准表按主键删除用 `deleteById`：实体带逻辑删除与更新填充字段时，它按实体逻辑删除并刷新 `updated_at`、`updated_by`。`delete(wrapper)`、`deleteByMap` 等按条件删除不带实体，按 MyBatis-Plus 实现推断不会触发填充（未单独测试），标准表上不使用；批量删除写在 mapper XML 中，按第 1 条自行维护标准列。
 
 ### 不让填充配置失效

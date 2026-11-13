@@ -17,6 +17,7 @@
 - Controller 公开方法显式返回 `ApiResponse<T>` 信封，请求体用 `@Valid` 校验；业务错误抛 `ForgeException`，错误码取自功能包 `service` 层 `ErrorCode` 枚举，格式 `<领域>.<原因>`；HTTP 状态码如实返回，不用 204。
 - 租户业务表带标准列 `created_at`/`updated_at`/`created_by`/`updated_by`/`deleted`，实体继承 `AuditableEntity`；删除一律为逻辑删除，唯一性只用 `WHERE NOT deleted` 的部分唯一索引。
 - 敏感字段新增或变更前读规范「敏感字段登记」；声明变化时递增 `forge.manifest.version`。接入导出或日志时读规范「敏感字段导出与日志」，按列路径与安全参数契约传值。
+- 按需启用 storage 的文件治理时，检查器显式声明覆盖用途；引用专用查询包含逻辑删除行并保留租户隔离，详见业务规范「文件保留与生命周期」。默认 starter 不引入可选 storage 表或配置。
 - 注释写「为什么」，Mapper 方法必须有文档注释。
 
 ## 命令

@@ -79,7 +79,7 @@ public class OrderAttachmentService {
         return storage.prepareDownload(ATTACHMENT, find(orderId, attachmentId).getObjectId());
     }
 
-    /** 附件逻辑删除与对象登记删除同一事务提交，SDK 在提交后才删除文件，任一步失败都不会留下指向已删文件的附件。 */
+    /** 附件逻辑删除与文件失效同一事务提交；逻辑删除行仍保护文件，供业务恢复使用。 */
     @Transactional
     public void delete(UUID orderId, UUID attachmentId) {
         OrderAttachment attachment = find(orderId, attachmentId);

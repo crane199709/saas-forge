@@ -4,6 +4,7 @@ import io.saasforge.sdk.mq.EventHandler;
 import io.saasforge.sdk.mq.MqAutoConfiguration;
 import io.saasforge.sdk.provisioning.TenantPlanChanged;
 import java.time.Clock;
+import java.util.List;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -29,7 +30,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
  * <p>排在 {@link MqAutoConfiguration} 之前：消费端只在存在 {@link EventHandler} Bean 时创建。
  */
 @AutoConfiguration(before = MqAutoConfiguration.class)
-@EnableConfigurationProperties(StorageProperties.class)
+@EnableConfigurationProperties({StorageProperties.class, StorageRetentionProperties.class})
 public final class StorageAutoConfiguration {
     @Bean(destroyMethod = "close")
     S3Client forgeS3Client(StorageProperties properties) {
@@ -77,6 +78,13 @@ public final class StorageAutoConfiguration {
                 properties,
                 environment.getRequiredProperty("spring.application.name"),
                 clocks.getIfAvailable(Clock::systemUTC));
+    }
+
+    /** 注册供失效与物理删除共用的批量引用检查入口。 */
+    @Bean(destroyMethod = "close")
+    public FileReferenceChecks fileReferenceChecks(
+            List<FileReferenceChecker> checkers, StorageRetentionProperties properties) {
+        return new FileReferenceChecks(checkers, properties);
     }
 
     @Bean
