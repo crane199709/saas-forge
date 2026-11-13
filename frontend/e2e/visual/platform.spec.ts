@@ -448,6 +448,8 @@ for (const [label, width, height] of viewports) {
         ],
       })
       await expect(page.getByText('order-created', { exact: true }).first()).toBeVisible()
+      await expect(page.getByTestId('menu-group-ops')).toHaveClass(/is-opened/)
+      await expect(page.getByTestId('menu-group-access')).not.toHaveClass(/is-opened/)
       await expect(page).toHaveScreenshot(`platform-navigation-${label}.png`)
     })
 
@@ -480,6 +482,9 @@ for (const [label, width, height] of viewports) {
       })
       await expect(page.getByText('示例科技有限公司', { exact: true }).first()).toBeVisible()
       await expect(page.getByTestId('menu-group-operations')).toBeVisible()
+      await expect(page.getByTestId('menu-group-tenant-operations')).toHaveClass(/is-opened/)
+      await expect(page.getByTestId('menu-group-access-control')).not.toHaveClass(/is-opened/)
+      await expect(page.getByTestId('menu-group-operations')).not.toHaveClass(/is-opened/)
       await expect(page).toHaveScreenshot(`platform-navigation-default-${label}.png`)
     })
 

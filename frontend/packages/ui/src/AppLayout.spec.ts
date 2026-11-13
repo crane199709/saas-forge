@@ -53,6 +53,11 @@ const nested: MenuItem[] = [
       },
     ],
   },
+  {
+    key: 'settings',
+    title: '系统设置',
+    children: [{ key: 'parameters', title: '参数设置', path: '/parameters' }],
+  },
 ]
 
 // 子菜单收起时其内容以 display: none 隐藏
@@ -64,7 +69,7 @@ function shown(wrapper: Awaited<ReturnType<typeof mountWithShell>>, testid: stri
   return true
 }
 
-it('分组为可折叠的子菜单，支持三层，默认全部展开，当前页在深层时仍高亮', async () => {
+it('三层菜单仅默认展开当前页所在层级，允许手动展开多个分组和收起', async () => {
   const wrapper = await mountWithShell(AppLayout, {
     props: { title: 'SaaS Forge', menu: nested, activePath: '/apps/demo/orders' },
     attachTo: document.body,
@@ -74,25 +79,36 @@ it('分组为可折叠的子菜单，支持三层，默认全部展开，当前�
   expect(wrapper.get('[data-testid="menu-group-finance"]').text()).toContain('订单')
   expect(shown(wrapper, 'menu-demo.overview')).toBe(true)
   expect(shown(wrapper, 'menu-demo.orders')).toBe(true)
+  expect(shown(wrapper, 'menu-parameters')).toBe(false)
   expect(wrapper.get('.el-menu-item.is-active').text()).toBe('订单')
+
+  await wrapper.get('[data-testid="menu-group-settings"] .el-sub-menu__title').trigger('click')
+  expect(shown(wrapper, 'menu-parameters')).toBe(true)
+  expect(shown(wrapper, 'menu-demo.orders')).toBe(true)
 
   await wrapper.get('[data-testid="menu-group-finance"] .el-sub-menu__title').trigger('click')
   expect(shown(wrapper, 'menu-demo.orders')).toBe(false)
   expect(shown(wrapper, 'menu-demo.overview')).toBe(true)
+  expect(shown(wrapper, 'menu-parameters')).toBe(true)
 
   await wrapper.get('[data-testid="menu-group-finance"] .el-sub-menu__title').trigger('click')
   expect(shown(wrapper, 'menu-demo.orders')).toBe(true)
   wrapper.unmount()
 })
 
-it('菜单更新后新出现的分组同样展开', async () => {
+it.each([
+  { activePath: '/', expanded: false },
+  { activePath: '/apps/demo/orders/42', expanded: true },
+])('菜单异步加载后仅展开当前页所在分组：$activePath', async ({ activePath, expanded }) => {
   const wrapper = await mountWithShell(AppLayout, {
-    props: { title: 'SaaS Forge', menu: [], activePath: '/' },
+    props: { title: 'SaaS Forge', menu: [], activePath },
     attachTo: document.body,
   })
   await wrapper.setProps({ menu: nested })
   await flushPromises()
 
-  expect(shown(wrapper, 'menu-demo.orders')).toBe(true)
+  expect(shown(wrapper, 'menu-demo.overview')).toBe(expanded)
+  expect(shown(wrapper, 'menu-demo.orders')).toBe(expanded)
+  expect(shown(wrapper, 'menu-parameters')).toBe(false)
   wrapper.unmount()
 })

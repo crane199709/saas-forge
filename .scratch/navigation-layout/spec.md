@@ -113,7 +113,7 @@ SDK 生成与 iam 接收共用的清单校验（`ResourceManifest.validate()`）
 
 导航：
 
-- `AppLayout` 的分组改为可折叠的子菜单，支持三层，默认全部展开，分组带 `data-testid="menu-group-<key>"`。
+- `AppLayout` 的分组为可折叠的子菜单，支持三层，默认折叠，仅自动展开当前页面所在的祖先层级；手动允许同时展开多个分组，不持久化展开状态。分组带 `data-testid="menu-group-<key>"`。
 - tenant-app 与 platform-console 的导航改用第 3 节的合并函数，删除 `menuSections`。
 
 菜单管理页（两端各一个，路径 `/menu-layout`，在导航中默认放在最后）：

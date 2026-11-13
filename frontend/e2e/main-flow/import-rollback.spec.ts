@@ -10,6 +10,7 @@ async function login(page: Page, account: string) {
   await page.getByLabel('账号或邮箱').fill(account)
   await page.getByLabel('密码', { exact: true }).fill('Demo-password-123!')
   await page.getByRole('button', { name: '登录', exact: true }).click()
+  await page.getByTestId('menu-group-demo').locator('.el-sub-menu__title').first().click()
   await expect(page.getByTestId('menu-demo.overview')).toBeVisible()
 }
 async function headers(page: Page) {

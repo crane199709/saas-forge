@@ -13,6 +13,7 @@ async function login(page: Page, account = 'e2e-member') {
     await expect(page.getByRole('heading', { name: '选择租户' })).toBeVisible()
     await page.getByRole('button', { name: 'E2E 租户 A', exact: true }).click()
   }
+  await page.getByTestId('menu-group-demo').locator('.el-sub-menu__title').first().click()
   await expect(page.getByTestId('menu-demo.overview')).toBeVisible()
 }
 
@@ -79,7 +80,7 @@ test('工作台登录、三卡、待办跳转与切租户刷新', async ({ page 
 test('双 Membership 登录、数据范围与租户切换', async ({ page }) => {
   const remote = page.waitForResponse('http://127.0.0.1:15175/remoteEntry.js')
   await login(page)
-  await expect(page.getByTestId('menu-audit')).toBeVisible()
+  await expect(page.getByTestId('menu-audit')).toBeAttached()
   await page.getByTestId('menu-demo.overview').click()
   expect((await remote).status()).toBe(200)
   await expect(page.getByRole('heading', { name: '示例子应用 v1' })).toBeVisible()
@@ -89,7 +90,8 @@ test('双 Membership 登录、数据范围与租户切换', async ({ page }) => 
   await page.getByTestId('tenant-switcher').click()
   await page.getByRole('option', { name: 'E2E 租户 B', exact: true }).click()
   await expect(page.getByTestId('workbench-greeting')).toHaveText('e2e-member · E2E 租户 B')
-  await expect(page.getByTestId('menu-audit')).toBeHidden()
+  await expect(page.getByTestId('menu-audit')).toHaveCount(0)
+  await page.getByTestId('menu-group-demo').locator('.el-sub-menu__title').first().click()
   await page.getByTestId('menu-demo.overview').click()
   await expect(page.getByTestId('remote-tenant')).toHaveText('当前租户：E2E 租户 B')
   await expect(page.getByTestId('create-order')).toBeHidden()

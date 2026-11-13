@@ -171,6 +171,7 @@ async function login(page: Page) {
 }
 
 async function openOrders(page: Page) {
+  await page.getByTestId('menu-group-demo').locator('.el-sub-menu__title').first().click()
   await page.getByTestId('menu-demo.overview').click()
   await expect(page.getByTestId('order-title')).toBeVisible()
 }

@@ -26,6 +26,7 @@ async function login(page: Page, account = 'e2e-member') {
   await page.getByRole('button', { name: '登录', exact: true }).click()
   if (account === 'e2e-member')
     await page.getByRole('button', { name: 'E2E 租户 A', exact: true }).click()
+  await page.getByTestId('menu-group-demo').locator('.el-sub-menu__title').first().click()
   await expect(page.getByTestId('menu-demo.overview')).toBeVisible()
   await expect(page).toHaveTitle('SaaS Forge 租户端')
 }

@@ -76,7 +76,9 @@ const defaultLayout = {
 
 async function openHome(page: Page, layout: unknown = access.layout) {
   await openAsAdmin(page, '/', () => undefined, { ...access, layout })
-  await expect(page.getByTestId('menu-group-demo.finance')).toBeVisible()
+  await expect(page.getByTestId('menu-group-demo')).toBeVisible()
+  await expect(page.getByTestId('menu-demo.overview')).toBeHidden()
+  await expect(page.getByTestId('menu-demo.bills')).toBeHidden()
 }
 
 for (const [label, width, height] of viewports) {
@@ -100,6 +102,8 @@ for (const [label, width, height] of viewports) {
 test('导航-分组收起', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await openHome(page)
+  await page.getByTestId('menu-group-daily').locator('.el-sub-menu__title').first().click()
+  await expect(page.getByTestId('menu-demo.overview')).toBeVisible()
   await page.getByTestId('menu-group-daily').locator('.el-sub-menu__title').first().click()
   await expect(page.getByTestId('menu-demo.overview')).toBeHidden()
   await expect(page).toHaveScreenshot('navigation-collapsed-desktop.png')

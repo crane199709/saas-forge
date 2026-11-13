@@ -1,23 +1,5 @@
-import {
-  ElAside,
-  ElContainer,
-  ElHeader,
-  ElMain,
-  ElMenu,
-  ElMenuItem,
-  ElSubMenu,
-  type MenuInstance,
-} from 'element-plus'
-import {
-  computed,
-  defineComponent,
-  h,
-  nextTick,
-  ref,
-  resolveComponent,
-  watch,
-  type PropType,
-} from 'vue'
+import { ElAside, ElContainer, ElHeader, ElMain, ElMenu, ElMenuItem, ElSubMenu } from 'element-plus'
+import { computed, defineComponent, h, resolveComponent, type PropType } from 'vue'
 
 /** 侧边菜单项：带 `path` 的是链接，带 `children` 的是以 `title` 为标题、可折叠的分组，最多三层。 */
 export interface MenuItem {
@@ -37,14 +19,9 @@ function paths(items: MenuItem[]): string[] {
 // 子菜单的 index 与链接的路径同在 ElMenu 的一个命名空间，加前缀避免冲突。
 const groupIndex = (item: MenuItem) => `group:${item.key}`
 
-function groups(items: MenuItem[]): string[] {
-  return items.flatMap((item) =>
-    item.children ? [groupIndex(item), ...groups(item.children)] : [],
-  )
-}
-
 /**
  * 管理后台布局：顶栏（产品名链接到 `/`，右侧为 `actions` 插槽）+ 侧边菜单 + 内容区（默认插槽）。
+ * 分组默认折叠，仅自动展开当前菜单项所在的层级。
  * 链接用宿主应用注册的 RouterLink 渲染，本包不依赖 vue-router。
  */
 export const AppLayout = defineComponent({
@@ -62,19 +39,6 @@ export const AppLayout = defineComponent({
       paths(props.menu)
         .filter((path) => props.activePath === path || props.activePath.startsWith(`${path}/`))
         .reduce((best, path) => (path.length > best.length ? path : best), ''),
-    )
-    // 分组默认展开；default-openeds 只在挂载时生效，权限读取后才出现的分组须另行展开。
-    const menuRef = ref<MenuInstance>()
-    const opened = new Set(groups(props.menu))
-    watch(
-      () => groups(props.menu),
-      async (indexes) => {
-        const added = indexes.filter((index) => !opened.has(index))
-        added.forEach((index) => opened.add(index))
-        // 子菜单在自身挂载后才登记到 ElMenu
-        await nextTick()
-        added.forEach((index) => menuRef.value?.open(index))
-      },
     )
     return () => {
       const RouterLink = resolveComponent('RouterLink')
@@ -164,9 +128,7 @@ export const AppLayout = defineComponent({
             h(
               ElMenu,
               {
-                ref: menuRef,
                 defaultActive: active.value,
-                defaultOpeneds: [...opened],
                 class: 'shell-menu',
                 // 这些变量定义在 .el-menu 上，只能在同一元素覆盖
                 style: {

@@ -7,6 +7,7 @@ test('仓库外模板的 Manifest、网关路由与成员权限', async ({ page 
   await page.getByRole('button', { name: '登录', exact: true }).click()
   await page.getByRole('button', { name: 'E2E 租户 A', exact: true }).click()
   // 菜单由模板的 Manifest 上报产生，同时验证 IAM 已接受清单。
+  await page.getByTestId('menu-group-smoke').locator('.el-sub-menu__title').first().click()
   await expect(page.getByTestId('menu-smoke.overview')).toBeVisible()
   const headers = async () => ({
     Authorization: `Bearer ${await page.evaluate(() => JSON.parse(localStorage.getItem('forge.tenant.session')!).accessToken)}`,
