@@ -59,3 +59,39 @@ The flow under test is: `/` 实际密码登录 → `/dictionaries` → 选择客
 - [01：历史持久化与写入](issues/01-history-table.md)：`38d1a0fb` / `00fb3f35`。
 - [02：查询、权限与页面](issues/02-api-and-ui.md)：`28eb9957`，集成 `bb4ae36a`。
 - [03：验收](issues/03-acceptance.md)：HTTP 补验收在 `ReferenceDataTest`；真实 UI 在 `frontend/e2e/main-flow/main-flow.spec.ts`。
+
+
+## Standards 审查修复（2026-11-13）
+
+修复分支 `codex/dictionary-history-review-fixes` 基于集成 `e4d19bea`，范围仅为本次审查确认的三项：
+
+- 历史列表与详情保留 `changedBy`，附加查询时的 `changedByName`。已有登录名查询会回落邮箱／手机号，因此在身份功能包的 `IdentityService` 与 mapper 增加仅取展示名、空白时取账号的窄查询，参考数据功能只经其 service 调用；列表在单次请求内按身份去重，不增加接口权限、通用解析框架或跨请求缓存。前端展示姓名，无法解析时显示“姓名未知”，原标识仅在明确标注“身份 ID”的提示中；标准列操作人为 null 时显示“系统”。
+- Controller 直接返回的三个 record 直接重命名为 `DictionaryHistoryMetadataResponse`、`DictionaryHistoryDetailResponse`、`DictionaryHistoryDiffResponse`，同步引用，不增加镜像 DTO；原 JSON 字段语义不变。
+- 历史覆盖快照和当前生效值的两列状态改为小号 `el-tag`：启用 success、停用 info、已下线 warning。沿用已有状态文案和页面布局；diff 内容不变。
+
+### 修复验证
+
+姓名 HTTP 接缝先因缺少 `changedByName` 失败；同一测试改由仅有历史读取权限的审计员查询列表和详情，修复后通过。姓名组件接缝先因显示裸 UUID 失败；修复后同时验证姓名、系统、未知姓名回落和有说明的身份提示。状态组件接缝先因没有标签失败，修复后验证快照及当前值三种状态标签。纯响应重命名没有新增重复测试。
+
+| 验证 | 实际命令 | 结果 |
+| --- | --- | --- |
+| 后端相关目标类 | `cd backend && ./mvnw -o -pl forge-iam clean spotless:apply test -Dtest=ReferenceDataTest,DictionaryHistoryTest,ArchitectureTest` | 25 PASS（17 + 7 + 1） |
+| 字典与历史组件 | `cd frontend && pnpm --filter @forge/tenant-app test src/referencedata/DictionaryHistory.spec.ts src/referencedata/DictionaryPage.spec.ts` | 14 PASS |
+| 页面与工具类型 | `cd frontend && pnpm --filter @forge/tenant-app typecheck && pnpm typecheck:tools` | PASS |
+| 样式 | `cd frontend && pnpm lint:style` | PASS |
+| 格式 | 修改文件 `prettier --check`、`cd backend && ./mvnw -o -pl forge-iam spotless:check`、`git diff --check` | PASS |
+| 视觉新基线 | 构建三个应用后，`cd frontend && pnpm exec playwright test -c playwright.visual.config.ts dictionary-history.spec.ts --update-snapshots=all` | 8 PASS |
+| 视觉正式比对 | `cd frontend && pnpm exec playwright test -c playwright.visual.config.ts dictionary-history.spec.ts` | 8 PASS（7.9 秒） |
+| 真实服务链路 | `FORGE_E2E_OFFLINE=1 deploy/e2e/run.sh --grep '字典有效修改产生历史'` | 1 PASS；禁用截图动画后复跑仍 PASS（用例 12.2 秒，runner 15.6 秒） |
+
+前端使用 `pnpm install --offline --frozen-lockfile` 成功安装，锁文件无变更。姓名 red／green、标签 red／green 日志分别为 `/tmp/dictionary-review-http-{red,green}.log`、`/tmp/dictionary-review-ui-{red,green}.log`、`/tmp/dictionary-review-tags-{red,green}.log`；最终目标类、组件、视觉比对与真实链路日志分别为 `/tmp/dictionary-review-backend.log`、`/tmp/dictionary-review-components.log`、`/tmp/dictionary-review-visual-check.log`、`/tmp/dictionary-review-e2e-final.log`。
+
+### 本次页面走查
+
+The flow under test is: 字典页 → 历史版本列表／空态 → 打开历史详情 → 比较两版，确认变更人名称、身份提示及状态标签。
+
+Browser plugin not available，使用仓库 Chromium Playwright。已用 `view_image` 逐张检查 `frontend/e2e/visual/__screenshots__/dictionary-history-{list,empty,detail,diff}-{desktop,laptop}.png` 共 8 张；1440×900 和 1024×768 下名称与状态可读，标签、表头、按钮未折行，页面无重叠、裁切或框架遮罩。列表／详情／diff 六张基线随姓名和标签变更更新，两张空态保持一致。例：[桌面详情](../../frontend/e2e/visual/__screenshots__/dictionary-history-detail-desktop.png)、[笔记本详情](../../frontend/e2e/visual/__screenshots__/dictionary-history-detail-laptop.png)。
+
+真实链路新增断言 `e2e-admin` 姓名可见、UUID 不作为人员名显示、身份提示包含原 ID；已有页面 URL／最终标题、非空、console error／warning、pageerror、交互与 no-op 断言均通过。首轮桌面真实截图捕获到新标签入场动画中间帧，已把两处截图设为 `animations: 'disabled'` 并复跑同一链路通过，不修改产品动画。最终 `/tmp/dictionary-history-qa/desktop-forward-detail.png` 与 `laptop-reverse-detail.png` 已重新用 `view_image` 逐张查看，姓名及状态标签均完整可读。
+
+本轮只重复相关后端目标、组件、8 项视觉与单条真实链路，不重复 IAM 全量或整个前端套件。最终集成双轴复核由集成负责人确认，此处不预报其结果。

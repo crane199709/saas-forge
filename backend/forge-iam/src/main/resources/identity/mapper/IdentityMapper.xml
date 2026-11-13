@@ -29,6 +29,9 @@
     <select id="findLoginName" resultType="string">
         SELECT COALESCE(account, email, phone) FROM identity WHERE id = #{identityId} AND NOT deleted
     </select>
+    <select id="findDisplayName" resultType="string">
+        SELECT COALESCE(NULLIF(TRIM(display_name), ''), account) FROM identity WHERE id = #{identityId} AND NOT deleted
+    </select>
     <select id="existsAccount" resultType="boolean">
         SELECT EXISTS (SELECT 1 FROM identity WHERE NOT deleted AND account = #{account})
     </select>

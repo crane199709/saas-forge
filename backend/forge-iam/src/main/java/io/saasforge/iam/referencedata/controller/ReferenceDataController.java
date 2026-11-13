@@ -1,9 +1,9 @@
 package io.saasforge.iam.referencedata.controller;
 
 import io.saasforge.iam.membership.model.TenantActor;
-import io.saasforge.iam.referencedata.model.DictionaryHistoryDetail;
-import io.saasforge.iam.referencedata.model.DictionaryHistoryDiff;
-import io.saasforge.iam.referencedata.model.DictionaryHistoryMetadata;
+import io.saasforge.iam.referencedata.model.DictionaryHistoryDetailResponse;
+import io.saasforge.iam.referencedata.model.DictionaryHistoryDiffResponse;
+import io.saasforge.iam.referencedata.model.DictionaryHistoryMetadataResponse;
 import io.saasforge.iam.referencedata.model.TenantDictionary;
 import io.saasforge.iam.referencedata.model.TenantDictionaryItem;
 import io.saasforge.iam.referencedata.model.TenantParameter;
@@ -52,7 +52,7 @@ class ReferenceDataController {
 
     @Operation(summary = "按版本倒序查看字典变更历史，需要独立历史查看权限")
     @GetMapping("/dictionaries/{service}/{dictionary}/history")
-    ApiResponse<List<DictionaryHistoryMetadata>> history(
+    ApiResponse<List<DictionaryHistoryMetadataResponse>> history(
             @AuthenticationPrincipal Jwt jwt, @PathVariable String service, @PathVariable String dictionary) {
         TenantActor actor = TenantActor.of(jwt);
         try (var ignored = CurrentTenant.bind(actor.tenantId())) {
@@ -62,7 +62,7 @@ class ReferenceDataController {
 
     @Operation(summary = "查看历史覆盖快照与当前值、当前服务声明上下文")
     @GetMapping("/dictionaries/{service}/{dictionary}/history/{version}")
-    ApiResponse<DictionaryHistoryDetail> historyVersion(
+    ApiResponse<DictionaryHistoryDetailResponse> historyVersion(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable String service,
             @PathVariable String dictionary,
@@ -75,7 +75,7 @@ class ReferenceDataController {
 
     @Operation(summary = "比较任意两版租户覆盖快照")
     @GetMapping("/dictionaries/{service}/{dictionary}/history/diff")
-    ApiResponse<DictionaryHistoryDiff> historyDiff(
+    ApiResponse<DictionaryHistoryDiffResponse> historyDiff(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable String service,
             @PathVariable String dictionary,

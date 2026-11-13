@@ -1,5 +1,6 @@
 package io.saasforge.iam.referencedata.service;
 
+import io.saasforge.iam.identity.service.IdentityService;
 import io.saasforge.iam.membership.model.TenantActor;
 import io.saasforge.iam.permission.model.ServiceDictionary;
 import io.saasforge.iam.permission.model.ServiceParameter;
@@ -7,10 +8,10 @@ import io.saasforge.iam.permission.service.IamPermissions;
 import io.saasforge.iam.permission.service.PermissionService;
 import io.saasforge.iam.referencedata.mapper.DictionaryItemMapper;
 import io.saasforge.iam.referencedata.mapper.ParameterOverrideMapper;
-import io.saasforge.iam.referencedata.model.DictionaryHistoryDetail;
-import io.saasforge.iam.referencedata.model.DictionaryHistoryDiff;
+import io.saasforge.iam.referencedata.model.DictionaryHistoryDetailResponse;
+import io.saasforge.iam.referencedata.model.DictionaryHistoryDiffResponse;
 import io.saasforge.iam.referencedata.model.DictionaryHistoryItem;
-import io.saasforge.iam.referencedata.model.DictionaryHistoryMetadata;
+import io.saasforge.iam.referencedata.model.DictionaryHistoryMetadataResponse;
 import io.saasforge.iam.referencedata.model.DictionaryHistoryResponse;
 import io.saasforge.iam.referencedata.model.DictionaryItemRow;
 import io.saasforge.iam.referencedata.model.ParameterOverrideRow;
@@ -35,6 +36,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -62,6 +64,7 @@ public class ReferenceDataService {
 
     private final DictionaryItemMapper items;
     private final DictionaryHistoryService history;
+    private final IdentityService identities;
     private final ParameterOverrideMapper overrides;
     private final PermissionService permissions;
     private final RoleService roles;
@@ -73,6 +76,7 @@ public class ReferenceDataService {
     ReferenceDataService(
             DictionaryItemMapper items,
             DictionaryHistoryService history,
+            IdentityService identities,
             ParameterOverrideMapper overrides,
             PermissionService permissions,
             RoleService roles,
@@ -82,6 +86,7 @@ public class ReferenceDataService {
             JsonMapper json) {
         this.items = items;
         this.history = history;
+        this.identities = identities;
         this.overrides = overrides;
         this.permissions = permissions;
         this.roles = roles;
@@ -355,15 +360,24 @@ public class ReferenceDataService {
                 });
     }
 
-    public List<DictionaryHistoryMetadata> dictionaryHistory(TenantActor actor, String service, String dictionary) {
+    public List<DictionaryHistoryMetadataResponse> dictionaryHistory(
+            TenantActor actor, String service, String dictionary) {
         roles.requirePermission(actor.membershipId(), IamPermissions.DICTIONARY_HISTORY_READ);
+        Map<UUID, Optional<String>> names = new HashMap<>();
         return history.list(actor.tenantId(), service, dictionary).stream()
-                .map(version -> new DictionaryHistoryMetadata(
-                        version.version(), version.summary(), version.changedBy(), version.changedAt()))
+                .map(version -> new DictionaryHistoryMetadataResponse(
+                        version.version(),
+                        version.summary(),
+                        version.changedBy(),
+                        version.changedBy() == null
+                                ? null
+                                : names.computeIfAbsent(version.changedBy(), identities::findDisplayName)
+                                        .orElse(null),
+                        version.changedAt()))
                 .toList();
     }
 
-    public DictionaryHistoryDetail dictionaryHistoryVersion(
+    public DictionaryHistoryDetailResponse dictionaryHistoryVersion(
             TenantActor actor, String service, String dictionary, long version) {
         roles.requirePermission(actor.membershipId(), IamPermissions.DICTIONARY_HISTORY_READ);
         var saved = historyVersion(actor, service, dictionary, version);
@@ -377,17 +391,20 @@ public class ReferenceDataService {
                 .map(ServiceDictionary::dictionary)
                 .findFirst()
                 .orElse(null);
-        return new DictionaryHistoryDetail(
+        return new DictionaryHistoryDetailResponse(
                 saved.version(),
                 saved.summary(),
                 saved.changedBy(),
+                saved.changedBy() == null
+                        ? null
+                        : identities.findDisplayName(saved.changedBy()).orElse(null),
                 saved.changedAt(),
                 saved.snapshot(),
                 current,
                 manifest);
     }
 
-    public DictionaryHistoryDiff dictionaryHistoryDiff(
+    public DictionaryHistoryDiffResponse dictionaryHistoryDiff(
             TenantActor actor, String service, String dictionary, long from, long to) {
         roles.requirePermission(actor.membershipId(), IamPermissions.DICTIONARY_HISTORY_READ);
         var before = historyVersion(actor, service, dictionary, from).snapshot();
@@ -403,9 +420,9 @@ public class ReferenceDataService {
                 before.stream().filter(item -> !next.containsKey(item.code())).toList();
         var changed = after.stream()
                 .filter(item -> previous.containsKey(item.code()) && !item.equals(previous.get(item.code())))
-                .map(item -> new DictionaryHistoryDiff.Change(previous.get(item.code()), item))
+                .map(item -> new DictionaryHistoryDiffResponse.Change(previous.get(item.code()), item))
                 .toList();
-        return new DictionaryHistoryDiff(from, to, added, removed, changed);
+        return new DictionaryHistoryDiffResponse(from, to, added, removed, changed);
     }
 
     private DictionaryHistoryResponse historyVersion(

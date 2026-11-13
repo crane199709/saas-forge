@@ -150,7 +150,7 @@ class ReferenceDataTest {
                 HttpMethod.PUT,
                 itemPath("history-list", "custom.history-first"),
                 Map.of("name", "历史改名", "sort", 7));
-        var response = call(ADMIN, HttpMethod.GET, history, null);
+        var response = call(AUDITOR, HttpMethod.GET, history, null);
         assertThat(response.getStatusCode().value()).isEqualTo(200);
         var versions = list(response).stream().map(ReferenceDataTest::map).toList();
         assertThat(versions).extracting(row -> row.get("version")).containsExactly(2, 1);
@@ -159,6 +159,10 @@ class ReferenceDataTest {
                 .doesNotContainKey("snapshot");
         assertThat(versions.get(0).get("changedBy"))
                 .isEqualTo(IDENTITIES.get(ADMIN).toString());
+        assertThat(versions.get(0)).containsEntry("changedByName", "参考数据管理员");
+        assertThat(data(call(AUDITOR, HttpMethod.GET, history + "/2", null)))
+                .containsEntry("changedBy", IDENTITIES.get(ADMIN).toString())
+                .containsEntry("changedByName", "参考数据管理员");
     }
 
     @Test

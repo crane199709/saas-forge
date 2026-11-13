@@ -140,6 +140,15 @@ test('字典有效修改产生历史，任意版本可比较且无变化保存�
   await page.getByTestId('item-name').fill('线上验收渠道')
   await save()
   await history(1)
+  await expect(page.getByTestId('history-list')).toContainText('e2e-admin')
+  await expect(page.getByTestId('history-list')).not.toContainText(
+    '019a2525-0000-7000-8000-000000000012',
+  )
+  await expect(
+    page
+      .getByTestId('history-list')
+      .locator('[title="身份 ID：019a2525-0000-7000-8000-000000000012"]'),
+  ).toHaveText('e2e-admin')
   await page.getByTestId('history-detail-1').click()
   await expect(page.getByTestId('history-snapshot')).toContainText('线上验收渠道')
   await expect(page.getByTestId('history-manifest')).toContainText('线上')
@@ -169,7 +178,11 @@ test('字典有效修改产生历史，任意版本可比较且无变化保存�
   await expect(page.getByTestId('history-current')).toContainText('线上二次改名')
   const evidence = '/tmp/dictionary-history-qa'
   await mkdir(evidence, { recursive: true })
-  await page.screenshot({ path: `${evidence}/desktop-forward-detail.png`, fullPage: true })
+  await page.screenshot({
+    path: `${evidence}/desktop-forward-detail.png`,
+    fullPage: true,
+    animations: 'disabled',
+  })
 
   await selectVersion('from', 3)
   await selectVersion('to', 1)
@@ -178,7 +191,11 @@ test('字典有效修改产生历史，任意版本可比较且无变化保存�
   await expect(page.getByTestId('history-added').locator('tbody tr')).toHaveCount(0)
   await expect(page.getByTestId('history-changed')).toContainText('线上验收渠道')
   await page.setViewportSize({ width: 1024, height: 900 })
-  await page.screenshot({ path: `${evidence}/laptop-reverse-detail.png`, fullPage: true })
+  await page.screenshot({
+    path: `${evidence}/laptop-reverse-detail.png`,
+    fullPage: true,
+    animations: 'disabled',
+  })
 
   await items()
   await page.getByTestId('item-edit-online').click()

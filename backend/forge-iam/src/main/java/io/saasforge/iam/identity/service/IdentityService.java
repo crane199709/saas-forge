@@ -47,6 +47,11 @@ public class IdentityService {
         return Optional.ofNullable(identities.findLoginName(identityId));
     }
 
+    /** 历史等只读记录的变更人名称，优先展示名、其次账号；不返回联系方式，身份已删除时为空。 */
+    public Optional<String> findDisplayName(UUID identityId) {
+        return Optional.ofNullable(identities.findDisplayName(identityId));
+    }
+
     /** 按账号、邮箱或手机号精确查找未删除的身份（不论状态）；查不到时为空。 */
     public Optional<IdentitySummary> findByLoginIdentifier(String identifier) {
         return Optional.ofNullable(identities.findByLoginIdentifier(identifier));

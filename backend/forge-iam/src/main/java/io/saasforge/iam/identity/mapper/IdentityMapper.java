@@ -33,6 +33,9 @@ public interface IdentityMapper {
     /** 身份在验证器 App 中显示的名称：账号，没有账号时取邮箱或手机号；身份已删除时为 null。不受 Data Policy 过滤。 */
     String findLoginName(@Param("identityId") UUID identityId);
 
+    /** 未删除身份的展示名，空白时使用账号；不取邮箱或手机号，不受 Data Policy 过滤。 */
+    String findDisplayName(@Param("identityId") UUID identityId);
+
     /** 账号是否已被未删除的身份占用（不论状态），与唯一索引的范围一致，不受 Data Policy 过滤。 */
     boolean existsAccount(@Param("account") String account);
 

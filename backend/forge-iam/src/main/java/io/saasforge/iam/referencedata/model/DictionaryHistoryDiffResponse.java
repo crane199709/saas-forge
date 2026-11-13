@@ -3,7 +3,7 @@ package io.saasforge.iam.referencedata.model;
 import java.util.List;
 
 /** 两份覆盖快照按字典项编码比较；不合并任何当前服务声明。 */
-public record DictionaryHistoryDiff(
+public record DictionaryHistoryDiffResponse(
         long from,
         long to,
         List<DictionaryHistoryItem> added,

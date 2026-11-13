@@ -25,7 +25,8 @@ const versions = [
   {
     version: 2,
     summary: '修改 custom.expo',
-    changedBy: '审计员甲',
+    changedBy: '019a0110-0000-7000-8000-0000000002c2',
+    changedByName: '审计员甲',
     changedAt: '2026-11-13T02:00:00Z',
   },
   { version: 1, summary: '新增 custom.expo', changedBy: null, changedAt: '2026-11-12T02:00:00Z' },
@@ -98,6 +99,60 @@ it('审计员默认打开历史列表，查看完整覆盖快照与当前上下�
   await wrapper.get('#tab-items').trigger('click')
   expect(wrapper.find('[data-testid="new-item-create"]').exists()).toBe(false)
   expect(wrapper.find('[data-testid="item-edit-web"]').exists()).toBe(false)
+})
+
+it('变更人显示可识别姓名，身份 ID 只在有说明的提示中，系统变更明确标注', async () => {
+  const { wrapper } = await openHistory({
+    [base]: [
+      ...versions,
+      {
+        version: 3,
+        summary: '未知姓名的历史',
+        changedBy: 'missing-identity',
+        changedByName: null,
+        changedAt: versions[0]!.changedAt,
+      },
+    ],
+  })
+  const list = wrapper.get('[data-testid="history-list"]')
+  expect(list.text()).toContain('审计员甲')
+  expect(list.text()).toContain('系统')
+  expect(list.text()).toContain('姓名未知')
+  expect(list.text()).not.toContain('missing-identity')
+  expect(list.get('[title="身份 ID：missing-identity"]').text()).toBe('姓名未知')
+  expect(list.text()).not.toContain('019a0110-0000-7000-8000-0000000002c2')
+  expect(list.get('[title="身份 ID：019a0110-0000-7000-8000-0000000002c2"]').text()).toBe(
+    '审计员甲',
+  )
+})
+
+it('历史快照与当前值用状态标签区分启用、停用和下线', async () => {
+  const { wrapper } = await openHistory({
+    [`${base}/1`]: {
+      ...versions[1],
+      snapshot: [oldItem, { ...newItem, code: 'custom.disabled' }],
+      current: {
+        ...dictionary,
+        items: [
+          dictionary.items[0],
+          { ...dictionary.items[0], code: 'custom.disabled', status: 'disabled' },
+          { ...dictionary.items[0], code: 'retired', status: 'retired' },
+        ],
+      },
+      manifest: null,
+    },
+  })
+  await wrapper.get('[data-testid="history-detail-1"]').trigger('click')
+  await flushPromises()
+  const snapshot = wrapper.get('[data-testid="history-snapshot"]').findAll('.el-tag')
+  expect(snapshot.map((tag) => tag.text())).toEqual(['启用', '停用'])
+  expect(snapshot[0]!.classes()).toContain('el-tag--success')
+  expect(snapshot[1]!.classes()).toContain('el-tag--info')
+  const current = wrapper.get('[data-testid="history-current"]').findAll('.el-tag')
+  expect(current.map((tag) => tag.text())).toEqual(['启用', '已停用', '已下线'])
+  expect(current[0]!.classes()).toContain('el-tag--success')
+  expect(current[1]!.classes()).toContain('el-tag--info')
+  expect(current[2]!.classes()).toContain('el-tag--warning')
 })
 
 it('比较任意两个版本显示新增、移除和每个修改字段的前后值', async () => {

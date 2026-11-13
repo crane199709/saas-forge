@@ -35,6 +35,7 @@ export interface DictionaryHistoryMetadata {
   version: number
   summary: string
   changedBy: string | null
+  changedByName: string | null
   changedAt: string
 }
 export interface DictionaryHistoryDetail extends DictionaryHistoryMetadata {
