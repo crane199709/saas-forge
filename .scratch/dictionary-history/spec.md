@@ -77,4 +77,5 @@ Tenant 对 Extensible Dictionary 的修改（改名、调排序、新增自定�
 - [01：历史表与有效变更写入](issues/01-history-table.md) 已完成：`38d1a0fb` / `00fb3f35`。
 - [02：历史查询、diff、独立权限与页面](issues/02-api-and-ui.md) 已完成：`28eb9957`，集成 `bb4ae36a`。
 - [03：真实链路与回归验收](issues/03-acceptance.md) 已完成；相关后端 24 项、真实 Playwright 1 项通过，真实 UI 截图完成走查。
-- 实际验证命令、证据与边界见 [验收报告](acceptance.md)。IAM 模块全量和最终集成审查由集成负责人在合并验收提交后执行。
+- 审查修复 `c0616e98` 已集成至 `cb65a169`：变更人显示可识别姓名、响应模型统一命名、状态列使用标签；定向复验全部通过。
+- IAM 全量 339 项、前端全仓 420 项通过；最终 Standards / Spec 复核均为 0 项发现。实际命令、验证基准与边界见 [验收报告](acceptance.md)。

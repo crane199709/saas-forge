@@ -1,6 +1,6 @@
 # 字典变更历史验收
 
-日期：2026-11-13。验收分支：`codex/dictionary-history-03`，基于集成 `bb4ae36a`。
+日期：2026-11-13。交付分支：`codex/dictionary-history`，最终代码集成点 `cb65a169`；票据 03 验收基于 `bb4ae36a`。
 
 ## 已确认的结果
 
@@ -26,7 +26,7 @@
 
 集成负责人已在 `bb4ae36a` 执行并确认：`pnpm test` 全仓 420 PASS（UI 72、sub-app-kit 7、platform-console 100、tenant-app 241），`pnpm typecheck` 全 workspace 与 tools PASS，`./mvnw -o -pl forge-iam -am install -DskipTests` PASS。票据 02 已执行字典、历史、导航及路由 35 项组件回归、1440/1024 的空列表／版本列表／详情／diff 共 8 项视觉回归，基线已随票据 02 提交。本票未修改页面，未变更视觉基线。
 
-IAM 模块全量与最终双轴审查由集成负责人在合并本票后执行；此处不预报其结果。
+IAM 模块全量与最终双轴审查均已完成，详见文末「最终集成验证与审查」。
 
 ## 真实页面 QA
 
@@ -94,4 +94,26 @@ Browser plugin not available，使用仓库 Chromium Playwright。已用 `view_i
 
 真实链路新增断言 `e2e-admin` 姓名可见、UUID 不作为人员名显示、身份提示包含原 ID；已有页面 URL／最终标题、非空、console error／warning、pageerror、交互与 no-op 断言均通过。首轮桌面真实截图捕获到新标签入场动画中间帧，已把两处截图设为 `animations: 'disabled'` 并复跑同一链路通过，不修改产品动画。最终 `/tmp/dictionary-history-qa/desktop-forward-detail.png` 与 `laptop-reverse-detail.png` 已重新用 `view_image` 逐张查看，姓名及状态标签均完整可读。
 
-本轮只重复相关后端目标、组件、8 项视觉与单条真实链路，不重复 IAM 全量或整个前端套件。最终集成双轴复核由集成负责人确认，此处不预报其结果。
+本轮只重复相关后端目标、组件、8 项视觉与单条真实链路，不重复 IAM 全量或整个前端套件。最终集成双轴复核已确认通过，详见下节。
+
+
+## 最终集成验证与审查
+
+三张票据和规格均为 `resolved`，实现、验收与审查修复已合入 `codex/dictionary-history`；代码集成点 `cb65a169` 与修复提交 `c0616e98` 的文件树一致。
+
+| 检查 | 验证基准与命令 | 结果 |
+| --- | --- | --- |
+| IAM 模块全量 | `e4d19bea`，`cd backend && ./mvnw -o -pl forge-iam verify` | 339 PASS，0 失败、0 错误、0 跳过；架构与 Spotless 通过 |
+| 前端全仓 | `bb4ae36a`，`cd frontend && pnpm test` | 420 PASS（UI 72、sub-app-kit 7、platform-console 100、tenant-app 241） |
+| 全仓类型 | `bb4ae36a`，`cd frontend && pnpm typecheck` | 全 workspace 与 tools PASS |
+| 审查修复复验 | `c0616e98`，上节定向命令 | 后端 25、组件 14、视觉 8、真实 E2E 1 均 PASS；相关类型、样式与格式通过 |
+| 权限目录 | 票据 02 的四份真实 Manifest 导出、目录比对与脚本测试 | 目录一致，19 项脚本测试 PASS |
+
+IAM 全量前已执行 `./mvnw -o -pl forge-iam -am install -DskipTests` 更新本地 SDK 制品。前端全量首轮因沙箱禁止本地代理端口监听而中止，允许该测试监听临时本地端口后全套通过。全量日志为 `/tmp/dictionary-history-iam-full.log`、`/tmp/dictionary-history-frontend-all.log`、`/tmp/dictionary-history-frontend-types.log`、`/tmp/dictionary-history-final-install.log`。审查修复后仅复验受影响接缝，不重复无关全套。
+
+两个独立审查代理分别执行 `git diff 71ddd5dd...e4d19bea`，并复核 `e4d19bea...c0616e98`：
+
+- **Standards**：初审 3 项（变更人 UUID、响应命名、状态标签）全部修复；最终剩余 **0 项**。
+- **Spec**：初审与修复复核均 **0 项**；姓名为查询时上下文，不改变持久化快照、版本或 diff。
+
+最终真实截图还保存在 `/Users/liuhuan/.codex/visualizations/2026/11/13/01a1d394-5beb-7663-8a55-b7b702981157/dictionary-history-e2e.png`。交付仍遵守上文验证边界，未推送或操作开发数据库。
