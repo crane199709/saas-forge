@@ -68,6 +68,34 @@
         AND (retention_expires_at &lt;= #{now} OR (status = 'PENDING' AND upload_expires_at &lt;= #{now}))
     </update>
 
+    <select id="retentionPurposes" resultType="string">
+        SELECT DISTINCT purpose FROM forge_storage_object
+        WHERE status IN ('PENDING', 'STORED', 'EXPIRED', 'PURGE_PENDING') ORDER BY purpose
+    </select>
+
+    <select id="expiryCandidates" resultMap="object">
+        SELECT id, object_key, purpose, filename, content_type, size, status, upload_expires_at, stored_at, retention_expires_at, expired_at
+        FROM forge_storage_object
+        WHERE purpose = #{purpose} AND status IN ('PENDING', 'STORED')
+        AND (retention_expires_at &lt;= #{now} OR (status = 'PENDING' AND upload_expires_at &lt;= #{now}))
+        <if test="after != null">AND id &gt; #{after}</if>
+        ORDER BY id FETCH FIRST #{limit} ROWS ONLY
+    </select>
+
+    <select id="purgeCandidates" resultMap="object">
+        SELECT id, object_key, purpose, filename, content_type, size, status, upload_expires_at, stored_at, retention_expires_at, expired_at
+        FROM forge_storage_object
+        WHERE purpose = #{purpose} AND status IN ('EXPIRED', 'PURGE_PENDING')
+        AND expired_at &lt;= #{graceCutoff} AND upload_expires_at &lt;= #{now}
+        <if test="after != null">AND id &gt; #{after}</if>
+        ORDER BY id FETCH FIRST #{limit} ROWS ONLY
+    </select>
+
+    <update id="markPurgePending">
+        UPDATE forge_storage_object SET status = 'PURGE_PENDING'
+        WHERE id = #{id} AND status = 'EXPIRED'
+    </update>
+
     <delete id="delete">
         DELETE FROM forge_storage_object WHERE id = #{id}
     </delete>
