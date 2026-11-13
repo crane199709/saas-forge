@@ -42,13 +42,17 @@ public class TenantIpAllowlistService {
     /** 供签发 Tenant Token 时读取；无权限校验，调用方须已验证 Membership。 */
     public TenantIpAllowlist rules(UUID tenantId) {
         String value = tenants.findIpAllowlist(tenantId);
-        if (value == null) throw unavailable();
+        if (value == null) {
+            throw unavailable();
+        }
         return TenantIpAllowlist.decode(value);
     }
 
     /** 签发前校验来源，拒绝事件归于已确认的目标 Membership；无事务以免拒绝异常回滚审计。 */
     public boolean allowEntry(UUID tenantId, UUID identityId, UUID membershipId) {
-        if (rules(tenantId).allows(currentIp())) return true;
+        if (rules(tenantId).allows(currentIp())) {
+            return true;
+        }
         audits.record(AuditEvent.builder(AuditRealm.TENANT, AuditCategory.LOGIN, "tenant.ipAllowlistDenied")
                 .tenant(tenantId)
                 .actor(identityId)
@@ -62,8 +66,12 @@ public class TenantIpAllowlistService {
     public List<String> update(TenantActor actor, List<String> rules) {
         roles.requirePermission(actor.membershipId(), IamPermissions.SECURITY_MANAGE);
         TenantIpAllowlist parsed = TenantIpAllowlist.parse(rules);
-        if (!parsed.allows(currentIp())) throw new ForgeException(TenantErrorCode.CURRENT_IP_NOT_INCLUDED);
-        if (tenants.updateIpAllowlist(actor.tenantId(), parsed.encode(), actor.identityId()) == 0) throw unavailable();
+        if (!parsed.allows(currentIp())) {
+            throw new ForgeException(TenantErrorCode.CURRENT_IP_NOT_INCLUDED);
+        }
+        if (tenants.updateIpAllowlist(actor.tenantId(), parsed.encode(), actor.identityId()) == 0) {
+            throw unavailable();
+        }
         // 与租户状态发布一致：UPDATE 持有租户行锁，Redis 失败则本地事务回滚。
         // 提交失败时 Redis 可能已是新值，重试或全量发布会重新以数据库为准恢复。
         redis.opsForValue().set(MembershipStateKeys.tenantIpAllowlist(actor.tenantId()), parsed.encode());
@@ -93,7 +101,9 @@ public class TenantIpAllowlistService {
     public void publishAll() {
         for (UUID tenantId : tenants.findAllIds()) {
             String value = tenants.lockIpAllowlist(tenantId);
-            if (value != null) redis.opsForValue().set(MembershipStateKeys.tenantIpAllowlist(tenantId), value);
+            if (value != null) {
+                redis.opsForValue().set(MembershipStateKeys.tenantIpAllowlist(tenantId), value);
+            }
         }
     }
 
@@ -101,7 +111,9 @@ public class TenantIpAllowlistService {
     @Transactional
     public void publishIfAbsent(UUID tenantId) {
         String value = tenants.lockIpAllowlist(tenantId);
-        if (value != null) redis.opsForValue().setIfAbsent(MembershipStateKeys.tenantIpAllowlist(tenantId), value);
+        if (value != null) {
+            redis.opsForValue().setIfAbsent(MembershipStateKeys.tenantIpAllowlist(tenantId), value);
+        }
     }
 
     /** 当前请求的可信客户端 IP；无请求上下文时返回 null。 */

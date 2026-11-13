@@ -59,7 +59,9 @@ class ApiExceptionHandler {
         }
         ApiResponse<Void> body = ApiResponse.error(
                 code.httpStatus(), code.code(), errorMessage, userTips.resolve(code.code(), e.args(), locale()), null);
-        if (code.httpStatus() >= 500) ServletFailureLogs.serverError(log, body, Level.ERROR, e);
+        if (code.httpStatus() >= 500) {
+            ServletFailureLogs.serverError(log, body, Level.ERROR, e);
+        }
         return ResponseEntity.status(code.httpStatus()).body(body);
     }
 
@@ -123,7 +125,9 @@ class ApiExceptionHandler {
     @ExceptionHandler(UncategorizedDataAccessException.class)
     ResponseEntity<ApiResponse<Void>> handleUncategorized(UncategorizedDataAccessException e) {
         for (Throwable cause = e.getCause(); cause != null; cause = cause.getCause()) {
-            if (cause instanceof ForgeException forge) return handleForge(forge);
+            if (cause instanceof ForgeException forge) {
+                return handleForge(forge);
+            }
             if (cause instanceof DataAccessResourceFailureException failure) {
                 return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(handleUnavailable(failure));
             }

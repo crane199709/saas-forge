@@ -306,7 +306,9 @@ class AuditTest {
                 .method(HttpMethod.valueOf(method))
                 .uri(uri)
                 .headers(headers -> headers.setBearerAuth(token));
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         return request.retrieve()
                 .onStatus(HttpStatusCode::isError, (req, res) -> {})
                 .toEntity(Map.class);

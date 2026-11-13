@@ -134,7 +134,9 @@ class OrderAutoCloseTest {
         UUID failure = UUID.fromString("019a0110-0000-7000-8000-000000000054");
         UUID longTimeout = UUID.fromString("019a0110-0000-7000-8000-000000000055");
         UUID later = UUID.fromString("019a0110-0000-7000-8000-000000000056");
-        for (UUID tenant : List.of(shortTimeout, failure, longTimeout, later)) active(tenant);
+        for (UUID tenant : List.of(shortTimeout, failure, longTimeout, later)) {
+            active(tenant);
+        }
         TestReferenceData.autoClose(shortTimeout, Duration.ofMinutes(15));
         TestReferenceData.autoClose(longTimeout, Duration.ofMinutes(30));
         TestReferenceData.autoClose(later, Duration.ofMinutes(10));
@@ -231,7 +233,9 @@ class OrderAutoCloseTest {
                 .method(method)
                 .uri(uri)
                 .header("Authorization", "Bearer " + TestTokens.forTenant(tenant));
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         return request.exchange((req, response) -> {
             Map<String, Object> envelope = response.bodyTo(new ParameterizedTypeReference<Map<String, Object>>() {});
             assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();

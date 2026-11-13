@@ -429,7 +429,7 @@ for (const [label, width, height] of viewports) {
 - 列表页用 \`PageHeader\` → \`PageToolbar\` → \`ListPage\` 原型；空值显示 \`—\`，时间用 \`formatDateTime\`。
 - 样式只用 \`--forge-*\` token 与 Element Plus 的 \`--el-*\` 变量，不写间距、字号、圆角和颜色字面量。
 - 隔离约定：只在 \`src/sub-app.ts\` 导出相对路由；不创建 Vue 应用、Router、Pinia、i18n 实例；\`<style>\` 用 \`scoped\`；共享依赖只从根入口导入；接口经 \`useTenantClient()\` 调用，不读写 Shell 的 \`forge.*\` 会话存储。
-- 配套 Business Service 继承 \`forge-dependencies\` 的构建期中间件依赖门禁，通过后端 starter 接入中间件；Sub-App 经 HTTP 接口使用这些能力。
+- 配套 Business Service 继承 \`forge-dependencies\` 的中间件依赖门禁与 Checkstyle \`NeedBraces\`；Java 的 \`if\`、\`else\`、\`for\`、\`while\`、\`do-while\` 语句体必须加大括号，后端 \`./mvnw validate\` 检查生产与测试代码；中间件通过后端 starter 接入，Sub-App 经 HTTP 接口使用这些能力。
 - 敏感字段展示按 [规范「敏感字段展示」](docs/standards/sub-app.md#敏感字段展示) 消费服务端结果，页面不重算掩码；原文查看使用专用授权操作；预览失败不回显原样例，字段脱敏失败的导出任务没有结果文件；后端脱敏运行时的 IAM 地址和 Service Credential 不注入前端。
 - 视觉用例放 \`e2e/visual/\`：在 \`localStorage\` 预置假会话，用 \`page.route\` mock 接口，覆盖接近真实长度的数据、空值与空列表。
 

@@ -29,11 +29,14 @@ public class ServiceCredentialAdminService {
     public ServiceCredentialListResponse list() {
         try {
             var response = client.iamGet(PATH, LIST);
-            if (!ApiResponse.OK.equals(response.code()) || response.data() == null)
+            if (!ApiResponse.OK.equals(response.code()) || response.data() == null) {
                 throw new ForgeException(OpsErrorCode.SERVICE_UNAVAILABLE);
+            }
             return new ServiceCredentialListResponse("forge-iam", true, response.data());
         } catch (ForgeException error) {
-            if (error.errorCode() != OpsErrorCode.SERVICE_UNAVAILABLE) throw error;
+            if (error.errorCode() != OpsErrorCode.SERVICE_UNAVAILABLE) {
+                throw error;
+            }
             return new ServiceCredentialListResponse("forge-iam", false, List.of());
         }
     }

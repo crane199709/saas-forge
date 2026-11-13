@@ -56,7 +56,9 @@ final class DataPermissionInnerInterceptor extends BaseMultiTableInnerIntercepto
             RowBounds rowBounds,
             ResultHandler resultHandler,
             BoundSql boundSql) {
-        if (InterceptorIgnoreHelper.willIgnoreDataPermission(ms.getId())) return;
+        if (InterceptorIgnoreHelper.willIgnoreDataPermission(ms.getId())) {
+            return;
+        }
         rewrite(boundSql, ms, false);
     }
 
@@ -65,17 +67,25 @@ final class DataPermissionInnerInterceptor extends BaseMultiTableInnerIntercepto
         PluginUtils.MPStatementHandler handler = PluginUtils.mpStatementHandler(sh);
         MappedStatement ms = handler.mappedStatement();
         SqlCommandType command = ms.getSqlCommandType();
-        if (command != SqlCommandType.UPDATE && command != SqlCommandType.DELETE) return;
-        if (InterceptorIgnoreHelper.willIgnoreDataPermission(ms.getId())) return;
+        if (command != SqlCommandType.UPDATE && command != SqlCommandType.DELETE) {
+            return;
+        }
+        if (InterceptorIgnoreHelper.willIgnoreDataPermission(ms.getId())) {
+            return;
+        }
         rewrite(handler.boundSql(), ms, true);
     }
 
     private void rewrite(BoundSql boundSql, MappedStatement ms, boolean multi) {
         PluginUtils.MPBoundSql mpBs = PluginUtils.mpBoundSql(boundSql);
         String sql = mpBs.sql();
-        if (!mentionsResourceTable(sql)) return;
+        if (!mentionsResourceTable(sql)) {
+            return;
+        }
         DataPermission.Subject subject = permission.currentSubjectOf();
-        if (subject == null) return;
+        if (subject == null) {
+            return;
+        }
         var rewrite = new Rewrite(subject);
         String rewritten;
         CURRENT.set(rewrite);
@@ -84,7 +94,9 @@ final class DataPermissionInnerInterceptor extends BaseMultiTableInnerIntercepto
         } finally {
             CURRENT.remove();
         }
-        if (rewrite.parameters.isEmpty() && rewritten.equals(sql)) return;
+        if (rewrite.parameters.isEmpty() && rewritten.equals(sql)) {
+            return;
+        }
         bind(rewritten, rewrite.parameters, mpBs, boundSql, ms.getConfiguration());
     }
 
@@ -106,19 +118,25 @@ final class DataPermissionInnerInterceptor extends BaseMultiTableInnerIntercepto
     @Override
     protected void processUpdate(Update update, int index, String sql, Object obj) {
         Expression where = andExpression(update.getTable(), update.getWhere(), (String) obj);
-        if (where != null) update.setWhere(where);
+        if (where != null) {
+            update.setWhere(where);
+        }
     }
 
     @Override
     protected void processDelete(Delete delete, int index, String sql, Object obj) {
         Expression where = andExpression(delete.getTable(), delete.getWhere(), (String) obj);
-        if (where != null) delete.setWhere(where);
+        if (where != null) {
+            delete.setWhere(where);
+        }
     }
 
     @Override
     public Expression buildTableExpression(Table table, Expression where, String whereSegment) {
         DataResourceDefinition definition = permission.byTable().get(DataPermission.normalizeTable(table.getName()));
-        if (definition == null) return null;
+        if (definition == null) {
+            return null;
+        }
         Rewrite rewrite = CURRENT.get();
         String qualifier = table.getAlias() != null ? table.getAlias().getName() : table.getName();
         SqlPredicate predicate = permission.compile(rewrite.subject, definition, qualifier);
@@ -159,7 +177,9 @@ final class DataPermissionInnerInterceptor extends BaseMultiTableInnerIntercepto
         for (int i = 0; i < sql.length(); i++) {
             char c = sql.charAt(i);
             if (quote != 0) {
-                if (c == quote) quote = 0;
+                if (c == quote) {
+                    quote = 0;
+                }
                 out.append(c);
             } else if (c == '\'' || c == '"') {
                 quote = c;
@@ -170,12 +190,16 @@ final class DataPermissionInnerInterceptor extends BaseMultiTableInnerIntercepto
                 out.append(sql, i, end);
                 i = end - 1;
             } else if (c == '?') {
-                if (originalIndex >= original.size()) throw mismatch(sql);
+                if (originalIndex >= original.size()) {
+                    throw mismatch(sql);
+                }
                 mappings.add(original.get(originalIndex++));
                 out.append('?');
             } else if (sql.startsWith(MARKER, i)) {
                 int end = i + MARKER.length();
-                while (end < sql.length() && Character.isDigit(sql.charAt(end))) end++;
+                while (end < sql.length() && Character.isDigit(sql.charAt(end))) {
+                    end++;
+                }
                 int index = Integer.parseInt(sql.substring(i + MARKER.length(), end));
                 String property = PROPERTY + index;
                 boundSql.setAdditionalParameter(property, parameters.get(index));
@@ -186,7 +210,9 @@ final class DataPermissionInnerInterceptor extends BaseMultiTableInnerIntercepto
                 out.append(c);
             }
         }
-        if (originalIndex != original.size()) throw mismatch(sql);
+        if (originalIndex != original.size()) {
+            throw mismatch(sql);
+        }
         mpBs.sql(out.toString());
         mpBs.parameterMappings(mappings);
     }
@@ -203,7 +229,9 @@ final class DataPermissionInnerInterceptor extends BaseMultiTableInnerIntercepto
                         || (tagEnd > start + 1 && Character.isDigit(sql.charAt(tagEnd))))) {
             tagEnd++;
         }
-        if (tagEnd >= sql.length() || sql.charAt(tagEnd) != '$') return -1;
+        if (tagEnd >= sql.length() || sql.charAt(tagEnd) != '$') {
+            return -1;
+        }
         String tag = sql.substring(start, tagEnd + 1);
         int close = sql.indexOf(tag, tagEnd + 1);
         return close < 0 ? -1 : close + tag.length();

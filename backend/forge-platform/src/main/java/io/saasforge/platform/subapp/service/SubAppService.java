@@ -77,7 +77,9 @@ public class SubAppService {
             Map<String, String> remoteEntries,
             Map<String, String> sharedRequirements) {
         SubApp app = apps.lockExclusive(id);
-        if (app == null) throw notFound(id);
+        if (app == null) {
+            throw notFound(id);
+        }
         app.setName(name);
         app.setVersion(version);
         app.setRevision(apps.nextRevision());
@@ -94,7 +96,9 @@ public class SubAppService {
     @Transactional
     public void delete(UUID id) {
         SubApp app = apps.lockExclusive(id);
-        if (app == null) throw notFound(id);
+        if (app == null) {
+            throw notFound(id);
+        }
         app.setRevision(apps.nextRevision());
         apps.updateById(app);
         // 逻辑删除前读出内容随事件发布；deleteById 之后按主键读不到已删除的行
@@ -104,8 +108,12 @@ public class SubAppService {
     }
 
     private void writeDetails(UUID id, Map<String, String> remoteEntries, Map<String, String> sharedRequirements) {
-        if (!remoteEntries.isEmpty()) apps.insertEntries(id, rows(remoteEntries));
-        if (!sharedRequirements.isEmpty()) apps.insertRequirements(id, rows(sharedRequirements));
+        if (!remoteEntries.isEmpty()) {
+            apps.insertEntries(id, rows(remoteEntries));
+        }
+        if (!sharedRequirements.isEmpty()) {
+            apps.insertRequirements(id, rows(sharedRequirements));
+        }
     }
 
     // 无租户上下文发布：App Registry 是平台数据，变更对所有租户生效。
@@ -140,7 +148,9 @@ public class SubAppService {
 
     private static SortedMap<String, String> map(List<SubAppRow> rows) {
         var result = new TreeMap<String, String>();
-        for (SubAppRow row : rows) result.put(row.key(), row.value());
+        for (SubAppRow row : rows) {
+            result.put(row.key(), row.value());
+        }
         return result;
     }
 

@@ -77,7 +77,9 @@ public class LoginAudit {
     public void mfa(AuditRealm realm, UUID actor, String method, String errorCode) {
         var event =
                 AuditEvent.builder(realm, AuditCategory.LOGIN, MFA).actor(actor).detail("method", method);
-        if (errorCode != null) event.failure(errorCode);
+        if (errorCode != null) {
+            event.failure(errorCode);
+        }
         audits.record(event.build());
     }
 

@@ -61,7 +61,9 @@ final class TaskRegistrar implements BeanPostProcessor, SmartInitializingSinglet
                         method -> {
                             GlobalTask global = AnnotatedElementUtils.findMergedAnnotation(method, GlobalTask.class);
                             TenantTask tenant = AnnotatedElementUtils.findMergedAnnotation(method, TenantTask.class);
-                            if (global == null && tenant == null) return null;
+                            if (global == null && tenant == null) {
+                                return null;
+                            }
                             if (global != null && tenant != null) {
                                 throw new IllegalStateException(
                                         "Task must declare only one task annotation: " + method);
@@ -137,8 +139,11 @@ final class TaskRegistrar implements BeanPostProcessor, SmartInitializingSinglet
             Runnable method = () -> ReflectionUtils.invokeMethod(task.method(), task.bean());
             BiConsumer<UUID, TaskRunOutcome> body = task.tenant()
                     ? (target, outcome) -> {
-                        if (target == null) tenantExecutor.execute(registration.name(), method, outcome);
-                        else tenantExecutor.retry(registration.name(), target, method, outcome);
+                        if (target == null) {
+                            tenantExecutor.execute(registration.name(), method, outcome);
+                        } else {
+                            tenantExecutor.retry(registration.name(), target, method, outcome);
+                        }
                     }
                     : (target, outcome) -> method.run();
             definitions.put(
@@ -189,15 +194,21 @@ final class TaskRegistrar implements BeanPostProcessor, SmartInitializingSinglet
 
     TaskDefinitionResponse require(String name) {
         TaskDefinitionResponse task = definitions.get(name);
-        if (task == null) throw new ForgeException(TaskErrorCode.NOT_FOUND);
+        if (task == null) {
+            throw new ForgeException(TaskErrorCode.NOT_FOUND);
+        }
         return task;
     }
 
     TaskTriggerResponse trigger(String name, UUID operatorId, UUID targetTenantId) {
         TaskDefinitionResponse task = require(name);
-        if (operatorId == null) throw new ForgeException(FrameworkErrorCode.REQUEST_INVALID);
+        if (operatorId == null) {
+            throw new ForgeException(FrameworkErrorCode.REQUEST_INVALID);
+        }
         if (targetTenantId != null) {
-            if (task.type() != TaskRun.Type.TENANT) throw new ForgeException(FrameworkErrorCode.REQUEST_INVALID);
+            if (task.type() != TaskRun.Type.TENANT) {
+                throw new ForgeException(FrameworkErrorCode.REQUEST_INVALID);
+            }
             tenantExecutor.requireEligible(targetTenantId);
         }
         return runner.manual(

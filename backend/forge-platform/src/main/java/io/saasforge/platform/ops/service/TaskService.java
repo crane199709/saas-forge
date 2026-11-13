@@ -42,7 +42,9 @@ public class TaskService {
     }
 
     public ApiResponse<List<TaskRun>> runs(String service, String name, String view) {
-        if (!List.of("recent", "problems").contains(view)) throw new ForgeException(FrameworkErrorCode.REQUEST_INVALID);
+        if (!List.of("recent", "problems").contains(view)) {
+            throw new ForgeException(FrameworkErrorCode.REQUEST_INVALID);
+        }
         return client.get(
                 service,
                 "/tasks/" + UriUtils.encodePathSegment(name, StandardCharsets.UTF_8) + "/runs?view=" + view,
@@ -62,15 +64,20 @@ public class TaskService {
         try {
             Map<String, Object> command = new LinkedHashMap<>();
             command.put("operatorId", operator);
-            if (targetTenantId != null) command.put("targetTenantId", targetTenantId);
+            if (targetTenantId != null) {
+                command.put("targetTenantId", targetTenantId);
+            }
             var response = client.post(
                     service,
                     "/tasks/" + UriUtils.encodePathSegment(name, StandardCharsets.UTF_8) + "/trigger",
                     command,
                     TRIGGER);
-            if (!ApiResponse.OK.equals(response.code())) throw rejected(response.code());
-            if (response.data() == null || response.data().runId() == null)
+            if (!ApiResponse.OK.equals(response.code())) {
+                throw rejected(response.code());
+            }
+            if (response.data() == null || response.data().runId() == null) {
                 throw new ForgeException(OpsErrorCode.SERVICE_UNAVAILABLE);
+            }
             event.detail("runId", response.data().runId());
             return response;
         } catch (ForgeException error) {
@@ -85,10 +92,13 @@ public class TaskService {
     }
 
     private static ForgeException rejected(String code) {
-        if (FrameworkErrorCode.REQUEST_INVALID.code().equals(code))
+        if (FrameworkErrorCode.REQUEST_INVALID.code().equals(code)) {
             return new ForgeException(FrameworkErrorCode.REQUEST_INVALID);
+        }
         for (TaskErrorCode error : TaskErrorCode.values()) {
-            if (error.code().equals(code)) return new ForgeException(error);
+            if (error.code().equals(code)) {
+                return new ForgeException(error);
+            }
         }
         return new ForgeException(OpsErrorCode.SERVICE_UNAVAILABLE);
     }

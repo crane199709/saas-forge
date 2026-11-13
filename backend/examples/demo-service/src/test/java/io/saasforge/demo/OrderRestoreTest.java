@@ -397,7 +397,9 @@ class OrderRestoreTest {
                 .method(method)
                 .uri(path)
                 .header("Authorization", "Bearer " + caller);
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         return request.exchange((req, response) -> {
             Map<String, Object> envelope = response.bodyTo(new ParameterizedTypeReference<Map<String, Object>>() {});
             assertThat(envelope).isNotNull();

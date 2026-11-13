@@ -153,7 +153,9 @@ public final class ResourceManifestCollector {
         for (var candidate : scanner.findCandidateComponents(basePackage)) {
             AnnotationMetadata metadata = ((AnnotatedBeanDefinition) candidate).getMetadata();
             Map<String, Object> type = metadata.getAnnotationAttributes(annotation);
-            if (type != null) codes.add((String) type.get("value"));
+            if (type != null) {
+                codes.add((String) type.get("value"));
+            }
             for (MethodMetadata method : metadata.getAnnotatedMethods(annotation)) {
                 codes.add((String) method.getAnnotationAttributes(annotation).get("value"));
             }
@@ -163,7 +165,9 @@ public final class ResourceManifestCollector {
 
     private static ManifestFile read(ClassLoader classLoader, String location) {
         try (InputStream stream = classLoader.getResourceAsStream(location)) {
-            if (stream == null) return new ManifestFile(null, null, null, null, null, null, null, null);
+            if (stream == null) {
+                return new ManifestFile(null, null, null, null, null, null, null, null);
+            }
             return JSON.readValue(stream, ManifestFile.class);
         } catch (IOException | RuntimeException error) {
             throw new IllegalStateException("Invalid manifest file " + location, error);

@@ -44,9 +44,13 @@ class OperatorSessionController {
             @Valid @RequestBody LoginRequest body, HttpServletRequest request, HttpServletResponse response) {
         var firstFactor = sessions.authenticate(body.account(), body.password());
         PendingOperatorMfa pending = sessions.pendingMfa(firstFactor).orElse(null);
-        if (pending == null) return ApiResponse.ok(signIn(firstFactor, null, request, response));
+        if (pending == null) {
+            return ApiResponse.ok(signIn(firstFactor, null, request, response));
+        }
         // 换新会话标识防会话固定，并清掉会话里原有的已认证主体：授权端点因此不认可此会话，直到完成第二步。
-        if (request.getSession(false) != null) request.changeSessionId();
+        if (request.getSession(false) != null) {
+            request.changeSessionId();
+        }
         HttpSession session = request.getSession();
         session.removeAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
         SecurityContextHolder.clearContext();
@@ -87,7 +91,9 @@ class OperatorSessionController {
             List<String> recoveryCodes,
             HttpServletRequest request,
             HttpServletResponse response) {
-        if (request.getSession(false) != null) request.changeSessionId();
+        if (request.getSession(false) != null) {
+            request.changeSessionId();
+        }
         var context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);

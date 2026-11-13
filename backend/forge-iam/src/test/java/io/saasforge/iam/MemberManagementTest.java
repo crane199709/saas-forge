@@ -105,7 +105,9 @@ class MemberManagementTest {
         private final Map<String, InvitationMessage> latest = new ConcurrentHashMap<>();
 
         void deliver(String target, ContactMessage message) {
-            if (message instanceof InvitationMessage invitation) latest.put(target, invitation);
+            if (message instanceof InvitationMessage invitation) {
+                latest.put(target, invitation);
+            }
         }
 
         String token(String target) {
@@ -332,7 +334,9 @@ class MemberManagementTest {
         for (Object row : (List<?>) call(ADMIN, HttpMethod.GET, "/org/memberships?page=1&size=100", null)
                 .getBody()
                 .get("data")) {
-            if (membership.toString().equals(((Map<?, ?>) row).get("membershipId"))) return object(row);
+            if (membership.toString().equals(((Map<?, ?>) row).get("membershipId"))) {
+                return object(row);
+            }
         }
         throw new AssertionError("Membership not listed: " + membership);
     }
@@ -340,8 +344,12 @@ class MemberManagementTest {
     private List<Map<String, Object>> members(UUID admin, String keyword, String status) throws Exception {
         var uri =
                 UriComponentsBuilder.fromPath("/members").queryParam("page", 1).queryParam("size", 100);
-        if (keyword != null) uri.queryParam("keyword", keyword);
-        if (status != null) uri.queryParam("status", status);
+        if (keyword != null) {
+            uri.queryParam("keyword", keyword);
+        }
+        if (status != null) {
+            uri.queryParam("status", status);
+        }
         var response = call(admin, HttpMethod.GET, uri.toUriString(), null);
         assertThat(response.getStatusCode().value()).isEqualTo(200);
         return ((List<?>) response.getBody().get("data"))
@@ -392,7 +400,9 @@ class MemberManagementTest {
         String token = token(membership);
         var request =
                 RestClient.create(baseUrl()).method(method).uri(uri).headers(headers -> headers.setBearerAuth(token));
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         return request.retrieve()
                 .onStatus(HttpStatusCode::isError, (req, res) -> {})
                 .toEntity(Map.class);

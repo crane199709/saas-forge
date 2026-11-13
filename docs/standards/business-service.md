@@ -350,6 +350,10 @@ SDK 在启动完成后异步上报，失败后按 1、2、4 秒退避重试三�
 
 ## 代码格式
 
+Java 的 `if`、`else`、`for`（含增强 for）、`while`、`do-while` 语句体一律使用大括号 `{}`，即使只有一条语句或为空；`else if` 链沿用常规写法，各分支的语句体仍须加大括号。
+
+业务工程从父 POM `forge-dependencies` 自动继承 Checkstyle `NeedBraces`，在 `validate` 阶段检查 `src/main/java` 与 `src/test/java`，违规即构建失败；`test`、`verify`、`install` 同样先执行检查。仅以 BOM `import` 方式管理版本不会继承构建插件。`./mvnw validate` 可单独运行门禁，不需要启动测试容器；缺少的大括号须补齐后再格式化。
+
 格式交给 Spotless，规则由父 POM `forge-dependencies` 管理，服务 POM 只声明插件坐标，不覆盖规则：
 
 - Java 用 palantir-java-format，并移除未使用的 import。

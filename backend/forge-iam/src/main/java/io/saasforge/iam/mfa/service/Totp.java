@@ -72,7 +72,9 @@ public final class Totp {
         long current = step(now);
         byte[] submitted = code.getBytes(StandardCharsets.US_ASCII);
         for (long step = current - DRIFT_STEPS; step <= current + DRIFT_STEPS; step++) {
-            if (step <= lastUsedStep) continue;
+            if (step <= lastUsedStep) {
+                continue;
+            }
             // 定长比较，不按首个不同字符提前返回。
             if (MessageDigest.isEqual(submitted, code(secret, step).getBytes(StandardCharsets.US_ASCII))) {
                 return OptionalLong.of(step);
@@ -111,7 +113,9 @@ public final class Totp {
                 bits -= 5;
             }
         }
-        if (bits > 0) out.append(BASE32[(buffer << (5 - bits)) & 0x1f]);
+        if (bits > 0) {
+            out.append(BASE32[(buffer << (5 - bits)) & 0x1f]);
+        }
         return out.toString();
     }
 }

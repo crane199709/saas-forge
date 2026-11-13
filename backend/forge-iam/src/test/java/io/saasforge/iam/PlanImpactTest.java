@@ -155,7 +155,9 @@ class PlanImpactTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .headers(headers -> {
-                    if (serviceToken != null) headers.setBearerAuth(serviceToken);
+                    if (serviceToken != null) {
+                        headers.setBearerAuth(serviceToken);
+                    }
                 })
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, (request, response) -> {})

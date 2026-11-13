@@ -33,7 +33,9 @@ public class TenantStateService {
      */
     @Transactional
     public boolean apply(UUID tenantId, String name, String status, long version) {
-        if (tenants.applyStatus(tenantId, name, status, version) == 0) return false;
+        if (tenants.applyStatus(tenantId, name, status, version) == 0) {
+            return false;
+        }
         redis.opsForValue().set(MembershipStateKeys.tenantStatus(tenantId), status);
         allowlists.publishIfAbsent(tenantId);
         return true;

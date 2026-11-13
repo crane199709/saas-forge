@@ -193,7 +193,9 @@ class FieldMaskingHttpTest {
                         });
                 String text = output.toString(StandardCharsets.UTF_8);
                 assertThat(text).doesNotContain("13812345678", "110101199001011234");
-                if (text.contains("138****5678") && text.contains("110101********1234")) break;
+                if (text.contains("138****5678") && text.contains("110101********1234")) {
+                    break;
+                }
                 Thread.sleep(100);
             }
             assertThat(output.toString(StandardCharsets.UTF_8))

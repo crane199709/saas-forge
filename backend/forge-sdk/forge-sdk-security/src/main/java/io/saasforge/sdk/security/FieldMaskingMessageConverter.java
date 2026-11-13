@@ -13,7 +13,9 @@ public final class FieldMaskingMessageConverter extends ClassicConverter {
     @Override
     public String convert(ILoggingEvent event) {
         var args = event.getArgumentArray();
-        if (args == null || args.length == 0) return event.getFormattedMessage();
+        if (args == null || args.length == 0) {
+            return event.getFormattedMessage();
+        }
         Object[] safe = args.clone();
         String message = event.getMessage();
         int from = 0;
@@ -30,13 +32,17 @@ public final class FieldMaskingMessageConverter extends ClassicConverter {
                 value = marked.value();
             } else if (placeholder >= 0) {
                 var match = NAMED.matcher(message.substring(from, placeholder));
-                if (match.find()) path = FieldMaskingLogRuntime.path(match.group(1));
+                if (match.find()) {
+                    path = FieldMaskingLogRuntime.path(match.group(1));
+                }
             }
             if (path != null) {
                 safe[i] = FieldMaskingLogRuntime.mask(path, value, event.getMDCPropertyMap());
                 warnIfDropped(safe[i]);
             }
-            if (placeholder >= 0) from = placeholder + 2;
+            if (placeholder >= 0) {
+                from = placeholder + 2;
+            }
         }
         return MessageFormatter.arrayFormat(message, safe).getMessage();
     }

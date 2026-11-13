@@ -240,8 +240,12 @@ class TenantIpEnforcementTest {
         return client().post()
                 .uri(path)
                 .headers(headers -> {
-                    if (cookie != null) headers.set("Cookie", cookie);
-                    if (ip != null) headers.set(ClientIpHeader.NAME, ip);
+                    if (cookie != null) {
+                        headers.set("Cookie", cookie);
+                    }
+                    if (ip != null) {
+                        headers.set(ClientIpHeader.NAME, ip);
+                    }
                 })
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)

@@ -26,23 +26,33 @@ public class PlanService {
      * 后到的版本在行锁上等待先到的提交。
      */
     public boolean apply(TenantPlanChanged event) {
-        if (plans.apply(event.tenantId(), event.planId(), event.version(), event.memberQuota()) == 0) return false;
+        if (plans.apply(event.tenantId(), event.planId(), event.version(), event.memberQuota()) == 0) {
+            return false;
+        }
         plans.clearPermissions(event.tenantId());
-        if (!event.permissions().isEmpty()) plans.insertPermissions(event.tenantId(), event.permissions());
+        if (!event.permissions().isEmpty()) {
+            plans.insertPermissions(event.tenantId(), event.permissions());
+        }
         plans.clearSubApps(event.tenantId());
-        if (!event.subApps().isEmpty()) plans.insertSubApps(event.tenantId(), event.subApps());
+        if (!event.subApps().isEmpty()) {
+            plans.insertSubApps(event.tenantId(), event.subApps());
+        }
         return true;
     }
 
     /** 租户 Feature Pack 中的 Permission Code；未登记 Plan 时为空，表示不受套餐限制。 */
     public Optional<Set<String>> permissionsOf(UUID tenantId) {
-        if (!plans.exists(tenantId)) return Optional.empty();
+        if (!plans.exists(tenantId)) {
+            return Optional.empty();
+        }
         return Optional.of(Set.copyOf(plans.permissions(tenantId)));
     }
 
     /** 租户 Feature Pack 中的 Sub-App 编码；未登记 Plan 时为空，表示不受套餐限制。 */
     public Optional<Set<String>> subAppsOf(UUID tenantId) {
-        if (!plans.exists(tenantId)) return Optional.empty();
+        if (!plans.exists(tenantId)) {
+            return Optional.empty();
+        }
         return Optional.of(Set.copyOf(plans.subApps(tenantId)));
     }
 

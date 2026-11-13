@@ -16,6 +16,7 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/ag
 
 ## Coding standards
 
+- Java 的 `if`、`else`、`for`、`while`、`do-while` 语句体一律使用大括号，即使只有一条语句；由 Checkstyle `NeedBraces` 在 `validate` 阶段强制检查，覆盖生产与测试代码。
 - 手写 SQL 只能写在 mapper XML，禁止 `@Select` 等注解、`QueryWrapper`、带 SQL 片段的 Wrapper 方法与 `JdbcTemplate`；仅允许 `BaseMapper` 主键 CRUD 与单表 `LambdaQueryWrapper`。
 - 手写 SQL 用 SQL-99 标准写法，PostgreSQL 特性限编码规范白名单。
 - Flyway `CREATE TABLE` 用 `COMMENT ON` 写表和全部字段的中文描述（含 `id`、`created_at` 等通用字段），`ADD COLUMN` 写新字段的中文描述；分区子表只注释父表。

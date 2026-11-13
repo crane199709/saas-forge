@@ -116,7 +116,9 @@ public class RoleService implements RoleGrantSource {
      * @return {@code from} 不是 Owner 时为 false，不做任何修改
      */
     public boolean transferOwner(UUID tenantId, UUID from, UUID to) {
-        if (roles.revokeOwner(tenantId, from) == 0) return false;
+        if (roles.revokeOwner(tenantId, from) == 0) {
+            return false;
+        }
         // 唯一索引保证至多一个持有者；刚撤销了唯一的持有者，这里一定插入成功。
         roles.grantOwner(tenantId, to);
         roles.grantTenantAdmin(tenantId, from);
@@ -170,7 +172,9 @@ public class RoleService implements RoleGrantSource {
             resources.forEach(resource -> policies.put(resource, List.of(DataScope.ALL.template())));
         } else {
             for (DataPolicy policy : dataPolicies.policiesOf(membershipId)) {
-                if (!resources.contains(policy.resource())) continue;
+                if (!resources.contains(policy.resource())) {
+                    continue;
+                }
                 policies.computeIfAbsent(policy.resource(), key -> new ArrayList<>())
                         .add(
                                 DataPolicy.CUSTOM.equals(policy.scope())
@@ -198,7 +202,9 @@ public class RoleService implements RoleGrantSource {
      */
     static Set<String> effectivePermissions(
             Collection<String> roleCodes, Collection<String> granted, Set<String> grantable) {
-        if (roleCodes.stream().anyMatch(ALL_PERMISSIONS::contains)) return grantable;
+        if (roleCodes.stream().anyMatch(ALL_PERMISSIONS::contains)) {
+            return grantable;
+        }
         return granted.stream().filter(grantable::contains).collect(Collectors.toSet());
     }
 

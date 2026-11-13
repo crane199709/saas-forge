@@ -75,13 +75,17 @@ public class PasswordPolicy {
 
     private static Set<String> loadWeakList() {
         InputStream stream = PasswordPolicy.class.getClassLoader().getResourceAsStream(WEAK_LIST);
-        if (stream == null) throw new IllegalStateException(WEAK_LIST + " is missing from the classpath");
+        if (stream == null) {
+            throw new IllegalStateException(WEAK_LIST + " is missing from the classpath");
+        }
         Set<String> result = new HashSet<>();
         try (var reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 String entry = line.strip();
-                if (!entry.isEmpty() && !entry.startsWith("#")) result.add(entry.toLowerCase(Locale.ROOT));
+                if (!entry.isEmpty() && !entry.startsWith("#")) {
+                    result.add(entry.toLowerCase(Locale.ROOT));
+                }
             }
         } catch (IOException error) {
             throw new UncheckedIOException(error);

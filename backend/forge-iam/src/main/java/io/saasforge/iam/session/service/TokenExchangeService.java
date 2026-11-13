@@ -48,7 +48,9 @@ public class TokenExchangeService {
         form.add("code", code);
         form.add("code_verifier", verifier);
         form.add("redirect_uri", redirectUri);
-        if (membershipId != null) form.add(TenantTokenParameters.MEMBERSHIP_ID, membershipId.toString());
+        if (membershipId != null) {
+            form.add(TenantTokenParameters.MEMBERSHIP_ID, membershipId.toString());
+        }
         TokenResponse tokens = exchange(form);
         audits.entered(LoginAudit.LOGIN, identityOf(tokens), tokens.tenantId(), tokens.membershipId());
         return tokens;
@@ -70,7 +72,9 @@ public class TokenExchangeService {
             throw new ForgeException(SessionErrorCode.AUTH_FAILED);
         }
         UUID identityId = UUID.fromString(authorization.getPrincipalName());
-        if (identities.findActivePassword(identityId).isEmpty()) throw new ForgeException(SessionErrorCode.AUTH_FAILED);
+        if (identities.findActivePassword(identityId).isEmpty()) {
+            throw new ForgeException(SessionErrorCode.AUTH_FAILED);
+        }
         return identityId;
     }
 

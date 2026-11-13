@@ -91,7 +91,9 @@ public class VerificationCodeService {
             case 3 -> VerificationErrorCode.ATTEMPTS_EXCEEDED;
             default -> VerificationErrorCode.CODE_EXPIRED;
         };
-        if (error != null) throw ForgeException.withErrorMessage(error, "Verification code rejected");
+        if (error != null) {
+            throw ForgeException.withErrorMessage(error, "Verification code rejected");
+        }
     }
 
     public static boolean isEmail(String target) {

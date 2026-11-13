@@ -45,10 +45,14 @@ public final class PermissionAuthorizationManager implements AuthorizationManage
     @Override
     public AuthorizationResult authorize(
             Supplier<? extends Authentication> authentication, MethodInvocation invocation) {
-        if (!(authentication.get() instanceof JwtAuthenticationToken)) return new AuthorizationDecision(false);
+        if (!(authentication.get() instanceof JwtAuthenticationToken)) {
+            return new AuthorizationDecision(false);
+        }
         MembershipGrantStore store = grants.getIfAvailable();
         // 缺少明细来源是配置错误，以 500 暴露，而不是让所有受保护接口看似正常地返回 403。
-        if (store == null) throw new IllegalStateException("@RequiresPermission requires Redis for grants");
+        if (store == null) {
+            throw new IllegalStateException("@RequiresPermission requires Redis for grants");
+        }
         String code = requiredPermission(invocation);
         // 解码器只接受本服务 Realm 的 Token，Token 的 claim 与这里选择的明细来源一致。
         MembershipGrants current =
@@ -67,7 +71,9 @@ public final class PermissionAuthorizationManager implements AuthorizationManage
         if (annotation == null) {
             annotation = AnnotatedElementUtils.findMergedAnnotation(targetClass, RequiresPermission.class);
         }
-        if (annotation == null) throw new IllegalStateException("No @RequiresPermission on " + method);
+        if (annotation == null) {
+            throw new IllegalStateException("No @RequiresPermission on " + method);
+        }
         return annotation.value();
     }
 }

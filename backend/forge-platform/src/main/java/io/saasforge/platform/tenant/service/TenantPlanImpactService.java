@@ -43,12 +43,16 @@ public class TenantPlanImpactService {
     public PlanChangeImpactResponse preview(UUID tenantId, UUID planId) {
         Tenant tenant = tenants.get(tenantId);
         Plan target = plans.get(planId);
-        if (planId.equals(tenant.getPlanId())) return none(target);
+        if (planId.equals(tenant.getPlanId())) {
+            return none(target);
+        }
         Plan current = tenant.getPlanId() == null ? null : plans.get(tenant.getPlanId());
         List<String> lostPermissions = lostPermissions(current, target);
         List<String> lostSubApps = lostSubApps(current, target);
         // 配额没有降低也要查成员数：租户可能已经超额，差额只有 iam 算得出。只有新 Plan 不限成员且无损失时才不依赖 iam。
-        if (lostPermissions.isEmpty() && lostSubApps.isEmpty() && target.getMemberQuota() == null) return none(target);
+        if (lostPermissions.isEmpty() && lostSubApps.isEmpty() && target.getMemberQuota() == null) {
+            return none(target);
+        }
         TenantMemberImpactResponse impact = members.impact(tenantId, lostPermissions, lostSubApps);
         Integer quota = target.getMemberQuota();
         return new PlanChangeImpactResponse(
@@ -66,7 +70,9 @@ public class TenantPlanImpactService {
 
     // 未分配 Plan 的租户不受套餐限制，当前可用范围是权限码目录与 App Registry 的全部内容，不能按「什么都没有」算成零损失。
     private List<String> lostPermissions(Plan current, Plan target) {
-        if (current == null) return lost(catalogCodes(), target.getPermissions());
+        if (current == null) {
+            return lost(catalogCodes(), target.getPermissions());
+        }
         List<String> lost = lost(Arrays.asList(current.getPermissions()), target.getPermissions());
         // 有差异时才读目录：没有可失去的内容时，iam 不可用也不能影响结果。
         return lost.isEmpty() ? lost : existing(lost, catalogCodes());

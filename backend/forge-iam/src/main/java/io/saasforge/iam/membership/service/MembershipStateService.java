@@ -91,7 +91,9 @@ public class MembershipStateService {
     }
 
     private void publishChange(UUID membershipId, MembershipChange change) {
-        if (change == null) throw new MembershipNotFoundException();
+        if (change == null) {
+            throw new MembershipNotFoundException();
+        }
         publish(change.tenantId(), membershipId, change.version());
     }
 }

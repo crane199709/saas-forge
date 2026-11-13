@@ -51,7 +51,9 @@ public class OpsClient {
             String path,
             ParameterizedTypeReference<ApiResponse<T>> responseType,
             boolean requireReported) {
-        if (requireReported) requireService(service);
+        if (requireReported) {
+            requireService(service);
+        }
         try {
             return requireResponse(client.get()
                     .uri(uri(service, path))
@@ -84,7 +86,9 @@ public class OpsClient {
             Object body,
             ParameterizedTypeReference<ApiResponse<T>> responseType,
             boolean requireReported) {
-        if (requireReported) requireService(service);
+        if (requireReported) {
+            requireService(service);
+        }
         try {
             return requireResponse(client.post()
                     .uri(uri(service, path))
@@ -102,7 +106,9 @@ public class OpsClient {
     }
 
     private boolean available(String service) {
-        if (!properties.tokens().containsKey(service)) return false;
+        if (!properties.tokens().containsKey(service)) {
+            return false;
+        }
         try {
             var response = client.get()
                     .uri(uri(service, ""))
@@ -116,24 +122,31 @@ public class OpsClient {
     }
 
     private void requireService(String service) {
-        if (!directory.services().contains(service)) throw new ForgeException(OpsErrorCode.SERVICE_NOT_FOUND);
+        if (!directory.services().contains(service)) {
+            throw new ForgeException(OpsErrorCode.SERVICE_NOT_FOUND);
+        }
     }
 
     private String token(String service) {
         String token = properties.tokens().get(service);
-        if (token == null) throw new ForgeException(OpsErrorCode.SERVICE_UNAVAILABLE);
+        if (token == null) {
+            throw new ForgeException(OpsErrorCode.SERVICE_UNAVAILABLE);
+        }
         return "Bearer " + token;
     }
 
     private static URI uri(String service, String path) {
-        if ((!path.isEmpty() && !path.startsWith("/")) || path.contains("..") || path.contains("#"))
+        if ((!path.isEmpty() && !path.startsWith("/")) || path.contains("..") || path.contains("#")) {
             throw new IllegalArgumentException("Ops path must be relative to /internal/ops");
+        }
         // 调用方已按路径段编码任务名，使用 URI 重载避免 RestClient 再次编码百分号。
         return URI.create("lb://" + service + "/internal/ops" + path);
     }
 
     private static <T> ApiResponse<T> requireResponse(ApiResponse<T> response) {
-        if (response == null) throw new ForgeException(OpsErrorCode.SERVICE_UNAVAILABLE);
+        if (response == null) {
+            throw new ForgeException(OpsErrorCode.SERVICE_UNAVAILABLE);
+        }
         return response;
     }
 }

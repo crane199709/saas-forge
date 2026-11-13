@@ -121,7 +121,9 @@ public final class ForgeArchitectureRules {
         return classes().should(new ArchCondition<>("SDK 之外不使用 Spring 原生定时任务") {
             @Override
             public void check(JavaClass type, ConditionEvents events) {
-                if (type.getPackageName().startsWith(SDK)) return;
+                if (type.getPackageName().startsWith(SDK)) {
+                    return;
+                }
                 for (String annotation : Set.of(
                         "org.springframework.scheduling.annotation.EnableScheduling",
                         "org.springframework.scheduling.annotation.Scheduled",
@@ -148,7 +150,9 @@ public final class ForgeArchitectureRules {
         return classes().should(new ArchCondition<>("业务字段脱敏使用统一执行通道") {
             @Override
             public void check(JavaClass type, ConditionEvents events) {
-                if (type.getPackageName().startsWith(SDK)) return;
+                if (type.getPackageName().startsWith(SDK)) {
+                    return;
+                }
                 if (type.isAssignableTo("tools.jackson.databind.ValueSerializer")
                         || type.isAssignableTo("com.fasterxml.jackson.databind.JsonSerializer")) {
                     reject(events, type, type.getName() + " 定义业务自有 Jackson 序列化器");
@@ -162,7 +166,9 @@ public final class ForgeArchitectureRules {
                                 .forEach(annotation -> rejectSerializerAnnotation(type, annotation, events)));
                 String resource = type.getName().replace('.', '/') + ".class";
                 try (var input = ForgeArchitectureRules.class.getClassLoader().getResourceAsStream(resource)) {
-                    if (input == null) throw new IllegalStateException("Cannot inspect " + type.getName());
+                    if (input == null) {
+                        throw new IllegalStateException("Cannot inspect " + type.getName());
+                    }
                     new ClassReader(input)
                             .accept(
                                     new ClassVisitor(Opcodes.ASM9) {
@@ -199,7 +205,9 @@ public final class ForgeArchitectureRules {
                                                 @Override
                                                 public void visitInvokeDynamicInsn(
                                                         String method, String desc, Handle bootstrap, Object... args) {
-                                                    for (Object arg : args) literal(arg);
+                                                    for (Object arg : args) {
+                                                        literal(arg);
+                                                    }
                                                 }
 
                                                 @Override
@@ -261,7 +269,9 @@ public final class ForgeArchitectureRules {
         return classes().should(new ArchCondition<>("保持 SDK 依赖方向") {
             @Override
             public void check(JavaClass type, ConditionEvents events) {
-                if (!type.getPackageName().startsWith(SDK)) return;
+                if (!type.getPackageName().startsWith(SDK)) {
+                    return;
+                }
                 type.getDirectDependenciesFromSelf().forEach(dependency -> {
                     String target = dependency.getTargetClass().getPackageName();
                     if ((target.startsWith("io.saasforge.") && !target.startsWith(SDK))
@@ -290,7 +300,9 @@ public final class ForgeArchitectureRules {
             @Override
             public void check(JavaClass type, ConditionEvents events) {
                 String[] source = location(type, root);
-                if (source == null) return;
+                if (source == null) {
+                    return;
+                }
                 if (source.length != 2 || !LAYERS.contains(source[1])) {
                     if (!(type.getPackageName().equals(root)
                             && type.isAnnotatedWith("org.springframework.boot.autoconfigure.SpringBootApplication"))) {
@@ -300,7 +312,9 @@ public final class ForgeArchitectureRules {
                 }
                 type.getDirectDependenciesFromSelf().forEach(dependency -> {
                     String[] target = location(dependency.getTargetClass(), root);
-                    if (target == null || target.length != 2) return;
+                    if (target == null || target.length != 2) {
+                        return;
+                    }
                     boolean otherFeature = !source[0].equals(target[0]);
                     if ((otherFeature && target[1].equals("mapper"))
                             || (source[1].equals("controller")
@@ -323,7 +337,9 @@ public final class ForgeArchitectureRules {
             @Override
             public void check(JavaClass type, ConditionEvents events) {
                 if (!type.getPackageName().startsWith("io.saasforge.iam.")
-                        || !type.isAnnotatedWith("org.apache.ibatis.annotations.Mapper")) return;
+                        || !type.isAnnotatedWith("org.apache.ibatis.annotations.Mapper")) {
+                    return;
+                }
                 var annotation = type.tryGetAnnotationOfType("com.baomidou.mybatisplus.annotation.InterceptorIgnore");
                 if (annotation.isEmpty()
                         || !annotation.get().get("tenantLine").orElse("").equals("true")) {
@@ -339,7 +355,9 @@ public final class ForgeArchitectureRules {
             @Override
             public void check(JavaClass type, ConditionEvents events) {
                 if (!type.getPackageName().contains(".controller")
-                        || !type.isAnnotatedWith("org.springframework.web.bind.annotation.RestController")) return;
+                        || !type.isAnnotatedWith("org.springframework.web.bind.annotation.RestController")) {
+                    return;
+                }
                 type.getAllMethods().stream()
                         .filter(m -> m.getModifiers().contains(JavaModifier.PUBLIC))
                         .filter(m -> m.isAnnotatedWith("org.springframework.web.bind.annotation.RequestMapping")
@@ -357,7 +375,9 @@ public final class ForgeArchitectureRules {
     }
 
     private static String[] location(JavaClass type, String root) {
-        if (type.getPackageName().equals(root)) return new String[0];
+        if (type.getPackageName().equals(root)) {
+            return new String[0];
+        }
         return type.getPackageName().startsWith(root + ".")
                 ? type.getPackageName().substring(root.length() + 1).split("[.]")
                 : null;

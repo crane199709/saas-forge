@@ -63,7 +63,9 @@ class GatewaySecurityConfiguration {
                                 .map(service -> service.prefix() + "/**"))
                 .toArray(String[]::new));
         return exchange -> platformRoutes.matches(exchange).map(match -> {
-            if (match.isMatch()) return platformManager;
+            if (match.isMatch()) {
+                return platformManager;
+            }
             // ClientIpFilter 已覆盖此头；只把本次请求的可信来源绑定到认证管理器。
             String clientIp = exchange.getRequest().getHeaders().getFirst(ClientIpHeader.NAME);
             ReactiveJwtDecoder tenant =

@@ -166,7 +166,9 @@ public record AuditEvent(
          * @return 本构建器
          */
         public Builder detail(String key, Object value) {
-            if (value != null) detail.put(key, value);
+            if (value != null) {
+                detail.put(key, value);
+            }
             return this;
         }
 

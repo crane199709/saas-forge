@@ -34,7 +34,9 @@ public class SubAppService {
         }
         apps.clearEntries(event.code());
         apps.clearRequirements(event.code());
-        if (!event.remoteEntries().isEmpty()) apps.insertEntries(event.code(), rows(event.remoteEntries()));
+        if (!event.remoteEntries().isEmpty()) {
+            apps.insertEntries(event.code(), rows(event.remoteEntries()));
+        }
         if (!event.sharedRequirements().isEmpty()) {
             apps.insertRequirements(event.code(), rows(event.sharedRequirements()));
         }
@@ -43,7 +45,9 @@ public class SubAppService {
 
     /** 给定编码中已登记、且有当前环境入口地址的 Sub-App，按编码排序；未登记或已删除的编码被略去。 */
     public List<LoadableSubApp> loadable(Collection<String> codes) {
-        if (codes.isEmpty()) return List.of();
+        if (codes.isEmpty()) {
+            return List.of();
+        }
         Map<String, Map<String, String>> requirements = new HashMap<>();
         for (SubAppRequirementRow row : apps.requirements(codes)) {
             requirements.computeIfAbsent(row.code(), key -> new TreeMap<>()).put(row.dependency(), row.minVersion());

@@ -71,8 +71,11 @@ class FailureLogTest {
         assertThat(event.getFormattedMessage())
                 .contains("method=GET", "route=" + route, "status=" + status, "code=" + code, "traceId=" + TRACE_ID);
         assertThat(event.getLevel()).isEqualTo(status == 503 ? Level.WARN : status >= 500 ? Level.ERROR : Level.INFO);
-        if (status >= 500) assertThat(event.getThrowableProxy()).isNotNull();
-        else assertThat(event.getThrowableProxy()).isNull();
+        if (status >= 500) {
+            assertThat(event.getThrowableProxy()).isNotNull();
+        } else {
+            assertThat(event.getThrowableProxy()).isNull();
+        }
     }
 
     @Test

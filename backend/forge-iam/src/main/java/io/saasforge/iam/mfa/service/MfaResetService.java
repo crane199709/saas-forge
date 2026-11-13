@@ -96,7 +96,9 @@ public class MfaResetService {
             throw new ForgeException(MfaErrorCode.IDENTITY_NOT_FOUND);
         }
         transactions.executeWithoutResult(status -> {
-            if (identityAuthenticators.deleteByIdentity(identityId, actor) == 0) throw notBound();
+            if (identityAuthenticators.deleteByIdentity(identityId, actor) == 0) {
+                throw notBound();
+            }
             identityRecoveryCodes.deleteByIdentity(identityId, actor);
         });
         // 进行中的绑定一并作废，免得重置前开始的绑定在重置后被确认。
@@ -115,7 +117,9 @@ public class MfaResetService {
         roles.requireSuperAdmin(actor);
         operators.get(operatorId);
         transactions.executeWithoutResult(status -> {
-            if (operatorAuthenticators.deleteByOperator(operatorId, actor) == 0) throw notBound();
+            if (operatorAuthenticators.deleteByOperator(operatorId, actor) == 0) {
+                throw notBound();
+            }
             operatorRecoveryCodes.deleteByOperator(operatorId, actor);
         });
         redis.delete(OperatorMfaService.pendingKey(operatorId));

@@ -25,7 +25,9 @@ class ManifestReporterTest {
 
     @AfterEach
     void stop() {
-        if (iam != null) iam.stop(0);
+        if (iam != null) {
+            iam.stop(0);
+        }
     }
 
     @Test

@@ -107,14 +107,20 @@ public class MemberService {
     public MemberInvitation invite(
             TenantActor actor, String contact, Collection<UUID> roleIds, UUID primaryDepartmentId) {
         requireManager(actor);
-        if (!roleIds.isEmpty()) roles.requirePermission(actor.membershipId(), IamPermissions.ROLE_MANAGE);
-        if (primaryDepartmentId != null) roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
+        if (!roleIds.isEmpty()) {
+            roles.requirePermission(actor.membershipId(), IamPermissions.ROLE_MANAGE);
+        }
+        if (primaryDepartmentId != null) {
+            roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
+        }
         ContactIdentity identity = identities.findOrCreatePending(contact);
         MemberInvitation invitation = transactions.execute(status -> {
             roles.lockTenant(actor.tenantId());
             long before = memberships.count(actor.tenantId());
             MembershipStatus invited = memberships.invite(actor.tenantId(), identity.identityId(), actor.identityId());
-            if (!invited.invited()) throw new ForgeException(MemberErrorCode.ALREADY_MEMBER);
+            if (!invited.invited()) {
+                throw new ForgeException(MemberErrorCode.ALREADY_MEMBER);
+            }
             Optional<Integer> quota = plans.memberQuotaOf(actor.tenantId());
             long after = memberships.count(actor.tenantId());
             if (quota.isPresent() && after > before && after > quota.get()) {
@@ -123,7 +129,9 @@ public class MemberService {
             return new MemberInvitation(invited, after == before);
         });
         MembershipStatus membership = invitation.membership();
-        if (!roleIds.isEmpty()) roleManagement.assign(actor, membership.membershipId(), roleIds);
+        if (!roleIds.isEmpty()) {
+            roleManagement.assign(actor, membership.membershipId(), roleIds);
+        }
         if (primaryDepartmentId != null) {
             assignments.assignPrimaryDepartment(actor, membership.membershipId(), primaryDepartmentId);
         }

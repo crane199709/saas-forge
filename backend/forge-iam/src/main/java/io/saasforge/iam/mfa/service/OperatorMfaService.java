@@ -95,7 +95,9 @@ public class OperatorMfaService {
 
     /** 开始绑定：生成新密钥并暂存，覆盖未完成的上一次绑定；返回供验证器 App 扫码的 {@code otpauth://} URI。 */
     public String startBinding(UUID operatorId) {
-        if (isBound(operatorId)) throw alreadyBound();
+        if (isBound(operatorId)) {
+            throw alreadyBound();
+        }
         return stage(operatorId, null);
     }
 
@@ -132,7 +134,9 @@ public class OperatorMfaService {
         StoredAuthenticator current = authenticators.findByOperator(operatorId);
         String currentId = current == null ? "" : current.id().toString();
         if (!currentId.equals(replaces)) {
-            if (replaces.isEmpty()) throw alreadyBound();
+            if (replaces.isEmpty()) {
+                throw alreadyBound();
+            }
             throw ForgeException.withErrorMessage(MfaErrorCode.BINDING_EXPIRED, "Replaced authenticator changed");
         }
         LockoutTarget target = LockoutTarget.operator(operatorId);
@@ -157,7 +161,9 @@ public class OperatorMfaService {
         });
         redis.delete(key);
         var event = event(BIND, operatorId);
-        if (current != null) event.detail("replaced", true);
+        if (current != null) {
+            event.detail("replaced", true);
+        }
         audits.record(event.build());
         return codes;
     }

@@ -55,4 +55,63 @@ assert new File(project, 'pom.xml').getText('UTF-8').contains('<artifactId>spotl
 // 迁移只有两份：SDK 必需表与可整体删除的示例业务表，不带平台演进历史
 def migrations = new File(project, 'src/main/resources/db/migration').list().sort()
 assert migrations == ['V1__forge_sdk.sql', 'V2__example_orders.sql'] : "迁移脚本应只有 SDK 与示例两份：${migrations}"
+
+// 在生成工程执行真实 Maven 门禁，验证父 POM 继承、生产/测试源码范围及单语句/空循环体。
+def invalid = '''class BraceProbe {
+    void check(boolean flag, int[] values) {
+        if (flag) step();
+        else step();
+        for (int i = 0; i < 1; i++) step();
+        for (int value : values) step();
+        while (flag) step();
+        do step(); while (flag);
+        for (;;) ;
+        while (flag) ;
+    }
+    void step() {}
+}
+'''
+def valid = '''class BraceProbe {
+    void check(boolean flag, int[] values) {
+        if (flag) { step(); }
+        else if (values.length > 0) { step(); }
+        else { step(); }
+        for (int i = 0; i < 1; i++) { step(); }
+        for (int value : values) { step(); }
+        while (flag) { step(); }
+        do { step(); } while (flag);
+        for (;;) {}
+        while (flag) {}
+    }
+    void step() {}
+}
+'''
+def validate = { String label ->
+    def command = [mvnw.absolutePath, '-o', '--batch-mode', 'validate']
+    def localRepo = System.getProperty('maven.repo.local')
+    if (localRepo) {
+        command.add("-Dmaven.repo.local=${localRepo}".toString())
+    }
+    def log = new File(project, "target/need-braces-${label}.log")
+    def process = new ProcessBuilder(command).directory(project).redirectErrorStream(true).redirectOutput(log).start()
+    def exitCode = process.waitFor()
+    return [exitCode, log.getText('UTF-8')]
+}
+def probes = ['main', 'test'].collect { new File(project, "src/${it}/java/BraceProbe.java") }
+probes.each { assert !it.exists() : "门禁测试不能覆盖现有文件：${it}" }
+try {
+    probes.eachWithIndex { probe, index ->
+        probe.setText(invalid, 'UTF-8')
+        def (exitCode, output) = validate("invalid-${index}")
+        assert exitCode != 0 && output.contains('NeedBraces') : "缺少大括号未触发门禁：${probe}\n${output}"
+        def report = new File(project, 'target/checkstyle-result.xml').getText('UTF-8')
+        assert report.findAll(/source="com\.puppycrawl\.tools\.checkstyle\.checks\.blocks\.NeedBracesCheck"/).size() == 8 : "应报告八处大括号违规：${report}"
+        assert probe.delete() : "无法清理门禁测试文件：${probe}"
+    }
+    probes.each { it.setText(valid, 'UTF-8') }
+    def (exitCode, output) = validate('valid')
+    assert exitCode == 0 : "合法大括号与 else if 链未通过门禁：${output}"
+} finally {
+    probes.each { it.delete() }
+}
 return true

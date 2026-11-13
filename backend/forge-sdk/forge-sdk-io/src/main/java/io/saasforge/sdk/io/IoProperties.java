@@ -24,6 +24,8 @@ public record IoProperties(
                 || heartbeatInterval.isZero()
                 || heartbeatTimeout.compareTo(heartbeatInterval) <= 0
                 || retention.isNegative()
-                || retention.isZero()) throw new IllegalArgumentException("Invalid forge.io limits or durations");
+                || retention.isZero()) {
+            throw new IllegalArgumentException("Invalid forge.io limits or durations");
+        }
     }
 }

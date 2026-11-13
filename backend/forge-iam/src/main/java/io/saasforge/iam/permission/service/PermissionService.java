@@ -59,14 +59,18 @@ public class PermissionService {
      */
     @Transactional
     public boolean report(String reporter, ResourceManifest manifest) {
-        if (!reporter.equals(manifest.service())) throw new ForgeException(ManifestErrorCode.SERVICE_MISMATCH);
+        if (!reporter.equals(manifest.service())) {
+            throw new ForgeException(ManifestErrorCode.SERVICE_MISMATCH);
+        }
         validate(manifest);
         policies.forEach(policy -> policy.validate(manifest));
         String content = json.writeValueAsString(manifest);
         manifests.lockService(manifest.service());
         Boolean same = manifests.sameContent(manifest.service(), manifest.version(), content);
         if (same != null) {
-            if (!same) throw new ForgeException(ManifestErrorCode.VERSION_CONFLICT, manifest.version());
+            if (!same) {
+                throw new ForgeException(ManifestErrorCode.VERSION_CONFLICT, manifest.version());
+            }
             return false;
         }
         requireOwnDataResources(manifest);
@@ -86,7 +90,9 @@ public class PermissionService {
                     permission.name(),
                     permission.group(),
                     realmOf(manifest));
-            if (changed == 0) throw new ForgeException(ManifestErrorCode.PERMISSION_CONFLICT, permission.code());
+            if (changed == 0) {
+                throw new ForgeException(ManifestErrorCode.PERMISSION_CONFLICT, permission.code());
+            }
         }
         permissions.deactivateMissing(manifest.service(), codes);
         policies.forEach(policy -> policy.registered(previous, manifest));
@@ -169,13 +175,19 @@ public class PermissionService {
     private static List<MenuNode> visible(List<MenuNode> nodes, Set<String> allowed, Optional<Set<String>> subApps) {
         List<MenuNode> result = new ArrayList<>();
         for (MenuNode node : nodes) {
-            if (node.permission() != null && !allowed.contains(node.permission())) continue;
+            if (node.permission() != null && !allowed.contains(node.permission())) {
+                continue;
+            }
             if (node.children().isEmpty()) {
-                if (subApps.isEmpty() || subApps.get().contains(node.app())) result.add(node);
+                if (subApps.isEmpty() || subApps.get().contains(node.app())) {
+                    result.add(node);
+                }
                 continue;
             }
             List<MenuNode> children = visible(node.children(), allowed, subApps);
-            if (!children.isEmpty()) result.add(node.withChildren(children));
+            if (!children.isEmpty()) {
+                result.add(node.withChildren(children));
+            }
         }
         return result;
     }
@@ -250,7 +262,9 @@ public class PermissionService {
     // （上报只来自部署）。
     private void requireOwnDataResources(ResourceManifest manifest) {
         for (ServiceDataResource current : dataResourcesOf(currentManifests())) {
-            if (current.service().equals(manifest.service())) continue;
+            if (current.service().equals(manifest.service())) {
+                continue;
+            }
             for (DataResource resource : manifest.dataResources()) {
                 if (resource.code().equals(current.resource().code())) {
                     throw new ForgeException(ManifestErrorCode.DATA_RESOURCE_CONFLICT, resource.code());

@@ -326,15 +326,17 @@ class DeadEventDisposalTest {
                     if (event.value().equals("blocked")) {
                         barrier.started.countDown();
                         try {
-                            if (!barrier.release.await(5, TimeUnit.SECONDS))
+                            if (!barrier.release.await(5, TimeUnit.SECONDS)) {
                                 throw new IllegalStateException("barrier timed out");
+                            }
                         } catch (InterruptedException error) {
                             Thread.currentThread().interrupt();
                             throw new IllegalStateException(error);
                         }
                     }
-                    if (event.value().startsWith("fail"))
+                    if (event.value().startsWith("fail")) {
                         throw new IllegalStateException("new handler failure: " + event.value());
+                    }
                 }
             };
         }

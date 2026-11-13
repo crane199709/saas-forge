@@ -31,7 +31,9 @@ final class ExcelModel<T> {
     final List<Column> columns;
 
     ExcelModel(Class<T> type, ReferenceData reference) {
-        if (!type.isRecord()) throw new IllegalArgumentException("Excel model must be a record");
+        if (!type.isRecord()) {
+            throw new IllegalArgumentException("Excel model must be a record");
+        }
         this.type = type;
         var components = type.getRecordComponents();
         try {
@@ -44,8 +46,9 @@ final class ExcelModel<T> {
         for (int index = 0; index < components.length; index++) {
             var component = components[index];
             var annotation = component.getAnnotation(ExcelColumn.class);
-            if (annotation == null)
+            if (annotation == null) {
                 throw new IllegalArgumentException("Every record component needs ExcelColumn: " + component.getName());
+            }
             var dictionary = component.getAnnotation(DictionaryValue.class);
             list.add(new Column(
                     index,
@@ -59,8 +62,9 @@ final class ExcelModel<T> {
         if (columns.isEmpty()
                 || columns.size() > 16383
                 || columns.stream().map(c -> c.annotation.order()).distinct().count() != columns.size()
-                || columns.stream().map(c -> c.annotation.value()).distinct().count() != columns.size())
+                || columns.stream().map(c -> c.annotation.value()).distinct().count() != columns.size()) {
             throw new IllegalArgumentException("Excel columns must have unique names and order");
+        }
     }
 
     void header(Sheet sheet, boolean required) {
@@ -80,7 +84,9 @@ final class ExcelModel<T> {
             var annotation = column.component.getAnnotation(SensitiveField.class);
             String path = annotation == null ? column.component.getName() : annotation.path();
             var field = snapshot.get(path);
-            if (annotation != null && field == null) throw new ForgeException(IoErrorCode.MASKING_FAILED);
+            if (annotation != null && field == null) {
+                throw new ForgeException(IoErrorCode.MASKING_FAILED);
+            }
             if (field != null) {
                 if (!field.exportAllowed()
                         || "L4".equals(field.grade())
@@ -108,7 +114,9 @@ final class ExcelModel<T> {
                             .findFirst()
                             .orElse(text);
                 }
-                if (rules.get(i) != null) text = new MaskingEngine().apply(rules.get(i), text);
+                if (rules.get(i) != null) {
+                    text = new MaskingEngine().apply(rules.get(i), text);
+                }
                 row.createCell(i).setCellValue(text);
             } catch (ReflectiveOperationException | RuntimeException error) {
                 throw new ForgeException(IoErrorCode.MASKING_FAILED);
@@ -126,7 +134,9 @@ final class ExcelModel<T> {
             var column = columns.get(i);
             String value = values.get(i).trim();
             if (value.isEmpty()) {
-                if (column.annotation.required()) errors.add(column.annotation.value() + "：必填");
+                if (column.annotation.required()) {
+                    errors.add(column.annotation.value() + "：必填");
+                }
                 args[column.index] = null;
                 continue;
             }
@@ -161,7 +171,9 @@ final class ExcelModel<T> {
                 errors.add(column.annotation.value() + "：格式不正确");
             }
         }
-        if (!errors.isEmpty()) return null;
+        if (!errors.isEmpty()) {
+            return null;
+        }
         try {
             return constructor.newInstance(args);
         } catch (ReflectiveOperationException | IllegalArgumentException error) {
@@ -171,18 +183,36 @@ final class ExcelModel<T> {
     }
 
     private Object convert(String value, Class<?> type) {
-        if (type == String.class) return value;
-        if (type == BigDecimal.class) return new BigDecimal(value);
-        if (type == Long.class || type == long.class) return new BigDecimal(value).longValueExact();
-        if (type == Integer.class || type == int.class) return new BigDecimal(value).intValueExact();
+        if (type == String.class) {
+            return value;
+        }
+        if (type == BigDecimal.class) {
+            return new BigDecimal(value);
+        }
+        if (type == Long.class || type == long.class) {
+            return new BigDecimal(value).longValueExact();
+        }
+        if (type == Integer.class || type == int.class) {
+            return new BigDecimal(value).intValueExact();
+        }
         if (type == Boolean.class || type == boolean.class) {
-            if ("true".equalsIgnoreCase(value) || "1".equals(value)) return true;
-            if ("false".equalsIgnoreCase(value) || "0".equals(value)) return false;
+            if ("true".equalsIgnoreCase(value) || "1".equals(value)) {
+                return true;
+            }
+            if ("false".equalsIgnoreCase(value) || "0".equals(value)) {
+                return false;
+            }
             throw new IllegalArgumentException();
         }
-        if (type == LocalDate.class) return LocalDate.parse(value);
-        if (type == OffsetDateTime.class) return OffsetDateTime.parse(value);
-        if (type == UUID.class) return UUID.fromString(value);
+        if (type == LocalDate.class) {
+            return LocalDate.parse(value);
+        }
+        if (type == OffsetDateTime.class) {
+            return OffsetDateTime.parse(value);
+        }
+        if (type == UUID.class) {
+            return UUID.fromString(value);
+        }
         throw new IllegalArgumentException("Unsupported Excel type " + type);
     }
 

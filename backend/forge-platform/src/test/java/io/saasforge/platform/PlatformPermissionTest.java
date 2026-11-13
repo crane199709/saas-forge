@@ -193,7 +193,9 @@ class PlatformPermissionTest extends PlatformIntegrationTest {
         body.put("name", name);
         body.put("adminContact", "owner@example.com");
         body.put("planId", PlatformTokens.DEFAULT_PLAN_ID);
-        if (region != null) body.put("region", region);
+        if (region != null) {
+            body.put("region", region);
+        }
         return body;
     }
 
@@ -202,7 +204,9 @@ class PlatformPermissionTest extends PlatformIntegrationTest {
                 .method(HttpMethod.valueOf(method))
                 .uri(path)
                 .header("Authorization", "Bearer " + token);
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         return request.exchange(
                 (req, response) -> new Response(response.getStatusCode().value(), response.bodyTo(ENVELOPE)));
     }

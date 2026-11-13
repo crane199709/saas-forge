@@ -216,7 +216,9 @@ class IamSecurityConfiguration {
                 // 签发与刷新都重新确认 Operator 仍为 active。
                 ActiveOperator operator = operators.findActive(
                         UUID.fromString(context.getPrincipal().getName()));
-                if (operator == null) throw new OAuth2AuthenticationException("invalid_grant");
+                if (operator == null) {
+                    throw new OAuth2AuthenticationException("invalid_grant");
+                }
                 // 与 Tenant Realm 一样：网关只认 Redis 中的版本，每次签发都按数据库补齐版本与平台角色明细。
                 operatorStates.publish(operator);
                 context.getClaims()
@@ -251,7 +253,9 @@ class IamSecurityConfiguration {
                 var matches = identities.findActiveMemberships(identityId);
                 membership = matches.size() == 1 ? matches.get(0) : null;
             }
-            if (membership == null) throw new OAuth2AuthenticationException("invalid_grant");
+            if (membership == null) {
+                throw new OAuth2AuthenticationException("invalid_grant");
+            }
             // MFA Requirement 只看授权建立时是否完成 MFA，不看浏览器会话的当前状态；exchange、switch、refresh 都经过这里（ADR-0019）。
             if (!MfaAuthority.completed(context.getPrincipal()) && tenantSecurity.mfaRequired(membership.tenantId())) {
                 throw new OAuth2AuthenticationException(new OAuth2Error(TenantTokenParameters.MFA_REQUIRED));

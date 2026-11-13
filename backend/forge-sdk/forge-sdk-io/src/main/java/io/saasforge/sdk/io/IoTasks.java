@@ -112,8 +112,12 @@ public final class IoTasks implements AutoCloseable {
     IoTask confirmImport(UUID id, Function<UUID, Work> work) {
         var owner = TenantContext.current();
         var task = mapper.confirmation(id);
-        if (task == null) throw new ForgeException(IoErrorCode.NOT_FOUND);
-        if (!owner.membershipId().equals(task.membershipId())) throw new ForgeException(IoErrorCode.CONFIRM_FORBIDDEN);
+        if (task == null) {
+            throw new ForgeException(IoErrorCode.NOT_FOUND);
+        }
+        if (!owner.membershipId().equals(task.membershipId())) {
+            throw new ForgeException(IoErrorCode.CONFIRM_FORBIDDEN);
+        }
         if (!"AWAITING_CONFIRM".equals(task.status())
                 || task.sourceObjectId() == null
                 || !task.heartbeatAt().isAfter(OffsetDateTime.now().minusHours(24))) {
@@ -129,9 +133,13 @@ public final class IoTasks implements AutoCloseable {
     }
 
     private IoTask submit(String type, UUID source, String summary, Work work, UUID confirmation) {
-        if (!List.of("IMPORT", "EXPORT").contains(type)) throw new IllegalArgumentException("Unknown IO type");
+        if (!List.of("IMPORT", "EXPORT").contains(type)) {
+            throw new IllegalArgumentException("Unknown IO type");
+        }
         TenantContext owner = TenantContext.current();
-        if (!owner.tenantId().equals(CurrentTenant.require())) throw new IllegalStateException("Tenant mismatch");
+        if (!owner.tenantId().equals(CurrentTenant.require())) {
+            throw new IllegalStateException("Tenant mismatch");
+        }
         var authentication = new BackgroundJwtAuthentication(
                 (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication());
         var locale = LocaleContextHolder.getLocale();
@@ -150,11 +158,15 @@ public final class IoTasks implements AutoCloseable {
                 LocaleContextHolder.resetLocaleContext();
             }
         }));
-        if (!slots.tryAcquire()) throw new ForgeException(IoErrorCode.BUSY);
+        if (!slots.tryAcquire()) {
+            throw new ForgeException(IoErrorCode.BUSY);
+        }
         try {
             // 与 close 共用监视器；持有容量后提交不会被关闭的执行器拒绝，避免确认抢占后无人执行。
             synchronized (workers) {
-                if (workers.isShutdown()) throw new ForgeException(IoErrorCode.BUSY);
+                if (workers.isShutdown()) {
+                    throw new ForgeException(IoErrorCode.BUSY);
+                }
                 // 只存租户 ID 的持久目录供 Global Task 恢复 RLS 上下文；进程重启后仍能收尾中断任务。
                 redis.opsForSet().add(tenantKey, owner.tenantId().toString());
                 transaction.executeWithoutResult(status -> {
@@ -186,7 +198,9 @@ public final class IoTasks implements AutoCloseable {
         UUID result = null;
         String code = IoErrorCode.FAILED.code();
         try {
-            if (mapper.start(id, null) != 1) return;
+            if (mapper.start(id, null) != 1) {
+                return;
+            }
             result = work.execute(progress);
             code = progress.errorCode;
         } catch (Exception error) {
@@ -194,11 +208,12 @@ public final class IoTasks implements AutoCloseable {
             code = error instanceof ForgeException forge ? forge.errorCode().code() : IoErrorCode.FAILED.code();
         } finally {
             try {
-                if (source != null && !(progress.awaitingConfirmation && code == null))
+                if (source != null && !(progress.awaitingConfirmation && code == null)) {
                     TenantWriteGuard.exempt(() -> transaction.executeWithoutResult(status -> {
                         storage.delete(source);
                         mapper.clearSource(id);
                     }));
+                }
             } catch (ForgeException error) {
                 // 源对象可能已被 IoMaintenance 删除（如心跳超时被判中断），不必告警；未清除的 source_object_id 由它补清。
                 if (!"storage.objectNotFound".equals(error.errorCode().code())) {
@@ -225,7 +240,9 @@ public final class IoTasks implements AutoCloseable {
                         finalResult,
                         null)));
                 int changed = changedHolder.get();
-                if (changed == 0 && result != null) storage.delete(result);
+                if (changed == 0 && result != null) {
+                    storage.delete(result);
+                }
                 var event = AuditEvent.builder(
                                 AuditRealm.TENANT,
                                 AuditCategory.OPERATION,
@@ -239,8 +256,12 @@ public final class IoTasks implements AutoCloseable {
                         .resource("ioTask", id)
                         .detail("rowCount", progress.rows.get());
                 // 导出摘要是业务方传入的自由文本，成功或失败都可能含敏感搜索值，审计只保留安全元数据。
-                if ("IMPORT".equals(type)) event.detail("query", summary);
-                if (code != null) event.failure(code);
+                if ("IMPORT".equals(type)) {
+                    event.detail("query", summary);
+                }
+                if (code != null) {
+                    event.failure(code);
+                }
                 audit.record(event.build());
             } finally {
                 // 校验结束后确认可能已入队，只移除本轮心跳，保留同一任务的新执行。
@@ -253,7 +274,9 @@ public final class IoTasks implements AutoCloseable {
     /** 返回本人的任务；其他成员或其他租户与不存在的任务一样返回 404。 */
     public IoTask get(UUID id) {
         IoTask task = mapper.own(id, TenantContext.current().membershipId());
-        if (task == null) throw new ForgeException(IoErrorCode.NOT_FOUND);
+        if (task == null) {
+            throw new ForgeException(IoErrorCode.NOT_FOUND);
+        }
         return task;
     }
     /** 按创建时间倒序列出本人任务。分页参数由 HTTP 层或调用方校验。 */
@@ -269,8 +292,9 @@ public final class IoTasks implements AutoCloseable {
         IoTask task = get(id);
         if (task.resultObjectId() == null
                 || task.finishedAt() == null
-                || task.finishedAt().isBefore(OffsetDateTime.now().minus(properties.retention())))
+                || task.finishedAt().isBefore(OffsetDateTime.now().minus(properties.retention()))) {
             throw new ForgeException(IoErrorCode.RESULT_UNAVAILABLE);
+        }
         return storage.prepareDownload(IoStoragePurposes.RESULT, task.resultObjectId());
     }
 

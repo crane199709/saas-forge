@@ -19,6 +19,8 @@ cd orders-service
 
 模板按示例包名排版，`spotless:apply` 按实际包名重排 import 与折行；`verify` 最后做格式检查，不合规时失败。格式规则在父 POM `forge-dependencies` 中，生成工程只声明 Spotless 插件，并带 XML 规则文件 `spotless-xml.prefs`。
 
+Java 的 `if`、`else`、`for`、`while`、`do-while` 语句体必须使用大括号，即使只有一条语句。父 POM 自动在 `validate` 阶段运行 Checkstyle `NeedBraces`，检查生产与测试代码，违规即失败；`./mvnw validate` 可快速检查，`test`、`verify`、`install` 也会先执行。规则内联在父 POM 中，生成工程无需复制 Checkstyle 配置；升级已有服务时更新父 POM 版本、补齐大括号，并重新复制规范文档和更新 `AGENTS.md`。
+
 `serviceName` 是注册名和 Manifest 上报身份；`pathPrefix` 不带 `/`，是网关前缀及示例 Sub-App 编码。根包用 `package`。业务工程版本独立于 SDK 版本；BOM 的 forge.version 锁定 SDK 发布版本，升级时调整父 POM 版本。
 
 工程继承发布的 `forge-dependencies`，包含十一个 SDK starter、Boot 插件、共享架构规则，以及真实 PostgreSQL/Redis 容器测试。测试使用自身 classpath 的数据库初始化脚本与测试签名密钥，不要求克隆平台仓库，也不连接共享数据库。`verify` 包含 HTTP 租户隔离、功能权限、Data Policy 及 ArchUnit；MQ/Nacos/Manifest 远程连接在测试配置关闭，因此该验证不替代平台联调。

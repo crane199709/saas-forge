@@ -102,11 +102,17 @@ public class RedisAuthorizationService implements OAuth2AuthorizationService {
     public void removeByPrincipal(String principalName, String keepAuthorizationId) {
         String key = principalKey(principalName);
         Set<String> ids = redis.opsForSet().members(key);
-        if (ids == null) return;
+        if (ids == null) {
+            return;
+        }
         for (String id : ids) {
-            if (id.equals(keepAuthorizationId)) continue;
+            if (id.equals(keepAuthorizationId)) {
+                continue;
+            }
             OAuth2Authorization authorization = findById(id);
-            if (authorization != null) remove(authorization);
+            if (authorization != null) {
+                remove(authorization);
+            }
             redis.opsForSet().remove(key, id);
         }
     }
@@ -139,7 +145,9 @@ public class RedisAuthorizationService implements OAuth2AuthorizationService {
 
     @Override
     public OAuth2Authorization findByToken(String token, OAuth2TokenType type) {
-        if (OAuth2TokenType.REFRESH_TOKEN.equals(type) && revokeUsedRefreshToken(token)) return null;
+        if (OAuth2TokenType.REFRESH_TOKEN.equals(type) && revokeUsedRefreshToken(token)) {
+            return null;
+        }
         return lookupToken(token, type);
     }
 
@@ -151,7 +159,9 @@ public class RedisAuthorizationService implements OAuth2AuthorizationService {
     private OAuth2Authorization lookupToken(String token, OAuth2TokenType type) {
         String id = redis.opsForValue().get(tokenKey(token));
         OAuth2Authorization authorization = id == null ? null : findById(id);
-        if (authorization == null) return null;
+        if (authorization == null) {
+            return null;
+        }
         // 标准 Provider 信任这个类型约束，不能把同一授权中的 code/access_token 当成 refresh_token。
         var matching = type == null
                 ? authorization.getToken(token)
@@ -166,9 +176,13 @@ public class RedisAuthorizationService implements OAuth2AuthorizationService {
 
     public boolean revokeUsedRefreshToken(String token) {
         String id = redis.opsForValue().get(usedRefreshKey(token));
-        if (id == null) return false;
+        if (id == null) {
+            return false;
+        }
         var compromised = findById(id);
-        if (compromised != null) remove(compromised);
+        if (compromised != null) {
+            remove(compromised);
+        }
         return true;
     }
 
@@ -219,11 +233,15 @@ public class RedisAuthorizationService implements OAuth2AuthorizationService {
     private List<OAuth2Token> tokens(OAuth2Authorization authorization) {
         List<OAuth2Token> result = new ArrayList<>();
         var code = authorization.getToken(OAuth2AuthorizationCode.class);
-        if (code != null) result.add(code.getToken());
-        if (authorization.getAccessToken() != null)
+        if (code != null) {
+            result.add(code.getToken());
+        }
+        if (authorization.getAccessToken() != null) {
             result.add(authorization.getAccessToken().getToken());
-        if (authorization.getRefreshToken() != null)
+        }
+        if (authorization.getRefreshToken() != null) {
             result.add(authorization.getRefreshToken().getToken());
+        }
         return result;
     }
 }

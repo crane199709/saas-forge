@@ -975,7 +975,9 @@ class RoleManagementTest {
     private Map<?, ?> roleById(UUID admin, String id) throws Exception {
         for (Object item :
                 (List<?>) call(admin, HttpMethod.GET, "/roles", null).getBody().get("data")) {
-            if (id.equals(((Map<?, ?>) item).get("id"))) return (Map<?, ?>) item;
+            if (id.equals(((Map<?, ?>) item).get("id"))) {
+                return (Map<?, ?>) item;
+            }
         }
         throw new AssertionError("Role not found: " + id);
     }
@@ -1004,7 +1006,9 @@ class RoleManagementTest {
         for (Object item :
                 (List<?>) call(admin, HttpMethod.GET, "/roles", null).getBody().get("data")) {
             var role = (Map<?, ?>) item;
-            if (roleCode.equals(role.get("code"))) return List.copyOf((List<?>) role.get("permissions"));
+            if (roleCode.equals(role.get("code"))) {
+                return List.copyOf((List<?>) role.get("permissions"));
+            }
         }
         throw new AssertionError("Role not found: " + roleCode);
     }
@@ -1040,7 +1044,9 @@ class RoleManagementTest {
         for (Object node : nodes) {
             codes.add((String) ((Map<?, ?>) node).get("code"));
             Object children = ((Map<?, ?>) node).get("children");
-            if (children != null) collect((List<?>) children, codes);
+            if (children != null) {
+                collect((List<?>) children, codes);
+            }
         }
     }
 
@@ -1054,7 +1060,9 @@ class RoleManagementTest {
                 .method(method)
                 .uri(uri)
                 .headers(headers -> headers.setBearerAuth(token));
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         return request.retrieve()
                 .onStatus(HttpStatusCode::isError, (req, res) -> {})
                 .toEntity(Map.class);

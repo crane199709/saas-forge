@@ -36,7 +36,9 @@ public final class MfaAuthority {
      * @return 带有 {@link #AUTHORITY} 的新主体；原主体已带有时原样返回
      */
     public static Authentication grant(Authentication principal) {
-        if (completed(principal)) return principal;
+        if (completed(principal)) {
+            return principal;
+        }
         return withAuthorities(
                 principal,
                 Stream.concat(

@@ -551,7 +551,9 @@ class ReferenceDataTest {
     private ResponseEntity<Map> call(UUID membership, HttpMethod method, String uri, Object body) throws Exception {
         String token = token(membership);
         var request = client().method(method).uri(uri).headers(headers -> headers.setBearerAuth(token));
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         return request.retrieve()
                 .onStatus(HttpStatusCode::isError, (req, res) -> {})
                 .toEntity(Map.class);

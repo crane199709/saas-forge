@@ -50,7 +50,9 @@ public final class TokenGrantLockFilter extends OncePerRequestFilter {
         String owner = authorizations.tryLock(key);
         if (owner == null) {
             // 等待锁的短暂窗口内也可能发生轮换，重新确认旧凭证是否已经被消费。
-            if ("refresh_token".equals(grant)) authorizations.revokeUsedRefreshToken(value);
+            if ("refresh_token".equals(grant)) {
+                authorizations.revokeUsedRefreshToken(value);
+            }
             invalidGrant(response);
             return;
         }

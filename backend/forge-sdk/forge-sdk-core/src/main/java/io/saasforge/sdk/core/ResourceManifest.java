@@ -241,7 +241,9 @@ public record ResourceManifest(
     public void validate() {
         requireText(service, MAX_KEY, "service");
         requireText(version, MAX_KEY, "version");
-        if (realm != null && !platform()) throw new IllegalArgumentException("Unknown realm: " + realm);
+        if (realm != null && !platform()) {
+            throw new IllegalArgumentException("Unknown realm: " + realm);
+        }
         if (platform() && !roles.isEmpty()) {
             throw new IllegalArgumentException("Platform Realm manifest cannot declare role templates");
         }
@@ -335,7 +337,9 @@ public record ResourceManifest(
             if (!PARAMETER_TYPES.contains(parameter.type())) {
                 throw new IllegalArgumentException("Unknown type of " + where + ": " + parameter.type());
             }
-            if (parameter.defaultValue() == null) throw new IllegalArgumentException(where + " has no default");
+            if (parameter.defaultValue() == null) {
+                throw new IllegalArgumentException(where + " has no default");
+            }
             String type = parameter.type();
             boolean ranged = type.equals("integer") || type.equals("decimal") || type.equals("duration");
             // 不适用的约束不能静默忽略，否则声明者以为有限制而实际没有。
@@ -394,7 +398,9 @@ public record ResourceManifest(
                 }
             }
         };
-        if (value == null) throw new IllegalArgumentException(what + " is not a valid " + type + ": " + raw);
+        if (value == null) {
+            throw new IllegalArgumentException(what + " is not a valid " + type + ": " + raw);
+        }
         return (Comparable<Object>) value;
     }
 
@@ -470,7 +476,9 @@ public record ResourceManifest(
             }
             requireText(node.code(), MAX_NAME, "menu code");
             requireText(node.name(), MAX_NAME, "name of menu " + node.code());
-            if (!menuCodes.add(node.code())) throw new IllegalArgumentException("Duplicate menu code: " + node.code());
+            if (!menuCodes.add(node.code())) {
+                throw new IllegalArgumentException("Duplicate menu code: " + node.code());
+            }
             if (node.permission() != null && !codes.contains(node.permission())) {
                 throw new IllegalArgumentException(
                         "Menu " + node.code() + " requires undeclared Permission Code: " + node.permission());

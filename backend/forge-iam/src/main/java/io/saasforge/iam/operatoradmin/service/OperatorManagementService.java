@@ -87,7 +87,9 @@ public class OperatorManagementService {
             operators.update(id, displayName, region, actor);
             return !Objects.equals(current.region(), region);
         }));
-        if (regionChanged) operatorStates.incrementVersion(id);
+        if (regionChanged) {
+            operatorStates.incrementVersion(id);
+        }
         audits.record(audit(actor, "operator.update", "operator", id)
                 .detail("displayName", displayName)
                 .detail("region", region)
@@ -125,7 +127,9 @@ public class OperatorManagementService {
             operators.get(id);
             return roles.assign(id, roleIds);
         }));
-        if (changed) operatorStates.incrementVersion(id);
+        if (changed) {
+            operatorStates.incrementVersion(id);
+        }
         audits.record(audit(actor, "operator.rolesAssign", "operator", id)
                 .detail("roleIds", List.copyOf(roleIds))
                 .build());
@@ -137,11 +141,17 @@ public class OperatorManagementService {
         boolean changed = Boolean.TRUE.equals(transactions.execute(tx -> {
             roles.lock();
             operators.get(id);
-            if (!operators.changeStatus(id, status, actor)) return false;
-            if (OperatorService.DISABLED.equals(status)) roles.requireSuperAdminRemains();
+            if (!operators.changeStatus(id, status, actor)) {
+                return false;
+            }
+            if (OperatorService.DISABLED.equals(status)) {
+                roles.requireSuperAdminRemains();
+            }
             return true;
         }));
-        if (changed) operatorStates.incrementVersion(id);
+        if (changed) {
+            operatorStates.incrementVersion(id);
+        }
         String action = OperatorService.DISABLED.equals(status) ? "operator.disable" : "operator.enable";
         audits.record(audit(actor, action, "operator", id).build());
     }

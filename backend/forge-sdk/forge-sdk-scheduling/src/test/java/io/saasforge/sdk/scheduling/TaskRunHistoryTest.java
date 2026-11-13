@@ -146,8 +146,11 @@ class TaskRunHistoryTest {
                                         .isEqualTo(failed ? TaskRun.Status.FAILED : TaskRun.Status.SUCCEEDED);
                                 assertThat(run.successCount()).isEqualTo(scenario.equals("all-succeeded") ? 1 : 0);
                                 assertThat(run.failureCount()).isEqualTo(scenario.equals("all-failed") ? 1 : 0);
-                                if (failed) assertThat(run.errorSummary()).isNotBlank();
-                                else assertThat(run.errorSummary()).isNull();
+                                if (failed) {
+                                    assertThat(run.errorSummary()).isNotBlank();
+                                } else {
+                                    assertThat(run.errorSummary()).isNull();
+                                }
                             });
                             assertThat(history.problems("tenant")).hasSize(failed ? 1 : 0);
                         });
@@ -321,11 +324,12 @@ class TaskRunHistoryTest {
                         });
                         // 该探针只检查敏感信息落盘约束，运行行为始终通过公开查询接口验证。
                         redis.keys("forge:task-run:run-history-test:*").forEach(key -> {
-                            if (key.endsWith("current"))
+                            if (key.endsWith("current")) {
                                 assertThat(redis.opsForValue().get(key)).doesNotContain("secret-account-42");
-                            else
+                            } else {
                                 assertThat(redis.opsForList().range(key, 0, -1))
                                         .allSatisfy(value -> assertThat(value).doesNotContain("secret-account-42"));
+                            }
                         });
                     });
         } finally {
@@ -405,7 +409,9 @@ class TaskRunHistoryTest {
 
         @GlobalTask(name = "quick", fixedDelay = "1s")
         void execute() {
-            if (fail) throw new IllegalStateException("secret-account-42");
+            if (fail) {
+                throw new IllegalStateException("secret-account-42");
+            }
         }
     }
 

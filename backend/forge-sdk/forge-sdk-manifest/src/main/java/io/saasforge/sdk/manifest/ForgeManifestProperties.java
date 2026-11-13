@@ -26,7 +26,9 @@ public record ForgeManifestProperties(
     }
 
     private static void require(String value, String property) {
-        if (value == null || value.isBlank()) throw new IllegalStateException(property + " must be set");
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(property + " must be set");
+        }
     }
 
     /** 不输出 {@code token}：record 默认的 toString 会让上报令牌随配置对象进入日志。 */

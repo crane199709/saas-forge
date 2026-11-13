@@ -118,7 +118,9 @@ public final class MembershipGrantStore {
         }
         String value = redis.opsForValue().get(key);
         // 缺失时不能当作“没有任何权限”缓存下来：那会把发布延迟变成该版本整个生命周期内的拒绝。
-        if (value == null) throw new IllegalStateException("Grants are not published");
+        if (value == null) {
+            throw new IllegalStateException("Grants are not published");
+        }
         MembershipGrants grants = json.readValue(value, MembershipGrants.class);
         synchronized (cache) {
             cache.put(id, new Cached(version, grants, now));

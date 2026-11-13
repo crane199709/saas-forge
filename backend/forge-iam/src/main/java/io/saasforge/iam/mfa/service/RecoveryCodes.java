@@ -32,10 +32,16 @@ public final class RecoveryCodes {
         while (codes.size() < COUNT) {
             var code = new StringBuilder();
             for (int group = 0; group < GROUPS; group++) {
-                if (group > 0) code.append('-');
-                for (int i = 0; i < GROUP_LENGTH; i++) code.append(ALPHABET[RANDOM.nextInt(ALPHABET.length)]);
+                if (group > 0) {
+                    code.append('-');
+                }
+                for (int i = 0; i < GROUP_LENGTH; i++) {
+                    code.append(ALPHABET[RANDOM.nextInt(ALPHABET.length)]);
+                }
             }
-            if (!codes.contains(code.toString())) codes.add(code.toString());
+            if (!codes.contains(code.toString())) {
+                codes.add(code.toString());
+            }
         }
         return codes;
     }

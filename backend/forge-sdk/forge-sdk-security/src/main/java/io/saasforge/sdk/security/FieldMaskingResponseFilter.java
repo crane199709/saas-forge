@@ -21,7 +21,9 @@ final class FieldMaskingResponseFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         var selective = new SelectiveResponse(response);
         chain.doFilter(request, selective);
-        if (!isAsyncStarted(request)) selective.complete();
+        if (!isAsyncStarted(request)) {
+            selective.complete();
+        }
     }
 
     static final class SelectiveResponse extends HttpServletResponseWrapper {
@@ -43,18 +45,24 @@ final class FieldMaskingResponseFilter extends OncePerRequestFilter {
         }
 
         void complete() throws IOException {
-            if (buffer != null) buffer.copyBodyToResponse();
+            if (buffer != null) {
+                buffer.copyBodyToResponse();
+            }
         }
 
         @Override
         public void sendError(int status) throws IOException {
-            if (buffer != null) buffer.resetBuffer();
+            if (buffer != null) {
+                buffer.resetBuffer();
+            }
             super.sendError(status);
         }
 
         @Override
         public void sendError(int status, String message) throws IOException {
-            if (buffer != null) buffer.resetBuffer();
+            if (buffer != null) {
+                buffer.resetBuffer();
+            }
             super.sendError(status, message);
         }
     }

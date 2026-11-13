@@ -55,7 +55,9 @@ class OnboardingDiagnosticsTest extends PlatformIntegrationTest {
                     (p, m, a) -> switch (m.getName()) {
                         case "getServerStatus" -> serverStatus;
                         case "getConfig" -> {
-                            if (disconnectDuringRead) serverStatus = "DOWN";
+                            if (disconnectDuringRead) {
+                                serverStatus = "DOWN";
+                            }
                             yield YAML;
                         }
                         default -> null;
@@ -103,7 +105,11 @@ class OnboardingDiagnosticsTest extends PlatformIntegrationTest {
     }
 
     private static tools.jackson.databind.JsonNode find(tools.jackson.databind.JsonNode services, String service) {
-        for (var item : services) if (item.path("service").asString().equals(service)) return item;
+        for (var item : services) {
+            if (item.path("service").asString().equals(service)) {
+                return item;
+            }
+        }
         throw new AssertionError("Missing service " + service);
     }
 

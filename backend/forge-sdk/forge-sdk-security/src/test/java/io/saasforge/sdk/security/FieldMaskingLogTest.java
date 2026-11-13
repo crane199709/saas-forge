@@ -107,7 +107,9 @@ class FieldMaskingLogTest {
             requests.incrementAndGet();
             try {
                 var latch = block.get();
-                if (latch != null) latch.await(5, TimeUnit.SECONDS);
+                if (latch != null) {
+                    latch.await(5, TimeUnit.SECONDS);
+                }
                 byte[] bytes = body.get().getBytes(StandardCharsets.UTF_8);
                 exchange.getResponseHeaders().set("Content-Type", "application/json");
                 exchange.sendResponseHeaders(200, bytes.length);
@@ -150,8 +152,9 @@ class FieldMaskingLogTest {
             context.getMDCAdapter().put("tenant_id", tenant);
             logger.info("phone={} order={}", "13812345678", "ORD-FIRST");
             context.getMDCAdapter().clear();
-            for (int i = 0; i < 100 && !bytes.toString(StandardCharsets.UTF_8).contains("ORD-FIRST"); i++)
+            for (int i = 0; i < 100 && !bytes.toString(StandardCharsets.UTF_8).contains("ORD-FIRST"); i++) {
                 Thread.sleep(10);
+            }
             assertThat(bytes.toString(StandardCharsets.UTF_8))
                     .contains("[redacted]")
                     .doesNotContain("13812345678");
@@ -166,7 +169,9 @@ class FieldMaskingLogTest {
                                 "ORD-READY");
                 context.getMDCAdapter().clear();
                 Thread.sleep(10);
-                if (bytes.toString(StandardCharsets.UTF_8).contains("138****5678")) break;
+                if (bytes.toString(StandardCharsets.UTF_8).contains("138****5678")) {
+                    break;
+                }
             }
             assertThat(bytes.toString(StandardCharsets.UTF_8))
                     .contains("138****5678", "ORD-READY")
@@ -174,15 +179,18 @@ class FieldMaskingLogTest {
             block.set(release);
             context.getMDCAdapter().put("tenant_id", tenant);
             logger.info("phone={}", "13812345678");
-            for (int i = 0; i < 100 && requests.get() < 2; i++) Thread.sleep(10);
+            for (int i = 0; i < 100 && requests.get() < 2; i++) {
+                Thread.sleep(10);
+            }
             Thread.sleep(1100);
             bytes.reset();
             long before = System.nanoTime();
             logger.info("phone={} order={}", "13812345678", "ORD-EXPIRED");
             assertThat(Duration.ofNanos(System.nanoTime() - before)).isLessThan(Duration.ofMillis(500));
             context.getMDCAdapter().clear();
-            for (int i = 0; i < 100 && !bytes.toString(StandardCharsets.UTF_8).contains("ORD-EXPIRED"); i++)
+            for (int i = 0; i < 100 && !bytes.toString(StandardCharsets.UTF_8).contains("ORD-EXPIRED"); i++) {
                 Thread.sleep(10);
+            }
             assertThat(bytes.toString(StandardCharsets.UTF_8))
                     .contains("[redacted]", "ORD-EXPIRED")
                     .doesNotContain("13812345678", "138****5678");
@@ -194,8 +202,9 @@ class FieldMaskingLogTest {
             context.getMDCAdapter().put("tenant_id", tenant);
             logger.atInfo().addKeyValue("phone", "13812345678").log("phone={} order={}", "13812345678", "ORD-MISSING");
             context.getMDCAdapter().clear();
-            for (int i = 0; i < 100 && !bytes.toString(StandardCharsets.UTF_8).contains("ORD-MISSING"); i++)
+            for (int i = 0; i < 100 && !bytes.toString(StandardCharsets.UTF_8).contains("ORD-MISSING"); i++) {
                 Thread.sleep(10);
+            }
             assertThat(bytes.toString(StandardCharsets.UTF_8))
                     .contains("[redacted]", "ORD-MISSING")
                     .doesNotContain("13812345678", "138****5678");
@@ -207,8 +216,9 @@ class FieldMaskingLogTest {
             context.getMDCAdapter().put("tenant_id", tenant);
             logger.info("phone={} order={}", "13812345678", "ORD-OFFLINE");
             context.getMDCAdapter().clear();
-            for (int i = 0; i < 100 && !bytes.toString(StandardCharsets.UTF_8).contains("ORD-OFFLINE"); i++)
+            for (int i = 0; i < 100 && !bytes.toString(StandardCharsets.UTF_8).contains("ORD-OFFLINE"); i++) {
                 Thread.sleep(10);
+            }
             assertThat(bytes.toString(StandardCharsets.UTF_8))
                     .contains("[redacted]", "ORD-OFFLINE")
                     .doesNotContain("13812345678");

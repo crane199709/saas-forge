@@ -55,10 +55,13 @@ public class OrderIoService {
         return excel.export(OrderExportRow.class, "订单.xlsx", "sort=" + sorts, consumer -> {
             for (int page = 1; ; page++) {
                 var rows = orders.list(new PageQuery(page, 100, sorts));
-                for (var row : rows)
+                for (var row : rows) {
                     consumer.accept(new OrderExportRow(
                             row.getNumber(), row.getTitle(), row.getAmount(), row.getCustomerSource()));
-                if (rows.size() < 100) return;
+                }
+                if (rows.size() < 100) {
+                    return;
+                }
             }
         });
     }

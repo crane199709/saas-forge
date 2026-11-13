@@ -57,7 +57,9 @@ public class AssignmentService {
     public List<MemberAssignment> page(TenantActor actor, long offset, int limit) {
         roles.requirePermission(actor.membershipId(), IamPermissions.ORG_MANAGE);
         List<Member> members = memberships.page(actor.tenantId(), offset, limit);
-        if (members.isEmpty()) return List.of();
+        if (members.isEmpty()) {
+            return List.of();
+        }
         List<UUID> ids = members.stream().map(Member::membershipId).toList();
         Map<UUID, List<DepartmentAssignmentRow>> departmentsOf = new HashMap<>();
         for (var row : assignments.departmentsOf(actor.tenantId(), ids)) {
@@ -125,7 +127,9 @@ public class AssignmentService {
                 throw new ForgeException(OrganizationErrorCode.MEMBERSHIP_NOT_FOUND);
             }
             Set<UUID> all = new LinkedHashSet<>(concurrent);
-            if (primaryDepartmentId != null) all.add(primaryDepartmentId);
+            if (primaryDepartmentId != null) {
+                all.add(primaryDepartmentId);
+            }
             if (!all.isEmpty() && departments.countExisting(tenantId, all) != all.size()) {
                 throw new ForgeException(OrganizationErrorCode.DEPARTMENT_NOT_FOUND);
             }
@@ -137,10 +141,13 @@ public class AssignmentService {
             if (primaryDepartmentId != null) {
                 assignments.insertDepartment(tenantId, membershipId, primaryDepartmentId, true);
             }
-            for (UUID departmentId : concurrent)
+            for (UUID departmentId : concurrent) {
                 assignments.insertDepartment(tenantId, membershipId, departmentId, false);
+            }
             assignments.clearPositions(tenantId, membershipId);
-            for (UUID positionId : positionSet) assignments.insertPosition(tenantId, membershipId, positionId);
+            for (UUID positionId : positionSet) {
+                assignments.insertPosition(tenantId, membershipId, positionId);
+            }
             if (!memberships.updateAttributes(tenantId, membershipId, validated, actor.identityId())) {
                 throw new ForgeException(OrganizationErrorCode.MEMBERSHIP_NOT_FOUND);
             }

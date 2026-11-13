@@ -25,11 +25,15 @@ public record FieldMaskingProperties(String iamUri, String token) {
                 || uri.getHost() == null
                 || uri.getUserInfo() != null
                 || uri.getQuery() != null
-                || uri.getFragment() != null) throw invalidUri();
+                || uri.getFragment() != null) {
+            throw invalidUri();
+        }
     }
 
     private static void require(String value, String property) {
-        if (value == null || value.isBlank()) throw new IllegalStateException(property + " must be set");
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(property + " must be set");
+        }
     }
 
     private static IllegalStateException invalidUri() {

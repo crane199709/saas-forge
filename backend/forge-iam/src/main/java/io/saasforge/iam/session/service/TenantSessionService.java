@@ -127,7 +127,9 @@ public class TenantSessionService {
      */
     public Optional<PendingMfa> pendingMfa(Authentication firstFactor) {
         UUID identityId = UUID.fromString(firstFactor.getName());
-        if (!mfa.isBound(identityId)) return Optional.empty();
+        if (!mfa.isBound(identityId)) {
+            return Optional.empty();
+        }
         return Optional.of(new PendingMfa(identityId, Instant.now().plus(PENDING_MFA_TTL)));
     }
 

@@ -65,12 +65,18 @@ public final class DataPermission {
         return () -> {
             Subject previous = capturedSubject.get();
             try {
-                if (snapshot == null) capturedSubject.remove();
-                else capturedSubject.set(snapshot);
+                if (snapshot == null) {
+                    capturedSubject.remove();
+                } else {
+                    capturedSubject.set(snapshot);
+                }
                 task.run();
             } finally {
-                if (previous == null) capturedSubject.remove();
-                else capturedSubject.set(previous);
+                if (previous == null) {
+                    capturedSubject.remove();
+                } else {
+                    capturedSubject.set(previous);
+                }
             }
         };
     }
@@ -101,7 +107,9 @@ public final class DataPermission {
         DataResourceDefinition definition = definition(resource);
         Map<String, Object> values = definition.resourceValues(attributes);
         Subject subject = currentSubjectOf();
-        if (subject == null) return true;
+        if (subject == null) {
+            return true;
+        }
         return PolicyEvaluator.isSatisfied(policy(subject, definition), subject.context(), values);
     }
 
@@ -145,10 +153,16 @@ public final class DataPermission {
      */
     Subject currentSubjectOf() {
         Subject snapshot = capturedSubject.get();
-        if (snapshot != null) return snapshot;
+        if (snapshot != null) {
+            return snapshot;
+        }
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (!(authentication instanceof JwtAuthenticationToken jwt)) return null;
-        if (grants == null) throw new IllegalStateException("Data permissions require Redis for grants");
+        if (!(authentication instanceof JwtAuthenticationToken jwt)) {
+            return null;
+        }
+        if (grants == null) {
+            throw new IllegalStateException("Data permissions require Redis for grants");
+        }
         MembershipGrants current;
         Map<String, Object> values;
         if (jwt.getToken().getClaimAsString("membership_id") != null) {
@@ -166,7 +180,9 @@ public final class DataPermission {
 
     private DataResourceDefinition definition(String resource) {
         DataResourceDefinition definition = byCode.get(resource);
-        if (definition == null) throw new IllegalArgumentException("Undeclared Data Resource: " + resource);
+        if (definition == null) {
+            throw new IllegalArgumentException("Undeclared Data Resource: " + resource);
+        }
         return definition;
     }
 
@@ -174,9 +190,13 @@ public final class DataPermission {
         // 同一条策略在扩展属性类型不同的租户中结论不同，类型要进缓存键
         String key = definition.code() + '\u0000' + json + '\u0000' + new TreeMap<>(extendedTypes);
         Expression cached = parsed.get(key);
-        if (cached != null) return cached;
+        if (cached != null) {
+            return cached;
+        }
         Expression expression = definition.parse(json, extendedTypes);
-        if (parsed.size() >= MAX_CACHED_POLICIES) parsed.clear();
+        if (parsed.size() >= MAX_CACHED_POLICIES) {
+            parsed.clear();
+        }
         parsed.put(key, expression);
         return expression;
     }

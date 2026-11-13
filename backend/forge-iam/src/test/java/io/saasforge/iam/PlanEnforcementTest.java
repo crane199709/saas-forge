@@ -421,7 +421,9 @@ class PlanEnforcementTest {
     @SuppressWarnings("unchecked")
     private static void collect(Object nodes, Set<Object> codes) {
         for (var node : (List<Map<String, Object>>) nodes) {
-            if (node.get("permission") instanceof Map<?, ?> permission) codes.add(permission.get("code"));
+            if (node.get("permission") instanceof Map<?, ?> permission) {
+                codes.add(permission.get("code"));
+            }
             ((List<Map<String, Object>>) node.get("actions")).forEach(action -> codes.add(action.get("code")));
             collect(node.get("children"), codes);
         }
@@ -489,7 +491,9 @@ class PlanEnforcementTest {
         for (Object item :
                 (List<?>) call(ADMIN, HttpMethod.GET, "/roles", null).getBody().get("data")) {
             var role = (Map<?, ?>) item;
-            if (roleId.equals(role.get("id"))) return List.copyOf((List<?>) role.get("permissions"));
+            if (roleId.equals(role.get("id"))) {
+                return List.copyOf((List<?>) role.get("permissions"));
+            }
         }
         throw new AssertionError("Role not found: " + roleId);
     }
@@ -506,7 +510,9 @@ class PlanEnforcementTest {
         for (Object node : nodes) {
             codes.add((String) ((Map<?, ?>) node).get("code"));
             Object children = ((Map<?, ?>) node).get("children");
-            if (children != null) collect((List<?>) children, codes);
+            if (children != null) {
+                collect((List<?>) children, codes);
+            }
         }
     }
 
@@ -524,7 +530,9 @@ class PlanEnforcementTest {
                 .method(method)
                 .uri(uri)
                 .headers(headers -> headers.setBearerAuth(token));
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         return request.retrieve()
                 .onStatus(HttpStatusCode::isError, (req, res) -> {})
                 .toEntity(Map.class);

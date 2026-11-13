@@ -47,7 +47,9 @@ public class TokenEndpointClient {
                     headers.setBasicAuth(clientId, credentials.secret());
                     // 本进程 HTTP 调用会替换连接 IP，必须保留外层适配器收到的可信来源。
                     String ip = ClientIpResolver.currentIp();
-                    if (ip != null) headers.set(ClientIpHeader.NAME, ip);
+                    if (ip != null) {
+                        headers.set(ClientIpHeader.NAME, ip);
+                    }
                 })
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(form)
@@ -56,11 +58,15 @@ public class TokenEndpointClient {
     }
 
     private String tokenBaseUri() {
-        if (!tokenBaseUri.isBlank()) return tokenBaseUri;
+        if (!tokenBaseUri.isBlank()) {
+            return tokenBaseUri;
+        }
         var address = server.getAddress();
         String host = address == null || address.isAnyLocalAddress() ? "127.0.0.1" : address.getHostAddress();
         // IPv6 字面量必须用方括号区分地址内的冒号与端口分隔符。
-        if (host.contains(":")) host = "[" + host + "]";
+        if (host.contains(":")) {
+            host = "[" + host + "]";
+        }
         boolean tls = server.getSsl() != null && server.getSsl().isEnabled();
         return UriComponentsBuilder.newInstance()
                 .scheme(tls ? "https" : "http")

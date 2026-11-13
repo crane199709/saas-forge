@@ -223,10 +223,14 @@ class OperatorIpAllowlistClearTest {
                 .method(method)
                 .uri(path)
                 .headers(headers -> {
-                    if (bearer != null) headers.setBearerAuth(bearer);
+                    if (bearer != null) {
+                        headers.setBearerAuth(bearer);
+                    }
                     headers.set(ClientIpHeader.NAME, ip);
                 });
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         return request.exchange((req, res) -> new Response(res.getStatusCode().value(), res.bodyTo(Map.class)));
     }
 
@@ -242,8 +246,12 @@ class OperatorIpAllowlistClearTest {
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(600))
                 .claim("ver", 0);
-        if (tenant != null) claims.claim("tenant_id", tenant.toString());
-        if (membership != null) claims.claim("membership_id", membership.toString());
+        if (tenant != null) {
+            claims.claim("tenant_id", tenant.toString());
+        }
+        if (membership != null) {
+            claims.claim("membership_id", membership.toString());
+        }
         return tokens.encode(JwtEncoderParameters.from(claims.build())).getTokenValue();
     }
 

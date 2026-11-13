@@ -32,8 +32,11 @@ class RequestLogContextTest {
             assertThat(MDC.get("tenant_id")).isEqualTo("outer-tenant");
             assertThat(MDC.get("membership_id")).isEqualTo("outer-member");
         } finally {
-            if (original == null) MDC.clear();
-            else MDC.setContextMap(original);
+            if (original == null) {
+                MDC.clear();
+            } else {
+                MDC.setContextMap(original);
+            }
         }
     }
 }

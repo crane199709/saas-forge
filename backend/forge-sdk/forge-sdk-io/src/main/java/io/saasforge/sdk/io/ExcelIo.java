@@ -96,7 +96,9 @@ public final class ExcelIo {
                 var sheet = workbook.createSheet("数据");
                 columns.header(sheet, false);
                 read.read(value -> {
-                    if (progress.next() > properties.exportLimit()) throw new ForgeException(IoErrorCode.ROW_LIMIT);
+                    if (progress.next() > properties.exportLimit()) {
+                        throw new ForgeException(IoErrorCode.ROW_LIMIT);
+                    }
                     columns.write(sheet.createRow((int) progress.rows()), value, rules);
                 });
                 try (var stream = Files.newOutputStream(output)) {
@@ -138,13 +140,17 @@ public final class ExcelIo {
         int max = lists.stream().mapToInt(List::size).max().orElse(0);
         for (int row = 0; row < max; row++) {
             var choice = choices.createRow(row);
-            for (int column = 0; column < lists.size(); column++)
-                if (row < lists.get(column).size())
+            for (int column = 0; column < lists.size(); column++) {
+                if (row < lists.get(column).size()) {
                     choice.createCell(column).setCellValue(lists.get(column).get(row));
+                }
+            }
         }
         for (int column = 0; column < lists.size(); column++) {
             var names = lists.get(column);
-            if (names.isEmpty()) continue;
+            if (names.isEmpty()) {
+                continue;
+            }
             String letter = CellReference.convertNumToColString(column);
             var name = workbook.createName();
             name.setNameName("choices_" + column);
@@ -244,21 +250,29 @@ public final class ExcelIo {
                     var values = cells.subList(0, columns.columns.size());
                     String previousError = cells.get(columns.columns.size());
                     if (!headerSeen.getAndSet(true)) {
-                        for (int i = 0; i < values.size(); i++)
+                        for (int i = 0; i < values.size(); i++) {
                             if (!values.get(i).equals(columns.columns.get(i).header(true))
                                     && !values.get(i)
-                                            .equals(columns.columns.get(i).header(false)))
+                                            .equals(columns.columns.get(i).header(false))) {
                                 throw new ForgeException(IoErrorCode.INVALID_FILE);
-                        if (!previousError.isBlank() && !ERROR_REASON_HEADER.equals(previousError))
+                            }
+                        }
+                        if (!previousError.isBlank() && !ERROR_REASON_HEADER.equals(previousError)) {
                             throw new ForgeException(IoErrorCode.INVALID_FILE);
+                        }
                         hasPreviousErrors.set(ERROR_REASON_HEADER.equals(previousError));
                         return;
                     }
                     // 只忽略明确标为错误说明的末列，避免修正报告重传时把旧错误当作业务数据。
-                    if (!hasPreviousErrors.get() && !previousError.isBlank())
+                    if (!hasPreviousErrors.get() && !previousError.isBlank()) {
                         throw new ForgeException(IoErrorCode.INVALID_FILE);
-                    if (values.stream().allMatch(String::isBlank)) return;
-                    if (progress.next() > properties.importLimit()) throw new ForgeException(IoErrorCode.ROW_LIMIT);
+                    }
+                    if (values.stream().allMatch(String::isBlank)) {
+                        return;
+                    }
+                    if (progress.next() > properties.importLimit()) {
+                        throw new ForgeException(IoErrorCode.ROW_LIMIT);
+                    }
                     var errors = new ArrayList<String>();
                     T value = columns.parse(values, errors);
                     if (value != null) {
@@ -266,23 +280,31 @@ public final class ExcelIo {
                                 .sorted(Comparator.comparing(
                                         v -> v.getPropertyPath().toString()))
                                 .forEach(v -> errors.add(v.getPropertyPath() + "：" + v.getMessage()));
-                        if (errors.isEmpty()) errors.addAll(validate.validate(value));
+                        if (errors.isEmpty()) {
+                            errors.addAll(validate.validate(value));
+                        }
                     }
                     var row = sheet.createRow((int) progress.rows());
-                    for (int i = 0; i < values.size(); i++) row.createCell(i).setCellValue(values.get(i));
+                    for (int i = 0; i < values.size(); i++) {
+                        row.createCell(i).setCellValue(values.get(i));
+                    }
                     row.createCell(values.size()).setCellValue(String.join("\n", errors));
                     formatReportRow(sheet, row, reportStyle);
-                    if (!errors.isEmpty()) hasErrors.set(true);
-                    else
+                    if (!errors.isEmpty()) {
+                        hasErrors.set(true);
+                    } else {
                         try {
                             spool.write(json.writeValueAsString(value));
                             spool.newLine();
                         } catch (IOException error) {
                             throw new UncheckedIOException(error);
                         }
+                    }
                 });
             }
-            if (!headerSeen.get()) throw new ForgeException(IoErrorCode.INVALID_FILE);
+            if (!headerSeen.get()) {
+                throw new ForgeException(IoErrorCode.INVALID_FILE);
+            }
             if (hasErrors.get()) {
                 try (var output = Files.newOutputStream(report)) {
                     workbook.write(output);
@@ -322,8 +344,9 @@ public final class ExcelIo {
     }
 
     static void requireXlsx(String filename) {
-        if (filename == null || !filename.toLowerCase(Locale.ROOT).endsWith(".xlsx"))
+        if (filename == null || !filename.toLowerCase(Locale.ROOT).endsWith(".xlsx")) {
             throw new ForgeException(IoErrorCode.INVALID_FILE);
+        }
     }
     /** 按行提供数据；数据源负责关闭数据库游标等资源。 */
     @FunctionalInterface

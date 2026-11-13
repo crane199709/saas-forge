@@ -47,7 +47,9 @@ final class FieldMaskingLogRuntime implements AutoCloseable {
     static String mask(String path, Object value, Map<String, String> mdc) {
         try {
             var runtime = current;
-            if (runtime == null || path == null || path.isEmpty()) return REDACTED;
+            if (runtime == null || path == null || path.isEmpty()) {
+                return REDACTED;
+            }
             UUID tenant = UUID.fromString(mdc.get("tenant_id"));
             Snapshot snapshot = runtime.snapshots.get(tenant);
             if (snapshot == null || System.nanoTime() - snapshot.requestedAt() > TimeUnit.SECONDS.toNanos(1)) {
@@ -55,7 +57,9 @@ final class FieldMaskingLogRuntime implements AutoCloseable {
                 return REDACTED;
             }
             var field = snapshot.policies().get(path);
-            if (field == null || field.rule() == null) return REDACTED;
+            if (field == null || field.rule() == null) {
+                return REDACTED;
+            }
             return runtime.engine.apply(field.rule(), value == null ? null : String.valueOf(value));
         } catch (RuntimeException error) {
             return REDACTED;
@@ -63,14 +67,18 @@ final class FieldMaskingLogRuntime implements AutoCloseable {
     }
 
     private void refresh(UUID tenant) {
-        if (!loading.add(tenant)) return;
+        if (!loading.add(tenant)) {
+            return;
+        }
         try {
             worker.execute(() -> {
                 try {
                     // 有效期从请求开始计算，慢响应不能把变更前的快照重新延长一秒。
                     long requestedAt = System.nanoTime();
                     var policies = Map.copyOf(provider.policies(tenant));
-                    if (!worker.isShutdown()) snapshots.put(tenant, new Snapshot(policies, requestedAt));
+                    if (!worker.isShutdown()) {
+                        snapshots.put(tenant, new Snapshot(policies, requestedAt));
+                    }
                 } catch (RuntimeException error) {
                     snapshots.remove(tenant);
                 } finally {

@@ -23,7 +23,9 @@ public class ServiceCredentialFailureAudit {
     }
 
     public void record(String service, String source, String fingerprint) {
-        if (!admit(new Source(service, source))) return;
+        if (!admit(new Source(service, source))) {
+            return;
+        }
         audits.record(AuditEvent.builder(AuditRealm.PLATFORM, AuditCategory.LOGIN, "serviceCredential.authenticate")
                 .detail("service", service)
                 .detail("source", source)

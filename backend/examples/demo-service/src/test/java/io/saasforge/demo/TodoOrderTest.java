@@ -114,7 +114,9 @@ class TodoOrderTest {
                 .method(method)
                 .uri(path)
                 .header("Authorization", "Bearer " + TestTokens.forTenant(TENANT));
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         var response = request.retrieve()
                 .onStatus(HttpStatusCode::isError, (req, res) -> {})
                 .toEntity(Map.class);

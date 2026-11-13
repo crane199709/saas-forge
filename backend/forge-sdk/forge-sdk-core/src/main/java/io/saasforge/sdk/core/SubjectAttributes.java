@@ -53,7 +53,9 @@ public record SubjectAttributes(
         context.put("subject.membershipId", membershipId);
         // 排序使同一主体每次得到相同的上下文，编译出的 SQL 参数顺序稳定。
         context.put("subject.departmentPaths", departmentPaths.stream().sorted().toList());
-        if (primaryDepartmentPath != null) context.put("subject.primaryDepartmentPath", primaryDepartmentPath);
+        if (primaryDepartmentPath != null) {
+            context.put("subject.primaryDepartmentPath", primaryDepartmentPath);
+        }
         context.put("subject.positionIds", positionIds.stream().sorted().toList());
         attributes.forEach((code, value) -> context.put("subject.attributes." + code, value));
         return context;

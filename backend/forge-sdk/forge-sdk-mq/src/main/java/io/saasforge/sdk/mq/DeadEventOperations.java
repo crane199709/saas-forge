@@ -37,23 +37,32 @@ public final class DeadEventOperations {
     /** 读取单条死信元数据，记录不存在时返回业务错误。 */
     public DeadEventResponse get(UUID id) {
         DeadEventResponse event = mapper.find(id);
-        if (event == null) throw new ForgeException(DeadEventErrorCode.NOT_FOUND);
+        if (event == null) {
+            throw new ForgeException(DeadEventErrorCode.NOT_FOUND);
+        }
         return event;
     }
 
     /** 恢复原租户并直接调用 Handler；处置标记、去重登记与业务写入在同一事务提交。 */
     public DeadEventResponse replay(UUID id, String reason) {
         String explanation = reason(reason);
-        if (!"PENDING".equals(get(id).status())) throw new ForgeException(DeadEventErrorCode.ALREADY_HANDLED);
+        if (!"PENDING".equals(get(id).status())) {
+            throw new ForgeException(DeadEventErrorCode.ALREADY_HANDLED);
+        }
         DeadEventEntry event = mapper.replayInput(id);
-        if (event == null) throw new ForgeException(DeadEventErrorCode.NOT_FOUND);
+        if (event == null) {
+            throw new ForgeException(DeadEventErrorCode.NOT_FOUND);
+        }
         var result = new AtomicReference<DeadEventResponse>();
         Runnable work = () -> transaction.executeWithoutResult(ignored -> {
-            if (mapper.resolve(id, "REPLAYED", explanation) != 1)
+            if (mapper.resolve(id, "REPLAYED", explanation) != 1) {
                 throw new ForgeException(DeadEventErrorCode.ALREADY_HANDLED);
+            }
             DeadEventResponse resolved = mapper.find(id);
             EventConsumer consumer = consumers.getIfAvailable();
-            if (consumer == null) throw new IllegalStateException("No EventHandler is registered");
+            if (consumer == null) {
+                throw new IllegalStateException("No EventHandler is registered");
+            }
             consumer.handle(
                     event.consumerGroup(),
                     event.eventId(),
@@ -66,8 +75,9 @@ public final class DeadEventOperations {
         });
         try {
             if (event.originalTenantId() == null) {
-                if (CurrentTenant.find().isPresent())
+                if (CurrentTenant.find().isPresent()) {
                     throw new IllegalStateException("Tenantless replay requires an unbound tenant context");
+                }
                 work.run();
             } else {
                 // 行锁与业务连接都必须在恢复租户之后获取，不能先在无租户事务中锁记录。
@@ -75,7 +85,9 @@ public final class DeadEventOperations {
             }
         } catch (RuntimeException failure) {
             if (failure instanceof ForgeException business
-                    && business.errorCode() == DeadEventErrorCode.ALREADY_HANDLED) throw business;
+                    && business.errorCode() == DeadEventErrorCode.ALREADY_HANDLED) {
+                throw business;
+            }
             // Handler 事务已回滚，再独立记录新错误；并发已处置的记录不能退回待处置。
             log.error("Failed to replay dead event {} of event {}", id, event.eventId(), failure);
             transaction.executeWithoutResult(ignored -> mapper.updateError(id, DeadEventErrorSummary.of(failure)));
@@ -89,8 +101,9 @@ public final class DeadEventOperations {
         String explanation = reason(reason);
         get(id);
         return transaction.execute(ignored -> {
-            if (mapper.resolve(id, "ABANDONED", explanation) != 1)
+            if (mapper.resolve(id, "ABANDONED", explanation) != 1) {
                 throw new ForgeException(DeadEventErrorCode.ALREADY_HANDLED);
+            }
             return mapper.find(id);
         });
     }
@@ -102,13 +115,16 @@ public final class DeadEventOperations {
 
     /** 租户删除事务中清理该租户的基础设施死信；调用方须已绑定同一租户，不影响其他租户或全局事件。 */
     public void cleanTenant(UUID tenantId) {
-        if (!CurrentTenant.require().equals(tenantId))
+        if (!CurrentTenant.require().equals(tenantId)) {
             throw new IllegalStateException("Tenant cleanup context does not match");
+        }
         mapper.deleteTenant(tenantId);
     }
 
     private static String reason(String reason) {
-        if (reason == null || reason.isBlank()) throw new ForgeException(DeadEventErrorCode.REASON_REQUIRED);
+        if (reason == null || reason.isBlank()) {
+            throw new ForgeException(DeadEventErrorCode.REASON_REQUIRED);
+        }
         return reason.strip();
     }
 

@@ -88,7 +88,9 @@ class TenantProvisioningTest {
         final Set<String> broken = ConcurrentHashMap.newKeySet();
 
         void deliver(String target, ContactMessage message) {
-            if (broken.contains(target)) throw new IllegalStateException("channel down");
+            if (broken.contains(target)) {
+                throw new IllegalStateException("channel down");
+            }
             if (message instanceof InvitationMessage invitation) {
                 latest.put(target, invitation);
                 received.merge(target, 1, Integer::sum);

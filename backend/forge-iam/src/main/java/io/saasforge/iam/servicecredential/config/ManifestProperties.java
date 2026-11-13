@@ -13,7 +13,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record ManifestProperties(Map<String, String> tokens) {
     /** 未配置引导通道时仅接受数据库凭证。 */
     public ManifestProperties {
-        if (tokens == null) tokens = Map.of();
+        if (tokens == null) {
+            tokens = Map.of();
+        }
         tokens = tokens.entrySet().stream()
                 .filter(entry -> entry.getValue() != null && !entry.getValue().isBlank())
                 .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));

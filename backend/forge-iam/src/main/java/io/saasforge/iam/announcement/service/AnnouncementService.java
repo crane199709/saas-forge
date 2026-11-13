@@ -76,8 +76,9 @@ public class AnnouncementService {
     }
     /** 只有当前可见的公告可标已读，避免通过标识探测其他租户。 */
     public void read(TenantActor actor, UUID id) {
-        if (visible(actor).stream().noneMatch(a -> a.id().equals(id)))
+        if (visible(actor).stream().noneMatch(a -> a.id().equals(id))) {
             throw new ForgeException(AnnouncementErrorCode.NOT_FOUND);
+        }
         announcements.markRead(UuidV7.generate(), actor.tenantId(), actor.membershipId(), actor.identityId(), id);
     }
 
@@ -93,8 +94,9 @@ public class AnnouncementService {
             List<UUID> tenantIds) {
         platformRoles.requirePermission(actor, PlatformPermissions.ANNOUNCEMENT_MANAGE);
         List<UUID> targets = tenantIds.stream().distinct().toList();
-        if (allTenants != targets.isEmpty() || targets.stream().anyMatch(id -> tenants.name(id) == null))
+        if (allTenants != targets.isEmpty() || targets.stream().anyMatch(id -> tenants.name(id) == null)) {
             throw new ForgeException(AnnouncementErrorCode.INVALID_TARGET);
+        }
         UUID id = UuidV7.generate();
         announcements.publishPlatform(id, actor, title, body, subApp, route, expiresAt, allTenants);
         targets.forEach(tenant -> announcements.target(id, tenant));
@@ -132,8 +134,9 @@ public class AnnouncementService {
     }
     /** 撤回租户公告，重复撤回不产出重复审计。 */
     public void revoke(TenantActor actor, UUID id) {
-        if (tenantList(actor).stream().noneMatch(a -> a.id().equals(id)))
+        if (tenantList(actor).stream().noneMatch(a -> a.id().equals(id))) {
             throw new ForgeException(AnnouncementErrorCode.NOT_FOUND);
+        }
         if (announcements.revokeTenant(actor.tenantId(), id, actor.identityId()) > 0) {
             audits.record(AuditEvent.builder(AuditRealm.TENANT, AuditCategory.OPERATION, "announcement.revoke")
                     .tenant(actor.tenantId())
@@ -144,8 +147,9 @@ public class AnnouncementService {
     }
     /** 撤回平台公告，只要求 Platform Realm 的公告管理权限。 */
     public void revokePlatform(UUID actor, UUID id) {
-        if (platformList(actor).stream().noneMatch(a -> a.id().equals(id)))
+        if (platformList(actor).stream().noneMatch(a -> a.id().equals(id))) {
             throw new ForgeException(AnnouncementErrorCode.NOT_FOUND);
+        }
         if (announcements.revokePlatform(id, actor) > 0) {
             audits.record(AuditEvent.builder(AuditRealm.PLATFORM, AuditCategory.OPERATION, "announcement.revoke")
                     .actor(actor)
@@ -158,7 +162,9 @@ public class AnnouncementService {
         if (!memberships
                 .status(actor.tenantId(), actor.membershipId())
                 .filter("active"::equals)
-                .isPresent()) throw new ForgeException(FrameworkErrorCode.AUTH_UNAUTHENTICATED);
+                .isPresent()) {
+            throw new ForgeException(FrameworkErrorCode.AUTH_UNAUTHENTICATED);
+        }
         announcements.bindTenant(actor.tenantId());
     }
 }

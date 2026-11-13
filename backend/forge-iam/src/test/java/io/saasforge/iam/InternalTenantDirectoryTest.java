@@ -101,7 +101,9 @@ class InternalTenantDirectoryTest {
                 .get()
                 .uri(uri)
                 .headers(headers -> {
-                    if (serviceToken != null) headers.setBearerAuth(serviceToken);
+                    if (serviceToken != null) {
+                        headers.setBearerAuth(serviceToken);
+                    }
                 })
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, (request, response) -> {})

@@ -328,7 +328,9 @@ class TaskOpsHttpTest {
         @TenantTask(name = "tenant", cron = "0 0 9 * * *")
         void execute() {
             tenants.add(CurrentTenant.require());
-            if (fail) throw new IllegalStateException("sensitive-order-42");
+            if (fail) {
+                throw new IllegalStateException("sensitive-order-42");
+            }
             authentications.add(SecurityContextHolder.getContext().getAuthentication() != null);
         }
     }
@@ -338,7 +340,9 @@ class TaskOpsHttpTest {
 
         @Override
         public ScheduledFuture<?> scheduleWithFixedDelay(Runnable task, Duration delay) {
-            if (delay.equals(Duration.ofHours(1))) trigger = task;
+            if (delay.equals(Duration.ofHours(1))) {
+                trigger = task;
+            }
             return null;
         }
 

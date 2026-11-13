@@ -11,7 +11,9 @@ final class NotificationValidation {
     }
 
     static <T> T required(T value, String field) {
-        if (value == null) throw new IllegalArgumentException(field + " is required");
+        if (value == null) {
+            throw new IllegalArgumentException(field + " is required");
+        }
         return value;
     }
 }

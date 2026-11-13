@@ -68,7 +68,9 @@ public class DepartmentService {
             transactions.executeWithoutResult(status -> {
                 departments.lockTenant(actor.tenantId());
                 DepartmentRow deleted = departments.findDeleted(actor.tenantId(), id);
-                if (deleted == null) throw new ForgeException(OrganizationErrorCode.DEPARTMENT_NOT_FOUND);
+                if (deleted == null) {
+                    throw new ForgeException(OrganizationErrorCode.DEPARTMENT_NOT_FOUND);
+                }
                 DepartmentRow parent =
                         deleted.parentId() == null ? null : departments.find(actor.tenantId(), deleted.parentId());
                 if (deleted.parentId() != null && parent == null) {
@@ -124,7 +126,9 @@ public class DepartmentService {
         Moved moved = transactions.execute(status -> {
             departments.lockTenant(actor.tenantId());
             DepartmentRow department = require(actor, id);
-            if (Objects.equals(department.parentId(), parentId)) return new Moved(department, List.of());
+            if (Objects.equals(department.parentId(), parentId)) {
+                return new Moved(department, List.of());
+            }
             DepartmentRow parent = parentId == null ? null : require(actor, parentId);
             if (parent != null && under(parent.path(), department.path())) {
                 throw new ForgeException(OrganizationErrorCode.INVALID_DEPARTMENT_MOVE);
@@ -154,7 +158,9 @@ public class DepartmentService {
 
     private DepartmentRow require(TenantActor actor, UUID id) {
         DepartmentRow department = departments.find(actor.tenantId(), id);
-        if (department == null) throw new ForgeException(OrganizationErrorCode.DEPARTMENT_NOT_FOUND);
+        if (department == null) {
+            throw new ForgeException(OrganizationErrorCode.DEPARTMENT_NOT_FOUND);
+        }
         return department;
     }
 

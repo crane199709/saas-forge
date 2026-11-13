@@ -104,9 +104,13 @@ public class InvitationService {
             throw ForgeException.withErrorMessage(
                     InvitationErrorCode.CREDENTIALS_REQUIRED, "Pending identity must set account and password");
         }
-        if (activateIdentity && identities.existsAccount(account)) throw accountTaken();
+        if (activateIdentity && identities.existsAccount(account)) {
+            throw accountTaken();
+        }
         // 为待激活身份设置密码等同注册，执行同一 Password Policy。
-        if (activateIdentity) policy.checkIdentity(password, account);
+        if (activateIdentity) {
+            policy.checkIdentity(password, account);
+        }
         try {
             transaction.executeWithoutResult(status -> {
                 // 两步都以原状态为条件：并发接受同一邀请时只有一方成功，另一方整体回滚。
@@ -118,7 +122,9 @@ public class InvitationService {
                                 passwords.encode(password))) {
                     throw invalid();
                 }
-                if (!memberships.activateInvited(invitation.membershipId())) throw invalid();
+                if (!memberships.activateInvited(invitation.membershipId())) {
+                    throw invalid();
+                }
             });
         } catch (DuplicateKeyException race) {
             throw accountTaken();

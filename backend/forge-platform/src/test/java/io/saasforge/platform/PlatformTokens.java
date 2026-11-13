@@ -105,7 +105,9 @@ final class PlatformTokens {
                 exchange.getResponseHeaders().add("Content-Type", "application/json");
                 exchange.sendResponseHeaders(
                         authorized ? (servicesAvailable ? 200 : 503) : 401, authorized ? body.length : -1);
-                if (authorized) exchange.getResponseBody().write(body);
+                if (authorized) {
+                    exchange.getResponseBody().write(body);
+                }
                 exchange.close();
             });
             JWKS.createContext("/internal/tenants/", IamPlanImpactFixture::handle);

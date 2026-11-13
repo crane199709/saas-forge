@@ -45,7 +45,9 @@ public final class ManifestAutoConfiguration {
             BeanFactory beanFactory,
             ManifestReporting reporting) {
         return event -> {
-            if (!properties.enabled()) return;
+            if (!properties.enabled()) {
+                return;
+            }
             String service = environment.getRequiredProperty("spring.application.name");
             var manifest = ResourceManifestCollector.collect(
                     service,

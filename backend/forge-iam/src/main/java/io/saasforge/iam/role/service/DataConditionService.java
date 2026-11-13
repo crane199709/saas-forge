@@ -140,9 +140,13 @@ public class DataConditionService {
             UUID tenantId, DataPolicy policy, UUID membershipId, List<Map<String, Object>> samples) {
         DataResourceDefinition definition =
                 definitionsOf(permissions.currentDataResources()).get(policy.resource());
-        if (definition == null) throw new ForgeException(RoleErrorCode.INVALID_DATA_POLICY, policy.resource());
+        if (definition == null) {
+            throw new ForgeException(RoleErrorCode.INVALID_DATA_POLICY, policy.resource());
+        }
         Expression expression = parse(definition, extendedTypes(tenantId), policy);
-        if (!memberships.exists(tenantId, membershipId)) throw new ForgeException(RoleErrorCode.MEMBERSHIP_NOT_FOUND);
+        if (!memberships.exists(tenantId, membershipId)) {
+            throw new ForgeException(RoleErrorCode.MEMBERSHIP_NOT_FOUND);
+        }
         if (samples.size() > MAX_SAMPLES) {
             throw ForgeException.withErrorMessage(
                     RoleErrorCode.INVALID_PREVIEW_SAMPLE,
@@ -194,7 +198,9 @@ public class DataConditionService {
         try {
             Expression expression = definition.parse(policy.condition(), types);
             // 空的「全部满足」恒为真：编辑器删光条件后会放开全部数据，空的「任一满足」恒为假也没有意义，一律拒绝
-            if (hasEmptyGroup(expression)) throw invalidCondition(policy, "Empty condition group", "条件组不能为空");
+            if (hasEmptyGroup(expression)) {
+                throw invalidCondition(policy, "Empty condition group", "条件组不能为空");
+            }
             return expression;
         } catch (PolicyValidationException invalid) {
             throw invalidCondition(policy, "Invalid condition at " + invalid.path(), invalid.getMessage());
@@ -202,11 +208,17 @@ public class DataConditionService {
     }
 
     private static boolean hasEmptyGroup(Expression expression) {
-        if (expression instanceof Expression.Not not) return hasEmptyGroup(not.child());
+        if (expression instanceof Expression.Not not) {
+            return hasEmptyGroup(not.child());
+        }
         List<Expression> children;
-        if (expression instanceof Expression.And and) children = and.children();
-        else if (expression instanceof Expression.Or or) children = or.children();
-        else return false;
+        if (expression instanceof Expression.And and) {
+            children = and.children();
+        } else if (expression instanceof Expression.Or or) {
+            children = or.children();
+        } else {
+            return false;
+        }
         return children.isEmpty() || children.stream().anyMatch(DataConditionService::hasEmptyGroup);
     }
 
@@ -220,7 +232,9 @@ public class DataConditionService {
 
     private static DataScope scopeOf(DataPolicy policy) {
         try {
-            if (policy.scope() != null) return RoleService.scopeOf(policy.scope());
+            if (policy.scope() != null) {
+                return RoleService.scopeOf(policy.scope());
+            }
         } catch (IllegalArgumentException unknown) {
             // 按非法策略处理
         }

@@ -61,11 +61,17 @@ public class LoginLockoutService {
     public void check(LockoutTarget target) {
         long remaining = remainingMillis(lockedKey(target.realm(), target.key()));
         String ip = ClientIpResolver.currentIp();
-        if (ip != null) remaining = Math.max(remaining, remainingMillis(lockedKey(target.realm(), ipKey(ip))));
-        if (remaining <= 0) return;
+        if (ip != null) {
+            remaining = Math.max(remaining, remainingMillis(lockedKey(target.realm(), ipKey(ip))));
+        }
+        if (remaining <= 0) {
+            return;
+        }
         long seconds = Math.max(1, (remaining + 999) / 1000);
         HttpServletResponse response = currentResponse();
-        if (response != null) response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(seconds));
+        if (response != null) {
+            response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(seconds));
+        }
         throw ForgeException.withErrorMessage(
                 LockoutErrorCode.LOCKED,
                 "Too many failed attempts, retry after " + seconds + "s",
@@ -104,7 +110,9 @@ public class LoginLockoutService {
         var event = AuditEvent.builder(realm, AuditCategory.LOGIN, LOCKED)
                 .actor(actor)
                 .detail("lockSeconds", rule.lockDuration().toSeconds());
-        if (value != null) event.detail(detail, value);
+        if (value != null) {
+            event.detail(detail, value);
+        }
         audits.record(event.build());
     }
 

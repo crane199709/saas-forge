@@ -107,7 +107,9 @@ final class EventConsumer implements SmartLifecycle {
     public void stop() {
         PushConsumer current = consumer;
         consumer = null;
-        if (current == null) return;
+        if (current == null) {
+            return;
+        }
         try {
             current.close();
         } catch (IOException e) {

@@ -355,7 +355,9 @@ class DataSecurityTest {
             int reportStatus = reported.get(10, TimeUnit.SECONDS);
             int deleteStatus = deleted.get(10, TimeUnit.SECONDS);
             assertThat(List.of(reportStatus, deleteStatus)).isIn(List.of(201, 409), List.of(400, 200));
-            if (reportStatus == 201) assertThat(field(false, "race.phone")).containsEntry("status", "active");
+            if (reportStatus == 201) {
+                assertThat(field(false, "race.phone")).containsEntry("status", "active");
+            }
         } finally {
             pool.shutdownNow();
         }
@@ -490,7 +492,9 @@ class DataSecurityTest {
                 .method(method)
                 .uri(uri)
                 .headers(headers -> headers.setBearerAuth(token));
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         return request.retrieve()
                 .onStatus(HttpStatusCode::isError, (req, res) -> {})
                 .toEntity(Map.class);
@@ -512,7 +516,7 @@ class DataSecurityTest {
                 .issueTime(new Date())
                 .expirationTime(Date.from(Instant.now().plusSeconds(900)))
                 .claim("ver", 1);
-        if (!platform)
+        if (!platform) {
             claims.claim(
                             "tenant_id",
                             other ? "019a0110-0000-7000-8000-0000000000c1" : "019a0110-0000-7000-8000-000000000001")
@@ -523,6 +527,7 @@ class DataSecurityTest {
                                     : member
                                             ? "019a0110-0000-7000-8000-0000000000c5"
                                             : "019a0110-0000-7000-8000-0000000000c3");
+        }
         var jwt = new SignedJWT(
                 new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.getKeyID()).build(), claims.build());
         jwt.sign(new RSASSASigner(key));

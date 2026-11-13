@@ -430,7 +430,9 @@ class NavigationLayoutTest {
 
     private static Map<String, Object> pages(int count) {
         List<Map<String, Object>> nodes = new ArrayList<>();
-        for (int i = 0; i < count; i++) nodes.add(Map.of("page", "page-" + i));
+        for (int i = 0; i < count; i++) {
+            nodes.add(Map.of("page", "page-" + i));
+        }
         return Map.of("nodes", nodes);
     }
 
@@ -459,8 +461,12 @@ class NavigationLayoutTest {
     private ResponseEntity<Map> call(String token, HttpMethod method, String uri, Object body) {
         var request =
                 RestClient.create("http://127.0.0.1:" + port).method(method).uri(uri);
-        if (token != null) request.headers(headers -> headers.setBearerAuth(token));
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (token != null) {
+            request.headers(headers -> headers.setBearerAuth(token));
+        }
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         return request.retrieve()
                 .onStatus(HttpStatusCode::isError, (req, res) -> {})
                 .toEntity(Map.class);

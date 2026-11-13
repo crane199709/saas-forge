@@ -31,8 +31,9 @@ public class DeadEventService {
     }
 
     public ApiResponse<List<DeadEventResponse>> list(String service, String status, PageQuery page) {
-        if (!List.of("PENDING", "REPLAYED", "ABANDONED").contains(status))
+        if (!List.of("PENDING", "REPLAYED", "ABANDONED").contains(status)) {
             throw new ForgeException(FrameworkErrorCode.REQUEST_INVALID);
+        }
         return client.get(
                 service, "/dead-events?status=" + status + "&page=" + page.page() + "&size=" + page.size(), PAGE);
     }
@@ -57,11 +58,17 @@ public class DeadEventService {
                 .detail("service", service)
                 .detail("reason", reason == null ? null : reason.strip());
         try {
-            if (reason == null || reason.isBlank()) throw new ForgeException(OpsErrorCode.REASON_REQUIRED);
+            if (reason == null || reason.isBlank()) {
+                throw new ForgeException(OpsErrorCode.REASON_REQUIRED);
+            }
             var response = client.post(
                     service, "/dead-events/" + id + "/" + command, Map.of("reason", reason.strip()), RESPONSE);
-            if (!ApiResponse.OK.equals(response.code())) throw rejected(response.code());
-            if (response.data() != null) event.detail("eventId", response.data().eventId());
+            if (!ApiResponse.OK.equals(response.code())) {
+                throw rejected(response.code());
+            }
+            if (response.data() != null) {
+                event.detail("eventId", response.data().eventId());
+            }
             return response;
         } catch (ForgeException error) {
             event.failure(error.errorCode().code());

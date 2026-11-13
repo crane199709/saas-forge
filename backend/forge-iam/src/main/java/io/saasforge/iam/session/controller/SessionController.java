@@ -85,9 +85,13 @@ class SessionController {
     private LoginResponse firstFactorPassed(
             Authentication firstFactor, HttpServletRequest request, HttpServletResponse response) {
         PendingMfa pending = sessions.pendingMfa(firstFactor).orElse(null);
-        if (pending == null) return signIn(firstFactor, request, response);
+        if (pending == null) {
+            return signIn(firstFactor, request, response);
+        }
         // 待 MFA：换新会话标识防会话固定，并清掉会话里原有的已认证主体，授权端点因此不认可此会话，直到完成 MFA。
-        if (request.getSession(false) != null) request.changeSessionId();
+        if (request.getSession(false) != null) {
+            request.changeSessionId();
+        }
         HttpSession session = request.getSession();
         session.removeAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
         SecurityContextHolder.clearContext();
@@ -98,7 +102,9 @@ class SessionController {
 
     private LoginResponse signIn(
             Authentication authentication, HttpServletRequest request, HttpServletResponse response) {
-        if (request.getSession(false) != null) request.changeSessionId();
+        if (request.getSession(false) != null) {
+            request.changeSessionId();
+        }
         var context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);

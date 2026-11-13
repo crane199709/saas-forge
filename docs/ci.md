@@ -24,6 +24,8 @@ PR 和 `main` 推送保留四个质量工作流及原有检查名称。每个检
 
 普通 mock E2E 会导入 `frontend/e2e/visual/support.ts`，修改它仍执行前端检查。通知专项 E2E 当前没有自动运行的工作流，维持原有手动运行方式，其测试代码改动仍由前端类型检查覆盖。
 
+Backend quality 的 `./mvnw install -Parchetype-it` 在 `validate` 阶段执行 Checkstyle `NeedBraces`，检查生产与测试 Java 代码的控制语句大括号；违规即失败。archetype 集成测试还在独立生成的业务工程中验证生产与测试源码的违规样例会失败、合法样例会通过。本地可在 `backend` 先运行 `./mvnw validate` 快速检查。
+
 ## 比较范围与全量验证
 
 - PR 使用 base 和 head 的共同祖先到 head 的差异，避免把目标分支新增的改动误算为本 PR。

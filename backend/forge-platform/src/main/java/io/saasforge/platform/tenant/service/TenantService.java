@@ -119,7 +119,9 @@ public class TenantService {
     @Transactional
     public Tenant changePlan(UUID tenantId, UUID planId) {
         Tenant tenant = get(tenantId);
-        if (planId.equals(tenant.getPlanId())) return tenant;
+        if (planId.equals(tenant.getPlanId())) {
+            return tenant;
+        }
         tenantPlans.assign(tenantId, plans.lockForAssignment(planId));
         return get(tenantId);
     }

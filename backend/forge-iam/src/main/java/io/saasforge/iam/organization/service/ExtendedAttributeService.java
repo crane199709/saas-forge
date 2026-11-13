@@ -85,7 +85,9 @@ public class ExtendedAttributeService {
         List<UUID> affected = transactions.execute(status -> {
             departments.lockTenant(actor.tenantId());
             ExtendedAttributeRow attribute = attributes.find(actor.tenantId(), id);
-            if (attribute == null) throw new ForgeException(OrganizationErrorCode.ATTRIBUTE_NOT_FOUND);
+            if (attribute == null) {
+                throw new ForgeException(OrganizationErrorCode.ATTRIBUTE_NOT_FOUND);
+            }
             attributes.delete(actor.tenantId(), id, actor.identityId());
             return memberships.removeAttribute(actor.tenantId(), attribute.code(), actor.identityId());
         });
@@ -99,18 +101,27 @@ public class ExtendedAttributeService {
      */
     Map<String, Object> validate(UUID tenantId, Map<String, Object> values) {
         Map<String, ExtendedAttributeRow> definitions = new HashMap<>();
-        for (ExtendedAttributeRow definition : attributes.list(tenantId))
+        for (ExtendedAttributeRow definition : attributes.list(tenantId)) {
             definitions.put(definition.code(), definition);
+        }
         Map<String, Object> result = new HashMap<>();
         values.forEach((code, value) -> {
             ExtendedAttributeRow definition = definitions.get(code);
-            if (definition == null) throw invalid(code);
-            if (value == null) return;
-            if (!matches(definition.type(), value)) throw invalid(code);
+            if (definition == null) {
+                throw invalid(code);
+            }
+            if (value == null) {
+                return;
+            }
+            if (!matches(definition.type(), value)) {
+                throw invalid(code);
+            }
             result.put(code, value);
         });
         for (ExtendedAttributeRow definition : definitions.values()) {
-            if (definition.required() && !result.containsKey(definition.code())) throw invalid(definition.code());
+            if (definition.required() && !result.containsKey(definition.code())) {
+                throw invalid(definition.code());
+            }
         }
         return result;
     }

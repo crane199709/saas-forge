@@ -103,12 +103,15 @@ public final class IoMaintenance {
         var cutoff = OffsetDateTime.now().minus(properties.retention());
         while (true) {
             var expired = mapper.expired(cutoff);
-            if (expired.isEmpty()) return;
-            for (var task : expired)
+            if (expired.isEmpty()) {
+                return;
+            }
+            for (var task : expired) {
                 transaction.executeWithoutResult(status -> {
                     delete(task.resultObjectId());
                     mapper.clearResult(task.id());
                 });
+            }
         }
     }
 
@@ -116,7 +119,9 @@ public final class IoMaintenance {
         try {
             storage.delete(id);
         } catch (ForgeException error) {
-            if (!"storage.objectNotFound".equals(error.errorCode().code())) throw error;
+            if (!"storage.objectNotFound".equals(error.errorCode().code())) {
+                throw error;
+            }
         }
     }
 }

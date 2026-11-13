@@ -107,7 +107,9 @@ public class RoleManagementService {
         Set<String> grantable = grantableCodes(actor.tenantId());
         Map<UUID, List<String>> codesOf = new HashMap<>();
         for (RolePermissionRow row : grants.listByTenant(actor.tenantId())) {
-            if (!grantable.contains(row.code())) continue;
+            if (!grantable.contains(row.code())) {
+                continue;
+            }
             codesOf.computeIfAbsent(row.roleId(), key -> new ArrayList<>()).add(row.code());
         }
         Map<UUID, List<DataPolicy>> policiesOf = new HashMap<>();
@@ -124,7 +126,9 @@ public class RoleManagementService {
 
     /** 列出指定删除状态的角色；已删除记录仅用于管理与恢复。 */
     public List<RoleDetail> list(TenantActor actor, boolean deleted) {
-        if (!deleted) return list(actor);
+        if (!deleted) {
+            return list(actor);
+        }
         requireManager(actor);
         return roles.listDeleted(actor.tenantId()).stream()
                 .map(row -> RoleDetail.of(row, List.of(), List.of()))
@@ -140,7 +144,9 @@ public class RoleManagementService {
                 transactions.executeWithoutResult(status -> {
                     roles.lockTenant(actor.tenantId());
                     RoleRow deleted = roles.findDeleted(actor.tenantId(), id);
-                    if (deleted == null) throw new ForgeException(RoleErrorCode.NOT_FOUND);
+                    if (deleted == null) {
+                        throw new ForgeException(RoleErrorCode.NOT_FOUND);
+                    }
                     if (roles.codeExists(actor.tenantId(), deleted.code())) {
                         throw new ForgeException(ResourceErrorCode.RESTORE_CONFLICT);
                     }
@@ -201,9 +207,15 @@ public class RoleManagementService {
             List<DataPolicy> current = dataPolicies.byRole(id).stream()
                     .filter(policy -> declared.contains(policy.resource()))
                     .toList();
-            if (same(current, requested)) return List.<UUID>of();
-            if (!declared.isEmpty()) dataPolicies.deleteResources(id, declared);
-            if (!requested.isEmpty()) dataPolicies.insert(id, requested);
+            if (same(current, requested)) {
+                return List.<UUID>of();
+            }
+            if (!declared.isEmpty()) {
+                dataPolicies.deleteResources(id, declared);
+            }
+            if (!requested.isEmpty()) {
+                dataPolicies.insert(id, requested);
+            }
             return roles.holders(id);
         });
         publish(affected);
@@ -225,14 +237,20 @@ public class RoleManagementService {
         Set<String> granted = requireGrantable(actor.tenantId(), codes);
         List<DataPolicy> scoped = conditions.requireValid(actor.tenantId(), policies);
         // 保留编码由数据库 CHECK 兜底，这里先拒绝，避免以 500 暴露约束错误。
-        if (RoleService.ALL_PERMISSIONS.contains(code)) throw new ForgeException(RoleErrorCode.CODE_TAKEN, code);
+        if (RoleService.ALL_PERMISSIONS.contains(code)) {
+            throw new ForgeException(RoleErrorCode.CODE_TAKEN, code);
+        }
         UUID id = UuidV7.generate();
         transactions.executeWithoutResult(status -> {
             if (roles.insertCustom(actor.tenantId(), id, code, name, actor.identityId()) == 0) {
                 throw new ForgeException(RoleErrorCode.CODE_TAKEN, code);
             }
-            if (!granted.isEmpty()) grants.grant(id, granted);
-            if (!scoped.isEmpty()) dataPolicies.insert(id, scoped);
+            if (!granted.isEmpty()) {
+                grants.grant(id, granted);
+            }
+            if (!scoped.isEmpty()) {
+                dataPolicies.insert(id, scoped);
+            }
         });
         audits.record(audit(actor, "role.create", "role", id)
                 .detail("code", code)
@@ -266,7 +284,9 @@ public class RoleManagementService {
             roles.lockTenant(actor.tenantId());
             requireCustom(actor, id);
             int changed = revoked.isEmpty() ? 0 : grants.revoke(id, revoked);
-            if (!granted.isEmpty()) changed += grants.grant(id, granted);
+            if (!granted.isEmpty()) {
+                changed += grants.grant(id, granted);
+            }
             return changed == 0 ? List.<UUID>of() : roles.holders(id);
         });
         publish(affected);
@@ -286,7 +306,9 @@ public class RoleManagementService {
         Set<String> grantable = grantableCodes(actor.tenantId());
         Set<String> current = new HashSet<>();
         for (RolePermissionRow row : grants.listByTenant(actor.tenantId())) {
-            if (row.roleId().equals(id)) current.add(row.code());
+            if (row.roleId().equals(id)) {
+                current.add(row.code());
+            }
         }
         Map<UUID, Set<String>> otherGrants = new HashMap<>();
         for (MembershipCodeRow row : grants.grantedByOtherRoles(id)) {
@@ -301,7 +323,9 @@ public class RoleManagementService {
             Set<String> lostByMember =
                     new HashSet<>(RoleService.effectivePermissions(roleCodes, union(others, current), grantable));
             lostByMember.removeAll(RoleService.effectivePermissions(roleCodes, union(others, requested), grantable));
-            if (lostByMember.isEmpty()) return;
+            if (lostByMember.isEmpty()) {
+                return;
+            }
             affected.add(membershipId);
             lost.addAll(lostByMember);
         });
@@ -348,7 +372,9 @@ public class RoleManagementService {
         requireManager(actor);
         transactions.executeWithoutResult(status -> {
             roles.lockTenant(actor.tenantId());
-            if (requireCustom(actor, id).memberCount() > 0) throw new ForgeException(RoleErrorCode.IN_USE);
+            if (requireCustom(actor, id).memberCount() > 0) {
+                throw new ForgeException(RoleErrorCode.IN_USE);
+            }
             roles.delete(actor.tenantId(), id, actor.identityId());
         });
         audits.record(audit(actor, "role.delete", "role", id).build());
@@ -358,7 +384,9 @@ public class RoleManagementService {
     public List<MemberRoles> page(TenantActor actor, long offset, int limit) {
         requireManager(actor);
         List<Member> members = memberships.page(actor.tenantId(), offset, limit);
-        if (members.isEmpty()) return List.of();
+        if (members.isEmpty()) {
+            return List.of();
+        }
         Map<UUID, List<UUID>> rolesOf = new HashMap<>();
         for (MembershipRoleRow row : roles.rolesOf(
                 actor.tenantId(), members.stream().map(Member::membershipId).toList())) {
@@ -395,10 +423,14 @@ public class RoleManagementService {
                 throw new ForgeException(RoleErrorCode.INVALID_ASSIGNMENT);
             }
             int rows = roles.revokeExcept(membershipId, assigned);
-            if (!assigned.isEmpty()) rows += roles.grant(actor.tenantId(), membershipId, assigned);
+            if (!assigned.isEmpty()) {
+                rows += roles.grant(actor.tenantId(), membershipId, assigned);
+            }
             return rows > 0;
         }));
-        if (changed) publish(List.of(membershipId));
+        if (changed) {
+            publish(List.of(membershipId));
+        }
         audits.record(audit(actor, "membership.rolesAssign", "membership", membershipId)
                 .detail("roleIds", List.copyOf(assigned))
                 .build());
@@ -417,8 +449,12 @@ public class RoleManagementService {
 
     private RoleRow requireCustom(TenantActor actor, UUID id) {
         RoleRow role = roles.find(actor.tenantId(), id);
-        if (role == null) throw new ForgeException(RoleErrorCode.NOT_FOUND);
-        if (role.builtin()) throw new ForgeException(RoleErrorCode.BUILTIN);
+        if (role == null) {
+            throw new ForgeException(RoleErrorCode.NOT_FOUND);
+        }
+        if (role.builtin()) {
+            throw new ForgeException(RoleErrorCode.BUILTIN);
+        }
         return role;
     }
 
@@ -428,34 +464,47 @@ public class RoleManagementService {
         Set<String> active = new HashSet<>(permissions.activeCodes());
         Set<String> grantable = grantableCodes(tenantId);
         for (String code : requested) {
-            if (!active.contains(code)) throw new ForgeException(RoleErrorCode.INVALID_PERMISSION, code);
-            if (!grantable.contains(code)) throw new ForgeException(RoleErrorCode.NOT_IN_PLAN, code);
+            if (!active.contains(code)) {
+                throw new ForgeException(RoleErrorCode.INVALID_PERMISSION, code);
+            }
+            if (!grantable.contains(code)) {
+                throw new ForgeException(RoleErrorCode.NOT_IN_PLAN, code);
+            }
         }
         return requested;
     }
 
     private Set<String> grantableCodes(UUID tenantId) {
         Set<String> codes = new HashSet<>();
-        for (PermissionRow row : roleService.grantablePermissions(tenantId)) codes.add(row.code());
+        for (PermissionRow row : roleService.grantablePermissions(tenantId)) {
+            codes.add(row.code());
+        }
         return codes;
     }
 
     private Set<String> declaredResources() {
         Set<String> resources = new HashSet<>();
-        for (ServiceDataResource current : permissions.currentDataResources())
+        for (ServiceDataResource current : permissions.currentDataResources()) {
             resources.add(current.resource().code());
+        }
         return resources;
     }
 
     // 已存储的条件经 jsonb 规范化，键序与空白可能与请求不同，按 JSON 树比较，避免未改动时也递增持有者的版本。
     private boolean same(List<DataPolicy> current, List<DataPolicy> requested) {
-        if (current.size() != requested.size()) return false;
+        if (current.size() != requested.size()) {
+            return false;
+        }
         for (int i = 0; i < current.size(); i++) {
             DataPolicy a = current.get(i);
             DataPolicy b = requested.get(i);
-            if (!a.resource().equals(b.resource()) || !a.scope().equals(b.scope())) return false;
+            if (!a.resource().equals(b.resource()) || !a.scope().equals(b.scope())) {
+                return false;
+            }
             if (a.condition() == null || b.condition() == null) {
-                if (!Objects.equals(a.condition(), b.condition())) return false;
+                if (!Objects.equals(a.condition(), b.condition())) {
+                    return false;
+                }
             } else if (!json.readTree(a.condition()).equals(json.readTree(b.condition()))) {
                 return false;
             }

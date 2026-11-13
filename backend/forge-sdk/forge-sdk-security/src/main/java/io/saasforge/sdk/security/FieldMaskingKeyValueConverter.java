@@ -9,7 +9,9 @@ public final class FieldMaskingKeyValueConverter extends ClassicConverter {
 
     @Override
     public String convert(ILoggingEvent event) {
-        if (event.getKeyValuePairs() == null) return "";
+        if (event.getKeyValuePairs() == null) {
+            return "";
+        }
         String quote = "NONE".equals(getFirstOption()) ? "" : "SINGLE".equals(getFirstOption()) ? "'" : "\"";
         var result = new StringBuilder();
         for (var pair : event.getKeyValuePairs()) {
@@ -28,7 +30,9 @@ public final class FieldMaskingKeyValueConverter extends ClassicConverter {
                             "Sensitive structured log value discarded because its masking policy is unavailable or failed");
                 }
             }
-            if (!result.isEmpty()) result.append(' ');
+            if (!result.isEmpty()) {
+                result.append(' ');
+            }
             result.append(pair.key).append('=').append(quote).append(value).append(quote);
         }
         return result.toString();

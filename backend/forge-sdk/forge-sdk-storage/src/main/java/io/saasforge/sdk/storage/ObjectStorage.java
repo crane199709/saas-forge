@@ -213,7 +213,9 @@ public class ObjectStorage {
      */
     public InputStream open(UUID objectId) {
         StorageObjectRecord object = requireStored(objectId);
-        if (!object.objectKey().startsWith(prefix(CurrentTenant.require()))) throw notFound(objectId);
+        if (!object.objectKey().startsWith(prefix(CurrentTenant.require()))) {
+            throw notFound(objectId);
+        }
         try {
             return s3.getObject(request -> request.bucket(properties.bucket()).key(object.objectKey()));
         } catch (NoSuchKeyException error) {
@@ -247,7 +249,9 @@ public class ObjectStorage {
         return transaction.execute(status -> {
             var now = OffsetDateTime.now(clock);
             Long quota = mapper.lockQuota();
-            if (quota != null && mapper.usedBytes(now, null) + size > quota) throw quotaExceeded(quota);
+            if (quota != null && mapper.usedBytes(now, null) + size > quota) {
+                throw quotaExceeded(quota);
+            }
             mapper.insertPending(id, key, purpose.code(), filename, type, size, now.plus(properties.uploadUrlTtl()));
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override

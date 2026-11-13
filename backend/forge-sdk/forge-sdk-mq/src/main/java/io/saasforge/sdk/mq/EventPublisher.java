@@ -54,7 +54,9 @@ public final class EventPublisher {
         // 批量导入可能在一个事务中发布上万条事件；只保留一次唤醒，不能为每行累计提交回调。
         boolean registered = TransactionSynchronizationManager.getSynchronizations().stream()
                 .anyMatch(sync -> sync instanceof OutboxWakeup wakeup && wakeup.publisher == this);
-        if (!registered) TransactionSynchronizationManager.registerSynchronization(new OutboxWakeup(this));
+        if (!registered) {
+            TransactionSynchronizationManager.registerSynchronization(new OutboxWakeup(this));
+        }
     }
 
     private static final class OutboxWakeup implements TransactionSynchronization {

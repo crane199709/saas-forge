@@ -160,7 +160,9 @@ public class TenantLifecycleService {
                                 .eq(Tenant::getStatusVersion, tenant.getStatusVersion())
                                 .isNull(Tenant::getPurgedAt)
                                 .set(Tenant::getPurgedAt, OffsetDateTime.now()));
-                if (updated == 1) publish(tenant.getId(), new TenantDeleted(tenant.getId()));
+                if (updated == 1) {
+                    publish(tenant.getId(), new TenantDeleted(tenant.getId()));
+                }
             });
         }
     }

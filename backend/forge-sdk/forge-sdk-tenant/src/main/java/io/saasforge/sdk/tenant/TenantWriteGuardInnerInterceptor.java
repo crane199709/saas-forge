@@ -25,9 +25,13 @@ final class TenantWriteGuardInnerInterceptor implements InnerInterceptor {
 
     @Override
     public void beforeUpdate(Executor executor, MappedStatement ms, Object parameter) {
-        if (TenantWriteGuard.exempted() || InterceptorIgnoreHelper.willIgnoreTenantLine(ms.getId())) return;
+        if (TenantWriteGuard.exempted() || InterceptorIgnoreHelper.willIgnoreTenantLine(ms.getId())) {
+            return;
+        }
         UUID tenantId = CurrentTenant.find().orElse(null);
-        if (tenantId == null || onlyGlobalTables(ms.getBoundSql(parameter).getSql())) return;
+        if (tenantId == null || onlyGlobalTables(ms.getBoundSql(parameter).getSql())) {
+            return;
+        }
         String status = statuses.status(tenantId);
         if (status != null && !TenantWriteGuard.WRITABLE.contains(status)) {
             throw ForgeException.withErrorMessage(

@@ -35,8 +35,9 @@ public class ServiceCredentialService {
     @Transactional
     public CreatedServiceCredentialResponse create(String service, UUID actor) {
         Objects.requireNonNull(actor, "actor");
-        if (service == null || !service.matches("[a-z][a-z0-9-]{0,99}"))
+        if (service == null || !service.matches("[a-z][a-z0-9-]{0,99}")) {
             throw new ForgeException(ServiceCredentialErrorCode.INVALID_SERVICE);
+        }
         var created = issue(service, actor);
         audit("serviceCredential.create", created.credential(), actor);
         return created;
@@ -54,14 +55,18 @@ public class ServiceCredentialService {
     public void disable(UUID id, UUID actor) {
         Objects.requireNonNull(actor, "actor");
         var credential = require(id);
-        if (mapper.disable(id, actor) != 0) audit("serviceCredential.disable", credential.response(), actor);
+        if (mapper.disable(id, actor) != 0) {
+            audit("serviceCredential.disable", credential.response(), actor);
+        }
     }
     /** 紧急轮换：同一事务创建新凭证并立即停用旧凭证；平滑部署请使用 create 后显式 disable。 */
     @Transactional
     public CreatedServiceCredentialResponse rotate(UUID id, UUID actor) {
         Objects.requireNonNull(actor, "actor");
         var previous = require(id);
-        if (mapper.disable(id, actor) != 1) throw new ForgeException(ServiceCredentialErrorCode.NOT_ACTIVE);
+        if (mapper.disable(id, actor) != 1) {
+            throw new ForgeException(ServiceCredentialErrorCode.NOT_ACTIVE);
+        }
         var created = issue(previous.service(), actor);
         audit("serviceCredential.rotate", created.credential(), actor);
         return created;
@@ -77,7 +82,9 @@ public class ServiceCredentialService {
 
     private ServiceCredentialRow require(UUID id) {
         var row = mapper.find(id);
-        if (row == null) throw new ForgeException(ServiceCredentialErrorCode.NOT_FOUND);
+        if (row == null) {
+            throw new ForgeException(ServiceCredentialErrorCode.NOT_FOUND);
+        }
         return row;
     }
 

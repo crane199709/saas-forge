@@ -58,12 +58,14 @@ public class PermissionTreeService {
 
     private static void collect(List<MenuNode> nodes, Set<String> grantable, Map<String, Set<String>> usages) {
         for (MenuNode node : nodes) {
-            if (node.permission() != null)
+            if (node.permission() != null) {
                 usages.computeIfAbsent(node.permission(), key -> new LinkedHashSet<>())
                         .add(node.code());
+            }
             for (String action : node.actions()) {
-                if (grantable.contains(action))
+                if (grantable.contains(action)) {
                     usages.computeIfAbsent(action, key -> new LinkedHashSet<>()).add(node.code());
+                }
             }
             collect(node.children(), grantable, usages);
         }

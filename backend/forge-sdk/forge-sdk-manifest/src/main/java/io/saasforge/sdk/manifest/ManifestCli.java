@@ -30,7 +30,9 @@ public final class ManifestCli {
         Map<String, String> options = new HashMap<>();
         for (String arg : args) {
             int split = arg.indexOf('=');
-            if (!arg.startsWith("--") || split < 0) throw new IllegalArgumentException("Unexpected argument: " + arg);
+            if (!arg.startsWith("--") || split < 0) {
+                throw new IllegalArgumentException("Unexpected argument: " + arg);
+            }
             options.put(arg.substring(2, split), arg.substring(split + 1));
         }
         var manifest = ResourceManifestCollector.collect(
@@ -39,23 +41,27 @@ public final class ManifestCli {
                 required(options, "base-package"),
                 Thread.currentThread().getContextClassLoader());
         Path output = Path.of(required(options, "output"));
-        if (output.toAbsolutePath().getParent() != null)
+        if (output.toAbsolutePath().getParent() != null) {
             Files.createDirectories(output.toAbsolutePath().getParent());
+        }
         Files.writeString(
                 output,
                 JsonMapper.builder().build().writerWithDefaultPrettyPrinter().writeValueAsString(manifest));
         String iamUri = options.get("iam-uri");
         if (iamUri != null) {
             String token = System.getenv("FORGE_MANIFEST_TOKEN");
-            if (token == null || token.isBlank())
+            if (token == null || token.isBlank()) {
                 throw new IllegalArgumentException("FORGE_MANIFEST_TOKEN must be set");
+            }
             new ManifestReporter(iamUri, token).report(manifest);
         }
     }
 
     private static String required(Map<String, String> options, String name) {
         String value = options.get(name);
-        if (value == null || value.isBlank()) throw new IllegalArgumentException("--" + name + " is required");
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("--" + name + " is required");
+        }
         return value;
     }
 }

@@ -75,7 +75,9 @@ public final class TaskRunHistory {
         try {
             // 同一原子快照读取 current 与锁，避免新持有者切换时误判。
             String value = redis.execute(CURRENT, List.of(key(name, "current"), lockKey(name)));
-            if (value == null) return Optional.empty();
+            if (value == null) {
+                return Optional.empty();
+            }
             TaskRun run = json.readValue(value.substring(1), Current.class).run();
             return Optional.of(value.charAt(0) == '1' ? run : interrupted(run));
         } catch (RuntimeException error) {

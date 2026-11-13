@@ -39,7 +39,9 @@ final class IamPlanImpactFixture {
         byte[] body = status == 200 ? response.getBytes(StandardCharsets.UTF_8) : new byte[0];
         exchange.getResponseHeaders().add("Content-Type", "application/json");
         exchange.sendResponseHeaders(status, status == 200 ? body.length : -1);
-        if (status == 200) exchange.getResponseBody().write(body);
+        if (status == 200) {
+            exchange.getResponseBody().write(body);
+        }
         exchange.close();
     }
 }

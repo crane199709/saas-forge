@@ -42,16 +42,21 @@ final class IamFieldMaskingPolicyProvider implements FieldMaskingPolicyProvider 
                     .uri("/internal/field-masking/{tenantId}", tenantId)
                     .retrieve()
                     .body(RESPONSE);
-            if (response == null || !ApiResponse.OK.equals(response.code()) || response.data() == null)
+            if (response == null || !ApiResponse.OK.equals(response.code()) || response.data() == null) {
                 throw unavailable();
+            }
             var policies = Map.copyOf(response.data());
             for (var entry : policies.entrySet()) {
                 var field = entry.getValue();
                 if (!entry.getKey().equals(field.path())
                         || !GRADES.contains(field.grade())
-                        || ("L4".equals(field.grade()) && field.exportAllowed())) throw unavailable();
+                        || ("L4".equals(field.grade()) && field.exportAllowed())) {
+                    throw unavailable();
+                }
                 // null 规则保留已声明字段的失败语义；执行通道不能把它视为未声明字段。
-                if (field.rule() != null) engine.validate(field.rule());
+                if (field.rule() != null) {
+                    engine.validate(field.rule());
+                }
             }
             return policies;
         } catch (RestClientException | IllegalArgumentException | NullPointerException | ForgeException error) {

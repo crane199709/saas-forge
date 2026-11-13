@@ -45,9 +45,10 @@ class TaskOpsTest extends PlatformIntegrationTest {
             assertThat(event.path("outcome").asString()).isEqualTo("SUCCESS");
             assertThat(event.path("detail").path("service").asString()).isEqualTo("demo-service");
             assertThat(event.path("detail").path("runId").asString()).isEqualTo(runId);
-            if (retry)
+            if (retry) {
                 assertThat(event.path("detail").path("targetTenantId").asString())
                         .isEqualTo(target.toString());
+            }
         }
     }
 

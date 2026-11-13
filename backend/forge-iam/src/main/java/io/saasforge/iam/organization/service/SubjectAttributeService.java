@@ -49,8 +49,9 @@ class SubjectAttributeService implements SubjectAttributeSource {
     // 直接读定义而不经 ExtendedAttributeService：后者经 SubjectChangePublisher 依赖发布明细的服务，会形成 Bean 循环依赖。
     private Map<String, String> types(UUID tenantId) {
         Map<String, String> types = new HashMap<>();
-        for (ExtendedAttributeRow definition : attributes.list(tenantId))
+        for (ExtendedAttributeRow definition : attributes.list(tenantId)) {
             types.put(definition.code(), definition.type());
+        }
         return types;
     }
 }

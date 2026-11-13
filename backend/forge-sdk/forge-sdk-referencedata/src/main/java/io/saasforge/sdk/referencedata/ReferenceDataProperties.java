@@ -24,7 +24,9 @@ public record ReferenceDataProperties(
     }
 
     private static void require(String value, String property) {
-        if (value == null || value.isBlank()) throw new IllegalStateException(property + " must be set");
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(property + " must be set");
+        }
     }
 
     /** 不输出令牌，避免写入日志。 */

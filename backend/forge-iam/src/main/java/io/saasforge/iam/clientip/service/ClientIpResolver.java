@@ -13,7 +13,9 @@ public final class ClientIpResolver {
      * 不读取 X-Forwarded-For，避免采信客户端伪造的代理链。
      */
     public static String currentIp() {
-        if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes)) return null;
+        if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes)) {
+            return null;
+        }
         var request = attributes.getRequest();
         String forwarded = request.getHeader(ClientIpHeader.NAME);
         return forwarded == null || forwarded.isBlank() ? request.getRemoteAddr() : forwarded.strip();

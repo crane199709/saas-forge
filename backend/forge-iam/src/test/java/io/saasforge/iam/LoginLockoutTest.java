@@ -483,8 +483,12 @@ class LoginLockoutTest {
         return client().post()
                 .uri(path)
                 .headers(headers -> {
-                    if (cookie != null) headers.add("Cookie", cookie);
-                    if (bearer != null) headers.setBearerAuth(bearer);
+                    if (cookie != null) {
+                        headers.add("Cookie", cookie);
+                    }
+                    if (bearer != null) {
+                        headers.setBearerAuth(bearer);
+                    }
                     if (ip != null) {
                         headers.add(ClientIpHeader.NAME, ip);
                         headers.add("X-Forwarded-For", "198.51.100.99");

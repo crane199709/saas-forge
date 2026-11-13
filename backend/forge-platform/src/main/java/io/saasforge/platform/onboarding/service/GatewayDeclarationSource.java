@@ -40,11 +40,16 @@ public class GatewayDeclarationSource {
     public Snapshot read() {
         Instant checkedAt = Instant.now();
         try {
-            if (config == null || !"UP".equals(config.getServerStatus()))
+            if (config == null || !"UP".equals(config.getServerStatus())) {
                 return unknown(checkedAt, "NACOS_UNAVAILABLE");
+            }
             String yaml = config.getConfig("forge-gateway.yaml", group, 2000);
-            if (!"UP".equals(config.getServerStatus())) return unknown(checkedAt, "NACOS_UNAVAILABLE");
-            if (yaml == null || yaml.isBlank()) return unknown(checkedAt, "GATEWAY_CONFIG_MISSING");
+            if (!"UP".equals(config.getServerStatus())) {
+                return unknown(checkedAt, "NACOS_UNAVAILABLE");
+            }
+            if (yaml == null || yaml.isBlank()) {
+                return unknown(checkedAt, "GATEWAY_CONFIG_MISSING");
+            }
             var factory = new YamlMapFactoryBean();
             factory.setResources(new ByteArrayResource(yaml.getBytes(StandardCharsets.UTF_8)));
             Map<String, Object> root = factory.getObject();
@@ -52,30 +57,37 @@ public class GatewayDeclarationSource {
             for (Object item : list(at(root, "forge", "gateway", "services"))) {
                 if (item instanceof Map<?, ?> m
                         && m.get("prefix") instanceof String prefix
-                        && m.get("realm") instanceof String realm) realms.put(prefix, realm);
+                        && m.get("realm") instanceof String realm) {
+                    realms.put(prefix, realm);
+                }
             }
             Map<String, ConfigurationEvidence> entries = new TreeMap<>();
             for (Object item : list(at(root, "spring", "cloud", "gateway", "server", "webflux", "routes"))) {
                 if (!(item instanceof Map<?, ?> route)
                         || !(route.get("uri") instanceof String uri)
-                        || !uri.matches("lb://[a-z0-9][a-z0-9-]*")) continue;
+                        || !uri.matches("lb://[a-z0-9][a-z0-9-]*")) {
+                    continue;
+                }
                 String service = uri.substring(5);
                 String prefix = null;
                 for (Object predicate : list(route.get("predicates"))) {
-                    if (predicate instanceof String p && p.matches("Path=/[a-z0-9][a-z0-9-]*/\\*\\*"))
+                    if (predicate instanceof String p && p.matches("Path=/[a-z0-9][a-z0-9-]*/\\*\\*")) {
                         prefix = p.substring(5, p.length() - 3);
-                    else if (predicate instanceof Map<?, ?> p
+                    } else if (predicate instanceof Map<?, ?> p
                             && "Path".equals(p.get("name"))
                             && p.get("args") instanceof Map<?, ?> args) {
                         Object pattern = args.get("_genkey_0");
-                        if (pattern instanceof String path && path.matches("/[a-z0-9][a-z0-9-]*/\\*\\*"))
+                        if (pattern instanceof String path && path.matches("/[a-z0-9][a-z0-9-]*/\\*\\*")) {
                             prefix = path.substring(0, path.length() - 3);
+                        }
                     }
                 }
                 List<String> missing = new ArrayList<>();
-                if (prefix == null) missing.add("ROUTE_PREFIX_MISSING");
-                else if (!Set.of("tenant", "platform").contains(realms.getOrDefault(prefix, "")))
+                if (prefix == null) {
+                    missing.add("ROUTE_PREFIX_MISSING");
+                } else if (!Set.of("tenant", "platform").contains(realms.getOrDefault(prefix, ""))) {
                     missing.add("AUTH_PREFIX_MISSING");
+                }
                 var evidence = new ConfigurationEvidence(
                         missing.isEmpty() ? "CONFIGURED" : "INCOMPLETE",
                         "NACOS_CLIENT",
@@ -83,9 +95,10 @@ public class GatewayDeclarationSource {
                         prefix,
                         List.copyOf(missing));
                 // 多条路由无法确定哪条接管 prefix，保守显示待确认，禁止误报单一路由。
-                if (entries.containsKey(service))
+                if (entries.containsKey(service)) {
                     evidence = new ConfigurationEvidence(
                             "INCOMPLETE", "NACOS_CLIENT", checkedAt, null, List.of("MULTIPLE_ROUTES"));
+                }
                 entries.put(service, evidence);
             }
             return new Snapshot(entries, null, checkedAt);
@@ -97,7 +110,9 @@ public class GatewayDeclarationSource {
     private static Object at(Map<String, Object> root, String... path) {
         Object value = root;
         for (String key : path) {
-            if (!(value instanceof Map<?, ?> map)) return null;
+            if (!(value instanceof Map<?, ?> map)) {
+                return null;
+            }
             value = map.get(key);
         }
         return value;

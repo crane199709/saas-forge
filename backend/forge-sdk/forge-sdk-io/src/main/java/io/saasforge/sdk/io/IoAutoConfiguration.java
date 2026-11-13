@@ -32,7 +32,9 @@ public final class IoAutoConfiguration {
     @Bean
     IoTaskMapper ioTaskMapper(SqlSessionTemplate session) {
         var config = session.getConfiguration();
-        if (!config.hasMapper(IoTaskMapper.class)) config.addMapper(IoTaskMapper.class);
+        if (!config.hasMapper(IoTaskMapper.class)) {
+            config.addMapper(IoTaskMapper.class);
+        }
         return session.getMapper(IoTaskMapper.class);
     }
 

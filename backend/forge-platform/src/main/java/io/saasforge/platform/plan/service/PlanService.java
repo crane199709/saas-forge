@@ -42,7 +42,9 @@ public class PlanService {
 
     public Plan get(UUID id) {
         Plan plan = plans.selectById(id);
-        if (plan == null) throw notFound(id);
+        if (plan == null) {
+            throw notFound(id);
+        }
         return plan;
     }
 
@@ -52,7 +54,9 @@ public class PlanService {
      */
     public Plan lockForAssignment(UUID id) {
         Plan plan = plans.lockShared(id);
-        if (plan == null) throw notFound(id);
+        if (plan == null) {
+            throw notFound(id);
+        }
         return plan;
     }
 
@@ -108,7 +112,9 @@ public class PlanService {
             Integer memberQuota,
             Long storageQuotaMb) {
         Plan plan = plans.lockExclusive(id);
-        if (plan == null) throw notFound(id);
+        if (plan == null) {
+            throw notFound(id);
+        }
         Set<String> granted = sorted(permissions);
         requireKnown(granted, Set.copyOf(Arrays.asList(plan.getPermissions())));
         fill(plan, name, granted, subApps, memberQuota, storageQuotaMb);
@@ -125,8 +131,12 @@ public class PlanService {
      */
     @Transactional
     public void delete(UUID id) {
-        if (plans.lockExclusive(id) == null) throw notFound(id);
-        if (usage.inUse(id)) throw new ForgeException(PlanErrorCode.IN_USE);
+        if (plans.lockExclusive(id) == null) {
+            throw notFound(id);
+        }
+        if (usage.inUse(id)) {
+            throw new ForgeException(PlanErrorCode.IN_USE);
+        }
         plans.deleteById(id);
     }
 
@@ -134,11 +144,15 @@ public class PlanService {
     private void requireKnown(Set<String> requested, Set<String> existing) {
         Set<String> added =
                 requested.stream().filter(code -> !existing.contains(code)).collect(Collectors.toSet());
-        if (added.isEmpty()) return;
+        if (added.isEmpty()) {
+            return;
+        }
         Set<String> known =
                 catalog.permissions().stream().map(CatalogPermission::code).collect(Collectors.toSet());
         for (String code : new TreeSet<>(added)) {
-            if (!known.contains(code)) throw new ForgeException(PlanErrorCode.UNKNOWN_PERMISSION, code);
+            if (!known.contains(code)) {
+                throw new ForgeException(PlanErrorCode.UNKNOWN_PERMISSION, code);
+            }
         }
     }
 

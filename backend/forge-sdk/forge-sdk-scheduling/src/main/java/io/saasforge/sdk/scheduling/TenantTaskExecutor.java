@@ -22,11 +22,15 @@ final class TenantTaskExecutor {
 
     void requireEligible(UUID tenant) {
         String status = statuses.status(tenant);
-        if (!isEligible(status)) throw new ForgeException(TaskErrorCode.TENANT_NOT_ELIGIBLE);
+        if (!isEligible(status)) {
+            throw new ForgeException(TaskErrorCode.TENANT_NOT_ELIGIBLE);
+        }
     }
 
     void execute(String name, Runnable invocation, TaskRunOutcome outcome) {
-        for (var tenant : directory.tenants()) execute(name, tenant, invocation, outcome, false);
+        for (var tenant : directory.tenants()) {
+            execute(name, tenant, invocation, outcome, false);
+        }
     }
 
     void retry(String name, UUID tenant, Runnable invocation, TaskRunOutcome outcome) {
@@ -42,7 +46,9 @@ final class TenantTaskExecutor {
             try {
                 String status = statuses.status(tenant);
                 if (!isEligible(status)) {
-                    if (retry) throw new ForgeException(TaskErrorCode.TENANT_NOT_ELIGIBLE);
+                    if (retry) {
+                        throw new ForgeException(TaskErrorCode.TENANT_NOT_ELIGIBLE);
+                    }
                     return;
                 }
                 invocation.run();

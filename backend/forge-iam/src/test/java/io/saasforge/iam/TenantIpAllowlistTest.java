@@ -228,7 +228,9 @@ class TenantIpAllowlistTest {
                     headers.setBearerAuth(token(tenant, membership));
                     headers.set(ClientIpHeader.NAME, ip);
                 });
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         return request.exchange((req, res) -> new Response(res.getStatusCode().value(), res.bodyTo(Map.class)));
     }
 

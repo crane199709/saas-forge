@@ -264,7 +264,9 @@ class MfaResetTest {
                 .post()
                 .uri(path)
                 .headers(headers -> {
-                    if (bearer != null) headers.setBearerAuth(bearer);
+                    if (bearer != null) {
+                        headers.setBearerAuth(bearer);
+                    }
                 })
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body == null ? Map.of() : body)

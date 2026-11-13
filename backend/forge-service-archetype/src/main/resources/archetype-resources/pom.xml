@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- 以 Forge BOM 为父 POM，同时继承 validate 阶段的中间件依赖门禁；业务工程保持默认门禁。 -->
+    <!-- 以 Forge BOM 为父 POM，继承 validate 阶段的 NeedBraces 与中间件依赖门禁。 -->
     <parent>
         <groupId>io.saasforge</groupId>
         <artifactId>forge-dependencies</artifactId>

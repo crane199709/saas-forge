@@ -24,7 +24,9 @@ public class MaskingDemoService {
 
     public IoTask export() {
         return excel.export(MaskedProfile.class, "敏感字段样例.xlsx", "demo profiles", rows -> {
-            for (var profile : profiles()) rows.accept(profile);
+            for (var profile : profiles()) {
+                rows.accept(profile);
+            }
         });
     }
 

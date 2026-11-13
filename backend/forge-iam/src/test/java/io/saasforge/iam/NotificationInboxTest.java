@@ -228,7 +228,9 @@ class NotificationInboxTest {
                     .toList();
             assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
             start.countDown();
-            for (var future : futures) future.get(30, TimeUnit.SECONDS);
+            for (var future : futures) {
+                future.get(30, TimeUnit.SECONDS);
+            }
         } finally {
             executor.shutdownNow();
         }
@@ -540,7 +542,9 @@ class NotificationInboxTest {
                 .method(HttpMethod.valueOf(method))
                 .uri(uri)
                 .headers(h -> h.setBearerAuth(jwt.serialize()));
-        if (body != null) request.body(body);
+        if (body != null) {
+            request.body(body);
+        }
         return request.retrieve()
                 .onStatus(HttpStatusCode::isError, (req, res) -> {})
                 .toEntity(Map.class);

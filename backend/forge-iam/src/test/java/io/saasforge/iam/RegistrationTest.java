@@ -79,7 +79,9 @@ class RegistrationTest {
         private final Map<String, Boolean> failOnce = new ConcurrentHashMap<>(Map.of("broken@example.com", true));
 
         void deliver(String target, ContactMessage message) {
-            if (failOnce.remove(target) != null) throw new IllegalStateException("channel down");
+            if (failOnce.remove(target) != null) {
+                throw new IllegalStateException("channel down");
+            }
             latest.put(target, ((VerificationMessage) message).code());
             count.incrementAndGet();
         }

@@ -44,7 +44,9 @@ final class TenantDirectoryClient {
                 throw new IllegalStateException("IAM returned an invalid tenant directory page " + page);
             }
             tenants.addAll(response.data());
-            if (page >= response.meta().page().totalPages()) return List.copyOf(tenants);
+            if (page >= response.meta().page().totalPages()) {
+                return List.copyOf(tenants);
+            }
         }
     }
 }

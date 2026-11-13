@@ -242,8 +242,11 @@ class GatewaySecurityTest {
     @NullAndEmptySource
     @ValueSource(strings = {"localhost", "::/0", "*,,", "192.0.2.0/24,"})
     void missingOrMalformedPublishedRulesRefuseEntry(String rule) throws Exception {
-        if (rule == null) redisTemplate.delete(MembershipStateKeys.tenantIpAllowlist(TENANT_ID));
-        else redisTemplate.opsForValue().set(MembershipStateKeys.tenantIpAllowlist(TENANT_ID), rule);
+        if (rule == null) {
+            redisTemplate.delete(MembershipStateKeys.tenantIpAllowlist(TENANT_ID));
+        } else {
+            redisTemplate.opsForValue().set(MembershipStateKeys.tenantIpAllowlist(TENANT_ID), rule);
+        }
         assertEnvelope(
                 call(
                         HttpMethod.GET,

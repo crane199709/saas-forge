@@ -234,7 +234,9 @@ class ObjectStorageTest {
             audits = maskingAudit.payloads(tenant, "AuditEvent").stream()
                     .filter(payload -> payload.contains(failedId))
                     .toList();
-            if (!audits.isEmpty()) break;
+            if (!audits.isEmpty()) {
+                break;
+            }
             Thread.sleep(10);
         }
         assertThat(audits)
@@ -549,7 +551,9 @@ class ObjectStorageTest {
         for (int attempt = 0; attempt < 200; attempt++) {
             var task = (Map<?, ?>)
                     exchange(tenant, HttpMethod.GET, "/io/tasks/" + id, null).get("data");
-            if (!List.of("WAITING", "RUNNING").contains(task.get("status"))) return task;
+            if (!List.of("WAITING", "RUNNING").contains(task.get("status"))) {
+                return task;
+            }
             Thread.sleep(50);
         }
         throw new AssertionError("Validation did not complete: " + id);
@@ -958,7 +962,9 @@ class ObjectStorageTest {
             audits = maskingAudit.payloads(tenant, "AuditEvent").stream()
                     .filter(payload -> payload.contains(submitted.id().toString()))
                     .toList();
-            if (!audits.isEmpty()) break;
+            if (!audits.isEmpty()) {
+                break;
+            }
             Thread.sleep(10);
         }
         assertThat(audits)
@@ -1016,7 +1022,9 @@ class ObjectStorageTest {
                     .map(payload -> JsonMapper.builder().build().readValue(payload, AuditEvent.class))
                     .filter(event -> submitted.id().toString().equals(event.resourceId()))
                     .toList();
-            if (!events.isEmpty()) break;
+            if (!events.isEmpty()) {
+                break;
+            }
             Thread.sleep(10);
         }
         assertThat(events).singleElement().satisfies(event -> {
@@ -1101,7 +1109,9 @@ class ObjectStorageTest {
         for (int attempt = 0; attempt < 100; attempt++) {
             task = (Map<?, ?>)
                     exchangeAs(admin, HttpMethod.GET, "/io/tasks/" + all, null).get("data");
-            if ("SUCCEEDED".equals(task.get("status"))) break;
+            if ("SUCCEEDED".equals(task.get("status"))) {
+                break;
+            }
             Thread.sleep(50);
         }
         assertThat(task.get("rowCount")).isEqualTo(2);
@@ -1114,8 +1124,11 @@ class ObjectStorageTest {
                 .body();
         try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(file))) {
             var names = new ArrayList<String>();
-            for (var row : workbook.getSheetAt(0))
-                if (row.getRowNum() > 0) names.add(row.getCell(3).getStringCellValue());
+            for (var row : workbook.getSheetAt(0)) {
+                if (row.getRowNum() > 0) {
+                    names.add(row.getCell(3).getStringCellValue());
+                }
+            }
             assertThat(names).contains("转介绍");
         }
         assertThat(exchangeAs(admin, HttpMethod.GET, "/io/tasks/" + id, null).get("httpStatus"))
@@ -1127,7 +1140,9 @@ class ObjectStorageTest {
 
     @Test
     void exportFailsWhenQuotaOrRowLimitIsExceeded() throws Exception {
-        for (int i = 0; i < 4; i++) createOrder(tenant);
+        for (int i = 0; i < 4; i++) {
+            createOrder(tenant);
+        }
         String id = (String) ((Map<?, ?>) exchange(tenant, HttpMethod.POST, "/orders/export", Map.of())
                         .get("data"))
                 .get("id");
@@ -1228,7 +1243,9 @@ class ObjectStorageTest {
         var task = asMember(() -> excel.importFile(OrderImportRow.class, UUID.fromString(rollback), row -> List.of()));
         assertThat(awaitValidation(task.id().toString()).get("status")).isEqualTo("AWAITING_CONFIRM");
         asMember(() -> excel.confirmImport(task.id(), OrderImportRow.class, row -> List.of(), row -> {
-            if (row.title().equals("写入失败")) throw new IllegalStateException("test rollback");
+            if (row.title().equals("写入失败")) {
+                throw new IllegalStateException("test rollback");
+            }
             orderService.create(row.title(), row.amount(), row.customerSource());
         }));
         assertThat(awaitTask(task.id().toString()).get("status")).isEqualTo("FAILED");
@@ -1423,10 +1440,14 @@ class ObjectStorageTest {
             var sheet = workbook.createSheet("订单");
             var header = sheet.createRow(0);
             String[] headers = {"标题 *", "金额 *", "客户来源"};
-            for (int i = 0; i < headers.length; i++) header.createCell(i).setCellValue(headers[i]);
+            for (int i = 0; i < headers.length; i++) {
+                header.createCell(i).setCellValue(headers[i]);
+            }
             for (int i = 0; i < rows.length; i++) {
                 var row = sheet.createRow(i + 1);
-                for (int c = 0; c < rows[i].length; c++) row.createCell(c).setCellValue(rows[i][c]);
+                for (int c = 0; c < rows[i].length; c++) {
+                    row.createCell(c).setCellValue(rows[i][c]);
+                }
             }
             workbook.write(output);
             bytes = output.toByteArray();
@@ -1469,7 +1490,9 @@ class ObjectStorageTest {
         for (int attempt = 0; attempt < 200; attempt++) {
             var task = (Map<?, ?>)
                     exchange(tenant, HttpMethod.GET, "/io/tasks/" + id, null).get("data");
-            if (List.of("SUCCEEDED", "FAILED").contains(task.get("status"))) return task;
+            if (List.of("SUCCEEDED", "FAILED").contains(task.get("status"))) {
+                return task;
+            }
             Thread.sleep(50);
         }
         throw new AssertionError("Task did not complete: " + id);
@@ -1500,7 +1523,9 @@ class ObjectStorageTest {
         for (int attempt = 0; attempt < 100; attempt++) {
             task = (Map<?, ?>)
                     exchange(tenant, HttpMethod.GET, "/io/tasks/" + id, null).get("data");
-            if (List.of("SUCCEEDED", "FAILED").contains(task.get("status"))) break;
+            if (List.of("SUCCEEDED", "FAILED").contains(task.get("status"))) {
+                break;
+            }
             Thread.sleep(100);
         }
         assertThat(task.get("status")).isEqualTo("SUCCEEDED");
@@ -1854,7 +1879,9 @@ class ObjectStorageTest {
                 .method(method)
                 .uri(path)
                 .header("Authorization", "Bearer " + TestTokens.forMembership(tenant, member));
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         return request.exchange(
                 (req, response) -> response.bodyTo(new ParameterizedTypeReference<Map<String, Object>>() {}));
     }
@@ -1863,7 +1890,9 @@ class ObjectStorageTest {
         for (int attempt = 0; attempt < 200; attempt++) {
             var task = (Map<?, ?>)
                     exchangeAs(member, HttpMethod.GET, "/io/tasks/" + id, null).get("data");
-            if (List.of("SUCCEEDED", "FAILED").contains(task.get("status"))) return task;
+            if (List.of("SUCCEEDED", "FAILED").contains(task.get("status"))) {
+                return task;
+            }
             Thread.sleep(50);
         }
         throw new AssertionError("Task did not finish");

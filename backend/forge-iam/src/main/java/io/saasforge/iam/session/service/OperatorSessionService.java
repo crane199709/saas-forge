@@ -105,8 +105,12 @@ public class OperatorSessionService {
     public Optional<PendingOperatorMfa> pendingMfa(Authentication firstFactor) {
         UUID operatorId = UUID.fromString(firstFactor.getName());
         Instant expiresAt = Instant.now().plus(TenantSessionService.PENDING_MFA_TTL);
-        if (mfa.isBound(operatorId)) return Optional.of(new PendingOperatorMfa(operatorId, expiresAt, false));
-        if (mfa.required()) return Optional.of(new PendingOperatorMfa(operatorId, expiresAt, true));
+        if (mfa.isBound(operatorId)) {
+            return Optional.of(new PendingOperatorMfa(operatorId, expiresAt, false));
+        }
+        if (mfa.required()) {
+            return Optional.of(new PendingOperatorMfa(operatorId, expiresAt, true));
+        }
         return Optional.empty();
     }
 
@@ -119,7 +123,9 @@ public class OperatorSessionService {
         UUID operatorId = requirePending(pending, false);
         String method = code != null ? LoginAudit.MFA_TOTP : LoginAudit.MFA_RECOVERY_CODE;
         try {
-            if (pending.expiredAt(Instant.now())) throw expired();
+            if (pending.expiredAt(Instant.now())) {
+                throw expired();
+            }
             if (code != null) {
                 mfa.verifyLoginCode(operatorId, code);
             } else {
@@ -137,7 +143,9 @@ public class OperatorSessionService {
     /** 「必须绑定」状态下开始绑定，返回供扫码的 {@code otpauth://} URI。 */
     public String startLoginBinding(PendingOperatorMfa pending) {
         UUID operatorId = requirePending(pending, true);
-        if (pending.expiredAt(Instant.now())) throw expired();
+        if (pending.expiredAt(Instant.now())) {
+            throw expired();
+        }
         return mfa.startBinding(operatorId);
     }
 
@@ -148,7 +156,9 @@ public class OperatorSessionService {
      */
     public BoundLogin confirmLoginBinding(PendingOperatorMfa pending, String code) {
         UUID operatorId = requirePending(pending, true);
-        if (pending.expiredAt(Instant.now())) throw expired();
+        if (pending.expiredAt(Instant.now())) {
+            throw expired();
+        }
         List<String> recoveryCodes = mfa.confirmLoginBinding(operatorId, code);
         return new BoundLogin(authenticated(operatorId, true), recoveryCodes);
     }

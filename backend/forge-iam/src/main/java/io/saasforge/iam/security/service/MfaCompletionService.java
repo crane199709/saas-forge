@@ -33,7 +33,9 @@ public class MfaCompletionService {
      */
     public void completeAuthorization(UUID identityId, String accessToken) {
         OAuth2Authorization found = authorizations.findByToken(accessToken, OAuth2TokenType.ACCESS_TOKEN);
-        if (found == null) return;
+        if (found == null) {
+            return;
+        }
         // 与换码、刷新互斥：并发刷新轮换了 Token 后，用旧快照保存会把轮换掉的 Token 写回。
         String key = RedisAuthorizationService.grantLockKey(found.getId());
         String owner = authorizations.tryLock(key);
@@ -44,7 +46,9 @@ public class MfaCompletionService {
         }
         try {
             OAuth2Authorization authorization = authorizations.findById(found.getId());
-            if (authorization == null) return;
+            if (authorization == null) {
+                return;
+            }
             Authentication principal = authorization.getAttribute(Principal.class.getName());
             if (principal == null
                     || !identityId.toString().equals(principal.getName())
@@ -77,14 +81,20 @@ public class MfaCompletionService {
         if (owner == null) {
             // 正在换码或刷新：不能跳过，否则这条授权继续带着标记。删除后在途操作保存失败，须重新登录。
             OAuth2Authorization busy = authorizations.findById(authorizationId);
-            if (busy != null) authorizations.remove(busy);
+            if (busy != null) {
+                authorizations.remove(busy);
+            }
             return;
         }
         try {
             OAuth2Authorization authorization = authorizations.findById(authorizationId);
-            if (authorization == null) return;
+            if (authorization == null) {
+                return;
+            }
             Authentication principal = authorization.getAttribute(Principal.class.getName());
-            if (!MfaAuthority.completed(principal)) return;
+            if (!MfaAuthority.completed(principal)) {
+                return;
+            }
             authorizations.save(OAuth2Authorization.from(authorization)
                     .attribute(Principal.class.getName(), MfaAuthority.revoke(principal))
                     .build());

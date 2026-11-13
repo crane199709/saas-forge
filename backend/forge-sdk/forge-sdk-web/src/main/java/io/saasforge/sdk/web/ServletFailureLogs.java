@@ -28,7 +28,9 @@ final class ServletFailureLogs {
 
     static void write(Logger logger, HttpServletRequest request, ApiResponse<?> body, Level level, Throwable failure) {
         String logged = FailureLogs.class.getName();
-        if (body.httpStatus() < 400 || Boolean.TRUE.equals(request.getAttribute(logged))) return;
+        if (body.httpStatus() < 400 || Boolean.TRUE.equals(request.getAttribute(logged))) {
+            return;
+        }
         Object original = request.getAttribute(RequestDispatcher.ERROR_REQUEST_URI);
         Object pattern = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
         String route =

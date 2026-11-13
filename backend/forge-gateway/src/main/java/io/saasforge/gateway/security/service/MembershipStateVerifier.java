@@ -46,7 +46,9 @@ public class MembershipStateVerifier {
                         return Mono.error(new BadJwtException("Membership version or tenant status changed"));
                     }
                     try {
-                        if (TenantIpAllowlist.decode(state.get(2)).allows(clientIp)) return Mono.just(jwt);
+                        if (TenantIpAllowlist.decode(state.get(2)).allows(clientIp)) {
+                            return Mono.just(jwt);
+                        }
                     } catch (IllegalArgumentException ignored) {
                         // 缺失或非法发布值与限制不匹配一样拒绝，绝不能退回无限制。
                     }

@@ -42,14 +42,18 @@ final class TestMasking {
                                     !"L4".equals(field.grade())));
                 }
                 String failure = FAILURES.get(tenant);
-                if ("missingField".equals(failure)) policies.remove("profile.idCard");
-                if ("missingRule".equals(failure))
+                if ("missingField".equals(failure)) {
+                    policies.remove("profile.idCard");
+                }
+                if ("missingRule".equals(failure)) {
                     policies.put("profile.idCard", new EffectiveFieldPolicy("profile.idCard", "L3", null, true));
-                if ("engine".equals(failure))
+                }
+                if ("engine".equals(failure)) {
                     policies.put(
                             "profile.idCard",
                             new EffectiveFieldPolicy(
                                     "profile.idCard", "L3", new MaskingRule("keepFirst", 100, null), true));
+                }
                 var changes = CHANGING.get(tenant);
                 if (changes != null && changes.getAndIncrement() > 0) {
                     policies.replaceAll((path, policy) -> new EffectiveFieldPolicy(

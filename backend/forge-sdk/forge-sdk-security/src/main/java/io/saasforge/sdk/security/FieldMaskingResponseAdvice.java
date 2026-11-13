@@ -38,7 +38,9 @@ final class FieldMaskingResponseAdvice implements ResponseBodyAdvice<Object>, We
         if (response instanceof ServletServerHttpResponse servlet) {
             var selective = WebUtils.getNativeResponse(
                     servlet.getServletResponse(), FieldMaskingResponseFilter.SelectiveResponse.class);
-            if (selective != null) selective.enable();
+            if (selective != null) {
+                selective.enable();
+            }
         }
         return body;
     }
@@ -56,7 +58,9 @@ final class FieldMaskingResponseAdvice implements ResponseBodyAdvice<Object>, We
             var safe = ForgeException.withErrorMessage(FrameworkErrorCode.SYSTEM_ERROR, "Online field masking failed");
             for (var resolver : delegates) {
                 var result = resolver.resolveException(request, response, handler, safe);
-                if (result != null) return result;
+                if (result != null) {
+                    return result;
+                }
             }
             return null;
         });

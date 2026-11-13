@@ -75,7 +75,9 @@ class TenantTaskExecutionTest {
 
     @AfterEach
     void cleanup() {
-        if (iam != null) iam.stop(0);
+        if (iam != null) {
+            iam.stop(0);
+        }
         redis.delete(redis.keys("*"));
     }
 
@@ -443,7 +445,9 @@ class TenantTaskExecutionTest {
             UUID tenant = CurrentTenant.require();
             attempts.add(tenant);
             threads.add(Thread.currentThread().getName());
-            if (tenant.equals(failure)) throw new IllegalStateException("Expected tenant failure");
+            if (tenant.equals(failure)) {
+                throw new IllegalStateException("Expected tenant failure");
+            }
         }
     }
 

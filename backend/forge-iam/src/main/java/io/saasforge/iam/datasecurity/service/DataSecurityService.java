@@ -101,7 +101,9 @@ public class DataSecurityService implements TenantDataCleaner {
         mapper.lock();
         platformManage(actor);
         validateRule(rule);
-        if (mapper.rule(code) != null) throw new ForgeException(DataSecurityErrorCode.RULE_CODE_TAKEN);
+        if (mapper.rule(code) != null) {
+            throw new ForgeException(DataSecurityErrorCode.RULE_CODE_TAKEN);
+        }
         mapper.createRule(UuidV7.generate(), code, name, rule, actor);
         audit(actor, "masking-rule.create", "maskingRule", code);
         return requireRule(code).response();
@@ -139,8 +141,9 @@ public class DataSecurityService implements TenantDataCleaner {
         mapper.lock();
         platformManage(actor);
         requireRule(code);
-        if (mapper.updateGrade(grade, code, actor) != 1)
+        if (mapper.updateGrade(grade, code, actor) != 1) {
             throw new ForgeException(DataSecurityErrorCode.GRADE_NOT_FOUND);
+        }
         audit(actor, "data-grade.update", "dataGrade", grade);
         return mapper.grades().stream()
                 .filter(value -> value.grade().equals(grade))
@@ -167,8 +170,9 @@ public class DataSecurityService implements TenantDataCleaner {
         mapper.lock();
         tenantManage(actor);
         requireField(service, path);
-        if (mapper.resetOverride(actor.tenantId(), service, path, actor.identityId()) > 0)
+        if (mapper.resetOverride(actor.tenantId(), service, path, actor.identityId()) > 0) {
             tenantAudit(actor, "field-masking.reset", service, path);
+        }
     }
 
     public MaskingPreview platformPreview(UUID actor, String code, String value) {
@@ -187,9 +191,13 @@ public class DataSecurityService implements TenantDataCleaner {
         Map<String, RuleRow> rules = ruleMap();
         Map<String, EffectiveFieldPolicy> result = new HashMap<>();
         for (FieldResponse field : resolve(tenantId)) {
-            if (!field.service().equals(service)) continue;
+            if (!field.service().equals(service)) {
+                continue;
+            }
             RuleRow row = rules.get(field.effectiveRule());
-            if (row != null) validateRule(row.rule());
+            if (row != null) {
+                validateRule(row.rule());
+            }
             result.put(
                     field.path(),
                     new EffectiveFieldPolicy(
@@ -204,11 +212,14 @@ public class DataSecurityService implements TenantDataCleaner {
         mapper.lock();
         mapper.rules().forEach(row -> validateRule(row.rule()));
         var grades = mapper.grades();
-        if (grades.size() != 4) throw new ForgeException(DataSecurityErrorCode.INVALID_REFERENCE);
+        if (grades.size() != 4) {
+            throw new ForgeException(DataSecurityErrorCode.INVALID_REFERENCE);
+        }
         grades.forEach(grade -> requireReference(grade.defaultRule()));
         permissions.currentSensitiveFields().forEach(field -> {
-            if (field.field().defaultRule() != null)
+            if (field.field().defaultRule() != null) {
                 requireReference(field.field().defaultRule());
+            }
         });
         var currentFields = permissions.currentSensitiveFields().stream()
                 .map(field -> key(field.service(), field.field().path()))
@@ -262,8 +273,9 @@ public class DataSecurityService implements TenantDataCleaner {
                 .collect(Collectors.toSet());
         for (UUID tenant : tenants.ids()) {
             if (readTenantOverrides(tenant).stream()
-                    .anyMatch(row -> row.ruleCode().equals(code) && fields.contains(key(row.service(), row.path()))))
+                    .anyMatch(row -> row.ruleCode().equals(code) && fields.contains(key(row.service(), row.path())))) {
                 return true;
+            }
         }
         return false;
     }
@@ -278,8 +290,9 @@ public class DataSecurityService implements TenantDataCleaner {
     private void requireField(String service, String path) {
         if (permissions.currentSensitiveFields().stream()
                 .noneMatch(field ->
-                        field.service().equals(service) && field.field().path().equals(path)))
+                        field.service().equals(service) && field.field().path().equals(path))) {
             throw new ForgeException(DataSecurityErrorCode.FIELD_NOT_FOUND);
+        }
     }
 
     private List<RuleResponse> rules() {
@@ -304,19 +317,24 @@ public class DataSecurityService implements TenantDataCleaner {
 
     private RuleRow requireRule(String code) {
         RuleRow row = mapper.rule(code);
-        if (row == null) throw new ForgeException(DataSecurityErrorCode.RULE_NOT_FOUND);
+        if (row == null) {
+            throw new ForgeException(DataSecurityErrorCode.RULE_NOT_FOUND);
+        }
         return row;
     }
 
     private void requireReference(String code) {
-        if (mapper.rule(code) == null) throw new ForgeException(DataSecurityErrorCode.INVALID_REFERENCE);
+        if (mapper.rule(code) == null) {
+            throw new ForgeException(DataSecurityErrorCode.INVALID_REFERENCE);
+        }
     }
 
     private void validateRule(MaskingRule rule) {
         try {
             engine.validate(rule);
-            if (rule.replacement() != null && rule.replacement().length() > 256)
+            if (rule.replacement() != null && rule.replacement().length() > 256) {
                 throw new ForgeException(DataSecurityErrorCode.INVALID_RULE);
+            }
         } catch (ForgeException error) {
             throw new ForgeException(DataSecurityErrorCode.INVALID_RULE);
         }
@@ -334,8 +352,9 @@ public class DataSecurityService implements TenantDataCleaner {
     private void tenantRead(TenantActor actor) {
         var granted = roles.grantsOf(actor.membershipId()).permissions();
         if (!granted.contains(IamPermissions.DATA_SECURITY_READ)
-                && !granted.contains(IamPermissions.DATA_SECURITY_MANAGE))
+                && !granted.contains(IamPermissions.DATA_SECURITY_MANAGE)) {
             throw new ForgeException(FrameworkErrorCode.AUTH_FORBIDDEN);
+        }
     }
 
     private void tenantManage(TenantActor actor) {

@@ -474,7 +474,9 @@ class ResourceManifestTest {
         for (Object node : nodes) {
             codes.add((String) ((Map<?, ?>) node).get("code"));
             Object children = ((Map<?, ?>) node).get("children");
-            if (children != null) collect((List<?>) children, codes);
+            if (children != null) {
+                collect((List<?>) children, codes);
+            }
         }
     }
 

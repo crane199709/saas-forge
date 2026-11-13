@@ -18,7 +18,9 @@ public record SchedulingProperties(String iamUri, String token) {
     }
 
     private static void require(String value, String property) {
-        if (value == null || value.isBlank()) throw new IllegalStateException(property + " must be set");
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(property + " must be set");
+        }
     }
 
     /** 避免令牌被配置诊断日志输出。 */

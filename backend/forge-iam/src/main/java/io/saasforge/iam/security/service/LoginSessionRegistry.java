@@ -33,7 +33,9 @@ public class LoginSessionRegistry {
         Set<String> ids = redis.opsForSet().members(key);
         if (ids != null) {
             for (String id : ids) {
-                if (sessions.findById(id) == null) redis.opsForSet().remove(key, id);
+                if (sessions.findById(id) == null) {
+                    redis.opsForSet().remove(key, id);
+                }
             }
         }
         redis.opsForSet().add(key, sessionId);
@@ -48,7 +50,9 @@ public class LoginSessionRegistry {
     public void invalidateAll(String principalName) {
         String key = PREFIX + principalName;
         Set<String> ids = redis.opsForSet().members(key);
-        if (ids == null) return;
+        if (ids == null) {
+            return;
+        }
         ids.forEach(sessions::deleteById);
         redis.delete(key);
     }

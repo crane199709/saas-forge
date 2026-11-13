@@ -14,7 +14,9 @@ final class StreamingWorkbook extends SXSSFWorkbook {
     @Override
     public void close() throws IOException {
         try {
-            for (var sheet : this) ((SXSSFSheet) sheet).flushRows();
+            for (var sheet : this) {
+                ((SXSSFSheet) sheet).flushRows();
+            }
         } finally {
             super.close();
         }

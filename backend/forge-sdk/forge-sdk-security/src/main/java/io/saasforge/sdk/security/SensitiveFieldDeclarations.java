@@ -32,15 +32,22 @@ public final class SensitiveFieldDeclarations {
                 Map<String, SensitiveField> recordFields = new HashMap<>();
                 for (var field : type.getDeclaredFields()) {
                     var annotation = field.getAnnotation(SensitiveField.class);
-                    if (annotation == null) continue;
+                    if (annotation == null) {
+                        continue;
+                    }
                     fields.add(declaration(annotation));
-                    if (type.isRecord()) recordFields.put(field.getName(), annotation);
+                    if (type.isRecord()) {
+                        recordFields.put(field.getName(), annotation);
+                    }
                 }
                 for (var method : type.getDeclaredMethods()) {
                     var annotation = method.getAnnotation(SensitiveField.class);
-                    if (annotation == null) continue;
-                    if (method.getParameterCount() == 0 && annotation.equals(recordFields.get(method.getName())))
+                    if (annotation == null) {
                         continue;
+                    }
+                    if (method.getParameterCount() == 0 && annotation.equals(recordFields.get(method.getName()))) {
+                        continue;
+                    }
                     fields.add(declaration(annotation));
                 }
             } catch (ClassNotFoundException | LinkageError error) {

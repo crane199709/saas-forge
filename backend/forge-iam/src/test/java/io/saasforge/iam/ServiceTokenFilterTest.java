@@ -214,7 +214,9 @@ class ServiceTokenFilterTest {
                 .uri("/internal/services")
                 .header("traceparent", "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01")
                 .headers(headers -> {
-                    if (token != null) headers.setBearerAuth(token);
+                    if (token != null) {
+                        headers.setBearerAuth(token);
+                    }
                 })
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, (request, response) -> {})

@@ -16,7 +16,9 @@ final class SharedContainers {
 
     static Redis redis() {
         int database = DATABASES.getAndIncrement();
-        if (database >= 16) throw new IllegalStateException("Redis test databases exhausted");
+        if (database >= 16) {
+            throw new IllegalStateException("Redis test databases exhausted");
+        }
         return new Redis(database);
     }
 

@@ -19,7 +19,9 @@ public final class FailureLogs {
      */
     public static void write(
             Logger logger, Level level, String method, String route, ApiResponse<?> body, Throwable failure) {
-        if (body.httpStatus() < 400) return;
+        if (body.httpStatus() < 400) {
+            return;
+        }
         boolean serverError = body.httpStatus() >= 500;
         // 路径可能来自未匹配的请求，不能让查询值或控制字符进入单行摘要。
         String path = route == null ? null : route.split("[?#]", 2)[0];
@@ -35,7 +37,9 @@ public final class FailureLogs {
     }
 
     private static String clean(String value) {
-        if (value == null) return "-";
+        if (value == null) {
+            return "-";
+        }
         return value.substring(0, Math.min(value.length(), 512)).replaceAll("[\\p{Cntrl}\\s]", "_");
     }
 }

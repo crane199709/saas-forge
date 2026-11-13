@@ -51,7 +51,9 @@ final class TaskRunner implements AutoCloseable {
     TaskTriggerResponse manual(
             String name, TaskRun.Type type, UUID operatorId, UUID targetTenantId, Consumer<TaskRunOutcome> invocation) {
         String token = UUID.randomUUID().toString();
-        if (!locks.acquire(name, token)) throw new ForgeException(TaskErrorCode.ALREADY_RUNNING);
+        if (!locks.acquire(name, token)) {
+            throw new ForgeException(TaskErrorCode.ALREADY_RUNNING);
+        }
         TaskRun run = submit(
                 name,
                 token,

@@ -16,7 +16,9 @@ public record IamCatalogProperties(String uri, String token) {
     }
 
     private static void require(String value, String property) {
-        if (value == null || value.isBlank()) throw new IllegalStateException(property + " must be set");
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(property + " must be set");
+        }
     }
 
     @Override

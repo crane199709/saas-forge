@@ -30,10 +30,14 @@ class ServiceCredentialArchitectureTest {
         Set<String> checked = new HashSet<>();
         while (!pending.isEmpty()) {
             JavaClass type = pending.remove();
-            if (!checked.add(type.getName())) continue;
+            if (!checked.add(type.getName())) {
+                continue;
+            }
             // 配置只包含已弃用静态引导凭证，失败审计只保存限流键；二者不缓存数据库认证状态。
             if (type.isEquivalentTo(ManifestProperties.class)
-                    || type.isEquivalentTo(ServiceCredentialFailureAudit.class)) continue;
+                    || type.isEquivalentTo(ServiceCredentialFailureAudit.class)) {
+                continue;
+            }
             assertThat(type.isAnnotatedWith(Cacheable.class) || type.isMetaAnnotatedWith(Cacheable.class))
                     .as("%s cannot cache authentication", type.getName())
                     .isFalse();
@@ -60,8 +64,12 @@ class ServiceCredentialArchitectureTest {
                     "org.springframework.data.redis.",
                     "com.github.benmanes.caffeine.",
                     "com.google.common.cache."
-                }) assertThat(name).doesNotStartWith(prefix);
-                if (name.startsWith("io.saasforge.iam.")) pending.add(dependency.getTargetClass());
+                }) {
+                    assertThat(name).doesNotStartWith(prefix);
+                }
+                if (name.startsWith("io.saasforge.iam.")) {
+                    pending.add(dependency.getTargetClass());
+                }
             });
         }
         assertThat(checked).contains(ServiceCredentialAuthentication.class.getName());

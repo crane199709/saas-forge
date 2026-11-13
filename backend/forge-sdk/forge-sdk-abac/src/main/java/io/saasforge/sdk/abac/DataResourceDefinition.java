@@ -161,7 +161,9 @@ public final class DataResourceDefinition {
      * @return 如 {@code resource.ownerId → o.owner_id}
      */
     public Map<String, String> columns(String qualifier) {
-        if (qualifier == null) return columns;
+        if (qualifier == null) {
+            return columns;
+        }
         var qualified = new HashMap<String, String>();
         columns.forEach((name, column) -> qualified.put(name, qualifier + "." + column));
         return qualified;

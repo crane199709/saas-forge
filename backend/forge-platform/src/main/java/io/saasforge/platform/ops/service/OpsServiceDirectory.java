@@ -34,7 +34,9 @@ public class OpsServiceDirectory {
     public List<String> services() {
         try {
             var response = client.get().uri("/internal/services").retrieve().body(RESPONSE);
-            if (response == null || response.data() == null) throw new ForgeException(OpsErrorCode.CATALOG_UNAVAILABLE);
+            if (response == null || response.data() == null) {
+                throw new ForgeException(OpsErrorCode.CATALOG_UNAVAILABLE);
+            }
             return response.data();
         } catch (RestClientException error) {
             throw new ForgeException(OpsErrorCode.CATALOG_UNAVAILABLE);

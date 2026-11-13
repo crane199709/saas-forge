@@ -64,8 +64,12 @@ final class PlatformMfaClient {
         return client().post()
                 .uri(path)
                 .headers(headers -> {
-                    if (cookie != null) headers.add("Cookie", cookie);
-                    if (bearer != null) headers.setBearerAuth(bearer);
+                    if (cookie != null) {
+                        headers.add("Cookie", cookie);
+                    }
+                    if (bearer != null) {
+                        headers.setBearerAuth(bearer);
+                    }
                 })
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body == null ? Map.of() : body)
@@ -179,7 +183,9 @@ final class PlatformMfaClient {
         var valid = List.of(code(secret, -1), code(secret, 0), code(secret, 1), code(secret, 2));
         for (int candidate = 0; ; candidate++) {
             String code = "%06d".formatted(candidate);
-            if (!valid.contains(code)) return code;
+            if (!valid.contains(code)) {
+                return code;
+            }
         }
     }
 

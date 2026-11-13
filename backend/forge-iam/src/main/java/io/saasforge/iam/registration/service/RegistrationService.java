@@ -32,7 +32,9 @@ public class RegistrationService {
 
     // 注册会如实提示邮箱或手机号已占用：提交注册时同样要提示，在发送前隐藏没有意义。
     public CodeDelivery sendCode(String target) {
-        if (identities.existsContact(target)) throw conflict(RegistrationErrorCode.CONTACT_TAKEN);
+        if (identities.existsContact(target)) {
+            throw conflict(RegistrationErrorCode.CONTACT_TAKEN);
+        }
         return verifications.issue(VerificationPurpose.REGISTER, target, true);
     }
 
@@ -57,8 +59,12 @@ public class RegistrationService {
     }
 
     private void ensureAvailable(String account, String target) {
-        if (identities.existsAccount(account)) throw conflict(RegistrationErrorCode.ACCOUNT_TAKEN);
-        if (identities.existsContact(target)) throw conflict(RegistrationErrorCode.CONTACT_TAKEN);
+        if (identities.existsAccount(account)) {
+            throw conflict(RegistrationErrorCode.ACCOUNT_TAKEN);
+        }
+        if (identities.existsContact(target)) {
+            throw conflict(RegistrationErrorCode.CONTACT_TAKEN);
+        }
     }
 
     private static ForgeException conflict(RegistrationErrorCode code) {

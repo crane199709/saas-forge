@@ -64,8 +64,11 @@ public class RequestLogContext {
         values.keySet().forEach(key -> previous.put(key, MDC.get(key)));
         values.forEach(MDC::put);
         return () -> previous.forEach((key, value) -> {
-            if (value == null) MDC.remove(key);
-            else MDC.put(key, value);
+            if (value == null) {
+                MDC.remove(key);
+            } else {
+                MDC.put(key, value);
+            }
         });
     }
 

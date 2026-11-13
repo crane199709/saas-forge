@@ -74,7 +74,9 @@ public class AccessService {
 
     private static void collectApps(List<MenuNode> nodes, Set<String> apps) {
         for (MenuNode node : nodes) {
-            if (node.app() != null) apps.add(node.app());
+            if (node.app() != null) {
+                apps.add(node.app());
+            }
             collectApps(node.children(), apps);
         }
     }

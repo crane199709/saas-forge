@@ -53,12 +53,14 @@ public final class ManifestReporter {
                     .retrieve()
                     .toEntity(String.class);
             if (response.getStatusCode().value() != 200
-                    && response.getStatusCode().value() != 201)
+                    && response.getStatusCode().value() != 201) {
                 throw new ManifestReportException(ManifestFailure.UNEXPECTED_RESPONSE);
+            }
             try {
                 var body = JsonMapper.builder().build().readTree(response.getBody());
-                if (body == null || !"ok".equals(body.path("code").asString("")))
+                if (body == null || !"ok".equals(body.path("code").asString(""))) {
                     throw new ManifestReportException(ManifestFailure.UNEXPECTED_RESPONSE);
+                }
             } catch (RuntimeException invalid) {
                 throw new ManifestReportException(ManifestFailure.UNEXPECTED_RESPONSE);
             }

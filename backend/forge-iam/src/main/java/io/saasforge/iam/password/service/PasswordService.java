@@ -129,7 +129,9 @@ public class PasswordService {
             throw currentInvalid();
         }
         policy.checkIdentity(newPassword, identity.account(), identity.email(), identity.phone());
-        if (!identities.changePassword(identityId, passwords.encode(newPassword), identityId)) throw currentInvalid();
+        if (!identities.changePassword(identityId, passwords.encode(newPassword), identityId)) {
+            throw currentInvalid();
+        }
         revokeIdentity(identityId, authorizationOf(accessToken));
         audits.record(identityAudit(CHANGE, identityId));
     }
@@ -143,7 +145,9 @@ public class PasswordService {
     public void changeOperatorPassword(
             UUID operatorId, String currentPassword, String newPassword, String accessToken) {
         OperatorPassword operator = operators.findActivePassword(operatorId);
-        if (operator == null) throw currentInvalid();
+        if (operator == null) {
+            throw currentInvalid();
+        }
         LockoutTarget target = LockoutTarget.operator(operatorId);
         lockout.check(target);
         checkIdentifiers(AuditRealm.PLATFORM, operator.account());
@@ -206,7 +210,9 @@ public class PasswordService {
     public void reset(String resetToken, String newPassword, String code, String recoveryCode) {
         String key = resetKey(resetToken);
         String stored = redis.opsForValue().get(key);
-        if (stored == null) throw resetExpired();
+        if (stored == null) {
+            throw resetExpired();
+        }
         UUID identityId = UUID.fromString(stored);
         IdentityPassword identity =
                 identities.findActivePassword(identityId).orElseThrow(PasswordService::resetExpired);
@@ -220,9 +226,13 @@ public class PasswordService {
             verifyResetMfa(identityId, code, recoveryCode);
         }
         // 凭证在最后一刻才作废：并发提交同一凭证时只有一个能设置密码。
-        if (redis.opsForValue().getAndDelete(key) == null) throw resetExpired();
+        if (redis.opsForValue().getAndDelete(key) == null) {
+            throw resetExpired();
+        }
         // 忘记密码没有认证上下文，标准列操作人为 null。
-        if (!identities.changePassword(identityId, passwords.encode(newPassword), null)) throw resetExpired();
+        if (!identities.changePassword(identityId, passwords.encode(newPassword), null)) {
+            throw resetExpired();
+        }
         revokeIdentity(identityId, null);
         audits.record(identityAudit(RESET, identityId));
     }
@@ -247,7 +257,9 @@ public class PasswordService {
     // 账号没有登记的标识（如未填手机号）为 null。
     private void checkIdentifiers(AuditRealm realm, String... identifiers) {
         for (String identifier : identifiers) {
-            if (identifier != null) lockout.check(LockoutTarget.identifier(realm, identifier));
+            if (identifier != null) {
+                lockout.check(LockoutTarget.identifier(realm, identifier));
+            }
         }
     }
 

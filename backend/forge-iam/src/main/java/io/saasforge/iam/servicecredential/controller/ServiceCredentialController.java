@@ -26,8 +26,9 @@ class ServiceCredentialController {
     @GetMapping
     ApiResponse<List<ServiceCredentialResponse>> list(
             @RequestParam(required = false) String service, @RequestParam(required = false) String status) {
-        if (status != null && !List.of("active", "disabled").contains(status))
+        if (status != null && !List.of("active", "disabled").contains(status)) {
             throw new ForgeException(ServiceCredentialErrorCode.INVALID_STATUS);
+        }
         return ApiResponse.ok(credentials.list(service).stream()
                 .filter(row -> status == null || status.equals(row.status()))
                 .toList());

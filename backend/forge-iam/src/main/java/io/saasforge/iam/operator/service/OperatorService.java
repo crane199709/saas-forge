@@ -54,7 +54,9 @@ public class OperatorService {
      */
     public OperatorRow get(UUID id) {
         OperatorRow operator = operators.find(id);
-        if (operator == null) throw new ForgeException(OperatorErrorCode.NOT_FOUND);
+        if (operator == null) {
+            throw new ForgeException(OperatorErrorCode.NOT_FOUND);
+        }
         return operator;
     }
 
@@ -73,8 +75,9 @@ public class OperatorService {
 
     /** @throws ForgeException 404 {@code operator.notFound} */
     public void update(UUID id, String displayName, String region, UUID actor) {
-        if (operators.update(id, displayName, region, actor) == 0)
+        if (operators.update(id, displayName, region, actor) == 0) {
             throw new ForgeException(OperatorErrorCode.NOT_FOUND);
+        }
     }
 
     /**

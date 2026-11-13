@@ -41,7 +41,9 @@ public final class ManifestReporting implements AutoCloseable {
     }
     /** 启动一次上报，重复的 Ready 事件不会生成第二套任务。 */
     public synchronized void start(ResourceManifest manifest) {
-        if (!enabled || closed || !status.phase().equals("NOT_STARTED")) return;
+        if (!enabled || closed || !status.phase().equals("NOT_STARTED")) {
+            return;
+        }
         update("REPORTING");
         executor.execute(() -> attempt(manifest));
     }
@@ -52,7 +54,9 @@ public final class ManifestReporting implements AutoCloseable {
 
     private void attempt(ResourceManifest manifest) {
         synchronized (this) {
-            if (closed) return;
+            if (closed) {
+                return;
+            }
             status = new OnboardingStatus(
                     enabled,
                     status.reportedVersion(),
@@ -71,7 +75,9 @@ public final class ManifestReporting implements AutoCloseable {
             failure = ManifestFailure.UNEXPECTED_RESPONSE;
         }
         synchronized (this) {
-            if (closed) return;
+            if (closed) {
+                return;
+            }
             if (failure == null) {
                 status = new OnboardingStatus(
                         enabled,
@@ -112,6 +118,8 @@ public final class ManifestReporting implements AutoCloseable {
     public synchronized void close() {
         closed = true;
         executor.shutdownNow();
-        if (enabled && !status.phase().equals("REPORTED") && !status.phase().equals("EXHAUSTED")) update("STOPPED");
+        if (enabled && !status.phase().equals("REPORTED") && !status.phase().equals("EXHAUSTED")) {
+            update("STOPPED");
+        }
     }
 }

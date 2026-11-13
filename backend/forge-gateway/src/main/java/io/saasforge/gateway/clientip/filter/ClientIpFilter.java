@@ -44,7 +44,9 @@ class ClientIpFilter implements WebFilter {
                 .mutate()
                 .headers(headers -> {
                     headers.remove(ClientIpHeader.NAME);
-                    if (client != null) headers.set(ClientIpHeader.NAME, client);
+                    if (client != null) {
+                        headers.set(ClientIpHeader.NAME, client);
+                    }
                 })
                 .build();
         return chain.filter(exchange.mutate().request(request).build());
@@ -52,13 +54,19 @@ class ClientIpFilter implements WebFilter {
 
     private String clientOf(ServerHttpRequest request) {
         InetSocketAddress remote = request.getRemoteAddress();
-        if (remote == null) return null;
+        if (remote == null) {
+            return null;
+        }
         String client = remote.getHostString();
-        if (!trustedProxies.isTrusted(client)) return client;
+        if (!trustedProxies.isTrusted(client)) {
+            return client;
+        }
         List<String> forwarded = forwardedAddresses(request);
         for (int i = forwarded.size() - 1; i >= 0; i--) {
             client = forwarded.get(i);
-            if (!trustedProxies.isTrusted(client)) return client;
+            if (!trustedProxies.isTrusted(client)) {
+                return client;
+            }
         }
         return client;
     }
@@ -68,7 +76,9 @@ class ClientIpFilter implements WebFilter {
         List<String> addresses = new ArrayList<>();
         for (String value : request.getHeaders().getOrEmpty("X-Forwarded-For")) {
             for (String address : value.split(",")) {
-                if (!address.isBlank()) addresses.add(address.strip());
+                if (!address.isBlank()) {
+                    addresses.add(address.strip());
+                }
             }
         }
         return addresses;

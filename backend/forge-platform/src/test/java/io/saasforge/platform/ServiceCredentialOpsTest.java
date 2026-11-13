@@ -73,7 +73,9 @@ class ServiceCredentialOpsTest extends PlatformIntegrationTest {
                 .method(HttpMethod.valueOf(method))
                 .uri("/service-credentials" + path)
                 .headers(h -> h.setBearerAuth(token));
-        if (body != null) request.body(body);
+        if (body != null) {
+            request.body(body);
+        }
         return request.exchange((req, response) -> {
             assertThat(response.getStatusCode().value()).isEqualTo(status);
             return response.bodyTo(Map.class);

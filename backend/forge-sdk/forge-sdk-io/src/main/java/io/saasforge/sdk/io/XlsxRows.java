@@ -29,10 +29,14 @@ final class XlsxRows {
                 var strings = new Strings()) {
             var reader = new XSSFReader(pkg);
             try (var shared = reader.getSharedStringsData()) {
-                if (shared != null) strings.load(shared);
+                if (shared != null) {
+                    strings.load(shared);
+                }
             }
             var sheets = reader.getSheetsData();
-            if (!sheets.hasNext()) throw new ForgeException(IoErrorCode.INVALID_FILE);
+            if (!sheets.hasNext()) {
+                throw new ForgeException(IoErrorCode.INVALID_FILE);
+            }
             try (var sheet = sheets.next()) {
                 parse(sheet, new DefaultHandler() {
                     private final List<String> row = new ArrayList<>(Collections.nCopies(width, ""));
@@ -55,43 +59,60 @@ final class XlsxRows {
                             column = 0;
                             if (address != null) {
                                 for (char value : address.toCharArray()) {
-                                    if (value < 'A' || value > 'Z') break;
+                                    if (value < 'A' || value > 'Z') {
+                                        break;
+                                    }
                                     column = column * 26 + value - 'A' + 1;
                                 }
                                 column--;
                             }
-                            if (column < 0 || column >= width) throw new ForgeException(IoErrorCode.INVALID_FILE);
+                            if (column < 0 || column >= width) {
+                                throw new ForgeException(IoErrorCode.INVALID_FILE);
+                            }
                             cellType = attrs.getValue("t");
                             text.setLength(0);
                             formula = false;
                         }
-                        if ("f".equals(local)) formula = true;
-                        if ("v".equals(local) || "t".equals(local)) reading = true;
+                        if ("f".equals(local)) {
+                            formula = true;
+                        }
+                        if ("v".equals(local) || "t".equals(local)) {
+                            reading = true;
+                        }
                     }
 
                     @Override
                     public void characters(char[] chars, int start, int length) {
                         if (reading) {
-                            if (text.length() + length > 32767) throw new ForgeException(IoErrorCode.INVALID_FILE);
+                            if (text.length() + length > 32767) {
+                                throw new ForgeException(IoErrorCode.INVALID_FILE);
+                            }
                             text.append(chars, start, length);
                         }
                     }
 
                     @Override
                     public void endElement(String uri, String local, String q) {
-                        if ("v".equals(local) || "t".equals(local)) reading = false;
+                        if ("v".equals(local) || "t".equals(local)) {
+                            reading = false;
+                        }
                         if ("c".equals(local)) {
-                            if (formula || "e".equals(cellType)) throw new ForgeException(IoErrorCode.INVALID_FILE);
+                            if (formula || "e".equals(cellType)) {
+                                throw new ForgeException(IoErrorCode.INVALID_FILE);
+                            }
                             String value = text.toString();
-                            if ("s".equals(cellType))
+                            if ("s".equals(cellType)) {
                                 try {
                                     value = strings.get(Long.parseLong(value));
                                 } catch (IOException error) {
                                     throw new UncheckedIOException(error);
                                 }
+                            }
                             row.set(column, value);
                         }
-                        if ("row".equals(local)) consumer.accept(rowIndex, List.copyOf(row));
+                        if ("row".equals(local)) {
+                            consumer.accept(rowIndex, List.copyOf(row));
+                        }
                     }
                 });
             }
@@ -119,22 +140,30 @@ final class XlsxRows {
 
                 @Override
                 public void startElement(String uri, String local, String q, Attributes attrs) {
-                    if ("si".equals(local)) text.setLength(0);
-                    if ("t".equals(local)) reading = true;
+                    if ("si".equals(local)) {
+                        text.setLength(0);
+                    }
+                    if ("t".equals(local)) {
+                        reading = true;
+                    }
                 }
 
                 @Override
                 public void characters(char[] chars, int start, int length) {
                     if (reading) {
-                        if (text.length() + length > 32767) throw new ForgeException(IoErrorCode.INVALID_FILE);
+                        if (text.length() + length > 32767) {
+                            throw new ForgeException(IoErrorCode.INVALID_FILE);
+                        }
                         text.append(chars, start, length);
                     }
                 }
 
                 @Override
                 public void endElement(String uri, String local, String q) {
-                    if ("t".equals(local)) reading = false;
-                    if ("si".equals(local))
+                    if ("t".equals(local)) {
+                        reading = false;
+                    }
+                    if ("si".equals(local)) {
                         try {
                             byte[] bytes = text.toString().getBytes(StandardCharsets.UTF_8);
                             index.writeLong(data.getFilePointer());
@@ -143,12 +172,15 @@ final class XlsxRows {
                         } catch (IOException error) {
                             throw new UncheckedIOException(error);
                         }
+                    }
                 }
             });
         }
 
         String get(long id) throws IOException {
-            if (id < 0 || id >= index.length() / 8) throw new ForgeException(IoErrorCode.INVALID_FILE);
+            if (id < 0 || id >= index.length() / 8) {
+                throw new ForgeException(IoErrorCode.INVALID_FILE);
+            }
             index.seek(id * 8);
             data.seek(index.readLong());
             byte[] value = new byte[data.readInt()];

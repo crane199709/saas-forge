@@ -68,7 +68,9 @@ public final class ReferenceData {
     public List<TenantDictionaryItem> items(String dictionary) {
         String key = ResourceManifest.qualifiedDictionary(service, dictionary);
         List<TenantDictionaryItem> items = snapshot().dictionaries().get(key);
-        if (items == null) throw new IllegalArgumentException("Unknown Dictionary: " + key);
+        if (items == null) {
+            throw new IllegalArgumentException("Unknown Dictionary: " + key);
+        }
         return items;
     }
 
@@ -160,8 +162,9 @@ public final class ReferenceData {
 
     private Object parameter(String code, String type) {
         ReferenceDataClient.Parameter parameter = snapshot().parameters().get(code);
-        if (parameter == null)
+        if (parameter == null) {
             throw new IllegalArgumentException("Unknown Parameter: " + ResourceManifest.qualifiedCode(service, code));
+        }
         if (!parameter.type().equals(type)) {
             throw new IllegalArgumentException(
                     "Parameter " + code + " is of type " + parameter.type() + ", not " + type);
@@ -176,7 +179,9 @@ public final class ReferenceData {
         while (true) {
             Entry entry = cache.computeIfAbsent(tenantId, key -> new Entry());
             Snapshot snapshot = entry.get(tenantId, version);
-            if (snapshot != null) return snapshot;
+            if (snapshot != null) {
+                return snapshot;
+            }
             cache.remove(tenantId, entry);
         }
     }
@@ -216,8 +221,12 @@ public final class ReferenceData {
                 expiresAt = clock.instant().plus(ttl);
                 return snapshot;
             }
-            if (!clock.instant().isBefore(expiresAt)) return null;
-            if (current.known() && !Objects.equals(current.value(), version)) return null;
+            if (!clock.instant().isBefore(expiresAt)) {
+                return null;
+            }
+            if (current.known() && !Objects.equals(current.value(), version)) {
+                return null;
+            }
             return snapshot;
         }
     }

@@ -434,7 +434,9 @@ class TenantLoginTest {
 
     private Map<?, ?> exchange(String code, String membershipId) {
         var body = new HashMap<String, String>(Map.of("code", code, "codeVerifier", VERIFIER));
-        if (membershipId != null) body.put("membershipId", membershipId);
+        if (membershipId != null) {
+            body.put("membershipId", membershipId);
+        }
         return data(RestClient.create(baseUrl())
                 .post()
                 .uri("/auth/exchange")

@@ -23,8 +23,12 @@ final class TaskRunOutcome {
     void tenantFailed(UUID tenant, Throwable error) {
         failures++;
         String summary = summary(error);
-        if (failedTenants.size() < 100) failedTenants.add(new TaskRun.FailedTenant(tenant, summary));
-        if (errorSummary == null) errorSummary = summary;
+        if (failedTenants.size() < 100) {
+            failedTenants.add(new TaskRun.FailedTenant(tenant, summary));
+        }
+        if (errorSummary == null) {
+            errorSummary = summary;
+        }
     }
 
     void failed(Throwable error) {
@@ -54,7 +58,9 @@ final class TaskRunOutcome {
 
     private static String summary(Throwable error) {
         while ((error instanceof InvocationTargetException || error instanceof UndeclaredThrowableException)
-                && error.getCause() != null) error = error.getCause();
+                && error.getCause() != null) {
+            error = error.getCause();
+        }
         // message 和 ForgeException 的参数都可能含业务数据，不能进入 Redis。
         return error.getClass().getName()
                 + (error instanceof ForgeException forge

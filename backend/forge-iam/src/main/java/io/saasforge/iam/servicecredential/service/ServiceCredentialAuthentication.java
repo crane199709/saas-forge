@@ -30,17 +30,24 @@ public class ServiceCredentialAuthentication {
         if (row != null) {
             if (ServiceCredentialDigest.matches(row.digest(), digest)
                     && "active".equals(row.status())
-                    && mapper.touch(row.id()) == 1) return row.service();
+                    && mapper.touch(row.id()) == 1) {
+                return row.service();
+            }
             failures.record(row.service(), source, digest.substring(0, 8));
             return null;
         }
         String service = null;
         for (var entry : properties.tokens().entrySet()) {
-            if (ServiceCredentialDigest.matches(ServiceCredentialDigest.of(entry.getValue()), digest))
+            if (ServiceCredentialDigest.matches(ServiceCredentialDigest.of(entry.getValue()), digest)) {
                 service = entry.getKey();
+            }
         }
-        if (service != null) log.warn("静态凭证已弃用：service={}", service);
-        if (service == null) failures.record("unknown", source, digest.substring(0, 8));
+        if (service != null) {
+            log.warn("静态凭证已弃用：service={}", service);
+        }
+        if (service == null) {
+            failures.record("unknown", source, digest.substring(0, 8));
+        }
         return service;
     }
 }

@@ -86,7 +86,9 @@ class AnnouncementTest {
         @Bean
         EmailSender emailSender(AtomicReference<InvitationMessage> invitations) {
             return (target, message) -> {
-                if (message instanceof InvitationMessage invitation) invitations.set(invitation);
+                if (message instanceof InvitationMessage invitation) {
+                    invitations.set(invitation);
+                }
             };
         }
     }
@@ -486,8 +488,12 @@ class AnnouncementTest {
     private ResponseEntity<Map> call(String token, HttpMethod method, String uri, Object body) {
         var request =
                 RestClient.create("http://127.0.0.1:" + port).method(method).uri(uri);
-        if (token != null) request.headers(headers -> headers.setBearerAuth(token));
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (token != null) {
+            request.headers(headers -> headers.setBearerAuth(token));
+        }
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         return request.retrieve()
                 .onStatus(HttpStatusCode::isError, (req, res) -> {})
                 .toEntity(Map.class);

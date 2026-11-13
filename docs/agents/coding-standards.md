@@ -4,6 +4,8 @@
 
 格式化交给工具（后端 Spotless：Java 用 palantir-java-format，POM 用 sortPom，资源 XML 用 Eclipse WTP；前端 Prettier），本文不重复格式规则。
 
+平台与 SDK 的生产、测试 Java 代码同样由 `forge-dependencies` 继承 Checkstyle `NeedBraces`，在 `validate` 阶段强制执行通用规范的语句体大括号规则；在 `backend` 执行 `./mvnw validate` 检查整个 reactor。
+
 ## SQL 与持久层
 
 通用规则的背景见 ADR-0001、ADR-0006、ADR-0007。

@@ -38,10 +38,14 @@ public class PlanImpactService {
     }
 
     private long affected(UUID tenantId, Collection<String> lostPermissions, Collection<String> lostSubApps) {
-        if (lostPermissions.isEmpty() && lostSubApps.isEmpty()) return 0;
+        if (lostPermissions.isEmpty() && lostSubApps.isEmpty()) {
+            return 0;
+        }
         Predicate<Set<String>> seesLostMenu = permissions.seesMenuIn(lostSubApps);
         // 权限越多可见的菜单越多：没有任何权限也能看到时，每个正常成员都会失去，无需逐人判断。
-        if (seesLostMenu.test(Set.of())) return memberships.countActive(tenantId);
+        if (seesLostMenu.test(Set.of())) {
+            return memberships.countActive(tenantId);
+        }
         Set<String> grantable = roles.grantablePermissions(tenantId).stream()
                 .map(PermissionRow::code)
                 .collect(Collectors.toSet());

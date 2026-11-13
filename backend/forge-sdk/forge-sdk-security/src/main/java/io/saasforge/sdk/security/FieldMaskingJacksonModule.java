@@ -60,8 +60,11 @@ final class FieldMaskingJacksonModule extends SimpleModule {
                 throw new IllegalStateException("Online Sensitive Field policy is invalid");
             }
             String masked = engine.apply(policy.rule(), (String) value);
-            if (masked == null) generator.writeNull();
-            else generator.writeString(masked);
+            if (masked == null) {
+                generator.writeNull();
+            } else {
+                generator.writeString(masked);
+            }
         }
     }
 }

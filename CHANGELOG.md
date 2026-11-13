@@ -6,6 +6,7 @@
 
 ### 变更
 
+- Java 的 `if`、`else`、`for`、`while`、`do-while` 语句体一律使用大括号（含单条语句与空循环体）。`forge-dependencies` 在 `validate` 阶段自动运行 Checkstyle `NeedBraces`，覆盖生产与测试代码，违规即失败；平台、SDK 与 archetype 生成的业务服务共用内联规则。同步根与业务服务模板的 `AGENTS.md`、业务服务编码规范、平台内部规范、接入指南，以及 Sub-App 规范与模板中的配套后端说明。已有服务升级父 POM 后须补齐大括号，并更新规范副本与 `AGENTS.md`；前端检查规则不变。
 - 字段脱敏与权限目录、SDK 依赖门禁集成：将可选日志适配 `ch.qos.logback:logback-classic` 纳入 Security 模块直接依赖白名单，按独立授权和审计用途登记 `viewRaw` 动作，权限目录随当前源码更新；保留所有原有中间件禁用与白名单约束。
 
 - `forge-dependencies` 新增 `validate` 阶段的中间件直引门禁，禁止 Spring Data Redis、Redisson、Lettuce、Jedis、RocketMQ/Nacos 原生客户端与 XXL-JOB；Boot Redis、Spring Cloud Nacos 及 Forge MQ / Scheduling starter 入口保留，传递依赖不受影响。仅 SDK MQ 与 Reference Data 按需显式豁免，平台三个服务与其他 SDK 模块继续受约束。业务服务规范新增「中间件依赖入口」，archetype、sub-app-kit 配套规范与接入指南同步。已有业务工程升级父 POM 后自动启用；直引原生客户端的工程先改用相应 starter，再按 CHANGELOG 重新复制 `docs/standards/`。

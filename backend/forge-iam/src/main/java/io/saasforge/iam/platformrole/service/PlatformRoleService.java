@@ -59,7 +59,9 @@ public class PlatformRoleService implements OperatorGrantSource {
             resources.forEach(resource -> policies.put(resource, List.of(DataScope.ALL.template())));
         } else {
             for (DataPolicy policy : roles.policiesOf(operatorId)) {
-                if (!resources.contains(policy.resource())) continue;
+                if (!resources.contains(policy.resource())) {
+                    continue;
+                }
                 policies.computeIfAbsent(policy.resource(), key -> new ArrayList<>())
                         .add(
                                 DataPolicy.CUSTOM.equals(policy.scope())
@@ -78,7 +80,9 @@ public class PlatformRoleService implements OperatorGrantSource {
 
     /** 当前 Operator 的平台权限，供界面展示；已停用或删除的 Operator 没有任何权限。 */
     public OperatorGrants accessOf(UUID operatorId) {
-        if (operators.findActive(operatorId) == null) return new OperatorGrants(Set.of(), Set.of(), Map.of());
+        if (operators.findActive(operatorId) == null) {
+            return new OperatorGrants(Set.of(), Set.of(), Map.of());
+        }
         return grantsOf(operatorId);
     }
 
@@ -135,9 +139,13 @@ public class PlatformRoleService implements OperatorGrantSource {
             throw new ForgeException(PlatformRoleErrorCode.INVALID_ASSIGNMENT);
         }
         int rows = roles.revokeExcept(operatorId, assigned);
-        if (!assigned.isEmpty()) rows += roles.assign(operatorId, assigned);
+        if (!assigned.isEmpty()) {
+            rows += roles.assign(operatorId, assigned);
+        }
         // 先改后查：同一事务内能看到本次修改，撤销的是最后一位超级管理员时整体回滚。
-        if (rows > 0) requireSuperAdminRemains();
+        if (rows > 0) {
+            requireSuperAdminRemains();
+        }
         return rows > 0;
     }
 
@@ -147,7 +155,9 @@ public class PlatformRoleService implements OperatorGrantSource {
      * @throws ForgeException 409 {@code platformRole.lastSuperAdmin}
      */
     public void requireSuperAdminRemains() {
-        if (roles.countActiveSuperAdmins() == 0) throw new ForgeException(PlatformRoleErrorCode.LAST_SUPER_ADMIN);
+        if (roles.countActiveSuperAdmins() == 0) {
+            throw new ForgeException(PlatformRoleErrorCode.LAST_SUPER_ADMIN);
+        }
     }
 
     /**
@@ -157,10 +167,14 @@ public class PlatformRoleService implements OperatorGrantSource {
      * @throws ForgeException 403 {@code auth.forbidden}
      */
     public void requirePermission(UUID operatorId, String... codes) {
-        if (operators.findActive(operatorId) == null) throw new ForgeException(FrameworkErrorCode.AUTH_FORBIDDEN);
+        if (operators.findActive(operatorId) == null) {
+            throw new ForgeException(FrameworkErrorCode.AUTH_FORBIDDEN);
+        }
         Set<String> granted = grantsOf(operatorId).permissions();
         for (String code : codes) {
-            if (granted.contains(code)) return;
+            if (granted.contains(code)) {
+                return;
+            }
         }
         throw new ForgeException(FrameworkErrorCode.AUTH_FORBIDDEN);
     }

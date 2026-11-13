@@ -44,7 +44,9 @@ final class AuditLogInterceptor implements MethodInterceptor {
                 ? invocation.getMethod()
                 : AopUtils.getMostSpecificMethod(invocation.getMethod(), AopUtils.getTargetClass(invocation.getThis()));
         AuditLog audit = AnnotatedElementUtils.findMergedAnnotation(method, AuditLog.class);
-        if (audit == null) return invocation.proceed();
+        if (audit == null) {
+            return invocation.proceed();
+        }
         // 在调用前取得上下文：方法内部可能切换租户或认证
         UUID tenantId = CurrentTenant.find().orElse(null);
         UUID actorId = actors.stream()
@@ -80,7 +82,9 @@ final class AuditLogInterceptor implements MethodInterceptor {
 
     // 对象标识只是辅助信息，表达式出错不能让业务调用失败
     private String resourceId(AuditLog audit, Method method, Object[] arguments, Object result) {
-        if (audit.resourceId().isEmpty()) return null;
+        if (audit.resourceId().isEmpty()) {
+            return null;
+        }
         try {
             var context = new MethodBasedEvaluationContext(null, method, arguments, parameterNames);
             context.setVariable("result", result);
@@ -98,9 +102,13 @@ final class AuditLogInterceptor implements MethodInterceptor {
     }
 
     private static String errorCode(Throwable error) {
-        if (error instanceof ForgeException forge) return forge.errorCode().code();
+        if (error instanceof ForgeException forge) {
+            return forge.errorCode().code();
+        }
         for (Class<?> type = error.getClass(); type != null; type = type.getSuperclass()) {
-            if (ACCESS_DENIED.equals(type.getName())) return FrameworkErrorCode.AUTH_FORBIDDEN.code();
+            if (ACCESS_DENIED.equals(type.getName())) {
+                return FrameworkErrorCode.AUTH_FORBIDDEN.code();
+            }
         }
         return FrameworkErrorCode.SYSTEM_ERROR.code();
     }

@@ -25,7 +25,9 @@ public @interface ValidIpRule {
     final class Validator implements ConstraintValidator<ValidIpRule, String> {
         @Override
         public boolean isValid(String value, ConstraintValidatorContext context) {
-            if (value == null) return false;
+            if (value == null) {
+                return false;
+            }
             try {
                 TenantIpAllowlist.parse(List.of(value));
                 return true;

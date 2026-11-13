@@ -111,7 +111,9 @@ public class MembershipService {
 
     /** 给定标识中租户内未离开的成员，按 Membership 标识排序。 */
     public List<Member> findByIds(UUID tenantId, Collection<UUID> membershipIds) {
-        if (membershipIds.isEmpty()) return List.of();
+        if (membershipIds.isEmpty()) {
+            return List.of();
+        }
         return memberships.findAll(tenantId, membershipIds).stream()
                 .map(this::toMember)
                 .toList();

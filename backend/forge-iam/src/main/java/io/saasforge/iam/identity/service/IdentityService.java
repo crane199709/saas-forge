@@ -74,7 +74,9 @@ public class IdentityService {
      */
     public ContactIdentity findOrCreatePending(String contact) {
         ContactIdentity existing = identities.findByContact(contact);
-        if (existing != null) return existing;
+        if (existing != null) {
+            return existing;
+        }
         UUID id = UuidV7.generate();
         boolean email = VerificationCodeService.isEmail(contact);
         identities.insertPending(id, email ? contact : null, email ? null : contact, contact);

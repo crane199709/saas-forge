@@ -223,7 +223,9 @@ public class IdentityMfaService {
     }
 
     private void requireUnbound(UUID identityId) {
-        if (authenticators.findByIdentity(identityId) != null) throw alreadyBound();
+        if (authenticators.findByIdentity(identityId) != null) {
+            throw alreadyBound();
+        }
     }
 
     private List<String> issueRecoveryCodes(UUID identityId) {

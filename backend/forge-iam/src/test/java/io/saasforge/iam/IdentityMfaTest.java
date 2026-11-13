@@ -101,7 +101,9 @@ class IdentityMfaTest {
         @Bean
         EmailSender emailSender() {
             return (email, message) -> {
-                if (message instanceof VerificationMessage verification) SENT_CODES.put(email, verification.code());
+                if (message instanceof VerificationMessage verification) {
+                    SENT_CODES.put(email, verification.code());
+                }
             };
         }
     }
@@ -510,7 +512,9 @@ class IdentityMfaTest {
                 Totp.code(secret, step + 2));
         for (int candidate = 0; ; candidate++) {
             String code = "%06d".formatted(candidate);
-            if (!valid.contains(code)) return code;
+            if (!valid.contains(code)) {
+                return code;
+            }
         }
     }
 
@@ -542,8 +546,12 @@ class IdentityMfaTest {
                 .method(HttpMethod.POST)
                 .uri(path)
                 .headers(headers -> {
-                    if (auth != null && auth.bearer() != null) headers.setBearerAuth(auth.bearer());
-                    if (auth != null && auth.cookie() != null) headers.add("Cookie", auth.cookie());
+                    if (auth != null && auth.bearer() != null) {
+                        headers.setBearerAuth(auth.bearer());
+                    }
+                    if (auth != null && auth.cookie() != null) {
+                        headers.add("Cookie", auth.cookie());
+                    }
                 })
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body == null ? Map.of() : body)
@@ -623,7 +631,9 @@ class IdentityMfaTest {
                 .post()
                 .uri(path)
                 .headers(headers -> {
-                    if (cookie != null) headers.add("Cookie", cookie);
+                    if (cookie != null) {
+                        headers.add("Cookie", cookie);
+                    }
                 })
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
@@ -638,7 +648,9 @@ class IdentityMfaTest {
 
     private Map<?, ?> exchange(String code, UUID membershipId) {
         var form = new HashMap<String, Object>(Map.of("code", code, "codeVerifier", VERIFIER));
-        if (membershipId != null) form.put("membershipId", membershipId);
+        if (membershipId != null) {
+            form.put("membershipId", membershipId);
+        }
         return tokenCall("/auth/exchange", form);
     }
 

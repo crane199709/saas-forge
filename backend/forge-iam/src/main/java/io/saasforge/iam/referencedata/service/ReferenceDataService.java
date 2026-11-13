@@ -138,8 +138,9 @@ public class ReferenceDataService {
      */
     private List<TenantParameter> allParameters(UUID tenantId) {
         Map<String, ParameterOverrideRow> values = new HashMap<>();
-        for (ParameterOverrideRow row : overrides.list(tenantId))
+        for (ParameterOverrideRow row : overrides.list(tenantId)) {
             values.put(ResourceManifest.qualifiedCode(row.service(), row.code()), row);
+        }
         List<TenantDictionary> dictionaries = dictionaries(tenantId);
         return permissions.currentParameters().stream()
                 .map(current -> {
@@ -207,7 +208,9 @@ public class ReferenceDataService {
             TenantDictionary current = lockExtensible(actor, service, dictionary);
             TenantDictionaryItem item = requireItem(current, code);
             // 名称不变时不查重名：服务新版本可能引入与该项同名的内置项，冲突项须仍能调整排序。
-            if (item.selectable() && !name.equals(item.name())) requireNameFree(current, name, code);
+            if (item.selectable() && !name.equals(item.name())) {
+                requireNameFree(current, name, code);
+            }
             items.saveSettings(
                     actor.tenantId(),
                     UuidV7.generate(),
@@ -243,8 +246,11 @@ public class ReferenceDataService {
         return transactions.execute(status -> {
             TenantDictionary current = lockExtensible(actor, service, dictionary);
             TenantDictionaryItem item = requireItem(current, code);
-            if (enabled) requireNameFree(current, item.name(), code);
-            else requireUnused(actor.tenantId(), service, dictionary, code);
+            if (enabled) {
+                requireNameFree(current, item.name(), code);
+            } else {
+                requireUnused(actor.tenantId(), service, dictionary, code);
+            }
             // 内置项首次修改时新建设置行，名称与排序留空沿用声明；自定义项总有行，传入的当前值不会被写入。
             items.saveEnabled(
                     actor.tenantId(),
@@ -298,9 +304,15 @@ public class ReferenceDataService {
         transactions.executeWithoutResult(status -> {
             String dictionary = parameter.parameter().dictionary();
             // 与停用共用字典锁：检查默认值可选与删除覆盖值之间，默认值对应的项不会被停用。
-            if (dictionary != null) items.lockDictionary(actor.tenantId(), service, dictionary);
-            if (overrides.delete(actor.tenantId(), service, code, actor.identityId()) == 0) return;
-            if (dictionary != null) requireDefaultSelectable(actor.tenantId(), parameter);
+            if (dictionary != null) {
+                items.lockDictionary(actor.tenantId(), service, dictionary);
+            }
+            if (overrides.delete(actor.tenantId(), service, code, actor.identityId()) == 0) {
+                return;
+            }
+            if (dictionary != null) {
+                requireDefaultSelectable(actor.tenantId(), parameter);
+            }
             changed(actor, parameterAudit(actor, "parameter.reset", service, code));
         });
     }
@@ -331,7 +343,9 @@ public class ReferenceDataService {
                         candidate.service().equals(service) && candidate.code().equals(dictionary))
                 .findFirst()
                 .orElseThrow(() -> new ForgeException(ReferenceDataErrorCode.DICTIONARY_NOT_FOUND));
-        if (!current.extensible()) throw new ForgeException(ReferenceDataErrorCode.DICTIONARY_READ_ONLY);
+        if (!current.extensible()) {
+            throw new ForgeException(ReferenceDataErrorCode.DICTIONARY_READ_ONLY);
+        }
         return current;
     }
 
@@ -348,7 +362,9 @@ public class ReferenceDataService {
                 .anyMatch(item -> item.selectable()
                         && !item.code().equals(except)
                         && item.name().equals(name));
-        if (taken) throw new ForgeException(ReferenceDataErrorCode.ITEM_NAME_TAKEN, name);
+        if (taken) {
+            throw new ForgeException(ReferenceDataErrorCode.ITEM_NAME_TAKEN, name);
+        }
     }
 
     /**
@@ -387,7 +403,9 @@ public class ReferenceDataService {
         } catch (IllegalArgumentException error) {
             return false;
         }
-        if (!"dictionary".equals(parameter.type())) return true;
+        if (!"dictionary".equals(parameter.type())) {
+            return true;
+        }
         return dictionaries.stream()
                 .filter(dictionary -> dictionary.service().equals(current.service())
                         && dictionary.code().equals(parameter.dictionary()))
@@ -441,7 +459,9 @@ public class ReferenceDataService {
             String service, Dictionary dictionary, List<DictionaryItemRow> rows, Map<String, PastItem> past) {
         boolean extensible = dictionary.extensible();
         Map<String, DictionaryItemRow> byCode = new HashMap<>();
-        for (DictionaryItemRow row : rows) byCode.put(row.code(), row);
+        for (DictionaryItemRow row : rows) {
+            byCode.put(row.code(), row);
+        }
         List<TenantDictionaryItem> merged = new ArrayList<>();
         Map<String, Boolean> declared = new HashMap<>();
         List<DictionaryItem> builtIns = dictionary.items();
@@ -457,13 +477,17 @@ public class ReferenceDataService {
                     status(row == null || row.enabled())));
         }
         past.forEach((code, item) -> {
-            if (declared.containsKey(code)) return;
+            if (declared.containsKey(code)) {
+                return;
+            }
             DictionaryItemRow row = byCode.get(code);
             merged.add(new TenantDictionaryItem(
                     code, name(row, item.name()), item.sort(), false, TenantDictionaryItem.RETIRED));
         });
         for (DictionaryItemRow row : rows) {
-            if (!row.custom()) continue;
+            if (!row.custom()) {
+                continue;
+            }
             String status = extensible ? status(row.enabled()) : TenantDictionaryItem.RETIRED;
             merged.add(new TenantDictionaryItem(row.code(), row.name(), row.sortOrder(), true, status));
         }

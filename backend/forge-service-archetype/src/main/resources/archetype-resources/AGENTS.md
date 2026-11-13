@@ -6,6 +6,7 @@
 
 完整规则见 [docs/standards/business-service.md](docs/standards/business-service.md)，改代码前先读。要点：
 
+- Java 的 `if`、`else`、`for`、`while`、`do-while` 语句体一律使用大括号，即使只有一条语句；由 Checkstyle `NeedBraces` 在 `validate` 阶段强制检查，覆盖生产与测试代码。
 - 手写 SQL 只能写在 mapper XML，禁止 `@Select` 等注解、`QueryWrapper`、带 SQL 片段的 Wrapper 方法与 `JdbcTemplate`；仅允许 `BaseMapper` 主键 CRUD 与单表 `LambdaQueryWrapper`。
 - 手写 SQL 用 SQL-99 标准写法，PostgreSQL 特性限规范白名单。
 - Flyway `CREATE TABLE` 用 `COMMENT ON` 写表和全部字段的中文描述，`ADD COLUMN` 写新字段的中文描述；分区子表只注释父表。
@@ -22,6 +23,7 @@
 
 测试用 Testcontainers 启动 PostgreSQL 与 Redis，需要本机 Docker。
 
+- `./mvnw validate`：检查 Java 语句体大括号与中间件依赖，不启动测试容器。
 - `./mvnw verify`：编译并运行全部测试，含架构检查（`ArchitectureTest`）、表与字段注释检查和 SDK 表检查（`SchemaCommentTest`），最后做 Spotless 格式检查。提交前必须通过。
 - `./mvnw spotless:apply`：按父 POM 的规则格式化 Java、`pom.xml` 与 `src/{main,test}/resources` 下的 XML；XML 规则文件是根目录的 `spotless-xml.prefs`，不在本工程修改。
 - `./mvnw test -Dtest=<测试类>`：迭代时只跑受影响的测试。

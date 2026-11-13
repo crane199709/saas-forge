@@ -15,7 +15,9 @@ public record NotificationTarget(List<UUID> membershipIds, String permissionCode
         if (membershipIds.isEmpty() == (permissionCode == null)) {
             throw new IllegalArgumentException("target must select exactly one of membershipIds or permissionCode");
         }
-        if (permissionCode != null) NotificationValidation.text(permissionCode, "permissionCode", 255);
+        if (permissionCode != null) {
+            NotificationValidation.text(permissionCode, "permissionCode", 255);
+        }
     }
 
     /**

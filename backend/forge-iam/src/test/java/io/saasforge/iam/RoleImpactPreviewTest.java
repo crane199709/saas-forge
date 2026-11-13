@@ -153,7 +153,9 @@ class RoleImpactPreviewTest {
         List<String> ids = IntStream.rangeClosed(1, 25)
                 .mapToObj(n -> "019a0120-0000-7000-8000-000000002%03x".formatted(n))
                 .toList();
-        for (String id : ids) assign(ADMIN_B, UUID.fromString(id), List.of(target));
+        for (String id : ids) {
+            assign(ADMIN_B, UUID.fromString(id), List.of(target));
+        }
 
         var impact = permissionImpact(ADMIN_B, target, List.of());
         assertThat(data(impact).get("affectedCount")).isEqualTo(25);
@@ -264,7 +266,9 @@ class RoleImpactPreviewTest {
     private Map<?, ?> role(UUID actor, String id) throws Exception {
         for (Object item :
                 (List<?>) call(actor, HttpMethod.GET, "/roles", null).getBody().get("data")) {
-            if (id.equals(((Map<?, ?>) item).get("id"))) return (Map<?, ?>) item;
+            if (id.equals(((Map<?, ?>) item).get("id"))) {
+                return (Map<?, ?>) item;
+            }
         }
         throw new AssertionError("Role not found: " + id);
     }
@@ -297,7 +301,9 @@ class RoleImpactPreviewTest {
         for (Object item :
                 (List<?>) call(actor, HttpMethod.GET, "/roles", null).getBody().get("data")) {
             var role = (Map<?, ?>) item;
-            if (code.equals(role.get("code"))) return (String) role.get("id");
+            if (code.equals(role.get("code"))) {
+                return (String) role.get("id");
+            }
         }
         throw new AssertionError("Role not found: " + code);
     }
@@ -317,7 +323,9 @@ class RoleImpactPreviewTest {
                 .method(method)
                 .uri(uri)
                 .headers(headers -> headers.setBearerAuth(token));
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         return request.retrieve()
                 .onStatus(HttpStatusCode::isError, (req, res) -> {})
                 .toEntity(Map.class);
@@ -347,7 +355,9 @@ class RoleImpactPreviewTest {
     }
 
     private static UUID tenantOf(UUID membership) {
-        if (membership.equals(ADMIN_B)) return TENANT_B;
+        if (membership.equals(ADMIN_B)) {
+            return TENANT_B;
+        }
         return membership.equals(ADMIN_C) || membership.equals(MEMBER_C) ? TENANT_C : TENANT_A;
     }
 }

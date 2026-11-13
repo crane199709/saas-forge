@@ -69,7 +69,9 @@ public class OperatorStateService {
      */
     public void incrementVersion(UUID operatorId) {
         Long version = operators.incrementVersion(operatorId);
-        if (version == null) return;
+        if (version == null) {
+            return;
+        }
         ActiveOperator active = operators.findActive(operatorId);
         if (active != null) {
             publish(active);

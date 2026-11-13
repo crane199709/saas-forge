@@ -266,7 +266,9 @@ class DeadEventCaptureTest {
         public void handle(Example event) {
             handledTenants.add(CurrentTenant.require());
             probe.writeBusiness();
-            if (failing) throw new IllegalStateException("expected handler failure");
+            if (failing) {
+                throw new IllegalStateException("expected handler failure");
+            }
         }
     }
 }

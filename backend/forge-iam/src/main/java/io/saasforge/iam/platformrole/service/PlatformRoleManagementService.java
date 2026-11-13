@@ -100,14 +100,20 @@ public class PlatformRoleManagementService {
         Set<String> granted = requireGrantable(codes);
         List<DataPolicy> scoped = requireValid(policies);
         // 保留编码由数据库 CHECK 兜底，这里先拒绝，避免以 500 暴露约束错误。
-        if (PlatformRoleService.SUPER_ADMIN.equals(code))
+        if (PlatformRoleService.SUPER_ADMIN.equals(code)) {
             throw new ForgeException(PlatformRoleErrorCode.CODE_TAKEN, code);
+        }
         UUID id = UuidV7.generate();
         transactions.executeWithoutResult(status -> {
-            if (roles.insert(id, code, name, actor) == 0)
+            if (roles.insert(id, code, name, actor) == 0) {
                 throw new ForgeException(PlatformRoleErrorCode.CODE_TAKEN, code);
-            if (!granted.isEmpty()) roles.grant(id, granted);
-            if (!scoped.isEmpty()) roles.insertPolicies(id, scoped);
+            }
+            if (!granted.isEmpty()) {
+                roles.grant(id, granted);
+            }
+            if (!scoped.isEmpty()) {
+                roles.insertPolicies(id, scoped);
+            }
         });
         audits.record(audit(actor, "platformRole.create", "platformRole", id)
                 .detail("code", code)
@@ -140,13 +146,19 @@ public class PlatformRoleManagementService {
             requireCustom(id);
             roles.rename(id, name, actor);
             int changed = revoked.isEmpty() ? 0 : roles.revoke(id, revoked);
-            if (!granted.isEmpty()) changed += roles.grant(id, granted);
+            if (!granted.isEmpty()) {
+                changed += roles.grant(id, granted);
+            }
             List<DataPolicy> current = roles.policiesOfRole(id).stream()
                     .filter(policy -> declared.contains(policy.resource()))
                     .toList();
             if (!current.equals(scoped)) {
-                if (!declared.isEmpty()) roles.deletePolicies(id, declared);
-                if (!scoped.isEmpty()) roles.insertPolicies(id, scoped);
+                if (!declared.isEmpty()) {
+                    roles.deletePolicies(id, declared);
+                }
+                if (!scoped.isEmpty()) {
+                    roles.insertPolicies(id, scoped);
+                }
                 changed++;
             }
             return changed == 0 ? List.<UUID>of() : roles.holders(id);
@@ -164,7 +176,9 @@ public class PlatformRoleManagementService {
         requireManager(actor);
         transactions.executeWithoutResult(status -> {
             roleService.lock();
-            if (requireCustom(id).operatorCount() > 0) throw new ForgeException(PlatformRoleErrorCode.IN_USE);
+            if (requireCustom(id).operatorCount() > 0) {
+                throw new ForgeException(PlatformRoleErrorCode.IN_USE);
+            }
             roles.deletePermissions(id);
             roles.deleteAllPolicies(id);
             roles.delete(id, actor);
@@ -184,8 +198,12 @@ public class PlatformRoleManagementService {
 
     private PlatformRoleRow requireCustom(UUID id) {
         PlatformRoleRow role = roles.find(id);
-        if (role == null) throw new ForgeException(PlatformRoleErrorCode.NOT_FOUND);
-        if (role.builtin()) throw new ForgeException(PlatformRoleErrorCode.BUILTIN);
+        if (role == null) {
+            throw new ForgeException(PlatformRoleErrorCode.NOT_FOUND);
+        }
+        if (role.builtin()) {
+            throw new ForgeException(PlatformRoleErrorCode.BUILTIN);
+        }
         return role;
     }
 
@@ -194,14 +212,18 @@ public class PlatformRoleManagementService {
         Set<String> requested = new LinkedHashSet<>(codes);
         Set<String> active = activeCodes();
         for (String code : requested) {
-            if (!active.contains(code)) throw new ForgeException(PlatformRoleErrorCode.INVALID_PERMISSION, code);
+            if (!active.contains(code)) {
+                throw new ForgeException(PlatformRoleErrorCode.INVALID_PERMISSION, code);
+            }
         }
         return requested;
     }
 
     private Set<String> activeCodes() {
         Set<String> codes = new HashSet<>();
-        for (PermissionRow row : permissions.activePlatformPermissions()) codes.add(row.code());
+        for (PermissionRow row : permissions.activePlatformPermissions()) {
+            codes.add(row.code());
+        }
         return codes;
     }
 

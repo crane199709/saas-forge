@@ -303,9 +303,13 @@ class TenantMfaRequirementTest {
 
     private Response settings(String bearer, HttpMethod method, Object body) {
         var request = client().method(method).uri("/security-settings").headers(headers -> {
-            if (bearer != null) headers.setBearerAuth(bearer);
+            if (bearer != null) {
+                headers.setBearerAuth(bearer);
+            }
         });
-        if (body != null) request.contentType(MediaType.APPLICATION_JSON).body(body);
+        if (body != null) {
+            request.contentType(MediaType.APPLICATION_JSON).body(body);
+        }
         return request.exchange((req, res) -> new Response(res.getStatusCode().value(), res.bodyTo(Map.class), null));
     }
 
@@ -331,8 +335,12 @@ class TenantMfaRequirementTest {
         return client().post()
                 .uri(path)
                 .headers(headers -> {
-                    if (session.bearer() != null) headers.setBearerAuth(session.bearer());
-                    if (session.cookie() != null) headers.add("Cookie", session.cookie());
+                    if (session.bearer() != null) {
+                        headers.setBearerAuth(session.bearer());
+                    }
+                    if (session.cookie() != null) {
+                        headers.add("Cookie", session.cookie());
+                    }
                 })
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
@@ -354,7 +362,9 @@ class TenantMfaRequirementTest {
 
     private Response exchange(String code, UUID membershipId) {
         var form = new HashMap<String, Object>(Map.of("code", code, "codeVerifier", VERIFIER));
-        if (membershipId != null) form.put("membershipId", membershipId);
+        if (membershipId != null) {
+            form.put("membershipId", membershipId);
+        }
         return post("/auth/exchange", form, null);
     }
 

@@ -7,8 +7,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record OpsProperties(String token) {
     /** 引入运维能力的服务必须显式配置令牌。 */
     public OpsProperties {
-        if (token == null || token.isBlank() || token.contains("${"))
+        if (token == null || token.isBlank() || token.contains("${")) {
             throw new IllegalStateException("forge.ops.token must be set");
+        }
     }
 
     @Override

@@ -14,6 +14,8 @@ public final class BackgroundJwtAuthentication extends JwtAuthenticationToken {
      */
     public BackgroundJwtAuthentication(JwtAuthenticationToken verified) {
         super(verified.getToken(), verified.getAuthorities(), verified.getName());
-        if (!verified.isAuthenticated()) throw new IllegalArgumentException("Verified authentication required");
+        if (!verified.isAuthenticated()) {
+            throw new IllegalArgumentException("Verified authentication required");
+        }
     }
 }

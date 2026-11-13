@@ -13,7 +13,9 @@ import org.springframework.util.ClassUtils;
 public final class FieldMaskingLoggingEnvironmentPostProcessor implements EnvironmentPostProcessor, Ordered {
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        if (!ClassUtils.isPresent("ch.qos.logback.classic.PatternLayout", application.getClassLoader())) return;
+        if (!ClassUtils.isPresent("ch.qos.logback.classic.PatternLayout", application.getClassLoader())) {
+            return;
+        }
         Class<?> main = application.getMainApplicationClass();
         if (main != null) {
             Map<String, String> names = new HashMap<>();

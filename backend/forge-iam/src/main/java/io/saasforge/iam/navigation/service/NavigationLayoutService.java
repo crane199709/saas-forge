@@ -177,32 +177,50 @@ public class NavigationLayoutService {
 
     // 只校验结构；引用是否存在、是否可见由前端合并时决定。
     private static void validate(NavigationLayout layout) {
-        if (layout == null || layout.nodes() == null) throw invalid("nodes is required");
+        if (layout == null || layout.nodes() == null) {
+            throw invalid("nodes is required");
+        }
         validate(layout.nodes(), 1, new Counter(), new HashSet<>(), new HashSet<>(), new HashSet<>());
     }
 
     private static void validate(
             List<Node> nodes, int depth, Counter counter, Set<String> pages, Set<String> menus, Set<String> groups) {
         for (Node node : nodes) {
-            if (node == null) throw invalid("null node");
-            if (++counter.value > MAX_NODES) throw invalid("more than " + MAX_NODES + " nodes");
-            if (depth > MAX_DEPTH) throw invalid("nested deeper than " + MAX_DEPTH + " levels");
+            if (node == null) {
+                throw invalid("null node");
+            }
+            if (++counter.value > MAX_NODES) {
+                throw invalid("more than " + MAX_NODES + " nodes");
+            }
+            if (depth > MAX_DEPTH) {
+                throw invalid("nested deeper than " + MAX_DEPTH + " levels");
+            }
             int references =
                     (node.page() == null ? 0 : 1) + (node.menu() == null ? 0 : 1) + (node.group() == null ? 0 : 1);
-            if (references != 1) throw invalid("a node must have exactly one of page, menu and group");
+            if (references != 1) {
+                throw invalid("a node must have exactly one of page, menu and group");
+            }
             List<Node> children = node.children() == null ? List.of() : node.children();
             if (node.page() != null) {
                 requireReference(node.page(), "page");
-                if (!children.isEmpty()) throw invalid("page " + node.page() + " cannot have children");
-                if (!pages.add(node.page())) throw invalid("duplicate page " + node.page());
+                if (!children.isEmpty()) {
+                    throw invalid("page " + node.page() + " cannot have children");
+                }
+                if (!pages.add(node.page())) {
+                    throw invalid("duplicate page " + node.page());
+                }
             } else if (node.menu() != null) {
                 requireReference(node.menu(), "menu");
-                if (!menus.add(node.menu())) throw invalid("duplicate menu " + node.menu());
+                if (!menus.add(node.menu())) {
+                    throw invalid("duplicate menu " + node.menu());
+                }
             } else {
                 if (length(node.group()) < 1 || length(node.group()) > MAX_GROUP_ID) {
                     throw invalid("group id must be 1-" + MAX_GROUP_ID + " characters");
                 }
-                if (!groups.add(node.group())) throw invalid("duplicate group " + node.group());
+                if (!groups.add(node.group())) {
+                    throw invalid("duplicate group " + node.group());
+                }
                 if (node.name() == null || node.name().isBlank() || length(node.name()) > MAX_GROUP_NAME) {
                     throw invalid("group name must be 1-" + MAX_GROUP_NAME + " characters");
                 }
@@ -212,7 +230,9 @@ public class NavigationLayoutService {
     }
 
     private static void requireReference(String value, String kind) {
-        if (value.isBlank()) throw invalid("blank " + kind);
+        if (value.isBlank()) {
+            throw invalid("blank " + kind);
+        }
     }
 
     // 按字符而不是 UTF-16 码元计数：表情等补充平面字符算一个。

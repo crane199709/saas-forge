@@ -46,13 +46,17 @@ public class TodoService implements TenantDataCleaner {
                 event,
                 event.occurredAt().truncatedTo(ChronoUnit.SECONDS),
                 event.occurredAt().getNano());
-        if (id == null) return;
+        if (id == null) {
+            return;
+        }
         todos.clearMemberships(event.tenantId(), id);
         List<UUID> ids = event.target().membershipIds().stream()
                 .distinct()
                 .filter(member -> memberships.exists(event.tenantId(), member))
                 .toList();
-        if (!ids.isEmpty()) todos.addMemberships(event.tenantId(), id, ids);
+        if (!ids.isEmpty()) {
+            todos.addMemberships(event.tenantId(), id, ids);
+        }
     }
 
     @Transactional

@@ -17,7 +17,10 @@ public class ContactSender {
 
     /** 发送失败时抛出发送实现的异常。 */
     public void send(String target, ContactMessage message) {
-        if (VerificationCodeService.isEmail(target)) email.send(target, message);
-        else sms.send(target, message);
+        if (VerificationCodeService.isEmail(target)) {
+            email.send(target, message);
+        } else {
+            sms.send(target, message);
+        }
     }
 }

@@ -15,7 +15,8 @@ public record OnboardingProperties(URI gatewayUri) {
                 || gatewayUri.getFragment() != null
                 || (gatewayUri.getPath() != null
                         && !gatewayUri.getPath().isEmpty()
-                        && !gatewayUri.getPath().equals("/")))
+                        && !gatewayUri.getPath().equals("/"))) {
             throw new IllegalStateException("forge.platform.onboarding.gateway-uri must be an HTTP gateway origin");
+        }
     }
 }

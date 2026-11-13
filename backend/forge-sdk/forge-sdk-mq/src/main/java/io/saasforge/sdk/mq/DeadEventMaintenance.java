@@ -19,7 +19,9 @@ final class DeadEventMaintenance implements SmartLifecycle {
 
     @Override
     public synchronized void start() {
-        if (executor != null) return;
+        if (executor != null) {
+            return;
+        }
         executor = Executors.newSingleThreadScheduledExecutor(task -> {
             var thread = new Thread(task, "forge-dead-event-maintenance");
             thread.setDaemon(true);

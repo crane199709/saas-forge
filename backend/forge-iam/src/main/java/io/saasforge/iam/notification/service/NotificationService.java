@@ -46,10 +46,14 @@ public class NotificationService implements TenantDataCleaner {
         // 已整月过期的迟到或重投消息不能把清理过的分区重新建回来。
         if (month.isBefore(LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC)
                 .minusDays(180)
-                .withDayOfMonth(1))) return;
+                .withDayOfMonth(1))) {
+            return;
+        }
         notifications.bindTenant(event.tenantId());
         notifications.ensurePartition(month);
-        if (notifications.insert(event) == 0) return;
+        if (notifications.insert(event) == 0) {
+            return;
+        }
         if (event.target().permissionCode() != null) {
             long offset = 0;
             List<Member> page;
@@ -67,7 +71,9 @@ public class NotificationService implements TenantDataCleaner {
             return;
         }
         for (var id : event.target().membershipIds()) {
-            if (memberships.exists(event.tenantId(), id)) notifications.addRecipient(event, id);
+            if (memberships.exists(event.tenantId(), id)) {
+                notifications.addRecipient(event, id);
+            }
         }
     }
 
@@ -92,8 +98,9 @@ public class NotificationService implements TenantDataCleaner {
     @Transactional
     public void markRead(TenantActor actor, UUID id) {
         requireActive(actor);
-        if (id != null && !notifications.exists(actor.tenantId(), actor.membershipId(), id))
+        if (id != null && !notifications.exists(actor.tenantId(), actor.membershipId(), id)) {
             throw new ForgeException(NotificationErrorCode.NOT_FOUND);
+        }
         notifications.markRead(actor.tenantId(), actor.membershipId(), id);
     }
 
@@ -101,7 +108,9 @@ public class NotificationService implements TenantDataCleaner {
         if (memberships
                 .status(actor.tenantId(), actor.membershipId())
                 .filter("active"::equals)
-                .isEmpty()) throw new ForgeException(FrameworkErrorCode.AUTH_FORBIDDEN);
+                .isEmpty()) {
+            throw new ForgeException(FrameworkErrorCode.AUTH_FORBIDDEN);
+        }
         notifications.bindTenant(actor.tenantId());
     }
 

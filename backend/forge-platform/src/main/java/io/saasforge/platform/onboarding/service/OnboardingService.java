@@ -87,7 +87,9 @@ public class OnboardingService implements AutoCloseable {
         // 逻辑清单名不一定有运行实例；保留候选，但绝不把目录存在当作加载证据。
         List<CompletableFuture<ServiceDiagnostic>> tasks = new ArrayList<>();
         for (String service : candidates) {
-            if (!service.matches("[a-z0-9][a-z0-9-]*")) continue;
+            if (!service.matches("[a-z0-9][a-z0-9-]*")) {
+                continue;
+            }
             var evidence = config.forService(service);
             var unavailable = new ServiceDiagnostic(
                     service,
@@ -111,7 +113,9 @@ public class OnboardingService implements AutoCloseable {
     private RuntimeEvidence runtime(String service) {
         Instant at = Instant.now();
         String token = tokens.tokens().get(service);
-        if (token == null) return new RuntimeEvidence("OPS_TOKEN_MISSING", at, null);
+        if (token == null) {
+            return new RuntimeEvidence("OPS_TOKEN_MISSING", at, null);
+        }
         try {
             var response = ops.get()
                     .uri(URI.create("lb://" + service + "/internal/onboarding-status"))
@@ -121,7 +125,9 @@ public class OnboardingService implements AutoCloseable {
             if (response == null
                     || !"ok".equals(response.code())
                     || response.data() == null
-                    || response.data().phase() == null) throw new IllegalStateException();
+                    || response.data().phase() == null) {
+                throw new IllegalStateException();
+            }
             return new RuntimeEvidence("LOADED", at, response.data());
         } catch (RestClientResponseException error) {
             String status = switch (error.getStatusCode().value()) {
@@ -136,24 +142,31 @@ public class OnboardingService implements AutoCloseable {
     }
 
     private RequestEvidence request(String service, String prefix) {
-        if (prefix == null) return new RequestEvidence("NOT_CHECKED", null, "ROUTE_PREFIX_MISSING");
+        if (prefix == null) {
+            return new RequestEvidence("NOT_CHECKED", null, "ROUTE_PREFIX_MISSING");
+        }
         Instant at = Instant.now();
         try {
             return gateway.get().uri(prefix + "/v3/api-docs").exchange((q, response) -> {
-                if (response.getStatusCode().value() != 200) return new RequestEvidence("FAILED", at, "HTTP_REJECTED");
+                if (response.getStatusCode().value() != 200) {
+                    return new RequestEvidence("FAILED", at, "HTTP_REJECTED");
+                }
                 MediaType type = response.getHeaders().getContentType();
-                if (type == null || !MediaType.APPLICATION_JSON.isCompatibleWith(type))
+                if (type == null || !MediaType.APPLICATION_JSON.isCompatibleWith(type)) {
                     return new RequestEvidence("FAILED", at, "HTML_OR_INVALID_OPENAPI");
+                }
                 var json = JsonMapper.builder().build().readTree(response.getBody());
                 if (json == null
                         || !json.path("openapi").asString("").startsWith("3.")
                         || !json.path("info").isObject()
                         || json.path("info").path("title").asString("").isBlank()
                         || json.path("info").path("version").asString("").isBlank()
-                        || !json.path("paths").isObject())
+                        || !json.path("paths").isObject()) {
                     return new RequestEvidence("FAILED", at, "HTML_OR_INVALID_OPENAPI");
-                if (!service.equals(json.path("x-forge-service").asString("")))
+                }
+                if (!service.equals(json.path("x-forge-service").asString(""))) {
                     return new RequestEvidence("FAILED", at, "SERVICE_IDENTITY_MISMATCH");
+                }
                 return new RequestEvidence("VERIFIED", at, null);
             });
         } catch (RuntimeException error) {

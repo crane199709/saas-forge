@@ -357,8 +357,12 @@ class PasswordTest {
                 .method(method)
                 .uri(path)
                 .headers(headers -> {
-                    if (auth != null && auth.bearer() != null) headers.setBearerAuth(auth.bearer());
-                    if (auth != null && auth.cookie() != null) headers.add("Cookie", auth.cookie());
+                    if (auth != null && auth.bearer() != null) {
+                        headers.setBearerAuth(auth.bearer());
+                    }
+                    if (auth != null && auth.cookie() != null) {
+                        headers.add("Cookie", auth.cookie());
+                    }
                 })
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
@@ -505,7 +509,9 @@ class PasswordTest {
                 Totp.code(secret, step + 2));
         for (int candidate = 0; ; candidate++) {
             String code = "%06d".formatted(candidate);
-            if (!valid.contains(code)) return code;
+            if (!valid.contains(code)) {
+                return code;
+            }
         }
     }
 
