@@ -2,7 +2,7 @@
 
 **What to build:** 按 [spec](../spec.md) 的“实现决策”，`/` 直接渲染工作台：问候语 + 待办、通知、公告三张卡，并行加载、手动刷新、按权限隐藏。
 
-**Blocked by:** —
+**Blocked by:** 00（页面可并行开发，权限联调后验收）
 
 **Status:** ready-for-agent
 
