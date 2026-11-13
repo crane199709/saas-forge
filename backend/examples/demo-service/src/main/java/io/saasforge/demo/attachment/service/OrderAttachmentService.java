@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 演示订单附件：文件经 SDK 签发的预签名 URL 由客户端直传对象存储，服务只登记归属。业务代码不接触对象 key，
@@ -35,12 +36,17 @@ public class OrderAttachmentService {
     private final OrderAttachmentMapper attachmentMapper;
     private final OrderService orderService;
     private final ObjectStorage storage;
+    private final TransactionTemplate transaction;
 
     public OrderAttachmentService(
-            OrderAttachmentMapper attachmentMapper, OrderService orderService, ObjectStorage storage) {
+            OrderAttachmentMapper attachmentMapper,
+            OrderService orderService,
+            ObjectStorage storage,
+            TransactionTemplate transaction) {
         this.attachmentMapper = attachmentMapper;
         this.orderService = orderService;
         this.storage = storage;
+        this.transaction = transaction;
     }
 
     public UploadTicket prepareUpload(UUID orderId, String filename, String contentType, long size) {
@@ -48,25 +54,27 @@ public class OrderAttachmentService {
         return storage.prepareUpload(ATTACHMENT, filename, contentType, size);
     }
 
-    /** 确认上传不放在事务中：SDK 因超出 Quota 标记文件失效时须独立提交，不能随调用方回滚。 */
+    /** 确认上传独立提交配额拒绝的失效；随后同一事务内锁文件并建立引用，避免到期治理插入其中。 */
     public OrderAttachment attach(UUID orderId, UUID objectId) {
         orderService.get(orderId);
         storage.completeUpload(objectId);
-        StoredObject object = storage.get(ATTACHMENT, objectId);
-        boolean attached = attachmentMapper.exists(
-                new LambdaQueryWrapper<OrderAttachment>().eq(OrderAttachment::getObjectId, objectId));
-        if (attached) {
-            throw ForgeException.withErrorMessage(
-                    AttachmentErrorCode.ALREADY_ATTACHED, "Object " + objectId + " is already attached");
-        }
-        var attachment = new OrderAttachment();
-        attachment.setOrderId(orderId);
-        attachment.setObjectId(object.id());
-        attachment.setFilename(object.filename());
-        attachment.setContentType(object.contentType());
-        attachment.setSize(object.size());
-        attachmentMapper.insert(attachment);
-        return attachmentMapper.selectById(attachment.getId());
+        return transaction.execute(status -> {
+            StoredObject object = storage.get(ATTACHMENT, objectId);
+            boolean attached = attachmentMapper.exists(
+                    new LambdaQueryWrapper<OrderAttachment>().eq(OrderAttachment::getObjectId, objectId));
+            if (attached) {
+                throw ForgeException.withErrorMessage(
+                        AttachmentErrorCode.ALREADY_ATTACHED, "Object " + objectId + " is already attached");
+            }
+            var attachment = new OrderAttachment();
+            attachment.setOrderId(orderId);
+            attachment.setObjectId(object.id());
+            attachment.setFilename(object.filename());
+            attachment.setContentType(object.contentType());
+            attachment.setSize(object.size());
+            attachmentMapper.insert(attachment);
+            return attachmentMapper.selectById(attachment.getId());
+        });
     }
 
     public List<OrderAttachment> list(UUID orderId) {

@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.saasforge.demo.attachment.mapper.OrderAttachmentMapper">
     <!-- 引用治理包含逻辑删除行，确保资源恢复后文件仍可用；租户条件由 SDK 注入。 -->
-    <select id="referencedObjects" resultType="java.util.UUID">
+    <select id="referencedObjects" resultType="java.util.UUID" timeout="3">
         SELECT DISTINCT object_id FROM order_attachments
         WHERE object_id IN
         <foreach collection="objectIds" item="objectId" open="(" separator="," close=")">#{objectId}</foreach>

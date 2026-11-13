@@ -49,7 +49,9 @@ public final class FileReferenceChecks implements AutoCloseable {
 
     /**
      * 返回已确认无业务引用的候选；缺覆盖、异常、超时或非法返回都返回空集并告警。
-     * 调用方只能处理返回的 ID，失效前与物理删除前必须分别检查，不能复用旧结果。
+     * 调用方须先按 ID 顺序持有整批对象行锁，再检查并在同一事务内处理返回的 ID；
+     * 失效前与物理删除前必须分别检查，不能复用旧结果。业务绑定在可写事务内先调用
+     * {@link ObjectStorage#get(StoragePurpose, UUID)} 再写入引用，与治理共用行锁。
      *
      * @param purpose 候选用途，同批不得混合用途
      * @param candidates 候选对象 ID，数量不超过 {@link #batchSize()}

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /** 在业务服务内按当前 Tenant 清理无引用文件；不跨服务访问对象或数据库。 */
 public final class StorageMaintenance {
@@ -16,12 +17,19 @@ public final class StorageMaintenance {
     private final StorageObjectMapper mapper;
     private final FileReferenceChecks references;
     private final Clock clock;
+    private final TransactionTemplate transaction;
 
-    StorageMaintenance(ObjectStorage storage, StorageObjectMapper mapper, FileReferenceChecks references, Clock clock) {
+    StorageMaintenance(
+            ObjectStorage storage,
+            StorageObjectMapper mapper,
+            FileReferenceChecks references,
+            Clock clock,
+            TransactionTemplate transaction) {
         this.storage = storage;
         this.mapper = mapper;
         this.references = references;
         this.clock = clock;
+        this.transaction = transaction;
     }
 
     /**
@@ -58,19 +66,19 @@ public final class StorageMaintenance {
                 return;
             }
             after = candidates.get(candidates.size() - 1).id();
-            var allowed = references.unreferenced(
-                    purpose, candidates.stream().map(StorageObjectRecord::id).toList(), phase);
-            for (UUID id : allowed) {
-                try {
+            transaction.executeWithoutResult(status -> {
+                // 与业务绑定共用行锁：检查器读已提交引用后，直到失效/删除提交都不能再插入新引用。
+                var locked = mapper.lockCandidates(
+                        candidates.stream().map(StorageObjectRecord::id).toList());
+                var allowed = references.unreferenced(purpose, locked, phase);
+                for (UUID id : allowed) {
                     if (phase.equals("expire")) {
                         storage.expire(id);
                     } else {
                         storage.purge(id, purpose);
                     }
-                } catch (RuntimeException error) {
-                    warn(purpose, phase);
                 }
-            }
+            });
         }
     }
 

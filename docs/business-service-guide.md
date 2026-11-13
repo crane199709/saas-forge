@@ -299,9 +299,12 @@ private static final StoragePurpose ATTACHMENT = new StoragePurpose(
         20L * 1024 * 1024, Duration.ofMinutes(5), 30);
 
 var upload = storage.prepareUpload(ATTACHMENT, filename, contentType, size);
-// 客户端凭 upload 直传后，确认存储并在登记业务关联之前校验用途。
+// 客户端凭 upload 直传后，先独立确认；配额拒绝的失效不随绑定回滚。
 storage.completeUpload(objectId);
-var object = storage.get(ATTACHMENT, objectId);
+transaction.executeWithoutResult(status -> {
+    var object = storage.get(ATTACHMENT, objectId);
+    // 在这里写入业务附件引用，与 get 持有的对象行锁在同一事务提交。
+});
 var download = storage.prepareDownload(ATTACHMENT, objectId);
 // 服务端写入同样显式传用途：storage.write(ATTACHMENT, filename, contentType, size, input)。
 ```
@@ -312,7 +315,7 @@ var download = storage.prepareDownload(ATTACHMENT, objectId);
 
 storage 现在同时引入 `forge-sdk-audit` 与 `forge-sdk-scheduling`。除存储表外，须有基础 SDK 的 MQ 必需表、`forge-audit` Topic 和可用 Redis；配置 `forge.scheduling.iam-uri`、`forge.scheduling.token`，可分别引用 `${forge.manifest.iam-uri}`、`${forge.manifest.token}`。任务 `forge-storage-retention` 每小时在各试用/正常 Tenant 上运行，也可由现有任务运维入口触发。默认脚手架仍不启用 storage，不预加这些可选配置。
 
-治理按用途和对象 ID 稳定游标分批，首批全部被引用或检查失败也继续后批；各用途故障隔离。扫描包含永久用途的主动删除、上传 URL 到期的未确认登记，以及 `PURGE_PENDING` 重试。S3 删除成功后才移除登记并释放容量；S3 或最终数据库事务失败保留可重试登记，重复 S3 删除幂等。即使宽限结束，原上传凭证仍有效也先保留，避免客户端再次 PUT 产生孤儿。最终删除同时核对当前租户/服务的对象 key，并与 restore/extend 使用相同对象行锁重查状态、宽限与上传期限。
+治理按用途和对象 ID 稳定游标分批，首批全部被引用或检查失败也继续后批；各用途故障隔离。扫描包含永久用途的主动删除、上传 URL 到期的未确认登记，以及 `PURGE_PENDING` 重试。S3 删除成功后才移除登记并释放容量；S3 或最终数据库事务失败保留可重试登记，重复 S3 删除幂等。即使宽限结束，原上传凭证仍有效也先保留，避免客户端再次 PUT 产生孤儿。最终删除同时核对当前租户/服务的对象 key，并与 restore/extend 使用相同对象行锁重查状态、宽限与上传期限。治理每批先按对象 ID 顺序锁定候选，再批量查询已提交引用并决定失效或删除；锁持有到本批事务提交。业务绑定须像上述示例一样，在可写事务中先 `get(purpose, id)` 再写引用；绑定先提交则检查器能看到引用，失效先提交则绑定返回 `storage.objectNotFound`。无事务或只读事务中的 get 只供读取，不授权后续绑定。检查器只读业务引用，不反向锁文件。
 
 `storage.expire` 覆盖显式删除、到期失效与配额拒绝导致的实际失效，`storage.retentionExtend` 覆盖延长与宽限内恢复，`storage.purge` 只在对象与登记清除成功提交后记录。重复无变化调用不新增事件；元数据只含用途、对象 ID、变更原因与期限，不含文件名、内容或凭证。沿用 `AuditRecorder` 事务提交后独立写 Outbox 的既有保证：业务回滚不记录成功事件，审计写失败仅告警，业务提交与审计之间进程终止仍可能丢事件。
 
@@ -349,7 +352,7 @@ Mapper XML 用候选 ID 的 `IN` 查询批量返回 `DISTINCT object_id`；此�
 
 多个检查器覆盖同一用途时合并其引用结果；覆盖声明意味着检查该用途所有业务引用。demo 当前只有订单附件的生产检查器；`io-source`/`io-result` 与历史 `unspecified` 均未覆盖，即使 IO 已解除引用或显式 delete，也只失效并持续占用容量，后续治理安全跳过。需要回收这些用途时，须由所属模块实现覆盖全部引用（含逻辑删除行）的检查器，storage 不反向依赖 IO。缺覆盖、任一检查器抛异常/超时、返回 null/含 null/候选外 ID，均跳过整批并记录带 tenant、purpose、phase、reason 的 WARN，不输出文件内容或检查器异常消息。失效与物理删除前各检查一次。
 
-可选配置 `forge.storage.retention.batch-size` 默认为 100（正数），`forge.storage.retention.reference-check-timeout` 默认为 5s（至少 1ms）。`FileReferenceChecks.batchSize()` 供治理扫描分批，`unreferenced(purpose, candidates, phase)` 只返回确认无引用的 ID；调用方只能处理返回值。检查最多占两个工作线程且不排队，超时尝试中断；不响应中断的实现会占住线程，池满时其他批次也跳过并告警。业务查询应配置数据库超时，出现持续 `capacity-exhausted` 时修复检查器，不能把跳过视为无引用。
+可选配置 `forge.storage.retention.batch-size` 默认为 100（正数），`forge.storage.retention.reference-check-timeout` 默认为 5s（至少 1ms）。`FileReferenceChecks.batchSize()` 供治理扫描分批，`unreferenced(purpose, candidates, phase)` 只返回确认无引用的 ID；调用方只能处理返回值。检查最多占两个工作线程且不排队，超时尝试中断；不响应中断的实现会占住线程，池满时其他批次也跳过并告警。业务查询须配置数据库超时；demo `OrderAttachmentMapper.xml` 的批量引用查询设置 `timeout="3"` 秒，不能只依赖外围 Future 取消。出现持续 `capacity-exhausted` 时修复检查器，不能把跳过视为无引用。
 
 未确认上传在上传凭证到期后可进入失效治理。包括已过期上传申请在内的全部未物理删除登记持续计入容量，避免未确认但已经上传的文件漏计；即使确认因套餐降级被拒，也保留文件供安全治理，未上传的预留容量同样须由后续清理释放。
 

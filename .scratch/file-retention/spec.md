@@ -1,6 +1,6 @@
 # 文件保留与治理规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准（「系统构成」中的 Storage Purpose、File Retention、Restore）。核心取舍由 [ADR-0026](../../docs/adr/0026-file-retention-two-phase-delete.md) 记录。依赖 `forge-sdk-storage` 与 `forge-sdk-scheduling`。
 
@@ -72,3 +72,9 @@ Storage Purpose 增加服务声明的保留期，配合引用检查与两阶段�
 - 保留期只解决孤儿文件与过期临时文件；被业务数据引用的文件会一直保留，这是有意为之。
 - 若未来需要合规删除，增加 Purpose 级 `compliance` 模式，并单独设计业务侧的缺失态展示，不改变默认语义。
 - 清理任务是租户任务，平台不跨服务删除文件。
+
+## Implementation
+
+- 已集成至 `codex/file-retention-integration`：支持用途保留期、批量引用检查、到期失效、七天宽限后清除、恢复与延长、配额及审计；demo 声明 30 天策略，绑定与治理通过同一对象锁协调事务。
+- 四张实现工单均已关闭；初始 Standards 3 项、Spec 1 项审查发现全部修复，最终双轴复核各剩余 0 项。
+- 最新验证为 storage、IO、demo 三模块共 177 项测试通过，生成工程 17 项测试与前端生成器 2 项测试通过。实现证据、命令与真实 IAM、RocketMQ、托管 S3 的验证边界详见 [acceptance.md](acceptance.md)。

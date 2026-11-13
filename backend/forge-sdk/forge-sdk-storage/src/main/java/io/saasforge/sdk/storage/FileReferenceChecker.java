@@ -16,6 +16,7 @@ public interface FileReferenceChecker {
 
     /**
      * 返回候选中仍被业务引用的对象 ID。调用不携带请求身份或调用方事务，只携带当前租户。
+     * 治理已锁定候选对象；实现只读取已提交的业务引用，不反向锁对象，查询须设置数据库超时并响应中断。
      *
      * @param purpose 已由 {@link #purposes()} 声明覆盖的用途
      * @param candidates 不可变候选列表，不得逐对象查询；大小不超过配置的批量上限

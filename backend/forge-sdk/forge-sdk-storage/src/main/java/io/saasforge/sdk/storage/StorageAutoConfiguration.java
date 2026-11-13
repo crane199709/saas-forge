@@ -102,8 +102,14 @@ public final class StorageAutoConfiguration {
             ObjectStorage storage,
             SqlSessionTemplate sqlSession,
             FileReferenceChecks references,
-            ObjectProvider<Clock> clocks) {
-        return new StorageMaintenance(storage, mapper(sqlSession), references, clocks.getIfAvailable(Clock::systemUTC));
+            ObjectProvider<Clock> clocks,
+            PlatformTransactionManager transactionManager) {
+        return new StorageMaintenance(
+                storage,
+                mapper(sqlSession),
+                references,
+                clocks.getIfAvailable(Clock::systemUTC),
+                new TransactionTemplate(transactionManager));
     }
 
     @Bean
