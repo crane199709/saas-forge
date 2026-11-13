@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
@@ -24,10 +25,13 @@ public class MembershipService {
 
     private final MembershipMapper memberships;
     private final JsonMapper json;
+    // 角色计算依赖成员服务；调用时再取得已有反向接口，避免构造器循环。
+    private final ObjectProvider<RoleGrantSource> roles;
 
-    MembershipService(MembershipMapper memberships, JsonMapper json) {
+    MembershipService(MembershipMapper memberships, JsonMapper json, ObjectProvider<RoleGrantSource> roles) {
         this.memberships = memberships;
         this.json = json;
+        this.roles = roles;
     }
 
     /** 邀请身份加入租户，返回其 Membership；已有 Membership 时原样返回，不改变状态。由开通调用，没有操作人。 */
@@ -41,11 +45,15 @@ public class MembershipService {
      * @param actor 发起邀请的 Identity
      */
     public MembershipStatus invite(UUID tenantId, UUID identityId, UUID actor) {
-        memberships.insertInvited(UuidV7.generate(), identityId, tenantId, actor);
+        int inserted = memberships.insertInvited(UuidV7.generate(), identityId, tenantId, actor);
         MembershipStatus membership = memberships.findStatus(identityId, tenantId);
         if (MembershipStatus.LEFT.equals(membership.status())) {
             memberships.reinvite(tenantId, membership.membershipId(), actor);
+            roles.getObject().grantInitialReadRole(tenantId, membership.membershipId());
             return new MembershipStatus(membership.membershipId(), MembershipStatus.INVITED);
+        }
+        if (inserted == 1) {
+            roles.getObject().grantInitialReadRole(tenantId, membership.membershipId());
         }
         return membership;
     }

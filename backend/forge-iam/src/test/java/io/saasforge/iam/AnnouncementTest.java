@@ -48,7 +48,7 @@ import org.springframework.web.client.RestClient;
 
 /** 公告通过两端 HTTP 入口发布、读取与撤回，已读状态按 Membership 隔离。 */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Sql({"/fixtures/organization.sql", "/fixtures/announcements.sql"})
+@Sql({"/fixtures/organization.sql", "/fixtures/announcements.sql", "/fixtures/inbox-readers.sql"})
 @SuppressWarnings("unchecked")
 class AnnouncementTest {
     static final String KEY_FILE = "target/test-announcement-signing.jwk";

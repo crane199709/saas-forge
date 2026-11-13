@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useInboxUnread } from './unread-count'
-const { count, failed } = useInboxUnread()
+const { count, failed, visible } = useInboxUnread()
 </script>
 <template>
   <router-link
+    v-if="visible"
     to="/notifications"
     class="notification-bell"
     data-testid="notification-bell"

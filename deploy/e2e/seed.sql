@@ -13,8 +13,8 @@ INSERT INTO role (id,tenant_id,code,name,builtin) VALUES ('019a2525-0000-7000-80
 INSERT INTO membership_role (membership_id,role_id) VALUES ('019a2525-0000-7000-8000-000000000031','019a2525-0000-7000-8000-000000000041');
 INSERT INTO membership_role (membership_id,role_id) VALUES ('019a2525-0000-7000-8000-000000000032','019a2525-0000-7000-8000-000000000042');
 INSERT INTO membership_role (membership_id,role_id) VALUES ('019a2525-0000-7000-8000-000000000033','019a2525-0000-7000-8000-000000000043');
-INSERT INTO role_permission (role_id,permission_id) SELECT '019a2525-0000-7000-8000-000000000041',id FROM permission WHERE code IN ('order:read','order:create','iam:audit:read') AND NOT deleted;
-INSERT INTO role_permission (role_id,permission_id) SELECT '019a2525-0000-7000-8000-000000000042',id FROM permission WHERE code IN ('order:read') AND NOT deleted;
+INSERT INTO role_permission (role_id,permission_id) SELECT '019a2525-0000-7000-8000-000000000041',id FROM permission WHERE code IN ('order:read','order:create','iam:audit:read','todo:read','notification:read','announcement:read') AND NOT deleted;
+INSERT INTO role_permission (role_id,permission_id) SELECT '019a2525-0000-7000-8000-000000000042',id FROM permission WHERE code IN ('order:read','todo:read','notification:read','announcement:read') AND NOT deleted;
 INSERT INTO role_data_policy (role_id,resource,scope) VALUES ('019a2525-0000-7000-8000-000000000041','order','self'), ('019a2525-0000-7000-8000-000000000042','order','all');
 INSERT INTO sub_app (code,name,version,revision) VALUES ('demo','E2E 示例','e2e',0);
 INSERT INTO sub_app_entry (code,environment,remote_entry) VALUES ('demo','e2e','http://127.0.0.1:15175/remoteEntry.js');

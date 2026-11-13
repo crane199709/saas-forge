@@ -1,6 +1,10 @@
 import { enableAutoUnmount, flushPromises } from '@vue/test-utils'
 import { afterEach, expect, it, vi } from 'vitest'
-import { mountShell } from '../test-shell'
+import { mountShell as mountBaseShell } from '../test-shell'
+
+const readPermissions = ['todo:read', 'notification:read', 'announcement:read']
+const mountShell = (path: string) =>
+  mountBaseShell(path, { access: async () => ({ permissions: readPermissions }) })
 
 enableAutoUnmount(afterEach)
 afterEach(() => {
@@ -99,4 +103,31 @@ it('更晚的可见页面读取生效，隐藏前慢响应和退出后的结果�
   client.clear()
   await flushPromises()
   expect(wrapper.find('[data-testid="notification-bell"] .unread-count').exists()).toBe(false)
+})
+
+it('切换租户先清空旧数量，权限就绪后只请求新租户授权的类别', async () => {
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+  setup()
+  let permissions = ['notification:read']
+  const calls: string[] = []
+  vi.stubGlobal('fetch', async (input: string) => {
+    const path = new URL(input, location.origin).pathname.replace(/^\/api(?=\/)/, '')
+    calls.push(path)
+    if (path === '/iam/auth/switch')
+      return response({ accessToken: 'next', refreshToken: 'r2', membershipId: 'b' })
+    if (path.endsWith('/unread-count')) return response({ count: 2 })
+    return response([])
+  })
+  const { wrapper, client } = await mountBaseShell('/notifications', {
+    access: async () => ({ permissions }),
+  })
+  expect(wrapper.get('[data-testid="notification-bell"]').text()).toContain('2')
+  calls.length = 0
+  permissions = ['announcement:read']
+  await client.switchTenant('b')
+  await flushPromises()
+  expect(calls).toContain('/iam/announcements/unread-count')
+  expect(calls).not.toContain('/iam/notifications/unread-count')
+  expect(wrapper.find('[data-testid="tab-notifications"]').exists()).toBe(false)
+  expect(wrapper.find('[data-testid="tab-announcements"]').exists()).toBe(true)
 })

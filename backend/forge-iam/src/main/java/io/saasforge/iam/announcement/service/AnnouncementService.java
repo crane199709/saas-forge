@@ -68,6 +68,7 @@ public class AnnouncementService {
     /** 当前有效 Membership 可见的公告，包含该 Membership 的已读状态。 */
     public List<AnnouncementResponse> visible(TenantActor actor) {
         bind(actor);
+        roles.requirePermission(actor.membershipId(), IamPermissions.ANNOUNCEMENT_READ);
         return announcements.visible(actor.tenantId(), actor.membershipId());
     }
     /** 可见且尚未读的公告数。 */

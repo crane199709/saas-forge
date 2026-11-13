@@ -86,6 +86,29 @@ public class RoleService implements RoleGrantSource {
         }
     }
 
+    /** 新成员默认可读消息；普通角色的权限和分配均可由租户管理员撤销。 */
+    @Override
+    @Transactional
+    public void grantInitialReadRole(UUID tenantId, UUID membershipId) {
+        roles.lockTenant(tenantId);
+        UUID id = UuidV7.generate();
+        if (roles.insertCustom(tenantId, id, "inbox-reader", "消息读取", null) == 1) {
+            grants.grant(
+                    id,
+                    List.of(
+                            IamPermissions.TODO_READ,
+                            IamPermissions.NOTIFICATION_READ,
+                            IamPermissions.ANNOUNCEMENT_READ));
+        } else {
+            id = roles.list(tenantId).stream()
+                    .filter(role -> "inbox-reader".equals(role.code()))
+                    .findFirst()
+                    .orElseThrow()
+                    .id();
+        }
+        roles.grant(tenantId, membershipId, List.of(id));
+    }
+
     /** 授予租户的 Owner 角色，可重复调用。须先预置角色。 */
     public void grantOwner(UUID tenantId, UUID membershipId) {
         roles.grantOwner(tenantId, membershipId);
@@ -150,7 +173,8 @@ public class RoleService implements RoleGrantSource {
         Optional<Set<String>> plan = plans.permissionsOf(tenantId);
         return permissions.activePermissions().stream()
                 .filter(permission -> plan.isEmpty()
-                        || IamPermissions.SERVICE.equals(permission.service())
+                        || (IamPermissions.SERVICE.equals(permission.service())
+                                && !IamPermissions.planScoped(permission.code()))
                         || plan.get().contains(permission.code()))
                 .toList();
     }

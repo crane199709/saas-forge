@@ -33,7 +33,7 @@ public interface MembershipMapper {
      * 为身份建立 invited 的 Membership，已有未删除的 Membership（不论状态）时不做修改。{@code actor} 为 null 表示系统（开通）。
      * 不受 Data Policy 过滤。
      */
-    void insertInvited(
+    int insertInvited(
             @Param("id") UUID id,
             @Param("identityId") UUID identityId,
             @Param("tenantId") UUID tenantId,

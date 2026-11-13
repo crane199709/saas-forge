@@ -11,6 +11,14 @@
     },
     {
       "service": "forge-iam",
+      "code": "announcement:read",
+      "name": "查看公告",
+      "group": "消息读取",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam",
       "code": "iam:audit:read",
       "name": "查看审计",
       "group": "租户管理",
@@ -110,6 +118,14 @@
       "code": "masking:viewRaw",
       "name": "查看样例原文",
       "group": "数据安全示例",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam",
+      "code": "notification:read",
+      "name": "查看通知",
+      "group": "消息读取",
       "realm": "tenant",
       "status": "active"
     },
@@ -295,6 +311,14 @@
       "name": "查看租户",
       "group": "租户",
       "realm": "platform",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam",
+      "code": "todo:read",
+      "name": "查看待办",
+      "group": "消息读取",
+      "realm": "tenant",
       "status": "active"
     }
   ]
