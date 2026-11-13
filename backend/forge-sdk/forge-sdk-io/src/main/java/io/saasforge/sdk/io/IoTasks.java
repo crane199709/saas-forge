@@ -106,10 +106,14 @@ public final class IoTasks implements AutoCloseable {
      * @return 等待中的任务
      */
     public IoTask submit(String type, UUID source, String summary, Work work) {
-        return submit(type, source, summary, work, null);
+        return submit(type, source, summary, work, null, null);
     }
 
-    IoTask confirmImport(UUID id, Function<UUID, Work> work) {
+    IoTask submitImport(UUID source, String model, Work work) {
+        return submit("IMPORT", source, null, work, null, model);
+    }
+
+    IoTask confirmImport(UUID id, String model, Function<UUID, Work> work) {
         var owner = TenantContext.current();
         var task = mapper.confirmation(id);
         if (task == null) {
@@ -123,16 +127,20 @@ public final class IoTasks implements AutoCloseable {
                 || !task.heartbeatAt().isAfter(OffsetDateTime.now().minusHours(24))) {
             throw new ForgeException(IoErrorCode.TASK_NOT_AWAITING_CONFIRMATION);
         }
+        if (task.importModel() != null && !task.importModel().equals(model)) {
+            throw new ForgeException(IoErrorCode.INVALID_FILE);
+        }
         // 先抢占再打开源对象；过期清理若先赢，确认只返回状态冲突，不会读取已被清理的源文件。
         return submit(
                 "IMPORT",
                 task.sourceObjectId(),
                 null,
                 progress -> work.apply(task.sourceObjectId()).execute(progress),
-                id);
+                id,
+                model);
     }
 
-    private IoTask submit(String type, UUID source, String summary, Work work, UUID confirmation) {
+    private IoTask submit(String type, UUID source, String summary, Work work, UUID confirmation, String importModel) {
         if (!List.of("IMPORT", "EXPORT").contains(type)) {
             throw new IllegalArgumentException("Unknown IO type");
         }
@@ -171,7 +179,7 @@ public final class IoTasks implements AutoCloseable {
                 redis.opsForSet().add(tenantKey, owner.tenantId().toString());
                 transaction.executeWithoutResult(status -> {
                     if (confirmation == null) {
-                        mapper.insert(id, type, owner.membershipId(), owner.identityId(), source, summary);
+                        mapper.insert(id, type, owner.membershipId(), owner.identityId(), source, summary, importModel);
                     } else if (mapper.confirm(
                                     id,
                                     owner.membershipId(),

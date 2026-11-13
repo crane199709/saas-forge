@@ -13,7 +13,8 @@ public record IoProperties(
         @DefaultValue("100000") int exportLimit,
         @DefaultValue("10s") Duration heartbeatInterval,
         @DefaultValue("2m") Duration heartbeatTimeout,
-        @DefaultValue("7d") Duration retention) {
+        @DefaultValue("7d") Duration retention,
+        @DefaultValue("90d") Duration backupRetention) {
     public IoProperties {
         if (workers < 1
                 || queueCapacity < 0
@@ -24,7 +25,9 @@ public record IoProperties(
                 || heartbeatInterval.isZero()
                 || heartbeatTimeout.compareTo(heartbeatInterval) <= 0
                 || retention.isNegative()
-                || retention.isZero()) {
+                || retention.isZero()
+                || backupRetention.isNegative()
+                || backupRetention.isZero()) {
             throw new IllegalArgumentException("Invalid forge.io limits or durations");
         }
     }

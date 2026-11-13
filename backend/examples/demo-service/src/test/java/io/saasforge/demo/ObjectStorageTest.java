@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.saasforge.demo.category.mapper.OutboxAuditMapper;
 import io.saasforge.demo.order.model.OrderImportRow;
+import io.saasforge.demo.order.model.OrderOverwriteRow;
 import io.saasforge.demo.order.service.OrderService;
 import io.saasforge.sdk.abac.DataScope;
 import io.saasforge.sdk.abac.data.DataPermission;
@@ -18,6 +19,9 @@ import io.saasforge.sdk.core.SubjectAttributes;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.io.ExcelColumn;
 import io.saasforge.sdk.io.ExcelIo;
+import io.saasforge.sdk.io.ImportBackups;
+import io.saasforge.sdk.io.ImportSnapshot;
+import io.saasforge.sdk.io.ImportWriter;
 import io.saasforge.sdk.io.IoAutoConfiguration;
 import io.saasforge.sdk.io.IoMaintenance;
 import io.saasforge.sdk.io.IoStoragePurposes;
@@ -25,6 +29,7 @@ import io.saasforge.sdk.io.IoTask;
 import io.saasforge.sdk.io.IoTasks;
 import io.saasforge.sdk.manifest.ResourceManifestCollector;
 import io.saasforge.sdk.mq.EventHandler;
+import io.saasforge.sdk.provisioning.TenantDeleted;
 import io.saasforge.sdk.provisioning.TenantPlanChanged;
 import io.saasforge.sdk.security.EffectiveFieldPolicy;
 import io.saasforge.sdk.security.MaskingRule;
@@ -172,6 +177,9 @@ class ObjectStorageTest {
 
     @Autowired
     IoMaintenance maintenance;
+
+    @Autowired
+    ImportBackups backups;
 
     private UUID tenant;
 
@@ -1284,6 +1292,230 @@ class ObjectStorageTest {
     }
 
     @Test
+    void taskHistoryRemembersImportModelAndRejectsMismatchedConfirmation() throws Exception {
+        String taskId = submitOverwrite(new String[][] {{"通过历史确认", "2", "线上", createOrder(tenant)}});
+        assertThat(awaitValidation(taskId).get("importModel"))
+                .isEqualTo("io.saasforge.demo.order.model.OrderOverwriteRow");
+        var wrongModel = exchange(tenant, HttpMethod.POST, "/orders/import/" + taskId + "/confirm", null);
+        assertThat(wrongModel.get("httpStatus")).isEqualTo(400);
+        assertThat(wrongModel.get("code")).isEqualTo("io.invalidFile");
+        assertThat(awaitValidation(taskId).get("status")).isEqualTo("AWAITING_CONFIRM");
+        assertThat(exchange(tenant, HttpMethod.POST, "/orders/import/overwrite/" + taskId + "/confirm", null)
+                        .get("httpStatus"))
+                .isEqualTo(200);
+        assertThat(awaitTask(taskId).get("status")).isEqualTo("SUCCEEDED");
+        var history =
+                (List<?>) exchange(tenant, HttpMethod.GET, "/io/tasks", null).get("data");
+        assertThat(history).anySatisfy(item -> {
+            var task = (Map<?, ?>) item;
+            assertThat(task.get("id")).isEqualTo(taskId);
+            assertThat(task.get("importModel")).isEqualTo("io.saasforge.demo.order.model.OrderOverwriteRow");
+        });
+    }
+
+    private String submitOverwrite(String[][] rows) throws Exception {
+        String source = uploadWorkbook(new String[] {"标题 *", "金额 *", "客户来源", "订单ID"}, rows);
+        var submitted = exchange(tenant, HttpMethod.POST, "/orders/import/overwrite", Map.of("objectId", source));
+        assertThat(submitted.get("httpStatus")).isEqualTo(201);
+        return (String) ((Map<?, ?>) submitted.get("data")).get("id");
+    }
+
+    @Test
+    void appendAndPureNewOverwriteImportsHaveNoSnapshotOrExpiry() throws Exception {
+        var appended = confirmImport(submitImport(uploadWorkbook(new String[][] {{"追加记录", "1", "线上"}})));
+        assertThat(appended.get("snapshotAvailable")).isEqualTo(false);
+        assertThat(appended.get("snapshotCount")).isEqualTo(0);
+        assertThat(appended.get("snapshotExpiresAt")).isNull();
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(backups.list(UUID.fromString((String) appended.get("id")), 100, 0))
+                    .isEmpty();
+        }
+        var created = confirmOverwrite(submitOverwrite(new String[][] {{"覆盖模板中的新增行", "3", "线上", ""}}));
+        assertThat(created.get("snapshotAvailable")).isEqualTo(false);
+        assertThat(created.get("snapshotCount")).isEqualTo(0);
+        assertThat(created.get("snapshotExpiresAt")).isNull();
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(backups.list(UUID.fromString((String) created.get("id")), 100, 0))
+                    .isEmpty();
+        }
+    }
+
+    private Map<?, ?> confirmOverwrite(String taskId) throws Exception {
+        assertThat(awaitValidation(taskId).get("status")).isEqualTo("AWAITING_CONFIRM");
+        assertThat(exchange(tenant, HttpMethod.POST, "/orders/import/overwrite/" + taskId + "/confirm", null)
+                        .get("httpStatus"))
+                .isEqualTo(200);
+        return awaitTask(taskId);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void tenantDeletionRemovesItsSnapshotsAndAvailabilityWithoutAffectingOtherTenants() throws Exception {
+        UUID originalTenant = tenant;
+        String originalTask = submitOverwrite(new String[][] {{"原租户覆盖", "2", "线上", createOrder(tenant)}});
+        assertThat(confirmOverwrite(originalTask).get("snapshotAvailable")).isEqualTo(true);
+        UUID otherTenant = UUID.randomUUID();
+        tenant = otherTenant;
+        TestGrants.publishAll(redisTemplate, otherTenant, TestTokens.MEMBERSHIP_ID);
+        assertThat(exchange(otherTenant, HttpMethod.GET, "/io/tasks/" + originalTask, null)
+                        .get("httpStatus"))
+                .isEqualTo(404);
+        try (var ignored = CurrentTenant.bind(otherTenant)) {
+            assertThat(backups.list(UUID.fromString(originalTask), 100, 0)).isEmpty();
+        }
+        String otherTask = submitOverwrite(new String[][] {{"其他租户覆盖", "3", "线上", createOrder(tenant)}});
+        assertThat(confirmOverwrite(otherTask).get("snapshotAvailable")).isEqualTo(true);
+        tenant = originalTenant;
+        var cleaner = (EventHandler<TenantDeleted>) handlers.stream()
+                .filter(handler -> handler.eventType() == TenantDeleted.class)
+                .findFirst()
+                .orElseThrow();
+        redisTemplate.opsForValue().set(MembershipStateKeys.tenantStatus(originalTenant), "deleted");
+        for (int delivery = 0; delivery < 2; delivery++) {
+            CurrentTenant.run(
+                    originalTenant,
+                    () -> transaction.executeWithoutResult(
+                            status -> cleaner.handle(new TenantDeleted(originalTenant))));
+        }
+        try (var ignored = CurrentTenant.bind(originalTenant)) {
+            assertThat(backups.list(UUID.fromString(originalTask), 100, 0)).isEmpty();
+        }
+        assertThat(asMember(() -> ioTasks.get(UUID.fromString(originalTask))).snapshotAvailable())
+                .isFalse();
+        tenant = otherTenant;
+        assertThat(asMember(() -> ioTasks.get(UUID.fromString(otherTask))).snapshotAvailable())
+                .isTrue();
+        try (var ignored = CurrentTenant.bind(otherTenant)) {
+            assertThat(backups.list(UUID.fromString(otherTask), 100, 0)).hasSize(1);
+            assertThat(backups.list(UUID.fromString(originalTask), 100, 0)).isEmpty();
+        }
+    }
+
+    @Test
+    void sdkSnapshotsPreserveExactDecimalValues() throws Exception {
+        String source = uploadWorkbook(new String[][] {{"覆盖记录", "1", "线上"}});
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            storage.completeUpload(UUID.fromString(source));
+        }
+        var submitted =
+                asMember(() -> excel.importFile(OrderImportRow.class, UUID.fromString(source), row -> List.of()));
+        assertThat(awaitValidation(submitted.id().toString()).get("status")).isEqualTo("AWAITING_CONFIRM");
+        asMember(() ->
+                excel.confirmImport(submitted.id(), OrderImportRow.class, row -> List.of(), new ImportWriter<>() {
+                    @Override
+                    public ImportSnapshot beforeWrite(OrderImportRow row) {
+                        return new ImportSnapshot(
+                                "external-record",
+                                Map.of("balance", new BigDecimal("12345678901234567890.12345678901234567890")));
+                    }
+
+                    @Override
+                    public String write(OrderImportRow row) {
+                        return "version-2";
+                    }
+                }));
+        assertThat(awaitTask(submitted.id().toString()).get("status")).isEqualTo("SUCCEEDED");
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(backups.list(submitted.id(), 100, 0))
+                    .singleElement()
+                    .satisfies(
+                            backup -> assertThat(backup.values().get("balance").toString())
+                                    .isEqualTo("12345678901234567890.12345678901234567890"));
+        }
+    }
+
+    @Test
+    void overwriteImportMakesOnlyCoveredRecordsAvailableForRollbackAfterConfirmation() throws Exception {
+        String orderId = createOrder(tenant);
+        String source = uploadWorkbook(new String[] {"标题 *", "金额 *", "客户来源", "订单ID"}, new String[][] {
+            {"覆盖后的订单", "25.50", "线上", orderId}, {"最后覆盖的订单", "30", "", orderId}, {"导入新增", "7", "线上", ""}
+        });
+        var submitted = exchange(tenant, HttpMethod.POST, "/orders/import/overwrite", Map.of("objectId", source));
+        assertThat(submitted.get("httpStatus")).isEqualTo(201);
+        String taskId = (String) ((Map<?, ?>) submitted.get("data")).get("id");
+        var waiting = awaitValidation(taskId);
+        assertThat(waiting.get("snapshotAvailable")).isEqualTo(false);
+        assertThat(waiting.get("snapshotCount")).isEqualTo(0);
+        var confirmed = exchange(tenant, HttpMethod.POST, "/orders/import/overwrite/" + taskId + "/confirm", null);
+        assertThat(confirmed.get("httpStatus")).isEqualTo(200);
+        var finished = awaitTask(taskId);
+        assertThat(finished.get("status")).isEqualTo("SUCCEEDED");
+        assertThat(finished.get("snapshotAvailable")).isEqualTo(true);
+        assertThat(finished.get("snapshotCount")).isEqualTo(1);
+        assertThat(java.time.OffsetDateTime.parse((String) finished.get("snapshotExpiresAt")))
+                .isAfter(java.time.OffsetDateTime.now().plusDays(89));
+        var order = (Map<?, ?>)
+                exchange(tenant, HttpMethod.GET, "/orders/" + orderId, null).get("data");
+        assertThat(order.get("title")).isEqualTo("最后覆盖的订单");
+        assertThat(order.get("customerSource")).isNull();
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(backups.list(UUID.fromString(taskId), 100, 0))
+                    .singleElement()
+                    .satisfies(backup -> {
+                        assertThat(backup.recordId()).isEqualTo(orderId);
+                        assertThat(backup.values().keySet())
+                                .containsExactlyInAnyOrder("title", "amount", "customerSource");
+                        assertThat(backup.values())
+                                .containsEntry("title", "附件订单")
+                                .containsEntry("customerSource", null);
+                        assertThat(new BigDecimal(backup.values().get("amount").toString()))
+                                .isEqualByComparingTo("1");
+                        assertThat(java.time.OffsetDateTime.parse(backup.importedVersion()))
+                                .isEqualTo(java.time.OffsetDateTime.parse((String) order.get("updatedAt")));
+                    });
+            assertThat(backups.list(UUID.fromString(taskId), 1, 1)).isEmpty();
+        }
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .hasSize(2);
+    }
+
+    @Test
+    void writeFailureRollsBackCoveredValuesAndSnapshotsTogether() throws Exception {
+        String firstId = createOrder(tenant);
+        String secondId = createOrder(tenant);
+        String taskId = submitOverwrite(new String[][] {{"本应回滚", "2", "线上", firstId}, {"让写入失败", "3", "线上", secondId}});
+        assertThat(awaitValidation(taskId).get("status")).isEqualTo("AWAITING_CONFIRM");
+        asMember(() -> excel.confirmImport(
+                UUID.fromString(taskId), OrderOverwriteRow.class, row -> List.of(), new ImportWriter<>() {
+                    @Override
+                    public ImportSnapshot beforeWrite(OrderOverwriteRow row) {
+                        var original = orderService.getForImport(row.id());
+                        Map<String, Object> values = new LinkedHashMap<>();
+                        values.put("title", original.getTitle());
+                        values.put("amount", original.getAmount());
+                        values.put("customerSource", original.getCustomerSource());
+                        return new ImportSnapshot(row.id().toString(), values);
+                    }
+
+                    @Override
+                    public String write(OrderOverwriteRow row) {
+                        if (row.title().equals("让写入失败")) {
+                            throw new IllegalStateException("Expected business write failure");
+                        }
+                        return orderService
+                                .overwriteImported(row.id(), row.title(), row.amount(), row.customerSource())
+                                .getUpdatedAt()
+                                .toString();
+                    }
+                }));
+        var failed = awaitTask(taskId);
+        assertThat(failed.get("status")).isEqualTo("FAILED");
+        assertThat(failed.get("snapshotAvailable")).isEqualTo(false);
+        assertThat(failed.get("snapshotCount")).isEqualTo(0);
+        assertThat(failed.get("snapshotExpiresAt")).isNull();
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(backups.list(UUID.fromString(taskId), 100, 0)).isEmpty();
+        }
+        for (String id : List.of(firstId, secondId)) {
+            var order = (Map<?, ?>)
+                    exchange(tenant, HttpMethod.GET, "/orders/" + id, null).get("data");
+            assertThat(order.get("title")).isEqualTo("附件订单");
+            assertThat(new BigDecimal(order.get("amount").toString())).isEqualByComparingTo("1");
+            assertThat(order.get("customerSource")).isNull();
+        }
+    }
+
+    @Test
     void importMatchesNamesAndWritesAllRowsWhileInvalidNamesWriteNothing() throws Exception {
         String object = uploadWorkbook(new String[][] {{"第一笔", "12.50", "线上"}, {"第二笔", "20", "展会"}});
         var task = confirmImport(submitImport(object));
@@ -1434,12 +1666,15 @@ class ObjectStorageTest {
     }
 
     private String uploadWorkbook(String[][] rows) throws Exception {
+        return uploadWorkbook(new String[] {"标题 *", "金额 *", "客户来源"}, rows);
+    }
+
+    private String uploadWorkbook(String[] headers, String[][] rows) throws Exception {
         byte[] bytes;
         try (var workbook = new XSSFWorkbook();
                 var output = new ByteArrayOutputStream()) {
             var sheet = workbook.createSheet("订单");
             var header = sheet.createRow(0);
-            String[] headers = {"标题 *", "金额 *", "客户来源"};
             for (int i = 0; i < headers.length; i++) {
                 header.createCell(i).setCellValue(headers[i]);
             }

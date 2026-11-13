@@ -14,7 +14,8 @@ interface IoTaskMapper {
             @Param("member") UUID member,
             @Param("actor") UUID actor,
             @Param("source") UUID source,
-            @Param("summary") String summary);
+            @Param("summary") String summary,
+            @Param("importModel") String importModel);
     /** 查询本人任务；不受 Data Policy 过滤。 */
     IoTask own(@Param("id") UUID id, @Param("member") UUID member);
     /** 查询当前租户内的确认元数据，用于区分提交人与其他成员；不受 Data Policy 过滤。 */

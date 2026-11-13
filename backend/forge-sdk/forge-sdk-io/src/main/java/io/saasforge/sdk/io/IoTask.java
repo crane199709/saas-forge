@@ -9,6 +9,7 @@ import java.util.UUID;
 public record IoTask(
         UUID id,
         String type,
+        String importModel,
         String status,
         UUID membershipId,
         long rowCount,
@@ -17,7 +18,18 @@ public record IoTask(
         @JsonIgnore UUID resultObjectId,
         OffsetDateTime heartbeatAt,
         OffsetDateTime createdAt,
-        OffsetDateTime finishedAt) {
+        OffsetDateTime finishedAt,
+        long snapshotCount,
+        OffsetDateTime snapshotExpiresAt) {
+    /** 只有成功完成且仍在保留期内的覆盖快照可用于回滚。 */
+    @JsonProperty("snapshotAvailable")
+    public boolean snapshotAvailable() {
+        return "SUCCEEDED".equals(status)
+                && snapshotCount > 0
+                && snapshotExpiresAt != null
+                && snapshotExpiresAt.isAfter(OffsetDateTime.now());
+    }
+
     /** 结果文件存在时，前端才显示下载入口；下载票据仍由服务端校验有效期。 */
     @JsonProperty("resultAvailable")
     public boolean resultAvailable() {

@@ -2,14 +2,20 @@ package io.saasforge.demo.order.service;
 
 import io.saasforge.demo.order.model.OrderExportRow;
 import io.saasforge.demo.order.model.OrderImportRow;
+import io.saasforge.demo.order.model.OrderOverwriteRow;
+import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.io.ExcelIo;
+import io.saasforge.sdk.io.ImportSnapshot;
+import io.saasforge.sdk.io.ImportWriter;
 import io.saasforge.sdk.io.IoStoragePurposes;
 import io.saasforge.sdk.io.IoTask;
 import io.saasforge.sdk.storage.ObjectStorage;
 import io.saasforge.sdk.storage.UploadTicket;
 import io.saasforge.sdk.web.PageQuery;
 import java.io.OutputStream;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -40,6 +46,57 @@ public class OrderIoService {
 
     public IoTask confirmImport(UUID taskId) {
         return excel.confirmImport(taskId, OrderImportRow.class, this::validate, this::write);
+    }
+
+    public void overwriteTemplate(OutputStream output) throws Exception {
+        excel.template(OrderOverwriteRow.class, output);
+    }
+
+    public IoTask importOverwrite(UUID source) {
+        storage.completeUpload(source);
+        return excel.importFile(OrderOverwriteRow.class, source, this::validateOverwrite);
+    }
+
+    public IoTask confirmOverwrite(UUID taskId) {
+        return excel.confirmImport(taskId, OrderOverwriteRow.class, this::validateOverwrite, new ImportWriter<>() {
+            @Override
+            public ImportSnapshot beforeWrite(OrderOverwriteRow row) {
+                if (row.id() == null) {
+                    return null;
+                }
+                var order = orders.getForImport(row.id());
+                Map<String, Object> values = new LinkedHashMap<>();
+                values.put("title", order.getTitle());
+                values.put("amount", order.getAmount());
+                values.put("customerSource", order.getCustomerSource());
+                return new ImportSnapshot(row.id().toString(), values);
+            }
+
+            @Override
+            public String write(OrderOverwriteRow row) {
+                if (row.id() == null) {
+                    orders.create(row.title(), row.amount(), row.customerSource());
+                    return null;
+                }
+                return orders.overwriteImported(row.id(), row.title(), row.amount(), row.customerSource())
+                        .getUpdatedAt()
+                        .toString();
+            }
+        });
+    }
+
+    private List<String> validateOverwrite(OrderOverwriteRow row) {
+        if (row.id() != null) {
+            try {
+                orders.get(row.id());
+            } catch (ForgeException error) {
+                if (error.errorCode() == OrderErrorCode.NOT_FOUND) {
+                    return List.of("订单不存在或无访问权限");
+                }
+                throw error;
+            }
+        }
+        return List.of();
     }
 
     private List<String> validate(OrderImportRow row) {

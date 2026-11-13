@@ -18,6 +18,14 @@
 
 门禁禁止直接声明 Spring Data Redis、Redisson、Lettuce、Jedis、RocketMQ 与 Nacos 原生客户端、XXL-JOB。上述 starter 带入的传递依赖不受禁令影响。基础设施实现模块只有确需直引时才可设置 `forge.middleware.skip=true`，在属性旁写明原因，并同步平台的中间件豁免清单；业务服务保持默认门禁。
 
+## 覆盖导入快照
+
+使用 `forge-sdk-io` 时，服务迁移须包含 SDK 当前 `schema.sql`；已经创建 IO 任务表的服务升级时新增迁移复制 `upgrade-import-backup.sql`，不要修改已执行迁移。默认 starter 不引入 IO，未使用该能力的生成工程不创建 IO 表。
+
+覆盖导入确认使用 `ExcelIo.confirmImport` 的 `ImportWriter<T>` 重载：`beforeWrite` 在当前事务中锁定旧记录，只返回将覆盖字段的 `ImportSnapshot`（保留 null 原值），新增行返回 null；`write` 完成写入后返回数据库实际修改标记（`updated_at` 或版本列）。SDK 在同一事务中先保存快照再调用写入器，失败时一同回滚。业务写入不得覆盖快照之外的字段。SDK 自动登记导入 record 的全限定类名为 `IoTask.importModel`；同一业务对象的覆盖导入保持模型名稳定，历史界面据此选择确认路由，服务不要将不同业务对象混用一个模型。
+
+`ImportBackups.list` 仅供当前租户的服务内修复逻辑读取，公开接口另行检查权限，不能直接返回旧字段原文。任务的 `snapshotCount`、`snapshotExpiresAt` 与 `snapshotAvailable` 供界面判断可用性；没有覆盖行时不宣称可回滚。快照默认保留 90 天，使用 `forge.io.backup-retention` 调整；SDK 随 `TenantDeleted` 逻辑删除该租户快照。
+
 ## SQL 与持久层
 
 手写 SQL 只能写在 mapper XML 中。这样 SQL 集中在一处便于审查；SDK 通过 MyBatis-Plus 拦截器自动注入租户过滤与数据权限条件，SQL 集中在 mapper 中，拦截器对 SQL 的改写才可预期。SDK 只支持 MyBatis-Plus，不支持 JPA 等其他持久层，用其他持久层得不到自动隔离保障。

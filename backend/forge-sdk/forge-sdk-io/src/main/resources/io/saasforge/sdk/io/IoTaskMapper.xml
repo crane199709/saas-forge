@@ -2,11 +2,11 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="io.saasforge.sdk.io.IoTaskMapper">
     <sql id="columns">
-        id,type,status,membership_id,row_count,error_code,failure_reason,result_object_id,heartbeat_at,created_at,finished_at
+        id,type,import_model,status,membership_id,row_count,error_code,failure_reason,result_object_id,heartbeat_at,created_at,finished_at,snapshot_count,snapshot_expires_at
     </sql>
     <insert id="insert">
-        INSERT INTO forge_io_task (id,type,status,membership_id,source_object_id,query_summary,created_by,updated_by)
-        VALUES (#{id},#{type},'WAITING',#{member},#{source},#{summary},#{actor},#{actor})
+        INSERT INTO forge_io_task (id,type,status,membership_id,source_object_id,query_summary,created_by,updated_by,import_model)
+        VALUES (#{id},#{type},'WAITING',#{member},#{source},#{summary},#{actor},#{actor},#{importModel})
     </insert>
     <select id="own" resultType="io.saasforge.sdk.io.IoTask">
         SELECT
@@ -15,7 +15,7 @@
         WHERE NOT deleted AND id=#{id} AND membership_id=#{member}
     </select>
     <select id="confirmation" resultType="io.saasforge.sdk.io.IoConfirmation">
-        SELECT membership_id,status,source_object_id,heartbeat_at
+        SELECT membership_id,status,source_object_id,heartbeat_at,import_model
         FROM forge_io_task
         WHERE NOT deleted AND id=#{id}
     </select>

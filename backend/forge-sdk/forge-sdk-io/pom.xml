@@ -15,6 +15,7 @@
             io.saasforge:forge-sdk-abac,
             io.saasforge:forge-sdk-audit,
             io.saasforge:forge-sdk-referencedata,
+            io.saasforge:forge-sdk-provisioning,
             io.saasforge:forge-sdk-scheduling,
             io.saasforge:forge-sdk-security,
             io.saasforge:forge-sdk-storage,
@@ -25,6 +26,10 @@
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>io.saasforge</groupId>
+            <artifactId>forge-sdk-provisioning</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.saasforge</groupId>
             <artifactId>forge-sdk-storage</artifactId>

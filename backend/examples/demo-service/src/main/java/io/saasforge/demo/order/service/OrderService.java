@@ -135,6 +135,25 @@ public class OrderService implements TenantDataCleaner {
         return order;
     }
 
+    /** 与导入确认事务共用行锁，确保快照取到实际覆盖前取值。 */
+    @Transactional
+    public Order getForImport(UUID id) {
+        Order order = orderMapper.selectForImport(id);
+        if (order == null) {
+            throw notFound(id);
+        }
+        return order;
+    }
+
+    /** 覆盖模型中的字段，不修改订单编号、状态与归属。 */
+    @Transactional
+    public Order overwriteImported(UUID id, String title, BigDecimal amount, String customerSource) {
+        if (orderMapper.overwriteImported(id, title, amount, customerSource) == 0) {
+            throw notFound(id);
+        }
+        return get(id);
+    }
+
     public Order update(UUID id, String title, BigDecimal amount, String customerSource) {
         var order = new Order();
         order.setId(id);

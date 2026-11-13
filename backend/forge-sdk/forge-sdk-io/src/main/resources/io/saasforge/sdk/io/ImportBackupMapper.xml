@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.sdk.io.ImportBackupMapper">
+    <insert id="capture">
+        INSERT INTO forge_import_backup (id,task_id,record_id,field_values,expires_at,created_by,updated_by)
+        VALUES (#{id},#{taskId},#{recordId},CAST(#{values} AS jsonb),#{expiresAt},NULL,NULL)
+        ON CONFLICT (tenant_id,task_id,record_id) WHERE NOT deleted DO NOTHING
+    </insert>
+    <update id="complete">
+        UPDATE forge_import_backup
+        SET imported_version=#{version},updated_at=CURRENT_TIMESTAMP,updated_by=NULL
+        WHERE NOT deleted AND task_id=#{taskId} AND record_id=#{recordId}
+    </update>
+    <select id="list" resultType="io.saasforge.sdk.io.ImportBackupData">
+        SELECT id,task_id,record_id,CAST(field_values AS text) AS values_json,imported_version,expires_at
+        FROM forge_import_backup
+        WHERE NOT deleted AND task_id=#{taskId}
+        ORDER BY id LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <update id="refreshTask">
+        UPDATE forge_io_task
+        SET snapshot_count=(SELECT COUNT(*) FROM forge_import_backup WHERE NOT deleted AND task_id=#{taskId}),
+        snapshot_expires_at=(SELECT MIN(expires_at) FROM forge_import_backup WHERE NOT deleted AND task_id=#{taskId}),updated_at=CURRENT_TIMESTAMP,updated_by=NULL
+        WHERE NOT deleted AND id=#{taskId}
+    </update>
+    <update id="markTenantDeleted">
+        UPDATE forge_import_backup SET deleted=true,updated_at=CURRENT_TIMESTAMP,updated_by=NULL WHERE NOT deleted
+    </update>
+    <update id="clearTaskSnapshots">
+        UPDATE forge_io_task SET snapshot_count=0,snapshot_expires_at=NULL,updated_at=CURRENT_TIMESTAMP,updated_by=NULL
+        WHERE NOT deleted AND snapshot_count &gt; 0
+    </update>
+</mapper>

@@ -2,6 +2,8 @@ package io.saasforge.sdk.io;
 
 import io.saasforge.sdk.abac.data.DataPermission;
 import io.saasforge.sdk.audit.AuditRecorder;
+import io.saasforge.sdk.provisioning.TenantCleanupAutoConfiguration;
+import io.saasforge.sdk.provisioning.TenantDataCleaner;
 import io.saasforge.sdk.referencedata.ReferenceData;
 import io.saasforge.sdk.security.FieldMaskingPolicyProvider;
 import io.saasforge.sdk.storage.ObjectStorage;
@@ -20,6 +22,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** 引入 starter 后提供任务、Excel 与定时清理；服务复制 schema.sql 到自己的 Flyway 迁移。 */
 @AutoConfiguration(
+        before = TenantCleanupAutoConfiguration.class,
         afterName = {
             "StorageAutoConfiguration",
             "DataPermissionAutoConfiguration",
@@ -36,6 +39,28 @@ public final class IoAutoConfiguration {
             config.addMapper(IoTaskMapper.class);
         }
         return session.getMapper(IoTaskMapper.class);
+    }
+
+    @Bean
+    ImportBackupMapper importBackupMapper(SqlSessionTemplate session) {
+        var config = session.getConfiguration();
+        if (!config.hasMapper(ImportBackupMapper.class)) {
+            config.addMapper(ImportBackupMapper.class);
+        }
+        return session.getMapper(ImportBackupMapper.class);
+    }
+
+    @Bean
+    ImportBackups importBackups(ImportBackupMapper mapper) {
+        return new ImportBackups(mapper);
+    }
+
+    @Bean
+    TenantDataCleaner importBackupCleaner(ImportBackupMapper mapper) {
+        return event -> {
+            mapper.markTenantDeleted();
+            mapper.clearTaskSnapshots();
+        };
     }
 
     @Bean
@@ -86,7 +111,8 @@ public final class IoAutoConfiguration {
             Validator validator,
             IoProperties properties,
             PlatformTransactionManager manager,
-            ObjectProvider<FieldMaskingPolicyProvider> masking) {
+            ObjectProvider<FieldMaskingPolicyProvider> masking,
+            ImportBackups backups) {
         return new ExcelIo(
                 tasks,
                 storage,
@@ -94,7 +120,8 @@ public final class IoAutoConfiguration {
                 validator,
                 properties,
                 new TransactionTemplate(manager),
-                masking.getIfAvailable());
+                masking.getIfAvailable(),
+                backups);
     }
 
     // REQUIRES_NEW：任务行须在交给线程池前提交。工作线程用另一条连接执行 start，读不到调用方事务中未提交的行，任务会被直接跳过。
