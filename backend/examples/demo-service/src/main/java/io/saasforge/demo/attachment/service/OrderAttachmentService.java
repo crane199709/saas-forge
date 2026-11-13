@@ -29,7 +29,8 @@ public class OrderAttachmentService {
             "order-attachment",
             Set.of("txt", "pdf", "xlsx", "png", "jpg", "jpeg"),
             20L * 1024 * 1024,
-            Duration.ofMinutes(5));
+            Duration.ofMinutes(5),
+            30);
 
     private final OrderAttachmentMapper attachmentMapper;
     private final OrderService orderService;
@@ -47,7 +48,7 @@ public class OrderAttachmentService {
         return storage.prepareUpload(ATTACHMENT, filename, contentType, size);
     }
 
-    /** 确认上传不放在事务中：SDK 因超出 Quota 删除对象登记时须独立提交，不能随调用方回滚。 */
+    /** 确认上传不放在事务中：SDK 因超出 Quota 标记文件失效时须独立提交，不能随调用方回滚。 */
     public OrderAttachment attach(UUID orderId, UUID objectId) {
         orderService.get(orderId);
         storage.completeUpload(objectId);
