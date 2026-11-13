@@ -5,6 +5,7 @@ import { ErrorAlert, formatDateTime } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import type {
   Dictionary,
+  ItemStatus,
   DictionaryHistoryDiff,
   DictionaryHistoryItem,
   DictionaryHistoryDetail,
@@ -14,6 +15,11 @@ import type {
 
 const props = defineProps<{ api: ReferenceDataApi; dictionary: Dictionary }>()
 const { t } = useI18n()
+const statusTag: Record<ItemStatus, 'success' | 'info' | 'warning'> = {
+  enabled: 'success',
+  disabled: 'info',
+  retired: 'warning',
+}
 const versions = ref<DictionaryHistoryMetadata[]>([])
 const detail = ref<DictionaryHistoryDetail | null>(null)
 const error = ref<ErrorTip | null>(null)
@@ -120,7 +126,20 @@ function describe(item: DictionaryHistoryItem) {
         :label="t('referenceData.history.actor')"
         min-width="130"
         show-overflow-tooltip
-        ><template #default="{ row }">{{ row.changedBy ?? '—' }}</template></el-table-column
+        ><template #default="{ row }"
+          ><span
+            :title="
+              row.changedBy
+                ? `${t('referenceData.history.identityId')}：${row.changedBy}`
+                : undefined
+            "
+            >{{
+              row.changedBy
+                ? row.changedByName || t('referenceData.history.unknownActor')
+                : t('referenceData.history.system')
+            }}</span
+          ></template
+        ></el-table-column
       >
       <el-table-column :label="t('referenceData.history.time')" min-width="160"
         ><template #default="{ row }">{{
@@ -236,9 +255,11 @@ function describe(item: DictionaryHistoryItem) {
           }}</template></el-table-column
         >
         <el-table-column :label="t('referenceData.dictionary.status')" width="90"
-          ><template #default="{ row }">{{
-            t(`referenceData.history.${row.enabled ? 'enabled' : 'disabled'}`)
-          }}</template></el-table-column
+          ><template #default="{ row }"
+            ><el-tag size="small" :type="row.enabled ? 'success' : 'info'">{{
+              t(`referenceData.history.${row.enabled ? 'enabled' : 'disabled'}`)
+            }}</el-tag></template
+          ></el-table-column
         >
       </el-table>
       <el-alert :title="t('referenceData.history.context')" type="info" :closable="false" />
@@ -263,9 +284,11 @@ function describe(item: DictionaryHistoryItem) {
           align="right"
         />
         <el-table-column :label="t('referenceData.dictionary.status')" width="90"
-          ><template #default="{ row }">{{
-            t(`referenceData.dictionary.statuses.${row.status}`)
-          }}</template></el-table-column
+          ><template #default="{ row }"
+            ><el-tag size="small" :type="statusTag[row.status as ItemStatus]">{{
+              t(`referenceData.dictionary.statuses.${row.status}`)
+            }}</el-tag></template
+          ></el-table-column
         >
       </el-table>
       <h3>{{ t('referenceData.history.manifest') }}</h3>
