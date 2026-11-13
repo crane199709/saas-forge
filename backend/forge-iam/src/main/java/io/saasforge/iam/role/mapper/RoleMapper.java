@@ -84,6 +84,12 @@ public interface RoleMapper {
             @Param("name") String name,
             @Param("actor") UUID actor);
 
+    /** IAM 内部指定的初始读取角色；已删除或尚未创建时返回 null。按租户限定，不受 Data Policy 过滤。 */
+    UUID initialReadRole(@Param("tenantId") UUID tenantId);
+
+    /** 指定 IAM 创建的同租户未删除自定义角色，仅在持有租户角色写锁时调用。不受 Data Policy 过滤。 */
+    int designateInitialReadRole(@Param("tenantId") UUID tenantId, @Param("roleId") UUID roleId);
+
     /** 自定义角色改名，返回受影响行数；预置角色不受影响。按 Token 租户限定，不受 Data Policy 过滤。 */
     int rename(
             @Param("tenantId") UUID tenantId,
