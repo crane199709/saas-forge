@@ -55,7 +55,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "server.address=127.0.0.1")
-@Sql(scripts = "/fixtures/notifications.sql", config = @SqlConfig(transactionMode = SqlConfig.TransactionMode.ISOLATED))
+@Sql(
+        scripts = {"/fixtures/notifications.sql", "/fixtures/inbox-readers.sql"},
+        config = @SqlConfig(transactionMode = SqlConfig.TransactionMode.ISOLATED))
 @Import(NotificationInboxTest.Clocks.class)
 class NotificationInboxTest {
     static final String KEY_FILE = "target/test-notification-signing.jwk";
@@ -320,7 +322,12 @@ class NotificationInboxTest {
                 Instant.now());
         deliver(later);
         assertThat(items(call(TENANT_A, MEMBER_A, "GET", "/notifications"))).hasSize(1);
-        assertThat(call(TENANT_A, ADMIN_A, "PUT", "/roles/memberships/" + MEMBER_A, Map.of("roleIds", List.of()))
+        assertThat(call(
+                                TENANT_A,
+                                ADMIN_A,
+                                "PUT",
+                                "/roles/memberships/" + MEMBER_A,
+                                Map.of("roleIds", List.of(readerRoleId())))
                         .getStatusCode()
                         .value())
                 .isEqualTo(200);
@@ -492,6 +499,14 @@ class NotificationInboxTest {
         assertThat(items(call(TENANT_A, MEMBER_A, "GET", "/notifications")))
                 .extracting(item -> item.get("id"))
                 .containsExactly(event.id().toString());
+    }
+
+    private String readerRoleId() throws Exception {
+        return items(call(TENANT_A, ADMIN_A, "GET", "/roles")).stream()
+                .filter(role -> "inbox-reader".equals(role.get("code")))
+                .map(role -> (String) role.get("id"))
+                .findFirst()
+                .orElseThrow();
     }
 
     NotificationSent event(NotificationTarget target, String title, Instant occurredAt) {

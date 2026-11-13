@@ -46,7 +46,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /** 通过真实事件消费入口与 HTTP 验证待办的时序与当前可见性。 */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Sql("/fixtures/plans.sql")
+@Sql({"/fixtures/plans.sql", "/fixtures/inbox-readers.sql"})
 class TodoTest {
     static final String KEY_FILE = "target/test-todo-signing.jwk";
     static final UUID TENANT = UUID.fromString("019a0120-0000-7000-8000-0000000000a0");
@@ -137,7 +137,7 @@ class TodoTest {
         var role = mutate(
                 HttpMethod.POST,
                 "/roles",
-                Map.of("code", "todo-approver", "name", "待办审批员", "permissions", List.of("order:approve")));
+                Map.of("code", "todo-approver", "name", "待办审批员", "permissions", List.of("order:approve", "todo:read")));
         String roleId = (String) ((Map<?, ?>) role.getBody().get("data")).get("id");
         mutate(HttpMethod.PUT, "/roles/memberships/" + MEMBER, Map.of("roleIds", List.of(roleId)));
         // 保留 Token 旧版本的权限快照，当前权限变化不能依赖 Redis 缓存失效。
@@ -172,22 +172,29 @@ class TodoTest {
                         new NotificationLink("demo", "/orders"),
                         time));
         assertThat(titles(TENANT, MEMBER, key)).containsExactly("审批订单");
-        mutate(HttpMethod.PUT, "/roles/" + roleId + "/permissions", Map.of("permissions", List.of()));
+        mutate(HttpMethod.PUT, "/roles/" + roleId + "/permissions", Map.of("permissions", List.of("todo:read")));
         assertThat(titles(TENANT, MEMBER, key)).isEmpty();
-        mutate(HttpMethod.PUT, "/roles/" + roleId + "/permissions", Map.of("permissions", List.of("order:approve")));
+        mutate(
+                HttpMethod.PUT,
+                "/roles/" + roleId + "/permissions",
+                Map.of("permissions", List.of("order:approve", "todo:read")));
         assertThat(titles(TENANT, MEMBER, key)).containsExactly("审批订单");
         UUID plan = UUID.fromString("019a0120-0000-7000-8000-0000000000b1");
-        deliver(TENANT, new TenantPlanChanged(TENANT, plan, "basic", List.of(), List.of("demo"), null, null, 1));
+        deliver(
+                TENANT,
+                new TenantPlanChanged(TENANT, plan, "basic", List.of("todo:read"), List.of("demo"), null, null, 1));
         assertThat(titles(TENANT, MEMBER, key)).isEmpty();
         assertThat(titles(TENANT, MEMBER, direct)).containsExactly("指定处理人");
         deliver(
                 TENANT,
-                new TenantPlanChanged(TENANT, plan, "basic", List.of("order:approve"), List.of(), null, null, 2));
+                new TenantPlanChanged(
+                        TENANT, plan, "basic", List.of("order:approve", "todo:read"), List.of(), null, null, 2));
         assertThat(titles(TENANT, MEMBER, key)).isEmpty();
         assertThat(titles(TENANT, MEMBER, direct)).isEmpty();
         deliver(
                 TENANT,
-                new TenantPlanChanged(TENANT, plan, "basic", List.of("order:approve"), List.of("demo"), null, null, 3));
+                new TenantPlanChanged(
+                        TENANT, plan, "basic", List.of("order:approve", "todo:read"), List.of("demo"), null, null, 3));
         assertThat(titles(TENANT, MEMBER, key)).containsExactly("审批订单");
         deliver(TENANT, new TodoClosed(TENANT, "demo-service", key, time.plusSeconds(1)));
         deliver(TENANT, new TodoClosed(TENANT, "demo-service", direct, time.plusSeconds(1)));

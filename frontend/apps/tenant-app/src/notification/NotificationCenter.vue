@@ -1,29 +1,47 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useTenantClient } from '@crane199709/sdk'
+import { useTenantClient, useAccessControl } from '@crane199709/sdk'
 import { ErrorAlert, PageHeader, PageToolbar, formatDateTime } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import { createNotificationApi, type InboxItem, type InboxTab } from './notification-api'
 import { useInboxUnread } from './unread-count'
 const client = useTenantClient()
 const api = createNotificationApi(client)
+const access = useAccessControl()
+const route = useRoute()
+let permissionsReady = true
 const unread = useInboxUnread()
 const router = useRouter()
 const { t } = useI18n()
 const tabs = { notifications: '通知', announcements: '公告', todos: '待办' }
-const tab = ref<InboxTab>('notifications')
+const codes: Record<InboxTab, string> = {
+  notifications: 'notification:read',
+  announcements: 'announcement:read',
+  todos: 'todo:read',
+}
+const allowedTabs = computed(() =>
+  (Object.keys(tabs) as InboxTab[]).filter((kind) => access.has(codes[kind])),
+)
+function requestedTab() {
+  const requested = route.query.tab
+  return (
+    allowedTabs.value.find((kind) => kind === requested) ?? allowedTabs.value[0] ?? 'notifications'
+  )
+}
+const tab = ref<InboxTab>(requestedTab())
 const items = ref<InboxItem[]>([])
 const page = ref(1)
 const total = ref(0)
 const busy = ref(false)
 const error = ref<ErrorTip | null>(null)
 // 同一时间只展开一条，翻页、刷新后仍按 id 保持。
-const expanded = ref<string | null>(null)
+const expanded = ref<string | null>(typeof route.query.item === 'string' ? route.query.item : null)
 let generation = 0
 let unsubscribe: (() => void) | undefined
 async function load(number = page.value) {
+  if (!permissionsReady || !access.has(codes[tab.value])) return
   const started = ++generation
   const selected = tab.value
   items.value = []
@@ -51,13 +69,14 @@ async function load(number = page.value) {
   }
 }
 function select(kind: InboxTab) {
+  if (!access.has(codes[kind])) return
   tab.value = kind
   total.value = 0
   expanded.value = null
   void load(1)
 }
 async function markRead(item?: InboxItem) {
-  if (tab.value === 'todos') return
+  if (tab.value === 'todos' || !access.has(codes[tab.value])) return
   const started = generation
   busy.value = true
   error.value = null
@@ -83,17 +102,37 @@ function open(item: InboxItem) {
   const path = linkOf(item)
   if (path) void router.push(path)
 }
+watch(allowedTabs, () => {
+  permissionsReady = true
+  generation += 1
+  items.value = []
+  total.value = 0
+  error.value = null
+  busy.value = false
+  tab.value = requestedTab()
+  expanded.value = typeof route.query.item === 'string' ? route.query.item : null
+  void load(1)
+})
+watch(
+  () => [route.query.tab, route.query.item],
+  () => {
+    tab.value = requestedTab()
+    expanded.value = typeof route.query.item === 'string' ? route.query.item : null
+    void load(1)
+  },
+)
 onMounted(() => {
   let membership = client.session()?.membershipId
   unsubscribe = client.onSessionChange((session) => {
     if (membership === session?.membershipId) return
     membership = session?.membershipId
+    permissionsReady = false
+    expanded.value = null
     generation += 1
     items.value = []
     total.value = 0
     error.value = null
     busy.value = false
-    if (session) void load(1)
   })
   void load(1)
 })
@@ -105,10 +144,10 @@ onUnmounted(() => {
 <template>
   <section class="notification-center" aria-label="通知中心">
     <PageHeader title="通知中心" />
-    <PageToolbar>
+    <PageToolbar v-if="allowedTabs.length">
       <el-button-group role="tablist" aria-label="通知类型">
         <el-button
-          v-for="(label, kind) in tabs"
+          v-for="kind in allowedTabs"
           :key="kind"
           plain
           role="tab"
@@ -116,7 +155,7 @@ onUnmounted(() => {
           :type="tab === kind ? 'primary' : 'default'"
           :data-testid="`tab-${kind}`"
           @click="select(kind)"
-          >{{ label }}</el-button
+          >{{ tabs[kind] }}</el-button
         >
       </el-button-group>
       <template #actions>
@@ -129,9 +168,12 @@ onUnmounted(() => {
         >
       </template>
     </PageToolbar>
+    <p v-if="!allowedTabs.length" class="placeholder">暂无可查看的消息</p>
     <ErrorAlert v-if="error" class="page-error" :tip="error" />
     <p v-if="busy" class="placeholder" role="status">加载中…</p>
-    <p v-else-if="!error && !items.length" class="placeholder">暂无{{ tabs[tab] }}</p>
+    <p v-else-if="allowedTabs.length && !error && !items.length" class="placeholder">
+      暂无{{ tabs[tab] }}
+    </p>
     <article
       v-for="item in items"
       :key="item.id"

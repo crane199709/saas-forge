@@ -10,4 +10,7 @@ import java.util.UUID;
 public interface RoleGrantSource {
     /** Membership 当前的角色编码、有效 Permission Code 与 Data Policy。 */
     RoleGrants grantsOf(UUID membershipId);
+
+    /** 新建或重新加入的成员获得普通消息读取角色，已有成员的授权不被重复邀请恢复。 */
+    void grantInitialReadRole(UUID tenantId, UUID membershipId);
 }
