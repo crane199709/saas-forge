@@ -1,6 +1,6 @@
 # 工作台规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准：Workbench、Shell Page、Shell App、Sub-App、Todo、Notification、Announcement。本规格不单独记录 ADR，因为页面合并可回退。
 
