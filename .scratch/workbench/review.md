@@ -36,3 +36,5 @@ Spec：1 项发现已修复，最高 P1；未解决 0 项。
 最终验证：IAM 346/346、platform 64/64、权限脚本 19/19、租户组件 255/255、真实主链路 5/5、通用 E2E 65/65、定向视觉 21/21，通过相应类型、样式与格式检查。完整视觉 201/206 的既有差异与复验结论见工单 03，不声称全量视觉全部通过。
 
 临时工作树清理前，六份隔离 E2E 服务日志另存 `/tmp/workbench-qa/service-logs/`，没有复制凭证和签名文件。交付截图另存当前聊天的 `/Users/liuhuan/.codex/visualizations/2026/11/13/01a1d3f3-23ae-73a3-959d-fe0871f5f7a8/`（文件名以 `workbench-` 开头），可在工作树归档后继续查看。
+
+工作树 00–03 已通过应用归档。最后的 `workbench-review-fixes` 被应用识别为当前聊天主检出，`archive_worktree` 返回 `The task's primary checkout cannot be removed.`；原项目目录不是 managed worktree，无法经 `attach_worktree` 切回。保留该受保护检出并快进到最终集成结果，没有使用 Git 或文件删除绕过应用保护。原项目目录保持 `codex/workbench-integration`；其他任务的未跟踪文件保持原样。
