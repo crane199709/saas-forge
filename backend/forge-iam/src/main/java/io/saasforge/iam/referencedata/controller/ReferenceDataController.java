@@ -5,6 +5,7 @@ import io.saasforge.iam.referencedata.model.TenantDictionary;
 import io.saasforge.iam.referencedata.model.TenantDictionaryItem;
 import io.saasforge.iam.referencedata.model.TenantParameter;
 import io.saasforge.iam.referencedata.service.ReferenceDataService;
+import io.saasforge.sdk.core.CurrentTenant;
 import io.saasforge.sdk.core.api.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -53,12 +54,11 @@ class ReferenceDataController {
             @PathVariable String service,
             @PathVariable String dictionary,
             @Valid @RequestBody CreateItemRequest request) {
-        return ApiResponse.created(referenceData.createItem(
-                TenantActor.of(jwt),
-                service,
-                dictionary,
-                request.code(),
-                request.name().strip()));
+        TenantActor actor = TenantActor.of(jwt);
+        try (var ignored = CurrentTenant.bind(actor.tenantId())) {
+            return ApiResponse.created(referenceData.createItem(
+                    actor, service, dictionary, request.code(), request.name().strip()));
+        }
     }
 
     @Operation(summary = "修改字典项的显示名与排序")
@@ -69,8 +69,11 @@ class ReferenceDataController {
             @PathVariable String dictionary,
             @PathVariable String code,
             @Valid @RequestBody UpdateItemRequest request) {
-        return ApiResponse.ok(referenceData.updateItem(
-                TenantActor.of(jwt), service, dictionary, code, request.name().strip(), request.sort()));
+        TenantActor actor = TenantActor.of(jwt);
+        try (var ignored = CurrentTenant.bind(actor.tenantId())) {
+            return ApiResponse.ok(referenceData.updateItem(
+                    actor, service, dictionary, code, request.name().strip(), request.sort()));
+        }
     }
 
     @Operation(summary = "停用字典项")
@@ -80,7 +83,10 @@ class ReferenceDataController {
             @PathVariable String service,
             @PathVariable String dictionary,
             @PathVariable String code) {
-        return ApiResponse.ok(referenceData.disableItem(TenantActor.of(jwt), service, dictionary, code));
+        TenantActor actor = TenantActor.of(jwt);
+        try (var ignored = CurrentTenant.bind(actor.tenantId())) {
+            return ApiResponse.ok(referenceData.disableItem(actor, service, dictionary, code));
+        }
     }
 
     @Operation(summary = "启用已停用的字典项")
@@ -90,7 +96,10 @@ class ReferenceDataController {
             @PathVariable String service,
             @PathVariable String dictionary,
             @PathVariable String code) {
-        return ApiResponse.ok(referenceData.enableItem(TenantActor.of(jwt), service, dictionary, code));
+        TenantActor actor = TenantActor.of(jwt);
+        try (var ignored = CurrentTenant.bind(actor.tenantId())) {
+            return ApiResponse.ok(referenceData.enableItem(actor, service, dictionary, code));
+        }
     }
 
     @Operation(summary = "列出租户可修改的参数及当前值、默认值与约束")
