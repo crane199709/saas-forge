@@ -1,0 +1,21 @@
+# 仅用于本次隔离验收，无宿主数据目录；公网开发 S3 不参与。
+services:
+  s3:
+    image: pgsty/silo:RELEASE.2026-10-18T00-00-00Z
+    command: ['silo', 'server', '/data']
+    environment:
+      MINIO_ROOT_USER: forge
+      MINIO_ROOT_PASSWORD: forge-e2e-secret
+    ports: ['127.0.0.1:19000:9000']
+    healthcheck:
+      test: ['CMD', 'curl', '-sf', 'http://localhost:9000/minio/health/live']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  s3-init:
+    image: pgsty/silo:RELEASE.2026-10-18T00-00-00Z
+    depends_on:
+      s3:
+        condition: service_healthy
+    entrypoint: ['sh', '-c', 'mc alias set local http://s3:9000 forge forge-e2e-secret && mc mb --ignore-existing local/forge-e2e']
+    restart: 'no'

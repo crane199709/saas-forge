@@ -38,3 +38,19 @@ Realm 场景先证明 Tenant Token 可访问订单，再检查 `/platform/operat
 MQ 投递和 Nacos 发现关闭，网关用固定地址路由；注册表副本由种子准备，demo 的 Resource Manifest 仍由服务启动时向 IAM 真实上报。认证、Redis 即时失效、功能权限、数据权限、租户拦截器与 PostgreSQL RLS 保持开启。本用例不证明 MQ 广播、租户开通、对象存储或服务发现，这些由相应集成测试负责。
 
 原有 `frontend/pnpm test:e2e` 保留为 mock 浏览器回归，与本套真实 E2E 分开运行。GitHub Actions 的 `Main flow E2E` 工作流在 PR、main push 和手动触发时运行，失败报告及服务日志保留 7 天。
+
+## 导入回滚专项
+
+在仓库根目录运行：
+
+```bash
+FORGE_IMPORT_ROLLBACK_E2E=1 bash deploy/e2e/run.sh
+# 依赖和 Chromium 已缓存、本次需要离线构建时显式选择：
+FORGE_E2E_OFFLINE=1 FORGE_IMPORT_ROLLBACK_E2E=1 bash deploy/e2e/run.sh
+```
+
+此模式不能与通知、接入或模板专项同时启用。它额外启动绑定 `127.0.0.1:19000` 的隔离 S3，创建本轮 bucket，并只给 demo JVM 注入该存储配置；默认仍在线解析依赖、执行 `clean package`。离线开关适用于全部 E2E 模式，运行日志注明实际模式。
+
+真实用例执行密码登录、有效 Excel 直传、覆盖 A/B 并新增 C、人工修改 A、预览冲突、默认执行 409 且 B 零恢复、显式跳过后只恢复 B、保留 A 人工修改与 C、重复执行幂等。另用有 `order:import`、无 `order:importRollback` 的真实成员验证导入模板 200、回滚预览与执行 403、界面无执行入口。
+
+截图、有效 Excel 夹具、失败 trace 和结果位于系统临时目录的 `forge-import-rollback-qa/`，不用 HTML 报告。此专项保持 MQ 关闭：审计的 `io.importRollback`、actor/tenant、任务号及计数由 demo 真实 HTTP 集成测试的 Outbox 事件断言覆盖，不据此声称已投递到 IAM 审计列表。

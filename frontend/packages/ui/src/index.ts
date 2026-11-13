@@ -27,3 +27,12 @@ export { applyTheme, layoutTokens, overlaySize, themeTokens } from './theme'
 export { ImportDialog } from './ImportDialog'
 export { ExportButton } from './ExportButton'
 export type { IoTask, IoTaskApi, IoUploadTicket } from './io-tasks'
+
+export { ImportHistoryDialog } from './ImportHistoryDialog'
+export { ImportRollbackDialog } from './ImportRollbackDialog'
+export type {
+  ImportRollbackApi,
+  ImportRollbackPreview,
+  ImportRollbackResult,
+  ImportRollbackConflict,
+} from './io-tasks'

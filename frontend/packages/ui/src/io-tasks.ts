@@ -9,6 +9,19 @@ export interface IoTask {
   type: 'IMPORT' | 'EXPORT'
   /** 服务端状态。 */
   status: 'WAITING' | 'RUNNING' | 'AWAITING_CONFIRM' | 'SUCCEEDED' | 'FAILED'
+  /** 服务端持久化的导入模型；确认时须按它选择业务入口。 */
+  importModel?: string
+  /** 覆盖前快照数量及实际保留截止时间。 */
+  snapshotCount?: number
+  snapshotExpiresAt?: string | null
+  snapshotAvailable?: boolean
+  /** 独立回滚结果，不改变原导入状态。 */
+  rollbackStatus?: 'NONE' | 'SUCCEEDED' | 'PARTIAL' | 'BLOCKED'
+  rollbackAttempts?: number
+  restoredCount?: number
+  skippedCount?: number
+  failedCount?: number
+  createdAt?: string
   /** 提交任务的 Membership。 */
   membershipId?: string
   /** 最后心跳；待确认时记录进入该状态的时间。 */
@@ -118,4 +131,37 @@ export function useIoTasks(
     if (timer) clearTimeout(timer)
   })
   return { recent, page, loading, active, busy, error, track, refresh, download, showError }
+}
+
+/** 不含业务字段原文的冲突。 */
+export interface ImportRollbackConflict {
+  recordId: string
+  reason: string
+}
+/** 服务端最新冲突报告；available 与 blocked 表达不同状态。 */
+export interface ImportRollbackPreview {
+  taskId: string
+  available: boolean
+  unavailableReason?: string | null
+  blocked: boolean
+  totalCount: number
+  rollbackableCount: number
+  conflictCount: number
+  snapshotExpiresAt?: string | null
+  conflicts: ImportRollbackConflict[]
+}
+/** 回滚累计结果；重试不会重复恢复已完成的记录。 */
+export interface ImportRollbackResult {
+  taskId: string
+  status: 'SUCCEEDED' | 'PARTIAL' | 'BLOCKED' | 'UNAVAILABLE'
+  restoredCount: number
+  skippedCount: number
+  failedCount: number
+  unavailableReason?: string | null
+  conflicts: ImportRollbackConflict[]
+}
+/** 由业务服务绑定独立回滚权限的两阶段入口。 */
+export interface ImportRollbackApi {
+  preview: (taskId: string) => Promise<ImportRollbackPreview>
+  execute: (taskId: string, skipConflicts: boolean) => Promise<ImportRollbackResult>
 }

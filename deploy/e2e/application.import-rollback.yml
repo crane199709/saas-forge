@@ -1,0 +1,7 @@
+# 仅注入 demo JVM；预签名 URL 必须对本机真实浏览器可达。
+forge:
+  storage:
+    endpoint: http://127.0.0.1:19000
+    bucket: forge-e2e
+    access-key: forge
+    secret-key: forge-e2e-secret

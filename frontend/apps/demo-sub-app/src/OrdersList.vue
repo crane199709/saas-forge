@@ -7,6 +7,8 @@ import {
   ErrorAlert,
   ExportButton,
   ImportDialog,
+  ImportHistoryDialog,
+  type ImportRollbackApi,
   ListPage,
   formatDateTime,
   overlaySize,
@@ -28,6 +30,12 @@ interface Order {
 const client = useTenantClient()
 const access = useAccessControl()
 const importOpen = ref(false)
+const historyOpen = ref(false)
+const overwrite = ref(false)
+function openImport(cover: boolean) {
+  overwrite.value = cover
+  importOpen.value = true
+}
 const ioTasks: IoTaskApi = {
   list: (page) => client.page<IoTask>(`/demo/io/tasks?page=${page}&size=10`),
   get: (id) => client.api<IoTask>(`/demo/io/tasks/${id}`),
@@ -46,12 +54,27 @@ const prepareImport = (file: File) =>
     contentType: file.type || 'application/octet-stream',
     size: file.size,
   })
-const submitImport = (objectId: string) => post<IoTask>('/demo/orders/import', { objectId })
-const confirmImport = (taskId: string) => post<IoTask>(`/demo/orders/import/${taskId}/confirm`, {})
+const importPath = () => `/demo/orders/import${overwrite.value ? '/overwrite' : ''}`
+const submitImport = (objectId: string) => post<IoTask>(importPath(), { objectId })
+async function confirmImport(taskId: string) {
+  const task = await ioTasks.get(taskId)
+  // 最近任务包含两种模式；确认必须跟随服务端持久化模型，不能取当前弹窗模式。
+  const path =
+    task.importModel === 'io.saasforge.demo.order.model.OrderOverwriteRow' ? '/overwrite' : ''
+  return post<IoTask>(`/demo/orders/import${path}/${taskId}/confirm`, {})
+}
+const rollback: ImportRollbackApi = {
+  preview: (id) => client.api(`/demo/orders/import/${id}/rollback-preview`),
+  execute: (id, skipConflicts) => post(`/demo/orders/import/${id}/rollback`, { skipConflicts }),
+}
+const modelLabel = (model?: string) =>
+  model?.endsWith('.OrderOverwriteRow')
+    ? t('overwrite')
+    : !model || model.endsWith('.OrderImportRow')
+      ? t('append')
+      : t('otherImport')
 async function downloadTemplate() {
-  const data = await client.api<{ filename: string; base64: string }>(
-    '/demo/orders/import/template',
-  )
+  const data = await client.api<{ filename: string; base64: string }>(`${importPath()}/template`)
   const bytes = Uint8Array.from(atob(data.base64), (char) => char.charCodeAt(0))
   const url = URL.createObjectURL(
     new Blob([bytes], {
@@ -81,6 +104,10 @@ const { t } = useI18n({
       title: '订单',
       refresh: '刷新订单',
       import: '导入订单',
+      overwrite: '覆盖导入',
+      append: '追加导入',
+      otherImport: '其他导入',
+      history: '导入历史',
       name: '标题',
       amount: '金额',
       empty: '暂无订单',
@@ -217,6 +244,16 @@ onMounted(() => load())
       :membership-id="client.session()?.membershipId ?? ''"
       @completed="load()"
     />
+    <ImportHistoryDialog
+      v-if="access.has('order:import') || access.has('order:importRollback')"
+      v-model="historyOpen"
+      :tasks="ioTasks"
+      :membership-id="client.session()?.membershipId ?? ''"
+      :confirm="access.has('order:import') ? confirmImport : undefined"
+      :rollback="access.has('order:importRollback') ? rollback : undefined"
+      :model-label="modelLabel"
+      @completed="load()"
+    />
     <ListPage
       :page="orders"
       :loading="busy || restoreBusy || closing !== null || deleting !== null"
@@ -230,9 +267,17 @@ onMounted(() => load())
         <el-button :disabled="busy || restoreBusy || closing !== null" @click="load()">{{
           t('refresh')
         }}</el-button>
-        <el-button v-if="!deleted" v-perm="'order:import'" @click="importOpen = true">{{
+        <el-button v-if="!deleted" v-perm="'order:import'" @click="openImport(false)">{{
           t('import')
         }}</el-button>
+        <el-button v-if="!deleted" v-perm="'order:import'" @click="openImport(true)">{{
+          t('overwrite')
+        }}</el-button>
+        <el-button
+          v-if="access.has('order:import') || access.has('order:importRollback')"
+          @click="historyOpen = true"
+          >{{ t('history') }}</el-button
+        >
         <ExportButton
           v-if="!deleted && access.has('order:export')"
           :tasks="ioTasks"

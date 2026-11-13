@@ -8,6 +8,9 @@ fi
 if [[ "${FORGE_ONBOARDING_E2E:-}" == 1 && ( "${FORGE_NOTIFICATION_E2E:-}" == 1 || -n "${FORGE_TEMPLATE_SERVICE:-}" ) ]]; then
   echo '接入 E2E 不能与通知或模板 E2E 同时启用' >&2; exit 1
 fi
+if [[ "${FORGE_IMPORT_ROLLBACK_E2E:-}" == 1 && ( "${FORGE_NOTIFICATION_E2E:-}" == 1 || "${FORGE_ONBOARDING_E2E:-}" == 1 || -n "${FORGE_TEMPLATE_SERVICE:-}" ) ]]; then
+  echo '导入回滚 E2E 必须独立运行' >&2; exit 1
+fi
 for tool in docker java pnpm python3 curl; do command -v "$tool" >/dev/null || { echo "缺少 $tool" >&2; exit 1; }; done
 # 不接收外部数据库目标；初始化只经本次创建的容器执行。
 python3 - <<'PY'
@@ -15,6 +18,7 @@ import os, socket
 ports = [15432,16379,18000,18101,18102,18201,15174,15175]
 if os.environ.get('FORGE_NOTIFICATION_E2E') == '1': ports += [15173,18081]
 if os.environ.get('FORGE_ONBOARDING_E2E') == '1': ports += [15173]
+if os.environ.get('FORGE_IMPORT_ROLLBACK_E2E') == '1': ports += [19000]
 for port in ports:
     with socket.socket() as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -27,6 +31,9 @@ RUN_DIR=$(mktemp -d "$ROOT/deploy/e2e/run-XXXXXXXX")
 COMPOSE=(docker compose -p "forge-e2e-$(basename "$RUN_DIR" | tr '[:upper:]' '[:lower:]')" -f "$ROOT/deploy/e2e/compose.yml")
 if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 ]]; then
   COMPOSE+=(-f "$ROOT/deploy/e2e/compose.notification.yml")
+fi
+if [[ "${FORGE_IMPORT_ROLLBACK_E2E:-}" == 1 ]]; then
+  COMPOSE+=(-f "$ROOT/deploy/e2e/compose.import-rollback.yml")
 fi
 # Bash 3.2 的 nounset 会拒绝空数组；下方用条件展开保留零参数语义。
 PIDS=()
@@ -44,11 +51,23 @@ cleanup() {
 }
 trap cleanup EXIT
 trap 'exit 130' INT TERM
-(cd frontend && pnpm install --frozen-lockfile && pnpm exec playwright install chromium && pnpm build:spike)
+PNPM_INSTALL_ARGS=(--frozen-lockfile)
+MAVEN_BUILD_ARGS=(-B -DskipTests clean package)
+if [[ "${FORGE_E2E_OFFLINE:-}" == 1 ]]; then
+  PNPM_INSTALL_ARGS+=(--offline)
+  MAVEN_BUILD_ARGS+=(-o)
+  echo 'E2E 依赖模式：离线缓存（FORGE_E2E_OFFLINE=1）'
+else
+  echo 'E2E 依赖模式：默认在线解析'
+fi
+if [[ "${FORGE_IMPORT_ROLLBACK_E2E:-}" == 1 ]]; then
+  MAVEN_BUILD_ARGS+=(-pl forge-iam,forge-platform,forge-gateway,examples/demo-service -am)
+fi
+(cd frontend && pnpm install "${PNPM_INSTALL_ARGS[@]}" && pnpm exec playwright install chromium && pnpm build:spike)
 if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 || "${FORGE_ONBOARDING_E2E:-}" == 1 ]]; then
   (cd frontend && pnpm --filter @forge/platform-console build)
 fi
-(cd backend && ./mvnw -B -DskipTests clean package) >"$RUN_DIR/build.log" 2>&1
+(cd backend && ./mvnw "${MAVEN_BUILD_ARGS[@]}") >"$RUN_DIR/build.log" 2>&1
 if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 ]]; then
   "${COMPOSE[@]}" up -d --wait postgres redis rocketmq-namesrv rocketmq-broker rocketmq-proxy
   "${COMPOSE[@]}" run --rm rocketmq-init >"$RUN_DIR/rocketmq-init.log" 2>&1
@@ -61,6 +80,9 @@ for attempt in range(120):
         time.sleep(1)
 else: raise SystemExit('通知 E2E RocketMQ Proxy 启动超时')
 PYMQ
+elif [[ "${FORGE_IMPORT_ROLLBACK_E2E:-}" == 1 ]]; then
+  "${COMPOSE[@]}" up -d --wait postgres redis s3
+  "${COMPOSE[@]}" run --rm s3-init >"$RUN_DIR/s3-init.log" 2>&1
 else
   "${COMPOSE[@]}" up -d --wait
 fi
@@ -97,6 +119,9 @@ start() {
     examples/demo-service)
       service_ops_token=$OPS_DEMO_TOKEN
       service_manifest_token=local-demo-manifest-token
+      if [[ "${FORGE_IMPORT_ROLLBACK_E2E:-}" == 1 ]]; then
+        config_locations+=",file:$ROOT/deploy/e2e/application.import-rollback.yml"
+      fi
       ;;
     forge-gateway) ;;
     *) echo "未知 E2E 模块：$module" >&2; return 1 ;;
@@ -175,6 +200,9 @@ if [[ "${FORGE_NOTIFICATION_E2E:-}" == 1 ]]; then
 elif [[ "${FORGE_ONBOARDING_E2E:-}" == 1 ]]; then
   "${COMPOSE[@]}" exec -T postgres psql -U postgres -d forge -v ON_ERROR_STOP=1 < deploy/e2e/seed.onboarding.sql
   (cd frontend && pnpm exec playwright test -c playwright.onboarding.config.ts "$@")
+elif [[ "${FORGE_IMPORT_ROLLBACK_E2E:-}" == 1 ]]; then
+  "${COMPOSE[@]}" exec -T postgres psql -U postgres -d forge -v ON_ERROR_STOP=1 < deploy/e2e/seed.import-rollback.sql
+  (cd frontend && pnpm exec playwright test -c playwright.import-rollback.config.ts "$@")
 else
   (cd frontend && pnpm exec playwright test -c playwright.main-flow.config.ts "$@")
 fi
