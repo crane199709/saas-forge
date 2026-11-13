@@ -23,6 +23,33 @@ export interface Dictionary {
   items: DictionaryItem[]
 }
 
+/** 租户覆盖快照不包含 Manifest 默认项，null 表示当时未覆盖该字段。 */
+export interface DictionaryHistoryItem {
+  code: string
+  custom: boolean
+  name: string | null
+  sort: number | null
+  enabled: boolean
+}
+export interface DictionaryHistoryMetadata {
+  version: number
+  summary: string
+  changedBy: string | null
+  changedAt: string
+}
+export interface DictionaryHistoryDetail extends DictionaryHistoryMetadata {
+  snapshot: DictionaryHistoryItem[]
+  current: Dictionary | null
+  manifest: { code: string; name: string; items: { code: string; name: string }[] } | null
+}
+export interface DictionaryHistoryDiff {
+  from: number
+  to: number
+  added: DictionaryHistoryItem[]
+  removed: DictionaryHistoryItem[]
+  changed: { before: DictionaryHistoryItem; after: DictionaryHistoryItem }[]
+}
+
 export type ParameterType = 'string' | 'integer' | 'decimal' | 'duration' | 'boolean' | 'dictionary'
 /** 取值的 JSON 形态与 Manifest 一致：integer、decimal 为数字，boolean 为布尔，其余为字符串。 */
 export type ParameterValue = string | number | boolean
@@ -47,7 +74,7 @@ export interface Parameter {
 /** 自定义项编码由服务端加的前缀，租户只填写其后的部分。 */
 export const CUSTOM_ITEM_PREFIX = 'custom.'
 
-/** 参考数据接口；字典读取对所有成员开放，其余需要 iam:reference-data:manage。 */
+/** 参考数据接口；字典读取对所有成员开放；历史需要 iam:dictionary-history:read，修改需要 iam:reference-data:manage。 */
 export function createReferenceDataApi(client: Pick<TenantClient, 'api'>) {
   // 经网关的 IAM 路由，与 `/iam/auth` 同源
   const base = '/iam/reference-data'
@@ -64,7 +91,15 @@ export function createReferenceDataApi(client: Pick<TenantClient, 'api'>) {
   const parameter = (target: Parameter) =>
     `/parameters/${encodeURIComponent(target.service)}/${encodeURIComponent(target.code)}`
 
+  const history = (dictionary: Dictionary) =>
+    `/dictionaries/${encodeURIComponent(dictionary.service)}/${encodeURIComponent(dictionary.code)}/history`
   return {
+    history: (dictionary: Dictionary) =>
+      send<DictionaryHistoryMetadata[]>('GET', history(dictionary)),
+    historyVersion: (dictionary: Dictionary, version: number) =>
+      send<DictionaryHistoryDetail>('GET', `${history(dictionary)}/${version}`),
+    historyDiff: (dictionary: Dictionary, from: number, to: number) =>
+      send<DictionaryHistoryDiff>('GET', `${history(dictionary)}/diff?from=${from}&to=${to}`),
     dictionaries: () => send<Dictionary[]>('GET', '/dictionaries'),
     /** @param code 不含 `custom.` 前缀 */
     createItem: (dictionary: Dictionary, code: string, name: string) =>

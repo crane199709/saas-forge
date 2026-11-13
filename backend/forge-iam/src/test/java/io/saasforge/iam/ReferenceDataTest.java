@@ -48,10 +48,14 @@ class ReferenceDataTest {
     static final UUID ADMIN = UUID.fromString("019a0110-0000-7000-8000-0000000002c3");
     static final UUID MEMBER = UUID.fromString("019a0110-0000-7000-8000-0000000002c5");
     static final UUID ADMIN_B = UUID.fromString("019a0110-0000-7000-8000-0000000002c7");
+    static final UUID AUDITOR = UUID.fromString("019a0110-0000-7000-8000-0000000003a1");
+    static final UUID MANAGER = UUID.fromString("019a0110-0000-7000-8000-0000000003a3");
     static final Map<UUID, UUID> IDENTITIES = Map.of(
             ADMIN, UUID.fromString("019a0110-0000-7000-8000-0000000002c2"),
             MEMBER, UUID.fromString("019a0110-0000-7000-8000-0000000002c4"),
-            ADMIN_B, UUID.fromString("019a0110-0000-7000-8000-0000000002c6"));
+            ADMIN_B, UUID.fromString("019a0110-0000-7000-8000-0000000002c6"),
+            AUDITOR, UUID.fromString("019a0110-0000-7000-8000-0000000003a0"),
+            MANAGER, UUID.fromString("019a0110-0000-7000-8000-0000000003a2"));
     static final String SERVICE_TOKEN = "refdata-service-token";
     static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -84,6 +88,132 @@ class ReferenceDataTest {
 
     @Autowired
     StringRedisTemplate redisTemplate;
+
+    @Test
+    void dictionaryHistoryListsOnlyChangedTenantOverridesNewestFirst() throws Exception {
+        String history = "/reference-data/dictionaries/" + SERVICE + "/history-list/history";
+        assertThat(list(call(ADMIN, HttpMethod.GET, history, null))).isEmpty();
+        assertThat(createItem(ADMIN, "history-list", "history-first", "历史首项")
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(201);
+        call(
+                ADMIN,
+                HttpMethod.PUT,
+                itemPath("history-list", "custom.history-first"),
+                Map.of("name", "历史改名", "sort", 7));
+        var response = call(ADMIN, HttpMethod.GET, history, null);
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        var versions = list(response).stream().map(ReferenceDataTest::map).toList();
+        assertThat(versions).extracting(row -> row.get("version")).containsExactly(2, 1);
+        assertThat(versions.get(0))
+                .containsKeys("summary", "changedBy", "changedAt")
+                .doesNotContainKey("snapshot");
+        assertThat(versions.get(0).get("changedBy"))
+                .isEqualTo(IDENTITIES.get(ADMIN).toString());
+    }
+
+    @Test
+    void historyDetailKeepsOverridesSeparateFromCurrentManifestContext() throws Exception {
+        String history = "/reference-data/dictionaries/" + SERVICE + "/history-detail/history";
+        call(ADMIN, HttpMethod.POST, itemPath("history-detail", "builtin") + "/disable", null);
+        call(ADMIN, HttpMethod.PUT, itemPath("history-detail", "builtin"), Map.of("name", "租户改名", "sort", 8));
+        var response = call(ADMIN, HttpMethod.GET, history + "/1", null);
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        var detail = data(response);
+        assertThat(((List<?>) detail.get("snapshot"))
+                        .stream().map(ReferenceDataTest::map).toList())
+                .singleElement()
+                .satisfies(item -> assertThat(item)
+                        .containsEntry("code", "builtin")
+                        .containsEntry("name", null)
+                        .containsEntry("sort", null)
+                        .containsEntry("enabled", false));
+        assertThat(items(map(detail.get("current"))))
+                .singleElement()
+                .satisfies(item -> assertThat(item)
+                        .containsEntry("name", "租户改名")
+                        .containsEntry("sort", 8)
+                        .containsEntry("status", "disabled"));
+        assertThat(items(map(detail.get("manifest"))))
+                .singleElement()
+                .satisfies(item -> assertThat(item).containsEntry("name", "内置默认"));
+        assertThat(call(ADMIN_B, HttpMethod.GET, history + "/1", null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(404);
+    }
+
+    @Test
+    void anyTwoHistoryVersionsCompareOverridesIncludingReverseRemovals() throws Exception {
+        String history = "/reference-data/dictionaries/" + SERVICE + "/history-diff/history";
+        createItem(ADMIN, "history-diff", "first", "首项");
+        createItem(ADMIN, "history-diff", "second", "次项");
+        call(ADMIN, HttpMethod.PUT, itemPath("history-diff", "custom.first"), Map.of("name", "首项改名", "sort", 9));
+        var forward = call(ADMIN, HttpMethod.GET, history + "/diff?from=1&to=3", null);
+        assertThat(forward.getStatusCode().value()).isEqualTo(200);
+        assertThat(((List<?>) data(forward).get("added"))
+                        .stream().map(ReferenceDataTest::map).toList())
+                .singleElement()
+                .satisfies(item -> assertThat(item).containsEntry("code", "custom.second"));
+        assertThat((List<?>) data(forward).get("removed")).isEmpty();
+        var change = map(((List<?>) data(forward).get("changed")).get(0));
+        assertThat(map(change.get("before"))).containsEntry("name", "首项").containsEntry("sort", 2);
+        assertThat(map(change.get("after"))).containsEntry("name", "首项改名").containsEntry("sort", 9);
+        var reverse = data(call(ADMIN, HttpMethod.GET, history + "/diff?from=3&to=1", null));
+        assertThat(((List<?>) reverse.get("removed"))
+                        .stream().map(ReferenceDataTest::map).toList())
+                .singleElement()
+                .satisfies(item -> assertThat(item).containsEntry("code", "custom.second"));
+        assertThat((List<?>) reverse.get("added")).isEmpty();
+        var same = data(call(ADMIN, HttpMethod.GET, history + "/diff?from=2&to=2", null));
+        assertThat((List<?>) same.get("added")).isEmpty();
+        assertThat((List<?>) same.get("removed")).isEmpty();
+        assertThat((List<?>) same.get("changed")).isEmpty();
+        assertThat(call(ADMIN_B, HttpMethod.GET, history + "/diff?from=1&to=3", null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(404);
+    }
+
+    @Test
+    void historyRequiresItsOwnReadPermissionAndNeverGrantsManagement() throws Exception {
+        String history = "/reference-data/dictionaries/" + SERVICE + "/grade/history";
+        for (String path : List.of(history, history + "/1", history + "/diff?from=1&to=2")) {
+            for (UUID denied : List.of(MEMBER, MANAGER)) {
+                var response = call(denied, HttpMethod.GET, path, null);
+                assertThat(response.getStatusCode().value()).isEqualTo(403);
+                assertThat(response.getBody().get("code")).isEqualTo("auth.forbidden");
+            }
+        }
+        assertThat(call(AUDITOR, HttpMethod.GET, history, null).getStatusCode().value())
+                .isEqualTo(200);
+        // 缺失版本对已授权者是404：详情与比较也确实经过独立权限检查。
+        assertThat(call(AUDITOR, HttpMethod.GET, history + "/999", null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(404);
+        assertThat(call(AUDITOR, HttpMethod.GET, history + "/diff?from=998&to=999", null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(404);
+        assertThat(createItem(AUDITOR, "grade", "audit-denied", "不可新增")
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(403);
+        assertThat(call(AUDITOR, HttpMethod.PUT, itemPath("grade", "normal"), Map.of("name", "不可改名", "sort", 5))
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(403);
+        assertThat(call(AUDITOR, HttpMethod.POST, itemPath("grade", "normal") + "/disable", null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(403);
+        assertThat(call(AUDITOR, HttpMethod.POST, itemPath("grade", "normal") + "/enable", null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(403);
+    }
 
     @Test
     void everyMemberReadsTheMergedDictionariesWithItemsNoLongerSelectableFlagged() throws Exception {

@@ -37,6 +37,9 @@ INSERT INTO resource_manifest (id, service, version, content, current)
 VALUES ('019a0110-0000-7000-8000-0000000002d2', 'refdata-service', '2',
 '{"service":"refdata-service","version":"2","permissions":[],"menus":[],
   "dictionaries":[
+    {"code":"history-list","name":"历史列表","extensible":true,"items":[{"code":"builtin","name":"内置默认"}]},
+    {"code":"history-detail","name":"历史详情","extensible":true,"items":[{"code":"builtin","name":"内置默认"}]},
+    {"code":"history-diff","name":"历史比较","extensible":true,"items":[{"code":"builtin","name":"内置默认"}]},
     {"code":"customer-source","name":"客户来源","extensible":true,"items":[
       {"code":"online","name":"线上"},{"code":"referral","name":"转介绍"}]},
     {"code":"order-status","name":"订单状态","items":[{"code":"open","name":"未完成"},{"code":"closed","name":"已关闭"}]},
@@ -63,4 +66,33 @@ ON CONFLICT DO NOTHING;
 INSERT INTO dictionary_item (id, tenant_id, service, dictionary, code, custom, name, sort_order, enabled) VALUES
 ('019a0110-0000-7000-8000-0000000002f1', '019a0110-0000-7000-8000-000000000001', 'refdata-service', 'region', 'custom.north', true, '北方', 3, true),
 ('019a0110-0000-7000-8000-0000000002f2', '019a0110-0000-7000-8000-000000000001', 'refdata-service', 'region', 'custom.south', true, '南方', 4, false)
+ON CONFLICT DO NOTHING;
+
+-- 历史只读审计员与仅管理参考数据的成员，用生产权限链验证权限相互独立。
+INSERT INTO identity (id, account, email, display_name, password_hash)
+SELECT v.id, v.account, v.email, v.display_name, i.password_hash
+FROM identity i CROSS JOIN (VALUES
+    (CAST('019a0110-0000-7000-8000-0000000003a0' AS uuid), 'historyauditor', 'historyauditor@example.com', '历史审计员'),
+    (CAST('019a0110-0000-7000-8000-0000000003a2' AS uuid), 'historymanager', 'historymanager@example.com', '字典管理员')
+) AS v (id, account, email, display_name)
+WHERE i.account = 'demo' ON CONFLICT DO NOTHING;
+INSERT INTO membership (id, identity_id, tenant_id) VALUES
+('019a0110-0000-7000-8000-0000000003a1', '019a0110-0000-7000-8000-0000000003a0', '019a0110-0000-7000-8000-000000000001'),
+('019a0110-0000-7000-8000-0000000003a3', '019a0110-0000-7000-8000-0000000003a2', '019a0110-0000-7000-8000-000000000001')
+ON CONFLICT DO NOTHING;
+INSERT INTO role (id, tenant_id, code, name, builtin) VALUES
+('019a0110-0000-7000-8000-0000000003a4', '019a0110-0000-7000-8000-000000000001', 'history-auditor', '历史只读', false),
+('019a0110-0000-7000-8000-0000000003a5', '019a0110-0000-7000-8000-000000000001', 'history-manager', '仅管理字典', false)
+ON CONFLICT DO NOTHING;
+INSERT INTO membership_role (membership_id, role_id) VALUES
+('019a0110-0000-7000-8000-0000000003a1', '019a0110-0000-7000-8000-0000000003a4'),
+('019a0110-0000-7000-8000-0000000003a3', '019a0110-0000-7000-8000-0000000003a5')
+ON CONFLICT DO NOTHING;
+INSERT INTO role_permission (role_id, permission_id)
+SELECT CAST('019a0110-0000-7000-8000-0000000003a4' AS uuid), id FROM permission
+WHERE code = 'iam:dictionary-history:read' AND NOT deleted
+ON CONFLICT DO NOTHING;
+INSERT INTO role_permission (role_id, permission_id)
+SELECT CAST('019a0110-0000-7000-8000-0000000003a5' AS uuid), id FROM permission
+WHERE code = 'iam:reference-data:manage' AND NOT deleted
 ON CONFLICT DO NOTHING;

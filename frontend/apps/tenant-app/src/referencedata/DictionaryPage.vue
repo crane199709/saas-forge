@@ -1,16 +1,21 @@
 <script setup lang="ts">
 import { computed, inject, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { tenantClientKey } from '@crane199709/sdk'
+import { tenantClientKey, useAccessControl } from '@crane199709/sdk'
 import { ErrorAlert, PageHeader } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import DictionaryPanel from './DictionaryPanel.vue'
+import DictionaryHistoryPanel from './DictionaryHistoryPanel.vue'
 import { createReferenceDataApi, type Dictionary } from './reference-data-api'
 
 const { t } = useI18n()
 const client = inject(tenantClientKey)
 if (!client) throw new Error('Shell must provide a TenantClient')
 const api = createReferenceDataApi(client)
+const access = useAccessControl()
+const canManage = computed(() => access.has('iam:reference-data:manage'))
+const canReadHistory = computed(() => access.has('iam:dictionary-history:read'))
+const tab = ref(canManage.value ? 'items' : 'history')
 const dictionaries = ref<Dictionary[]>([])
 const selectedKey = ref('')
 const loaded = ref(false)
@@ -74,7 +79,29 @@ onMounted(load)
           </el-button>
         </div>
       </nav>
-      <DictionaryPanel v-if="selected" :api="api" :dictionary="selected" @changed="load" />
+      <div v-if="selected" class="content">
+        <el-tabs v-model="tab">
+          <el-tab-pane :label="t('referenceData.history.items')" name="items" />
+          <el-tab-pane
+            v-if="canReadHistory"
+            :label="t('referenceData.history.title')"
+            name="history"
+          />
+        </el-tabs>
+        <DictionaryHistoryPanel
+          v-if="tab === 'history' && canReadHistory"
+          :key="selectedKey"
+          :api="api"
+          :dictionary="selected"
+        />
+        <DictionaryPanel
+          v-else
+          :api="api"
+          :dictionary="selected"
+          :can-manage="canManage"
+          @changed="load"
+        />
+      </div>
     </div>
   </section>
 </template>
@@ -89,6 +116,10 @@ onMounted(load)
 .layout {
   display: flex;
   gap: var(--forge-space-5);
+}
+.content {
+  flex: 1;
+  min-width: 0;
 }
 nav {
   flex-shrink: 0;
@@ -108,5 +139,24 @@ nav h3 {
 nav .el-button {
   display: block;
   margin: var(--forge-space-2) 0 0;
+}
+@media (max-width: 1100px) {
+  .layout {
+    flex-direction: column;
+    gap: var(--forge-space-3);
+  }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--forge-space-4);
+    width: auto;
+    padding-right: 0;
+    padding-bottom: var(--forge-space-3);
+    border-right: 0;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+  }
+  .group + .group {
+    margin-top: 0;
+  }
 }
 </style>

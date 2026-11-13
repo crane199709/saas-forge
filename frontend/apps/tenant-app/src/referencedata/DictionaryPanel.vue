@@ -10,7 +10,7 @@ import {
   type ReferenceDataApi,
 } from './reference-data-api'
 
-const props = defineProps<{ api: ReferenceDataApi; dictionary: Dictionary }>()
+const props = defineProps<{ api: ReferenceDataApi; dictionary: Dictionary; canManage: boolean }>()
 const emit = defineEmits<{ changed: [] }>()
 const { t } = useI18n()
 const showDisabled = ref(false)
@@ -30,7 +30,8 @@ const items = computed(() =>
 const hasNameConflict = computed(() => props.dictionary.items.some((item) => item.nameConflict))
 
 // 固定字典只读；已下线的项不再出现在当前声明中，服务端按不存在处理。
-const editable = (item: DictionaryItem) => props.dictionary.extensible && item.status !== 'retired'
+const editable = (item: DictionaryItem) =>
+  props.canManage && props.dictionary.extensible && item.status !== 'retired'
 
 async function run(action: () => Promise<unknown>) {
   busy.value = true
@@ -85,7 +86,7 @@ async function save() {
         data-testid="show-disabled"
         :label="t('referenceData.dictionary.showDisabled')"
       />
-      <template v-if="dictionary.extensible" #actions>
+      <template v-if="canManage && dictionary.extensible" #actions>
         <el-button type="primary" data-testid="new-item-create" @click="open(null)">
           {{ t('referenceData.dictionary.create') }}
         </el-button>
@@ -134,7 +135,7 @@ async function save() {
         </template>
       </el-table-column>
       <el-table-column
-        v-if="dictionary.extensible"
+        v-if="canManage && dictionary.extensible"
         :label="t('common.actions')"
         width="112"
         fixed="right"

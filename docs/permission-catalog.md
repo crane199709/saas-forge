@@ -65,7 +65,7 @@ Backend quality 工作流无条件运行目录测试与真实 `--check`，因此
 
 [动作策略](contracts/permission-policy.json) 包含两个映射，每个值都必须是非空理由：
 
-- `actions`：动作词到批准理由；当前为 `create`、`delete`、`export`、`import`、`manage`、`read`、`reset`、`update`、`viewRaw`。
+- `actions`：动作词到批准理由；当前为 `create`、`delete`、`export`、`import`、`importRollback`、`manage`、`read`、`reset`、`update`、`viewRaw`。
 - `historicalExceptions`：完整 Permission Code 到历史保留理由；当前没有需要例外的存量编码，因此为空。
 
 动作取最后一个冒号之后的完整段，要求冒号两侧非空，并精确匹配白名单。例如 `iam:role:manage` 与 `order:read` 通过，裸 `read`、`order:read:invented`、`order:read-extra` 和 `order:Read` 不通过。该策略也校验 inactive 条目，不改变 SDK 的运行时编码语法。
