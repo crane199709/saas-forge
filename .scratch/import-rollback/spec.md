@@ -1,6 +1,6 @@
 # 导入回滚规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准（「导入导出」一节）。核心取舍由 [ADR-0027](../../docs/adr/0027-import-rollback-restores-overwritten-values.md) 记录。依赖 [data-import-export](../data-import-export/spec.md) 与 `forge-sdk-io`。
 
@@ -77,3 +77,44 @@ SDK 的导入能力增加“覆盖前快照 + 回滚”：
 - 回滚是数据修复操作，不是 Restore；两者术语与审计动作必须分开。
 - 如果业务服务没有配置快照或快照已过期，导入详情应明确显示“不可回滚”，而不是隐藏入口。
 - 快照保留期由服务配置，默认 90 天，前端展示实际截止时间。
+
+## 实现与最终验收（2026-11-13）
+
+集成分支：`codex/import-rollback`。最终代码验收点：`927fbedb5f72e6669588f57047b0ddf031abc8ea`；后续收尾只更新本规格。四张工单均已 resolved：[快照](issues/01-import-backup.md)、[预览](issues/02-conflict-preview.md)、[执行与审计](issues/03-rollback-execution.md)、[界面与真实验收](issues/04-ui-and-acceptance.md)。
+
+- SDK 在覆盖前保存受影响字段，逐记录恢复与成功标记同事务，支持显式跳过冲突、失败重试和幂等；预览后的新修改或后续覆盖在执行锁内重新检查。保留当前租户、本人任务与当前数据权限边界。
+- Demo 保留原追加导入，新增四列覆盖模型（可选订单 ID）；回滚只恢复标题、金额、客户来源，新增行、编号、状态与归属保留。回滚独立权限为 `order:importRollback`。
+- 共享 UI 提供导入历史和两阶段回滚对话框，展示原任务状态、回滚结果、实际截止时间、不可用原因和逐条冲突。历史按持久化模型选择确认入口，部分回滚后到期仍保留历史结果，全部恢复显示已回滚。
+- 快照默认保留 90 天，可配置；清理先保留已提交进度，再清空旧值并逻辑删除，覆盖停用租户及中断后直接到期的情况。已有服务按顺序新增迁移复制 `upgrade-import-backup.sql`、`upgrade-import-rollback-preview.sql`、`upgrade-import-rollback-execution.sql`（demo V15–V17），不改旧迁移；新服务使用当前 `schema.sql`。
+
+| 最终检查                     | 结果                                                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 后端模块全量 `verify`        | IO SDK 1 + demo-service 145，共 146 项通过，0 失败、错误或跳过；含真实 PostgreSQL、Redis、S3、架构、表列注释、Checkstyle 与 Spotless |
+| 全前端 Vitest 与脚手架       | 407 + 7 项通过，0 失败或跳过                                                                                                         |
+| 全前端构建、类型、格式与样式 | `build`、`typecheck`（含工具）、`format:check`、`lint:style` 全部通过                                                                |
+| 浏览器交互                   | 原导入确认 mock 回归 5 项通过；隔离真实链路 1 项通过                                                                                 |
+| macOS 视觉                   | 18 项相关用例通过；1440×900 / 1024×768 新增 8 张基线，逐张查看；原基线无变化                                                         |
+| 两轴审查                     | Standards 1 项、Spec 1 项均修复并复核；最终两轴各 0 项剩余发现                                                                       |
+| Git                          | 合并无冲突，`git diff --check` 通过                                                                                                  |
+
+真实浏览器链路使用真实登录和有效 Excel，经独立 S3 直传、预校验、确认覆盖两条并新增一条、人工修改一条、预览冲突、默认 409 阻断、明确跳过、核验其余旧值恢复与新增保留、重复调用幂等；另验证只有导入权限的成员模板可用而预览/执行回滚返回 403。URL、标题、有效内容、错误遮罩、全部 console error/pageerror 与交互检查通过。Browser plugin not available，使用仓库 Playwright。
+
+后端最终命令：
+
+```sh
+cd backend
+./mvnw -o -pl examples/demo-service -am install -DskipTests
+./mvnw -o -pl forge-sdk/forge-sdk-io,examples/demo-service verify
+```
+
+前端全量 Vitest 按工作区串行、每套两个 worker 执行；脚手架单独运行 Node 测试。真实链路可由仓库根目录重跑：
+
+```sh
+FORGE_IMPORT_ROLLBACK_E2E=1 bash deploy/e2e/run.sh
+```
+
+本机验收显式增加 `FORGE_E2E_OFFLINE=1` 使用已有缓存；默认入口允许在线获取依赖，均执行 clean 构建。完整接入方式和范围见 [主链路 E2E 文档](../../docs/main-flow-e2e.md)。最终后端日志为 `/private/tmp/import-rollback-final-backend-reviewed.log`，前端日志为 `/private/tmp/import-rollback-final-{frontend-tests,kit,frontend-build,typecheck,format,style}.log`；真实与视觉证据见工单 04。
+
+审查修正为缺失 `objectId` 返回 400 字段错误，以及中断前已提交恢复的审计。恢复、跳过、失败在对应逐记录事务登记 `io.importRollback`，整轮拒绝或无操作只记零计数，避免重试漏计或重复累计。中断后重试、直接到期及幂等的实际 Outbox 计数、actor、tenant、taskId 与时间均已验证。
+
+审计沿用现有 `AuditRecorder` 提交后独立事务写 Outbox 的契约：业务提交与审计写入之间进程终止，或审计写入失败，仍可能丢事件。本轮使用公开业务回调模拟 Error，没有执行 OS kill；独立浏览器环境关闭 MQ，未验证 MQ 投递及 IAM 审计列表，不宣称端到端审计严格原子。
