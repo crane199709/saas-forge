@@ -720,6 +720,40 @@ class ObjectStorageTest {
     }
 
     @Test
+    void demoAttachmentPurposeExpiresAnOrphanAfterThirtyDaysAndReleasesQuotaAfterGrace() throws Exception {
+        retentionClock.at("2026-11-01T00:00:00Z");
+        String orderId = createOrder(tenant);
+        byte[] content = "orphan".getBytes(StandardCharsets.UTF_8);
+        Map<?, ?> ticket = prepareUpload(tenant, orderId, "orphan.txt", content.length);
+        assertThat(put(ticket, content)).isEqualTo(200);
+        UUID objectId = UUID.fromString((String) ticket.get("objectId"));
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            storage.completeUpload(objectId);
+            assertThat(storage.lifecycle(objectId).retentionExpiresAt()).isEqualTo("2026-12-01T00:00:00Z");
+            retentionClock.at("2026-11-30T23:59:59Z");
+            storageMaintenance.clean();
+            assertThat(storage.get(objectId).size()).isEqualTo(content.length);
+            retentionClock.at("2026-12-01T00:00:00Z");
+            storageMaintenance.clean();
+            assertThat(storage.lifecycle(objectId).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            assertThat(storage.lifecycle(objectId).purgeAfter()).isEqualTo("2026-12-08T00:00:00Z");
+            assertThatThrownBy(() -> storage.get(objectId)).isInstanceOf(ForgeException.class);
+            assertThat(storage.usage().usedBytes()).isEqualTo(content.length);
+            assertThat(objectKeys()).contains(tenant + "/demo-service/" + objectId);
+            retentionClock.at("2026-12-07T23:59:59Z");
+            storageMaintenance.clean();
+            assertThat(storage.lifecycle(objectId).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+            assertThat(storage.usage().usedBytes()).isEqualTo(content.length);
+            assertThat(objectKeys()).contains(tenant + "/demo-service/" + objectId);
+            retentionClock.at("2026-12-08T00:00:00Z");
+            storageMaintenance.clean();
+            assertThatThrownBy(() -> storage.lifecycle(objectId)).isInstanceOf(ForgeException.class);
+            assertThat(objectKeys()).doesNotContain(tenant + "/demo-service/" + objectId);
+            assertThat(storage.usage().usedBytes()).isZero();
+        }
+    }
+
+    @Test
     void retentionDeadlineExpiresWithoutDeletingTheFileOrReleasingQuota() {
         var purpose = new StoragePurpose("temporary-document", Set.of("pdf"), 4, Duration.ofMinutes(2), 2);
         retentionClock.at("2026-11-01T00:00:00Z");

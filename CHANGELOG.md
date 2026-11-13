@@ -6,6 +6,8 @@
 
 ### 变更
 
+- demo-service 的 `order-attachment` 用途声明 30 天保留期，新增真实上传、到期、七天宽限与配额释放验收；接入指南同步示例，明确有引用附件继续保留、IO/历史未覆盖用途安全跳过及 `HELD` 仅预留。未新增前端页面。
+
 - `forge-sdk-storage` 新增每小时按 Tenant 执行的 `forge-storage-retention` 任务，按用途与稳定游标批量检查引用，到期失效、七天后物理删除；包含永久用途主动删除、未确认上传与 `PURGE_PENDING` 重试，S3 成功前保留记录和配额。purge 与 restore/extend 共用行锁，上传 URL 有效期内保留对象并核对租户/服务 key。新增 expire/purge/retentionExtend 的实际变更审计，沿用提交后独立 Outbox 契约。storage 直接引入 audit/scheduling，依赖白名单、业务规范、接入指南与 archetype/sub-app-kit 提示同步 MQ、Redis 和 IAM 目录必配项；默认脚手架不启用 storage。
 
 - `forge-sdk-storage` 增加按用途显式覆盖的批量 `FileReferenceChecker` SPI 与安全检查入口；缺覆盖、异常、超时和不合法结果均跳过并告警。批量大小与总检查超时可配置，异步检查显式传播租户，工作线程最多两个且不排队。demo 附件实现包含逻辑删除行的引用查询；业务规范新增该查询包含 deleted、保留租户/RLS、不受成员 Data Policy 缩窄的窄例外。接入指南、根/archetype AGENTS 与 sub-app-kit 配套后端说明同步；默认脚手架不引入可选 storage/IO 表或配置。
