@@ -99,3 +99,5 @@
 生成工程继承命令行 profile 提示自身不存在 `archetype-it`，但其真实 verify、17 项测试及后置脚本均成功；与票 04 相同，不计为测试跳过。指南/业务规范仅检查本次 storage 段（去除抽取段末分隔空行），没有重排既有无关格式，不宣称整文 Prettier 通过。
 
 上述原票 04 的完整验证作为历史记录保留，本节是事务修复后的新验证。未新增真实 IAM/MQ/供应商部署验证，实际验证边界仍与前节相同；本次只操作隔离 Testcontainers 数据。规格和工单状态的最终关闭仍由集成审查决定。
+
+双轴复核已完成：Standards 剩余硬违规 0 项、无新增需修复的判断性 smell；Spec 剩余发现 0 项，初始绑定/失效 P2 已关闭。复核报告为 `/tmp/saas-forge-file-retention/review-standards-recheck.md` 与 `review-spec-recheck.md`；两者只读检查修复树及验证日志，没有再次执行测试。完整规格仍由 root 合并后统一关闭。
