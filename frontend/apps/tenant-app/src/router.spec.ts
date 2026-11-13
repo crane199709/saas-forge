@@ -134,7 +134,8 @@ describe('路由守卫', () => {
           ),
         ),
     )
-    const { router } = await mountShell('/')
+    const { router, client } = await mountShell('/')
+    await client.api('/iam/members').catch(() => {})
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/login'))
     expect(sessionStorage.getItem('forge.tenant.session')).toBeNull()
   })
@@ -158,7 +159,7 @@ it('当前租户 IP 被拒进入独立页面，保留刷新凭证并提供退出
   vi.stubGlobal(
     'fetch',
     fakeFetch({
-      '/demo/context': new Response(
+      '/iam/members': new Response(
         JSON.stringify({
           code: 'tenant.ipNotAllowed',
           httpStatus: 403,
@@ -172,6 +173,7 @@ it('当前租户 IP 被拒进入独立页面，保留刷新凭证并提供退出
     }),
   )
   const { router, wrapper, client } = await mountShell('/')
+  await client.api('/iam/members').catch(() => {})
   await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/ip-not-allowed'))
   await flushPromises()
   expect(wrapper.text()).toContain('当前 IP 无法访问该租户')
