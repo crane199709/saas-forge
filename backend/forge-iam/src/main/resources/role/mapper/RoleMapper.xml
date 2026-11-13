@@ -91,6 +91,17 @@
         VALUES (#{id}, #{tenantId}, #{code}, #{name}, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, #{actor}, #{actor})
         ON CONFLICT (tenant_id, code) WHERE NOT deleted DO NOTHING
     </insert>
+    <!-- 内部映射限定同租户的未删除角色；删除后新邀请会另建角色，不复用同编码的自定义角色。 -->
+    <select id="initialReadRole" resultType="java.lang.Object">
+        SELECT r.id FROM tenant_initial_read_role initial JOIN role r ON r.id = initial.role_id
+        WHERE initial.tenant_id = #{tenantId} AND r.tenant_id = #{tenantId} AND NOT r.deleted
+    </select>
+    <insert id="designateInitialReadRole">
+        INSERT INTO tenant_initial_read_role (tenant_id, role_id)
+        SELECT #{tenantId}, id FROM role
+        WHERE tenant_id = #{tenantId} AND id = #{roleId} AND NOT builtin AND NOT deleted
+        ON CONFLICT (tenant_id) DO UPDATE SET role_id = EXCLUDED.role_id
+    </insert>
     <update id="rename">
         UPDATE role SET name = #{name}, updated_at = CURRENT_TIMESTAMP, updated_by = #{actor}
         WHERE tenant_id = #{tenantId} AND id = #{id} AND NOT builtin AND NOT deleted

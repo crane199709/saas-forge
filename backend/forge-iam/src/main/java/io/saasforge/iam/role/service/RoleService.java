@@ -91,20 +91,21 @@ public class RoleService implements RoleGrantSource {
     @Transactional
     public void grantInitialReadRole(UUID tenantId, UUID membershipId) {
         roles.lockTenant(tenantId);
-        UUID id = UuidV7.generate();
-        if (roles.insertCustom(tenantId, id, "inbox-reader", "消息读取", null) == 1) {
+        UUID id = roles.initialReadRole(tenantId);
+        if (id == null) {
+            id = UuidV7.generate();
+            String code = "inbox-reader";
+            // 编码不代表系统身份；租户可以已有同名角色，冲突时换编码，绝不继承其权限。
+            while (roles.insertCustom(tenantId, id, code, "消息读取", null) == 0) {
+                code = "inbox-reader-" + UuidV7.generate();
+            }
             grants.grant(
                     id,
                     List.of(
                             IamPermissions.TODO_READ,
                             IamPermissions.NOTIFICATION_READ,
                             IamPermissions.ANNOUNCEMENT_READ));
-        } else {
-            id = roles.list(tenantId).stream()
-                    .filter(role -> "inbox-reader".equals(role.code()))
-                    .findFirst()
-                    .orElseThrow()
-                    .id();
+            roles.designateInitialReadRole(tenantId, id);
         }
         roles.grant(tenantId, membershipId, List.of(id));
     }
