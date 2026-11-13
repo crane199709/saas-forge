@@ -14,7 +14,7 @@ declare module 'vue-router' {
     /** 不带顶栏与侧边菜单的整页。 */
     standalone?: boolean
     /** 进入页面所需的权限码；按钮级权限仍由 `v-perm` 控制，接口仍由后端校验。 */
-    permission?: string
+    permission?: string | string[]
   }
 }
 
@@ -106,7 +106,7 @@ export function createShellRouter(history: RouterHistory) {
       {
         path: '/dictionaries',
         component: () => import('./referencedata/DictionaryPage.vue'),
-        meta: { permission: 'iam:reference-data:manage' },
+        meta: { permission: ['iam:reference-data:manage', 'iam:dictionary-history:read'] },
       },
       {
         path: '/parameters',

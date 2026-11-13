@@ -7,6 +7,11 @@ import io.saasforge.iam.permission.service.IamPermissions;
 import io.saasforge.iam.permission.service.PermissionService;
 import io.saasforge.iam.referencedata.mapper.DictionaryItemMapper;
 import io.saasforge.iam.referencedata.mapper.ParameterOverrideMapper;
+import io.saasforge.iam.referencedata.model.DictionaryHistoryDetail;
+import io.saasforge.iam.referencedata.model.DictionaryHistoryDiff;
+import io.saasforge.iam.referencedata.model.DictionaryHistoryItem;
+import io.saasforge.iam.referencedata.model.DictionaryHistoryMetadata;
+import io.saasforge.iam.referencedata.model.DictionaryHistoryResponse;
 import io.saasforge.iam.referencedata.model.DictionaryItemRow;
 import io.saasforge.iam.referencedata.model.ParameterOverrideRow;
 import io.saasforge.iam.referencedata.model.TenantDictionary;
@@ -348,6 +353,67 @@ public class ReferenceDataService {
                     // 抛出后事务回滚，覆盖值保留。
                     throw new ForgeException(ReferenceDataErrorCode.DEFAULT_UNAVAILABLE, parameter.name(), item.name());
                 });
+    }
+
+    public List<DictionaryHistoryMetadata> dictionaryHistory(TenantActor actor, String service, String dictionary) {
+        roles.requirePermission(actor.membershipId(), IamPermissions.DICTIONARY_HISTORY_READ);
+        return history.list(actor.tenantId(), service, dictionary).stream()
+                .map(version -> new DictionaryHistoryMetadata(
+                        version.version(), version.summary(), version.changedBy(), version.changedAt()))
+                .toList();
+    }
+
+    public DictionaryHistoryDetail dictionaryHistoryVersion(
+            TenantActor actor, String service, String dictionary, long version) {
+        roles.requirePermission(actor.membershipId(), IamPermissions.DICTIONARY_HISTORY_READ);
+        var saved = historyVersion(actor, service, dictionary, version);
+        var current = dictionaries(actor.tenantId()).stream()
+                .filter(item -> item.service().equals(service) && item.code().equals(dictionary))
+                .findFirst()
+                .orElse(null);
+        var manifest = permissions.currentDictionaries().stream()
+                .filter(item -> item.service().equals(service)
+                        && item.dictionary().code().equals(dictionary))
+                .map(ServiceDictionary::dictionary)
+                .findFirst()
+                .orElse(null);
+        return new DictionaryHistoryDetail(
+                saved.version(),
+                saved.summary(),
+                saved.changedBy(),
+                saved.changedAt(),
+                saved.snapshot(),
+                current,
+                manifest);
+    }
+
+    public DictionaryHistoryDiff dictionaryHistoryDiff(
+            TenantActor actor, String service, String dictionary, long from, long to) {
+        roles.requirePermission(actor.membershipId(), IamPermissions.DICTIONARY_HISTORY_READ);
+        var before = historyVersion(actor, service, dictionary, from).snapshot();
+        var after = historyVersion(actor, service, dictionary, to).snapshot();
+        Map<String, DictionaryHistoryItem> previous =
+                before.stream().collect(Collectors.toMap(DictionaryHistoryItem::code, item -> item));
+        Map<String, DictionaryHistoryItem> next =
+                after.stream().collect(Collectors.toMap(DictionaryHistoryItem::code, item -> item));
+        var added = after.stream()
+                .filter(item -> !previous.containsKey(item.code()))
+                .toList();
+        var removed =
+                before.stream().filter(item -> !next.containsKey(item.code())).toList();
+        var changed = after.stream()
+                .filter(item -> previous.containsKey(item.code()) && !item.equals(previous.get(item.code())))
+                .map(item -> new DictionaryHistoryDiff.Change(previous.get(item.code()), item))
+                .toList();
+        return new DictionaryHistoryDiff(from, to, added, removed, changed);
+    }
+
+    private DictionaryHistoryResponse historyVersion(
+            TenantActor actor, String service, String dictionary, long version) {
+        return history.list(actor.tenantId(), service, dictionary).stream()
+                .filter(item -> item.version() == version)
+                .findFirst()
+                .orElseThrow(() -> new ForgeException(ReferenceDataErrorCode.HISTORY_NOT_FOUND));
     }
 
     private void requireManager(TenantActor actor) {

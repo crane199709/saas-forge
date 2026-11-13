@@ -184,6 +184,16 @@ describe('App 布局', () => {
     expect(wrapper.find('[data-testid="menu-roles"]').exists()).toBe(false)
   })
 
+  it('只有历史查看权限的审计员可以导航到字典页', async () => {
+    signedIn()
+    const { wrapper, router } = await mountShell('/dictionaries', {
+      access: async () => ({ permissions: ['iam:dictionary-history:read'] }),
+    })
+    expect(router.currentRoute.value.path).toBe('/dictionaries')
+    expect(wrapper.get('[data-testid="menu-dictionaries"]').text()).toBe('字典')
+    expect(wrapper.find('[data-testid="menu-parameters"]').exists()).toBe(false)
+  })
+
   it('字典与参数页入口要求 iam:reference-data:manage', async () => {
     signedIn()
     const { wrapper } = await mountShell('/', {

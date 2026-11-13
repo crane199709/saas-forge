@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 import { afterEach, expect, it, vi } from 'vitest'
-import { createTenantClient, tenantClientKey } from '@crane199709/sdk'
+import { createTenantClient, createAccessControl, tenantClientKey } from '@crane199709/sdk'
 import { i18n } from '../i18n'
 import DictionaryPage from './DictionaryPage.vue'
 import { tableRow } from '../test-table'
@@ -67,9 +67,15 @@ async function mountPage(...writes: Response[]) {
     'forge.tenant.session',
     JSON.stringify({ accessToken: 'access', refreshToken: 'r', membershipId: 'm' }),
   )
+  const access = createAccessControl({
+    api: vi
+      .fn()
+      .mockResolvedValue({ permissions: ['iam:reference-data:manage'], menus: [], subApps: [] }),
+  })
+  await access.load()
   const wrapper = mount(DictionaryPage, {
     global: {
-      plugins: [i18n, ElementPlus],
+      plugins: [i18n, ElementPlus, access],
       provide: { [tenantClientKey]: createTenantClient(sessionStorage) },
     },
   })

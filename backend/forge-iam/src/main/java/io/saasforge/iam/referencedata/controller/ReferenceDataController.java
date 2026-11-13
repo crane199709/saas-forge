@@ -1,6 +1,9 @@
 package io.saasforge.iam.referencedata.controller;
 
 import io.saasforge.iam.membership.model.TenantActor;
+import io.saasforge.iam.referencedata.model.DictionaryHistoryDetail;
+import io.saasforge.iam.referencedata.model.DictionaryHistoryDiff;
+import io.saasforge.iam.referencedata.model.DictionaryHistoryMetadata;
 import io.saasforge.iam.referencedata.model.TenantDictionary;
 import io.saasforge.iam.referencedata.model.TenantDictionaryItem;
 import io.saasforge.iam.referencedata.model.TenantParameter;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -44,6 +48,43 @@ class ReferenceDataController {
     @GetMapping("/dictionaries")
     ApiResponse<List<TenantDictionary>> dictionaries(@AuthenticationPrincipal Jwt jwt) {
         return ApiResponse.ok(referenceData.dictionaries(TenantActor.of(jwt).tenantId()));
+    }
+
+    @Operation(summary = "按版本倒序查看字典变更历史，需要独立历史查看权限")
+    @GetMapping("/dictionaries/{service}/{dictionary}/history")
+    ApiResponse<List<DictionaryHistoryMetadata>> history(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable String service, @PathVariable String dictionary) {
+        TenantActor actor = TenantActor.of(jwt);
+        try (var ignored = CurrentTenant.bind(actor.tenantId())) {
+            return ApiResponse.ok(referenceData.dictionaryHistory(actor, service, dictionary));
+        }
+    }
+
+    @Operation(summary = "查看历史覆盖快照与当前值、当前服务声明上下文")
+    @GetMapping("/dictionaries/{service}/{dictionary}/history/{version}")
+    ApiResponse<DictionaryHistoryDetail> historyVersion(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String service,
+            @PathVariable String dictionary,
+            @PathVariable long version) {
+        TenantActor actor = TenantActor.of(jwt);
+        try (var ignored = CurrentTenant.bind(actor.tenantId())) {
+            return ApiResponse.ok(referenceData.dictionaryHistoryVersion(actor, service, dictionary, version));
+        }
+    }
+
+    @Operation(summary = "比较任意两版租户覆盖快照")
+    @GetMapping("/dictionaries/{service}/{dictionary}/history/diff")
+    ApiResponse<DictionaryHistoryDiff> historyDiff(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String service,
+            @PathVariable String dictionary,
+            @RequestParam long from,
+            @RequestParam long to) {
+        TenantActor actor = TenantActor.of(jwt);
+        try (var ignored = CurrentTenant.bind(actor.tenantId())) {
+            return ApiResponse.ok(referenceData.dictionaryHistoryDiff(actor, service, dictionary, from, to));
+        }
     }
 
     @Operation(summary = "在可扩展字典中新增自定义项，编码自动加 custom. 前缀")

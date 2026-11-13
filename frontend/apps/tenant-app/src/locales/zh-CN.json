@@ -416,6 +416,33 @@
       "empty": "没有可修改的参数",
       "true": "是",
       "false": "否"
+    },
+    "history": {
+      "title": "变更历史",
+      "items": "字典项",
+      "empty": "暂无变更历史",
+      "version": "版本",
+      "summary": "变更摘要",
+      "actor": "变更人",
+      "time": "变更时间",
+      "detail": "查看",
+      "snapshot": "历史租户覆盖快照",
+      "current": "当前生效值（查询时）",
+      "manifest": "当前服务声明（上下文）",
+      "unavailable": "当前字典已下线",
+      "inherited": "未覆盖",
+      "enabled": "启用",
+      "disabled": "停用",
+      "context": "当前值和当前服务声明仅供对照，不属于历史快照。",
+      "from": "起始版本",
+      "to": "目标版本",
+      "compare": "比较",
+      "added": "新增覆盖",
+      "removed": "移除覆盖",
+      "changed": "修改覆盖",
+      "before": "比较前",
+      "after": "比较后",
+      "unchanged": "两个版本的租户覆盖相同"
     }
   },
   "mfa": {

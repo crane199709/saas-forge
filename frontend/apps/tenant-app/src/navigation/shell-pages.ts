@@ -7,7 +7,7 @@ export interface ShellPage {
   path: string
   title: string
   /** iam 的管理权限码，授权被撤销后随权限刷新隐藏。 */
-  permission: string
+  permission: string | string[]
 }
 
 type Translate = (key: string) => string
@@ -35,7 +35,7 @@ export function shellPages(t: Translate): ShellPage[] {
       key: 'dictionaries',
       path: '/dictionaries',
       title: t('referenceData.dictionary.nav'),
-      permission: 'iam:reference-data:manage',
+      permission: ['iam:reference-data:manage', 'iam:dictionary-history:read'],
     },
     {
       key: 'parameters',

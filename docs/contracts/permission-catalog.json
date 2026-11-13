@@ -35,6 +35,14 @@
     },
     {
       "service": "forge-iam",
+      "code": "iam:dictionary-history:read",
+      "name": "查看字典变更历史",
+      "group": "租户管理",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam",
       "code": "iam:member:manage",
       "name": "管理成员",
       "group": "租户管理",
@@ -133,6 +141,14 @@
       "service": "demo-service",
       "code": "order:import",
       "name": "导入订单",
+      "group": "订单",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "demo-service",
+      "code": "order:importRollback",
+      "name": "回滚订单导入",
       "group": "订单",
       "realm": "tenant",
       "status": "active"
