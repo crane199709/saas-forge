@@ -125,6 +125,7 @@ import tools.jackson.databind.json.JsonMapper;
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
             "spring.flyway.locations=classpath:db/migration,classpath:storage-purpose-migration",
+            "forge.storage.retention.batch-size=2",
             "forge.io.workers=1",
             "forge.io.queue-capacity=1",
             "forge.io.import-limit=3",
@@ -188,6 +189,9 @@ class ObjectStorageTest {
 
     @Autowired
     ObjectStorage storage;
+
+    @Autowired
+    io.saasforge.sdk.storage.FileReferenceChecks fileReferenceChecks;
 
     @Autowired
     IoTasks ioTasks;
@@ -3059,6 +3063,44 @@ class ObjectStorageTest {
         assertThat((List<?>) exchange(tenant, HttpMethod.GET, attachments(orderId), null)
                         .get("data"))
                 .hasSize(1);
+    }
+
+    @Test
+    void fileReferenceChecksIncludeLogicallyDeletedAttachmentsWithoutCrossingTenantsOrPurposes() throws Exception {
+        assertThat(fileReferenceChecks.batchSize()).isEqualTo(2);
+        String orderId = createOrder(tenant);
+        byte[] content = "retained-attachment".getBytes(StandardCharsets.UTF_8);
+        Map<?, ?> ticket = prepareUpload(tenant, orderId, "reference.txt", content.length);
+        assertThat(put(ticket, content)).isEqualTo(200);
+        String objectId = (String) ticket.get("objectId");
+        Map<String, Object> response =
+                exchange(tenant, HttpMethod.POST, attachments(orderId), Map.of("objectId", objectId));
+        assertThat(response.get("httpStatus")).isEqualTo(201);
+        String attachmentId = (String) ((Map<?, ?>) response.get("data")).get("id");
+        UUID referenced = UUID.fromString(objectId);
+        UUID orphan = UUID.randomUUID();
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(fileReferenceChecks.unreferenced("order-attachment", List.of(referenced, orphan), "expire"))
+                    .containsExactly(orphan);
+            assertThat(fileReferenceChecks.unreferenced("io-result", List.of(orphan), "purge"))
+                    .isEmpty();
+        }
+        assertThat(exchange(tenant, HttpMethod.DELETE, attachments(orderId) + "/" + attachmentId, null)
+                        .get("httpStatus"))
+                .isEqualTo(200);
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, attachments(orderId), null)
+                        .get("data"))
+                .isEmpty();
+        try (var ignored = CurrentTenant.bind(tenant)) {
+            assertThat(fileReferenceChecks.unreferenced("order-attachment", List.of(referenced, orphan), "purge"))
+                    .containsExactly(orphan);
+            assertThat(storage.lifecycle(referenced).status()).isEqualTo(StorageObjectStatus.EXPIRED);
+        }
+        try (var ignored = CurrentTenant.bind(UUID.randomUUID())) {
+            assertThat(fileReferenceChecks.unreferenced("order-attachment", List.of(referenced), "purge"))
+                    .containsExactly(referenced);
+        }
+        assertThat(objectKeys()).contains(tenant + "/demo-service/" + objectId);
     }
 
     @Test

@@ -316,6 +316,35 @@ var download = storage.prepareDownload(ATTACHMENT, objectId);
 
 宽限期内可调用 `restore(purpose, id)` 恢复，SDK 持对象行锁核对用途并从当前时间重算声明的保留期；未确认对象恢复后仍须确认上传。`extendRetention(id, newDeadline)` 只接受比原截止和当前时间都晚的日期，失效文件随之恢复，永久保留文件无须延长。超过七天或进入待删除状态后均返回 `storage.retentionUnavailable`。物理删除须使用同一对象行锁，与恢复、延长串行；调用前的只读生命周期信息不能充当删除许可。
 
+服务将引用检查器注册为 Spring Bean，明确每个实现完整负责的用途。以 demo 的 `OrderAttachmentReferences` 为例：
+
+```java
+@Component
+public class AttachmentReferences implements FileReferenceChecker {
+    private final AttachmentMapper mapper;
+
+    public AttachmentReferences(AttachmentMapper mapper) {
+        this.mapper = mapper;
+    }
+
+    @Override
+    public Set<String> purposes() {
+        return Set.of("order-attachment");
+    }
+
+    @Override
+    public Set<UUID> referencedObjects(String purpose, List<UUID> candidates) {
+        return mapper.referencedObjects(candidates);
+    }
+}
+```
+
+Mapper XML 用候选 ID 的 `IN` 查询批量返回 `DISTINCT object_id`；此处必须包含逻辑删除的附件行，避免资源恢复后文件丢失。该引用专用查询是标准表查询 `NOT deleted` 规则的窄例外，须保留租户拦截与 RLS，不按成员 Data Policy 过滤，也不 JOIN 普通订单可见性查询。接口在显式传播的 `CurrentTenant` 下执行，不继承请求身份或外层事务；不能依赖原请求的登录成员。默认模板不引入检查器、可选表或配置。
+
+多个检查器覆盖同一用途时合并其引用结果；覆盖声明意味着检查该用途所有业务引用。订单附件实现不能覆盖 `io-source`/`io-result`，IO 等其他用途须由其所属模块实现检查器，否则跳过治理。缺覆盖、任一检查器抛异常/超时、返回 null/含 null/候选外 ID，均跳过整批并记录带 tenant、purpose、phase、reason 的 WARN，不输出文件内容或检查器异常消息。失效与物理删除前各检查一次。
+
+可选配置 `forge.storage.retention.batch-size` 默认为 100（正数），`forge.storage.retention.reference-check-timeout` 默认为 5s（至少 1ms）。`FileReferenceChecks.batchSize()` 供治理扫描分批，`unreferenced(purpose, candidates, phase)` 只返回确认无引用的 ID；调用方只能处理返回值。检查最多占两个工作线程且不排队，超时尝试中断；不响应中断的实现会占住线程，池满时其他批次也跳过并告警。业务查询应配置数据库超时，出现持续 `capacity-exhausted` 时修复检查器，不能把跳过视为无引用。
+
 未确认上传在上传凭证到期后可进入失效治理。包括已过期上传申请在内的全部未物理删除登记持续计入容量，避免未确认但已经上传的文件漏计；即使确认因套餐降级被拒，也保留文件供安全治理，未上传的预留容量同样须由后续清理释放。
 
 需要 Business Number 时添加 `io.saasforge:forge-sdk-numbering`，把 SDK 中 `io/saasforge/sdk/numbering/schema.sql` 复制到 Flyway 迁移，在保存业务数据的事务中调用 `BusinessNumbers.next(rule)`。日期段按 Nacos 共享配置中的 `forge.business-zone` 计算，漏配时启动失败。参考 demo-service 的订单编号及 V9 迁移。
