@@ -40,9 +40,11 @@ public final class ManifestReporter {
      * 上报清单。
      *
      * @param manifest 待上报的清单
+     * @throws IllegalArgumentException 清单结构非法，上报前拒绝
      * @throws ManifestReportException 结构化上报失败，不包含原始响应或内部地址
      */
     public void report(ResourceManifest manifest) {
+        manifest.validate();
         try {
             var response = client.post()
                     .uri("/internal/manifests")

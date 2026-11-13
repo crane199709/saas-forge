@@ -52,6 +52,7 @@ describe('App 布局', () => {
       '任务运行',
       '死信事件',
       '公告管理',
+      '数据安全',
       '菜单管理',
     ])
     expect(wrapper.get('.shell-menu .is-active').text()).toBe('套餐')

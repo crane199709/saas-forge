@@ -101,7 +101,47 @@ Manifest 上报在启动完成后异步执行，不等待 IAM 恢复：初次尝
 
 ## Manifest、Provisioning 与内部接口
 
-权限码、名称、菜单、角色模板、Data Resource 或资源属性变化时递增 `forge.manifest.version`，与新清单一起发布；相同版本不能用于覆盖不同内容。JSON 在 `META-INF/forge/manifest.json`，权限注解与清单必须一致。
+权限码、名称、菜单、角色模板、Data Resource、资源属性或 Sensitive Field 声明（含注解）变化时递增 `forge.manifest.version`，与新清单一起发布；相同版本不能用于覆盖不同内容。JSON 在 `META-INF/forge/manifest.json`，权限注解与清单必须一致。
+
+敏感字段可在同一 JSON 文件声明，与 permissions、dictionaries、dataResources 一起上报：
+
+```json
+{
+  "sensitiveFields": [
+    { "path": "customer.phone", "grade": "L3", "defaultRule": "phone" },
+    { "path": "customer.name", "grade": "L2" }
+  ]
+}
+```
+
+也可只在 DTO 声明，构建期 `ManifestCli` 与启动期共用扫描器，无需实例化业务类：
+
+```java
+import io.saasforge.sdk.security.SensitiveField;
+
+public record CustomerResponse(
+        @SensitiveField(path = "customer.phone", grade = "L3", defaultRule = "phone") String phone) {}
+```
+
+同一路径只选一种声明来源；多 DTO 重复登记同一路径也会失败，可把登记集中到共享 DTO。record component 传播到字段与 accessor 的同一注解只计一次。路径每段遵循普通标识符规则（最多 63 字符），不支持数组索引；分级固定 L1–L4，默认规则可省略。路径、分级或默认规则变化时升清单版本，例如 `7` 改为 `8`，然后重新构建并发布；相同版本不能覆盖不同内容。无声明时不输出 `sensitiveFields`，升级 SDK 本身无需改清单版本。登记与实际脱敏执行分开，接口展示与导出仍需接入统一执行通道；完整约束见 [敏感字段登记](standards/business-service.md#敏感字段登记)。
+
+启用统一脱敏执行通道的服务还需配置以下内容；空声明且未使用通道的旧服务无需添加：
+
+```yaml
+forge:
+  field-masking:
+    enabled: true
+    iam-uri: ${FORGE_IAM_URI}
+    token: ${FORGE_MANIFEST_TOKEN}
+```
+
+两项地址和凭证随环境注入，启用后漏配会启动失败。凭证与本服务清单上报相同，IAM 按其认证的服务身份限制字段范围。平台“数据安全”维护固定策略库与四级分级默认，租户“数据安全”只能选择字段规则；生效优先级为租户覆盖 > 字段默认 > 分级默认，L4 禁止导出。预览共用执行引擎，失败时不回显样例原文。配置与字段登记变更写审计，预览样例不入审计；引用规则不能删除。导出与在线策略按每次执行直接读取 IAM，修改从下次读取起生效；IAM 不可用时必须失败关闭。日志使用独立的一秒有效快照异步刷新，首次或过期可丢值，至多一秒收敛。
+
+导出敏感列在 record component 上使用 `@SensitiveField` 对应登记路径，`ExcelIo.export` 自动在写单元格前执行规则；零行也检查规则和 L4 禁止导出。缺规则或执行失败的任务为 `FAILED`，不生成结果文件，并记录不含原文的失败审计。导入、模板与错误报告保留原行为。日志按 `log.info("customer.phone={}", phone)` 或 `SensitiveLogValue.of("customer.phone", phone)` 传参；SLF4J `addKeyValue` 经 `%kvp` 同样处理，包装对象的 `toString()` 永不输出原值。SDK 在 Boot 日志初始化前注册全部消息别名，不依赖 IAM 启动。支持范围与异步 MDC、失败占位语义见 [敏感字段导出与日志](standards/business-service.md#敏感字段导出与日志)。
+
+在线通道使用 DTO 上的 `@SensitiveField` 与 IAM 登记共同决定脱敏，适用于嵌套对象和集合。SDK 在写出前完成整个 JSON 响应，缺字段、缺规则、null 下的缺规则或执行失败均为 500；一次响应复用一份快照。响应由实际选中的 JSON 转换器序列化到内存缓冲，保留原有视图、过滤器与声明类型；列表应分页，文件下载和流式输出走各自管线。业务代码不自定义在线脱敏 serializer 或手拼掩码；完整要求见 [在线敏感字段](standards/business-service.md#在线敏感字段)。
+
+demo-service 的 `/masking/profiles` 返回手机号、身份证与普通说明，同一个 `MaskedProfile` 声明供在线与 `POST /masking/profiles/export` 的 Excel 导出复用（独立 `masking:export` 权限）；`POST /masking/profiles/log` 使用 `masking:read` 并通过 `SensitiveLogValue.of` 输出命名日志；`/masking/profiles/raw` 使用独立的 `masking:viewRaw` Permission Code 与不含原文的 `profile.viewRaw` 审计。原文 DTO 使用固定安全 `toString()`，普通查看即使持有原文权限仍返回脱敏值。demo 清单版本为 8，运行时复用 `forge.manifest.iam-uri` 和本服务凭证；隔离 E2E 的 IAM 地址覆盖也自动供该通道使用。
 
 `OrderCategoryService` 实现 `TenantInitializer`，SDK 订阅 TenantCreated、恢复 CurrentTenant 并在初始化事务中调用它；业务层不自行处理租户 ID。初始化只补齐缺少的分类，部分唯一索引兜底并发，SDK 的消费去重与事务确保重投不会产生重复结果。失败时让异常传播以触发重试，不吞掉错误；已有初始化数据不得被重试覆盖。清理实现 `TenantDataCleaner`，保持逻辑删除。用平台测试租户确认初始化状态成功，纯 HTTP 测试不能证明真实 MQ 投递。
 

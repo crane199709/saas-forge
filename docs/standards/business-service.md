@@ -286,6 +286,40 @@ Platform 通过专属 `forge-platform.yaml` 的 `forge.platform.ops.tokens.<spri
 - 其他匿名接口必须在网关显式列出，同时在服务的安全链中放行，不靠推断。
 - 只供同进程或服务间直连调用的接口放在 `/internal/` 下，网关显式拒绝。
 
+## 敏感字段登记
+
+需要脱敏的字段在 Resource Manifest 的 `sensitiveFields` 声明 `path`、`grade` 与可选 `defaultRule`，或在 DTO 字段、record component、getter 上使用 `io.saasforge.sdk.security.SensitiveField` 注解。两种声明合并：服务内字段路径唯一，文件与注解重复声明也会失败；同一 record component 传播到字段和 accessor 的注解只计一次。
+
+`path` 是点分普通标识符，各段满足 `[A-Za-z_][A-Za-z0-9_]{0,62}`，不接受数组索引或表达式；`grade` 只能是 `L1` 公开、`L2` 内部、`L3` 敏感、`L4` 极敏感。分级只决定默认脱敏规则与导出限制，不参与权限判断。`defaultRule` 填平台预置规则编码，省略时使用分级默认规则。
+
+IAM 还会校验字段默认规则存在；保存规则、分级默认与租户选择时再次校验，启动时校验已保存的规则和全部引用。当前 Manifest、分级默认和任一租户的当前字段覆盖引用的规则不能删除。
+
+SDK 在构建期 CLI、启动生成与上报前校验声明，IAM 接收时再使用相同契约校验。新增、移除或调整路径、分级、默认规则（含注解）都必须递增 `forge.manifest.version`，同版本内容不可变；未登记的服务不增加必配项，空声明不改变已生成的旧清单内容。声明负责登记，实际脱敏还需对应执行通道；未声明字段保持原样。
+
+### 在线敏感字段
+
+启用脱敏运行时后，在线 DTO 的 `String` 属性用 `@SensitiveField` 标注并与 IAM 当前 Manifest 中的路径和分级匹配；嵌套对象和集合共用统一 Jackson 序列化器。未标注字段保持原样；缺少提供方、字段、规则或执行失败时整次响应返回 500，null 值也必须先校验规则。一个响应复用一个不可变快照，不因角色或权限码返回原文。
+
+JSON 响应由实际选中的转换器完整序列化到内存缓冲后再发送，保留原有视图、过滤器与声明类型。发送阶段不再查规则；内存占用随响应大小增长，列表应分页。文件下载与流式输出不经过此通道，导出走 `ExcelIo`。含原值的 DTO 覆写 `toString()` 为固定安全文本。确需原文时使用独立未注解 DTO、独立 Permission Code 与审计操作，审计不记录原值。
+
+业务代码通过统一通道脱敏，不自行定义 Jackson serializer、以 `@JsonSerialize` 指定 serializer/converter 或拼接掩码。共享 ArchUnit 检查自定义序列化入口及常见重复星号字面量与截取、替换、重复的组合；普通 `String.replace`、`repeat` 不受限制，静态规则不能证明任意计算安全，仍须验证真实 HTTP 输出。
+
+## 敏感字段导出与日志
+
+导出 record 的敏感列用 `@SensitiveField(path = "customer.phone", grade = "L3")` 对应已登记路径，继续调用 `ExcelIo.export`。未注解的列只按 record component 名精确匹配已登记路径；未匹配列保持原样。一个导出任务只取一次租户生效快照，在创建结果文件前预检全部列（包括零行导出），字典列先翻译显示名再脱敏。已注解但未登记、缺规则、规则执行失败或 L4 字段均以 `io.maskingFailed` 结束任务，不提供结果文件；导出成功与失败的审计都只包含任务与错误码等元数据，不记录自由文本查询摘要。查询摘要、文件名与其他审计详情使用不含敏感原文的说明。导入、模板与错误报告不走导出脱敏。
+
+Logback 的 `%m`、`%msg`、`%message` 与 `%kvp` 由 SDK 在日志初始化前注册。支持两种参数契约：
+
+```java
+log.info("customer.phone={} order={}", phone, orderNumber);
+log.info("customer={}", SensitiveLogValue.of("customer.phone", phone));
+log.atInfo().addKeyValue("customer.phone", phone).log("customer updated");
+```
+
+第一种使用完整路径或唯一的字段短名（如 `phone={}`），名称紧邻 `=` 或 `:` 与 `{}`；短名有歧义时丢弃值。第二种使用 `io.saasforge.sdk.security.SensitiveLogValue`，其 `toString()` 始终为 `[redacted]`。结构化 key/value 经 `%kvp` 使用同样的字段名和包装契约。普通参数保持原样。敏感原值均通过上述契约传递；字符串拼接、预先格式化的消息、无名称的位置参数、整个 DTO、异常消息与自定义 JSON 日志 encoder 不在自动识别范围内，调用方须使用安全参数，保留 SDK 的消息及 key/value converter。
+
+日志字段名由应用包注解与本地 Manifest 提前登记，不等待 IAM。日志转换只读取事件捕获的 `tenant_id` MDC 和最长有效一秒的不可变快照，异步刷新 IAM，不在请求或 Logback 线程执行 HTTP。首次日志可能使用 `[redacted]`；配置变更至多一秒收敛。快照过期、缺规则、IAM 不可用、租户上下文缺失或执行失败时立即丢弃原值，并通过非递归的 Logback status 通道告警，不阻断请求。日志这一秒快照不用于导出或在线响应；两者仍按每次执行读取 IAM。关闭应用会释放日志工作线程、快照和策略提供方，停机阶段仍丢弃敏感原值。
+
 ## 启动上报与内部状态
 
 引入 `forge-sdk-manifest` 的 Servlet 服务必须配置独立 `forge.ops.token`；该模块带入 Ops 安全链，令牌漏配时启动失败，包括关闭上报的服务。Service Credential（`forge.manifest.token`）只用于向 IAM 上报，不能读取 `/internal/onboarding-status`，也不能与 Ops Token 混用。脚手架已包含两个模块与各自配置项。
@@ -347,3 +381,10 @@ class ArchitectureTest extends ForgeArchitectureTest {
 ```
 
 Mapper XML 的 SQL 语义不属于字节码检查范围，仍需代码审查。
+
+
+### 脱敏运行时配置
+
+使用统一脱敏执行通道时显式设置 `forge.field-masking.enabled=true`，并提供 `forge.field-masking.iam-uri`（IAM 内部 HTTP(S) 地址）与 `forge.field-masking.token`（本服务的 Service Credential）。地址和凭证不设默认值，启用后漏配会启动失败；未启用的旧服务不增加必配项。可复用本服务清单上报使用的 `FORGE_IAM_URI` 与 `FORGE_MANIFEST_TOKEN`，不得在浏览器环境注入这些凭证。
+
+`FieldMaskingPolicyProvider` 经 `/internal/field-masking/{tenantId}` 获取本服务当前租户的不可变策略快照，服务身份由 IAM 从凭证推导。首版不跨请求缓存，平台和租户修改提交后下次读取即生效。生效规则按租户覆盖、字段默认、分级默认依次选择；L4 禁止导出。IAM 不可用或配置破损时显式失败，不能将失败伪装为空规则或原文。一次导出或在线响应复用同一快照，避免处理中途切换规则。

@@ -27,10 +27,16 @@ public final class PlatformPermissions {
     /** 调整平台控制台的 Navigation Layout。 */
     public static final String MENU_MANAGE = "platform:menu:manage";
 
+    /** 查看数据分级、脱敏规则与敏感字段登记。 */
+    public static final String DATA_SECURITY_READ = "platform:data-security:read";
+
+    /** 管理数据安全配置。 */
+    public static final String DATA_SECURITY_MANAGE = "platform:data-security:manage";
+
     /** 登记清单使用的服务名。 */
     public static final String SERVICE = "forge-iam-platform";
     // 同 IamPermissions：改动权限码、名称或分组时必须升级版本。
-    private static final String VERSION = "5";
+    private static final String VERSION = "6";
     private static final String GROUP = "平台管理";
 
     private PlatformPermissions() {}
@@ -45,6 +51,8 @@ public final class PlatformPermissions {
                         new Permission(AUDIT_READ, "查看平台审计", GROUP),
                         new Permission(IDENTITY_MFA_RESET, "重置身份 MFA", GROUP),
                         new Permission(ANNOUNCEMENT_MANAGE, "管理平台公告", GROUP),
+                        new Permission(DATA_SECURITY_READ, "查看数据安全", GROUP),
+                        new Permission(DATA_SECURITY_MANAGE, "管理数据安全", GROUP),
                         new Permission(MENU_MANAGE, "管理平台菜单", GROUP)),
                 List.of(),
                 List.of(),

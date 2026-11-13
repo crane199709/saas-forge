@@ -16,6 +16,7 @@ public abstract class ForgeArchitectureTest {
                 .importPackages(root, "io.saasforge.sdk");
         ForgeArchitectureRules.persistence(externalJdbcClasses()).check(classes);
         ForgeArchitectureRules.scheduling().check(classes);
+        ForgeArchitectureRules.fieldMasking().check(classes);
         ForgeArchitectureRules.sdkDependencies().check(classes);
         ForgeArchitectureRules.sdkCycles().check(classes);
         ForgeArchitectureRules.iamMappers().check(classes);

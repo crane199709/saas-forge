@@ -19,6 +19,22 @@
     },
     {
       "service": "forge-iam",
+      "code": "iam:data-security:manage",
+      "name": "管理数据安全",
+      "group": "租户管理",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam",
+      "code": "iam:data-security:read",
+      "name": "查看数据安全",
+      "group": "租户管理",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam",
       "code": "iam:member:manage",
       "name": "管理成员",
       "group": "租户管理",
@@ -62,6 +78,30 @@
       "code": "iam:security:manage",
       "name": "管理安全设置",
       "group": "租户管理",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "demo-service",
+      "code": "masking:export",
+      "name": "导出脱敏样例",
+      "group": "数据安全示例",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "demo-service",
+      "code": "masking:read",
+      "name": "查看脱敏样例",
+      "group": "数据安全示例",
+      "realm": "tenant",
+      "status": "active"
+    },
+    {
+      "service": "demo-service",
+      "code": "masking:viewRaw",
+      "name": "查看样例原文",
+      "group": "数据安全示例",
       "realm": "tenant",
       "status": "active"
     },
@@ -125,6 +165,22 @@
       "service": "forge-iam-platform",
       "code": "platform:audit:read",
       "name": "查看平台审计",
+      "group": "平台管理",
+      "realm": "platform",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam-platform",
+      "code": "platform:data-security:manage",
+      "name": "管理数据安全",
+      "group": "平台管理",
+      "realm": "platform",
+      "status": "active"
+    },
+    {
+      "service": "forge-iam-platform",
+      "code": "platform:data-security:read",
+      "name": "查看数据安全",
       "group": "平台管理",
       "realm": "platform",
       "status": "active"

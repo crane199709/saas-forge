@@ -72,6 +72,20 @@ class ManifestReporterTest {
     }
 
     @Test
+    void rejectsInvalidSensitiveFieldsBeforeReportingToIam() throws Exception {
+        String base = start(201, "{\"code\":\"ok\",\"httpStatus\":201}");
+        ResourceManifest invalid = JsonMapper.builder().build().readValue("""
+                {"service":"demo-service","version":"2","permissions":[],"menus":[],
+                 "sensitiveFields":[{"path":"customer.phone","grade":"L5"}]}
+                """, ResourceManifest.class);
+
+        assertThatThrownBy(() -> new ManifestReporter(base, "demo-token").report(invalid))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("L5");
+        assertThat(body.get()).isNull();
+    }
+
+    @Test
     void unreachableIamIsClassified() throws Exception {
         String base = start(200, "{}");
         iam.stop(0);

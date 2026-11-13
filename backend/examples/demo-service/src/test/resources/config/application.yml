@@ -8,6 +8,8 @@ spring:
         enabled: false
 # 不连接 MQ 的测试关闭投递器与消费端；发布的事件照常写入 Outbox。Outbox 链路测试单独开启并连接测试容器
 forge:
+  field-masking:
+    enabled: false
   ops:
     token: test-demo-service-ops-token
   # 生产与本地开发由 Nacos 共享配置 forge-common.yaml 提供；测试不连接 Nacos

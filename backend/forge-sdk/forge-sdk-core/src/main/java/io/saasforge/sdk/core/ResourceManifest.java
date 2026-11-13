@@ -30,6 +30,7 @@ import java.util.regex.Pattern;
  *     只能授予平台角色；Tenant Realm 服务为 null（{@value #TENANT_REALM} 也规范化为 null）
  * @param dictionaries 本服务声明的 Dictionary，可为 null（视为没有）
  * @param parameters 本服务声明的 Parameter，可为 null（视为没有）
+ * @param sensitiveFields 本服务声明的 Sensitive Field，可为 null（视为没有）
  */
 public record ResourceManifest(
         String service,
@@ -44,7 +45,9 @@ public record ResourceManifest(
         @JsonInclude(JsonInclude.Include.NON_NULL) String realm,
         // 同 roles：没有字典或参数的服务不输出这两节，已存储的旧清单按内容比较仍然相同，无需升版本。
         @JsonInclude(JsonInclude.Include.NON_EMPTY) List<Dictionary> dictionaries,
-        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<Parameter> parameters) {
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<Parameter> parameters,
+        // 无敏感字段时保持旧清单的 JSON 内容，已有服务不必为升级 SDK 单独改清单版本。
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<SensitiveField> sensitiveFields) {
     /** Tenant Realm 服务的 Realm 名，与 {@code forge.security.realm} 的取值一致。 */
     public static final String TENANT_REALM = "tenant";
 
@@ -73,6 +76,7 @@ public record ResourceManifest(
     private static final Pattern ITEM_CODE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,63}");
     private static final Set<String> PARAMETER_TYPES =
             Set.of("string", "integer", "decimal", "duration", "boolean", "dictionary");
+    private static final Set<String> DATA_GRADES = Set.of("L1", "L2", "L3", "L4");
     private static final int MAX_KEY = 64;
     private static final int MAX_NAME = 120;
     // Shell App 的导航与 Navigation Layout 都只支持三层，顶层算第一层。
@@ -87,6 +91,33 @@ public record ResourceManifest(
         realm = TENANT_REALM.equals(realm) ? null : realm;
         dictionaries = dictionaries == null ? List.of() : List.copyOf(dictionaries);
         parameters = parameters == null ? List.of() : List.copyOf(parameters);
+        sensitiveFields = sensitiveFields == null ? List.of() : List.copyOf(sensitiveFields);
+    }
+
+    /**
+     * 没有 Sensitive Field 的清单，保留已有调用方的构造方式。
+     *
+     * @param service 服务名
+     * @param version 清单版本
+     * @param permissions 全部 Permission Code
+     * @param menus 菜单树
+     * @param roles 角色模板
+     * @param dataResources 数据资源
+     * @param realm 服务所属的 Realm
+     * @param dictionaries 字典
+     * @param parameters 参数
+     */
+    public ResourceManifest(
+            String service,
+            String version,
+            List<Permission> permissions,
+            List<MenuNode> menus,
+            List<RoleTemplate> roles,
+            List<DataResource> dataResources,
+            String realm,
+            List<Dictionary> dictionaries,
+            List<Parameter> parameters) {
+        this(service, version, permissions, menus, roles, dataResources, realm, dictionaries, parameters, List.of());
     }
 
     /**
@@ -203,7 +234,7 @@ public record ResourceManifest(
      * （模板只用于开通租户）；Dictionary 编码为小写字母开头的小写字母、数字、{@code _ . -} 且不重复，名称非空，内置项编码合法、
      * 不以 {@value #CUSTOM_ITEM_PREFIX} 开头，编码与名称在字典内都不重复；Parameter 编码规则同 Dictionary 且不重复，名称非空，
      * 类型合法，约束只用于适用的类型且 {@code min} 不大于 {@code max}，默认值存在且满足类型与约束，{@code dictionary} 类型引用
-     * 本清单声明的字典且默认值是其内置项。
+     * 本清单声明的字典且默认值是其内置项；Sensitive Field 路径由点分普通标识符组成且不重复，分级只能为 L1–L4。
      *
      * @throws IllegalArgumentException 违反任一规则，消息说明具体位置
      */
@@ -232,6 +263,26 @@ public record ResourceManifest(
         validateDataResources(dataResources);
         Map<String, Dictionary> declared = validateDictionaries();
         validateParameters(declared);
+        validateSensitiveFields();
+    }
+
+    private void validateSensitiveFields() {
+        Set<String> paths = new HashSet<>();
+        for (SensitiveField field : sensitiveFields) {
+            if (field.path() == null || field.path().isBlank()) {
+                throw new IllegalArgumentException("Sensitive Field path must not be blank");
+            }
+            for (String segment : field.path().split("\\.", -1)) {
+                requireIdentifier(segment, "Sensitive Field path " + field.path());
+            }
+            if (!paths.add(field.path())) {
+                throw new IllegalArgumentException("Duplicate Sensitive Field path: " + field.path());
+            }
+            if (field.grade() == null || !DATA_GRADES.contains(field.grade())) {
+                throw new IllegalArgumentException(
+                        "Unknown data grade of Sensitive Field " + field.path() + ": " + field.grade());
+            }
+        }
     }
 
     private Map<String, Dictionary> validateDictionaries() {
@@ -517,6 +568,16 @@ public record ResourceManifest(
      * @param column 对应的表列
      */
     public record DataAttribute(String code, String name, String type, String column) {}
+
+    /**
+     * Sensitive Field：导出、日志或声明的在线接口共用的字段登记。
+     *
+     * @param path 服务内唯一的点分字段路径，各段遵循普通标识符规则，如 {@code customer.phone}
+     * @param grade 数据分级，只能为 {@code L1 L2 L3 L4}，不参与权限判断
+     * @param defaultRule 默认 Masking Rule 的编码，可为 null，由平台按分级选择默认规则
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record SensitiveField(String path, String grade, String defaultRule) {}
 
     /**
      * Dictionary：一组由编码与名称组成的可选值，只有一层。业务数据保存字典项的编码。

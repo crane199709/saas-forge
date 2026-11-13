@@ -40,11 +40,19 @@ forge:
     ${hash} Tenant Realm 签发者（网关公开地址）与直连 IAM JWKS 地址：平台运维
     issuer: ${dollar}{FORGE_SECURITY_ISSUER}
     jwk-set-uri: ${dollar}{FORGE_SECURITY_JWK_SET_URI}
+  ${hash} 使用统一脱敏执行通道时按 docs/standards/business-service.md 显式启用；导出列与日志参数按该规范接入。
+  ${hash} 在线 DTO 的 String 属性使用 @SensitiveField，嵌套/集合自动生效；独立原文操作按规范授权并审计。
+  ${hash} 导出每任务读取一次策略；日志异步刷新一秒快照，首次/过期丢值。无声明的旧服务不新增必配项。
+  ${hash} field-masking:
+  ${hash}   enabled: true
+  ${hash}   iam-uri: ${dollar}{FORGE_IAM_URI}
+  ${hash}   token: ${dollar}{FORGE_MANIFEST_TOKEN}
   mq:
     ${hash} RocketMQ Proxy gRPC 地址：接入清单 Topic 准备步骤
     endpoints: ${dollar}{FORGE_ROCKETMQ_ENDPOINTS}
   # SDK 异步有限重试与补报；只读 /internal/onboarding-status 由独立 forge.ops.token 保护
   manifest:
+    ${hash} 权限、菜单、Data Resource 或 sensitiveFields（含 @SensitiveField 注解）变化时递增。
     version: 1
     ${hash} IAM 内部地址；凭证由 Operator 在控制台登记，明文只显示一次，注入 FORGE_MANIFEST_TOKEN。
     ${hash} 轮换先建新、部署验证、再停旧；无需修改或重启 IAM，不使用已弃用的静态 token Map。

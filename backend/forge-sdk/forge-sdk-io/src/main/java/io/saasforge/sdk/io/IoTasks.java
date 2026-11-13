@@ -237,8 +237,9 @@ public final class IoTasks implements AutoCloseable {
                         .tenant(owner.tenantId())
                         .actor(owner.identityId())
                         .resource("ioTask", id)
-                        .detail("rowCount", progress.rows.get())
-                        .detail("query", summary);
+                        .detail("rowCount", progress.rows.get());
+                // 导出摘要是业务方传入的自由文本，成功或失败都可能含敏感搜索值，审计只保留安全元数据。
+                if ("IMPORT".equals(type)) event.detail("query", summary);
                 if (code != null) event.failure(code);
                 audit.record(event.build());
             } finally {

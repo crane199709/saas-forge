@@ -33,10 +33,16 @@ public final class IamPermissions {
     /** 发布和撤回本租户公告。 */
     public static final String ANNOUNCEMENT_MANAGE = "announcement:manage";
 
+    /** 查看数据分级、脱敏规则与敏感字段登记。 */
+    public static final String DATA_SECURITY_READ = "iam:data-security:read";
+
+    /** 管理数据安全配置。 */
+    public static final String DATA_SECURITY_MANAGE = "iam:data-security:manage";
+
     /** iam 登记清单使用的服务名。这些管理权限码不受套餐限制：Tenant Admin 始终能管理成员与角色。 */
     public static final String SERVICE = "forge-iam";
     // 同一版本的清单内容不可变：改动权限码、名称或分组时必须升级版本，否则启动时登记失败。
-    private static final String VERSION = "7";
+    private static final String VERSION = "8";
     private static final String GROUP = "租户管理";
 
     private IamPermissions() {}
@@ -53,6 +59,8 @@ public final class IamPermissions {
                         new Permission(REFERENCE_DATA_MANAGE, "管理字典与参数", GROUP),
                         new Permission(SECURITY_MANAGE, "管理安全设置", GROUP),
                         new Permission(ANNOUNCEMENT_MANAGE, "管理公告", GROUP),
+                        new Permission(DATA_SECURITY_READ, "查看数据安全", GROUP),
+                        new Permission(DATA_SECURITY_MANAGE, "管理数据安全", GROUP),
                         new Permission(MENU_MANAGE, "管理菜单", GROUP)),
                 List.of());
     }

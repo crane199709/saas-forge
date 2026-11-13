@@ -1,6 +1,6 @@
 # 字段脱敏规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准（「数据安全」一节）。核心取舍由 [ADR-0025](../../docs/adr/0025-field-masking-scope-and-no-raw-exception.md) 记录。依赖 Resource Manifest、`forge-sdk-security`、`forge-sdk-io` 与 IAM。
 
@@ -84,3 +84,7 @@ Status: ready-for-agent
 - 改动 Manifest 结构需要升 `forge.manifest.version`，并按 SDK 接入指南同步模板。
 - 策略库后续可以新增策略，但新增策略由平台发布，不开放给租户。
 - 若未来确需合规删除或更宽的在线脱敏，另立 ADR，不在本规格内扩展。
+
+## 实现与验收
+
+五张实现工单已完成并关闭，统一位于 `codex/field-masking`。完整验证与适用边界见 [集成验收](acceptance.md)，独立双轴审查与修复见 [审查记录](review.md)。

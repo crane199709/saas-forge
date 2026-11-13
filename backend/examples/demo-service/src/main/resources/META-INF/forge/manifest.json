@@ -23,6 +23,18 @@
     "order:export": {
       "name": "导出订单",
       "group": "订单"
+    },
+    "masking:read": {
+      "name": "查看脱敏样例",
+      "group": "数据安全示例"
+    },
+    "masking:viewRaw": {
+      "name": "查看样例原文",
+      "group": "数据安全示例"
+    },
+    "masking:export": {
+      "name": "导出脱敏样例",
+      "group": "数据安全示例"
     }
   },
   "menus": [

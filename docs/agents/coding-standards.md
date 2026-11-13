@@ -86,6 +86,8 @@ SDK 的配置类放在自动配置旁，以 `@EnableConfigurationProperties` 注
 
 除通用规范列出的规则外，还覆盖 SDK 依赖方向与包循环、IAM Mapper 的 tenantLine 标注；`@Scheduled` 限制只对 SDK 包之外生效。JDBC 基础设施在 SDK 包中豁免，服务只能按类经 `externalJdbcClasses()` 豁免连接外部数据库的类；SQL 注解与 Wrapper 限制对 SDK 同样生效。
 
+字段脱敏的通用规则见 [在线敏感字段](../standards/business-service.md#在线敏感字段)。`fieldMasking()` 对 SDK 实现豁免；正反例同时覆盖自定义 serializer、`@JsonSerialize` 覆盖、手写星号与普通格式化，避免把一般字符串操作当成脱敏。
+
 快速执行全部模块的架构检查：
 
 ```sh

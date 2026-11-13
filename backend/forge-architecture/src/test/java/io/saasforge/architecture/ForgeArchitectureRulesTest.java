@@ -65,6 +65,25 @@ class ForgeArchitectureRulesTest {
 
     static Stream<Arguments> examples() {
         return Stream.of(
+                Arguments.of(ForgeArchitectureRules.fieldMasking(), "fixtures.masking.HandwrittenMasks$Concat", false),
+                Arguments.of(
+                        ForgeArchitectureRules.fieldMasking(), "fixtures.masking.HandwrittenMasks$Repeated", false),
+                Arguments.of(
+                        ForgeArchitectureRules.fieldMasking(), "fixtures.masking.HandwrittenMasks$Replaced", false),
+                Arguments.of(
+                        ForgeArchitectureRules.fieldMasking(),
+                        "fixtures.masking.HandwrittenMasks$OrdinaryFormatting",
+                        true),
+                Arguments.of(ForgeArchitectureRules.fieldMasking(), "io.saasforge.sdk.fixture.AllowedMasking", true),
+                Arguments.of(ForgeArchitectureRules.fieldMasking(), "fixtures.masking.OnlineSerializer", false),
+                Arguments.of(
+                        ForgeArchitectureRules.fieldMasking(),
+                        "fixtures.masking.SerializationAnnotations$Custom",
+                        false),
+                Arguments.of(
+                        ForgeArchitectureRules.fieldMasking(),
+                        "fixtures.masking.SerializationAnnotations$Formatting",
+                        true),
                 Arguments.of(ForgeArchitectureRules.scheduling(), "fixtures.scheduling.DirectScheduled", false),
                 Arguments.of(
                         ForgeArchitectureRules.scheduling(),

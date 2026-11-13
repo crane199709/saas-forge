@@ -27,7 +27,7 @@ public final class ManifestAutoConfiguration {
     }
 
     /**
-     * 扫描应用根包（{@code @SpringBootApplication} 所在包）中的 {@code @RequiresPermission}。
+     * 扫描应用根包（{@code @SpringBootApplication} 所在包）中的 {@code @RequiresPermission} 与 {@code @SensitiveField}。
      *
      * <p>清单错误（如菜单引用未声明的权限码）在生成阶段即启动失败；上报失败记录到状态、不阻止启动：
      * iam 暂时不可用不应拖垮业务服务，后台有限补报。

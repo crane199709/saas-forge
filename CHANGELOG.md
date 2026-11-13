@@ -6,7 +6,19 @@
 
 ### 变更
 
+- 字段脱敏与权限目录、SDK 依赖门禁集成：将可选日志适配 `ch.qos.logback:logback-classic` 纳入 Security 模块直接依赖白名单，按独立授权和审计用途登记 `viewRaw` 动作，权限目录随当前源码更新；保留所有原有中间件禁用与白名单约束。
+
 - `forge-dependencies` 新增 `validate` 阶段的中间件直引门禁，禁止 Spring Data Redis、Redisson、Lettuce、Jedis、RocketMQ/Nacos 原生客户端与 XXL-JOB；Boot Redis、Spring Cloud Nacos 及 Forge MQ / Scheduling starter 入口保留，传递依赖不受影响。仅 SDK MQ 与 Reference Data 按需显式豁免，平台三个服务与其他 SDK 模块继续受约束。业务服务规范新增「中间件依赖入口」，archetype、sub-app-kit 配套规范与接入指南同步。已有业务工程升级父 POM 后自动启用；直引原生客户端的工程先改用相应 starter，再按 CHANGELOG 重新复制 `docs/standards/`。
+
+- 在线敏感字段接入统一 Jackson 3 模块，按注解与 IAM Manifest 路径/分级匹配，嵌套对象、集合与 null 都校验规则；整个 JSON 响应由实际转换器完成并缓冲后发送，保留其视图、过滤器、声明类型与 writer 定制，末尾字段失败也返回完整 500。demo 清单升 8，增加在线/Excel/日志共用的敏感字段示例，以及独立授权并审计的原文查看。新增 ArchUnit 规则拒绝业务自有在线 serializer 与常见手写掩码，普通字符串格式化仍允许；`docs/standards/`、archetype 配置提示、sub-app-kit 生成规则、业务接入指南及 E2E 配置同步。
+
+- `ExcelIo.export` 按敏感列登记路径复用统一引擎，每任务一次不可变快照，零行也预检缺规则与 L4，失败以 `io.maskingFailed` 结束且不上传结果文件，导出成功与失败审计均省略可能含原文的查询摘要。`forge-sdk-security` 在 Boot 日志初始化前登记本地声明与 Logback `%m`/`%msg`/`%message`/`%kvp` converter，支持命名占位参数、结构化 key/value 与 `SensitiveLogValue.of`；包装对象字符串化始终安全。日志按事件 MDC 读取租户，独立一秒有效快照异步刷新，首次、过期、不可用或失败时丢值并写非递归 status 告警；不阻断业务，关闭应用释放线程和运行时。新增业务规范「敏感字段导出与日志」，同步 archetype、sub-app-kit 生成规则、子应用规范与服务指南；旧服务不新增必配项，SDK API 随未发布 `0.2.0-SNAPSHOT` 发布。
+
+- Shell 新增租户端与运营端数据安全页面，IAM 新增数据安全：平台固定 L1–L4（L4 禁止导出）、九种预置策略规则及 CRUD/预览，租户可为 Manifest 敏感字段选择或恢复规则；按租户覆盖 > 字段默认 > 分级默认解析。新增独立读/管理权限码并升级 IAM 清单版本，规则和登记变更写不含原文的审计；强制租户 RLS 与全租户引用检查、统一事务锁防止并发删除被引用规则。`forge-sdk-security` 新增无缓存 IAM HTTP 策略提供方；业务规范新增可选运行时配置：显式启用 `forge.field-masking.enabled=true` 时必须提供 `iam-uri` 与 `token`，旧服务不新增必配项。archetype 配置说明、sub-app-kit 生成说明与配套规范、业务服务指南同步，前端不得持有服务凭证。API 随未发布 `0.2.0-SNAPSHOT` 发布。
+
+- `forge-sdk-security` 新增固定 `MaskingRule`、纯 `MaskingEngine.validate/apply/preview`、安全预览结果与通道共用的生效字段策略端口。九种策略统一按 Unicode 码点保留字符，严格拒绝未知策略和无关参数；固定保留范围覆盖短值时全部掩码，`keepFirst` 保留整值及所有非空未改变结果失败，异常不包含原文。新增 API 保持现有调用兼容，随当前未发布 `0.2.0-SNAPSHOT` 发布；未新增配置、业务编码规则或脚手架必需项。
+
+- Resource Manifest 新增可选 `sensitiveFields`（路径、L1–L4 分级、可选默认规则），SDK 提供 `@SensitiveField` 并在 CLI/启动生成时合并字段与 getter 声明，上报前再次校验；重复路径、非法路径与分级拒绝。业务规范新增「敏感字段登记」，声明变化须升 `forge.manifest.version`；空声明保持旧清单内容兼容，不增加必配项。archetype 带空声明与版本提示，sub-app-kit 配套规范新增服务端脱敏值展示规则，生成的 AGENTS 摘要与服务接入指南同步。SDK 保持当前 `0.2.0-SNAPSHOT` 开发版本。
 
 - **破坏性**：IAM、Platform、Demo 服务端统一使用 `FORGE_OPS_TOKEN`，Platform/Demo 的清单及 IAM 目录访问统一使用 `FORGE_MANIFEST_TOKEN`，移除本地静态默认凭证。Platform 不再内置服务令牌列表，完整映射通过专属 `forge-platform.yaml` 提供。新增独立服务环境文件与映射样例；本地启动、隔离 E2E、业务服务规范、archetype、sub-app-kit 配套规范、中英文 README 同步。既有环境须保留原值迁移到各服务私有文件，不能共用通用变量文件；IAM 已弃用的静态引导 Map 仍保留兼容。
 

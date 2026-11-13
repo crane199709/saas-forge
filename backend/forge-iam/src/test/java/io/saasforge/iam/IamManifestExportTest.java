@@ -24,7 +24,7 @@ class IamManifestExportTest {
         ResourceManifest tenant = JSON.readValue(tenantJson, ResourceManifest.class);
         tenant.validate();
         assertThat(tenant.service()).isEqualTo("forge-iam");
-        assertThat(tenant.version()).isEqualTo("7");
+        assertThat(tenant.version()).isEqualTo("8");
         assertThat(JSON.readTree(tenantJson).path("realm").asText()).isEqualTo("tenant");
         assertThat(tenant.permissions()).contains(new Permission("iam:member:manage", "管理成员", "租户管理"));
         assertThat(tenant.permissions())
@@ -37,13 +37,15 @@ class IamManifestExportTest {
                         "iam:reference-data:manage",
                         "iam:security:manage",
                         "announcement:manage",
-                        "iam:menu:manage");
+                        "iam:menu:manage",
+                        "iam:data-security:read",
+                        "iam:data-security:manage");
 
         ResourceManifest platform = JSON.readValue(
                 Files.readString(OUTPUT.resolve("forge-iam-platform/resource-manifest.json")), ResourceManifest.class);
         platform.validate();
         assertThat(platform.service()).isEqualTo("forge-iam-platform");
-        assertThat(platform.version()).isEqualTo("5");
+        assertThat(platform.version()).isEqualTo("6");
         assertThat(platform.realm()).isEqualTo("platform");
         assertThat(platform.permissions()).contains(new Permission("platform:operator:manage", "管理运营账号", "平台管理"));
         assertThat(platform.permissions())
@@ -54,7 +56,9 @@ class IamManifestExportTest {
                         "platform:audit:read",
                         "platform:identity-mfa:reset",
                         "platform:announcement:manage",
-                        "platform:menu:manage");
+                        "platform:menu:manage",
+                        "platform:data-security:read",
+                        "platform:data-security:manage");
     }
 
     @Test
