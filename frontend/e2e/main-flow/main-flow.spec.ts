@@ -1,3 +1,4 @@
+import { mkdir } from 'node:fs/promises'
 import { expect, test, type Page } from '@playwright/test'
 
 const password = 'Demo-password-123!'
@@ -92,4 +93,99 @@ test('管理员停用成员后下一次操作立即登出', async ({ page, brows
   } finally {
     await adminContext.close()
   }
+})
+
+test('字典有效修改产生历史，任意版本可比较且无变化保存不增版', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning') errors.push(message.text())
+  })
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await login(page, 'e2e-admin')
+  await page.goto('/dictionaries')
+  await expect(page).toHaveURL(/\/dictionaries$/)
+  await expect(page).toHaveTitle('SaaS Forge 租户端')
+  await expect(page.getByRole('heading', { name: '字典', exact: true })).toBeVisible()
+  await page.getByTestId('dictionary-demo-service/customer-source').click()
+  await page.getByRole('tab', { name: '变更历史' }).click()
+  await expect(page.getByText('暂无变更历史')).toBeVisible()
+
+  const code = `history-${Date.now()}`
+  const custom = `custom.${code}`
+  async function items() {
+    await page.getByRole('tab', { name: '字典项', exact: true }).click()
+  }
+  async function save() {
+    await page.getByTestId('item-save').click()
+    await expect(page.getByRole('dialog')).toBeHidden()
+  }
+  async function history(versions: number) {
+    await page.getByRole('tab', { name: '变更历史' }).click()
+    await expect(page.getByTestId('history-list').locator('tbody tr')).toHaveCount(versions)
+    await expect(page.getByTestId(`history-detail-${versions}`)).toBeVisible()
+  }
+  async function selectVersion(field: 'from' | 'to', version: number) {
+    const select = page.getByTestId(`history-${field}`)
+    await select.click()
+    const listbox = await select.getByRole('combobox').getAttribute('aria-controls')
+    await page
+      .locator(`[id="${listbox}"]`)
+      .getByRole('option', { name: `v${version}`, exact: true })
+      .click()
+  }
+
+  await items()
+  await page.getByTestId('item-edit-online').click()
+  await page.getByTestId('item-name').fill('线上验收渠道')
+  await save()
+  await history(1)
+  await page.getByTestId('history-detail-1').click()
+  await expect(page.getByTestId('history-snapshot')).toContainText('线上验收渠道')
+  await expect(page.getByTestId('history-manifest')).toContainText('线上')
+
+  await items()
+  await page.getByTestId('new-item-create').click()
+  await page.getByTestId('item-code').fill(code)
+  await page.getByTestId('item-name').fill('验收自定义渠道')
+  await save()
+  await expect(page.getByTestId(`item-${custom}`)).toBeVisible()
+  await page.getByTestId('item-edit-online').click()
+  await page.getByTestId('item-name').fill('线上二次改名')
+  await page.getByTestId('item-sort').locator('input').fill('9')
+  await save()
+  await history(3)
+
+  await selectVersion('from', 1)
+  await selectVersion('to', 3)
+  await page.getByTestId('history-compare').click()
+  await expect(page.getByTestId('history-added')).toContainText(custom)
+  await expect(page.getByTestId('history-changed')).toContainText('线上验收渠道')
+  await expect(page.getByTestId('history-changed')).toContainText('线上二次改名')
+  await expect(page.getByTestId('history-changed')).toContainText('排序：9')
+  await page.getByTestId('history-detail-1').click()
+  await expect(page.getByTestId('history-snapshot')).toContainText('线上验收渠道')
+  await expect(page.getByTestId('history-snapshot')).not.toContainText(custom)
+  await expect(page.getByTestId('history-current')).toContainText('线上二次改名')
+  const evidence = '/tmp/dictionary-history-qa'
+  await mkdir(evidence, { recursive: true })
+  await page.screenshot({ path: `${evidence}/desktop-forward-detail.png`, fullPage: true })
+
+  await selectVersion('from', 3)
+  await selectVersion('to', 1)
+  await page.getByTestId('history-compare').click()
+  await expect(page.getByTestId('history-removed')).toContainText(custom)
+  await expect(page.getByTestId('history-added').locator('tbody tr')).toHaveCount(0)
+  await expect(page.getByTestId('history-changed')).toContainText('线上验收渠道')
+  await page.setViewportSize({ width: 1024, height: 900 })
+  await page.screenshot({ path: `${evidence}/laptop-reverse-detail.png`, fullPage: true })
+
+  await items()
+  await page.getByTestId('item-edit-online').click()
+  await expect(page.getByTestId('item-name')).toHaveValue('线上二次改名')
+  await save()
+  await history(3)
+  await expect(page.getByTestId('history-detail-4')).toHaveCount(0)
+  await expect(page.locator('vite-error-overlay, webpack-dev-server-client-overlay')).toHaveCount(0)
+  expect(errors).toEqual([])
 })
