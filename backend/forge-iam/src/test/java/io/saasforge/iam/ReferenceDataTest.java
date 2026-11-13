@@ -72,6 +72,7 @@ class ReferenceDataTest {
         registry.add("spring.flyway.locations", () -> "classpath:db/migration,classpath:db/demo");
         registry.add("forge.iam.signing-key-file", () -> KEY_FILE);
         registry.add("forge.iam.manifest.tokens." + SERVICE, () -> SERVICE_TOKEN);
+        registry.add("forge.iam.manifest.tokens.history-lifecycle-service", () -> "history-lifecycle-token");
     }
 
     @LocalServerPort
@@ -88,6 +89,53 @@ class ReferenceDataTest {
 
     @Autowired
     StringRedisTemplate redisTemplate;
+
+    @Test
+    void repeatedStartupReportsAndManifestUpgradesDoNotAppendHistoryOrRewriteSnapshots() throws Exception {
+        String service = "history-lifecycle-service";
+        String dictionary = "/reference-data/dictionaries/" + service + "/source";
+        String untouched = "/reference-data/dictionaries/" + service + "/untouched/history";
+        Map<String, Object> v1 = lifecycleManifest("1", "初始内置名");
+        assertThat(reportLifecycleManifest(v1).getStatusCode().value()).isEqualTo(201);
+        assertThat(list(call(ADMIN, HttpMethod.GET, dictionary + "/history", null)))
+                .isEmpty();
+        assertThat(call(ADMIN, HttpMethod.POST, dictionary + "/items/builtin/disable", null)
+                        .getStatusCode()
+                        .value())
+                .isEqualTo(200);
+        var originalVersions = list(call(ADMIN, HttpMethod.GET, dictionary + "/history", null));
+        var originalDetail = data(call(ADMIN, HttpMethod.GET, dictionary + "/history/1", null));
+        assertThat(originalVersions).hasSize(1);
+        assertThat(((List<?>) originalDetail.get("snapshot"))
+                        .stream().map(ReferenceDataTest::map).toList())
+                .singleElement()
+                .satisfies(item -> assertThat(item)
+                        .containsEntry("code", "builtin")
+                        .containsEntry("name", null)
+                        .containsEntry("sort", null)
+                        .containsEntry("enabled", false));
+
+        // 重启或多实例会重复上报同一版本，验收其真实 HTTP 登记边界。
+        assertThat(reportLifecycleManifest(v1).getStatusCode().value()).isEqualTo(200);
+        assertThat(list(call(ADMIN, HttpMethod.GET, dictionary + "/history", null)))
+                .isEqualTo(originalVersions);
+        assertThat(list(call(ADMIN, HttpMethod.GET, untouched, null))).isEmpty();
+        Map<String, Object> v2 = lifecycleManifest("2", "升级后的内置名");
+        assertThat(reportLifecycleManifest(v2).getStatusCode().value()).isEqualTo(201);
+        assertThat(reportLifecycleManifest(v2).getStatusCode().value()).isEqualTo(200);
+        assertThat(list(call(ADMIN, HttpMethod.GET, dictionary + "/history", null)))
+                .isEqualTo(originalVersions);
+        assertThat(list(call(ADMIN, HttpMethod.GET, untouched, null))).isEmpty();
+        var afterUpgrade = data(call(ADMIN, HttpMethod.GET, dictionary + "/history/1", null));
+        assertThat(afterUpgrade.get("snapshot")).isEqualTo(originalDetail.get("snapshot"));
+        assertThat(items(map(afterUpgrade.get("manifest"))))
+                .singleElement()
+                .satisfies(item -> assertThat(item).containsEntry("name", "升级后的内置名"));
+        assertThat(items(map(afterUpgrade.get("current"))))
+                .singleElement()
+                .satisfies(item ->
+                        assertThat(item).containsEntry("name", "升级后的内置名").containsEntry("status", "disabled"));
+    }
 
     @Test
     void dictionaryHistoryListsOnlyChangedTenantOverridesNewestFirst() throws Exception {
@@ -499,6 +547,8 @@ class ReferenceDataTest {
     void changesAdvanceTheTenantsReferenceDataVersionAndAreAudited() throws Exception {
         long before = version(TENANT_B);
         long other = version(TENANT);
+        String history = "/reference-data/dictionaries/" + SERVICE + "/channel/history";
+        int historyBefore = list(call(ADMIN_B, HttpMethod.GET, history, null)).size();
         createItem(ADMIN_B, "channel", "phone", "电话");
         call(ADMIN_B, HttpMethod.PUT, itemPath("channel", "custom.phone"), Map.of("name", "电话渠道", "sort", 5));
         call(ADMIN_B, HttpMethod.POST, itemPath("channel", "custom.phone") + "/disable", null);
@@ -509,6 +559,7 @@ class ReferenceDataTest {
         // 业务服务按 Redis 中的版本号判断缓存是否过时，只递增修改所在的租户。
         assertThat(version(TENANT_B)).isEqualTo(before + 6);
         assertThat(version(TENANT)).isEqualTo(other);
+        assertThat(list(call(ADMIN_B, HttpMethod.GET, history, null))).hasSize(historyBefore + 4);
         List<AuditEvent> audits = outbox.payloadsOf(AuditEvent.class.getSimpleName()).stream()
                 .map(payload -> JSON.readValue(payload, AuditEvent.class))
                 .filter(event -> TENANT_B.equals(event.tenantId()))
@@ -526,6 +577,7 @@ class ReferenceDataTest {
         createItem(ADMIN_B, "channel", "phone", "电话");
         call(ADMIN_B, HttpMethod.DELETE, parameterPath("order.max-items"), null);
         assertThat(version(TENANT_B)).isEqualTo(before + 6);
+        assertThat(list(call(ADMIN_B, HttpMethod.GET, history, null))).hasSize(historyBefore + 4);
     }
 
     @Test
@@ -601,6 +653,37 @@ class ReferenceDataTest {
                         .getStatusCode()
                         .value())
                 .isEqualTo(401);
+    }
+
+    private Map<String, Object> lifecycleManifest(String version, String name) {
+        return Map.of(
+                "service", "history-lifecycle-service",
+                "version", version,
+                "permissions", List.of(),
+                "menus", List.of(),
+                "dictionaries",
+                        List.of("source", "untouched").stream()
+                                .map(code -> Map.of(
+                                        "code",
+                                        code,
+                                        "name",
+                                        code,
+                                        "extensible",
+                                        true,
+                                        "items",
+                                        List.of(Map.of("code", "builtin", "name", name))))
+                                .toList());
+    }
+
+    private ResponseEntity<Map> reportLifecycleManifest(Map<String, Object> manifest) {
+        return client().post()
+                .uri("/internal/manifests")
+                .contentType(MediaType.APPLICATION_JSON)
+                .headers(headers -> headers.setBearerAuth("history-lifecycle-token"))
+                .body(manifest)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, response) -> {})
+                .toEntity(Map.class);
     }
 
     private ResponseEntity<Map> internal(String serviceToken, String uri) {

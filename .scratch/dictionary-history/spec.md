@@ -1,6 +1,6 @@
 # 字典变更历史规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准（「参考数据」一节）：Dictionary、Dictionary Item、Extensible Dictionary、Dictionary Change History。本规格不单独记录 ADR，因为版本历史是追加能力，移除不影响既有语义。
 
@@ -71,3 +71,10 @@ Tenant 对 Extensible Dictionary 的修改（改名、调排序、新增自定�
 - 历史快照是产品能力，审计事件仍是安全记录，两者并存但不互相替代。
 - 字典项数量有限，v1 全部保留；若后续体积成为问题，再增加归档策略，不改变 diff 语义。
 - 服务删除某个内置项后，租户覆盖中仍可能存在该编码；历史按当时快照展示，当前列表按现有规则隐藏。
+
+## 实现与验收
+
+- [01：历史表与有效变更写入](issues/01-history-table.md) 已完成：`38d1a0fb` / `00fb3f35`。
+- [02：历史查询、diff、独立权限与页面](issues/02-api-and-ui.md) 已完成：`28eb9957`，集成 `bb4ae36a`。
+- [03：真实链路与回归验收](issues/03-acceptance.md) 已完成；相关后端 24 项、真实 Playwright 1 项通过，真实 UI 截图完成走查。
+- 实际验证命令、证据与边界见 [验收报告](acceptance.md)。IAM 模块全量和最终集成审查由集成负责人在合并验收提交后执行。

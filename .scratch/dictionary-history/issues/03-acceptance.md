@@ -4,13 +4,23 @@
 
 **Blocked by:** 01, 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 修改字典项后，历史页签出现新版本
-- [ ] 连续两次修改后，可比较任意两版并看到 added/removed/changed
-- [ ] 无变化保存不产生版本
-- [ ] 服务重启或 Manifest 升级不产生租户历史版本
-- [ ] 前端组件测试 + 一条 Playwright 真实链路
-- [ ] 审计事件仍独立记录，历史表不替代审计
+- [x] 修改字典项后，历史页签出现新版本
+- [x] 连续两次修改后，可比较任意两版并看到 added/removed/changed
+- [x] 无变化保存不产生版本
+- [x] 服务重启或 Manifest 升级不产生租户历史版本
+- [x] 前端组件测试 + 一条 Playwright 真实链路
+- [x] 审计事件仍独立记录，历史表不替代审计
 
 ## Comments
+
+- 2026-11-13：由 `codex/dictionary-history-03` 认领，基于集成 `bb4ae36a`。按已确认的 HTTP 与真实 Playwright 接缝验收；Browser plugin not available，使用仓库 Playwright。
+
+## Answer
+
+- 在既有 `main-flow.spec.ts` 新增一条真实 Playwright 链路，使用实际登录及隔离 IAM / Gateway / demo / platform，不 mock 网络或注入会话：修改后 v1、新增及连续修改后 v1–v3、任意两版 added / changed 与反向 removed、历史快照与当前上下文对照、no-op 不增版。
+- HTTP 补验收验证重复启动登记和 Manifest 升级不产生历史、旧完整覆盖快照不被默认值更新；加强原审计用例，同时验证字典四次有效修改的历史与独立 `dictionary.item*` AuditEvent。
+- 后端目标类 24 项 PASS；真实 E2E 1 项 PASS；工具 TypeScript、Java Spotless、修改文件 Prettier 和 diff 检查 PASS。1440 / 1024 的真实 UI 截图均已逐张查看，页面身份、非空、无遮挡、console / pageerror 与交互检查 PASS。
+- 仅修改验收测试与记录，无生产代码、依赖、锁文件或视觉基线变更。前三轮 E2E 的测试定位器／最终标题竞态已修正，详情、实际命令、日志与验证边界见 [验收报告](../acceptance.md)。
+- 集成负责人已完成前端全仓 420 项与 typecheck；IAM 模块全量和最终审查待本票合并后执行，本票不提前宣称其通过。
