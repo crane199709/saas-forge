@@ -94,10 +94,6 @@ for (const [label, width, height] of viewports) {
               }),
             )
           }
-          if (path === '/demo/context')
-            return route.fulfill(
-              ok({ identityId: 'i', tenantId: 't', membershipId: 'm', version: 1 }),
-            )
           return route.fulfill(onePage([]))
         })
         await openAsAdmin(page, '/apps/demo/overview', () => undefined, access)

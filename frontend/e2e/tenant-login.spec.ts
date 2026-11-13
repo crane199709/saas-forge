@@ -30,7 +30,7 @@ function fail(code: string, status: number, userTip: string) {
   }
 }
 
-test('登录页显示统一失败提示，成功后显示上下文并在刷新页面后恢复', async ({ page }) => {
+test('登录页显示统一失败提示，成功后显示工作台问候语并在刷新页面后恢复', async ({ page }) => {
   await page.route('**/iam/auth/login', async (route) => {
     const body = route.request().postDataJSON()
     if (body.password !== 'correct-password') {
@@ -76,17 +76,6 @@ test('登录页显示统一失败提示，成功后显示上下文并在刷新�
       ok([{ membershipId: 'membership-1', tenantId: 'tenant-1', tenantName: '演示租户' }]),
     )
   })
-  await page.route('**/demo/context', async (route) => {
-    expect(route.request().headers().authorization).toBe('Bearer browser-access')
-    await route.fulfill(
-      ok({
-        identityId: 'identity-1',
-        tenantId: 'tenant-1',
-        membershipId: 'membership-1',
-        version: 1,
-      }),
-    )
-  })
   let logoutCount = 0
   await page.route('**/iam/auth/logout', async (route) => {
     expect(route.request().method()).toBe('POST')
@@ -101,11 +90,10 @@ test('登录页显示统一失败提示，成功后显示上下文并在刷新�
   await expect(page.getByRole('alert')).toContainText('trace-401')
   await page.getByLabel('密码', { exact: true }).fill('correct-password')
   await page.getByRole('button', { name: '登录', exact: true }).click()
-  await expect(page.getByTestId('home-identity')).toHaveText('演示身份')
-  await expect(page.getByTestId('home-tenant')).toHaveText('演示租户')
-  await expect(page.getByText('membership-1', { exact: true })).toBeVisible()
+  await expect(page.getByTestId('workbench-greeting')).toHaveText('演示身份 · 演示租户')
+  await expect(page.getByText('membership-1', { exact: true })).toHaveCount(0)
   await page.reload()
-  await expect(page.getByText('membership-1', { exact: true })).toBeVisible()
+  await expect(page.getByTestId('workbench-greeting')).toHaveText('演示身份 · 演示租户')
   await page.screenshot({ path: '/tmp/forge-03-login.png' })
   await page.getByTestId('user-menu').click()
   await page.getByTestId('user-logout').click()
@@ -118,7 +106,7 @@ test('登录页显示统一失败提示，成功后显示上下文并在刷新�
   expect(await page.evaluate(() => localStorage.getItem('forge.tenant.session'))).toBeNull()
 })
 
-test('多租户身份先选择租户，切换后重新加载并只看到新租户的上下文', async ({ page }) => {
+test('多租户身份先选择租户，切换后重新加载并只看到新租户的问候语', async ({ page }) => {
   const memberships = [
     { membershipId: 'membership-a', tenantId: 'tenant-a', tenantName: '租户 A' },
     { membershipId: 'membership-b', tenantId: 'tenant-b', tenantName: '租户 B' },
@@ -159,30 +147,19 @@ test('多租户身份先选择租户，切换后重新加载并只看到新租�
     )
   })
   await page.route('**/iam/auth/memberships', (route) => route.fulfill(ok(memberships)))
-  await page.route('**/demo/context', (route) => {
-    const tenant = route.request().headers().authorization === 'Bearer access-b' ? 'b' : 'a'
-    return route.fulfill(
-      ok({
-        identityId: 'identity-1',
-        tenantId: 'tenant-' + tenant,
-        membershipId: 'membership-' + tenant,
-        version: 1,
-      }),
-    )
-  })
   await page.goto('/')
   await page.getByLabel('账号或邮箱').fill('multi')
   await page.getByLabel('密码', { exact: true }).fill('correct-password')
   await page.getByRole('button', { name: '登录', exact: true }).click()
   await expect(page.getByRole('heading', { name: '选择租户' })).toBeVisible()
   await page.getByRole('button', { name: '租户 A' }).click()
-  await expect(page.getByTestId('home-tenant')).toHaveText('租户 A')
-  await expect(page.getByRole('cell', { name: 'membership-a', exact: true })).toBeVisible()
+  await expect(page.getByTestId('workbench-greeting')).toHaveText('多成员身份 · 租户 A')
+  await expect(page.getByText('membership-a', { exact: true })).toHaveCount(0)
 
   await page.getByTestId('tenant-switcher').click()
   await page.getByRole('option', { name: '租户 B' }).click()
-  await expect(page.getByTestId('home-tenant')).toHaveText('租户 B')
-  await expect(page.getByRole('cell', { name: 'membership-b', exact: true })).toBeVisible()
+  await expect(page.getByTestId('workbench-greeting')).toHaveText('多成员身份 · 租户 B')
+  await expect(page.getByText('membership-b', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('cell', { name: 'membership-a', exact: true })).toHaveCount(0)
   expect(switchBody).toEqual({ refreshToken: 'refresh-a', membershipId: 'membership-b' })
 })

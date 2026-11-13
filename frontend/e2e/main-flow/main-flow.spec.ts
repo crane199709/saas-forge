@@ -20,6 +20,61 @@ async function token(page: Page): Promise<string> {
   return page.evaluate(() => JSON.parse(localStorage.getItem('forge.tenant.session')!).accessToken)
 }
 
+// 工作台读取在本次临时数据库播种的 A/B 数据；全程真实登录、网关与远程子应用。
+test('工作台登录、三卡、待办跳转与切租户刷新', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('console', (message) => {
+    if (['error', 'warning'].includes(message.type())) errors.push(message.text())
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await login(page)
+  await expect(page).toHaveURL('http://127.0.0.1:15174/')
+  await expect(page).toHaveTitle('SaaS Forge 租户端')
+  await expect(page.getByRole('heading', { name: '工作台', exact: true })).toBeVisible()
+  await expect(page.getByTestId('workbench-greeting')).toHaveText('e2e-member · E2E 租户 A')
+  for (const [kind, title] of [
+    ['todos', 'A 待处理订单'],
+    ['notifications', 'A 订单审核提醒'],
+    ['announcements', 'A 租户业务公告'],
+  ]) {
+    const card = page.getByTestId(`workbench-${kind}`)
+    await expect(card).toBeVisible()
+    await expect(card.getByRole('link', { name: title, exact: true })).toBeVisible()
+    await expect(card).not.toContainText('B ')
+  }
+  await expect(page.getByTestId('workbench-notifications').getByLabel('1 条未读通知')).toBeVisible()
+  await mkdir('/tmp/workbench-qa', { recursive: true })
+  await page.screenshot({ path: '/tmp/workbench-qa/real-desktop.png', animations: 'disabled' })
+  await page.getByRole('link', { name: 'A 待处理订单', exact: true }).click()
+  await expect(page).toHaveURL('http://127.0.0.1:15174/apps/demo/overview')
+  await expect(page.getByRole('heading', { name: '示例子应用 v1' })).toBeVisible()
+  await expect(page.getByTestId('order-title')).toHaveText(['A 本人订单'])
+
+  await page.getByTestId('tenant-switcher').click()
+  await page.getByRole('option', { name: 'E2E 租户 B', exact: true }).click()
+  await expect(page.getByTestId('workbench-greeting')).toHaveText('e2e-member · E2E 租户 B')
+  await expect(page.getByRole('link', { name: 'B 待处理订单', exact: true })).toBeVisible()
+  await expect(page.getByTestId('workbench-notifications')).toContainText('B 订单审核提醒')
+  await expect(page.getByTestId('workbench-announcements')).toContainText('B 租户业务公告')
+  await expect(page.getByRole('link', { name: /^A / })).toHaveCount(0)
+  // 将当前通知标为已读，手动刷新必须读取新状态，且其他卡片保持当前租户数据。
+  const markRead = await page.request.post(
+    '/api/iam/notifications/019a2525-0000-7000-8000-000000000082/read',
+    {
+      headers: { Authorization: `Bearer ${await token(page)}` },
+    },
+  )
+  expect(markRead.status()).toBe(200)
+  await page.getByTestId('workbench-refresh').click()
+  await expect(page.getByTestId('workbench-notifications')).toContainText('暂无未读通知')
+  await expect(page.getByTestId('workbench-notifications').getByLabel('0 条未读通知')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'B 待处理订单', exact: true })).toBeVisible()
+  await expect(page.getByTestId('workbench-announcements')).toContainText('B 租户业务公告')
+  await expect(page.locator('vite-error-overlay, webpack-dev-server-client-overlay')).toHaveCount(0)
+  expect(errors).toEqual([])
+})
+
 // 不拦截网络、不注入会话：浏览器经历真实的密码登录、授权码 + PKCE、网关和动态远程加载。
 test('双 Membership 登录、数据范围与租户切换', async ({ page }) => {
   const remote = page.waitForResponse('http://127.0.0.1:15175/remoteEntry.js')
@@ -33,7 +88,7 @@ test('双 Membership 登录、数据范围与租户切换', async ({ page }) => 
 
   await page.getByTestId('tenant-switcher').click()
   await page.getByRole('option', { name: 'E2E 租户 B', exact: true }).click()
-  await expect(page.getByTestId('home-tenant')).toHaveText('E2E 租户 B')
+  await expect(page.getByTestId('workbench-greeting')).toHaveText('e2e-member · E2E 租户 B')
   await expect(page.getByTestId('menu-audit')).toBeHidden()
   await page.getByTestId('menu-demo.overview').click()
   await expect(page.getByTestId('remote-tenant')).toHaveText('当前租户：E2E 租户 B')

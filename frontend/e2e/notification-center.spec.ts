@@ -86,9 +86,6 @@ async function tenant(page: Page, permissions: string[] = []) {
     if (path.endsWith('/unread-count')) return route.fulfill(ok({ count: 0 }))
     return route.fulfill(ok([]))
   })
-  await page.route('**/demo/context', (route) =>
-    route.fulfill(ok({ identityId: 'i', tenantId: 't', membershipId: 'm' })),
-  )
 }
 const announcementRow = (page: Page, id: string) =>
   page.getByRole('row').filter({ has: page.getByTestId(`announcement-${id}`) })

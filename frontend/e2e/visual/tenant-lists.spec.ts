@@ -271,21 +271,6 @@ for (const [label, width, height] of viewports) {
   test.describe(label, () => {
     test.use({ viewport: { width, height } })
 
-    test('首页', async ({ page }) => {
-      await page.route('**/demo/context', (route) =>
-        route.fulfill(
-          ok({
-            identityId: '018d0000-0000-7000-8000-000000000001',
-            tenantId: '018d0000-0000-7000-8000-000000000002',
-            membershipId: '018d0000-0000-7000-8000-000000000003',
-          }),
-        ),
-      )
-      await openAsAdmin(page, '/', respondOthers)
-      await expect(page.getByText('018d0000-0000-7000-8000-000000000003')).toBeVisible()
-      await expect(page).toHaveScreenshot(`home-${label}.png`)
-    })
-
     test('通知中心', async ({ page }) => {
       await openAsAdmin(page, '/notifications', respondOthers)
       await expect(page.getByTestId('inbox-n1')).toBeVisible()
@@ -315,26 +300,37 @@ for (const [label, width, height] of viewports) {
     })
 
     test('IP 不可访问', async ({ page }) => {
-      await page.route('**/demo/context', (route) =>
-        route.fulfill({
-          status: 403,
-          json: {
-            code: 'tenant.ipNotAllowed',
-            httpStatus: 403,
-            userTip: '当前 IP 不在该租户的允许列表内',
-            traceId: 'visual-ip',
-          },
-        }),
-      )
-      await openAsAdmin(page, '/', respondOthers)
+      await openAsAdmin(page, '/', (path, route) => {
+        if (path === '/iam/todos')
+          return route.fulfill({
+            status: 403,
+            json: {
+              code: 'tenant.ipNotAllowed',
+              httpStatus: 403,
+              userTip: '当前 IP 不在该租户的允许列表内',
+              traceId: 'visual-ip',
+            },
+          })
+        return respondOthers(path, route)
+      })
       await expect(page.getByTestId('ip-denied-logout')).toBeVisible()
       await expect(page).toHaveScreenshot(`ip-not-allowed-${label}.png`)
     })
 
     test('账号安全', async ({ page }) => {
-      await openAsAdmin(page, '/account/security', respondOthers)
+      await openAsAdmin(page, '/account/security', respondOthers, {
+        session: {
+          accessToken: `header.${Buffer.from(JSON.stringify({ sub: '018d0000-0000-7000-8000-000000000001' })).toString('base64url')}.signature`,
+          tenantId: '018d0000-0000-7000-8000-000000000002',
+          membershipId: '018d0000-0000-7000-8000-000000000003',
+        },
+      })
       await expect(page.getByTestId('password-form')).toBeVisible()
+      const currentSession = page.getByRole('region', { name: '当前会话', exact: true })
+      await expect(currentSession).toContainText('018d0000-0000-7000-8000-000000000001')
       await expect(page).toHaveScreenshot(`account-${label}.png`)
+      await currentSession.scrollIntoViewIfNeeded()
+      await expect(currentSession).toHaveScreenshot(`account-session-${label}.png`)
     })
   })
 }

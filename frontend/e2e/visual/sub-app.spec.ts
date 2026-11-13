@@ -62,8 +62,7 @@ async function open(page: Page, url: string) {
     const path = new URL(route.request().url()).pathname.replace(/^\/api(?=\/)/, '')
     if (path === '/demo/orders') return route.fulfill(onePage(orders))
     if (path === '/demo/orders/o1/attachments') return route.fulfill(ok(attachments))
-    if (path === '/demo/context')
-      return route.fulfill(ok({ identityId: 'i', tenantId: 't', membershipId: 'm', version: 1 }))
+
     return route.fulfill(onePage([]))
   })
   await openAsAdmin(page, url, () => undefined, access)

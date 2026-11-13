@@ -37,7 +37,7 @@ test('仓库外模板的 Manifest、网关路由与成员权限', async ({ page 
     page.waitForEvent('load'),
     page.getByRole('option', { name: 'E2E 租户 B', exact: true }).click(),
   ])
-  await expect(page.getByTestId('home-tenant')).toHaveText('E2E 租户 B')
+  await expect(page.getByTestId('workbench-greeting')).toHaveText('e2e-member · E2E 租户 B')
   expect(
     (
       await page.request.post('http://127.0.0.1:18000/smoke/orders', {

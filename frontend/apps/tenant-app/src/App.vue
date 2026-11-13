@@ -49,7 +49,10 @@ applyTheme(themeTokens.primary)
   <router-view v-if="route.meta.standalone" />
   <AppLayout
     v-else
-    :class="{ 'security-layout': route.path === '/security-settings' }"
+    :class="{
+      'security-layout': route.path === '/security-settings',
+      'workbench-layout': route.path === '/',
+    }"
     :title="t('app.product')"
     :menu="menu"
     :active-path="route.path"
@@ -66,14 +69,17 @@ applyTheme(themeTokens.primary)
 <style scoped>
 /* 铃铛加入顶栏后，窄屏仍须完整显示切换租户和个人菜单。 */
 @media (max-width: 640px) {
-  .security-layout :deep(.shell-aside) {
+  .security-layout :deep(.shell-aside),
+  .workbench-layout :deep(.shell-aside) {
     width: 120px !important;
   }
-  .security-layout :deep(.el-menu-item) {
+  .security-layout :deep(.el-menu-item),
+  .workbench-layout :deep(.el-menu-item) {
     padding: 0 var(--forge-space-3);
   }
   /* AppLayout 用内联样式设置内容区内边距 */
-  .security-layout :deep(.shell-main) {
+  .security-layout :deep(.shell-main),
+  .workbench-layout :deep(.shell-main) {
     padding: var(--forge-space-3) !important;
   }
 

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { ok, openAsAdmin, viewports } from './support'
+import { openAsAdmin, viewports } from './support'
 
 // 清单三层分组，加上管理员的自定义分组；名称取接近真实的最长值。
 const access = {
@@ -75,9 +75,6 @@ const defaultLayout = {
 }
 
 async function openHome(page: Page, layout: unknown = access.layout) {
-  await page.route('**/demo/context', (route) =>
-    route.fulfill(ok({ identityId: 'i', tenantId: 't', membershipId: 'm' })),
-  )
   await openAsAdmin(page, '/', () => undefined, { ...access, layout })
   await expect(page.getByTestId('menu-group-demo.finance')).toBeVisible()
 }

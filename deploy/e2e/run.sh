@@ -190,6 +190,10 @@ if [[ -n "${FORGE_TEMPLATE_SERVICE:-}" ]]; then
 else
   "${COMPOSE[@]}" exec -T postgres psql -U postgres -d forge -v ON_ERROR_STOP=1 < deploy/e2e/seed.sql
 fi
+# 标准工作台聚合读取夹具不进入 MQ、接入、导入回滚或仓库外模板专项。
+if [[ -z "${FORGE_TEMPLATE_SERVICE:-}" && "${FORGE_NOTIFICATION_E2E:-}" != 1 && "${FORGE_ONBOARDING_E2E:-}" != 1 && "${FORGE_IMPORT_ROLLBACK_E2E:-}" != 1 ]]; then
+  "${COMPOSE[@]}" exec -T postgres psql -U postgres -d forge -v ON_ERROR_STOP=1 < deploy/e2e/seed.workbench.sql
+fi
 # seed 在 IAM 启动全量发布之后创建 Tenant；夹具也须明确发布无限制，缺键会被网关拒绝。
 "${COMPOSE[@]}" exec -T redis redis-cli MSET \
   iam:019a2525-0000-7000-8000-000000000001:ip-allowlist '*' \
