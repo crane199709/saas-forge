@@ -17,8 +17,14 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>不指定数据范围时按 Tenant Admin 发布，订单为「全部」：数据权限默认拒绝，不关心数据权限的测试不能因此看不到数据。
  */
 final class TestGrants {
-    static final List<String> ALL_ORDER_PERMISSIONS =
-            List.of("order:read", "order:create", "order:update", "order:delete", "order:import", "order:export");
+    static final List<String> ALL_ORDER_PERMISSIONS = List.of(
+            "order:read",
+            "order:create",
+            "order:update",
+            "order:delete",
+            "order:import",
+            "order:importRollback",
+            "order:export");
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
 

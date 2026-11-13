@@ -2,6 +2,7 @@ package io.saasforge.demo.order.controller;
 
 import io.saasforge.demo.order.service.OrderIoService;
 import io.saasforge.sdk.core.api.ApiResponse;
+import io.saasforge.sdk.io.ImportRollbackPreview;
 import io.saasforge.sdk.io.IoTask;
 import io.saasforge.sdk.security.RequiresPermission;
 import io.saasforge.sdk.storage.UploadTicket;
@@ -81,6 +82,13 @@ class OrderIoController {
     @RequiresPermission("order:import")
     ApiResponse<IoTask> confirmOverwrite(@PathVariable UUID taskId) {
         return ApiResponse.ok(service.confirmOverwrite(taskId));
+    }
+
+    @Operation(summary = "只读预览覆盖导入的回滚冲突")
+    @GetMapping("/import/{taskId}/rollback-preview")
+    @RequiresPermission("order:importRollback")
+    ApiResponse<ImportRollbackPreview> previewRollback(@PathVariable UUID taskId) {
+        return ApiResponse.ok(service.previewRollback(taskId));
     }
 
     record UploadRequest(String filename, String contentType, long size) {}

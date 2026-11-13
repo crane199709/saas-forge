@@ -5,6 +5,8 @@ import io.saasforge.demo.order.model.OrderImportRow;
 import io.saasforge.demo.order.model.OrderOverwriteRow;
 import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.io.ExcelIo;
+import io.saasforge.sdk.io.ImportRollbackPreview;
+import io.saasforge.sdk.io.ImportRollbacks;
 import io.saasforge.sdk.io.ImportSnapshot;
 import io.saasforge.sdk.io.ImportWriter;
 import io.saasforge.sdk.io.IoStoragePurposes;
@@ -24,11 +26,13 @@ public class OrderIoService {
     private final OrderService orders;
     private final ExcelIo excel;
     private final ObjectStorage storage;
+    private final ImportRollbacks rollbacks;
 
-    public OrderIoService(OrderService orders, ExcelIo excel, ObjectStorage storage) {
+    public OrderIoService(OrderService orders, ExcelIo excel, ObjectStorage storage, ImportRollbacks rollbacks) {
         this.orders = orders;
         this.excel = excel;
         this.storage = storage;
+        this.rollbacks = rollbacks;
     }
 
     public void template(OutputStream output) throws Exception {
@@ -81,6 +85,19 @@ public class OrderIoService {
                 return orders.overwriteImported(row.id(), row.title(), row.amount(), row.customerSource())
                         .getUpdatedAt()
                         .toString();
+            }
+        });
+    }
+
+    public ImportRollbackPreview previewRollback(UUID taskId) {
+        return rollbacks.preview(taskId, OrderOverwriteRow.class, recordId -> {
+            try {
+                return orders.get(UUID.fromString(recordId)).getUpdatedAt().toString();
+            } catch (ForgeException error) {
+                if (error.errorCode() == OrderErrorCode.NOT_FOUND) {
+                    return null;
+                }
+                throw error;
             }
         });
     }

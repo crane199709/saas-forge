@@ -322,7 +322,9 @@ var download = storage.prepareDownload(ATTACHMENT, objectId);
 
 Demo 原追加导入继续使用三列模板及 `/orders/import`、`/orders/import/{taskId}/confirm`。覆盖导入使用 `/orders/import/overwrite/template` 的四列模板：标题、金额、客户来源、可选订单ID；空 ID 新增，有 ID 覆盖当前租户与数据权限内的已有订单，客户来源为空时写入 null。只覆盖标题、金额与客户来源，保留编号、状态、归属等其他字段。提交与确认路径分别为 `/orders/import/overwrite`、`/orders/import/overwrite/{taskId}/confirm`，上传仍复用 `/orders/import/upload`。历史界面按持久化的 `importModel === "io.saasforge.demo.order.model.OrderOverwriteRow"` 选择覆盖确认路由，其他及历史 null 值任务选择原路由；无需依赖页面内存。
 
-任务返回 `snapshotCount`、实际截止时间 `snapshotExpiresAt`、`snapshotAvailable`（成功且有未过期快照）；追加与纯新增任务没有可用快照。`forge.io.backup-retention` 默认 90 天，服务可调整；租户清理自动逻辑删除本租户快照，其他租户不受影响。回滚执行、权限与界面由后续能力提供。
+任务返回 `snapshotCount`、实际截止时间 `snapshotExpiresAt`、`snapshotAvailable`（成功且有未过期快照）；追加与纯新增任务没有可用快照。`forge.io.backup-retention` 默认 90 天，服务可调整；租户清理自动逻辑删除本租户快照，其他租户不受影响。回滚只读预览调用 `ImportRollbacks.preview(taskId, model, reader)`，返回 `ImportRollbackPreview`：`available`、`unavailableReason`、`blocked`、`totalCount`、`rollbackableCount`、`conflictCount`、`snapshotExpiresAt` 与 `conflicts(recordId, reason)`。人工修改为 `RECORD_MODIFIED`，同模型同记录后续实际覆盖为 `LATER_IMPORT`，当前数据权限不可见或记录已删除统一为 `RECORD_UNAVAILABLE`；报告没有旧字段值。过期为 `available=false / SNAPSHOT_EXPIRED`，无覆盖快照为 `NO_SNAPSHOTS`，不返回“空报告即安全”的假象。
+
+Demo 的 `GET /orders/import/{taskId}/rollback-preview` 使用独立 `order:importRollback`，清单版本升为 9；与导入权限分离，仍只允许查看本人任务。服务的 `ImportVersionReader` 按当前 Data Policy 读取数据库版本；其他租户或提交人任务仍为 404，只有导入权限仍为 403。已有 IO 服务新增迁移复制 `upgrade-import-rollback-preview.sql`（demo V16），增加后续实际覆盖标记，保持已有迁移不变。覆盖标记在业务行锁与确认事务内更新，只影响同租户、同模型、同记录的已存在快照，不依赖任务创建顺序。执行方必须在锁定当前可见业务行后调用 `ImportRollbacks.check(backup, reader)` 重查，并在同一事务中恢复，不能依赖先前的预览结果。执行与界面由后续能力提供。
 
 IO 统一声明 `IoStoragePurposes.SOURCE`（`io-source`，仅 xlsx、20 MiB）和 `RESULT`（`io-result`，仅 xlsx、100 MiB），下载时长均为 5 分钟。上传入口复用 SOURCE；`ExcelIo.importFile` 在提交任务之前核对用途，导出和错误报告写入 RESULT，`IoTasks.download` 按 RESULT 签发。不要把附件或结果对象当作导入源文件，否则会被同步拒绝，既不创建任务也不删除原对象。
 

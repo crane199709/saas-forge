@@ -47,6 +47,8 @@ public final class ImportBackups {
 
     void complete(UUID taskId, ImportSnapshot snapshot, String version) {
         Objects.requireNonNull(version, "Overwritten rows need a post-import modification marker");
+        // beforeWrite 已持有业务行锁，因此此处按实际覆盖顺序更新，不依赖任务创建时间或事务起始时间。
+        mapper.supersede(taskId, snapshot.recordId());
         mapper.complete(taskId, snapshot.recordId(), version);
     }
 

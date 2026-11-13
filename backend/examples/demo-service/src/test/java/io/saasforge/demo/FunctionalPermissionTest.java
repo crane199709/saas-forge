@@ -102,6 +102,7 @@ class FunctionalPermissionTest {
                         new Permission("order:delete", "删除订单", "订单"),
                         new Permission("order:export", "导出订单", "订单"),
                         new Permission("order:import", "导入订单", "订单"),
+                        new Permission("order:importRollback", "回滚订单导入", "订单"),
                         new Permission("order:read", "查看订单", "订单"),
                         new Permission("order:update", "修改订单", "订单"));
         var leaf = manifest.menus().get(0).children().get(0);

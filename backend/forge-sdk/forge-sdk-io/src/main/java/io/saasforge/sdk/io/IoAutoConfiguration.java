@@ -56,6 +56,11 @@ public final class IoAutoConfiguration {
     }
 
     @Bean
+    ImportRollbacks importRollbacks(IoTasks tasks, ImportBackups backups, ImportBackupMapper mapper) {
+        return new ImportRollbacks(tasks, backups, mapper);
+    }
+
+    @Bean
     TenantDataCleaner importBackupCleaner(ImportBackupMapper mapper) {
         return event -> {
             mapper.markTenantDeleted();

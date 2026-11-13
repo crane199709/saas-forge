@@ -26,6 +26,11 @@
 
 `ImportBackups.list` 仅供当前租户的服务内修复逻辑读取，公开接口另行检查权限，不能直接返回旧字段原文。任务的 `snapshotCount`、`snapshotExpiresAt` 与 `snapshotAvailable` 供界面判断可用性；没有覆盖行时不宣称可回滚。快照默认保留 90 天，使用 `forge.io.backup-retention` 调整；SDK 随 `TenantDeleted` 逻辑删除该租户快照。
 
+覆盖导入的只读回滚预览调用 `ImportRollbacks.preview(taskId, model, reader)`，沿用任务的当前租户与提交人访问边界，并由业务 HTTP 接口校验独立回滚 Permission Code。`ImportVersionReader` 必须按当前成员的 Data Policy 读取数据库修改标记，不存在、已删除或不可见返回 null；报告只返回记录主键、稳定原因码与数量，不返回旧值或当前字段原文。`available=false` 时按 `unavailableReason` 显示未成功、模型不支持、无快照或过期等原因；存在冲突时 `blocked=true`，预览本身不修改业务记录。
+
+已有 IO 服务再新增迁移复制 `upgrade-import-rollback-preview.sql`（demo V16），不能修改 V15 等已执行迁移。SDK 在 `ImportWriter.beforeWrite` 持有的业务行锁与原确认事务内，按模型与记录主键标记已存在的其他覆盖快照，判断顺序取实际覆盖，不能取任务创建时间。执行回滚时先按当前数据权限锁定业务行，再调用 `ImportRollbacks.check(backup, reader)` 重查最新快照状态，并在同一事务持锁期间核对修改标记与恢复；预览报告不能跨事务作为写入许可。默认 starter 未使用 IO，不增加可选表或配置。
+
+
 ## SQL 与持久层
 
 手写 SQL 只能写在 mapper XML 中。这样 SQL 集中在一处便于审查；SDK 通过 MyBatis-Plus 拦截器自动注入租户过滤与数据权限条件，SQL 集中在 mapper 中，拦截器对 SQL 的改写才可预期。SDK 只支持 MyBatis-Plus，不支持 JPA 等其他持久层，用其他持久层得不到自动隔离保障。

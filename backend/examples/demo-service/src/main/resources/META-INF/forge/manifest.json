@@ -20,6 +20,10 @@
       "name": "导入订单",
       "group": "订单"
     },
+    "order:importRollback": {
+      "name": "回滚订单导入",
+      "group": "订单"
+    },
     "order:export": {
       "name": "导出订单",
       "group": "订单"
@@ -54,6 +58,7 @@
             "order:update",
             "order:delete",
             "order:import",
+            "order:importRollback",
             "order:export"
           ]
         },
