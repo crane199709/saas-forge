@@ -83,9 +83,6 @@ async function session(page: Page, permissions: string[]) {
     if (path.endsWith('/unread-count')) return route.fulfill(ok({ count: 0 }))
     return route.fulfill(ok([]))
   })
-  await page.route('**/demo/context', (route) =>
-    route.fulfill(ok({ identityId: 'identity', tenantId: 't', membershipId: 'm', version: 1 })),
-  )
   await page.route('**/demo/io/tasks?*', (route) =>
     route.fulfill(ok([], { number: 1, size: 10, totalElements: 0, totalPages: 0 })),
   )

@@ -67,9 +67,6 @@ async function common(page: Page) {
     if (path === '/iam/auth/logout') return route.fulfill(ok(null))
     return route.fulfill(ok([]))
   })
-  await page.route('**/demo/context', (route) =>
-    route.fulfill(ok({ identityId: 'i', tenantId: 'tb', membershipId: 'mb', version: 1 })),
-  )
 }
 for (const mobile of [false, true]) {
   test(`安全设置显示当前IP、保存和逐条校验 ${mobile ? 'mobile' : 'desktop'}`, async ({ page }) => {
@@ -188,7 +185,7 @@ test('首屏权限被拒、整页刷新仍显示专用页面，停止轮询并�
   expect(unread).toBe(0)
   await page.screenshot({ path: test.info().outputPath('tenant-ip-allowlist-denied-desktop.png') })
   await page.getByRole('button', { name: '租户 B', exact: true }).click()
-  await expect(page.getByTestId('home-tenant')).toHaveText('租户 B')
+  await expect(page.getByTestId('workbench-greeting')).toHaveText('测试身份 · 租户 B')
   await expect(page).toHaveURL('http://127.0.0.1:5174/')
 })
 
@@ -198,7 +195,7 @@ for (const source of ['api', 'refresh'] as const) {
     await seed(page)
     await common(page)
     let refreshes = 0
-    await page.route('**/demo/context', (route) =>
+    await page.route('**/iam/security-settings', (route) =>
       route.fulfill(
         source === 'api'
           ? denied()
@@ -209,7 +206,7 @@ for (const source of ['api', 'refresh'] as const) {
       refreshes++
       return route.fulfill(denied())
     })
-    await page.goto('/')
+    await page.goto('/security-settings')
     await expect(page).toHaveURL(/\/ip-not-allowed$/)
     await expect(page.getByRole('button', { name: '租户 B', exact: true })).toBeVisible()
     await page.clock.install()
@@ -254,7 +251,7 @@ for (const multi of [false, true]) {
     await expect(page.getByRole('heading', { name: '当前 IP 无法访问该租户' })).toBeVisible()
     if (multi) {
       await page.getByRole('button', { name: '租户 B', exact: true }).click()
-      await expect(page.getByTestId('home-tenant')).toHaveText('租户 B')
+      await expect(page.getByTestId('workbench-greeting')).toHaveText('测试身份 · 租户 B')
     } else {
       await page.getByTestId('ip-denied-logout').click()
       await expect(page).toHaveURL(/\/login$/)
@@ -272,7 +269,7 @@ test('切换目标被拒可返回有效的当前租户', async ({ page }) => {
   await expect(page).toHaveURL(/\/ip-not-allowed$/)
   await expect(page.getByRole('button', { name: '返回当前租户' })).toBeVisible()
   await page.getByRole('button', { name: '返回当前租户' }).click()
-  await expect(page.getByTestId('home-tenant')).toHaveText('租户 A')
+  await expect(page.getByTestId('workbench-greeting')).toHaveText('测试身份 · 租户 A')
 })
 
 for (const manage of [true, false]) {

@@ -227,9 +227,15 @@ time {
   color: var(--el-text-color-secondary);
   font-size: var(--forge-font-size-xs);
 }
-@media (max-width: 1024px) {
+@media (max-width: 900px) {
   .workbench-cards {
     grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 640px) {
+  :deep(.page-header) {
+    flex-direction: column;
+    gap: var(--forge-space-2) !important;
   }
 }
 </style>

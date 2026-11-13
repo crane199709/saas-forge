@@ -62,16 +62,6 @@ async function signIn(
       ok([{ membershipId: 'membership-1', tenantId: 'tenant-1', tenantName: '演示租户' }]),
     ),
   )
-  await page.route('**/demo/context', (route) =>
-    route.fulfill(
-      ok({
-        identityId: 'identity-1',
-        tenantId: 'tenant-1',
-        membershipId: 'membership-1',
-        version: 1,
-      }),
-    ),
-  )
 }
 
 test.beforeEach(async ({ page }) => {

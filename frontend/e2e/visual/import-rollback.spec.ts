@@ -64,10 +64,6 @@ for (const [label, width, height] of viewports) {
         let done = false
         await page.route(/:\d+\/api\/demo\//, (route) => {
           const path = new URL(route.request().url()).pathname.replace(/^\/api(?=\/)/, '')
-          if (path === '/demo/context')
-            return route.fulfill(
-              ok({ identityId: 'i', tenantId: 't', membershipId: 'm', version: 1 }),
-            )
           if (path === '/demo/io/tasks')
             return route.fulfill(
               onePage(
