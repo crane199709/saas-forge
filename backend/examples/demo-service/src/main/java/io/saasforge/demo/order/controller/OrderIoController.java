@@ -57,6 +57,32 @@ class OrderIoController {
         return ApiResponse.ok(service.confirmImport(taskId));
     }
 
+    @Operation(summary = "下载覆盖导入模板，订单ID为空时新增")
+    @GetMapping("/import/overwrite/template")
+    @RequiresPermission("order:import")
+    ApiResponse<TemplateResponse> overwriteTemplate() throws Exception {
+        try (var output = new ByteArrayOutputStream()) {
+            service.overwriteTemplate(output);
+            return ApiResponse.ok(
+                    new TemplateResponse("订单覆盖导入模板.xlsx", Base64.getEncoder().encodeToString(output.toByteArray())));
+        }
+    }
+
+    @Operation(summary = "提交订单覆盖导入，已有订单确认前不改写")
+    @PostMapping("/import/overwrite")
+    @RequiresPermission("order:import")
+    @ResponseStatus(HttpStatus.CREATED)
+    ApiResponse<IoTask> importOverwrite(@RequestBody ImportRequest request) {
+        return ApiResponse.created(service.importOverwrite(request.objectId()));
+    }
+
+    @Operation(summary = "确认覆盖导入，写入前保存被覆盖字段旧值")
+    @PostMapping("/import/overwrite/{taskId}/confirm")
+    @RequiresPermission("order:import")
+    ApiResponse<IoTask> confirmOverwrite(@PathVariable UUID taskId) {
+        return ApiResponse.ok(service.confirmOverwrite(taskId));
+    }
+
     record UploadRequest(String filename, String contentType, long size) {}
 
     record ImportRequest(UUID objectId) {}

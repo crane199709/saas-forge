@@ -14,6 +14,15 @@
         id
         LIMIT #{limit} OFFSET #{offset}
     </select>
+    <select id="selectForImport" resultType="io.saasforge.demo.order.entity.Order">
+        SELECT id,number,title,amount,customer_source,status,owner_id,department_path,created_at,updated_at,created_by,updated_by,deleted
+        FROM orders WHERE NOT deleted AND id=#{id} FOR UPDATE
+    </select>
+    <update id="overwriteImported">
+        UPDATE orders SET title=#{title},amount=#{amount},customer_source=#{customerSource},
+        updated_at=CURRENT_TIMESTAMP,updated_by=NULL
+        WHERE NOT deleted AND id=#{id}
+    </update>
     <select id="selectDeletedPage" resultType="io.saasforge.demo.order.entity.Order">
         SELECT id, number, title, amount, customer_source, status, owner_id, department_path, created_at, updated_at, created_by, updated_by, deleted
         FROM orders

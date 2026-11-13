@@ -17,6 +17,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -46,6 +47,7 @@ public final class ExcelIo {
     private final IoProperties properties;
     private final TransactionTemplate transaction;
     private final FieldMaskingPolicyProvider masking;
+    private final ImportBackups backups;
 
     ExcelIo(
             IoTasks tasks,
@@ -54,7 +56,8 @@ public final class ExcelIo {
             Validator validator,
             IoProperties properties,
             TransactionTemplate transaction,
-            FieldMaskingPolicyProvider masking) {
+            FieldMaskingPolicyProvider masking,
+            ImportBackups backups) {
         this.tasks = tasks;
         this.storage = storage;
         this.reference = reference;
@@ -62,6 +65,7 @@ public final class ExcelIo {
         this.properties = properties;
         this.transaction = transaction;
         this.masking = masking;
+        this.backups = backups;
     }
     /**
      * 按提交时的数据权限异步导出。业务方须在 read 中沿用列表的查询条件，逐页或游标调用 consumer，不能整体加载全部数据。
@@ -198,8 +202,8 @@ public final class ExcelIo {
         // 任务结束会删除源对象，必须在登记任务之前拒绝其他用途。
         requireXlsx(storage.get(IoStoragePurposes.SOURCE, source).filename());
         var columns = new ExcelModel<T>(model, reference);
-        return tasks.submit(
-                "IMPORT", source, null, progress -> processImport(columns, source, validate, null, progress));
+        return tasks.submitImport(
+                source, model.getName(), progress -> processImport(columns, source, validate, null, null, progress));
     }
 
     /**
@@ -214,15 +218,46 @@ public final class ExcelIo {
      */
     public <T> IoTask confirmImport(UUID taskId, Class<T> model, RowValidator<T> validate, Consumer<T> writer) {
         Objects.requireNonNull(writer, "writer");
-        return tasks.confirmImport(taskId, source -> {
+        return confirmImport(taskId, model, validate, new ImportWriter<>() {
+            @Override
+            public ImportSnapshot beforeWrite(T row) {
+                return null;
+            }
+
+            @Override
+            public String write(T row) {
+                writer.accept(row);
+                return null;
+            }
+        });
+    }
+
+    /**
+     * 确认覆盖导入；完整重新校验后，在同一事务中先保存每条已有记录的旧值再写入。
+     * 新增行不保存快照，写入异常时快照与业务数据一同回滚。
+     *
+     * @param taskId 待确认的导入任务
+     * @param model 与提交时相同的公开 record 类型
+     * @param validate 确认时的只读业务校验
+     * @param writer 负责锁定旧记录、提供实际覆盖字段及写后修改标记的写入器
+     * @return 已排队的任务
+     */
+    public <T> IoTask confirmImport(UUID taskId, Class<T> model, RowValidator<T> validate, ImportWriter<T> writer) {
+        Objects.requireNonNull(writer, "writer");
+        return tasks.confirmImport(taskId, model.getName(), source -> {
             requireXlsx(storage.get(IoStoragePurposes.SOURCE, source).filename());
             var columns = new ExcelModel<T>(model, reference);
-            return progress -> processImport(columns, source, validate, writer, progress);
+            return progress -> processImport(columns, source, validate, writer, taskId, progress);
         });
     }
 
     private <T> UUID processImport(
-            ExcelModel<T> columns, UUID source, RowValidator<T> validate, Consumer<T> writer, IoTasks.Progress progress)
+            ExcelModel<T> columns,
+            UUID source,
+            RowValidator<T> validate,
+            ImportWriter<T> writer,
+            UUID taskId,
+            IoTasks.Progress progress)
             throws Exception {
         Path original = Files.createTempFile("forge-import-", ".xlsx");
         Path valid = Files.createTempFile("forge-valid-", ".jsonl");
@@ -318,7 +353,19 @@ public final class ExcelIo {
             }
             transaction.executeWithoutResult(status -> {
                 try (var rows = Files.lines(valid)) {
-                    rows.forEach(line -> writer.accept(json.readValue(line, columns.type())));
+                    var expiresAt = OffsetDateTime.now().plus(properties.backupRetention());
+                    rows.forEach(line -> {
+                        T row = json.readValue(line, columns.type());
+                        var snapshot = writer.beforeWrite(row);
+                        if (snapshot != null) {
+                            backups.capture(taskId, snapshot, expiresAt);
+                        }
+                        String version = writer.write(row);
+                        if (snapshot != null) {
+                            backups.complete(taskId, snapshot, version);
+                        }
+                    });
+                    backups.refreshTask(taskId);
                 } catch (IOException error) {
                     throw new UncheckedIOException(error);
                 }

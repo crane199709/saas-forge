@@ -316,6 +316,14 @@ var download = storage.prepareDownload(ATTACHMENT, objectId);
 
 需要导入导出时添加 `io.saasforge:forge-sdk-io`，复制 `io/saasforge/sdk/io/schema.sql` 到服务迁移，并提供 storage、reference-data 和 scheduling 的配置。模型必须是公开 `record`，每个字段使用 `@ExcelColumn`；字典字段同时用 `@DictionaryValue`。`ExcelIo.template` 写出模板，`importFile(model, source, validate)` 异步校验全部行，成功后进入 `AWAITING_CONFIRM`，`rowCount` 是将写入的行数，此时没有业务写入。`export` 的数据源应沿用列表查询条件逐页或游标读取。只支持 `.xlsx` 的首个工作表；日期使用 ISO 文本，不接受公式。待确认期间保留源文件，完成、失败或过期后删除；错误报告与导出文件占用存储配额。
 
+覆盖导入额外提供 `ImportWriter<T>`，沿用 `confirmImport(taskId, model, validate, writer)`：`beforeWrite(row)` 在确认事务中锁定旧记录，返回 `new ImportSnapshot(recordId, values)`，`values` 只放实际覆盖的旧字段，原值为 null 也必须保留；新增行返回 null。`write(row)` 执行业务写入，覆盖行返回从数据库重读的 `updated_at` 或版本列文本。SDK 保存旧值后才调用写入器，快照、业务写入与任务快照元数据共同提交，异常共同回滚；同一任务多次覆盖同一主键时保留最初旧值与最后的写后修改标记。`ImportBackups.list(taskId, size, offset)`（size 1–1000）提供当前租户的服务内分页读取；快照原文不经通用任务 HTTP 接口暴露。
+
+已有 IO 服务升级须新增 Flyway 迁移复制 `io/saasforge/sdk/io/upgrade-import-backup.sql`（demo V15），包含快照表、RLS、标准列及任务的快照元数据与导入模型标识；新服务直接复制当前 `schema.sql`。SDK 自动保存模型全限定类名为 `IoTask.importModel`，确认时同步拒绝不匹配的模型，保留待确认状态。历史无模型标识的任务沿用原确认接口；模型名用于区分不同业务对象的覆盖记录，快照保留期内须保持稳定。
+
+Demo 原追加导入继续使用三列模板及 `/orders/import`、`/orders/import/{taskId}/confirm`。覆盖导入使用 `/orders/import/overwrite/template` 的四列模板：标题、金额、客户来源、可选订单ID；空 ID 新增，有 ID 覆盖当前租户与数据权限内的已有订单，客户来源为空时写入 null。只覆盖标题、金额与客户来源，保留编号、状态、归属等其他字段。提交与确认路径分别为 `/orders/import/overwrite`、`/orders/import/overwrite/{taskId}/confirm`，上传仍复用 `/orders/import/upload`。历史界面按持久化的 `importModel === "io.saasforge.demo.order.model.OrderOverwriteRow"` 选择覆盖确认路由，其他及历史 null 值任务选择原路由；无需依赖页面内存。
+
+任务返回 `snapshotCount`、实际截止时间 `snapshotExpiresAt`、`snapshotAvailable`（成功且有未过期快照）；追加与纯新增任务没有可用快照。`forge.io.backup-retention` 默认 90 天，服务可调整；租户清理自动逻辑删除本租户快照，其他租户不受影响。回滚执行、权限与界面由后续能力提供。
+
 IO 统一声明 `IoStoragePurposes.SOURCE`（`io-source`，仅 xlsx、20 MiB）和 `RESULT`（`io-result`，仅 xlsx、100 MiB），下载时长均为 5 分钟。上传入口复用 SOURCE；`ExcelIo.importFile` 在提交任务之前核对用途，导出和错误报告写入 RESULT，`IoTasks.download` 按 RESULT 签发。不要把附件或结果对象当作导入源文件，否则会被同步拒绝，既不创建任务也不删除原对象。
 
 SDK 自动提供 `/io/tasks`、`/io/tasks/{id}` 和 `/io/tasks/{id}/download`，均只允许提交人访问。业务提交和模板接口须挂自己的权限码；前端的 `ImportDialog`、`ExportButton` 通过回调绑定同一服务的任务接口。参考 demo-service 的 `OrderIoService`、V12 迁移及 demo-sub-app 订单页。
@@ -328,7 +336,7 @@ Business Service 须提供带导入权限码的确认接口，调用 `ExcelIo.co
 
 导入错误报告保留当前租户的字典下拉，并提示填写名称而非编码。错误列加宽、文本自动换行并按内容估算行高。修正数据后可以直接重新上传报告，末尾“错误原因”列无需删除或清空，其旧说明不会参与校验；其他多余列仍视为格式错误。
 
-`forge.io` 默认值：`workers=2`、`queue-capacity=8`、`import-limit=10000`、`export-limit=100000`、`heartbeat-interval=10s`、`heartbeat-timeout=2m`、`retention=7d`。异步执行保留提交时 JWT 授权身份与 ABAC 主体、策略、环境快照；标准列按后台系统写入记 NULL，发起人由 Audit Event 记录；无需在业务回调手工绑定。Redis 的 `forge:io:<服务名>:tenants` 集合保留提交过任务的租户 ID，供 Global Task 在进程重启后逐租户收尾，不绕过 RLS；停机或迁移时须保留这个键。已提交的导入不会因源文件清理失败而改报失败，清理失败由维护任务继续处理；SDK 不自动重试业务任务。
+`forge.io` 默认值：`workers=2`、`queue-capacity=8`、`import-limit=10000`、`export-limit=100000`、`heartbeat-interval=10s`、`heartbeat-timeout=2m`、`retention=7d`、`backup-retention=90d`。异步执行保留提交时 JWT 授权身份与 ABAC 主体、策略、环境快照；标准列按后台系统写入记 NULL，发起人由 Audit Event 记录；无需在业务回调手工绑定。Redis 的 `forge:io:<服务名>:tenants` 集合保留提交过任务的租户 ID，供 Global Task 在进程重启后逐租户收尾，不绕过 RLS；停机或迁移时须保留这个键。已提交的导入不会因源文件清理失败而改报失败，清理失败由维护任务继续处理；SDK 不自动重试业务任务。
 
 镜像统一采用 Spring Boot build-image：生成工程中运行 `mvn spring-boot:build-image -DskipTests`，默认镜像标签为 artifactId:version；用 `-Dspring-boot.build-image.imageName=命名空间/服务:版本` 覆盖。需要 Docker，首次下载 buildpack builder/run image。生成配置只引用必填环境变量，不内置地址或密钥；运行时注入上表变量。平台与 Shell 镜像参见 [镜像说明](../deploy/images/README.md)。
 

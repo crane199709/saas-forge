@@ -25,6 +25,16 @@ public interface OrderMapper extends BaseMapper<Order> {
     List<Order> selectPage(
             @Param("sorts") List<OrderSort> sorts, @Param("limit") int limit, @Param("offset") long offset);
 
+    /** 锁定将被覆盖的可见订单，锁一直保留到导入确认事务结束；租户与 Data Policy 由 SDK 注入。 */
+    Order selectForImport(@Param("id") UUID id);
+
+    /** 只覆盖导入模型声明的三个字段，空客户来源同样覆盖；标准列由 SQL 维护。 */
+    int overwriteImported(
+            @Param("id") UUID id,
+            @Param("title") String title,
+            @Param("amount") java.math.BigDecimal amount,
+            @Param("customerSource") String customerSource);
+
     /** 分页查询已删除订单；排序白名单与普通列表一致，租户与 Data Policy 条件由 SDK 注入。 */
     List<Order> selectDeletedPage(
             @Param("sorts") List<OrderSort> sorts, @Param("limit") int limit, @Param("offset") long offset);

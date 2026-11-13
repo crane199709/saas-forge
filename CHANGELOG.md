@@ -6,6 +6,8 @@
 
 ### 变更
 
+- `forge-sdk-io` 覆盖导入确认支持 `ImportWriter`：同一事务内先保存实际覆盖字段旧值，再写入并登记写后修改标记；新增行无快照，失败共同回滚。任务新增持久导入模型与快照可用元数据，默认保留期 `forge.io.backup-retention=90d`，快照纳入租户删除清理。已有 IO 服务新增迁移复制 `upgrade-import-backup.sql`（demo V15），新服务复制当前 `schema.sql`。通用业务规范与接入指南同步补充快照写入器、迁移及模型路由约定；默认 archetype 与 sub-app-kit 不使用 IO，不添加可选能力所需的表或依赖。
+
 - Java 的 `if`、`else`、`for`、`while`、`do-while` 语句体一律使用大括号（含单条语句与空循环体）。`forge-dependencies` 在 `validate` 阶段自动运行 Checkstyle `NeedBraces`，覆盖生产与测试代码，违规即失败；平台、SDK 与 archetype 生成的业务服务共用内联规则。同步根与业务服务模板的 `AGENTS.md`、业务服务编码规范、平台内部规范、接入指南，以及 Sub-App 规范与模板中的配套后端说明。已有服务升级父 POM 后须补齐大括号，并更新规范副本与 `AGENTS.md`；前端检查规则不变。
 - 字段脱敏与权限目录、SDK 依赖门禁集成：将可选日志适配 `ch.qos.logback:logback-classic` 纳入 Security 模块直接依赖白名单，按独立授权和审计用途登记 `viewRaw` 动作，权限目录随当前源码更新；保留所有原有中间件禁用与白名单约束。
 
