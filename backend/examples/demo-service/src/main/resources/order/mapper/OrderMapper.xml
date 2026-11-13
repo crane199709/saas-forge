@@ -20,7 +20,7 @@
     </select>
     <update id="overwriteImported">
         UPDATE orders SET title=#{title},amount=#{amount},customer_source=#{customerSource},
-        updated_at=CURRENT_TIMESTAMP,updated_by=NULL
+        updated_at=CURRENT_TIMESTAMP,updated_by=#{actor}
         WHERE NOT deleted AND id=#{id}
     </update>
     <select id="selectDeletedPage" resultType="io.saasforge.demo.order.entity.Order">

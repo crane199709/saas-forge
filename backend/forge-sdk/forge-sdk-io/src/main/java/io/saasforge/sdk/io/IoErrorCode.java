@@ -26,6 +26,10 @@ public enum IoErrorCode implements ErrorCode {
     INTERRUPTED("io.interrupted", 500),
     /** 字段策略缺失、禁止导出或执行失败；不得回退为原文。 */
     MASKING_FAILED("io.maskingFailed", 500),
+    /** 回滚存在冲突，默认拒绝继续。 */
+    ROLLBACK_CONFLICTS("io.rollbackConflicts", 409),
+    /** 当前任务没有可用的覆盖前快照。 */
+    ROLLBACK_UNAVAILABLE("io.rollbackUnavailable", 409),
     /** 执行异常。 */
     FAILED("io.failed", 500);
     private final String code;

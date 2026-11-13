@@ -145,10 +145,19 @@ public class OrderService implements TenantDataCleaner {
         return order;
     }
 
+    /** 在 SDK 逐记录事务内锁定当前可见订单；不可见返回 null，使冲突正常提交而不标记事务回滚。 */
+    @Transactional
+    public String lockRollbackVersion(UUID id) {
+        Order order = orderMapper.selectForImport(id);
+        return order == null ? null : order.getUpdatedAt().toString();
+    }
+
     /** 覆盖模型中的字段，不修改订单编号、状态与归属。 */
     @Transactional
     public Order overwriteImported(UUID id, String title, BigDecimal amount, String customerSource) {
-        if (orderMapper.overwriteImported(id, title, amount, customerSource) == 0) {
+        CurrentActorProvider provider = actors.getIfAvailable();
+        UUID actor = provider == null ? null : provider.currentActor().orElse(null);
+        if (orderMapper.overwriteImported(id, title, amount, customerSource, actor) == 0) {
             throw notFound(id);
         }
         return get(id);

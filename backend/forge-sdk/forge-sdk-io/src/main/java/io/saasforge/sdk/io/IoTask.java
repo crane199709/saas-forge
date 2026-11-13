@@ -20,12 +20,17 @@ public record IoTask(
         OffsetDateTime createdAt,
         OffsetDateTime finishedAt,
         long snapshotCount,
-        OffsetDateTime snapshotExpiresAt) {
+        OffsetDateTime snapshotExpiresAt,
+        String rollbackStatus,
+        long rollbackAttempts,
+        long restoredCount,
+        long skippedCount,
+        long failedCount) {
     /** 只有成功完成且仍在保留期内的覆盖快照可用于回滚。 */
     @JsonProperty("snapshotAvailable")
     public boolean snapshotAvailable() {
         return "SUCCEEDED".equals(status)
-                && snapshotCount > 0
+                && snapshotCount > restoredCount
                 && snapshotExpiresAt != null
                 && snapshotExpiresAt.isAfter(OffsetDateTime.now());
     }

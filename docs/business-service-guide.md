@@ -324,13 +324,22 @@ Demo 原追加导入继续使用三列模板及 `/orders/import`、`/orders/impo
 
 任务返回 `snapshotCount`、实际截止时间 `snapshotExpiresAt`、`snapshotAvailable`（成功且有未过期快照）；追加与纯新增任务没有可用快照。`forge.io.backup-retention` 默认 90 天，服务可调整；租户清理自动逻辑删除本租户快照，其他租户不受影响。回滚只读预览调用 `ImportRollbacks.preview(taskId, model, reader)`，返回 `ImportRollbackPreview`：`available`、`unavailableReason`、`blocked`、`totalCount`、`rollbackableCount`、`conflictCount`、`snapshotExpiresAt` 与 `conflicts(recordId, reason)`。人工修改为 `RECORD_MODIFIED`，同模型同记录后续实际覆盖为 `LATER_IMPORT`，当前数据权限不可见或记录已删除统一为 `RECORD_UNAVAILABLE`；报告没有旧字段值。过期为 `available=false / SNAPSHOT_EXPIRED`，无覆盖快照为 `NO_SNAPSHOTS`，不返回“空报告即安全”的假象。
 
-Demo 的 `GET /orders/import/{taskId}/rollback-preview` 使用独立 `order:importRollback`，清单版本升为 9；与导入权限分离，仍只允许查看本人任务。服务的 `ImportVersionReader` 按当前 Data Policy 读取数据库版本；其他租户或提交人任务仍为 404，只有导入权限仍为 403。已有 IO 服务新增迁移复制 `upgrade-import-rollback-preview.sql`（demo V16），增加后续实际覆盖标记，保持已有迁移不变。覆盖标记在业务行锁与确认事务内更新，只影响同租户、同模型、同记录的已存在快照，不依赖任务创建顺序。执行方必须在锁定当前可见业务行后调用 `ImportRollbacks.check(backup, reader)` 重查，并在同一事务中恢复，不能依赖先前的预览结果。执行与界面由后续能力提供。
+Demo 的 `GET /orders/import/{taskId}/rollback-preview` 使用独立 `order:importRollback`，清单版本升为 9；与导入权限分离，仍只允许查看本人任务。服务的 `ImportVersionReader` 按当前 Data Policy 读取数据库版本；其他租户或提交人任务仍为 404，只有导入权限仍为 403。已有 IO 服务新增迁移复制 `upgrade-import-rollback-preview.sql`（demo V16），增加后续实际覆盖标记，保持已有迁移不变。覆盖标记在业务行锁与确认事务内更新，只影响同租户、同模型、同记录的已存在快照，不依赖任务创建顺序。执行方必须在锁定当前可见业务行后调用 `ImportRollbacks.check(backup, reader)` 重查，并在同一事务中恢复，不能依赖先前的预览结果。执行入口如下；界面由导入历史与回滚对话框接入。
 
 IO 统一声明 `IoStoragePurposes.SOURCE`（`io-source`，仅 xlsx、20 MiB）和 `RESULT`（`io-result`，仅 xlsx、100 MiB），下载时长均为 5 分钟。上传入口复用 SOURCE；`ExcelIo.importFile` 在提交任务之前核对用途，导出和错误报告写入 RESULT，`IoTasks.download` 按 RESULT 签发。不要把附件或结果对象当作导入源文件，否则会被同步拒绝，既不创建任务也不删除原对象。
 
 SDK 自动提供 `/io/tasks`、`/io/tasks/{id}` 和 `/io/tasks/{id}/download`，均只允许提交人访问。业务提交和模板接口须挂自己的权限码；前端的 `ImportDialog`、`ExportButton` 通过回调绑定同一服务的任务接口。参考 demo-service 的 `OrderIoService`、V12 迁移及 demo-sub-app 订单页。
 
 前端 `IoTaskApi.list(page)` 接收从 1 开始的页码并返回 SDK `Page<IoTask>`。例如 ``list: (page) => client.page<IoTask>(`/demo/io/tasks?page=${page}&size=10`)``；升级时须将旧的无参列表回调改为转发页码，并移除取 `.items` 的操作。`ImportDialog` 与 `ExportButton` 使用分页元数据提供翻页入口，只有当前页参与刷新，较早待确认任务在重开弹窗或刷新页面后仍可翻页找到。
+
+
+回滚执行使用 `ImportRollbacks.execute(taskId, model, skipConflicts, ImportRollbackWriter)`。写入器的 `readVersion` 供预检，`lockAndReadVersion` 在 SDK 当前逐记录事务中锁住当前数据权限可见的业务行并返回实际版本，`restore` 只恢复 `backup.values()` 的业务字段并维护标准审计列。SDK 再锁快照并重新 `check`，恢复与 `RESTORED` 标记共同提交；失败记录可重试，已恢复记录不再读取业务版本或写入。数据库任务行锁覆盖整次调用，自动随事务/连接释放；执行中断后可直接重试，无持久占用状态。预检有冲突且未确认跳过时零恢复；持锁后发现新冲突且未确认跳过时停止后续恢复，已提交记录保留。明确传入 `skipConflicts=true` 才跳过冲突并继续。
+
+Demo 提供 `POST /orders/import/{taskId}/rollback`，请求 `{"skipConflicts": false}`，要求独立 `order:importRollback`，仍限当前 Tenant 的本人任务。成功或部分完成返回 200 的 `ImportRollbackResult(taskId, status, unavailableReason, restoredCount, skippedCount, failedCount, conflicts)`，状态为 `SUCCEEDED` 或 `PARTIAL`；默认冲突返回 409 `io.rollbackConflicts`，过期、无快照或模型不支持等返回 409 `io.rollbackUnavailable`，精确原因与冲突清单从 GET 预览重新获取。SDK 执行接口对这两类结果仍返回 `BLOCKED` / `UNAVAILABLE` 报告，供服务选择 HTTP 映射。任务 `rollbackStatus`、`rollbackAttempts`、`restoredCount`、`skippedCount`、`failedCount` 与原导入状态分开；次数只统计完成的调用，响应与任务计数为累计已恢复数及当前跳过/失败数，审计 `io.importRollback` 的三项计数为本次实际处理数，因此幂等重复调用恢复数为 0。
+
+已有服务另加 Flyway 迁移复制 `upgrade-import-rollback-execution.sql`（demo V17），保留 V15/V16。新服务当前 `schema.sql` 已含所需列。`IoMaintenance.expire` 在按租户维护中先与回滚任务锁互斥，再清空过期快照旧值并逻辑删除；任务上的总数、截止时间、已完成回滚结果与统计仍保留，过期明确拒绝新恢复。默认 90 天通过 `forge.io.backup-retention` 调整，租户删除流程继续清理该租户全部快照。
+
+到期快照清理同时接入现有全局维护的已提交租户扫描，因为普通 Tenant Task 仅运行试用/正常租户，不能保证停用租户的保留期。全局路径只在既有基础设施维护豁免内清理快照，不扩大业务写入权限；任务锁内先汇总已提交的逐记录结果，再清空旧值，进程中断未完成汇总的成功记录也保留历史计数。租户删除同样立即清空快照字段旧值并逻辑删除。
 
 Business Service 须提供带导入权限码的确认接口，调用 `ExcelIo.confirmImport(taskId, model, validate, writer)`，并返回排队后的 `IoTask`。每次确认重新传入相同模型、只读业务校验器与事务内写入器；SDK 从持久源文件完整重新校验，全部行通过才在同一事务内逐行写入。校验失败时生成新的 Error Report，一行不写。确认使用当次请求的认证与 ABAC 快照，可交给另一实例，也支持提交实例重启后的确认。初次提交使用三参 `importFile(model, source, validate)`，写入器仅在确认时提供；旧四参签名已删除。
 
