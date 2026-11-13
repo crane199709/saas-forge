@@ -34,7 +34,7 @@ class DemoManifestExportTest {
                 JsonMapper.builder().build().readValue(Files.readString(output), ResourceManifest.class);
         manifest.validate();
         assertThat(manifest.service()).isEqualTo("demo-service");
-        assertThat(manifest.version()).isEqualTo("8");
+        assertThat(manifest.version()).isEqualTo("9");
         assertThat(manifest.platform()).isFalse();
         assertThat(manifest.permissions())
                 .containsExactly(
@@ -45,6 +45,7 @@ class DemoManifestExportTest {
                         new Permission("order:delete", "删除订单", "订单"),
                         new Permission("order:export", "导出订单", "订单"),
                         new Permission("order:import", "导入订单", "订单"),
+                        new Permission("order:importRollback", "回滚订单导入", "订单"),
                         new Permission("order:read", "查看订单", "订单"),
                         new Permission("order:update", "修改订单", "订单"));
     }

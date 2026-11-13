@@ -6,6 +6,8 @@
 
 ### 变更
 
+- `forge-sdk-io` 新增 `ImportRollbacks` 只读冲突预览：按当前数据权限核对修改标记、按实际覆盖先后识别同模型同记录的后续导入，报告只含主键、原因和数量；冲突默认阻断，过期或无快照明确不可回滚。执行方须在业务行锁与同一事务内调用公开 `check` 重查，预览不能作为写入许可。已有 IO 服务新增迁移复制 `upgrade-import-rollback-preview.sql`（demo V16），新服务复制当前 `schema.sql`。Demo 新增独立 `order:importRollback` 与预览接口，清单升 9，保持本人任务访问边界。通用业务规范、archetype 可选 IO 接入提示与指南同步；默认 archetype/sub-app-kit 不使用 IO，不引入可选表、配置或页面。
+
 - `forge-sdk-io` 覆盖导入确认支持 `ImportWriter`：同一事务内先保存实际覆盖字段旧值，再写入并登记写后修改标记；新增行无快照，失败共同回滚。任务新增持久导入模型与快照可用元数据，默认保留期 `forge.io.backup-retention=90d`，快照纳入租户删除清理。已有 IO 服务新增迁移复制 `upgrade-import-backup.sql`（demo V15），新服务复制当前 `schema.sql`。通用业务规范与接入指南同步补充快照写入器、迁移及模型路由约定；默认 archetype 与 sub-app-kit 不使用 IO，不添加可选能力所需的表或依赖。
 
 - Java 的 `if`、`else`、`for`、`while`、`do-while` 语句体一律使用大括号（含单条语句与空循环体）。`forge-dependencies` 在 `validate` 阶段自动运行 Checkstyle `NeedBraces`，覆盖生产与测试代码，违规即失败；平台、SDK 与 archetype 生成的业务服务共用内联规则。同步根与业务服务模板的 `AGENTS.md`、业务服务编码规范、平台内部规范、接入指南，以及 Sub-App 规范与模板中的配套后端说明。已有服务升级父 POM 后须补齐大括号，并更新规范副本与 `AGENTS.md`；前端检查规则不变。

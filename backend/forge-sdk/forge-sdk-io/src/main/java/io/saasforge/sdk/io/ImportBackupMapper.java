@@ -16,6 +16,10 @@ interface ImportBackupMapper {
             @Param("expiresAt") OffsetDateTime expiresAt);
     /** 保存该任务最后一次覆盖后的修改标记。 */
     void complete(@Param("taskId") UUID taskId, @Param("recordId") String recordId, @Param("version") String version);
+    /** 在业务行锁内标记同模型同记录的其他已完成覆盖快照，与业务写入同一事务；不受 Data Policy 过滤。 */
+    void supersede(@Param("taskId") UUID taskId, @Param("recordId") String recordId);
+    /** 读取一条最新快照状态，供执行时在业务行锁内重查；只受租户隔离。 */
+    ImportBackupState state(@Param("taskId") UUID taskId, @Param("recordId") String recordId);
     /** 分页读取当前租户中属于该任务的未删除快照。 */
     List<ImportBackupData> list(@Param("taskId") UUID taskId, @Param("limit") int limit, @Param("offset") long offset);
     /** 同步任务的快照数量与实际截止时间，与业务写入处于同一事务。 */

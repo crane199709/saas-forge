@@ -8,9 +8,22 @@
     </insert>
     <update id="complete">
         UPDATE forge_import_backup
-        SET imported_version=#{version},updated_at=CURRENT_TIMESTAMP,updated_by=NULL
+        SET imported_version=#{version},superseded_by_task_id=NULL,updated_at=CURRENT_TIMESTAMP,updated_by=NULL
         WHERE NOT deleted AND task_id=#{taskId} AND record_id=#{recordId}
     </update>
+    <update id="supersede">
+        UPDATE forge_import_backup
+        SET superseded_by_task_id=#{taskId},updated_at=CURRENT_TIMESTAMP,updated_by=NULL
+        WHERE NOT deleted AND record_id=#{recordId} AND task_id &lt;&gt; #{taskId} AND imported_version IS NOT NULL
+        AND task_id IN (
+        SELECT id FROM forge_io_task WHERE NOT deleted
+        AND import_model=(SELECT import_model FROM forge_io_task WHERE NOT deleted AND id=#{taskId})
+        )
+    </update>
+    <select id="state" resultType="io.saasforge.sdk.io.ImportBackupState">
+        SELECT imported_version,expires_at,superseded_by_task_id FROM forge_import_backup
+        WHERE NOT deleted AND task_id=#{taskId} AND record_id=#{recordId}
+    </select>
     <select id="list" resultType="io.saasforge.sdk.io.ImportBackupData">
         SELECT id,task_id,record_id,CAST(field_values AS text) AS values_json,imported_version,expires_at
         FROM forge_import_backup

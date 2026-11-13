@@ -20,6 +20,8 @@ import io.saasforge.sdk.core.api.ForgeException;
 import io.saasforge.sdk.io.ExcelColumn;
 import io.saasforge.sdk.io.ExcelIo;
 import io.saasforge.sdk.io.ImportBackups;
+import io.saasforge.sdk.io.ImportRollbackReason;
+import io.saasforge.sdk.io.ImportRollbacks;
 import io.saasforge.sdk.io.ImportSnapshot;
 import io.saasforge.sdk.io.ImportWriter;
 import io.saasforge.sdk.io.IoAutoConfiguration;
@@ -76,6 +78,8 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.StandardEnvironment;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -180,6 +184,9 @@ class ObjectStorageTest {
 
     @Autowired
     ImportBackups backups;
+
+    @Autowired
+    ImportRollbacks rollbacks;
 
     private UUID tenant;
 
@@ -339,9 +346,16 @@ class ObjectStorageTest {
     ConfigurableApplicationContext application;
 
     private AnnotationConfigApplicationContext anotherIoInstance() {
+        return anotherIoInstance(Map.of());
+    }
+
+    private AnnotationConfigApplicationContext anotherIoInstance(Map<String, Object> overrides) {
         var instance = new AnnotationConfigApplicationContext();
         instance.setParent(application);
-        instance.setEnvironment(application.getEnvironment());
+        var environment = new StandardEnvironment();
+        environment.merge(application.getEnvironment());
+        environment.getPropertySources().addFirst(new MapPropertySource("io-instance-overrides", overrides));
+        instance.setEnvironment(environment);
         instance.register(IoAutoConfiguration.class);
         instance.refresh();
         return instance;
@@ -1311,6 +1325,236 @@ class ObjectStorageTest {
             assertThat(task.get("id")).isEqualTo(taskId);
             assertThat(task.get("importModel")).isEqualTo("io.saasforge.demo.order.model.OrderOverwriteRow");
         });
+    }
+
+    @Test
+    void rollbackPreviewReportsOnlyCoveredRecordsAndDoesNotWriteBusinessData() throws Exception {
+        String orderId = createOrder(tenant);
+        String taskId = submitOverwrite(new String[][] {{"覆盖后的标题", "12", "线上", orderId}, {"本次新增", "3", "线上", ""}});
+        confirmOverwrite(taskId);
+        var response = exchange(tenant, HttpMethod.GET, "/orders/import/" + taskId + "/rollback-preview", null);
+        assertThat(response.get("httpStatus")).isEqualTo(200);
+        var report = (Map<?, ?>) response.get("data");
+        assertThat(report.get("available")).isEqualTo(true);
+        assertThat(report.get("blocked")).isEqualTo(false);
+        assertThat(report.get("totalCount")).isEqualTo(1);
+        assertThat(report.get("rollbackableCount")).isEqualTo(1);
+        assertThat(report.get("conflictCount")).isEqualTo(0);
+        assertThat((List<?>) report.get("conflicts")).isEmpty();
+        assertThat(report.toString()).doesNotContain("附件订单", "覆盖后的标题", "fieldValues", "importedVersion");
+        assertThat(((Map<?, ?>) exchange(tenant, HttpMethod.GET, "/orders/" + orderId, null)
+                                .get("data"))
+                        .get("title"))
+                .isEqualTo("覆盖后的标题");
+        assertThat((List<?>) exchange(tenant, HttpMethod.GET, "/orders", null).get("data"))
+                .hasSize(2);
+    }
+
+    @Test
+    void rollbackPreviewUsesActualOverwriteOrderInsteadOfTaskCreationOrder() throws Exception {
+        String orderId = createOrder(tenant);
+        String earlierCreated = submitOverwrite(new String[][] {{"最后才覆盖", "30", "线上", orderId}});
+        assertThat(awaitValidation(earlierCreated).get("status")).isEqualTo("AWAITING_CONFIRM");
+        String laterCreated = submitOverwrite(new String[][] {{"先覆盖", "20", "线上", orderId}});
+        confirmOverwrite(laterCreated);
+        confirmOverwrite(earlierCreated);
+        var report = (Map<?, ?>)
+                exchange(tenant, HttpMethod.GET, "/orders/import/" + laterCreated + "/rollback-preview", null)
+                        .get("data");
+        assertThat(report.get("available")).isEqualTo(true);
+        assertThat(report.get("blocked")).isEqualTo(true);
+        assertThat(report.get("rollbackableCount")).isEqualTo(0);
+        assertThat(report.get("conflicts")).isEqualTo(List.of(Map.of("recordId", orderId, "reason", "LATER_IMPORT")));
+        var latest = (Map<?, ?>)
+                exchange(tenant, HttpMethod.GET, "/orders/import/" + earlierCreated + "/rollback-preview", null)
+                        .get("data");
+        assertThat(latest.get("blocked")).isEqualTo(false);
+        assertThat(latest.get("rollbackableCount")).isEqualTo(1);
+        assertThat(((Map<?, ?>) exchange(tenant, HttpMethod.GET, "/orders/" + orderId, null)
+                                .get("data"))
+                        .get("title"))
+                .isEqualTo("最后才覆盖");
+    }
+
+    @Test
+    void rollbackPreviewBlocksAfterManualEditAndCountsTheRemainingSafeRecord() throws Exception {
+        String edited = createOrder(tenant);
+        String safe = createOrder(tenant);
+        String taskId = submitOverwrite(new String[][] {{"被改记录", "2", "线上", edited}, {"安全记录", "3", "线上", safe}});
+        confirmOverwrite(taskId);
+        assertThat(exchange(tenant, HttpMethod.PUT, "/orders/" + edited, Map.of("title", "导入后的人工修改", "amount", 99))
+                        .get("httpStatus"))
+                .isEqualTo(200);
+        var report =
+                (Map<?, ?>) exchange(tenant, HttpMethod.GET, "/orders/import/" + taskId + "/rollback-preview", null)
+                        .get("data");
+        assertThat(report.get("blocked")).isEqualTo(true);
+        assertThat(report.get("totalCount")).isEqualTo(2);
+        assertThat(report.get("rollbackableCount")).isEqualTo(1);
+        assertThat(report.get("conflictCount")).isEqualTo(1);
+        assertThat(report.get("conflicts")).isEqualTo(List.of(Map.of("recordId", edited, "reason", "RECORD_MODIFIED")));
+        assertThat(report.toString()).doesNotContain("导入后的人工修改", "附件订单", "安全记录");
+        assertThat(((Map<?, ?>) exchange(tenant, HttpMethod.GET, "/orders/" + edited, null)
+                                .get("data"))
+                        .get("title"))
+                .isEqualTo("导入后的人工修改");
+    }
+
+    @Test
+    void rollbackPreviewReportsDeletedRecordsWithoutExposingOldFields() throws Exception {
+        String orderId = createOrder(tenant);
+        String taskId = submitOverwrite(new String[][] {{"删除前覆盖", "2", "线上", orderId}});
+        confirmOverwrite(taskId);
+        assertThat(exchange(tenant, HttpMethod.DELETE, "/orders/" + orderId, null)
+                        .get("httpStatus"))
+                .isEqualTo(200);
+        var report =
+                (Map<?, ?>) exchange(tenant, HttpMethod.GET, "/orders/import/" + taskId + "/rollback-preview", null)
+                        .get("data");
+        assertThat(report.get("blocked")).isEqualTo(true);
+        assertThat(report.get("rollbackableCount")).isEqualTo(0);
+        assertThat(report.get("conflicts"))
+                .isEqualTo(List.of(Map.of("recordId", orderId, "reason", "RECORD_UNAVAILABLE")));
+        assertThat(report.toString()).doesNotContain("附件订单", "删除前覆盖", "values");
+    }
+
+    @Test
+    void rollbackPreviewUsesCurrentDataPolicyAndKeepsImportPermissionIndependent() throws Exception {
+        String orderId = createOrder(tenant);
+        String taskId = submitOverwrite(new String[][] {{"权限变化前覆盖", "2", "线上", orderId}});
+        confirmOverwrite(taskId);
+        String path = "/orders/import/" + taskId + "/rollback-preview";
+        UUID importer = UUID.randomUUID();
+        TestGrants.publish(redisTemplate, tenant, importer, List.of("order:import", "order:read"));
+        assertThat(exchangeAs(importer, HttpMethod.GET, path, null).get("httpStatus"))
+                .isEqualTo(403);
+        UUID otherMember = UUID.randomUUID();
+        TestGrants.publishAll(redisTemplate, tenant, otherMember);
+        assertThat(exchangeAs(otherMember, HttpMethod.GET, path, null).get("httpStatus"))
+                .isEqualTo(404);
+        UUID otherTenant = UUID.randomUUID();
+        TestGrants.publishAll(redisTemplate, otherTenant, TestTokens.MEMBERSHIP_ID);
+        assertThat(exchange(otherTenant, HttpMethod.GET, path, null).get("httpStatus"))
+                .isEqualTo(404);
+        TestGrants.publish(
+                redisTemplate,
+                tenant,
+                TestTokens.MEMBERSHIP_ID,
+                2,
+                TestGrants.ALL_ORDER_PERMISSIONS,
+                SubjectAttributes.NONE,
+                List.of());
+        var response = RestClient.create("http://localhost:" + port)
+                .get()
+                .uri(path)
+                .header("Authorization", "Bearer " + TestTokens.forMembership(tenant, TestTokens.MEMBERSHIP_ID, 2))
+                .retrieve()
+                .body(Map.class);
+        assertThat(response.get("httpStatus")).isEqualTo(200);
+        var report = (Map<?, ?>) response.get("data");
+        assertThat(report.get("blocked")).isEqualTo(true);
+        assertThat(report.get("conflicts"))
+                .isEqualTo(List.of(Map.of("recordId", orderId, "reason", "RECORD_UNAVAILABLE")));
+        assertThat(report.toString()).doesNotContain("附件订单", "权限变化前覆盖", "values");
+    }
+
+    @Test
+    void rollbackPreviewExplicitlyRejectsTasksWithoutSnapshotsOrUnsupportedModels() throws Exception {
+        String pending = submitOverwrite(new String[][] {{"待确认", "2", "线上", createOrder(tenant)}});
+        awaitValidation(pending);
+        var report =
+                (Map<?, ?>) exchange(tenant, HttpMethod.GET, "/orders/import/" + pending + "/rollback-preview", null)
+                        .get("data");
+        assertThat(report.get("available")).isEqualTo(false);
+        assertThat(report.get("unavailableReason")).isEqualTo("TASK_NOT_SUCCEEDED");
+        String onlyNew = submitOverwrite(new String[][] {{"无覆盖新增", "2", "线上", ""}});
+        confirmOverwrite(onlyNew);
+        report = (Map<?, ?>) exchange(tenant, HttpMethod.GET, "/orders/import/" + onlyNew + "/rollback-preview", null)
+                .get("data");
+        assertThat(report.get("available")).isEqualTo(false);
+        assertThat(report.get("blocked")).isEqualTo(true);
+        assertThat(report.get("unavailableReason")).isEqualTo("NO_SNAPSHOTS");
+        var append = confirmImport(submitImport(uploadWorkbook(new String[][] {{"追加模型", "1", "线上"}})));
+        report = (Map<?, ?>)
+                exchange(tenant, HttpMethod.GET, "/orders/import/" + append.get("id") + "/rollback-preview", null)
+                        .get("data");
+        assertThat(report.get("available")).isEqualTo(false);
+        assertThat(report.get("unavailableReason")).isEqualTo("MODEL_MISMATCH");
+    }
+
+    @Test
+    void rollbackPreviewReportsExpiryInsteadOfAnEmptySuccessfulReport() throws Exception {
+        try (var instance = anotherIoInstance(Map.of("forge.io.backup-retention", "1ms"))) {
+            var shortLived = instance.getBean(ExcelIo.class);
+            IoTask task = syntheticOverwrite(shortLived, OrderImportRow.class, "expiring-record", "version-1");
+            var preview = asMember(() -> rollbacks.preview(task.id(), OrderImportRow.class, id -> "version-1"));
+            assertThat(preview.available()).isFalse();
+            assertThat(preview.blocked()).isTrue();
+            assertThat(preview.unavailableReason()).isEqualTo(ImportRollbackReason.SNAPSHOT_EXPIRED);
+            assertThat(preview.totalCount()).isEqualTo(1);
+            assertThat(preview.rollbackableCount()).isZero();
+            assertThat(preview.snapshotExpiresAt()).isBefore(java.time.OffsetDateTime.now());
+        }
+    }
+
+    @Test
+    void sdkRecheckUsesFreshCoverageStateAndSeparatesModelsWithTheSameRecordIdAndVersion() throws Exception {
+        IoTask first = syntheticOverwrite(excel, OrderImportRow.class, "same-id", "unchanged-marker");
+        var original = asMember(() -> backups.list(first.id(), 1, 0).get(0));
+        assertThat(asMember(() -> rollbacks.check(original, id -> "modified-after-preview"))
+                        .reason())
+                .isEqualTo(ImportRollbackReason.RECORD_MODIFIED);
+        UUID originalTenant = tenant;
+        tenant = UUID.randomUUID();
+        TestGrants.publishAll(redisTemplate, tenant, TestTokens.MEMBERSHIP_ID);
+        syntheticOverwrite(excel, OrderImportRow.class, "same-id", "unchanged-marker");
+        tenant = originalTenant;
+        assertThat(asMember(() -> rollbacks.preview(first.id(), OrderImportRow.class, id -> "unchanged-marker"))
+                        .blocked())
+                .isFalse();
+        syntheticOverwrite(excel, OtherRollbackRow.class, "same-id", "unchanged-marker");
+        assertThat(asMember(() -> rollbacks.preview(first.id(), OrderImportRow.class, id -> "unchanged-marker"))
+                        .blocked())
+                .isFalse();
+        syntheticOverwrite(excel, OrderImportRow.class, "same-id", "unchanged-marker");
+        var conflict = asMember(() -> rollbacks.check(original, id -> "unchanged-marker"));
+        assertThat(conflict.reason()).isEqualTo(ImportRollbackReason.LATER_IMPORT);
+        assertThat(asMember(() -> rollbacks.preview(first.id(), OrderImportRow.class, id -> "unchanged-marker"))
+                        .blocked())
+                .isTrue();
+    }
+
+    public record OtherRollbackRow(
+            @ExcelColumn(value = "标题", order = 1, required = true)
+            String title,
+
+            @ExcelColumn(value = "金额", order = 2, required = true)
+            BigDecimal amount,
+
+            @ExcelColumn(value = "客户来源", order = 3) String source) {}
+
+    private <T> IoTask syntheticOverwrite(ExcelIo io, Class<T> model, String recordId, String version)
+            throws Exception {
+        String source = uploadWorkbook(new String[][] {{"SDK覆盖记录", "1", "线上"}});
+        asMember(() -> {
+            storage.completeUpload(UUID.fromString(source));
+            return null;
+        });
+        IoTask task = asMember(() -> io.importFile(model, UUID.fromString(source), row -> List.of()));
+        assertThat(awaitValidation(task.id().toString()).get("status")).isEqualTo("AWAITING_CONFIRM");
+        asMember(() -> io.confirmImport(task.id(), model, row -> List.of(), new ImportWriter<>() {
+            @Override
+            public ImportSnapshot beforeWrite(T row) {
+                return new ImportSnapshot(recordId, Map.of("title", "不应暴露的覆盖前标题"));
+            }
+
+            @Override
+            public String write(T row) {
+                return version;
+            }
+        }));
+        assertThat(awaitTask(task.id().toString()).get("status")).isEqualTo("SUCCEEDED");
+        return asMember(() -> ioTasks.get(task.id()));
     }
 
     private String submitOverwrite(String[][] rows) throws Exception {
