@@ -17,11 +17,13 @@ const access = {
     {
       code: 'demo',
       name: '示例应用',
+      icon: 'grid',
       children: [
-        { code: 'demo.overview', name: '订单概览', app: 'demo', path: 'overview' },
+        { code: 'demo.overview', name: '订单概览', app: 'demo', path: 'overview', icon: 'tickets' },
         {
           code: 'demo.finance',
           name: '财务结算与发票管理',
+          icon: 'collection',
           children: [
             { code: 'demo.bills', name: '账单', app: 'demo', path: 'bills' },
             { code: 'demo.invoices', name: '供应商发票核对与归档', app: 'demo', path: 'invoices' },
@@ -107,4 +109,21 @@ test('导航-分组收起', async ({ page }) => {
   await page.getByTestId('menu-group-daily').locator('.el-sub-menu__title').first().click()
   await expect(page.getByTestId('menu-demo.overview')).toBeHidden()
   await expect(page).toHaveScreenshot('navigation-collapsed-desktop.png')
+})
+
+test('侧栏分组与叶子都渲染对辅助技术隐藏的图标', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openHome(page)
+
+  const groupIcon = page
+    .getByTestId('menu-group-demo')
+    .locator('.el-sub-menu__title > .el-icon')
+    .first()
+  await expect(groupIcon).toBeVisible()
+  await expect(groupIcon).toHaveAttribute('aria-hidden', 'true')
+
+  await page.getByTestId('menu-group-daily').locator('.el-sub-menu__title').first().click()
+  const leafIcon = page.getByTestId('menu-demo.overview').locator('.el-icon').first()
+  await expect(leafIcon).toBeVisible()
+  await expect(leafIcon).toHaveAttribute('aria-hidden', 'true')
 })

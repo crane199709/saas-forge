@@ -11,6 +11,52 @@ it('写入版式 token', () => {
     expect(style.getPropertyValue(name)).toBe(value)
 })
 
+it('写入新增的档位 token', () => {
+  applyTheme('#409eff')
+
+  const style = document.documentElement.style
+  expect(style.getPropertyValue('--forge-space-6')).toBe('32px')
+  expect(style.getPropertyValue('--forge-space-7')).toBe('48px')
+  expect(style.getPropertyValue('--forge-shadow-float')).toBe('0 6px 16px rgb(0 0 0 / 12%)')
+  expect(style.getPropertyValue('--forge-font-family')).toBe(
+    '"Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif',
+  )
+  expect(style.getPropertyValue('--forge-z-index-dropdown')).toBe('1000')
+  expect(style.getPropertyValue('--forge-z-index-sticky')).toBe('1100')
+  expect(style.getPropertyValue('--forge-z-index-overlay')).toBe('1200')
+  expect(style.getPropertyValue('--forge-z-index-dialog')).toBe('1300')
+  expect(style.getPropertyValue('--forge-z-index-toast')).toBe('1400')
+})
+
+it('现有 token 的名称与取值保持不变', () => {
+  applyTheme('#409eff')
+
+  const style = document.documentElement.style
+  expect(style.getPropertyValue('--forge-color-primary')).toBe('#409eff')
+  expect(style.getPropertyValue('--forge-space-1')).toBe('4px')
+  expect(style.getPropertyValue('--forge-space-2')).toBe('8px')
+  expect(style.getPropertyValue('--forge-space-3')).toBe('12px')
+  expect(style.getPropertyValue('--forge-space-4')).toBe('16px')
+  expect(style.getPropertyValue('--forge-space-5')).toBe('24px')
+  expect(style.getPropertyValue('--forge-radius-sm')).toBe('4px')
+  expect(style.getPropertyValue('--forge-radius-md')).toBe('6px')
+  expect(style.getPropertyValue('--forge-radius-lg')).toBe('8px')
+  expect(style.getPropertyValue('--forge-font-size-xs')).toBe('12px')
+  expect(style.getPropertyValue('--forge-font-size-sm')).toBe('14px')
+  expect(style.getPropertyValue('--forge-font-size-md')).toBe('16px')
+  expect(style.getPropertyValue('--forge-font-size-lg')).toBe('20px')
+  expect(style.getPropertyValue('--forge-color-page')).toBe('#f7fafc')
+  expect(style.getPropertyValue('--forge-shadow-card')).toBe('0 1px 2px rgb(0 0 0 / 6%)')
+})
+
+it('组件层 token 只写在组件自身元素上，不写到文档根节点', () => {
+  applyTheme('#409eff')
+
+  // 层归属见 ADR-0029：组件私有取值若进了根节点，Sub-App 会跟着拿到它不该依赖的变量。
+  expect(document.documentElement.style.getPropertyValue('--forge-empty-icon-size')).toBe('')
+  expect(document.documentElement.style.getPropertyValue('--forge-empty-icon-glyph')).toBe('')
+})
+
 it('写入主色及 Element Plus 的派生色', () => {
   applyTheme('#8b5cf6')
 

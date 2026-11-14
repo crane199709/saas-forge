@@ -1,3 +1,4 @@
+import { Tickets } from '@element-plus/icons-vue'
 import { flushPromises } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 import { h } from 'vue'
@@ -27,6 +28,36 @@ it('渲染产品名、顶栏插槽、菜单链接与分组及内容区', async (
   expect(wrapper.get('[data-testid="menu-group-demo"]').text()).toContain('示例')
   expect(wrapper.get('[data-testid="menu-demo.orders"]').text()).toBe('订单')
   expect(wrapper.get('main').text()).toBe('页面内容')
+})
+
+const withIcons: MenuItem[] = [
+  { key: 'home', title: '首页', path: '/', icon: 'home' },
+  {
+    key: 'demo',
+    title: '示例',
+    icon: 'grid',
+    children: [{ key: 'demo.orders', title: '订单', path: '/apps/demo/orders', icon: 'tickets' }],
+  },
+]
+
+it('在菜单文字之前渲染对辅助技术隐藏的图标', async () => {
+  const wrapper = await mountWithShell(AppLayout, {
+    props: { title: 'SaaS Forge', menu: withIcons, activePath: '/' },
+  })
+
+  const link = wrapper.get('[data-testid="menu-home"]')
+  const leafIcon = link.get('.el-icon')
+  expect(leafIcon.attributes('aria-hidden')).toBe('true')
+  expect(link.element.firstElementChild).toBe(leafIcon.element)
+  expect(leafIcon.element.nextSibling?.textContent).toBe('首页')
+  // 布局把图标名交给白名单解析：叶子项渲染的是 `tickets` 对应的元素图标，不是任意图标。
+  expect(wrapper.get('[data-testid="menu-demo.orders"]').findComponent(Tickets).exists()).toBe(true)
+
+  const groupTitle = wrapper.get('[data-testid="menu-group-demo"] .el-sub-menu__title')
+  const groupIcon = groupTitle.get('.el-icon')
+  expect(groupIcon.attributes('aria-hidden')).toBe('true')
+  expect(groupTitle.element.firstElementChild).toBe(groupIcon.element)
+  expect(groupIcon.element.nextSibling?.textContent).toBe('示例')
 })
 
 it('高亮与当前路径最长匹配的菜单项，下级路径归到所属项', async () => {

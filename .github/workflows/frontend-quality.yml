@@ -34,7 +34,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: steps.changes.outputs.run == 'true'
         with:
-          node-version: '24'
+          node-version: "24"
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
@@ -46,6 +46,9 @@ jobs:
       - run: pnpm format:check 2>&1 | tee format-check.log
         if: steps.changes.outputs.run == 'true'
       - run: pnpm lint:style
+        if: steps.changes.outputs.run == 'true'
+      # @forge/ui 全用 h() 内联样式，stylelint 只覆盖 .vue/.css，这个盲区由 AST 工具补上。
+      - run: pnpm lint:ui
         if: steps.changes.outputs.run == 'true'
       - run: pnpm build
         if: steps.changes.outputs.run == 'true'

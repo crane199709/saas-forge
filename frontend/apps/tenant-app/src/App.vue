@@ -26,9 +26,16 @@ const { t } = useI18n()
 const route = useRoute()
 
 const menu = computed<MenuItem[]>(() => [
-  { key: 'home', title: t('app.workbench'), path: '/' },
+  { key: 'home', title: t('app.workbench'), icon: 'home', path: '/' },
   ...(access.has(['todo:read', 'notification:read', 'announcement:read'])
-    ? [{ key: 'notifications', title: '通知中心', path: '/notifications' }]
+    ? [
+        {
+          key: 'notifications',
+          title: '通知中心',
+          icon: 'bell',
+          path: '/notifications',
+        } satisfies MenuItem,
+      ]
     : []),
   // 工作台与通知中心固定在顶部，其余按租户的导航布局排列。
   ...arrangeNavigation(
@@ -101,5 +108,21 @@ applyTheme(themeTokens.primary)
   :deep(.tenant-switcher .el-select) {
     width: 150px;
   }
+}
+</style>
+
+<style>
+/*
+ * 表格密度由 Shell 统一设置，Sub-App 页面不再逐表调整：40px 行高 = 单元格上下内边距
+ * --forge-space-2（8px × 2）+ 正文行高 23px + 1px 分隔线；正文字号保持 14px。
+ * 展开行（el-table__expanded-cell）自带大内边距，不参与密度覆盖。
+ */
+.el-table {
+  --forge-table-row-height: 40px;
+  font-size: var(--forge-font-size-sm);
+}
+.el-table .el-table__cell:not(.el-table__expanded-cell) {
+  height: var(--forge-table-row-height);
+  padding: var(--forge-space-2) 0;
 }
 </style>

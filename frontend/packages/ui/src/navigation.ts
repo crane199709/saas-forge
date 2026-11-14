@@ -1,5 +1,6 @@
 import type { NavigationLayout, NavigationLayoutNode } from '@crane199709/sdk'
 import type { MenuItem } from './AppLayout'
+import type { MenuIconName } from './icons'
 
 /**
  * 默认导航树的节点，恰有 `page`（Shell Page 的页面键）或 `menu`（清单菜单编码）之一，作为菜单项的 `key`。
@@ -9,6 +10,8 @@ export interface NavigationEntry {
   page?: string
   menu?: string
   title: string
+  /** Resource Manifest 菜单声明的图标名，由布局原样透传，解析与回退由菜单组件负责。 */
+  icon?: MenuIconName
   path?: string
   children?: NavigationEntry[]
 }
@@ -127,8 +130,8 @@ export function placeNavigation<T>(
 function toItem(entry: NavigationEntry): MenuItem {
   const key = (entry.page ?? entry.menu)!
   return entry.children
-    ? { key, title: entry.title, children: [] }
-    : { key, title: entry.title, path: entry.path }
+    ? { key, title: entry.title, icon: entry.icon, children: [] }
+    : { key, title: entry.title, icon: entry.icon, path: entry.path }
 }
 
 // 分组只在含有页面时显示，按层级自下而上去掉空分组。

@@ -1,16 +1,31 @@
-import { ElAside, ElContainer, ElHeader, ElMain, ElMenu, ElMenuItem, ElSubMenu } from 'element-plus'
+import {
+  ElAside,
+  ElContainer,
+  ElHeader,
+  ElIcon,
+  ElMain,
+  ElMenu,
+  ElMenuItem,
+  ElSubMenu,
+} from 'element-plus'
 import { computed, defineComponent, h, resolveComponent, type PropType } from 'vue'
+import { resolveMenuIcon, type MenuIconName } from './icons'
 
 /** 侧边菜单项：带 `path` 的是链接，带 `children` 的是以 `title` 为标题、可折叠的分组，最多三层。 */
 export interface MenuItem {
   /** 链接与分组各自唯一；链接带 `data-testid="menu-<key>"`，分组带 `data-testid="menu-group-<key>"`。 */
   key: string
   title: string
+  /** 图标名，写法与回退行为见 `resolveMenuIcon`；缺省时使用默认图标。 */
+  icon?: MenuIconName
   path?: string
   children?: MenuItem[]
 }
 
 const linkStyle = { display: 'block', width: '100%', color: 'inherit', textDecoration: 'none' }
+
+// 图标是装饰性的，语义由菜单文字表达；对读屏隐藏，不额外提供 aria-label。
+const iconStyle = { marginRight: 'var(--forge-space-2)' }
 
 function paths(items: MenuItem[]): string[] {
   return items.flatMap((item) => [...(item.path ? [item.path] : []), ...paths(item.children ?? [])])
@@ -42,6 +57,8 @@ export const AppLayout = defineComponent({
     )
     return () => {
       const RouterLink = resolveComponent('RouterLink')
+      const renderIcon = (item: MenuItem) =>
+        h(ElIcon, { 'aria-hidden': 'true', style: iconStyle }, () => h(resolveMenuIcon(item.icon)))
       const renderItem = (item: MenuItem): ReturnType<typeof h> =>
         item.children
           ? h(
@@ -54,8 +71,10 @@ export const AppLayout = defineComponent({
               },
               {
                 // 菜单项靠外边距内缩，分组标题用同样的缩进对齐文字
-                title: () =>
+                title: () => [
+                  renderIcon(item),
                   h('span', { style: { marginLeft: 'var(--forge-space-2)' } }, item.title),
+                ],
                 default: () => item.children!.map(renderItem),
               },
             )
@@ -82,7 +101,7 @@ export const AppLayout = defineComponent({
                     style: linkStyle,
                     'data-testid': `menu-${item.key}`,
                   },
-                  () => item.title,
+                  () => [renderIcon(item), item.title],
                 ),
             )
       return h(ElContainer, { class: 'shell', style: { minHeight: '100vh' } }, () => [
@@ -95,7 +114,7 @@ export const AppLayout = defineComponent({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              borderBottom: '1px solid var(--el-border-color-light)',
+              borderBottom: 'var(--el-border-width) solid var(--el-border-color-light)',
             },
           },
           () => [
@@ -106,7 +125,7 @@ export const AppLayout = defineComponent({
                 class: 'brand',
                 style: {
                   color: 'var(--el-text-color-primary)',
-                  fontSize: '18px',
+                  fontSize: 'var(--el-font-size-large)',
                   fontWeight: 600,
                   textDecoration: 'none',
                 },
@@ -117,7 +136,7 @@ export const AppLayout = defineComponent({
               'div',
               {
                 class: 'shell-actions',
-                style: { display: 'flex', alignItems: 'center', gap: '16px' },
+                style: { display: 'flex', alignItems: 'center', gap: 'var(--forge-space-4)' },
               },
               slots.actions?.(),
             ),
@@ -134,8 +153,8 @@ export const AppLayout = defineComponent({
                 style: {
                   height: '100%',
                   paddingTop: 'var(--forge-space-1)',
-                  '--el-menu-item-height': '40px',
-                  '--el-menu-sub-item-height': '40px',
+                  '--el-menu-item-height': 'var(--el-component-size-large)',
+                  '--el-menu-sub-item-height': 'var(--el-component-size-large)',
                   '--el-menu-base-level-padding': 'var(--forge-space-3)',
                   '--el-menu-hover-bg-color': 'transparent',
                 },

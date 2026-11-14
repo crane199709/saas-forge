@@ -135,7 +135,7 @@ onMounted(load)
       />
       <el-table-column :label="t('serviceCredential.status')" width="90"
         ><template #default="{ row }"
-          ><el-tag :type="row.status === 'active' ? 'success' : 'info'">{{
+          ><el-tag size="small" :type="row.status === 'active' ? 'success' : 'info'">{{
             t(`serviceCredential.${row.status}`)
           }}</el-tag></template
         ></el-table-column

@@ -216,12 +216,11 @@ onMounted(async () => {
           <span v-else>{{ t('taskRun.fixedDelay') }} {{ row.fixedDelay }}</span>
         </template>
       </el-table-column>
-      <el-table-column :label="t('taskRun.latest')" min-width="220">
+      <el-table-column :label="t('taskRun.latest')" min-width="240" show-overflow-tooltip>
         <template #default="{ row }">
           <template v-if="row.latestRun"
-            >{{ t(`taskRun.statuses.${row.latestRun.status}`) }}<br />{{
-              formatDateTime(row.latestRun.startedAt)
-            }}</template
+            >{{ t(`taskRun.statuses.${row.latestRun.status}`) }} ·
+            {{ formatDateTime(row.latestRun.startedAt) }}</template
           >
           <span v-else>{{ t('taskRun.neverRun') }}</span>
         </template>

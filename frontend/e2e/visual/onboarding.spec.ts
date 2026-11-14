@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ok, viewports } from './support'
+import { expectTableDensity, ok, viewports } from './support'
 test.use({ baseURL: 'http://127.0.0.1:5183' })
 const at = '2026-11-12T03:00:00Z'
 const healthy = {
@@ -106,10 +106,14 @@ for (const [viewport, width, height] of viewports) {
           await expect(page.getByText('配置未知', { exact: true })).toBeVisible()
           await page.getByRole('button', { name: '刷新', exact: true }).click()
           await expect.poll(() => reads).toBe(2)
-          await page.locator('.el-table__expand-icon').first().click()
+          // 1024 宽度下表格列 min-width 合计 813px、内容区 740px，本来就横向溢出。Playwright 的
+          // click 默认会把嵌套滚动容器“滚进视口”，把这个基线（scrollLeft=0）横向推 13px；真实鼠标
+          // 点击不会。展开图标本来就在视口内，禁用自动滚动才复现用户实际看到的画面。
+          await page.locator('.el-table__expand-icon').first().click({ scroll: 'none' })
           await expect(
             page.getByText('2026.11.12-release-1234567890', { exact: true }),
           ).toBeVisible()
+          await expectTableDensity(page)
         } else if (state === 'empty') await expect(page.getByText('暂无可诊断的服务')).toBeVisible()
         else await expect(page.getByText('诊断服务暂不可用，请稍后刷新')).toBeVisible()
         await expect(page).toHaveScreenshot(`onboarding-${state}-${viewport}.png`)

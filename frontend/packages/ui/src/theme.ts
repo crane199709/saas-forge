@@ -8,6 +8,8 @@ export const layoutTokens = Object.freeze({
   '--forge-space-3': '12px',
   '--forge-space-4': '16px',
   '--forge-space-5': '24px',
+  '--forge-space-6': '32px',
+  '--forge-space-7': '48px',
   '--forge-radius-sm': '4px',
   '--forge-radius-md': '6px',
   '--forge-radius-lg': '8px',
@@ -17,6 +19,27 @@ export const layoutTokens = Object.freeze({
   '--forge-font-size-lg': '20px',
   '--forge-color-page': '#f7fafc',
   '--forge-shadow-card': '0 1px 2px rgb(0 0 0 / 6%)',
+  // 浮起元素（下拉、弹层、抽屉）用第二档阴影，与静态卡片区分开。
+  '--forge-shadow-float': '0 6px 16px rgb(0 0 0 / 12%)',
+  // 层叠顺序：下拉 < 吸顶 < 覆盖层 < 弹窗 < 提示；数值保持在 Element Plus 弹层之下，不与其自增 z-index 冲突。
+  '--forge-z-index-dropdown': '1000',
+  '--forge-z-index-sticky': '1100',
+  '--forge-z-index-overlay': '1200',
+  '--forge-z-index-dialog': '1300',
+  '--forge-z-index-toast': '1400',
+  // 采纳 Element Plus 的系统字体栈，不引入 webfont。
+  '--forge-font-family':
+    '"Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif',
+})
+
+/**
+ * 空状态的组件层 token：图标圆直径与字形字号。
+ * 组件私有取值不复用间距与字号档位，否则调整 `--forge-space-*` / `--forge-font-size-*` 会顺带改变空状态外观（ADR-0029 的层归属）。
+ * 与 primitive 不同，这一层由组件写在自身元素上，不写入文档根节点。
+ */
+export const emptyStateTokens = Object.freeze({
+  '--forge-empty-icon-size': '48px',
+  '--forge-empty-icon-glyph': '20px',
 })
 
 /** 弹窗与抽屉的尺寸档位，窄屏时收缩到视口内。 */

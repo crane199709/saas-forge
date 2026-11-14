@@ -1,4 +1,5 @@
 import type { PlatformClient } from '@crane199709/sdk'
+import type { MenuIconName } from '@crane199709/ui'
 import {
   createRouter,
   type RouteLocationNormalizedLoaded,
@@ -25,78 +26,91 @@ export const consolePages = [
   {
     path: '/tenants',
     title: 'tenant.title',
+    icon: 'office-building',
     permission: permissions.tenantRead,
     component: () => import('./tenant/TenantPage.vue'),
   },
   {
     path: '/plans',
     title: 'plan.title',
+    icon: 'price-tag',
     permission: permissions.planManage,
     component: () => import('./plan/PlanPage.vue'),
   },
   {
     path: '/sub-apps',
     title: 'subApp.title',
+    icon: 'grid',
     permission: permissions.subAppManage,
     component: () => import('./subapp/SubAppPage.vue'),
   },
   {
     path: '/operators',
     title: 'operator.title',
+    icon: 'user',
     permission: permissions.operatorManage,
     component: () => import('./operator/OperatorPage.vue'),
   },
   {
     path: '/identities',
     title: 'identity.title',
+    icon: 'search',
     permission: permissions.identityMfaReset,
     component: () => import('./identity/IdentityPage.vue'),
   },
   {
     path: '/roles',
     title: 'platformRole.title',
+    icon: 'avatar',
     permission: permissions.roleManage,
     component: () => import('./role/PlatformRolePage.vue'),
   },
   {
     path: '/audit',
     title: 'audit.title',
+    icon: 'document',
     permission: permissions.auditRead,
     component: () => import('./audit/AuditPage.vue'),
   },
   {
     path: '/onboarding',
     title: 'onboarding.title',
+    icon: 'guide',
     permission: permissions.onboardingRead,
     component: () => import('./onboarding/OnboardingPage.vue'),
   },
   {
     path: '/service-credentials',
     title: 'serviceCredential.title',
+    icon: 'key',
     permission: permissions.serviceCredentialManage,
     component: () => import('./servicecredential/ServiceCredentialPage.vue'),
   },
   {
     path: '/task-runs',
     title: 'taskRun.title',
+    icon: 'timer',
     permission: permissions.opsRead,
     component: () => import('./ops/TaskRunPage.vue'),
   },
   {
     path: '/dead-events',
     title: 'deadEvent.title',
+    icon: 'warning',
     permission: permissions.opsRead,
     component: () => import('./ops/DeadEventPage.vue'),
   },
   {
     path: '/announcements',
     title: 'announcement.title',
+    icon: 'bell',
     permission: permissions.announcementManage,
     component: () => import('./announcement/AnnouncementPage.vue'),
   },
   {
     path: '/data-security',
     title: 'dataSecurity.title',
+    icon: 'lock',
     permission: permissions.dataSecurityRead,
     component: () => import('./data-security/DataSecurityPage.vue'),
   },
@@ -104,10 +118,18 @@ export const consolePages = [
   {
     path: '/menu-layout',
     title: 'menuLayout.title',
+    icon: 'menu',
     permission: permissions.menuManage,
     component: () => import('./navigation/MenuLayoutPage.vue'),
   },
-] as const
+] as const satisfies readonly {
+  path: string
+  title: string
+  /** 图标名，见 `@crane199709/ui` 的 `resolveMenuIcon` 白名单；写错名字在编译期暴露。 */
+  icon: MenuIconName
+  permission: string
+  component: () => Promise<unknown>
+}[]
 
 /** 兜底路由名：不存在的路径。 */
 const notFoundRoute = 'not-found'

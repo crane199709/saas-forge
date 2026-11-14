@@ -8,6 +8,12 @@
 
 - Platform V10 增加 AI 每日累计用量投影：复用 forge-tenant 接收按版本幂等快照，校验租户信封、真实租户与业务时区；现有租户详情提供受 tenant:read 和 Data Policy 保护的月份只读查看，区分已知 Token、估计占额和未回报。Platform 现在要求配置 forge.business-zone，沿用共享 forge-common 配置；无需更新 SDK 或新增权限。见 docs/ai-usage.md。
 
+- 表格密度统一为 40px 行高、正文 14px：`el-table` 单元格上下内边距改用 `--forge-space-2`（各 8px）并固定行高，规则由租户 Shell、运营端 Shell 与 sub-app-kit 开发宿主写入，Sub-App 页面不再逐表调整；行内状态标签统一 `size="small"`，避免默认 24px 标签把行撑到 41px。任务运行的「最近一次运行」由状态与时间两行改为单行并加溢出提示，平台任务页行高回到 40px。`docs/standards/sub-app.md` 的样式一节补「密度」小节并随 sub-app-kit 模板发布；`forge-service-archetype` 与 `docs/business-service-guide.md` 无前端设计章节，本次无需同步。
+
+- `@crane199709/ui` 新增统一空状态组件 `EmptyState`（可选图标、必填标题、可选描述、默认插槽放主操作，不做按场景拆分的变体）；`ListPage` 的 `emptyText` 改为内部渲染该组件，调用方不需要改；租户端工作台三张卡、字典变更历史与运营端身份查询改用该组件，工作台空态给出进入对应列表的入口。三个应用新增极简 SVG favicon（主色块 + 产品名首字母），替换空占位图标。`docs/standards/sub-app.md` 新增「空状态」一节，说明组件用法与空数据、无结果、加载失败三者的区别，并随 sub-app-kit 模板发布；favicon 无自动化覆盖，需人工确认标签页显示。
+
+- Shell 侧边菜单打通 Resource Manifest 的 `icon` 字段：`@crane199709/ui` 新增 `resolveMenuIcon`（白名单、kebab-case/PascalCase 归一化、未命中回退默认图标），菜单项与导航条目透传图标，租户端与运营端内置页补齐图标，导航布局编辑器改用同一白名单；`@crane199709/ui` 新增 `@element-plus/icons-vue` 依赖。`docs/standards/sub-app.md` 新增「图标」一节并随 sub-app-kit 模板发布；后端清单、下发与校验不变。`forge-service-archetype` 与 `docs/business-service-guide.md` 无前端设计章节，本次无需同步。
+
 - 平台 Plan 增加可空的每月 `tokenQuota`，正整数或不限，V9 只追加字段；套餐 API、运营页与 `TenantPlanChanged` 同步支持，旧消息与旧构造器保持兼容。权限动作策略增加 `use`、`publish`、`rollback`，业务规范、Sub-App 规范、archetype/sub-app-kit 提示及接入指南同步使用、发布、回滚分别授权规则；AI 审计沿用 operation 分类并明确不记录内容与凭据。新增 Maven SDK 快照发布与每日仓库外契约消费工作流。
 
 - 文件治理在每批事务内先锁定候选再批量检查引用并失效/删除；业务绑定在同一可写事务内先 `get(purpose, id)` 再写引用，避免成功绑定后被旧无引用结果失效。只读事务的 get 保持普通读取，completeUpload 的配额拒绝继续独立提交。业务规范、archetype 与 sub-app-kit 模板及接入指南同步这条绑定规则和数据库查询超时要求；demo 引用查询设置 3 秒超时。

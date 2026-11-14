@@ -26,21 +26,28 @@ export const ErrorAlert = defineComponent({
         { title: props.tip.message, type: 'error', closable: false, role: 'alert' },
         props.tip.traceId
           ? () =>
-              h('p', { class: 'trace', style: { margin: '4px 0 0', overflowWrap: 'anywhere' } }, [
-                `${t('traceId')}：`,
-                h('code', props.tip.traceId),
-                h(
-                  ElButton,
-                  {
-                    link: true,
-                    type: 'primary',
-                    size: 'small',
-                    'data-testid': 'copy-trace-id',
-                    onClick: copy,
-                  },
-                  () => t('copyTraceId'),
-                ),
-              ])
+              h(
+                'p',
+                {
+                  class: 'trace',
+                  style: { margin: 'var(--forge-space-1) 0 0', overflowWrap: 'anywhere' },
+                },
+                [
+                  `${t('traceId')}：`,
+                  h('code', props.tip.traceId),
+                  h(
+                    ElButton,
+                    {
+                      link: true,
+                      type: 'primary',
+                      size: 'small',
+                      'data-testid': 'copy-trace-id',
+                      onClick: copy,
+                    },
+                    () => t('copyTraceId'),
+                  ),
+                ],
+              )
           : undefined,
       )
   },

@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
-import { ok, onePage, viewports } from './support'
+import { expectTableDensity, ok, onePage, viewports } from './support'
 
 test.use({ baseURL: 'http://127.0.0.1:5183' })
 
@@ -461,6 +461,19 @@ for (const [label, width, height] of viewports) {
         await expect(page).toHaveScreenshot(`platform-${name}-${label}.png`)
       })
     }
+
+    // 表格密度是硬约束：平台列表页的数据行固定 40px，只允许亚像素舍入。
+    test('表格行高 40px', async ({ page }) => {
+      for (const [url, anchor] of [
+        ['/tenants', '示例科技有限公司'],
+        ['/roles', '华东区域运营'],
+        ['/task-runs', 'health-check'],
+      ] as const) {
+        await open(page, url)
+        await expect(page.getByText(anchor, { exact: true }).first()).toBeVisible()
+        await expectTableDensity(page)
+      }
+    })
 
     test('plan token quota', async ({ page }) => {
       const errors: string[] = []

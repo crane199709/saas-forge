@@ -1,4 +1,4 @@
-import type { NavigationEntry } from '@crane199709/ui'
+import type { MenuIconName, NavigationEntry } from '@crane199709/ui'
 
 /** 进入导航布局的 Shell Page；首页与通知中心固定在导航顶部，不在其中。 */
 export interface ShellPage {
@@ -6,6 +6,8 @@ export interface ShellPage {
   key: string
   path: string
   title: string
+  /** 图标名，见 `resolveMenuIcon` 的白名单。 */
+  icon: MenuIconName
   /** iam 的管理权限码，授权被撤销后随权限刷新隐藏。 */
   permission: string | string[]
 }
@@ -19,40 +21,70 @@ export function shellPages(t: Translate): ShellPage[] {
       key: 'announcements',
       path: '/announcements',
       title: '公告管理',
+      icon: 'bell',
       permission: 'announcement:manage',
     },
-    { key: 'members', path: '/members', title: t('member.nav'), permission: 'iam:member:manage' },
-    { key: 'org', path: '/org', title: t('org.nav'), permission: 'iam:org:manage' },
-    { key: 'roles', path: '/roles', title: t('role.nav'), permission: 'iam:role:manage' },
-    { key: 'audit', path: '/audit', title: t('audit.nav'), permission: 'iam:audit:read' },
+    {
+      key: 'members',
+      path: '/members',
+      title: t('member.nav'),
+      icon: 'user',
+      permission: 'iam:member:manage',
+    },
+    {
+      key: 'org',
+      path: '/org',
+      title: t('org.nav'),
+      icon: 'office-building',
+      permission: 'iam:org:manage',
+    },
+    {
+      key: 'roles',
+      path: '/roles',
+      title: t('role.nav'),
+      icon: 'avatar',
+      permission: 'iam:role:manage',
+    },
+    {
+      key: 'audit',
+      path: '/audit',
+      title: t('audit.nav'),
+      icon: 'document',
+      permission: 'iam:audit:read',
+    },
     {
       key: 'data-security',
       path: '/data-security',
       title: t('dataSecurity.title'),
+      icon: 'lock',
       permission: 'iam:data-security:read',
     },
     {
       key: 'dictionaries',
       path: '/dictionaries',
       title: t('referenceData.dictionary.nav'),
+      icon: 'collection',
       permission: ['iam:reference-data:manage', 'iam:dictionary-history:read'],
     },
     {
       key: 'parameters',
       path: '/parameters',
       title: t('referenceData.parameter.nav'),
+      icon: 'setting',
       permission: 'iam:reference-data:manage',
     },
     {
       key: 'security-settings',
       path: '/security-settings',
       title: t('securitySettings.nav'),
+      icon: 'key',
       permission: 'iam:security:manage',
     },
     {
       key: menuLayoutPage,
       path: '/menu-layout',
       title: t('menuLayout.nav'),
+      icon: 'menu',
       permission: 'iam:menu:manage',
     },
   ]
@@ -70,6 +102,7 @@ export function defaultNavigation(pages: ShellPage[], menus: NavigationEntry[]):
   const entry = (page: ShellPage): NavigationEntry => ({
     page: page.key,
     title: page.title,
+    icon: page.icon,
     path: page.path,
   })
   return [

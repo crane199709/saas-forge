@@ -10,6 +10,7 @@ import {
   type AllowDropFunction,
 } from 'element-plus'
 import { defineComponent, h, ref, watch, type PropType } from 'vue'
+import { resolveMenuIcon } from './icons'
 import { useUiI18n } from './i18n'
 import { navigationLimits, type NavigationEntry } from './navigation'
 import {
@@ -25,17 +26,10 @@ import {
 import { PageToolbar } from './PageToolbar'
 import { overlaySize } from './theme'
 
-// 图标取自 Element Plus Icons（MIT）的 Folder 与 Document，本包不依赖图标库。
-const folderPath =
-  'M128 192v640h768V320H485.76L357.504 192H128zm-32-64h287.872l128.384 128H928a32 32 0 0 1 32 32v576a32 32 0 0 1-32 32H96a32 32 0 0 1-32-32V160a32 32 0 0 1 32-32z'
-const documentPath =
-  'M832 384H576V128H192v768h640V384zm-26.496-64L640 154.496V320h165.504zM160 64h480l256 256v608a32 32 0 0 1-32 32H160a32 32 0 0 1-32-32V96a32 32 0 0 1 32-32z'
-
-const icon = (path: string) =>
-  h(ElIcon, { style: { color: 'var(--el-text-color-secondary)' } }, () =>
-    h('svg', { viewBox: '0 0 1024 1024', xmlns: 'http://www.w3.org/2000/svg' }, [
-      h('path', { fill: 'currentColor', d: path }),
-    ]),
+// 编辑器行首的图标也来自菜单图标白名单，图标来源只有一处。
+const icon = (name: string) =>
+  h(ElIcon, { 'aria-hidden': 'true', style: { color: 'var(--el-text-color-secondary)' } }, () =>
+    h(resolveMenuIcon(name)),
   )
 
 /**
@@ -108,7 +102,7 @@ export const NavigationLayoutEditor = defineComponent({
           },
         },
         [
-          icon(data.children ? folderPath : documentPath),
+          icon(data.children ? 'folder' : 'document'),
           h(
             'span',
             {

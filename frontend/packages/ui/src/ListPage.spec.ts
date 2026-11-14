@@ -59,11 +59,19 @@ it('只有一页时不显示翻页，加载中翻页不可用', async () => {
   expect(wrapper.get('.btn-next').attributes('disabled')).toBeDefined()
 })
 
-it('首次加载完成前没有分页信息', async () => {
+it('首次加载完成前没有分页信息，emptyText 由空状态组件呈现', async () => {
   const wrapper = await mountList({ page: null, emptyText: '暂无订单' })
 
-  expect(wrapper.get('.el-table').text()).toContain('暂无订单')
+  expect(wrapper.get('.el-table .empty-state-title').text()).toBe('暂无订单')
   expect(wrapper.find('.list-page-footer').exists()).toBe(false)
+})
+
+it('不传 emptyText 时也渲染空状态组件，标题兜底为默认文案', async () => {
+  const wrapper = await mountList({ page: null })
+
+  // 不传时不能退回 el-table 自带的空态，否则一半的空列表还是另一套观感。
+  expect(wrapper.get('.el-table .empty-state-title').text()).toBe('暂无数据')
+  expect(wrapper.find('.el-table .el-empty').exists()).toBe(false)
 })
 
 it('按受控 deleted 切换未删除与已删除视图', async () => {
