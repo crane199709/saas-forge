@@ -134,6 +134,15 @@ public class TenantService {
         return tenants.selectCount(new LambdaQueryWrapper<>());
     }
 
+    /** 用量接收锁定租户，确保最终删除与任何在途快照按同一行锁排序。 */
+    public Tenant lockForAiUsage(UUID tenantId) {
+        Tenant tenant = tenants.lockForAiUsage(tenantId);
+        if (tenant == null) {
+            throw new ForgeException(TenantErrorCode.NOT_FOUND);
+        }
+        return tenant;
+    }
+
     public Tenant get(UUID tenantId) {
         Tenant tenant = tenants.selectById(tenantId);
         if (tenant == null) {

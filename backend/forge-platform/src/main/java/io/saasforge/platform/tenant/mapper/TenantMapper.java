@@ -10,6 +10,9 @@ import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface TenantMapper extends BaseMapper<Tenant> {
+    /** 用量接收在写投影前锁住真实租户，与最终删除提交互斥；仍受 tenant Data Policy 过滤。 */
+    Tenant lockForAiUsage(@Param("tenantId") UUID tenantId);
+
     /**
      * 一页未删除的租户，按标识（UUIDv7）倒序即最近创建的在前。受 Data Policy 过滤：Operator 请求只返回其数据范围内的租户。
      * BaseMapper 的 {@code selectById}、{@code selectCount}、{@code update} 等同样受过滤，范围外的租户视为不存在。

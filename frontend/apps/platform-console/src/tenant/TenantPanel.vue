@@ -6,6 +6,7 @@ import { ErrorAlert, PageHeader, formatDateTime, overlaySize, type ErrorTip } fr
 import { errorTip } from '../error-tip'
 import type { Plan } from '../plan/plan-api'
 import PlanImpactDialog from './PlanImpactDialog.vue'
+import TenantAiUsage from './TenantAiUsage.vue'
 import type {
   CreateTenant,
   InitializationStatus,
@@ -367,6 +368,8 @@ onMounted(() => load(1))
             formatDateTime(detail.tenant.purgeAt)
           }}</el-descriptions-item>
         </el-descriptions>
+
+        <TenantAiUsage :tenant-id="detail.tenant.id" :api="api" />
 
         <template v-if="canManage">
           <h3>租户 IP 允许列表</h3>

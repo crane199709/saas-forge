@@ -24,4 +24,7 @@
     <select id="countUsingPlan" resultType="long">
         SELECT count(*) FROM tenant WHERE plan_id = #{planId} AND purged_at IS NULL AND NOT deleted
     </select>
+    <select id="lockForAiUsage" resultType="io.saasforge.platform.tenant.entity.Tenant">
+        SELECT * FROM tenant WHERE id=#{tenantId} AND NOT deleted FOR UPDATE
+    </select>
 </mapper>

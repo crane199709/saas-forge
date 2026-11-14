@@ -360,6 +360,33 @@ function respond(
     '/platform/sub-apps': ok(subApps),
     '/platform/tenants': onePage(tenants),
     '/platform/tenants/t1': ok(detail),
+    '/platform/tenants/t1/ai-usage': ok({
+      month: '2026-11',
+      businessZone: 'Asia/Shanghai',
+      received: true,
+      inputTokens: 9000,
+      outputTokens: 1200,
+      cachedInputTokens: 2000,
+      totalTokens: 10200,
+      estimatedTokens: 65536,
+      turnCount: 3,
+      toolCalls: 2,
+      unknownUsageTurns: 1,
+      days: [
+        {
+          usageDate: '2026-11-14',
+          version: 2,
+          inputTokens: 9000,
+          outputTokens: 1200,
+          cachedInputTokens: 2000,
+          turnCount: 3,
+          toolCalls: 2,
+          unknownUsageTurns: 1,
+          estimatedTokens: 65536,
+          reportedAt: '2026-11-14T05:10:00Z',
+        },
+      ],
+    }),
     '/platform/ops/services': ok(services),
     '/platform/ops/services/demo-service/dead-events': onePage(deadEvents),
     '/platform/ops/services/demo-service/tasks': ok(tasks),
@@ -608,3 +635,55 @@ test.describe('drawers', () => {
     await expect(page).toHaveScreenshot('platform-sub-app-edit.png')
   })
 })
+
+for (const width of [1440, 1024]) {
+  test(`tenant AI usage ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await open(page, '/tenants')
+    await page.getByRole('button', { name: '详情', exact: true }).first().click()
+    await page.getByTestId('ai-usage-query').click()
+    await expect(page.getByText('1 个回合的用量不完整', { exact: false })).toBeVisible()
+    await expect(page.getByLabel('AI 用量月份')).toHaveValue('2026-11')
+    await expect(page).toHaveScreenshot(`platform-tenant-ai-usage-${width}.png`)
+    expect(errors).toEqual([])
+  })
+}
+
+for (const width of [1440, 1024]) {
+  for (const state of ['empty', 'error'] as const) {
+    test(`tenant AI usage ${state} ${width}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      const response =
+        state === 'empty'
+          ? ok({
+              month: '2026-11',
+              businessZone: 'Asia/Shanghai',
+              received: false,
+              inputTokens: 0,
+              outputTokens: 0,
+              cachedInputTokens: 0,
+              totalTokens: 0,
+              estimatedTokens: 0,
+              turnCount: 0,
+              toolCalls: 0,
+              unknownUsageTurns: 0,
+              days: [],
+            })
+          : {
+              status: 503,
+              json: { code: 'upstream.unavailable', httpStatus: 503, userTip: '暂时不可用' },
+            }
+      await open(page, '/tenants', null, { '/platform/tenants/t1/ai-usage': response })
+      await page.getByRole('button', { name: '详情', exact: true }).first().click()
+      await page.getByTestId('ai-usage-query').click()
+      await expect(
+        page.getByText(state === 'empty' ? '尚未收到该月用量' : '用量查询失败，请重试', {
+          exact: true,
+        }),
+      ).toBeVisible()
+      await expect(page).toHaveScreenshot(`platform-tenant-ai-usage-${state}-${width}.png`)
+    })
+  }
+}
