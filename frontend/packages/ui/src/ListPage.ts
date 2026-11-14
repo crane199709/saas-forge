@@ -94,7 +94,9 @@ export const ListPage = defineComponent(
             { data: (props.page?.items ?? []) as object[] },
             {
               // 保留 emptyText 入参兼容：有值时用统一空状态呈现，调用方不需要改。
-              ...(props.emptyText ? { empty: () => h(EmptyState, { title: props.emptyText! }) } : {}),
+              ...(props.emptyText
+                ? { empty: () => h(EmptyState, { title: props.emptyText! }) }
+                : {}),
               default: () => [
                 ...(slots.default?.() ?? []),
                 props.deleted
