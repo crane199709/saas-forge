@@ -125,6 +125,14 @@
 - 间距的节奏：同组元素 `--forge-space-2`，控件组之间 `--forge-space-3`，区块之间 `--forge-space-4`。
 - 文字颜色用 Element Plus 的 `--el-text-color-*`，主内容 regular，辅助说明 secondary，只有区块标题加粗。
 
+### 密度
+
+表格行高固定 **40px**、正文 **14px**：单元格上下内边距各 `--forge-space-2`（8px × 2），正文行高 23px，加 1px 分隔线。密度只从行高和列宽来，不缩小字号。
+
+- 行高由 Shell 与开发宿主统一写入 `el-table`，页面不再逐表设置行高，也不使用 Element Plus 的其他尺寸档位。
+- 行内状态标签用 `size="small"`。默认尺寸的标签高 24px，会把行撑到 41px，与固定行高不一致。
+- 长文本列用 `min-width` 加 `show-overflow-tooltip`，操作列 `fixed="right"` 且宽度容得下全部按钮同行；不靠加大行高解决折行。只有导入错误报告这类以通读全文为目的的表格允许换行。
+
 ## 代码格式
 
 格式交给 Prettier，规则与平台前端同一份：`.prettierrc.json` 随平台版本复制，不在本工程修改；`docs/standards/` 已列入 `.prettierignore`。提交前 `pnpm format:check` 必须通过，`pnpm format` 按规则改写。

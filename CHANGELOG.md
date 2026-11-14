@@ -6,6 +6,8 @@
 
 ### 变更
 
+- 表格密度统一为 40px 行高、正文 14px：`el-table` 单元格上下内边距改用 `--forge-space-2`（各 8px）并固定行高，规则由租户 Shell、运营端 Shell 与 sub-app-kit 开发宿主写入，Sub-App 页面不再逐表调整；行内状态标签统一 `size="small"`，避免默认 24px 标签把行撑到 41px。任务运行的「最近一次运行」由状态与时间两行改为单行并加溢出提示，平台任务页行高回到 40px。`docs/standards/sub-app.md` 的样式一节补「密度」小节并随 sub-app-kit 模板发布；`forge-service-archetype` 与 `docs/business-service-guide.md` 无前端设计章节，本次无需同步。
+
 - `@crane199709/ui` 新增统一空状态组件 `EmptyState`（可选图标、必填标题、可选描述、默认插槽放主操作，不做按场景拆分的变体）；`ListPage` 的 `emptyText` 改为内部渲染该组件，调用方不需要改；租户端工作台三张卡、字典变更历史与运营端身份查询改用该组件，工作台空态给出进入对应列表的入口。三个应用新增极简 SVG favicon（主色块 + 产品名首字母），替换空占位图标。`docs/standards/sub-app.md` 新增「空状态」一节，说明组件用法与空数据、无结果、加载失败三者的区别，并随 sub-app-kit 模板发布；favicon 无自动化覆盖，需人工确认标签页显示。
 
 - Shell 侧边菜单打通 Resource Manifest 的 `icon` 字段：`@crane199709/ui` 新增 `resolveMenuIcon`（白名单、kebab-case/PascalCase 归一化、未命中回退默认图标），菜单项与导航条目透传图标，租户端与运营端内置页补齐图标，导航布局编辑器改用同一白名单；`@crane199709/ui` 新增 `@element-plus/icons-vue` 依赖。`docs/standards/sub-app.md` 新增「图标」一节并随 sub-app-kit 模板发布；后端清单、下发与校验不变。`forge-service-archetype` 与 `docs/business-service-guide.md` 无前端设计章节，本次无需同步。

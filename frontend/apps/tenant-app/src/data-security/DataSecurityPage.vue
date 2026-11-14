@@ -163,7 +163,7 @@ onMounted(load)
       >
       <el-table-column :label="t('dataSecurity.status')" min-width="100"
         ><template #default="{ row }"
-          ><el-tag :type="row.status === 'active' ? 'success' : 'danger'">{{
+          ><el-tag size="small" :type="row.status === 'active' ? 'success' : 'danger'">{{
             t(`dataSecurity.statuses.${row.status}`)
           }}</el-tag></template
         ></el-table-column

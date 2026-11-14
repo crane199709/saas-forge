@@ -1,5 +1,5 @@
 import { expect, test, type Route } from '@playwright/test'
-import { ok, onePage, openAsAdmin, viewports } from './support'
+import { expectTableDensity, ok, onePage, openAsAdmin, viewports } from './support'
 
 // 数据覆盖最长值、空值和各种状态，截图才能暴露布局问题。
 const members = [
@@ -169,6 +169,19 @@ for (const [label, width, height] of viewports) {
       await openAsAdmin(page, '/audit', respond)
       await expect(page.getByTestId('audit-a')).toBeVisible()
       await expect(page).toHaveScreenshot(`audit-${label}.png`)
+    })
+
+    // 表格密度是硬约束：数据行固定 40px，只允许亚像素舍入。
+    test('表格行高 40px', async ({ page }) => {
+      await openAsAdmin(page, '/members', respond)
+      await expect(page.getByTestId('member-owner')).toBeVisible()
+      await expectTableDensity(page)
+      await openAsAdmin(page, '/audit', respond)
+      await expect(page.getByTestId('audit-a')).toBeVisible()
+      await expectTableDensity(page)
+      await openAsAdmin(page, '/org', respond)
+      await expect(page.getByTestId('dept-delete-rd')).toBeVisible()
+      await expectTableDensity(page)
     })
 
     test('组织-部门', async ({ page }) => {

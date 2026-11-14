@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { ok, onePage, openAsAdmin, viewports } from './support'
+import { expectTableDensity, ok, onePage, openAsAdmin, viewports } from './support'
 
 const permissions = [
   ['order:read', '查看订单', '订单'],
@@ -115,6 +115,11 @@ for (const [label, width, height] of viewports) {
     test('角色列表', async ({ page }) => {
       await openRoles(page)
       await expect(page).toHaveScreenshot(`roles-list-${label}.png`)
+    })
+
+    test('角色列表行高 40px', async ({ page }) => {
+      await openRoles(page)
+      await expectTableDensity(page)
     })
 
     test('成员分配', async ({ page }) => {
