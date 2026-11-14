@@ -296,6 +296,14 @@ _Avoid_: 微应用、插件
 **App Registry（应用注册表）**:
 平台中登记各 Sub-App 编码、各环境入口地址与版本的目录。
 
+**Theme Token（主题 token）**:
+Shell 与 Sub-App 共同读取的样式约定，是两者之间唯一的样式契约，也是微前端样式隔离的边界。
+_Avoid_: 主题变量、样式变量、颜色变量
+
+**Visual Baseline（视觉基线）**:
+界面在某一时刻被认定为正确的视觉呈现，作为判断后续改动是否改变外观的比较标准。
+_Avoid_: 截图快照、基准图、UI 快照
+
 **Response Envelope（响应信封）**:
 Business Service 与 Platform Core 对外接口统一的响应外层结构，成功与失败都使用，承载结果码、业务数据、错误说明与追踪标识。
 _Avoid_: 统一返回体、Result、R、包装类
