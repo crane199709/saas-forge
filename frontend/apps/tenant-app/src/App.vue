@@ -116,20 +116,13 @@ applyTheme(themeTokens.primary)
  * 表格密度由 Shell 统一设置，Sub-App 页面不再逐表调整：40px 行高 = 单元格上下内边距
  * --forge-space-2（8px × 2）+ 正文行高 23px + 1px 分隔线；正文字号保持 14px。
  * 展开行（el-table__expanded-cell）自带大内边距，不参与密度覆盖。
- *
- * 括号里的 14px / 8px 是运行时 token 的构建期兜底，值与 theme.ts 的 --forge-font-size-sm /
- * --forge-space-2 完全一致，不改变像素，不要当成冗余删掉：这两个 token 由 applyTheme() 在运行时
- * 写入文档根节点，构建产物里并不存在；el-table 首屏按文字宽度测量并写死列宽，若测量早于 token
- * 注入，列宽会按继承的 16px 字号算出、文字却按 14px 渲染，整列错位，加载瞬间列宽会跳一下。
  */
 .el-table {
   --forge-table-row-height: 40px;
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- 兜底值是 token 的默认值，不是新档位 */
-  font-size: var(--forge-font-size-sm, 14px);
+  font-size: var(--forge-font-size-sm);
 }
 .el-table .el-table__cell:not(.el-table__expanded-cell) {
   height: var(--forge-table-row-height);
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- 同上 */
-  padding: var(--forge-space-2, 8px) 0;
+  padding: var(--forge-space-2) 0;
 }
 </style>
