@@ -57,8 +57,8 @@ class TenantLifecycleTest extends PlatformIntegrationTest {
     Environment environment;
 
     @Test
-    void globalScanUsesBoundDefaultIntervalWithoutBusinessZoneAndPublishesLifecycleEvents() {
-        assertThat(environment.getProperty("forge.business-zone")).isNull();
+    void globalScanUsesBoundDefaultIntervalAndPublishesLifecycleEvents() {
+        assertThat(environment.getProperty("forge.business-zone")).isEqualTo("Asia/Shanghai");
         assertThat(environment.getProperty("forge.platform.lifecycle.scan-interval"))
                 .isNull();
         assertThat(scheduler.interval).isEqualTo(Duration.ofMinutes(1));

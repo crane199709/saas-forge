@@ -82,6 +82,33 @@ export interface PlanChangeImpact {
 /** 预览失败不等于没有影响，必须与各项为空的结果区分开。 */
 export type PlanImpactPreview = { ok: true; value: PlanChangeImpact } | { ok: false; tip: ErrorTip }
 
+export interface TenantAiUsageDay {
+  usageDate: string
+  version: number
+  inputTokens: number
+  outputTokens: number
+  cachedInputTokens: number
+  estimatedTokens: number
+  turnCount: number
+  toolCalls: number
+  unknownUsageTurns: number
+  reportedAt: string
+}
+export interface TenantAiUsage {
+  month: string
+  businessZone: string
+  received: boolean
+  inputTokens: number
+  outputTokens: number
+  cachedInputTokens: number
+  totalTokens: number
+  estimatedTokens: number
+  turnCount: number
+  toolCalls: number
+  unknownUsageTurns: number
+  days: TenantAiUsageDay[]
+}
+
 export function createTenantApi(client: Pick<PlatformClient, 'api' | 'page'>) {
   // 经网关的 platform 路由，只接受 Platform Realm Token
   const base = '/platform/tenants'
@@ -102,6 +129,10 @@ export function createTenantApi(client: Pick<PlatformClient, 'api' | 'page'>) {
     list: (page: number, size: number): Promise<Page<Tenant>> =>
       client.page<Tenant>(`${base}?page=${page}&size=${size}`),
     get: (id: string) => client.api<TenantDetail>(`${base}/${id}`),
+    aiUsage: (id: string, month?: string) =>
+      client.api<TenantAiUsage>(
+        `${base}/${id}/ai-usage${month ? `?month=${encodeURIComponent(month)}` : ''}`,
+      ),
     create: (request: CreateTenant) => post<TenantDetail>('', request),
     transition: (id: string, request: Transition) =>
       post<TenantDetail>(`/${id}/transitions`, request),

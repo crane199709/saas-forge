@@ -6,6 +6,8 @@
 
 ### 变更
 
+- Platform V10 增加 AI 每日累计用量投影：复用 forge-tenant 接收按版本幂等快照，校验租户信封、真实租户与业务时区；现有租户详情提供受 tenant:read 和 Data Policy 保护的月份只读查看，区分已知 Token、估计占额和未回报。Platform 现在要求配置 forge.business-zone，沿用共享 forge-common 配置；无需更新 SDK 或新增权限。见 docs/ai-usage.md。
+
 - 平台 Plan 增加可空的每月 `tokenQuota`，正整数或不限，V9 只追加字段；套餐 API、运营页与 `TenantPlanChanged` 同步支持，旧消息与旧构造器保持兼容。权限动作策略增加 `use`、`publish`、`rollback`，业务规范、Sub-App 规范、archetype/sub-app-kit 提示及接入指南同步使用、发布、回滚分别授权规则；AI 审计沿用 operation 分类并明确不记录内容与凭据。新增 Maven SDK 快照发布与每日仓库外契约消费工作流。
 
 - 文件治理在每批事务内先锁定候选再批量检查引用并失效/删除；业务绑定在同一可写事务内先 `get(purpose, id)` 再写引用，避免成功绑定后被旧无引用结果失效。只读事务的 get 保持普通读取，completeUpload 的配额拒绝继续独立提交。业务规范、archetype 与 sub-app-kit 模板及接入指南同步这条绑定规则和数据库查询超时要求；demo 引用查询设置 3 秒超时。

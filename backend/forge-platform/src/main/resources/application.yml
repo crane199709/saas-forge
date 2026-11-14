@@ -30,6 +30,7 @@ spring:
       port: ${FORGE_REDIS_PORT:6379}
 
 forge:
+  business-zone: ${FORGE_BUSINESS_ZONE}
   ops:
     token: ${FORGE_OPS_TOKEN}
   security:
@@ -51,6 +52,7 @@ forge:
   tenant:
     ignore-tables:
       - tenant
+      - tenant_ai_usage_daily
       - tenant_initialization
       - tenant_status_change
       - plan

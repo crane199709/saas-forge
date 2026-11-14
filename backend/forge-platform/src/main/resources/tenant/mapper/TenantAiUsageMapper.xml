@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="io.saasforge.platform.tenant.mapper.TenantAiUsageMapper">
+    <insert id="apply">
+        INSERT INTO tenant_ai_usage_daily(id,tenant_id,usage_date,business_zone,snapshot_version,input_tokens,output_tokens,cached_input_tokens,estimated_tokens,turn_count,tool_calls,unknown_usage_turns,reported_at,created_at,updated_at,created_by,updated_by)
+        VALUES(#{id},#{event.tenantId},#{event.usageDate},#{event.businessZone},#{event.version},#{event.inputTokens},#{event.outputTokens},#{event.cachedInputTokens},#{event.estimatedTokens},#{event.turnCount},#{event.toolCalls},#{event.unknownUsageTurns},#{event.reportedAt},CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,NULL,NULL)
+        ON CONFLICT (tenant_id,usage_date) WHERE NOT deleted DO UPDATE SET business_zone=EXCLUDED.business_zone,snapshot_version=EXCLUDED.snapshot_version,
+        input_tokens=EXCLUDED.input_tokens,output_tokens=EXCLUDED.output_tokens,cached_input_tokens=EXCLUDED.cached_input_tokens,
+        estimated_tokens=EXCLUDED.estimated_tokens,turn_count=EXCLUDED.turn_count,tool_calls=EXCLUDED.tool_calls,unknown_usage_turns=EXCLUDED.unknown_usage_turns,
+        reported_at=EXCLUDED.reported_at,updated_at=CURRENT_TIMESTAMP,updated_by=NULL WHERE tenant_ai_usage_daily.snapshot_version &lt; EXCLUDED.snapshot_version
+    </insert>
+    <select id="totals" resultType="io.saasforge.platform.tenant.model.TenantAiUsageTotals">
+        SELECT COALESCE(SUM(input_tokens),0) AS input_tokens,COALESCE(SUM(output_tokens),0) AS output_tokens,
+        COALESCE(SUM(cached_input_tokens),0) AS cached_input_tokens,COALESCE(SUM(estimated_tokens),0) AS estimated_tokens,
+        COALESCE(SUM(turn_count),0) AS turn_count,COALESCE(SUM(tool_calls),0) AS tool_calls,COALESCE(SUM(unknown_usage_turns),0) AS unknown_usage_turns
+        FROM tenant_ai_usage_daily WHERE tenant_id=#{tenantId} AND usage_date &gt;=#{from} AND usage_date &lt;#{to} AND NOT deleted
+    </select>
+    <select id="days" resultType="io.saasforge.platform.tenant.model.TenantAiUsageDay">
+        SELECT usage_date,snapshot_version AS version,input_tokens,output_tokens,cached_input_tokens,turn_count,tool_calls,unknown_usage_turns,estimated_tokens,reported_at
+        FROM tenant_ai_usage_daily WHERE tenant_id=#{tenantId} AND usage_date &gt;=#{from} AND usage_date &lt;#{to} AND NOT deleted ORDER BY usage_date
+    </select>
+    <update id="clean">
+        UPDATE tenant_ai_usage_daily SET deleted=true,updated_at=CURRENT_TIMESTAMP,updated_by=NULL
+        WHERE tenant_id=#{tenantId} AND NOT deleted
+    </update>
+</mapper>
