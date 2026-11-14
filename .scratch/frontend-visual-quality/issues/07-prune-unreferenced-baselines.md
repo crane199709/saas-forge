@@ -4,7 +4,7 @@
 
 **Blocked by:** 无
 
-**Status:** needs-triage
+**Status:** wontfix
 
 ## 现象
 
@@ -27,3 +27,27 @@
 - 基线数量等于用例数量，且能说清每一个删除的文件原属哪个用例、为什么不再需要。
 - 若发现"用例被删导致覆盖丢失"，单独开票恢复覆盖，而不是简单删文件了事。
 - `pnpm test:visual` 全量通过。
+
+## Comments
+
+**2026-11-15 结论：前提不成立，无可清理项**
+
+用实测代替数量差：把 `__screenshots__` 下 229 张 PNG **全部移出**，再跑 `npx playwright test -c playwright.visual.config.json --update-snapshots=missing`。Playwright 只会为真正被断言的快照写文件，结果**重新写出的正好是同样的 229 个文件名，名称集合逐一相同（diff 为空）**。
+
+所以「229 张 PNG vs 215 个用例 = 14 张无引用」的推断是错的：一个用例可以产生多张快照（同一 `test()` 内多次断言、或按视口/状态循环），快照数与用例数本来就不该相等。**没有任何一张基线无引用，工单 07 的前提不成立，定为 wontfix。**
+
+## 意外发现（已另开[工单 08](08-baseline-drift-under-threshold.md)）
+
+这次重生成顺带暴露了真问题：有 **5 张基线的当前渲染与已提交基线不同**，但它们一直"通过"，因为差异都低于 `maxDiffPixelRatio: 0.005`：
+
+| 文件 | 变化像素 | 占比 | 差异所在 |
+|---|---|---|---|
+| `service-credentials-disable-laptop` | 2470 | 0.314% | 停用确认弹窗内的提示文字 |
+| `import-confirmation-paging-first-laptop` | 1755 | 0.223% | 侧栏底部两项 |
+| `import-confirmation-revalidation-desktop` | 1755 | 0.135% | 同上 |
+| `onboarding-error-laptop` | 3 | 0.0004% | 抗锯齿 |
+| `bulk-invitation-sending-laptop` | 1 | 0.0001% | 抗锯齿 |
+
+前三张是**实质差异**（弹窗提示文字的字体渲染明显不同，一版偏粗一版正常），不是噪声。这说明阈值 0.5% 会放过局部的真实漂移。
+
+本次**没有**顺手把这 5 张更新掉：该改哪一版需要人看，且混在"清理基线"的改动里会让 diff 无法解读。基线已从备份原样恢复，工作区干净。
