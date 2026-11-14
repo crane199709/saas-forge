@@ -194,5 +194,15 @@ class TenantAiUsageTest extends PlatformIntegrationTest {
                 .retrieve()
                 .body(new ParameterizedTypeReference<Map<String, Object>>() {});
         assertThat(((Map<?, ?>) result.get("data")).get("received")).isEqualTo(false);
+        client.get()
+                .uri("/tenants/" + tenant.get("id") + "/ai-usage?month=2026-99")
+                .header("Authorization", "Bearer " + admin)
+                .exchange((request, response) -> {
+                    assertThat(response.getStatusCode().value()).isEqualTo(400);
+                    var invalid = response.bodyTo(new ParameterizedTypeReference<Map<String, Object>>() {});
+                    assertThat(invalid.get("code")).isEqualTo("tenant.invalidAiUsage");
+                    assertThat(invalid.get("userTip")).isEqualTo("AI 用量格式不正确，请使用 YYYY-MM 格式的月份；上报用量须为非负数且缓存量不超过输入量");
+                    return null;
+                });
     }
 }

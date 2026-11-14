@@ -3,8 +3,9 @@ package io.saasforge.platform.tenant.service;
 import io.saasforge.sdk.core.api.ErrorCode;
 
 public enum TenantErrorCode implements ErrorCode {
-    /** 租户不存在或已删除。 */
+    /** AI 用量月份或累计快照格式不合法。 */
     INVALID_AI_USAGE("tenant.invalidAiUsage", 400),
+    /** 租户不存在或已删除。 */
     NOT_FOUND("tenant.notFound", 404),
     /** 该租户没有这个服务的初始化记录。 */
     INITIALIZATION_NOT_FOUND("tenant.initializationNotFound", 404),
