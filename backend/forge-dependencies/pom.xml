@@ -22,7 +22,7 @@
             <id>forge-release</id>
             <url>${forge.release.url}</url>
         </repository>
-        <!-- 只有 publish.sh local 会部署 SNAPSHOT（临时仓库的模板冒烟）；正式发布在版本检查阶段拒绝 SNAPSHOT。 -->
+        <!-- 开发快照由 snapshot.sh 发布；publish.sh local 也用于临时仓库冒烟，正式标签仍拒绝 SNAPSHOT。 -->
         <snapshotRepository>
             <id>forge-release</id>
             <url>${forge.release.url}</url>

@@ -19,7 +19,17 @@ python3 scripts/release/version.py dev
 1. `set <正式版本>`，更新根目录 CHANGELOG.md（单列不兼容变更），提交并打标签 `v<正式版本>`。
 2. 紧接着 `set <下一版本>-SNAPSHOT` 并提交，再一起推送分支与标签。分支 CI（Backend quality）执行 `version.py dev`，源码不是统一的 SNAPSHOT 版本即失败；标签构建跳过这一检查。
 
-发布标签必须为 `v<语义版本>`，拒绝 SNAPSHOT、标签与文件不一致。只有 `publish.sh local`（含模板冒烟）以 `check --allow-snapshot` 接受当前 SNAPSHOT 源码，部署到临时仓库。
+发布标签必须为 `v<语义版本>`，拒绝 SNAPSHOT、标签与文件不一致。`publish.sh local`（含模板冒烟）以 `check --allow-snapshot` 接受当前 SNAPSHOT 源码，部署到临时仓库；Maven 开发快照使用下节独立入口。
+
+## SDK 开发快照与每日兼容验证
+
+`bash scripts/release/snapshot.sh local` 把当前统一的 `-SNAPSHOT` Maven 制品发布到临时 file 仓库，再在仓库外创建消费工程，排除本机全部 `io.saasforge` 缓存后解析实际制品。契约测试验证 `TenantPlanChanged.tokenQuota`、历史消息默认不限，以及 AI Manifest 的使用/发布/回滚动作。不发布 npm 包、不创建正式标签。
+
+`bash scripts/release/snapshot.sh remote` 发布到当前 GitHub 仓库的 Maven Packages，并执行相同的仓库外消费。使用上表的 `MAVEN_RELEASE_URL`、`MAVEN_RELEASE_USERNAME`、`MAVEN_RELEASE_PASSWORD` 及 `GITHUB_REPOSITORY`；目标 URL 必须与当前仓库一致，凭证不写入文件。开发快照版本可持续更新，消费方使用 `-U` 拉取新构建。
+
+`SDK snapshot integration` 工作流在相关 main 推送、手动触发和每日北京时间 10:00（UTC 02:00）执行。先复用完整 Backend quality，成功后用仅发布 job 持有的 `packages: write` 发布快照并验证外部消费；发布或消费失败均使工作流失败。工作流随本次提交推送后才会在 GitHub 生效。
+
+`ai-platform` 建仓后配置仓库地址 `https://maven.pkg.github.com/crane199709/saas-forge`、server id `forge-release`、有 `read:packages` 的读取凭证，以及启用 snapshots/updatePolicy=always；依赖 `io.saasforge:forge-dependencies:0.2.0-SNAPSHOT` 与所需 starter，Java CI 通过 `./mvnw -U verify` 验证。AI 仓库的每日完整产品集成构建由其建仓工单落地；平台侧外部契约消费只验证 SDK 公共接入面。
 
 标签工作流复用后端验证（含 archetype 生成测试）、前端完整检查与 mock E2E、真实主链路 E2E 和模板冒烟；所有质量门通过后才能发布。镜像工作流也依赖这些质量门；配置 `IMAGE_PREFIX` 时推送 GHCR 并验证拉取，未配置时只构建，参见 [镜像说明](../../deploy/images/README.md)。
 

@@ -98,6 +98,7 @@ class CatalogCommandTest(unittest.TestCase):
         result = self.run_catalog(manifest)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("order:approve", result.stderr)
+
         self.assertFalse(self.output.exists())
 
         policy = self.write("policy.json", {"actions": {"approve": "   "}, "historicalExceptions": {}})
@@ -110,6 +111,17 @@ class CatalogCommandTest(unittest.TestCase):
         result = self.run_catalog(manifest, extra=("--policy", str(policy)))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(self.output.read_bytes())["permissions"][0]["code"], "order:approve")
+
+    def test_ai_manifest_actions_are_accepted_by_the_catalog(self):
+        manifest = self.manifest("ai.json", "ai-service", [
+            {"code": "ai:conversation:use", "name": "使用 AI 助手"},
+            {"code": "ai:prompt:publish", "name": "发布 Prompt"},
+            {"code": "ai:prompt:rollback", "name": "回滚 Prompt"},
+        ])
+        result = self.run_catalog(manifest)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([item["code"] for item in json.loads(self.output.read_bytes())["permissions"]],
+                         ["ai:conversation:use", "ai:prompt:publish", "ai:prompt:rollback"])
 
     def test_historical_exceptions_require_exact_codes_reasons_and_previous_history(self):
         old = {"service": "orders", "code": "legacy:oldverb", "name": "旧动作", "group": None,

@@ -52,7 +52,8 @@ class TenantPlanService implements PlanUsage {
                 List.of(plan.getSubApps()),
                 plan.getMemberQuota(),
                 plan.getStorageQuotaMb(),
-                version);
+                version,
+                plan.getTokenQuota());
         // 带该租户的上下文发布，理由同 TenantService
         CurrentTenant.run(tenantId, () -> events.publish(TenantCreated.TOPIC, event));
     }

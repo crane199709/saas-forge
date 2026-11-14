@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Plan（规格 5.4）的维护：Feature Pack（可用的 Permission Code 与 Sub-App）与 Quota（成员数、存储容量）。
+ * Plan（规格 5.4）的维护：Feature Pack（可用的 Permission Code 与 Sub-App）与 Quota（成员数、存储容量、每月 Token 总量）。
  *
  * <p>修改 Plan 的内容即修改所有使用它的租户的上限，在同一事务中经 {@link PlanUsage} 向这些租户广播。
  */
@@ -75,6 +75,7 @@ public class PlanService {
      *
      * @param memberQuota 成员数上限，null 表示不限
      * @param storageQuotaMb 存储容量上限（MiB），null 表示不限
+     * @param tokenQuota 每租户每月 Token 总量上限，null 表示不限
      * @throws ForgeException 409 {@code plan.codeTaken}；400 {@code plan.unknownPermission}
      */
     @Transactional
@@ -84,13 +85,14 @@ public class PlanService {
             Collection<String> permissions,
             Collection<String> subApps,
             Integer memberQuota,
-            Long storageQuotaMb) {
+            Long storageQuotaMb,
+            Long tokenQuota) {
         Set<String> granted = sorted(permissions);
         requireKnown(granted, Set.of());
         var plan = new Plan();
         plan.setId(UuidV7.generate());
         plan.setCode(code);
-        fill(plan, name, granted, subApps, memberQuota, storageQuotaMb);
+        fill(plan, name, granted, subApps, memberQuota, storageQuotaMb, tokenQuota);
         try {
             plans.insert(plan);
         } catch (DuplicateKeyException e) {
@@ -110,14 +112,15 @@ public class PlanService {
             Collection<String> permissions,
             Collection<String> subApps,
             Integer memberQuota,
-            Long storageQuotaMb) {
+            Long storageQuotaMb,
+            Long tokenQuota) {
         Plan plan = plans.lockExclusive(id);
         if (plan == null) {
             throw notFound(id);
         }
         Set<String> granted = sorted(permissions);
         requireKnown(granted, Set.copyOf(Arrays.asList(plan.getPermissions())));
-        fill(plan, name, granted, subApps, memberQuota, storageQuotaMb);
+        fill(plan, name, granted, subApps, memberQuota, storageQuotaMb, tokenQuota);
         plans.updateById(plan);
         Plan updated = get(id);
         usage.planChanged(updated);
@@ -162,12 +165,14 @@ public class PlanService {
             Set<String> permissions,
             Collection<String> subApps,
             Integer memberQuota,
-            Long storageQuotaMb) {
+            Long storageQuotaMb,
+            Long tokenQuota) {
         plan.setName(name);
         plan.setPermissions(permissions.toArray(String[]::new));
         plan.setSubApps(sorted(subApps).toArray(String[]::new));
         plan.setMemberQuota(memberQuota);
         plan.setStorageQuotaMb(storageQuotaMb);
+        plan.setTokenQuota(tokenQuota);
     }
 
     private static Set<String> sorted(Collection<String> values) {

@@ -6,6 +6,8 @@
 
 ### 变更
 
+- 平台 Plan 增加可空的每月 `tokenQuota`，正整数或不限，V9 只追加字段；套餐 API、运营页与 `TenantPlanChanged` 同步支持，旧消息与旧构造器保持兼容。权限动作策略增加 `use`、`publish`、`rollback`，业务规范、Sub-App 规范、archetype/sub-app-kit 提示及接入指南同步使用、发布、回滚分别授权规则；AI 审计沿用 operation 分类并明确不记录内容与凭据。新增 Maven SDK 快照发布与每日仓库外契约消费工作流。
+
 - 文件治理在每批事务内先锁定候选再批量检查引用并失效/删除；业务绑定在同一可写事务内先 `get(purpose, id)` 再写引用，避免成功绑定后被旧无引用结果失效。只读事务的 get 保持普通读取，completeUpload 的配额拒绝继续独立提交。业务规范、archetype 与 sub-app-kit 模板及接入指南同步这条绑定规则和数据库查询超时要求；demo 引用查询设置 3 秒超时。
 
 - demo-service 的 `order-attachment` 用途声明 30 天保留期，新增真实上传、到期、七天宽限与配额释放验收；接入指南同步示例，明确有引用附件继续保留、IO/历史未覆盖用途安全跳过及 `HELD` 仅预留。未新增前端页面。

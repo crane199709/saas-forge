@@ -27,6 +27,9 @@ public class Plan extends AuditableEntity {
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Long storageQuotaMb;
 
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private Long tokenQuota;
+
     public UUID getId() {
         return id;
     }
@@ -81,5 +84,13 @@ public class Plan extends AuditableEntity {
 
     public void setStorageQuotaMb(Long storageQuotaMb) {
         this.storageQuotaMb = storageQuotaMb;
+    }
+
+    public Long getTokenQuota() {
+        return tokenQuota;
+    }
+
+    public void setTokenQuota(Long tokenQuota) {
+        this.tokenQuota = tokenQuota;
     }
 }

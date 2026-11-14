@@ -55,14 +55,18 @@ class PlanEnforcementTest {
     static final UUID MEMBER = UUID.fromString("019a0120-0000-7000-8000-0000000000a4");
     static final UUID QUOTA_TENANT = UUID.fromString("019a0120-0000-7000-8000-0000000000a6");
     static final UUID QUOTA_ADMIN = UUID.fromString("019a0120-0000-7000-8000-0000000000a8");
+    static final UUID AI_TENANT = UUID.fromString("019a0120-0000-7000-8000-0000000000d0");
+    static final UUID AI_ADMIN = UUID.fromString("019a0120-0000-7000-8000-0000000000d2");
     static final UUID APP_TENANT = UUID.fromString("019a0120-0000-7000-8000-0000000000c0");
     static final UUID APP_ADMIN = UUID.fromString("019a0120-0000-7000-8000-0000000000c2");
     static final Map<UUID, UUID> IDENTITIES = Map.of(
+            AI_ADMIN, UUID.fromString("019a0120-0000-7000-8000-0000000000d1"),
             ADMIN, UUID.fromString("019a0120-0000-7000-8000-0000000000a1"),
             MEMBER, UUID.fromString("019a0120-0000-7000-8000-0000000000a3"),
             QUOTA_ADMIN, UUID.fromString("019a0120-0000-7000-8000-0000000000a7"),
             APP_ADMIN, UUID.fromString("019a0120-0000-7000-8000-0000000000c1"));
-    static final Map<UUID, UUID> TENANTS = Map.of(QUOTA_ADMIN, QUOTA_TENANT, APP_ADMIN, APP_TENANT);
+    static final Map<UUID, UUID> TENANTS =
+            Map.of(QUOTA_ADMIN, QUOTA_TENANT, APP_ADMIN, APP_TENANT, AI_ADMIN, AI_TENANT);
     static final UUID BASIC = UUID.fromString("019a0120-0000-7000-8000-0000000000b1");
     static final UUID PRO = UUID.fromString("019a0120-0000-7000-8000-0000000000b2");
 
@@ -123,6 +127,47 @@ class PlanEnforcementTest {
                                                 "approvals",
                                                 "order:approve",
                                                 null))))));
+    }
+
+    @Test
+    @Sql({"/fixtures/plans.sql", "/fixtures/ai-plan.sql"})
+    void aiFeaturePackUsesTheExistingManifestAndPlanBoundaries() throws Exception {
+        permissions.report(
+                "ai-service",
+                new ResourceManifest(
+                        "ai-service",
+                        "1",
+                        List.of(
+                                new Permission("ai:conversation:use", "使用 AI 助手", "AI"),
+                                new Permission("ai:prompt:publish", "发布 Prompt", "AI"),
+                                new Permission("ai:prompt:rollback", "回滚 Prompt", "AI")),
+                        List.of(new MenuNode(
+                                "ai.workbench", "AI 工作台", null, "ai", "conversations", "ai:conversation:use", null))));
+        deliverSubApp(new SubAppChanged(
+                "ai", "AI 工作台", "1.0.0", Map.of("local", "http://127.0.0.1:5180/remoteEntry.js"), Map.of(), false, 1));
+
+        deliver(new TenantPlanChanged(
+                AI_TENANT,
+                PRO,
+                "pro",
+                List.of("ai:conversation:use", "ai:prompt:publish"),
+                List.of("ai"),
+                null,
+                null,
+                1,
+                5_000_000_000L));
+        assertThat(grantableCodes(AI_ADMIN))
+                .contains("ai:conversation:use", "ai:prompt:publish")
+                .doesNotContain("ai:prompt:rollback");
+        assertThat(menuCodes(AI_ADMIN)).contains("ai.workbench");
+        assertThat(subApps(AI_ADMIN)).extracting(app -> app.get("code")).containsExactly("ai");
+
+        deliver(new TenantPlanChanged(AI_TENANT, BASIC, "basic", List.of(), List.of(), null, null, 2, null));
+        assertThat(grantableCodes(AI_ADMIN)).doesNotContain("ai:conversation:use", "ai:prompt:publish");
+        assertThat(menuCodes(AI_ADMIN)).doesNotContain("ai.workbench");
+        assertThat(subApps(AI_ADMIN)).isEmpty();
+        permissions.report("ai-service", new ResourceManifest("ai-service", "2", List.of(), List.of()));
+        deliverSubApp(new SubAppChanged("ai", "AI 工作台", "1.0.0", Map.of(), Map.of(), true, 2));
     }
 
     @Test
@@ -481,7 +526,11 @@ class PlanEnforcementTest {
     }
 
     private List<Object> grantableCodes() throws Exception {
-        return ((List<?>) call(ADMIN, HttpMethod.GET, "/roles/permissions", null)
+        return grantableCodes(ADMIN);
+    }
+
+    private List<Object> grantableCodes(UUID membership) throws Exception {
+        return ((List<?>) call(membership, HttpMethod.GET, "/roles/permissions", null)
                         .getBody()
                         .get("data"))
                 .stream().<Object>map(item -> ((Map<?, ?>) item).get("code")).toList();

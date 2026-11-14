@@ -14,6 +14,8 @@ export interface Plan {
   memberQuota: number | null
   /** 存储容量上限（MiB），null 为不限。 */
   storageQuotaMb: number | null
+  /** 每租户每月 Token 总量上限，null 为不限。 */
+  tokenQuota: number | null
   updatedAt: string
 }
 
@@ -36,6 +38,8 @@ export interface PlanContent {
   subApps: string[]
   memberQuota: number | null
   storageQuotaMb: number | null
+  /** 每租户每月 Token 总量上限，null 为不限。 */
+  tokenQuota: number | null
 }
 
 export interface CreatePlan extends PlanContent {

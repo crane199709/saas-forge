@@ -39,6 +39,7 @@ const emptyDraft = () => ({
   subApps: [] as string[],
   memberQuota: null as number | null,
   storageQuotaMb: null as number | null,
+  tokenQuota: null as number | null,
 })
 const draft = ref(emptyDraft())
 
@@ -128,6 +129,7 @@ async function open(plan: Plan | null) {
         subApps: [...plan.subApps],
         memberQuota: plan.memberQuota,
         storageQuotaMb: plan.storageQuotaMb,
+        tokenQuota: plan.tokenQuota,
       }
     : emptyDraft()
   dialogOpen.value = true
@@ -135,7 +137,7 @@ async function open(plan: Plan | null) {
 
 async function save() {
   const plan = editing.value
-  const { code, name, permissions, subApps, memberQuota, storageQuotaMb } = draft.value
+  const { code, name, permissions, subApps, memberQuota, storageQuotaMb, tokenQuota } = draft.value
   // el-input-number 清空后为 null 或 undefined，统一按不限提交
   const content = {
     name: name.trim(),
@@ -143,6 +145,7 @@ async function save() {
     subApps,
     memberQuota: memberQuota ?? null,
     storageQuotaMb: storageQuotaMb ?? null,
+    tokenQuota: tokenQuota ?? null,
   }
   const done = await run(async () => {
     if (plan) await props.api.update(plan.id, content)
@@ -188,6 +191,9 @@ onMounted(() => run(fetchPlans))
       </el-table-column>
       <el-table-column :label="t('plan.storageQuota')" width="120" align="right">
         <template #default="{ row }">{{ quota(row.storageQuotaMb, ' MiB') }}</template>
+      </el-table-column>
+      <el-table-column :label="t('plan.tokenQuota')" min-width="160" align="right">
+        <template #default="{ row }">{{ quota(row.tokenQuota) }}</template>
       </el-table-column>
       <el-table-column :label="t('plan.actions')" width="112" fixed="right">
         <template #default="{ row }">
@@ -283,12 +289,25 @@ onMounted(() => run(fetchPlans))
           <el-input-number
             v-model="draft.storageQuotaMb"
             :min="1"
-            :step="1024"
+            :step="1"
             :value-on-clear="null"
             :placeholder="t('plan.unlimited')"
             data-testid="plan-storage-quota"
           />
           <span class="unit">MiB</span>
+        </el-form-item>
+        <el-form-item :label="t('plan.tokenQuota')">
+          <el-input-number
+            v-model="draft.tokenQuota"
+            class="token-quota-input"
+            :min="1"
+            :max="Number.MAX_SAFE_INTEGER"
+            :step="1"
+            step-strictly
+            :value-on-clear="null"
+            :placeholder="t('plan.unlimited')"
+            data-testid="plan-token-quota"
+          />
         </el-form-item>
         <el-button native-type="submit" type="primary" :loading="busy">{{
           t('plan.save')
@@ -308,5 +327,8 @@ onMounted(() => run(fetchPlans))
 }
 .unit {
   margin-left: var(--forge-space-2);
+}
+.token-quota-input {
+  width: calc(var(--forge-space-5) * 10);
 }
 </style>

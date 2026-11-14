@@ -64,7 +64,8 @@ class PlanController {
                 request.permissions(),
                 request.subApps(),
                 request.memberQuota(),
-                request.storageQuotaMb())));
+                request.storageQuotaMb(),
+                request.tokenQuota())));
     }
 
     @Operation(summary = "整体替换套餐的名称、Feature Pack 与 Quota，并向使用它的租户广播；降级后超出的授权随即失效，升级后恢复")
@@ -77,7 +78,8 @@ class PlanController {
                 request.permissions(),
                 request.subApps(),
                 request.memberQuota(),
-                request.storageQuotaMb())));
+                request.storageQuotaMb(),
+                request.tokenQuota())));
     }
 
     @Operation(summary = "删除套餐；仍有租户使用时拒绝")
@@ -93,6 +95,7 @@ class PlanController {
      * @param subApps Feature Pack 中的 Sub-App 编码
      * @param memberQuota 成员数上限，不填为不限
      * @param storageQuotaMb 存储容量上限（MiB），不填为不限
+     * @param tokenQuota 每租户每月 Token 总量上限，不填为不限
      */
     record CreatePlanRequest(
             @NotBlank @Pattern(regexp = "[a-z][a-z0-9-]{0,63}")
@@ -102,7 +105,8 @@ class PlanController {
             @NotNull List<@NotBlank @Size(max = 128) String> permissions,
             @NotNull List<@NotBlank @Pattern(regexp = "[a-z][a-z0-9-]{0,63}") String> subApps,
             @Positive Integer memberQuota,
-            @Positive Long storageQuotaMb) {}
+            @Positive Long storageQuotaMb,
+            @Positive Long tokenQuota) {}
 
     /** 字段含义同 {@link CreatePlanRequest}，编码不可修改。 */
     record UpdatePlanRequest(
@@ -110,7 +114,8 @@ class PlanController {
             @NotNull List<@NotBlank @Size(max = 128) String> permissions,
             @NotNull List<@NotBlank @Pattern(regexp = "[a-z][a-z0-9-]{0,63}") String> subApps,
             @Positive Integer memberQuota,
-            @Positive Long storageQuotaMb) {}
+            @Positive Long storageQuotaMb,
+            @Positive Long tokenQuota) {}
 
     record PlanResponse(
             UUID id,
@@ -120,6 +125,7 @@ class PlanController {
             List<String> subApps,
             Integer memberQuota,
             Long storageQuotaMb,
+            Long tokenQuota,
             OffsetDateTime updatedAt) {
         static PlanResponse from(Plan plan) {
             return new PlanResponse(
@@ -130,6 +136,7 @@ class PlanController {
                     List.of(plan.getSubApps()),
                     plan.getMemberQuota(),
                     plan.getStorageQuotaMb(),
+                    plan.getTokenQuota(),
                     plan.getUpdatedAt());
         }
     }

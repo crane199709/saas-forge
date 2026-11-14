@@ -58,6 +58,7 @@ const plans = [
     subApps: [],
     memberQuota: 5,
     storageQuotaMb: null,
+    tokenQuota: null,
     updatedAt: 'x',
   },
   {
@@ -68,6 +69,7 @@ const plans = [
     subApps: ['demo'],
     memberQuota: null,
     storageQuotaMb: 1024,
+    tokenQuota: null,
     updatedAt: 'x',
   },
 ]

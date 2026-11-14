@@ -18,6 +18,7 @@
 - 租户业务表带标准列 `created_at`/`updated_at`/`created_by`/`updated_by`/`deleted`，实体继承 `AuditableEntity`；删除一律为逻辑删除，唯一性只用 `WHERE NOT deleted` 的部分唯一索引。
 - 敏感字段新增或变更前读规范「敏感字段登记」；声明变化时递增 `forge.manifest.version`。接入导出或日志时读规范「敏感字段导出与日志」，按列路径与安全参数契约传值。
 - 按需启用 storage 的文件治理时，检查器显式声明覆盖用途；引用专用查询包含逻辑删除行并保留租户隔离，建立引用须在同一可写事务内先 `get(purpose, id)` 再写业务行，引用查询设置数据库超时；详见业务规范「文件保留与生命周期」。storage 同时需要 audit/scheduling 的 MQ、Redis 与 IAM 目录配置，按该节接入；默认 starter 不引入可选 storage 表或配置。
+- 新增 Permission Code 前读业务规范「权限动作词」，Manifest 声明与 CI 目录动作策略保持一致；AI 使用、配置发布与回滚分别用 `use`、`publish`、`rollback`。
 - 注释写「为什么」，Mapper 方法必须有文档注释。
 
 ## 命令

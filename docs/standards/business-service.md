@@ -322,6 +322,10 @@ Platform 通过专属 `forge-platform.yaml` 的 `forge.platform.ops.tokens.<spri
 - 其他匿名接口必须在网关显式列出，同时在服务的安全链中放行，不靠推断。
 - 只供同进程或服务间直连调用的接口放在 `/internal/` 下，网关显式拒绝。
 
+## 权限动作词
+
+Permission Code 的最后一个冒号段表达动作。使用平台批准的动作词：`create`、`delete`、`export`、`import`、`importRollback`、`manage`、`publish`、`read`、`reset`、`rollback`、`update`、`use`、`viewRaw`。`use` 表示实际使用助手或工具，`publish`、`rollback` 表示配置版本发布与回滚，分别与读取、草稿修改授权。服务在 Manifest 中声明完整权限码、菜单引用与角色模板；CI 对导出的 Manifest 执行平台权限目录动作策略检查。新增动作须在平台策略中登记用途理由，不能由业务服务自行放行。
+
 ## 敏感字段登记
 
 需要脱敏的字段在 Resource Manifest 的 `sensitiveFields` 声明 `path`、`grade` 与可选 `defaultRule`，或在 DTO 字段、record component、getter 上使用 `io.saasforge.sdk.security.SensitiveField` 注解。两种声明合并：服务内字段路径唯一，文件与注解重复声明也会失败；同一 record component 传播到字段和 accessor 的注解只计一次。

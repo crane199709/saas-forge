@@ -65,12 +65,14 @@ Backend quality 工作流无条件运行目录测试与真实 `--check`，因此
 
 [动作策略](contracts/permission-policy.json) 包含两个映射，每个值都必须是非空理由：
 
-- `actions`：动作词到批准理由；当前为 `create`、`delete`、`export`、`import`、`importRollback`、`manage`、`read`、`reset`、`update`、`viewRaw`。
+- `actions`：动作词到批准理由；当前为 `create`、`delete`、`export`、`import`、`importRollback`、`manage`、`publish`、`read`、`reset`、`rollback`、`update`、`use`、`viewRaw`。
 - `historicalExceptions`：完整 Permission Code 到历史保留理由；当前没有需要例外的存量编码，因此为空。
 
 动作取最后一个冒号之后的完整段，要求冒号两侧非空，并精确匹配白名单。例如 `iam:role:manage` 与 `order:read` 通过，裸 `read`、`order:read:invented`、`order:read-extra` 和 `order:Read` 不通过。该策略也校验 inactive 条目，不改变 SDK 的运行时编码语法。
 
 确需新动作时，在 `actions` 登记动作及其用途理由。历史例外仅按完整码匹配，且该码必须已经存在于 `--previous` 基线；不支持通配符、资源前缀或服务整体放行。新增违规码不能通过同时提交一个“历史例外”引入，CI 的 Git 基线会拒绝这种情况。
+
+AI 服务用 `use` 区分实际使用助手/工具与读取历史，用 `publish`、`rollback` 区分配置版本操作与草稿修改。例如 `ai:conversation:use`、`ai:prompt:publish`、`ai:prompt:rollback`。Manifest 的声明、菜单引用与角色引用由 SDK/IAM 校验；动作白名单由目录命令对导出的 Manifest 校验，外部 AI 服务应把该命令加入自己的 CI。运行时编码语法保持兼容，不为旧服务引入额外的动作词拒绝。AI 权限由外部 AI 服务声明，平台仓内目录不预占这些编码。
 
 ## 前端与外部 Sub-App 消费
 

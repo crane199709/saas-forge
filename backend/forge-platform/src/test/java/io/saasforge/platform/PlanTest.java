@@ -31,6 +31,47 @@ class PlanTest extends PlatformIntegrationTest {
     OutboxAuditMapper outbox;
 
     @Test
+    void monthlyTokenQuotaIsPersistedValidatedAndBroadcast() {
+        var request = plan("ai-quota", List.of(), List.of("ai"), null, null);
+        request.put("tokenQuota", 5_000_000_000L);
+        Response created = call("POST", "/plans", request);
+        UUID planId = id(created);
+        assertThat(created.data()).containsEntry("tokenQuota", 5_000_000_000L);
+        assertThat(call("GET", "/plans", null).list())
+                .filteredOn(item -> item.get("id").equals(planId.toString()))
+                .singleElement()
+                .satisfies(item -> assertThat(item).containsEntry("tokenQuota", 5_000_000_000L));
+
+        Response tenant = call(
+                "POST",
+                "/tenants",
+                Map.of("name", "AI 配额租户", "adminContact", "ai-quota@example.com", "planId", planId.toString()));
+        UUID tenantId = UUID.fromString((String) tenant(tenant).get("id"));
+        assertThat(tokenQuotas(tenantId)).containsExactly(5_000_000_000L);
+
+        for (long invalid : List.of(0L, -1L)) {
+            request.put("tokenQuota", invalid);
+            assertThat(call("POST", "/plans", request).status()).isEqualTo(400);
+            assertThat(call("PUT", "/plans/" + planId, request).status()).isEqualTo(400);
+        }
+        request.put("tokenQuota", 2_000_000L);
+        assertThat(call("PUT", "/plans/" + planId, request).data()).containsEntry("tokenQuota", 2_000_000);
+        request.put("tokenQuota", null);
+        assertThat(call("PUT", "/plans/" + planId, request).data()).containsEntry("tokenQuota", null);
+        assertThat(tokenQuotas(tenantId)).containsExactly(5_000_000_000L, 2_000_000L, null);
+    }
+
+    private List<Long> tokenQuotas(UUID tenantId) {
+        return outbox.payloads(tenantId, TenantPlanChanged.class.getSimpleName()).stream()
+                .map(payload -> {
+                    var value = JSON.readTree(payload).get("tokenQuota");
+                    assertThat(value).isNotNull();
+                    return value.isNull() ? null : value.asLong();
+                })
+                .toList();
+    }
+
+    @Test
     void featurePackIsChosenFromTheIamCatalog() {
         // 旧的平铺目录接口已由 /plans/permission-tree 取代
         assertThat(call("GET", "/plans/permissions", null).status()).isEqualTo(405);

@@ -57,6 +57,24 @@ demo-service 的订单增删改、forge-platform 的租户创建、状态变更�
 | 业务操作 | `dictionary.itemCreate`、`dictionary.itemUpdate`、`dictionary.itemDisable`、`dictionary.itemEnable` | 租户修改 Extensible Dictionary 的字典项；`resourceId` 为 `服务:字典:字典项编码` |
 | 业务操作 | `parameter.override`、`parameter.reset` | 租户覆盖 Parameter 或恢复默认值；`resourceId` 为 `服务:参数编码`，覆盖值记在 `detail.value` |
 
+## AI 服务的动作约定
+
+AI 服务沿用 `category=operation`，不增加新的分类枚举。由 `ai-platform` 产出以下事件，平台审计按现有 `action`、`resourceType`、`resourceId` 查询。租户会话与配置使用 Tenant Realm；平台模型、Skill、MCP 目录维护使用 Platform Realm。
+
+| 对象 | action | resourceType / resourceId |
+| --- | --- | --- |
+| 会话开始、结束 | `ai.conversation.start`、`ai.conversation.end` | `aiConversation` / 会话 ID |
+| 工具调用完成（含失败与拒绝） | `ai.tool.invoke` | `aiToolCall` / 调用 ID |
+| 会话内切换模型 | `ai.model.switch` | `aiConversation` / 会话 ID |
+| Prompt 发布、回滚 | `ai.prompt.publish`、`ai.prompt.rollback` | `aiPrompt` / Prompt ID |
+| Skill 发布、回滚 | `ai.skill.publish`、`ai.skill.rollback` | `aiSkill` / Skill ID |
+| MCP 发布、回滚 | `ai.mcp.publish`、`ai.mcp.rollback` | `aiMcp` / MCP 配置 ID |
+| 平台目录配置变更 | `ai.model.create/update/delete`、`ai.skill.create/update/delete`、`ai.mcp.create/update/delete`（斜杠表示三个独立动作） | `aiModel`、`aiSkill`、`aiMcp` / 目录项 ID |
+
+每次调用或变更只记录一个完成事件，通过 `outcome` 与 `errorCode` 区分成功、失败、拒绝；会话结束的 `detail.reason` 可使用固定值 `completed`、`cancelled`、`failed`。SSE 请求返回不代表会话结束或工具调用完成，应在实际完成边界显式调用 `AuditRecorder`；普通同步配置接口可用 `@AuditLog`。失败信息使用稳定错误码，不能直接写上游错误正文。
+
+`detail` 仅允许会话、模型、工具、目录项的内部标识，已发布版本号，token 计数、耗时和固定状态。不得写消息正文、Prompt 内容、Skill 内容、工具参数与结果、MCP 连接串、模型端点、HTTP 头、凭据或密钥引用。逐条用户消息和流式片段不产出审计；租户删除后保留不含内容的审计元数据。
+
 ## 存储与分区
 
 - `iam.audit_event`（V18）按 `occurred_at` 的 UTC 自然月分区，分区名 `audit_event_YYYY_MM`。

@@ -129,6 +129,7 @@ const plan = (
   subApps: string[],
   memberQuota: number | null,
   storageQuotaMb: number | null,
+  tokenQuota: number | null = null,
 ) => ({
   id,
   code: id,
@@ -137,10 +138,19 @@ const plan = (
   subApps,
   memberQuota,
   storageQuotaMb,
+  tokenQuota,
   updatedAt: '2026-10-28T00:00:00Z',
 })
 const plans = [
-  plan('pro', '专业版', ['customer:read', 'order:read'], ['demo', 'crm', 'wms'], 200, 102400),
+  plan(
+    'pro',
+    '专业版',
+    ['customer:read', 'order:read'],
+    ['demo', 'crm', 'wms'],
+    200,
+    102400,
+    5_000_000_000,
+  ),
   plan('basic', '基础版', ['order:read'], [], 5, 1024),
   plan('enterprise', '旗舰企业定制版', [], ['demo'], null, null),
 ]
@@ -424,6 +434,29 @@ for (const [label, width, height] of viewports) {
         await expect(page).toHaveScreenshot(`platform-${name}-${label}.png`)
       })
     }
+
+    test('plan token quota', async ({ page }) => {
+      const errors: string[] = []
+      page.on('pageerror', (error) => errors.push(error.message))
+      await open(page, '/plans', null, {
+        '/platform/plans/permission-tree': ok({ menus: [], others: [] }),
+      })
+      await expect(page.getByRole('columnheader', { name: '每月 Token 配额' })).toBeAttached()
+      await page.getByTestId('plan-edit-pro').click()
+      const input = page.getByTestId('plan-token-quota').getByRole('spinbutton')
+      await input.scrollIntoViewIfNeeded()
+      await expect(input).toHaveValue('5000000000')
+      await expect(page).toHaveScreenshot(`platform-plan-token-quota-${label}.png`)
+      await input.fill('2000000')
+      await input.blur()
+      const saved = page.waitForRequest(
+        (request) => request.method() === 'PUT' && request.url().endsWith('/platform/plans/pro'),
+      )
+      await page.getByRole('button', { name: '保存', exact: true }).click()
+      expect((await saved).postDataJSON()).toMatchObject({ tokenQuota: 2_000_000 })
+      await expect(page.getByRole('dialog')).not.toBeVisible()
+      expect(errors).toEqual([])
+    })
 
     test('identity', async ({ page }) => {
       await open(page, '/identities')

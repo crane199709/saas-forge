@@ -105,6 +105,7 @@
     "subAppsHint": "输入子应用编码后回车",
     "memberQuota": "成员数上限",
     "storageQuota": "存储容量上限",
+    "tokenQuota": "每月 Token 配额",
     "unlimited": "不限",
     "actions": "操作",
     "edit": "编辑",

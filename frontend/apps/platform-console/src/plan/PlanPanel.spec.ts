@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import ElementPlus, { ElSelect } from 'element-plus'
+import ElementPlus, { ElInputNumber, ElSelect } from 'element-plus'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createPlatformClient } from '@crane199709/sdk'
 import { i18n } from '../i18n'
@@ -21,6 +21,7 @@ const basic = {
   subApps: ['demo'],
   memberQuota: 5,
   storageQuotaMb: null,
+  tokenQuota: null,
   updatedAt: 'x',
 }
 // SDK 按当前源解析请求地址，断言只比较路径与查询串
@@ -153,6 +154,7 @@ it('列出套餐，新建时先选 Sub-App，再按页面勾选其权限码', as
     subApps: ['demo'],
     memberQuota: null,
     storageQuotaMb: null,
+    tokenQuota: null,
   })
   expect(wrapper.text()).toContain('专业版')
   expect(wrapper.emitted('loaded')![1]).toEqual([[basic, created]])
@@ -198,6 +200,7 @@ it('编辑时保留已下线的权限码，删除被拒时展示服务端提示'
     subApps: ['demo'],
     memberQuota: 5,
     storageQuotaMb: null,
+    tokenQuota: null,
   })
 
   await wrapper.get('[data-testid="plan-delete-basic"]').trigger('click')
@@ -216,6 +219,40 @@ const pro = {
   permissions: ['customer:read', 'order:export', 'order:read', 'report:sync'],
   subApps: ['crm', 'demo'],
 }
+
+it('展示每月 Token 配额，编辑后保存，清空后按不限提交', async () => {
+  const limited = { ...basic, tokenQuota: 5_000_000_000 }
+  const fetcher = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+    if (init?.method === 'PUT') return Promise.resolve(ok(limited))
+    if (String(_url).includes('permission-tree')) return Promise.resolve(ok(catalog))
+    return Promise.resolve(ok([limited]))
+  })
+  vi.stubGlobal('fetch', fetcher)
+  const wrapper = mountPanel()
+  await flushPromises()
+  expect(wrapper.text()).toContain('5000000000')
+  let form = await edit(wrapper, 'basic')
+  const field = wrapper
+    .findAllComponents(ElInputNumber)
+    .find((field) => field.attributes('data-testid') === 'plan-token-quota')!
+  expect(input('plan-token-quota').value).toBe('5000000000')
+  field.vm.$emit('update:modelValue', 2_000_000)
+  form.dispatchEvent(new Event('submit'))
+  await flushPromises()
+  expect(
+    JSON.parse(fetcher.mock.calls.find((call) => call[1]?.method === 'PUT')![1].body),
+  ).toMatchObject({ tokenQuota: 2_000_000 })
+
+  form = await edit(wrapper, 'basic')
+  wrapper
+    .findAllComponents(ElInputNumber)
+    .find((field) => field.attributes('data-testid') === 'plan-token-quota')!
+    .vm.$emit('update:modelValue', undefined)
+  form.dispatchEvent(new Event('submit'))
+  await flushPromises()
+  const writes = fetcher.mock.calls.filter((call) => call[1]?.method === 'PUT')
+  expect(JSON.parse(writes.at(-1)![1].body)).toMatchObject({ tokenQuota: null })
+})
 
 function editFetcher(plan: typeof basic) {
   const fetcher = vi

@@ -18,6 +18,7 @@ import java.util.UUID;
  * @param memberQuota 成员数上限，为 null 表示不限
  * @param storageQuotaMb 存储容量上限（MiB），为 null 表示不限
  * @param version 该租户的 Plan 版本，每次变更加 1，创建租户时为 1
+ * @param tokenQuota 每租户每月 Token 总量上限，为 null 表示不限；历史消息缺省时同样为不限
  */
 public record TenantPlanChanged(
         UUID tenantId,
@@ -27,7 +28,32 @@ public record TenantPlanChanged(
         List<String> subApps,
         Integer memberQuota,
         Long storageQuotaMb,
-        long version) {
+        long version,
+        Long tokenQuota) {
+    /**
+     * 兼容尚未配置 Token 配额的发布方，配额默认为不限。
+     *
+     * @param tenantId 租户 ID
+     * @param planId Plan ID
+     * @param planCode Plan 编码
+     * @param permissions 可用权限码
+     * @param subApps 可用 Sub-App 编码
+     * @param memberQuota 成员数上限
+     * @param storageQuotaMb 存储容量上限（MiB）
+     * @param version 租户 Plan 版本
+     */
+    public TenantPlanChanged(
+            UUID tenantId,
+            UUID planId,
+            String planCode,
+            List<String> permissions,
+            List<String> subApps,
+            Integer memberQuota,
+            Long storageQuotaMb,
+            long version) {
+        this(tenantId, planId, planCode, permissions, subApps, memberQuota, storageQuotaMb, version, null);
+    }
+
     public TenantPlanChanged {
         permissions = permissions == null ? List.of() : List.copyOf(permissions);
         subApps = subApps == null ? List.of() : List.copyOf(subApps);

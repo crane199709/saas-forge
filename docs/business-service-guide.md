@@ -101,6 +101,14 @@ pnpm start:lowcode
 
 Manifest 上报在启动完成后异步执行，不等待 IAM 恢复：初次尝试失败后再退避重试三次（1、2、4 秒），连接/读取超时保持 5/10 秒；仍失败则每五分钟补报一次，最多十二次。成功即停止，应用关闭取消等待与进行中的请求；到达上限后保留失败状态，修正配置后重启服务重新上报。失败区分网络、凭证被拒、服务名不匹配、版本冲突、清单非法和其他响应；最近成功与最近失败各自保留。内部状态端点受 Ops Token 链保护，网关继续拒绝 `/internal/`。
 
+## AI 平台前置契约
+
+平台套餐 API 的 `tokenQuota` 是每租户每月 Token 总量上限，类型为可空正整数（Java `Long`、数据库 `BIGINT`），`null` 或省略表示不限。现有套餐经 platform V9 迁移后保持不限，升级只追加迁移。`TenantPlanChanged` 在创建租户、分配套餐、修改套餐时携带完整配额；保留八参构造器，历史 JSON 缺少该字段时为 `null`。订阅方按 `version` 丢弃旧事件。AI 服务负责每租户/月计量和拒绝超限回合，平台在本工单不执行 AI 扣量。
+
+AI 服务上报自己的 Resource Manifest，工作台菜单使用 Sub-App 编码 `ai`。Operator 在套餐页选择 `ai` 并勾选其权限，例如 `ai:conversation:use`；配置发布与回滚可分别声明 `ai:prompt:publish`、`ai:prompt:rollback`。Manifest 上报后权限进入运行期目录，平台不内置 AI 业务权限、不绕过目录校验。权限动作词见 [业务规范](standards/business-service.md#权限动作词)，AI 审计事件使用 [审计动作约定](audit.md#ai-服务的动作约定)。
+
+开发期消费 `0.2.0-SNAPSHOT`，Maven 仓库配置和每日兼容验证见 [快照发布](../scripts/release/README.md#sdk-开发快照与每日兼容验证)。AI 仓库建立后，在其 Java CI 中以 `-U` 更新快照并执行集成测试；平台每日仓库外契约消费不能替代 AI 产品自己的构建与验收。
+
 ## Manifest、Provisioning 与内部接口
 
 权限码、名称、菜单、角色模板、Data Resource、资源属性或 Sensitive Field 声明（含注解）变化时递增 `forge.manifest.version`，与新清单一起发布；相同版本不能用于覆盖不同内容。JSON 在 `META-INF/forge/manifest.json`，权限注解与清单必须一致。
