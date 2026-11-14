@@ -14,14 +14,15 @@
 - `packages/ui/src/theme.ts` 的 `layoutTokens` 定义 `--forge-*` token。
 - token 分三层，改动落在唯一归属的层（决策见 ADR-0029）：
   - primitive：`layoutTokens` 里的间距、圆角、字号、阴影、层叠与字体族档位，以及 `themeTokens` 的主色；只有这一层由 Shell 写到文档根节点。
-  - semantic：Element Plus 的 `--el-color-*`、`--el-text-color-*` 及尺寸与描边变量（如 `--el-font-size-large`、`--el-component-size-large`、`--el-border-width`），不另建 `--forge-color-*` 语义色。
-  - component：组件私有变量，只在自身选择器内定义，如菜单元素的变量覆盖；不写到文档根节点。
+  - semantic：Element Plus 的 `--el-color-*`、`--el-text-color-*`、填充变量（如 `--el-fill-color-light`）及尺寸与描边变量（如 `--el-font-size-large`、`--el-component-size-large`、`--el-border-width`），不另建 `--forge-color-*` 语义色。
+  - component：组件私有变量，只在自身选择器或自身元素的 `style` 上定义，如菜单元素的变量覆盖、`EmptyState` 的 `--forge-empty-icon-size`；不写到文档根节点。用 `h()` 的组件没有选择器，取值与 primitive 一起放在 `theme.ts`（token 的唯一来源），但只由该组件写到自己的元素上。
 - 加档位的判断标准：现有档位确实不够用，且新值不替代任何现有档位时才追加，旧名与取值不改。原始数值进 primitive，角色色进 semantic，只有单个组件使用的取值进 component。
 - `packages/ui` 用 `h()` 的内联样式，stylelint 覆盖不到，改由 `pnpm lint:ui` 检查（见下）。
 
 ## 内联样式检查（lint:ui）
 
 - `frontend/packages/ui/scripts/lint-ui-style.ts` 用 TypeScript 编译器 API 遍历 `packages/ui/src/**/*.ts` 的 `style` 对象，报出字面量色值（hex、`rgb()/hsl()/rgba()/hsla()`）与长度字面量（`px`、`rem`、`em`）。不用正则，AST 才能区分样式字面量与注释、普通属性、常量引用里的同名文本。
+- 扫描范围是 `packages/ui/src/**/*.ts` 去掉 `*.spec.ts` 与 `test-mount.ts`：测试夹具里的样式不是产品样式，扫进来只会要求给夹具造 token。
 - 允许：`var(--*)`、`color-mix()`、`calc()`/`min()`/`max()`、百分比、`0`，以及无单位语义属性的纯数字（`fontWeight`、`lineHeight`、`flex`、`opacity`、`zIndex` 等，清单在工具里）。函数里的 `px/rem/em` 仍算字面量，与 stylelint 口径一致。
 - `packages/ui/src/theme.ts` 是 token 的唯一来源，**必须**排除：里面的字面量是定义不是违规。不要以「统一扫描」为由加回扫描范围。
 - Vue 3 不给数值补 `px`，长度属性写裸数字等于无效样式，工具先报 warning 不阻断；待确认没有历史依赖后再升级为 error。已知未覆盖：常量引用与带插值的模板字符串不展开（不做跨文件常量求值）。
