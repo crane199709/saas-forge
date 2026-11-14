@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ok, viewports } from './support'
+import { expectTableDensity, ok, viewports } from './support'
 test.use({ baseURL: 'http://127.0.0.1:5183' })
 const at = '2026-11-12T03:00:00Z'
 const healthy = {
@@ -110,6 +110,7 @@ for (const [viewport, width, height] of viewports) {
           await expect(
             page.getByText('2026.11.12-release-1234567890', { exact: true }),
           ).toBeVisible()
+          await expectTableDensity(page)
         } else if (state === 'empty') await expect(page.getByText('暂无可诊断的服务')).toBeVisible()
         else await expect(page.getByText('诊断服务暂不可用，请稍后刷新')).toBeVisible()
         await expect(page).toHaveScreenshot(`onboarding-${state}-${viewport}.png`)

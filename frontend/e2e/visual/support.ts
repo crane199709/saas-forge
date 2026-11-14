@@ -1,4 +1,4 @@
-import type { Page, Route } from '@playwright/test'
+import { expect, type Page, type Route } from '@playwright/test'
 
 export function ok(data: unknown, page?: unknown) {
   return {
@@ -19,6 +19,29 @@ export const viewports = [
   ['desktop', 1440, 900],
   ['laptop', 1024, 768],
 ] as const
+
+/**
+ * 断言当前页每张表格的数据行都是 40px 行高。
+ * 容差 0.5px 吸收 Chromium 对亚像素行盒的舍入：树形表格的展开图标会多出半像素。
+ */
+export async function expectTableDensity(page: Page) {
+  // 等表格完成首次列宽计算：固定列在布局稳定前会把行内按钮挤成两行。
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  )
+  const heights = await page
+    .locator('.el-table tbody tr.el-table__row')
+    .evaluateAll((rows) =>
+      rows
+        .filter((row) => (row as HTMLElement).offsetParent !== null)
+        .map((row) => row.getBoundingClientRect().height),
+    )
+  expect(heights.length).toBeGreaterThan(0)
+  const off = heights
+    .map((height, index) => ({ index, height }))
+    .filter(({ height }) => Math.abs(height - 40) > 0.5)
+  expect(off).toEqual([])
+}
 
 /** 以租户管理员身份打开页面；`respond` 处理页面自身的接口，返回 undefined 时按空列表应答。 */
 export async function openAsAdmin(

@@ -101,21 +101,23 @@ onMounted(load)
       />
       <el-table-column :label="t('onboarding.configuration')" min-width="115"
         ><template #default="{ row }"
-          ><el-tag :type="row.configuration.status === 'CONFIGURED' ? 'success' : 'warning'">{{
-            label(row.configuration.status)
-          }}</el-tag></template
+          ><el-tag
+            size="small"
+            :type="row.configuration.status === 'CONFIGURED' ? 'success' : 'warning'"
+            >{{ label(row.configuration.status) }}</el-tag
+          ></template
         ></el-table-column
       >
       <el-table-column :label="t('onboarding.runtime')" min-width="125"
         ><template #default="{ row }"
-          ><el-tag :type="row.runtime.status === 'LOADED' ? 'success' : 'info'">{{
+          ><el-tag size="small" :type="row.runtime.status === 'LOADED' ? 'success' : 'info'">{{
             label(row.runtime.status)
           }}</el-tag></template
         ></el-table-column
       >
       <el-table-column :label="t('onboarding.request')" min-width="125"
         ><template #default="{ row }"
-          ><el-tag :type="row.request.status === 'VERIFIED' ? 'success' : 'info'">{{
+          ><el-tag size="small" :type="row.request.status === 'VERIFIED' ? 'success' : 'info'">{{
             label(row.request.status)
           }}</el-tag></template
         ></el-table-column

@@ -60,3 +60,19 @@ applyTheme(themeTokens.primary)
   margin-bottom: var(--forge-space-3);
 }
 </style>
+
+<style>
+/*
+ * 表格密度由 Shell 统一设置，Sub-App 页面不再逐表调整：40px 行高 = 单元格上下内边距
+ * --forge-space-2（8px × 2）+ 正文行高 23px + 1px 分隔线；正文字号保持 14px。
+ * 展开行（el-table__expanded-cell）自带大内边距，不参与密度覆盖。
+ */
+.el-table {
+  --forge-table-row-height: 40px;
+  font-size: var(--forge-font-size-sm);
+}
+.el-table .el-table__cell:not(.el-table__expanded-cell) {
+  height: var(--forge-table-row-height);
+  padding: var(--forge-space-2) 0;
+}
+</style>

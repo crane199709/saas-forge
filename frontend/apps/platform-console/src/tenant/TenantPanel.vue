@@ -465,7 +465,7 @@ onMounted(() => load(1))
           <el-table-column prop="service" :label="t('tenant.service')" />
           <el-table-column :label="t('tenant.initialization')">
             <template #default="{ row }">
-              <el-tag :type="statusType[row.status as InitializationStatus]">{{
+              <el-tag size="small" :type="statusType[row.status as InitializationStatus]">{{
                 t(`tenant.initializationStatuses.${row.status}`)
               }}</el-tag>
               <p v-if="row.error" class="failure">{{ row.error }}</p>
