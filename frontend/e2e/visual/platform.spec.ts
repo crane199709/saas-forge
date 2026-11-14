@@ -650,3 +650,40 @@ for (const width of [1440, 1024]) {
     expect(errors).toEqual([])
   })
 }
+
+for (const width of [1440, 1024]) {
+  for (const state of ['empty', 'error'] as const) {
+    test(`tenant AI usage ${state} ${width}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      const response =
+        state === 'empty'
+          ? ok({
+              month: '2026-11',
+              businessZone: 'Asia/Shanghai',
+              received: false,
+              inputTokens: 0,
+              outputTokens: 0,
+              cachedInputTokens: 0,
+              totalTokens: 0,
+              estimatedTokens: 0,
+              turnCount: 0,
+              toolCalls: 0,
+              unknownUsageTurns: 0,
+              days: [],
+            })
+          : {
+              status: 503,
+              json: { code: 'upstream.unavailable', httpStatus: 503, userTip: '暂时不可用' },
+            }
+      await open(page, '/tenants', null, { '/platform/tenants/t1/ai-usage': response })
+      await page.getByRole('button', { name: '详情', exact: true }).first().click()
+      await page.getByTestId('ai-usage-query').click()
+      await expect(
+        page.getByText(state === 'empty' ? '尚未收到该月用量' : '用量查询失败，请重试', {
+          exact: true,
+        }),
+      ).toBeVisible()
+      await expect(page).toHaveScreenshot(`platform-tenant-ai-usage-${state}-${width}.png`)
+    })
+  }
+}
