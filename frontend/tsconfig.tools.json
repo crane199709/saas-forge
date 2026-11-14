@@ -5,6 +5,7 @@
     "e2e/**/*.ts",
     "playwright*.config.ts",
     "federation.shared.ts",
-    "apps/*/vite.config.ts"
+    "apps/*/vite.config.ts",
+    "packages/ui/scripts/**/*.ts"
   ]
 }

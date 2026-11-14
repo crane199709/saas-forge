@@ -47,13 +47,13 @@ export const RecoveryCodeList = defineComponent({
             style: {
               display: 'grid',
               gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-              gap: '8px',
-              paddingLeft: '24px',
+              gap: 'var(--forge-space-2)',
+              paddingLeft: 'var(--forge-space-5)',
             },
           },
           props.codes.map((code) => h('li', { key: code }, h('code', code))),
         ),
-        h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px' } }, [
+        h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 'var(--forge-space-2)' } }, [
           h(ElButton, { 'data-testid': 'recovery-codes-copy', onClick: copy }, () =>
             copied.value ? t('recoveryCodes.copied') : t('recoveryCodes.copy'),
           ),

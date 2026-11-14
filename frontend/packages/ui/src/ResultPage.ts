@@ -28,7 +28,13 @@ export const ResultPage = defineComponent({
     return () =>
       h(
         'section',
-        { class: 'result-page', style: { padding: '80px 16px' } },
+        {
+          class: 'result-page',
+          style: {
+            // style-guard-ignore: 结果页上下留白 80px，现有间距档位不足且只有这一处；出现第二处时提为 token
+            padding: '80px var(--forge-space-4)',
+          },
+        },
         h(
           ElResult,
           {

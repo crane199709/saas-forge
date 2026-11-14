@@ -19,6 +19,7 @@
     "test:e2e": "playwright test",
     "test:e2e:main": "../deploy/e2e/run.sh",
     "lint:style": "stylelint \"apps/*/src/**/*.{vue,css}\" \"packages/*/src/**/*.{vue,css}\"",
+    "lint:ui": "node packages/ui/scripts/lint-ui-style.ts",
     "test:visual": "pnpm --filter @forge/tenant-app --filter @forge/platform-console --filter @forge/demo-sub-app build && playwright test -c playwright.visual.config.ts",
     "test:visual:update": "pnpm --filter @forge/tenant-app --filter @forge/platform-console --filter @forge/demo-sub-app build && playwright test -c playwright.visual.config.ts --update-snapshots",
     "typecheck:tools": "tsc --noEmit -p tsconfig.tools.json",
