@@ -9,10 +9,24 @@ import type { NavigationEntry } from '@crane199709/ui'
 export function menuEntries(menus: MenuNode[], apps: ReadonlySet<string>): NavigationEntry[] {
   return menus.flatMap((node): NavigationEntry[] => {
     if (node.children?.length) {
-      return [{ menu: node.code, title: node.name, children: menuEntries(node.children, apps) }]
+      return [
+        {
+          menu: node.code,
+          title: node.name,
+          icon: node.icon,
+          children: menuEntries(node.children, apps),
+        },
+      ]
     }
     return node.app && node.path && apps.has(node.app)
-      ? [{ menu: node.code, title: node.name, path: `/apps/${node.app}/${node.path}` }]
+      ? [
+          {
+            menu: node.code,
+            title: node.name,
+            icon: node.icon,
+            path: `/apps/${node.app}/${node.path}`,
+          },
+        ]
       : []
   })
 }

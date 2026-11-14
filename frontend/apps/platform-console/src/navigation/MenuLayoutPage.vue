@@ -28,7 +28,12 @@ const access = useConsoleAccess()
 
 // 目录列出全部平台管理页，不按操作者本人权限裁剪；平台没有清单菜单。
 const catalog = computed<NavigationEntry[]>(() =>
-  consolePages.map((page) => ({ page: page.path.slice(1), title: t(page.title), path: page.path })),
+  consolePages.map((page) => ({
+    page: page.path.slice(1),
+    title: t(page.title),
+    icon: page.icon,
+    path: page.path,
+  })),
 )
 
 async function load() {

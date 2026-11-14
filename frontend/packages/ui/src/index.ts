@@ -1,5 +1,6 @@
 export { AppLayout } from './AppLayout'
 export type { MenuItem } from './AppLayout'
+export { defaultMenuIcon, resolveMenuIcon } from './icons'
 export { arrangeNavigation } from './navigation'
 export type { NavigationEntry } from './navigation'
 export { NavigationLayoutEditor } from './NavigationLayoutEditor'

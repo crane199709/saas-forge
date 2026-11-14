@@ -143,4 +143,33 @@ describe('arrangeNavigation', () => {
       { 报表: ['订单统计'] },
     ])
   })
+
+  it('透传清单声明的图标，键、路径与层级不变', () => {
+    const items = arrangeNavigation(
+      [
+        {
+          menu: 'demo',
+          title: '示例应用',
+          icon: 'grid',
+          children: [{ ...overview, icon: 'tickets' }],
+        },
+        { ...members, icon: 'user' },
+      ],
+      null,
+    )
+    expect(items[0]).toEqual({
+      key: 'demo',
+      title: '示例应用',
+      icon: 'grid',
+      children: [
+        { key: 'demo.overview', title: '订单概览', path: '/apps/demo/overview', icon: 'tickets' },
+      ],
+    })
+    expect(items[1]).toEqual({
+      key: 'members',
+      title: '成员管理',
+      path: '/members',
+      icon: 'user',
+    })
+  })
 })

@@ -9,6 +9,8 @@ export interface NavigationEntry {
   page?: string
   menu?: string
   title: string
+  /** Resource Manifest 菜单声明的图标名，由布局原样透传，解析与回退由菜单组件负责。 */
+  icon?: string
   path?: string
   children?: NavigationEntry[]
 }
@@ -127,8 +129,8 @@ export function placeNavigation<T>(
 function toItem(entry: NavigationEntry): MenuItem {
   const key = (entry.page ?? entry.menu)!
   return entry.children
-    ? { key, title: entry.title, children: [] }
-    : { key, title: entry.title, path: entry.path }
+    ? { key, title: entry.title, icon: entry.icon, children: [] }
+    : { key, title: entry.title, icon: entry.icon, path: entry.path }
 }
 
 // 分组只在含有页面时显示，按层级自下而上去掉空分组。

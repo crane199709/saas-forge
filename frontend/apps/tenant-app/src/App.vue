@@ -26,9 +26,9 @@ const { t } = useI18n()
 const route = useRoute()
 
 const menu = computed<MenuItem[]>(() => [
-  { key: 'home', title: t('app.workbench'), path: '/' },
+  { key: 'home', title: t('app.workbench'), icon: 'home', path: '/' },
   ...(access.has(['todo:read', 'notification:read', 'announcement:read'])
-    ? [{ key: 'notifications', title: '通知中心', path: '/notifications' }]
+    ? [{ key: 'notifications', title: '通知中心', icon: 'bell', path: '/notifications' }]
     : []),
   // 工作台与通知中心固定在顶部，其余按租户的导航布局排列。
   ...arrangeNavigation(
