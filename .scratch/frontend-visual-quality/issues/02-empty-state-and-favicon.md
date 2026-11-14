@@ -15,3 +15,15 @@
 - [ ] 测试：组件测试覆盖三种入参组合与插槽渲染；视觉测试覆盖至少一处列表空态与工作台空态；favicon 无自动化覆盖，人工确认标签页显示正常
 - [ ] 1024 宽度下空态完整可见不裁切
 - [ ] `pnpm lint:style`、`pnpm -r test`、`pnpm test:visual:update` 通过，基线更新单独成一个提交
+
+## Comments
+
+**2026-11-14 暂停，未完成**
+
+用户要求暂停。分支 `ticket/02-empty-state` 上有 WIP 提交 `1ca09788`，**未合并到集成分支**，工作区干净。
+
+已完成：`EmptyState` 组件（可选图标、必填标题、可选描述、默认插槽）与组件测试；`ListPage` 保留 `emptyText` 并内部渲染该组件；替换 4 处裸 `el-empty`（字典历史 3 处、身份面板 1 处）；工作台三张卡空态改用组件并各给一个入口。应用测试已过（ui 83、tenant 256、platform 102）。
+
+未做：三个 favicon、`sub-app.md` 与 `sub-app-kit` 模板与 `CHANGELOG.md` 同步、视觉基线重跑与基线提交、1024 宽度检查、`lint:style`/`typecheck`/`format:check`/全量验证、合并集成分支。
+
+恢复时注意：`workbench-empty` 与 dictionary-history 相关基线此刻必然失败（组件已换、基线未更新）；基线重跑要连跑两次确认稳定，并留意 `onboarding-mixed-laptop` 的已知抖动（见工单 01 的 Comments），不要为它重写基线。
