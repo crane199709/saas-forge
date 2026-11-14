@@ -71,6 +71,14 @@
 - **确认**不可逆或影响他人的操作用 `el-dialog` 说明影响，可恢复的操作不打断。
 - **按钮层级**：每个区域一个实心主按钮，其余用默认或 `plain`，行内操作用 `link`。视图切换用 `plain` 的 `el-button-group`。
 
+## 图标
+
+侧边菜单的图标由 Resource Manifest 的菜单节点 `icon` 声明，Shell 从 `@crane199709/ui` 的 `resolveMenuIcon` 白名单解析后渲染，Sub-App 前端不写图标代码。白名单是唯一来源，可用名字：
+
+`avatar`、`bell`、`collection`、`document`、`folder`、`grid`、`guide`、`home`、`key`、`lock`、`menu`、`office-building`、`price-tag`、`search`、`setting`、`tickets`、`timer`、`user`、`warning`
+
+名字写 kebab-case 或 PascalCase 均可（`office-building` 与 `OfficeBuilding` 等价），大小写、下划线与空格不敏感。图标名缺失或不在白名单时不报错，回退到默认的菜单图标；拼错只影响该菜单项的外观，不会让菜单消失。
+
 ## 交互规则
 
 - **新增和编辑走按钮**：列表上方放“新增”，点击后在弹窗或抽屉里填写。列表行保持只读，行内操作只放入口；逐行即改即生效的设置表（如参数）除外。

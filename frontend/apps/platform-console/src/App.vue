@@ -25,7 +25,12 @@ const menu = computed<MenuItem[]>(() =>
   arrangeNavigation(
     consolePages
       .filter((page) => access.has(page.permission))
-      .map((page) => ({ page: page.path.slice(1), title: t(page.title), path: page.path })),
+      .map((page) => ({
+        page: page.path.slice(1),
+        title: t(page.title),
+        icon: page.icon,
+        path: page.path,
+      })),
     access.state.value.layout,
   ),
 )

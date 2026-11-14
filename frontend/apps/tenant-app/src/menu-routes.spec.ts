@@ -8,8 +8,15 @@ describe('menuEntries', () => {
       {
         code: 'demo',
         name: '示例应用',
+        icon: 'grid',
         children: [
-          { code: 'demo.overview', name: '订单概览', app: 'demo', path: 'overview' },
+          {
+            code: 'demo.overview',
+            name: '订单概览',
+            app: 'demo',
+            path: 'overview',
+            icon: 'tickets',
+          },
           {
             code: 'demo.finance',
             name: '财务',
@@ -17,14 +24,20 @@ describe('menuEntries', () => {
           },
         ],
       },
-      { code: 'home', name: '主页', app: 'demo', path: 'home' },
+      { code: 'home', name: '主页', app: 'demo', path: 'home', icon: 'home' },
     ]
     expect(menuEntries(menus, new Set(['demo']))).toEqual([
       {
         menu: 'demo',
         title: '示例应用',
+        icon: 'grid',
         children: [
-          { menu: 'demo.overview', title: '订单概览', path: '/apps/demo/overview' },
+          {
+            menu: 'demo.overview',
+            title: '订单概览',
+            path: '/apps/demo/overview',
+            icon: 'tickets',
+          },
           {
             menu: 'demo.finance',
             title: '财务',
@@ -32,7 +45,7 @@ describe('menuEntries', () => {
           },
         ],
       },
-      { menu: 'home', title: '主页', path: '/apps/demo/home' },
+      { menu: 'home', title: '主页', path: '/apps/demo/home', icon: 'home' },
     ])
   })
 

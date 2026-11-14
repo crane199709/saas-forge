@@ -22,6 +22,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@element-plus/icons-vue": "2.3.2"
+  },
   "peerDependencies": {
     "@crane199709/sdk": "workspace:*",
     "element-plus": "^2.14.7",
