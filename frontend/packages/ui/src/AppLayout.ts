@@ -114,7 +114,7 @@ export const AppLayout = defineComponent({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              borderBottom: '1px solid var(--el-border-color-light)',
+              borderBottom: 'var(--el-border-width) solid var(--el-border-color-light)',
             },
           },
           () => [
@@ -125,7 +125,7 @@ export const AppLayout = defineComponent({
                 class: 'brand',
                 style: {
                   color: 'var(--el-text-color-primary)',
-                  fontSize: '18px',
+                  fontSize: 'var(--el-font-size-large)',
                   fontWeight: 600,
                   textDecoration: 'none',
                 },
@@ -136,7 +136,7 @@ export const AppLayout = defineComponent({
               'div',
               {
                 class: 'shell-actions',
-                style: { display: 'flex', alignItems: 'center', gap: '16px' },
+                style: { display: 'flex', alignItems: 'center', gap: 'var(--forge-space-4)' },
               },
               slots.actions?.(),
             ),
@@ -153,8 +153,8 @@ export const AppLayout = defineComponent({
                 style: {
                   height: '100%',
                   paddingTop: 'var(--forge-space-1)',
-                  '--el-menu-item-height': '40px',
-                  '--el-menu-sub-item-height': '40px',
+                  '--el-menu-item-height': 'var(--el-component-size-large)',
+                  '--el-menu-sub-item-height': 'var(--el-component-size-large)',
                   '--el-menu-base-level-padding': 'var(--forge-space-3)',
                   '--el-menu-hover-bg-color': 'transparent',
                 },

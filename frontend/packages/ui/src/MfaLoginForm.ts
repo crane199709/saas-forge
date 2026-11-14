@@ -64,21 +64,27 @@ export const MfaLoginForm = defineComponent({
         h('p', useRecovery.value ? t('mfa.recoveryHint') : t('mfa.codeHint')),
         h(ElForm, { labelPosition: 'top', onSubmit: withModifiers(submit, ['prevent']) }, () => [
           field(),
-          h('div', { style: { display: 'flex', gap: '12px', alignItems: 'center' } }, [
-            h(ElButton, { nativeType: 'submit', type: 'primary', loading: props.busy }, () =>
-              t('mfa.verify'),
-            ),
-            h(
-              ElButton,
-              {
-                link: true,
-                'data-testid': 'use-recovery-code',
-                onClick: () => (useRecovery.value = !useRecovery.value),
-              },
-              () => (useRecovery.value ? t('mfa.useCode') : t('mfa.useRecoveryCode')),
-            ),
-            h(ElButton, { link: true, onClick: () => emit('cancel') }, () => t('mfa.backToLogin')),
-          ]),
+          h(
+            'div',
+            { style: { display: 'flex', gap: 'var(--forge-space-3)', alignItems: 'center' } },
+            [
+              h(ElButton, { nativeType: 'submit', type: 'primary', loading: props.busy }, () =>
+                t('mfa.verify'),
+              ),
+              h(
+                ElButton,
+                {
+                  link: true,
+                  'data-testid': 'use-recovery-code',
+                  onClick: () => (useRecovery.value = !useRecovery.value),
+                },
+                () => (useRecovery.value ? t('mfa.useCode') : t('mfa.useRecoveryCode')),
+              ),
+              h(ElButton, { link: true, onClick: () => emit('cancel') }, () =>
+                t('mfa.backToLogin'),
+              ),
+            ],
+          ),
         ]),
       ])
   },
