@@ -12,4 +12,9 @@
 ## 样式
 
 - `packages/ui/src/theme.ts` 的 `layoutTokens` 定义 `--forge-*` token。
+- token 分三层，改动落在唯一归属的层（决策见 ADR-0029）：
+  - primitive：`layoutTokens` 里的间距、圆角、字号、阴影、层叠与字体族档位，以及 `themeTokens` 的主色；只有这一层由 Shell 写到文档根节点。
+  - semantic：Element Plus 的 `--el-color-*` 与 `--el-text-color-*`，不另建 `--forge-color-*` 语义色。
+  - component：组件私有变量，只在自身选择器内定义，如菜单元素的变量覆盖；不写到文档根节点。
+- 加档位的判断标准：现有档位确实不够用，且新值不替代任何现有档位时才追加，旧名与取值不改。原始数值进 primitive，角色色进 semantic，只有单个组件使用的取值进 component。
 - `packages/ui` 用 `h()` 的内联样式，lint 覆盖不到，同样只写 `var(--forge-*)`。
