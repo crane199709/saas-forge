@@ -28,3 +28,10 @@
 - Vue 3 不给数值补 `px`，长度属性写裸数字等于无效样式，工具先报 warning 不阻断；待确认没有历史依赖后再升级为 error。已知未覆盖：常量引用与带插值的模板字符串不展开（不做跨文件常量求值）。
 - 确实没有对应 token 且只有一处使用时，在属性上一行写 `// style-guard-ignore: 理由` 显式豁免，并在理由里写清何时提为 token；优先用现有 token，没有匹配档位时取 Element Plus 的尺寸与描边变量（如 `--el-font-size-large`、`--el-component-size-large`、`--el-border-width`）。
 - 该工具**只在 monorepo 内启用**，不随 `sub-app-kit` 发布：外部生成工程同时装新版 kit 时 CI 会一起变红，风险不对等。验证一个版本周期、误报清零后，再由 `sub-app-kit` 依赖它并在生成的 Sub-App 里启用。
+
+## 视觉基线
+
+- 基线只在 macOS 生成并比对，团队固定同一平台；换平台重跑会因字体渲染差异误报。
+- `maxDiffPixelRatio` 为 0.005，是**被两头夹住**的值：收紧会误报文字渲染噪声（实测 0.13%–0.31%），放宽会漏掉局部整块变样。它不是安全余量，改之前先读[工单 08](../../.scratch/frontend-visual-quality/issues/08-baseline-drift-under-threshold.md)。
+- 重写基线必须用 `--update-snapshots=all`：默认的 update 会按 0.005 跳过小变化，导致基线实际没更新。重写后把无实质差异的文件还原，并在基线提交信息里写明原因。
+- 判「是否噪声」不能只靠肉眼：同一份代码的渲染会在两个状态间翻转，先跑 `--repeat-each=2` 再决定。

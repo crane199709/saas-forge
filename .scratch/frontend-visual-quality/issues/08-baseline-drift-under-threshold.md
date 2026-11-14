@@ -4,7 +4,7 @@
 
 **Blocked by:** 无
 
-**Status:** needs-triage
+**Status:** resolved
 
 ## 现象
 
@@ -37,3 +37,40 @@
 - 全量基线在当前构建下重新对照一遍，每张的差异要么为零、要么有明确解释。
 - 阈值策略确定并写入 `playwright.visual.config.ts` 的注释与 `frontend-design.md`，说明为什么选这个值、它覆盖不到什么。
 - `pnpm test:visual` 全量通过。
+
+## Comments
+
+**2026-11-15 结论：不是基线过期，是两个渲染状态来回翻；阈值维持 0.005 并记为已知盲区**
+
+### 普查结果
+
+用「清空 229 张基线 → `--update-snapshots=missing` 重生成 → 逐张比对」的方法全量普查：**224 张逐字节相同**，差异只出现在极少数文件上。
+
+### 关键证据：重生成的结果不可复现
+
+两次独立重生成（中间只做了 `git checkout` 恢复基线，代码未变）改动的文件集合**并不相同**：
+
+| 轮次 | 被改写的文件 |
+|---|---|
+| 第一次 | `bulk-invitation-sending-laptop`、`import-confirmation-paging-first-laptop`、`import-confirmation-revalidation-desktop`、`onboarding-error-laptop`、`service-credentials-disable-laptop` |
+| 第二次 | `import-confirmation-paging-first-laptop`、`import-confirmation-revalidation-desktop`、`menu-layout-rename-desktop`、`onboarding-error-laptop`、`platform-navigation-default-laptop`、`service-credentials-rotate-laptop` |
+
+同一份代码两次渲染出不同像素，说明这些文件的渲染是**两态**的，不是"基线陈旧"。所以上一轮「有 3 张实质漂移、基线已过期」的判断**也是错的**——那一版只是两次抛硬币中的一次。
+
+### 为什么阈值不能动
+
+两态之间的差异实测 0.13%–0.31%，而我们希望门禁能抓到的"局部整块变样"也是同一量级（例：一个 200×36 的弹窗提示区变化约 0.31%）。两者在数值上重叠，**没有任何单一的全局阈值能把它们分开**：
+
+- 收到 0.001（1024×768 约 786 px）→ 两态噪声变成假失败
+- 放宽 → 真实局部漂移继续漏过
+
+### 决定
+
+1. **维持 `maxDiffPixelRatio: 0.005`**，并在 `playwright.visual.config.ts` 与 `docs/agents/frontend-design.md` 写明这是**已知盲区**而非安全余量，以及为什么收紧前必须先消除渲染不确定性。
+2. **不改基线**：两次重生成都是噪声采样，提交任何一版都只是把其中一次翻转固化。
+3. 稳定性实测：带现有基线跑 `--repeat-each=2`，**430/430 通过**，说明当前门禁在重复执行下不抖，问题是灵敏度不足而非稳定性不足。
+4. 另开[工单 09](09-eliminate-render-nondeterminism.md)，先把两态渲染消除，再谈收紧阈值。
+
+### 未完成
+
+「哪一版渲染才是正确的」没有定论，也不需要：两态都能被当前门禁接受，且都是同一套代码的产物。真正要解决的是为什么会有两态。
