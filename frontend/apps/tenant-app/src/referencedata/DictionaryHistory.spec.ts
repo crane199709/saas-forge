@@ -189,7 +189,7 @@ it('历史请求失败时显示错误信息与追踪号', async () => {
 
 it('历史为空时显示空状态，隐藏版本详情和比较入口', async () => {
   const { wrapper } = await openHistory({ [base]: [] })
-  expect(wrapper.text()).toContain('暂无变更历史')
+  expect(wrapper.get('.empty-state-title').text()).toBe('暂无变更历史')
   expect(wrapper.find('[data-testid="history-compare"]').exists()).toBe(false)
 })
 

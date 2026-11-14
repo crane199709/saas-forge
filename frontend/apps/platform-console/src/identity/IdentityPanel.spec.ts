@@ -81,6 +81,14 @@ it('按登录标识精确查找，展示已绑定并经确认后重置 MFA', asy
   expect(button('identity-mfa-reset')).toBeNull()
 })
 
+it('未查询时用空状态提示输入登录标识', () => {
+  vi.stubGlobal('fetch', vi.fn())
+  const wrapper = mountPanel()
+
+  expect(wrapper.get('.empty-state-title').text()).toBe('输入账号、邮箱或手机号，精确查找身份')
+  expect(wrapper.find('.empty-state-icon').exists()).toBe(true)
+})
+
 it('未绑定的身份不提供重置', async () => {
   vi.stubGlobal(
     'fetch',

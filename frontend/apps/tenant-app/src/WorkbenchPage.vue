@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { errorTip } from './error-tip'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useAccessControl, useTenantClient } from '@crane199709/sdk'
-import { ErrorAlert, PageHeader, formatDateTime, type ErrorTip } from '@crane199709/ui'
+import { EmptyState, ErrorAlert, PageHeader, formatDateTime, type ErrorTip } from '@crane199709/ui'
 import {
   createNotificationApi,
   type InboxItem,
@@ -15,15 +15,38 @@ const client = useTenantClient()
 const api = createNotificationApi(client)
 const access = useAccessControl()
 const session = ref(client.session())
-const definitions: { kind: InboxTab; permission: string; title: string; empty: string }[] = [
-  { kind: 'todos', permission: 'todo:read', title: '我的待办', empty: '暂无待办' },
+const definitions: {
+  kind: InboxTab
+  permission: string
+  title: string
+  empty: string
+  icon: string
+  action: string
+}[] = [
+  {
+    kind: 'todos',
+    permission: 'todo:read',
+    title: '我的待办',
+    empty: '暂无待办',
+    icon: 'tickets',
+    action: '查看全部待办',
+  },
   {
     kind: 'notifications',
     permission: 'notification:read',
     title: '未读通知',
     empty: '暂无未读通知',
+    icon: 'bell',
+    action: '查看全部通知',
   },
-  { kind: 'announcements', permission: 'announcement:read', title: '最新公告', empty: '暂无公告' },
+  {
+    kind: 'announcements',
+    permission: 'announcement:read',
+    title: '最新公告',
+    empty: '暂无公告',
+    icon: 'guide',
+    action: '查看全部公告',
+  },
 ]
 const cards = reactive(
   definitions.map((definition) => ({
@@ -139,7 +162,13 @@ onUnmounted(() => {
         </header>
         <p v-if="card.loading" class="placeholder" role="status">加载中…</p>
         <ErrorAlert v-else-if="card.error" :tip="card.error" />
-        <p v-else-if="!card.items.length" class="placeholder">{{ card.empty }}</p>
+        <EmptyState v-else-if="!card.items.length" :icon="card.icon" :title="card.empty">
+          <router-link
+            class="empty-action"
+            :to="{ path: '/notifications', query: { tab: card.kind } }"
+            >{{ card.action }}</router-link
+          >
+        </EmptyState>
         <ul v-else class="workbench-list">
           <li v-for="item in card.items" :key="item.id" class="workbench-item">
             <router-link
@@ -193,6 +222,13 @@ h3 {
   padding: var(--forge-space-5) 0;
   color: var(--el-text-color-secondary);
   text-align: center;
+}
+.empty-action {
+  color: var(--el-color-primary);
+  text-decoration: none;
+}
+.empty-action:hover {
+  text-decoration: underline;
 }
 .workbench-list {
   margin: 0;

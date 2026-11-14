@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from '@crane199709/sdk'
-import { ErrorAlert, PageHeader, overlaySize, type ErrorTip } from '@crane199709/ui'
+import { EmptyState, ErrorAlert, PageHeader, overlaySize, type ErrorTip } from '@crane199709/ui'
 import { errorTip } from '../error-tip'
 import type { IdentityApi, IdentityLookup } from './identity-api'
 
@@ -67,7 +67,7 @@ async function reset() {
         t('identity.search')
       }}</el-button>
     </el-form>
-    <el-empty v-if="!identity && !error" :description="t('identity.emptyHint')" />
+    <EmptyState v-if="!identity && !error" icon="search" :title="t('identity.emptyHint')" />
 
     <el-descriptions v-if="identity" :column="1" border class="result">
       <el-descriptions-item :label="t('identity.displayName')">{{

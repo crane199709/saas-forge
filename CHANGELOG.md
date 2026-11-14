@@ -6,6 +6,8 @@
 
 ### 变更
 
+- `@crane199709/ui` 新增统一空状态组件 `EmptyState`（可选图标、必填标题、可选描述、默认插槽放主操作，不做按场景拆分的变体）；`ListPage` 的 `emptyText` 改为内部渲染该组件，调用方不需要改；租户端工作台三张卡、字典变更历史与运营端身份查询改用该组件，工作台空态给出进入对应列表的入口。三个应用新增极简 SVG favicon（主色块 + 产品名首字母），替换空占位图标。`docs/standards/sub-app.md` 新增「空状态」一节，说明组件用法与空数据、无结果、加载失败三者的区别，并随 sub-app-kit 模板发布；favicon 无自动化覆盖，需人工确认标签页显示。
+
 - Shell 侧边菜单打通 Resource Manifest 的 `icon` 字段：`@crane199709/ui` 新增 `resolveMenuIcon`（白名单、kebab-case/PascalCase 归一化、未命中回退默认图标），菜单项与导航条目透传图标，租户端与运营端内置页补齐图标，导航布局编辑器改用同一白名单；`@crane199709/ui` 新增 `@element-plus/icons-vue` 依赖。`docs/standards/sub-app.md` 新增「图标」一节并随 sub-app-kit 模板发布；后端清单、下发与校验不变。`forge-service-archetype` 与 `docs/business-service-guide.md` 无前端设计章节，本次无需同步。
 
 - 平台 Plan 增加可空的每月 `tokenQuota`，正整数或不限，V9 只追加字段；套餐 API、运营页与 `TenantPlanChanged` 同步支持，旧消息与旧构造器保持兼容。权限动作策略增加 `use`、`publish`、`rollback`，业务规范、Sub-App 规范、archetype/sub-app-kit 提示及接入指南同步使用、发布、回滚分别授权规则；AI 审计沿用 operation 分类并明确不记录内容与凭据。新增 Maven SDK 快照发布与每日仓库外契约消费工作流。
