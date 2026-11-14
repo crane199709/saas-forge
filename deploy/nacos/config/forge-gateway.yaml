@@ -26,6 +26,20 @@ spring:
                 - Path=/demo/**
               filters:
                 - StripPrefix=1
+            - id: lowcode-service
+              uri: lb://lowcode-service
+              predicates:
+                - Path=/lowcode/**
+              filters:
+                - StripPrefix=1
+            - id: ai-service
+              uri: lb://ai-service
+              predicates: [Path=/ai/**]
+              filters: [StripPrefix=1]
+            - id: ai-platform-catalog
+              uri: lb://ai-service
+              predicates: [Path=/ai-platform/**]
+              filters: [StripPrefix=1, PrefixPath=/platform]
 
 forge:
   gateway:
@@ -36,6 +50,12 @@ forge:
         realm: platform
       - prefix: /demo
         realm: tenant
+      - prefix: /lowcode
+        realm: tenant
+      - prefix: /ai
+        realm: tenant
+      - prefix: /ai-platform
+        realm: platform
     # 按 Token 中的 tenant_id 限流，第一期所有租户使用同一阈值；超限返回 429 request.rateLimited。
     # 按网关单实例计数（多实例时乘以实例数），启动时加载，修改后需重启网关
     rate-limit:
