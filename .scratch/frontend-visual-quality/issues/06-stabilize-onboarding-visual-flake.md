@@ -66,3 +66,9 @@ CI 的浏览器字体缓存**永远是冷的**。如果首次运行必失败，�
 - 改后：连续 3 次全量视觉测试均 **215 passed**，未执行 `--update-snapshots`，基线零变化。
 - `lint:ui`、`lint:style`、`pnpm -r typecheck`、`format:check`、`pnpm -r --workspace-concurrency=1 test` 全通过。
 - 注：`## 验收标准` 里的 209 是开单时的用例数，现在全量为 215。
+
+**2026-11-14 补充：兜底方案已撤回**
+
+根因确定后，按主代理要求加的"构建期兜底"（`var(--forge-font-size-sm, 14px)`）经 A/B 验证对 flake **无影响**——加前加后失败像素数同为 12405。保留它需要 6 处 `stylelint-disable` 压制 token 规则，且注释里声称的机制（`el-table` 首屏按文字宽度测量并写死列宽）已被同一实验推翻。留着会误导后人、并削弱工单 05 刚建立的 token 唯一来源约束，故整体撤回（提交 `513b5158`）。
+
+**最终修复只有一处**：`onboarding.spec.ts` 的展开图标点击改为 `click({ scroll: 'none' })`。展开图标本就在视口内，Playwright 默认的自动滚动会把横向溢出的 `el-scrollbar__wrap` 的 `scrollLeft` 从 0 推成 13，截图因此整表左移 13px；真实用户点击不会触发这个滚动。断言、`maxDiffPixelRatio`、用例全部保留，没有放宽或跳过。
