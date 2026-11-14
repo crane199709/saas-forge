@@ -1,3 +1,4 @@
+import { Tickets } from '@element-plus/icons-vue'
 import { flushPromises } from '@vue/test-utils'
 import { expect, it } from 'vitest'
 import { h } from 'vue'
@@ -35,7 +36,7 @@ const withIcons: MenuItem[] = [
     key: 'demo',
     title: '示例',
     icon: 'grid',
-    children: [{ key: 'demo.orders', title: '订单', path: '/apps/demo/orders', icon: 'Tickets' }],
+    children: [{ key: 'demo.orders', title: '订单', path: '/apps/demo/orders', icon: 'tickets' }],
   },
 ]
 
@@ -49,6 +50,8 @@ it('在菜单文字之前渲染对辅助技术隐藏的图标', async () => {
   expect(leafIcon.attributes('aria-hidden')).toBe('true')
   expect(link.element.firstElementChild).toBe(leafIcon.element)
   expect(leafIcon.element.nextSibling?.textContent).toBe('首页')
+  // 布局把图标名交给白名单解析：叶子项渲染的是 `tickets` 对应的元素图标，不是任意图标。
+  expect(wrapper.get('[data-testid="menu-demo.orders"]').findComponent(Tickets).exists()).toBe(true)
 
   const groupTitle = wrapper.get('[data-testid="menu-group-demo"] .el-sub-menu__title')
   const groupIcon = groupTitle.get('.el-icon')

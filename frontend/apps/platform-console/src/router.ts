@@ -1,4 +1,5 @@
 import type { PlatformClient } from '@crane199709/sdk'
+import type { MenuIconName } from '@crane199709/ui'
 import {
   createRouter,
   type RouteLocationNormalizedLoaded,
@@ -121,7 +122,14 @@ export const consolePages = [
     permission: permissions.menuManage,
     component: () => import('./navigation/MenuLayoutPage.vue'),
   },
-] as const
+] as const satisfies readonly {
+  path: string
+  title: string
+  /** 图标名，见 `@crane199709/ui` 的 `resolveMenuIcon` 白名单；写错名字在编译期暴露。 */
+  icon: MenuIconName
+  permission: string
+  component: () => Promise<unknown>
+}[]
 
 /** 兜底路由名：不存在的路径。 */
 const notFoundRoute = 'not-found'

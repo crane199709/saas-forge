@@ -91,6 +91,9 @@ const messages = {
       alwaysVisible: '始终可见',
       shared: '与「{menus}」共用权限，会一起显示',
     },
+    list: {
+      empty: '暂无数据',
+    },
     traceId: '追踪 ID',
     copyTraceId: '复制',
     total: '共 {total} 条',
@@ -143,6 +146,9 @@ const messages = {
       WAITING: 'Waiting',
       RUNNING: 'Running',
       AWAITING_CONFIRM: 'Awaiting confirmation',
+    },
+    list: {
+      empty: 'No data',
     },
     rollback: {
       title: 'Roll back import',

@@ -1,5 +1,6 @@
 import type { NavigationLayout, NavigationLayoutNode } from '@crane199709/sdk'
 import type { MenuItem } from './AppLayout'
+import type { MenuIconName } from './icons'
 
 /**
  * 默认导航树的节点，恰有 `page`（Shell Page 的页面键）或 `menu`（清单菜单编码）之一，作为菜单项的 `key`。
@@ -10,7 +11,7 @@ export interface NavigationEntry {
   menu?: string
   title: string
   /** Resource Manifest 菜单声明的图标名，由布局原样透传，解析与回退由菜单组件负责。 */
-  icon?: string
+  icon?: MenuIconName
   path?: string
   children?: NavigationEntry[]
 }

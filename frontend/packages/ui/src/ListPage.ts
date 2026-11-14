@@ -93,10 +93,9 @@ export const ListPage = defineComponent(
             // el-table 的行类型是任意对象，条目类型只约束使用方传入的分页结果。
             { data: (props.page?.items ?? []) as object[] },
             {
-              // 保留 emptyText 入参兼容：有值时用统一空状态呈现，调用方不需要改。
-              ...(props.emptyText
-                ? { empty: () => h(EmptyState, { title: props.emptyText! }) }
-                : {}),
+              // 保留 emptyText 入参兼容：始终用统一空状态呈现，不传时兜底为 Element Plus 的默认空数据文案，
+              // 调用方不需要改；否则不传的列表会退回 el-table 自带的空态，同一屏出现两套空态。
+              empty: () => h(EmptyState, { title: props.emptyText ?? t('list.empty') }),
               default: () => [
                 ...(slots.default?.() ?? []),
                 props.deleted

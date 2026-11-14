@@ -49,6 +49,14 @@ it('现有 token 的名称与取值保持不变', () => {
   expect(style.getPropertyValue('--forge-shadow-card')).toBe('0 1px 2px rgb(0 0 0 / 6%)')
 })
 
+it('组件层 token 只写在组件自身元素上，不写到文档根节点', () => {
+  applyTheme('#409eff')
+
+  // 层归属见 ADR-0029：组件私有取值若进了根节点，Sub-App 会跟着拿到它不该依赖的变量。
+  expect(document.documentElement.style.getPropertyValue('--forge-empty-icon-size')).toBe('')
+  expect(document.documentElement.style.getPropertyValue('--forge-empty-icon-glyph')).toBe('')
+})
+
 it('写入主色及 Element Plus 的派生色', () => {
   applyTheme('#8b5cf6')
 

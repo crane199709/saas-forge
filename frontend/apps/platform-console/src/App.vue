@@ -63,8 +63,8 @@ applyTheme(themeTokens.primary)
 
 <style>
 /*
- * 表格密度由 Shell 统一设置，Sub-App 页面不再逐表调整：40px 行高 = 单元格上下内边距
- * --forge-space-2（8px × 2）+ 正文行高 23px + 1px 分隔线；正文字号保持 14px。
+ * 表格密度由运营端 Shell 统一设置，页面不再逐表调整（运营端不承载 Sub-App）：
+ * 40px 行高 = 单元格上下内边距 --forge-space-2（8px × 2）+ 正文行高 23px + 1px 分隔线；正文字号保持 14px。
  * 展开行（el-table__expanded-cell）自带大内边距，不参与密度覆盖。
  */
 .el-table {
