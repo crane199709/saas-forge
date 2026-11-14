@@ -12,7 +12,7 @@
 - [x] 确认 AI 审计动作分类与命名（会话、工具、模型、配置变更），写入审计文档
 - [x] 权限动作词白名单补充 `use` 等 AI 动作，并纳入 Manifest/目录校验
 - [x] AI Feature Pack 可通过 Plan 配置（Sub-App 编码 `ai` 与 AI 权限码）
-- [ ] 发布 SDK 快照，供 `ai-platform` 依赖；每日集成构建验证兼容
+- [x] 发布 SDK 快照，供 `ai-platform` 依赖；每日集成构建验证兼容
 
 ## Comments
 
@@ -28,3 +28,10 @@
 - 本地完整后端 `./mvnw -o install -Parchetype-it` 通过；前端类型检查、436 项测试、格式/样式检查通过；权限目录 20 项、发布脚本 12 项测试与真实目录导出 `--offline --check` 通过。完整视觉回归 204/208 通过，4 项为未改动字典页面的旧基线差异（旧截图缺少字典项标签、仍写首页），本次套餐页 6 项全部通过。
 - 远端 Main flow E2E 与 Template smoke 已通过。Frontend quality 为 61/65 E2E 通过，4 项 federation 精确菜单定位失败；基线 `a97bc394` 的 run 43549567400 已有相同 4 项失败，本次 run 43554518161 未新增失败。相关租户端、共享 SDK/UI 与 federation 用例均未改动。
 - SDK `0.2.0-SNAPSHOT` 已发布至 GitHub Maven Packages，隔离 Forge 缓存的仓库外消费测试通过：[SDK snapshot integration 43554518109](https://github.com/crane199709/saas-forge/actions/runs/43554518109)。远端 Backend quality 43554518188 也已通过；功能提交 `2c8bebd6` 已推送 main。平台每日快照与公共契约验证已落地，AI 产品实际跨仓构建仍待工单 01。
+
+### 2026-11-14 跨仓集成验收完成
+
+- 已在 `/Users/liuhuan/workspace/coding/sub/ai-platform` 建立[公开独立仓库](https://github.com/crane199709/ai-platform)，前后端由 Forge 脚手架生成，按用户要求命名 ai-service / ai-sub-app。
+- [实际跨仓CI](https://github.com/crane199709/ai-platform/actions/runs/43558951586) 的 service、runner、sub-app 三项全部通过。ai-service 排除本机全部Forge缓存，从 GitHub Maven Packages 下载 `forge-sdk-provisioning:0.2.0-20261114.041435-1` 等已发布制品，5项测试及Manifest动作策略校验通过。
+- 覆盖 tokenQuota、历史JSON兼容、AI Manifest/Sub-App 编码与SDK必需表；新仓库每日北京时间10:45重复执行三套检查，统一入口 scripts/check.sh。00最后一项已补齐。
+- 该验收是工程及发布契约验收；实际IAM/网关/审计业务接入与DSH、聊天功能继续由AI仓库02及后续工单实施。

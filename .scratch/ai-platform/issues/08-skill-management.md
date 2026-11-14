@@ -1,15 +1,9 @@
 # 08: Skill 目录与租户启用
 
-**What to build:** 按 [spec](../spec.md) 的“实现决策”，实现 Skill 目录、租户启用与 runner 物化。
+**What to build:** 本工单已迁入 [08-skill-management.md](https://github.com/crane199709/ai-platform/blob/main/.scratch/ai-platform/issues/08-skill-management.md)，在独立 ai-platform 仓库执行。
 
 **Blocked by:** 02
 
 **Status:** ready-for-agent
 
-- [ ] 平台级 Skill 目录：编码、名称、说明、版本、文件内容/引用、状态
-- [ ] 租户启用/停用 Skill；不能上传任意 Skill 代码（v1）
-- [ ] 会话启动时把启用 Skill 物化到租户 DSH home 的 skills 目录
-- [ ] 变更写审计；停用后新会话不再加载
-- [ ] 测试覆盖：启用/停用、物化内容、权限、跨租户隔离、停用后新会话不可见
-
-## Comments
+本地执行目录：`/Users/liuhuan/workspace/coding/sub/ai-platform`。规格、ADR、术语与完整验收项在新仓库维护；saas-forge只保留平台前置工单00与交接记录。

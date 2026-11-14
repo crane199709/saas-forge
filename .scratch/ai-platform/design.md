@@ -4,6 +4,8 @@ Status: draft（交接给 `ai-platform` 仓库）
 
 本文件记录 2026-11-14 设计拷问确认的 AI 平台架构与落地顺序。术语与 ADR 在 `ai-platform` 仓库建立后迁入该仓库；本文只作为交接基线，不进入 saas-forge 的产品文档。
 
+术语与6个正式ADR已迁入 [ai-platform/docs](https://github.com/crane199709/ai-platform/blob/main/docs/)；本文件保留为交接历史，后续设计在独立仓库维护。
+
 ## 1. 定位
 
 面向租户内部员工的一方 AI 工作台：助手会话、Skill、MCP、Prompt、模型选择。不是终端客户客服，也不是平台运营工具。

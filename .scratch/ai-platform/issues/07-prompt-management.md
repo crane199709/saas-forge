@@ -1,16 +1,9 @@
 # 07: Prompt 管理与版本
 
-**What to build:** 按 [spec](../spec.md) 的“实现决策”，实现 Prompt 模板、变量、草稿/发布/历史/回滚，并在会话启动时应用。
+**What to build:** 本工单已迁入 [07-prompt-management.md](https://github.com/crane199709/ai-platform/blob/main/.scratch/ai-platform/issues/07-prompt-management.md)，在独立 ai-platform 仓库执行。
 
 **Blocked by:** 02
 
 **Status:** ready-for-agent
 
-- [ ] Prompt 模板与版本表：模板、版本、内容、变量、状态、发布人/时间
-- [ ] 草稿保存、发布、历史、回滚；发布写审计
-- [ ] 平台预置 + 租户自定义；租户只能管理自己的 Prompt
-- [ ] 会话启动时按助手/租户选择已发布版本，注入 runner
-- [ ] 变量校验与预览，非法变量保存失败
-- [ ] 测试覆盖：草稿/发布/回滚、变量校验、权限、跨租户隔离、注入内容正确
-
-## Comments
+本地执行目录：`/Users/liuhuan/workspace/coding/sub/ai-platform`。规格、ADR、术语与完整验收项在新仓库维护；saas-forge只保留平台前置工单00与交接记录。

@@ -1,8 +1,10 @@
 # AI 平台 v1 规格
 
-Status: ready-for-agent（交接给 `ai-platform` 仓库）
+Status: ready-for-agent（已交接，后续实现位于独立 `ai-platform` 仓库）
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准；AI 领域的新术语在 `ai-platform` 仓库建立后迁入其 `GLOSSARY.md`。平台边界由 [ADR-0028](../../docs/adr/0028-ai-capability-as-separate-business-product.md) 记录。设计基线见 [design.md](design.md)。
+
+本文保留平台侧设计基线；[当前执行规格](https://github.com/crane199709/ai-platform/blob/main/.scratch/ai-platform/spec.md)、[后续工单](https://github.com/crane199709/ai-platform/blob/main/.scratch/ai-platform/issues/)、[术语](https://github.com/crane199709/ai-platform/blob/main/docs/GLOSSARY.md)与[6个ADR](https://github.com/crane199709/ai-platform/blob/main/docs/adr/)已迁入新仓库。
 
 ## 问题陈述
 
