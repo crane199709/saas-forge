@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ErrorAlert, formatDateTime } from '@crane199709/ui'
+import { EmptyState, ErrorAlert, formatDateTime } from '@crane199709/ui'
 import { errorTip, type ErrorTip } from '../error-tip'
 import type {
   Dictionary,
@@ -108,9 +108,10 @@ function describe(item: DictionaryHistoryItem) {
 <template>
   <section v-loading="loading">
     <ErrorAlert v-if="error" :tip="error" />
-    <el-empty
+    <EmptyState
       v-if="!loading && !versions.length && !error"
-      :description="t('referenceData.history.empty')"
+      icon="document"
+      :title="t('referenceData.history.empty')"
     />
     <el-table v-if="versions.length" :data="versions" row-key="version" data-testid="history-list">
       <el-table-column :label="t('referenceData.history.version')" width="80"
@@ -222,9 +223,10 @@ function describe(item: DictionaryHistoryItem) {
           ><template #default="{ row }">{{ describe(row.after) }}</template></el-table-column
         >
       </el-table>
-      <el-empty
+      <EmptyState
         v-if="!diff.added.length && !diff.removed.length && !diff.changed.length"
-        :description="t('referenceData.history.unchanged')"
+        icon="search"
+        :title="t('referenceData.history.unchanged')"
       />
     </section>
     <div v-if="detail" class="detail">
@@ -306,7 +308,11 @@ function describe(item: DictionaryHistoryItem) {
           show-overflow-tooltip
         />
       </el-table>
-      <el-empty v-if="!detail.current" :description="t('referenceData.history.unavailable')" />
+      <EmptyState
+        v-if="!detail.current"
+        icon="warning"
+        :title="t('referenceData.history.unavailable')"
+      />
     </div>
   </section>
 </template>

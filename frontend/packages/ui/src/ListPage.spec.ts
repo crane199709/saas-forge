@@ -59,10 +59,10 @@ it('只有一页时不显示翻页，加载中翻页不可用', async () => {
   expect(wrapper.get('.btn-next').attributes('disabled')).toBeDefined()
 })
 
-it('首次加载完成前没有分页信息', async () => {
+it('首次加载完成前没有分页信息，emptyText 由空状态组件呈现', async () => {
   const wrapper = await mountList({ page: null, emptyText: '暂无订单' })
 
-  expect(wrapper.get('.el-table').text()).toContain('暂无订单')
+  expect(wrapper.get('.el-table .empty-state-title').text()).toBe('暂无订单')
   expect(wrapper.find('.list-page-footer').exists()).toBe(false)
 })
 

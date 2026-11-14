@@ -181,6 +181,26 @@ it('三张卡独立展示加载、失败与空状态，完成后可手动刷新�
   )
 })
 
+it('三张卡的空态各自给出进入对应列表的主操作', async () => {
+  const { wrapper } = await workbench((url) => {
+    if (url.pathname.endsWith('/unread-count')) return ok({ count: 0 })
+    return ok([], { number: 1, totalPages: 0, totalElements: 0 })
+  })
+
+  const cards = [
+    ['todos', '暂无待办', '查看全部待办', '/notifications?tab=todos'],
+    ['notifications', '暂无未读通知', '查看全部通知', '/notifications?tab=notifications'],
+    ['announcements', '暂无公告', '查看全部公告', '/notifications?tab=announcements'],
+  ] as const
+  for (const [kind, title, label, href] of cards) {
+    const card = wrapper.get(`[data-testid="workbench-${kind}"]`)
+    expect(card.get('.empty-state-title').text()).toBe(title)
+    const action = card.get('.empty-state-actions a')
+    expect(action.text()).toBe(label)
+    expect(action.attributes('href')).toBe(href)
+  }
+})
+
 it('前页通知全部已读时继续读取后页，按现有列表顺序取到五条未读通知', async () => {
   const { wrapper } = await workbench(
     (url) => {

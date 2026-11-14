@@ -8,6 +8,7 @@ import {
   vLoading,
 } from 'element-plus'
 import { defineComponent, h, withDirectives, type SlotsType, type VNode } from 'vue'
+import { EmptyState } from './EmptyState'
 import { useUiI18n } from './i18n'
 
 /** ListPage 的属性。 */
@@ -90,8 +91,10 @@ export const ListPage = defineComponent(
           h(
             ElTable,
             // el-table 的行类型是任意对象，条目类型只约束使用方传入的分页结果。
-            { data: (props.page?.items ?? []) as object[], emptyText: props.emptyText },
+            { data: (props.page?.items ?? []) as object[] },
             {
+              // 保留 emptyText 入参兼容：有值时用统一空状态呈现，调用方不需要改。
+              ...(props.emptyText ? { empty: () => h(EmptyState, { title: props.emptyText! }) } : {}),
               default: () => [
                 ...(slots.default?.() ?? []),
                 props.deleted

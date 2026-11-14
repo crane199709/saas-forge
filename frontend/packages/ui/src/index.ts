@@ -16,6 +16,8 @@ export type {
 export { formatDateTime } from './format'
 export { ErrorAlert } from './ErrorAlert'
 export type { ErrorTip } from './ErrorAlert'
+export { EmptyState } from './EmptyState'
+export type { EmptyStateProps } from './EmptyState'
 export { ListPage } from './ListPage'
 export type { ListPageProps } from './ListPage'
 export { MfaLoginForm } from './MfaLoginForm'
