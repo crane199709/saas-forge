@@ -3,7 +3,14 @@ import { useI18n } from 'vue-i18n'
 import { errorTip } from './error-tip'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useAccessControl, useTenantClient } from '@crane199709/sdk'
-import { EmptyState, ErrorAlert, PageHeader, formatDateTime, type ErrorTip } from '@crane199709/ui'
+import {
+  EmptyState,
+  ErrorAlert,
+  PageHeader,
+  formatDateTime,
+  type ErrorTip,
+  type MenuIconName,
+} from '@crane199709/ui'
 import {
   createNotificationApi,
   type InboxItem,
@@ -20,7 +27,7 @@ const definitions: {
   permission: string
   title: string
   empty: string
-  icon: string
+  icon: MenuIconName
   action: string
 }[] = [
   {

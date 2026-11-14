@@ -66,6 +66,14 @@ it('首次加载完成前没有分页信息，emptyText 由空状态组件呈现
   expect(wrapper.find('.list-page-footer').exists()).toBe(false)
 })
 
+it('不传 emptyText 时也渲染空状态组件，标题兜底为默认文案', async () => {
+  const wrapper = await mountList({ page: null })
+
+  // 不传时不能退回 el-table 自带的空态，否则一半的空列表还是另一套观感。
+  expect(wrapper.get('.el-table .empty-state-title').text()).toBe('暂无数据')
+  expect(wrapper.find('.el-table .el-empty').exists()).toBe(false)
+})
+
 it('按受控 deleted 切换未删除与已删除视图', async () => {
   const wrapper = await mountList({ page: page(2, 45), deleted: false })
 

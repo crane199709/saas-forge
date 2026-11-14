@@ -32,6 +32,16 @@ export const layoutTokens = Object.freeze({
     '"Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif',
 })
 
+/**
+ * 空状态的组件层 token：图标圆直径与字形字号。
+ * 组件私有取值不复用间距与字号档位，否则调整 `--forge-space-*` / `--forge-font-size-*` 会顺带改变空状态外观（ADR-0029 的层归属）。
+ * 与 primitive 不同，这一层由组件写在自身元素上，不写入文档根节点。
+ */
+export const emptyStateTokens = Object.freeze({
+  '--forge-empty-icon-size': '48px',
+  '--forge-empty-icon-glyph': '20px',
+})
+
 /** 弹窗与抽屉的尺寸档位，窄屏时收缩到视口内。 */
 export const overlaySize = Object.freeze({
   dialogSm: 'min(480px, calc(100vw - 32px))',

@@ -1,4 +1,4 @@
-import type { NavigationEntry } from '@crane199709/ui'
+import type { MenuIconName, NavigationEntry } from '@crane199709/ui'
 
 /** 进入导航布局的 Shell Page；首页与通知中心固定在导航顶部，不在其中。 */
 export interface ShellPage {
@@ -7,7 +7,7 @@ export interface ShellPage {
   path: string
   title: string
   /** 图标名，见 `resolveMenuIcon` 的白名单。 */
-  icon: string
+  icon: MenuIconName
   /** iam 的管理权限码，授权被撤销后随权限刷新隐藏。 */
   permission: string | string[]
 }

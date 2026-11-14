@@ -9,7 +9,7 @@ import {
   ElSubMenu,
 } from 'element-plus'
 import { computed, defineComponent, h, resolveComponent, type PropType } from 'vue'
-import { resolveMenuIcon } from './icons'
+import { resolveMenuIcon, type MenuIconName } from './icons'
 
 /** 侧边菜单项：带 `path` 的是链接，带 `children` 的是以 `title` 为标题、可折叠的分组，最多三层。 */
 export interface MenuItem {
@@ -17,7 +17,7 @@ export interface MenuItem {
   key: string
   title: string
   /** 图标名，写法与回退行为见 `resolveMenuIcon`；缺省时使用默认图标。 */
-  icon?: string
+  icon?: MenuIconName
   path?: string
   children?: MenuItem[]
 }
