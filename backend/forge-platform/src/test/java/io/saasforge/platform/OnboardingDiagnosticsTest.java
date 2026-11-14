@@ -32,6 +32,9 @@ class OnboardingDiagnosticsTest extends PlatformIntegrationTest {
              - uri: lb://demo-service
                predicates: [Path=/demo/**]
                filters: [StripPrefix=1]
+             - uri: lb://demo-service
+               predicates: [Path=/demo-platform/**]
+               filters: [StripPrefix=1, PrefixPath=/platform]
              - uri: lb://unsupported-service
                predicates: [Path=/html/**]
              - uri: lb://wrong-service
@@ -40,6 +43,7 @@ class OnboardingDiagnosticsTest extends PlatformIntegrationTest {
    gateway:
      services:
        - {prefix: /demo, realm: tenant}
+       - {prefix: /demo-platform, realm: platform}
        - {prefix: /html, realm: tenant}
        - {prefix: /wrong, realm: tenant}
  """;
@@ -83,6 +87,8 @@ class OnboardingDiagnosticsTest extends PlatformIntegrationTest {
         var services = body.path("data").path("services");
         var demo = find(services, "demo-service");
         assertThat(demo.path("configuration").path("status").asString()).isEqualTo("CONFIGURED");
+        assertThat(demo.path("configuration").path("prefix").asString()).isEqualTo("/demo");
+        assertThat(demo.path("configuration").path("missing").isEmpty()).isTrue();
         assertThat(demo.path("runtime").path("reporting").path("phase").asString())
                 .isEqualTo("REPORTED");
         assertThat(demo.path("request").path("status").asString()).isEqualTo("VERIFIED");

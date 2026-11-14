@@ -7,8 +7,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import org.springframework.beans.factory.ObjectProvider;
@@ -61,7 +63,7 @@ public class GatewayDeclarationSource {
                     realms.put(prefix, realm);
                 }
             }
-            Map<String, ConfigurationEvidence> entries = new TreeMap<>();
+            Map<String, List<Route>> declarations = new TreeMap<>();
             for (Object item : list(at(root, "spring", "cloud", "gateway", "server", "webflux", "routes"))) {
                 if (!(item instanceof Map<?, ?> route)
                         || !(route.get("uri") instanceof String uri)
@@ -94,18 +96,68 @@ public class GatewayDeclarationSource {
                         checkedAt,
                         prefix,
                         List.copyOf(missing));
-                // 多条路由无法确定哪条接管 prefix，保守显示待确认，禁止误报单一路由。
-                if (entries.containsKey(service)) {
-                    evidence = new ConfigurationEvidence(
-                            "INCOMPLETE", "NACOS_CLIENT", checkedAt, null, List.of("MULTIPLE_ROUTES"));
-                }
-                entries.put(service, evidence);
+                declarations
+                        .computeIfAbsent(service, ignored -> new ArrayList<>())
+                        .add(new Route(evidence, rootOpenApiRoute(route)));
             }
+            Map<String, ConfigurationEvidence> entries = new TreeMap<>();
+            declarations.forEach((service, routes) -> entries.put(service, summarize(routes, checkedAt)));
             return new Snapshot(entries, null, checkedAt);
         } catch (Exception error) {
             return unknown(checkedAt, "NACOS_READ_FAILED");
         }
     }
+
+    private static ConfigurationEvidence summarize(List<Route> routes, Instant checkedAt) {
+        if (routes.size() == 1) {
+            return routes.get(0).evidence();
+        }
+        Set<String> prefixes = new HashSet<>();
+        List<String> missing = new ArrayList<>();
+        boolean duplicatePrefix = false;
+        for (Route route : routes) {
+            var evidence = route.evidence();
+            missing.addAll(evidence.missing());
+            if (evidence.prefix() != null && !prefixes.add(evidence.prefix())) {
+                duplicatePrefix = true;
+            }
+        }
+        String prefix = routes.stream()
+                .filter(Route::rootOpenApi)
+                .map(route -> route.evidence().prefix())
+                .filter(Objects::nonNull)
+                .sorted()
+                .findFirst()
+                .orElse(null);
+        if (duplicatePrefix || prefix == null) {
+            prefix = null;
+            missing.add("MULTIPLE_ROUTES");
+        }
+        return new ConfigurationEvidence(
+                missing.isEmpty() ? "CONFIGURED" : "INCOMPLETE",
+                "NACOS_CLIENT",
+                checkedAt,
+                prefix,
+                missing.stream().distinct().toList());
+    }
+
+    private static boolean rootOpenApiRoute(Map<?, ?> route) {
+        // 只剥离服务前缀的路由能到达根 OpenAPI；PrefixPath 等改写后的入口不能直接拼接探测路径。
+        var filters = list(route.get("filters"));
+        if (filters.size() != 1) {
+            return false;
+        }
+        Object filter = filters.get(0);
+        if (filter instanceof String value) {
+            return "StripPrefix=1".equals(value);
+        }
+        return filter instanceof Map<?, ?> value
+                && "StripPrefix".equals(value.get("name"))
+                && value.get("args") instanceof Map<?, ?> args
+                && "1".equals(String.valueOf(args.get("parts")));
+    }
+
+    private record Route(ConfigurationEvidence evidence, boolean rootOpenApi) {}
 
     private static Object at(Map<String, Object> root, String... path) {
         Object value = root;
