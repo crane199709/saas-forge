@@ -301,8 +301,13 @@ for (const [label, width, height] of viewports) {
     })
 
     test('公告管理', async ({ page }) => {
+      // 公告状态依赖当前时间，截图始终覆盖夹具尚未过期的发布中状态。
+      await page.clock.setFixedTime(new Date('2026-11-14T00:00:00Z'))
       await openAsAdmin(page, '/announcements', respondOthers)
       await expect(page.getByTestId('announcement-m1')).toBeVisible()
+      await expect(
+        page.getByRole('row').filter({ has: page.getByTestId('announcement-m1') }),
+      ).toContainText('发布中')
       await expect(page).toHaveScreenshot(`announcements-${label}.png`)
     })
 

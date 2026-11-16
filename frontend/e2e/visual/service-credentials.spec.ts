@@ -113,20 +113,27 @@ for (const [label, width, height] of viewports) {
           }
         }
         if (state === 'disable')
+          // 固定列按钮已在视口内，自动滚动会偶发地把背景表格横向推到最右端。
           await page
             .getByRole('row')
             .filter({ hasText: 'orders-service' })
             .getByRole('button', { name: '停用', exact: true })
-            .click()
+            .click({ scroll: 'none' })
         if (state === 'rotate') {
           await page
             .getByRole('row')
             .filter({ hasText: 'orders-service' })
             .getByRole('button', { name: '轮换', exact: true })
-            .click()
+            .click({ scroll: 'none' })
           await expect(
             page.getByText('先登记新凭证并部署到服务，再停用旧凭证。当前旧凭证会继续有效。'),
           ).toBeVisible()
+        }
+        if (state === 'disable' || state === 'rotate') {
+          // 打开确认弹窗不应改变背景表格的位置；像素容差可能漏过固定列点击引发的横向滚动。
+          await expect(
+            page.locator('.el-table__body-wrapper .el-scrollbar__wrap'),
+          ).toHaveJSProperty('scrollLeft', 0)
         }
         await expect(page).toHaveScreenshot(`service-credentials-${state}-${label}.png`)
         if (state === 'issued') {
@@ -136,7 +143,7 @@ for (const [label, width, height] of viewports) {
             .getByRole('row')
             .filter({ hasText: 'orders-service' })
             .getByRole('button', { name: '停用', exact: true })
-            .click()
+            .click({ scroll: 'none' })
           await page.getByRole('button', { name: '确认停用', exact: true }).click()
           await expect(page.getByRole('row').filter({ hasText: 'orders-service' })).toContainText(
             '已停用',

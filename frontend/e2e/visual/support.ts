@@ -21,6 +21,17 @@ export const viewports = [
 ] as const
 
 /**
+ * 等菜单真实展开结束，避免截图快进 CSS 过渡时截到 overflow:hidden 包含子项外边距的中间态。
+ * 调用方先确认预期分组已展开；此时子菜单的 max-height 应恢复为 none。
+ */
+export async function expectExpandedMenusSettled(page: Page) {
+  const menus = page.locator('.shell-menu .el-sub-menu.is-opened > .el-menu--inline')
+  for (const menu of await menus.all()) {
+    await expect(menu).toHaveCSS('max-height', 'none')
+  }
+}
+
+/**
  * 断言当前页每张表格的数据行都是 40px 行高。
  * 容差 0.5px 吸收 Chromium 对亚像素行盒的舍入：树形表格的展开图标会多出半像素。
  */

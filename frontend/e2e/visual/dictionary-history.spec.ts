@@ -115,6 +115,9 @@ for (const [viewport, width, height] of viewports) {
         await expect(page.getByRole('heading', { name: '字典', exact: true })).toContainText('字典')
         await expect(page.locator('vite-error-overlay')).toHaveCount(0)
         expect(errors).toEqual([])
+        // 抽屉覆盖原点击位置后，表格可能保留 hover-row；统一截取没有悬停高亮的状态。
+        await page.mouse.move(0, 0)
+        await expect(page.locator('.el-table__row.hover-row')).toHaveCount(0)
         await expect(page).toHaveScreenshot(`dictionary-history-${state}-${viewport}.png`, {
           fullPage: true,
         })

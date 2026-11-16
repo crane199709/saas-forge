@@ -2,18 +2,16 @@ import { defineConfig } from '@playwright/test'
 
 // 基线只在开发机（macOS）生成和比对：字体渲染随系统变化，不进 CI 的通用 E2E。
 //
-// maxDiffPixelRatio 取 0.005 是一个被两头夹住的值，不是安全余量，改它之前先读
-// .scratch/frontend-visual-quality/issues/08-baseline-drift-under-threshold.md：
-// - 收紧会误报：同一份代码的文字渲染会在两个状态间来回翻（同一套基线，两次重生成的改动
-//   集合并不相同），翻转幅度实测 0.13%–0.31%，收紧到 0.001 会让这批噪声变成假失败。
-// - 放宽会漏报：0.005 在 1024×768 上是约 3932 像素，一个 200×36 的局部区域整块变样也能通过。
-// 所以这是一个已知盲区。要真正提高门禁强度，先消除渲染不确定性，再收紧此值。
+// 0.001 在 1024×768 / 1440×900 上分别允许约 786 / 1296 个差异像素，
+// 用来拦住工单 08 中 0.13%–0.31% 量级的局部漂移；更小的变化仍可能漏过。
+// 工单 09 已定位到固定列点击引发的背景横向滚动，相关用例禁止不必要的自动滚动并断言滚动位置。
+// 后续出现两态时先检查实际页面状态和字体，不用提高容差掩盖；重写基线必须用 --update-snapshots=all。
 export default defineConfig({
   testDir: './e2e/visual',
   snapshotPathTemplate: '{testDir}/__screenshots__/{arg}{ext}',
   fullyParallel: false,
   workers: 1,
-  expect: { toHaveScreenshot: { animations: 'disabled', maxDiffPixelRatio: 0.005 } },
+  expect: { toHaveScreenshot: { animations: 'disabled', maxDiffPixelRatio: 0.001 } },
   use: {
     channel: 'chromium',
     launchOptions: { args: ['--host-resolver-rules=MAP localhost 127.0.0.1'] },

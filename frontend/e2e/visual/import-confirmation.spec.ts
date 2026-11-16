@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ok, onePage, openAsAdmin, viewports } from './support'
+import { expectExpandedMenusSettled, ok, onePage, openAsAdmin, viewports } from './support'
 
 const pending = {
   type: 'IMPORT',
@@ -97,20 +97,29 @@ for (const [label, width, height] of viewports) {
           return route.fulfill(onePage([]))
         })
         await openAsAdmin(page, '/apps/demo/overview', () => undefined, access)
+        await expect(page.getByTestId('menu-group-demo')).toHaveClass(/is-opened/)
+        await expectExpandedMenusSettled(page)
         await page.getByRole('button', { name: '导入订单' }).click()
         const dialog = page.getByRole('dialog')
         await expect(dialog.getByRole('heading', { name: '最近任务' })).toBeVisible()
+        // 弹窗中的报告链接可能出现在刚点击的位置，截图前移开指针，避免混入悬停色。
+        await page.mouse.move(0, 0)
         if (state === 'paging') {
           await expect(dialog.getByText('暂无任务')).toBeVisible()
           await expect(page).toHaveScreenshot(`import-confirmation-paging-first-${label}.png`)
           await dialog.locator('.btn-next').click()
           await expect(dialog.getByRole('button', { name: '确认写入' })).toBeVisible()
+          await page.mouse.move(0, 0)
         } else if (state === 'pending')
           await expect(dialog.getByRole('button', { name: '确认写入' })).toHaveCount(1)
         else if (state === 'expired') {
           await expect(dialog.getByText('确认已过期，请重新上传', { exact: false })).toHaveCount(2)
           await expect(dialog.getByRole('button', { name: '确认写入' })).toHaveCount(0)
-        } else await expect(dialog.getByRole('button', { name: '下载错误报告' })).toBeVisible()
+        } else {
+          const report = dialog.getByRole('button', { name: '下载错误报告' })
+          await expect(report).toBeVisible()
+          await expect(report).toHaveCSS('color', 'rgb(96, 98, 102)')
+        }
         await expect(page).toHaveScreenshot(`import-confirmation-${state}-${label}.png`)
       })
     }

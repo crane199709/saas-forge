@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { ok, onePage, openAsAdmin, viewports } from './support'
+import { expectExpandedMenusSettled, ok, onePage, openAsAdmin, viewports } from './support'
 
 const access = {
   permissions: [
@@ -66,6 +66,10 @@ async function open(page: Page, url: string) {
     return route.fulfill(onePage([]))
   })
   await openAsAdmin(page, url, () => undefined, access)
+  if (url === '/apps/demo/overview') {
+    await expect(page.getByTestId('menu-group-demo')).toHaveClass(/is-opened/)
+    await expectExpandedMenusSettled(page)
+  }
 }
 
 for (const [label, width, height] of viewports) {

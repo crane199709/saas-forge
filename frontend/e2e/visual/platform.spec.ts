@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
-import { expectTableDensity, ok, onePage, viewports } from './support'
+import { expectExpandedMenusSettled, expectTableDensity, ok, onePage, viewports } from './support'
 
 test.use({ baseURL: 'http://127.0.0.1:5183' })
 
@@ -456,8 +456,15 @@ for (const [label, width, height] of viewports) {
 
     for (const [name, url, anchor] of pages) {
       test(name, async ({ page }) => {
+        // 公告夹具在 11 月 15 日过期，固定业务时间以免基线随执行日期变成“已到期”。
+        if (name === 'announcements')
+          await page.clock.setFixedTime(new Date('2026-11-14T00:00:00Z'))
         await open(page, url)
         await expect(page.getByText(anchor(), { exact: true }).first()).toBeVisible()
+        if (name === 'announcements')
+          await expect(page.getByRole('row').filter({ hasText: '系统维护通知' })).toContainText(
+            '发布中',
+          )
         await expect(page).toHaveScreenshot(`platform-${name}-${label}.png`)
       })
     }
@@ -523,6 +530,7 @@ for (const [label, width, height] of viewports) {
       await expect(page.getByText('order-created', { exact: true }).first()).toBeVisible()
       await expect(page.getByTestId('menu-group-ops')).toHaveClass(/is-opened/)
       await expect(page.getByTestId('menu-group-access')).not.toHaveClass(/is-opened/)
+      await expectExpandedMenusSettled(page)
       await expect(page).toHaveScreenshot(`platform-navigation-${label}.png`)
     })
 
@@ -558,6 +566,7 @@ for (const [label, width, height] of viewports) {
       await expect(page.getByTestId('menu-group-tenant-operations')).toHaveClass(/is-opened/)
       await expect(page.getByTestId('menu-group-access-control')).not.toHaveClass(/is-opened/)
       await expect(page.getByTestId('menu-group-operations')).not.toHaveClass(/is-opened/)
+      await expectExpandedMenusSettled(page)
       await expect(page).toHaveScreenshot(`platform-navigation-default-${label}.png`)
     })
 
