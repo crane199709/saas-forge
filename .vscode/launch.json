@@ -7,7 +7,8 @@
       "request": "launch",
       "mainClass": "io.saasforge.iam.IamApplication",
       "projectName": "forge-iam",
-      "cwd": "${workspaceFolder}/backend/forge-iam",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env.iam.local",
       "args": ["--spring.profiles.active=demo"],
       "console": "integratedTerminal"
     },
@@ -17,7 +18,9 @@
       "request": "launch",
       "mainClass": "io.saasforge.platform.PlatformApplication",
       "projectName": "forge-platform",
-      "cwd": "${workspaceFolder}/backend/forge-platform",
+      // 本地环境文件中的配置路径相对于仓库根目录解析。
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env.platform.local",
       "console": "integratedTerminal"
     },
     {
@@ -26,7 +29,7 @@
       "request": "launch",
       "mainClass": "io.saasforge.gateway.GatewayApplication",
       "projectName": "forge-gateway",
-      "cwd": "${workspaceFolder}/backend/forge-gateway",
+      "cwd": "${workspaceFolder}",
       "console": "integratedTerminal"
     },
     {
@@ -35,8 +38,119 @@
       "request": "launch",
       "mainClass": "io.saasforge.demo.DemoApplication",
       "projectName": "demo-service",
-      "cwd": "${workspaceFolder}/backend/examples/demo-service",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env.demo.local",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Frontend: Platform (Vite + Chrome)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev", "--host", "localhost", "--port", "5173", "--strictPort"],
+      "cwd": "${workspaceFolder}/frontend/apps/platform-console",
+      "env": {
+        "NO_COLOR": "1"
+      },
+      "console": "integratedTerminal",
+      "outputCapture": "std",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "serverReadyAction": {
+        "pattern": "Local:\\s+(https?://localhost:5173/)",
+        "uriFormat": "%s",
+        "action": "debugWithChrome",
+        "webRoot": "${workspaceFolder}/frontend/apps/platform-console",
+        "killOnServerStop": true
+      }
+    },
+    {
+      "name": "Frontend: Tenant (Vite + Chrome)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev", "--host", "localhost", "--port", "5174", "--strictPort"],
+      "cwd": "${workspaceFolder}/frontend/apps/tenant-app",
+      "env": {
+        "NO_COLOR": "1"
+      },
+      "console": "integratedTerminal",
+      "outputCapture": "std",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "serverReadyAction": {
+        "pattern": "Local:\\s+(https?://localhost:5174/)",
+        "uriFormat": "%s",
+        "action": "debugWithChrome",
+        "webRoot": "${workspaceFolder}/frontend/apps/tenant-app",
+        "killOnServerStop": true
+      }
+    },
+    {
+      "name": "Frontend: Demo (Vite + Chrome)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev", "--host", "localhost", "--port", "5175", "--strictPort"],
+      "cwd": "${workspaceFolder}/frontend/apps/demo-sub-app",
+      "env": {
+        "NO_COLOR": "1"
+      },
+      "console": "integratedTerminal",
+      "outputCapture": "std",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "serverReadyAction": {
+        "pattern": "Local:\\s+(https?://localhost:5175/)",
+        "uriFormat": "%s",
+        "action": "debugWithChrome",
+        "webRoot": "${workspaceFolder}/frontend/apps/demo-sub-app",
+        "killOnServerStop": true
+      }
+    },
+    {
+      "name": "Frontend: Demo (Shell preview)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "pnpm",
+      // Shell 加载构建产物的 remoteEntry.js；与独立开发宿主共用 5175 端口。
+      "runtimeArgs": ["preview", "--host", "127.0.0.1", "--port", "5175", "--strictPort"],
+      "cwd": "${workspaceFolder}/frontend/apps/demo-sub-app",
+      "preLaunchTask": "frontend: demo build (debug)",
+      "console": "integratedTerminal",
+      "outputCapture": "std",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Backend: All",
+      "configurations": [
+        "Backend: IAM (demo)",
+        "Backend: Platform",
+        "Backend: Gateway",
+        "Backend: Demo"
+      ],
+      "stopAll": true
+    },
+    {
+      "name": "Full Stack: Platform",
+      "configurations": [
+        "Backend: IAM (demo)",
+        "Backend: Platform",
+        "Backend: Gateway",
+        "Frontend: Platform (Vite + Chrome)"
+      ],
+      "stopAll": true
+    },
+    {
+      "name": "Full Stack: Tenant + Demo",
+      "configurations": [
+        "Backend: IAM (demo)",
+        "Backend: Platform",
+        "Backend: Gateway",
+        "Backend: Demo",
+        "Frontend: Tenant (Vite + Chrome)",
+        "Frontend: Demo (Shell preview)"
+      ],
+      "stopAll": true
     }
   ]
 }

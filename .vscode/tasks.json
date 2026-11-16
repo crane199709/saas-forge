@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "frontend: demo build (debug)",
+      "type": "process",
+      "command": "pnpm",
+      "args": ["--filter", "@forge/demo-sub-app", "run", "build", "--sourcemap"],
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": [],
+      "group": "build"
+    }
+  ]
+}

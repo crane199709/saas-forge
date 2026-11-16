@@ -1,3 +1,55 @@
 {
-  "java.configuration.updateBuildConfiguration": "automatic"
+  "files.encoding": "utf8",
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "editor.insertSpaces": true,
+  "editor.tabSize": 2,
+  "editor.detectIndentation": false,
+  "[vue][typescript][javascript][json][jsonc][css][html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  // Java 和 XML 的格式由 Maven Spotless 管理，避免保存时产生不一致的改动。
+  "[java]": {
+    "editor.tabSize": 4,
+    "editor.formatOnSave": false,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "never"
+    }
+  },
+  "[xml]": {
+    "editor.tabSize": 4,
+    "editor.formatOnSave": false
+  },
+  "prettier.prettierPath": "frontend/node_modules/prettier",
+  "prettier.configPath": "frontend/.prettierrc.json",
+  "prettier.requireConfig": true,
+  "typescript.tsdk": "frontend/node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "npm.packageManager": "pnpm",
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "maven.executable.preferMavenWrapper": true,
+  "files.exclude": {
+    "**/target": true,
+    "**/dist": true,
+    "**/dist-v2": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/target": true,
+    "**/dist": true,
+    "**/dist-v2": true,
+    "**/coverage": true,
+    "**/test-results": true,
+    "**/playwright-report": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/target/**": true,
+    "**/dist/**": true,
+    "**/dist-v2/**": true,
+    "**/coverage/**": true,
+    "**/test-results/**": true,
+    "**/playwright-report/**": true
+  }
 }
