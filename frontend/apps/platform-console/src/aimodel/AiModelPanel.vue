@@ -278,6 +278,8 @@ onMounted(load)
         <template #default="{ row }">
           <el-switch
             v-if="canManage"
+            class="model-status"
+            size="small"
             :model-value="row.status === 'ENABLED'"
             :before-change="() => confirmStatus(row as AiModel)"
             :loading="statusSaving && statusTarget?.id === row.id"
@@ -437,5 +439,9 @@ onMounted(load)
 .capabilities {
   display: flex;
   gap: var(--forge-space-1);
+}
+.model-status {
+  /* 开关外框随内容收缩，沿用 Shell 的统一表格行高。 */
+  height: auto;
 }
 </style>

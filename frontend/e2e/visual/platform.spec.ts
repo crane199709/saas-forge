@@ -260,6 +260,41 @@ const services = [
   { service: 'demo-service', available: true },
   { service: 'crm-service', available: false },
 ]
+const aiModels = [
+  {
+    id: 'deepseek-chat',
+    name: 'DeepSeek Chat',
+    provider: 'DEEPSEEK',
+    modelId: 'deepseek-chat',
+    baseUrl: 'https://api.deepseek.com',
+    capabilities: ['CHAT', 'TOOLS'],
+    contextWindow: 65536,
+    credentialKind: 'API_KEY',
+    status: 'ENABLED',
+  },
+  {
+    id: 'reference-model',
+    name: '华东研发团队多模态推理与代码协作专用模型',
+    provider: 'OPENAI_COMPATIBLE',
+    modelId: 'research/qwen3.5-397b-a17b-thinking-2026-11',
+    baseUrl: 'https://models.example-enterprise.com/compatible/v1',
+    capabilities: ['CHAT', 'TOOLS', 'VISION', 'REASONING'],
+    contextWindow: 1048576,
+    credentialKind: 'REFERENCE',
+    status: 'DISABLED',
+  },
+  {
+    id: 'legacy-model',
+    name: '历史目录项',
+    provider: 'OPENAI_COMPATIBLE',
+    modelId: 'legacy-chat',
+    baseUrl: 'https://legacy.example.com/v1',
+    capabilities: ['CHAT'],
+    contextWindow: 8192,
+    credentialKind: null,
+    status: 'ENABLED',
+  },
+]
 const deadEvents = ['PENDING', 'REPLAYED', 'ABANDONED'].map((status, index) => ({
   id: `d${index}`,
   consumerGroup: 'orders-group',
@@ -355,6 +390,7 @@ function respond(
   overrides: Record<string, unknown> = {},
 ) {
   const table: Record<string, unknown> = {
+    '/ai-platform/models': ok(aiModels),
     '/platform/plans': ok(plans),
     '/platform/plans/permission-tree': ok(catalogTree),
     '/platform/sub-apps': ok(subApps),
@@ -435,6 +471,10 @@ async function open(
       overrides,
     ),
   )
+  // ai-platform 是独立服务前缀，不能被 /platform/ 的通配规则匹配。
+  await page.route('**/ai-platform/models', (route) =>
+    respond('/ai-platform/models', route, layout, overrides),
+  )
   await page.goto(url)
 }
 
@@ -480,6 +520,95 @@ for (const [label, width, height] of viewports) {
         await expect(page.getByText(anchor, { exact: true }).first()).toBeVisible()
         await expectTableDensity(page)
       }
+    })
+
+    test('ai models list', async ({ page }) => {
+      await open(page, '/ai-models')
+      await expect(page.getByRole('heading', { name: 'AI 模型', exact: true })).toBeVisible()
+      await expect(page.getByRole('cell', { name: 'DeepSeek Chat', exact: true })).toBeVisible()
+      await expectTableDensity(page)
+      await expect(page).toHaveScreenshot(`platform-ai-models-list-${label}.png`)
+    })
+
+    test('ai model create', async ({ page }) => {
+      await open(page, '/ai-models')
+      await expect(page.getByRole('cell', { name: 'DeepSeek Chat', exact: true })).toBeVisible()
+      await page.getByTestId('ai-model-create').click()
+      const drawer = page.getByRole('dialog', { name: '新增模型', exact: true })
+      await expect(drawer.getByLabel('API Key', { exact: true })).toHaveAttribute(
+        'type',
+        'password',
+      )
+      await expect(drawer.getByLabel('API Key', { exact: true })).toHaveValue('')
+      await expect(drawer.getByRole('button', { name: '保存', exact: true })).toBeInViewport()
+      await page.mouse.move(0, 0)
+      await expect(page).toHaveScreenshot(`platform-ai-models-create-${label}.png`)
+    })
+
+    test('ai model edit reference', async ({ page }) => {
+      await open(page, '/ai-models')
+      await page.getByTestId('ai-model-edit-reference-model').click({ scroll: 'none' })
+      const drawer = page.getByRole('dialog', {
+        name: `编辑模型：${aiModels[1]!.name}`,
+        exact: true,
+      })
+      await expect(drawer.getByRole('alert')).toContainText(
+        '当前密钥由部署环境注入，填写新密钥将改为平台加密保存，原引用不再使用。',
+      )
+      await expect(drawer.getByLabel('API Key', { exact: true })).toHaveValue('')
+      const tableScroll = page.locator('.el-table__body-wrapper .el-scrollbar__wrap')
+      expect(await tableScroll.evaluate((element) => element.scrollLeft)).toBe(0)
+      await page.mouse.move(0, 0)
+      await expect(page).toHaveScreenshot(`platform-ai-models-edit-reference-${label}.png`)
+      await drawer.getByRole('button', { name: '保存', exact: true }).scrollIntoViewIfNeeded()
+      await expect(drawer.getByRole('button', { name: '保存', exact: true })).toBeInViewport()
+    })
+
+    test('ai model disable confirmation', async ({ page }) => {
+      await open(page, '/ai-models')
+      const scroll = page.locator('.el-table__body-wrapper .el-scrollbar__wrap')
+      await scroll.evaluate((element) => {
+        element.scrollLeft = element.scrollWidth - element.clientWidth
+      })
+      await page.getByTestId('ai-model-status-deepseek-chat').click({ scroll: 'none' })
+      const dialog = page.getByRole('dialog', { name: '禁用模型：DeepSeek Chat', exact: true })
+      await expect(dialog).toContainText(
+        '禁用后所有租户的后续模型调用都会失效，已经打开的输出流可能继续。',
+      )
+      await expect(dialog.getByRole('button', { name: '确认禁用', exact: true })).toBeInViewport()
+      expect(
+        await scroll.evaluate(
+          (element) => element.scrollLeft === element.scrollWidth - element.clientWidth,
+        ),
+      ).toBe(true)
+      await page.mouse.move(0, 0)
+      await expect(page).toHaveScreenshot(`platform-ai-models-disable-${label}.png`)
+    })
+
+    test('ai models empty', async ({ page }) => {
+      await open(page, '/ai-models', null, { '/ai-platform/models': ok([]) })
+      await expect(page.getByText('还没有模型。新增后可让租户选择并调用。')).toBeVisible()
+      await expect(page.getByTestId('ai-model-create')).toBeInViewport()
+      await expect(page).toHaveScreenshot(`platform-ai-models-empty-${label}.png`)
+    })
+
+    test('ai models error', async ({ page }) => {
+      await open(page, '/ai-models', null, {
+        '/ai-platform/models': {
+          status: 503,
+          json: {
+            code: 'upstream.unavailable',
+            httpStatus: 503,
+            userTip: '模型目录暂时不可用，请稍后重试',
+            traceId: 'model-visual-trace-0001',
+          },
+        },
+      })
+      await expect(page.getByRole('alert')).toContainText('模型目录暂时不可用，请稍后重试')
+      await expect(page.getByRole('alert')).toContainText('model-visual-trace-0001')
+      await expect(page.getByTestId('ai-model-retry')).toBeInViewport()
+      await expect(page.getByText('还没有模型。新增后可让租户选择并调用。')).toHaveCount(0)
+      await expect(page).toHaveScreenshot(`platform-ai-models-error-${label}.png`)
     })
 
     test('plan token quota', async ({ page }) => {
@@ -665,9 +794,12 @@ for (const width of [1440, 1024]) {
     page.on('pageerror', (error) => errors.push(error.message))
     await open(page, '/tenants')
     await page.getByRole('button', { name: '详情', exact: true }).first().click()
-    await page.getByTestId('ai-usage-query').click()
+    await expect(page.locator('.el-drawer')).toHaveCSS('transform', 'none')
+    // 查询入口已在视口内，禁止自动滚动把抽屉上半部卷走。
+    await page.getByTestId('ai-usage-query').click({ scroll: 'none' })
     await expect(page.getByText('1 个回合的用量不完整', { exact: false })).toBeVisible()
     await expect(page.getByLabel('AI 用量月份')).toHaveValue('2026-11')
+    expect(await page.locator('.el-drawer__body').evaluate((element) => element.scrollTop)).toBe(0)
     await expect(page).toHaveScreenshot(`platform-tenant-ai-usage-${width}.png`)
     expect(errors).toEqual([])
   })
@@ -699,12 +831,16 @@ for (const width of [1440, 1024]) {
             }
       await open(page, '/tenants', null, { '/platform/tenants/t1/ai-usage': response })
       await page.getByRole('button', { name: '详情', exact: true }).first().click()
-      await page.getByTestId('ai-usage-query').click()
+      await expect(page.locator('.el-drawer')).toHaveCSS('transform', 'none')
+      await page.getByTestId('ai-usage-query').click({ scroll: 'none' })
       await expect(
         page.getByText(state === 'empty' ? '尚未收到该月用量' : '用量查询失败，请重试', {
           exact: true,
         }),
       ).toBeVisible()
+      expect(await page.locator('.el-drawer__body').evaluate((element) => element.scrollTop)).toBe(
+        0,
+      )
       await expect(page).toHaveScreenshot(`platform-tenant-ai-usage-${state}-${width}.png`)
     })
   }
