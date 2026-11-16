@@ -118,7 +118,7 @@ for (const [label, width, height] of viewports) {
         } else {
           const report = dialog.getByRole('button', { name: '下载错误报告' })
           await expect(report).toBeVisible()
-          await expect(report).toHaveCSS('color', 'rgb(96, 98, 102)')
+          await expect(report).toHaveCSS('color', 'rgb(51, 65, 85)')
         }
         await expect(page).toHaveScreenshot(`import-confirmation-${state}-${label}.png`)
       })

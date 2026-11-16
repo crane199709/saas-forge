@@ -154,6 +154,13 @@ for (const [label, width, height] of viewports) {
       await openPlatformTenant(page)
       await page.getByRole('button', { name: '创建租户', exact: true }).click()
       const dialog = page.getByRole('dialog', { name: '创建租户', exact: true })
+      const create = dialog.getByRole('button', { name: '创建', exact: true })
+      await expect(create).toBeDisabled()
+      const disabledBackground = await create.evaluate(
+        (element) => getComputedStyle(element).backgroundColor,
+      )
+      await create.hover({ force: true })
+      await expect(create).toHaveCSS('background-color', disabledBackground)
       await page.locator('#tenant-name').fill('示例科技有限公司')
       await page.locator('#tenant-admin-contact').fill('owner@example.com')
       await page.getByTestId('tenant-plan').click()

@@ -1,7 +1,46 @@
 import { afterEach, expect, it } from 'vitest'
-import { applyTheme, layoutTokens } from './theme'
+import { applyTheme, layoutTokens, themeTokens } from './theme'
 
 afterEach(() => document.documentElement.removeAttribute('style'))
+
+it('默认主题入口统一写入靛蓝与 Slate 浅色语义变量', () => {
+  applyTheme()
+
+  const style = document.documentElement.style
+  expect(style.getPropertyValue('--forge-color-primary')).toBe('#4F46E5')
+  expect(style.getPropertyValue('--el-color-primary')).toBe('#4F46E5')
+  expect(style.getPropertyValue('--forge-color-page')).toBe('#F8FAFC')
+  expect(style.getPropertyValue('--el-bg-color-page')).toBe('#F8FAFC')
+  expect(style.getPropertyValue('--el-bg-color')).toBe('#FFFFFF')
+  expect(style.getPropertyValue('--el-bg-color-overlay')).toBe('#FFFFFF')
+  expect(style.getPropertyValue('--el-text-color-primary')).toBe('#0F172A')
+  expect(style.getPropertyValue('--el-text-color-regular')).toBe('#334155')
+  expect(style.getPropertyValue('--el-text-color-secondary')).toBe('#64748B')
+  expect(style.getPropertyValue('--el-border-color')).toBe('#CBD5E1')
+  expect(style.getPropertyValue('--el-border-color-light')).toBe('#E2E8F0')
+  expect(style.getPropertyValue('--el-fill-color-light')).toBe('#F1F5F9')
+  expect(style.getPropertyValue('--el-text-color-placeholder')).toBe('#94A3B8')
+  expect(style.getPropertyValue('--el-text-color-disabled')).toBe('#CBD5E1')
+  expect(style.getPropertyValue('--el-border-color-lighter')).toBe('#E2E8F0')
+  expect(style.getPropertyValue('--el-border-color-extra-light')).toBe('#F8FAFC')
+  expect(style.getPropertyValue('--el-border-color-dark')).toBe('#94A3B8')
+  expect(style.getPropertyValue('--el-border-color-darker')).toBe('#64748B')
+  expect(style.getPropertyValue('--el-fill-color')).toBe('#E2E8F0')
+  expect(style.getPropertyValue('--el-fill-color-lighter')).toBe('#F8FAFC')
+  expect(style.getPropertyValue('--el-fill-color-extra-light')).toBe('#F8FAFC')
+  expect(style.getPropertyValue('--el-fill-color-dark')).toBe('#CBD5E1')
+  expect(style.getPropertyValue('--el-fill-color-darker')).toBe('#94A3B8')
+  expect(style.getPropertyValue('--el-fill-color-blank')).toBe('#FFFFFF')
+  expect(style.getPropertyValue('--el-disabled-bg-color')).toBe('#F1F5F9')
+  expect(style.getPropertyValue('--el-disabled-text-color')).toBe('#94A3B8')
+  expect(style.getPropertyValue('--el-disabled-border-color')).toBe('#E2E8F0')
+  expect(style.getPropertyValue('--el-color-primary-light-3')).toBe(
+    'color-mix(in srgb, #4F46E5, white 30%)',
+  )
+  expect(style.getPropertyValue('--el-color-primary-dark-2')).toBe(
+    'color-mix(in srgb, #4F46E5, black 20%)',
+  )
+})
 
 it('写入版式 token', () => {
   applyTheme('#409eff')
@@ -28,7 +67,7 @@ it('写入新增的档位 token', () => {
   expect(style.getPropertyValue('--forge-z-index-toast')).toBe('1400')
 })
 
-it('现有 token 的名称与取值保持不变', () => {
+it('现有 token 的名称与版式取值保持不变', () => {
   applyTheme('#409eff')
 
   const style = document.documentElement.style
@@ -45,7 +84,7 @@ it('现有 token 的名称与取值保持不变', () => {
   expect(style.getPropertyValue('--forge-font-size-sm')).toBe('14px')
   expect(style.getPropertyValue('--forge-font-size-md')).toBe('16px')
   expect(style.getPropertyValue('--forge-font-size-lg')).toBe('20px')
-  expect(style.getPropertyValue('--forge-color-page')).toBe('#f7fafc')
+  expect(style.getPropertyValue('--forge-color-page')).toBe('#F8FAFC')
   expect(style.getPropertyValue('--forge-shadow-card')).toBe('0 1px 2px rgb(0 0 0 / 6%)')
 })
 
@@ -71,4 +110,25 @@ it('写入主色及 Element Plus 的派生色', () => {
   expect(style.getPropertyValue('--el-color-primary-dark-2')).toBe(
     'color-mix(in srgb, #8b5cf6, black 20%)',
   )
+})
+
+it('诊断切色仅改变主色链，Slate 中性色与反馈语义色保持不变', () => {
+  const style = document.documentElement.style
+  style.setProperty('--el-color-success', '#67c23a')
+  style.setProperty('--el-color-warning', '#e6a23c')
+  style.setProperty('--el-color-danger', '#f56c6c')
+  applyTheme()
+  const neutralNames = Array.from(style).filter((name) =>
+    /^--el-(text-color|border-color|fill-color|bg-color|disabled)/.test(name),
+  )
+  const before = neutralNames.map((name) => [name, style.getPropertyValue(name)])
+
+  applyTheme(themeTokens.alternate)
+
+  expect(style.getPropertyValue('--el-color-primary')).toBe('#8b5cf6')
+  expect(neutralNames.map((name) => [name, style.getPropertyValue(name)])).toEqual(before)
+  expect(style.getPropertyValue('--forge-color-page')).toBe('#F8FAFC')
+  expect(style.getPropertyValue('--el-color-success')).toBe('#67c23a')
+  expect(style.getPropertyValue('--el-color-warning')).toBe('#e6a23c')
+  expect(style.getPropertyValue('--el-color-danger')).toBe('#f56c6c')
 })

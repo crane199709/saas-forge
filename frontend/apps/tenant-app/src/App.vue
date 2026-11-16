@@ -3,13 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { computed, inject, provide } from 'vue'
 import { useTenantClient, useAccessControl } from '@crane199709/sdk'
-import {
-  AppLayout,
-  applyTheme,
-  arrangeNavigation,
-  themeTokens,
-  type MenuItem,
-} from '@crane199709/ui'
+import { AppLayout, applyTheme, arrangeNavigation, type MenuItem } from '@crane199709/ui'
 import TenantSwitcher from './TenantSwitcher.vue'
 import UserMenu from './UserMenu.vue'
 import { menuEntries } from './menu-routes'
@@ -49,7 +43,7 @@ const menu = computed<MenuItem[]>(() => [
   ),
 ])
 
-applyTheme(themeTokens.primary)
+applyTheme()
 </script>
 
 <template>

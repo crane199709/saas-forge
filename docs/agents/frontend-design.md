@@ -13,11 +13,13 @@
 
 - `packages/ui/src/theme.ts` 的 `layoutTokens` 定义 `--forge-*` token。
 - token 分三层，改动落在唯一归属的层（决策见 ADR-0029）：
-  - primitive：`layoutTokens` 里的间距、圆角、字号、阴影、层叠与字体族档位，以及 `themeTokens` 的主色；只有这一层由 Shell 写到文档根节点。
+  - primitive：`layoutTokens` 里的间距、圆角、字号、阴影、层叠与字体族档位，以及 `themeTokens` 的主色；由 Shell 或独立开发宿主通过统一主题入口写到文档根节点。
   - semantic：Element Plus 的 `--el-color-*`、`--el-text-color-*`、填充变量（如 `--el-fill-color-light`）及尺寸与描边变量（如 `--el-font-size-large`、`--el-component-size-large`、`--el-border-width`），不另建 `--forge-color-*` 语义色。
   - component：组件私有变量，只在自身选择器或自身元素的 `style` 上定义，如菜单元素的变量覆盖、`EmptyState` 的 `--forge-empty-icon-size`；不写到文档根节点。用 `h()` 的组件没有选择器，取值与 primitive 一起放在 `theme.ts`（token 的唯一来源），但只由该组件写到自己的元素上。
-- 加档位的判断标准：现有档位确实不够用，且新值不替代任何现有档位时才追加，旧名与取值不改。原始数值进 primitive，角色色进 semantic，只有单个组件使用的取值进 component。
+- 加档位的判断标准：现有档位确实不够用，且新值不替代任何现有档位时才追加，旧名保留，布局档位取值不改。平台默认配色允许在 CHANGELOG 明确说明并完成视觉验收后统一演进。原始数值进 primitive，角色色进 semantic，只有单个组件使用的取值进 component。
 - `packages/ui` 用 `h()` 的内联样式，stylelint 覆盖不到，改由 `pnpm lint:ui` 检查（见下）。
+
+默认浅色主题与升级约定见 Sub-App 规范「统一浅色主题」。默认配色集中在 `packages/ui/src/theme.ts`，宿主调用 `applyTheme()` 并载入 `@crane199709/ui/theme.css`；诊断页 alternate 探针只变主色，中性色保持统一，不作为产品主题入口。
 
 ## 内联样式检查（lint:ui）
 

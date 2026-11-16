@@ -428,6 +428,7 @@ for (const [label, width, height] of viewports) {
 - 新增或调整页面前读 [Sub-App 页面规范](docs/standards/sub-app.md)，按页面简报、功能实现、设计走查三步完成；走查必须逐张查看截图。
 - 列表页用 \`PageHeader\` → \`PageToolbar\` → \`ListPage\` 原型；空值显示 \`—\`，时间用 \`formatDateTime\`。
 - 样式只用 \`--forge-*\` token 与 Element Plus 的 \`--el-*\` 变量，不写间距、字号、圆角和颜色字面量。
+- 主题由 Shell 或 kit 开发宿主统一提供；Sub-App 只读 Theme Token，不调用 \`applyTheme\`、不写文档根节点、不复制色板。配色与升级时机见 [规范「统一浅色主题」](docs/standards/sub-app.md#统一浅色主题)；UI/kit 配套升级并重新复制规范，静态 favicon 随默认品牌主色同步。
 - 隔离约定：只在 \`src/sub-app.ts\` 导出相对路由；不创建 Vue 应用、Router、Pinia、i18n 实例；\`<style>\` 用 \`scoped\`；共享依赖只从根入口导入；接口经 \`useTenantClient()\` 调用，不读写 Shell 的 \`forge.*\` 会话存储。
 - 配套 Business Service 继承 \`forge-dependencies\` 的中间件依赖门禁与 Checkstyle \`NeedBraces\`；Java 的 \`if\`、\`else\`、\`for\`、\`while\`、\`do-while\` 语句体必须加大括号，后端 \`./mvnw validate\` 检查生产与测试代码；中间件通过后端 starter 接入，Sub-App 经 HTTP 接口使用这些能力。
 - AI 使用、配置发布与回滚入口按配套 Manifest 的 \`use\`、\`publish\`、\`rollback\` 权限分别展示，Sub-App 与权限受 Plan Feature Pack 限制；完整约定见 [规范「权限动作」](docs/standards/sub-app.md#权限动作)。

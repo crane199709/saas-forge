@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="demo Sub-App">
   <!-- 识别块，不是品牌资产：主色取 @crane199709/ui 的 themeTokens.primary，首字母取示例 Sub-App 名 demo。 -->
-  <rect width="32" height="32" rx="7" fill="#409eff" />
+  <rect width="32" height="32" rx="7" fill="#4F46E5" />
   <text
     x="16"
     y="22"

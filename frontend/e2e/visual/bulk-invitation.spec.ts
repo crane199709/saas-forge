@@ -116,7 +116,7 @@ for (const [label, width, height] of viewports) {
       await page.mouse.move(0, 0)
       await expect(dialog.getByTestId('member-bulk-done')).toHaveCSS(
         'background-color',
-        'rgb(64, 158, 255)',
+        'rgb(79, 70, 229)',
       )
       await expect(page).toHaveScreenshot(`bulk-invitation-result-${label}.png`)
     })

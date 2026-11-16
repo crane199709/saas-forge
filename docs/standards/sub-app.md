@@ -125,6 +125,18 @@
 - 间距的节奏：同组元素 `--forge-space-2`，控件组之间 `--forge-space-3`，区块之间 `--forge-space-4`。
 - 文字颜色用 Element Plus 的 `--el-text-color-*`，主内容 regular，辅助说明 secondary，只有区块标题加粗。
 
+### 统一浅色主题
+
+Shell 与独立开发宿主从 `@crane199709/ui` 的 `applyTheme()` 取得统一默认主题，并载入 `@crane199709/ui/theme.css` 的共享组件样式。Sub-App 只读 Theme Token，不调用 `applyTheme`、不写文档根节点，也不复制独立色板或重定义平台全局主题。
+
+平台默认品牌主色为靛蓝 `#4F46E5`，页面底色为 Slate `#F8FAFC`，内容面为 `#FFFFFF`。主色用于主要按钮、导航选中、链接与焦点；标题、正文、次级文字分别映射 Element Plus 的 primary / regular / secondary text（`#0F172A` / `#334155` / `#64748B`），边框、分隔线与浅填充使用同一 Slate 色阶（`#CBD5E1` / `#E2E8F0` / `#F1F5F9`）。成功、警告、危险沿用组件库语义色。
+
+主色 `light-*` 仍为混白派生色。实心主按钮悬停使用主色混黑 10%，按下使用 `dark-2`（混黑 20%），三个状态的白字对比度至少 4.5:1；plain、link、禁用与焦点保持各自状态语义。该约定只交付统一浅色主题，不提供产品切色或租户自定义主题。
+
+Theme Token 保留现有名称与 primitive / semantic / component 三层归属；布局尺寸、间距、字号、圆角等档位取值保持兼容。平台默认配色可以在 CHANGELOG 说明并完成视觉验收后统一演进。宿主拥有配色，Sub-App 使用 Element Plus 语义色，不另建 `--forge-color-*` 体系；既有 `--forge-color-primary` 与 `--forge-color-page` 名称继续保留。
+
+升级仓库外工程时，配套更新 UI 与 sub-app-kit 版本并重新复制本规范。挂在 Shell 中的 Sub-App 读取宿主当前主题；独立开发宿主读取配套 UI 版本的默认主题。页面写死的颜色不会自动升级，应改为现有 token。静态 favicon 的品牌主色随平台默认色同步；不自动重生成或发布已有工程。
+
 ### 密度
 
 表格行高固定 **40px**、正文 **14px**：单元格上下内边距各 `--forge-space-2`（8px × 2），正文行高 23px，加 1px 分隔线。密度只从行高和列宽来，不缩小字号。

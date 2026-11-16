@@ -1,0 +1,5 @@
+/* 保留 light-* 的浅色语义；实心主按钮用深色悬停，确保白字对比度。 */
+.el-button--primary:not(.is-plain):not(.is-link):not(.is-text):not(.is-disabled) {
+  --el-button-hover-bg-color: color-mix(in srgb, var(--el-color-primary), black 10%);
+  --el-button-hover-border-color: color-mix(in srgb, var(--el-color-primary), black 10%);
+}

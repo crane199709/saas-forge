@@ -7,7 +7,6 @@ import {
   ErrorAlert,
   applyTheme,
   arrangeNavigation,
-  themeTokens,
   type MenuItem,
 } from '@crane199709/ui'
 // Element Plus 内置文案默认是英文，与第一期只支持简体中文保持一致；按需引入时语言包经 ConfigProvider 下发。
@@ -35,7 +34,7 @@ const menu = computed<MenuItem[]>(() =>
   ),
 )
 
-applyTheme(themeTokens.primary)
+applyTheme()
 </script>
 
 <template>

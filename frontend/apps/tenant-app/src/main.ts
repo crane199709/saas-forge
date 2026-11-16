@@ -1,3 +1,4 @@
+import '@crane199709/ui/theme.css'
 // 全量引入 Element Plus，不按需引入：Sub-App 以 import: false 共享 Shell 的 Element Plus，自身不打包组件与样式，
 // Shell 少带任何组件都会让用到它的 Sub-App 运行时报错。
 import ElementPlus, { ElDialog } from 'element-plus'

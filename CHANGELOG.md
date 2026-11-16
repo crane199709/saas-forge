@@ -6,6 +6,9 @@
 
 ### 变更
 
+- 平台、租户 Shell、登录等入口与示例 Sub-App 统一为靛蓝 `#4F46E5` + Slate 浅色主题，三个 favicon 同步品牌色。默认配色集中在共享 UI，宿主调用 `applyTheme()` 并载入 `@crane199709/ui/theme.css`；保留 `light-*` 的混白语义，实心主按钮悬停改用主色混黑 10%，按下沿用混黑 20%，确保白字可读。成功、警告、危险不变，未新增深色模式、产品切色或租户自定义主题。
+- 主题契约保留全部 token 名称与三层归属，布局尺寸、间距、字号、圆角不变；ADR-0029 与前端规范明确默认配色允许在说明变化并完成视觉验收后统一演进。Sub-App 规范、sub-app-kit 生成说明及规范分发、后端 archetype 配套指引和业务服务接入指南同步。已有 Sub-App 在 Shell 继承宿主主题；独立开发须配套升级 UI/kit 并重新复制规范，写死的颜色不会自动变更，不自动重新生成或发布仓库外工程。
+
 - Platform V10 增加 AI 每日累计用量投影：复用 forge-tenant 接收按版本幂等快照，校验租户信封、真实租户与业务时区；现有租户详情提供受 tenant:read 和 Data Policy 保护的月份只读查看，区分已知 Token、估计占额和未回报。Platform 现在要求配置 forge.business-zone，沿用共享 forge-common 配置；无需更新 SDK 或新增权限。见 docs/ai-usage.md。
 
 - 表格密度统一为 40px 行高、正文 14px：`el-table` 单元格上下内边距改用 `--forge-space-2`（各 8px）并固定行高，规则由租户 Shell、运营端 Shell 与 sub-app-kit 开发宿主写入，Sub-App 页面不再逐表调整；行内状态标签统一 `size="small"`，避免默认 24px 标签把行撑到 41px。任务运行的「最近一次运行」由状态与时间两行改为单行并加溢出提示，平台任务页行高回到 40px。`docs/standards/sub-app.md` 的样式一节补「密度」小节并随 sub-app-kit 模板发布；`forge-service-archetype` 与 `docs/business-service-guide.md` 无前端设计章节，本次无需同步。

@@ -21,6 +21,10 @@
 - 新增 Permission Code 前读业务规范「权限动作词」，Manifest 声明与 CI 目录动作策略保持一致；AI 使用、配置发布与回滚分别用 `use`、`publish`、`rollback`。
 - 注释写「为什么」，Mapper 方法必须有文档注释。
 
+## 配套 Sub-App
+
+需要业务前端时使用同版本 sub-app-kit，并阅读其生成的 `docs/standards/sub-app.md`「统一浅色主题」。Shell 与独立开发宿主共用 UI 默认主题，Sub-App 只读 Theme Token；UI/kit 配套升级并更新规范副本，写死的颜色不会自动迁移。后端工程不引入前端依赖。
+
 ## 命令
 
 测试用 Testcontainers 启动 PostgreSQL 与 Redis，需要本机 Docker。

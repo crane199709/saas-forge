@@ -4,21 +4,23 @@
   "description": "SaaS Forge 共享组件与主题 token",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./theme.css": "./src/theme.css"
   },
   "publishConfig": {
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
-      }
+      },
+      "./theme.css": "./dist/theme.css"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && cp src/theme.css dist/theme.css",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

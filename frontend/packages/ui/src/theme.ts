@@ -1,5 +1,5 @@
 /** Shell 与 Sub-App 共用的主题 token；CSS 变量由 Shell 写入文档根节点。 */
-export const themeTokens = Object.freeze({ primary: '#409eff', alternate: '#8b5cf6' })
+export const themeTokens = Object.freeze({ primary: '#4F46E5', alternate: '#8b5cf6' })
 
 /** 版式 token：页面样式只读这组变量，新增档位前先确认现有档位确实不够用。 */
 export const layoutTokens = Object.freeze({
@@ -17,7 +17,7 @@ export const layoutTokens = Object.freeze({
   '--forge-font-size-sm': '14px',
   '--forge-font-size-md': '16px',
   '--forge-font-size-lg': '20px',
-  '--forge-color-page': '#f7fafc',
+  '--forge-color-page': '#F8FAFC',
   '--forge-shadow-card': '0 1px 2px rgb(0 0 0 / 6%)',
   // 浮起元素（下拉、弹层、抽屉）用第二档阴影，与静态卡片区分开。
   '--forge-shadow-float': '0 6px 16px rgb(0 0 0 / 12%)',
@@ -30,6 +30,35 @@ export const layoutTokens = Object.freeze({
   // 采纳 Element Plus 的系统字体栈，不引入 webfont。
   '--forge-font-family':
     '"Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif',
+})
+
+/** 角色色沿用 Element Plus 变量，避免 Shell 与 Sub-App 维护两套语义色。 */
+const lightTheme = Object.freeze({
+  '--el-bg-color': '#FFFFFF',
+  '--el-bg-color-page': '#F8FAFC',
+  '--el-bg-color-overlay': '#FFFFFF',
+  '--el-text-color-primary': '#0F172A',
+  '--el-text-color-regular': '#334155',
+  '--el-text-color-secondary': '#64748B',
+  '--el-text-color-placeholder': '#94A3B8',
+  '--el-text-color-disabled': '#CBD5E1',
+  '--el-border-color': '#CBD5E1',
+  '--el-border-color-light': '#E2E8F0',
+  // 表格读 lighter，须与布局分隔线保持同一档 Slate200。
+  '--el-border-color-lighter': '#E2E8F0',
+  '--el-border-color-extra-light': '#F8FAFC',
+  '--el-border-color-dark': '#94A3B8',
+  '--el-border-color-darker': '#64748B',
+  '--el-fill-color': '#E2E8F0',
+  '--el-fill-color-light': '#F1F5F9',
+  '--el-fill-color-lighter': '#F8FAFC',
+  '--el-fill-color-extra-light': '#F8FAFC',
+  '--el-fill-color-dark': '#CBD5E1',
+  '--el-fill-color-darker': '#94A3B8',
+  '--el-fill-color-blank': '#FFFFFF',
+  '--el-disabled-bg-color': '#F1F5F9',
+  '--el-disabled-text-color': '#94A3B8',
+  '--el-disabled-border-color': '#E2E8F0',
 })
 
 /**
@@ -52,14 +81,15 @@ export const overlaySize = Object.freeze({
 })
 
 /**
- * 把版式 token、主色写入文档根节点：`--forge-*` 与 Element Plus 主色变量，Sub-App 读取同一组变量。
- * 只由 Shell 调用，Sub-App 不得修改文档根节点样式。
+ * 把版式 token、统一浅色主题写入文档根节点：`--forge-*` 与 Element Plus 主色变量，Sub-App 读取同一组变量。
+ * 只由 Shell 与独立开发宿主调用，Sub-App 不得修改文档根节点样式。
  *
- * @param color CSS 颜色值，如 `#409eff`
+ * @param color 主色；省略时使用平台默认主色，诊断页可传入 alternate。
  */
-export function applyTheme(color: string) {
+export function applyTheme(color: string = themeTokens.primary) {
   const style = document.documentElement.style
-  for (const [name, value] of Object.entries(layoutTokens)) style.setProperty(name, value)
+  for (const [name, value] of Object.entries({ ...layoutTokens, ...lightTheme }))
+    style.setProperty(name, value)
   style.setProperty('--forge-color-primary', color)
   style.setProperty('--el-color-primary', color)
   // Element Plus 的悬停、禁用和边框使用派生 token，必须与主色一起切换。

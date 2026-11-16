@@ -104,6 +104,13 @@ async function resignIn(
   await signIn(page, ...args)
 }
 
+async function openDemo(page: Page) {
+  const link = page.getByRole('link', { name: '示例子应用', exact: true })
+  if (!(await link.isVisible()))
+    await page.getByRole('menuitem', { name: '示例应用', exact: true }).click()
+  await link.click()
+}
+
 test('修改注册表中的入口地址后刷新即加载新版本，Shell 无需重新发布', async ({ page }) => {
   await page.goto('/apps/demo/overview')
   await expect(page.getByRole('heading', { name: '示例子应用 v1' })).toBeVisible()
@@ -155,7 +162,7 @@ test('单个 Sub-App 加载失败只在其区域提示错误，Shell 导航与�
   await expect(page.getByTestId('sub-app-error-broken')).toContainText('子应用 broken 加载失败')
   await expect(page.getByTestId('menu-home')).toBeVisible()
 
-  await page.getByRole('link', { name: '示例子应用', exact: true }).click()
+  await openDemo(page)
   await expect(page.getByRole('heading', { name: '概览', exact: true })).toBeVisible()
   await expect(page.getByTestId('sub-app-error-broken')).toHaveCount(0)
 })
@@ -200,7 +207,7 @@ test('切换租户时卸载 Sub-App 并重载，Sub-App 读到新租户的上下
   await page.getByRole('option', { name: '另一租户' }).click()
   await expect(page).toHaveURL('http://127.0.0.1:5174/')
   await expect(page.getByRole('heading', { name: '概览', exact: true })).toHaveCount(0)
-  await page.getByRole('link', { name: '示例子应用', exact: true }).click()
+  await openDemo(page)
   await expect(page.getByTestId('remote-tenant')).toHaveText('当前租户：另一租户')
 })
 
@@ -237,7 +244,7 @@ for (const viewport of [
     const tooltip = page.getByRole('tooltip', { name: '共享样式的提示' })
     await expect(tooltip).toBeVisible()
     await expect(tooltip).toHaveCSS('opacity', '1')
-    await expect(tooltip).toHaveCSS('background-color', 'rgb(48, 49, 51)')
+    await expect(tooltip).toHaveCSS('background-color', 'rgb(15, 23, 42)')
     const tooltipBox = await tooltip.boundingBox()
     expect(tooltipBox!.y).toBeGreaterThanOrEqual(0)
     expect(tooltipBox!.x + tooltipBox!.width).toBeLessThanOrEqual(viewport.width)
@@ -276,25 +283,30 @@ test('主题 token 同步，Sub-App scoped CSS 不泄漏到 Shell', async ({ pag
   await page.goto('/__diagnostics')
   const shell = page.getByTestId('shell-theme')
   const remote = page.getByTestId('remote-theme')
-  await page.getByRole('link', { name: '示例子应用', exact: true }).click()
-  await expect(remote).toHaveCSS('background-color', 'rgb(64, 158, 255)')
+  await openDemo(page)
+  await expect(remote).toHaveCSS('background-color', 'rgb(79, 70, 229)')
   await expect(page.getByTestId('remote-scope')).toHaveCSS('border-top-width', '7px')
   await page.goBack()
-  await expect(shell).toHaveCSS('background-color', 'rgb(64, 158, 255)')
+  await expect(shell).toHaveCSS('background-color', 'rgb(79, 70, 229)')
   // Sub-App 的样式已加载，Shell 的同类元素不受影响
   await expect(page.getByTestId('shell-scope')).toHaveCSS('border-top-width', '0px')
   await page.getByRole('button', { name: '切换主题' }).click()
   await page.getByRole('heading', { name: '技术验证诊断' }).click()
   await expect(shell).toHaveCSS('background-color', 'rgb(139, 92, 246)')
   await expect(page.getByTestId('shell-scope')).toHaveCSS('border-top-width', '0px')
-  await page.getByRole('link', { name: '示例子应用', exact: true }).click()
+  await openDemo(page)
   await expect(remote).toHaveCSS('background-color', 'rgb(139, 92, 246)')
+  await expect(page.locator('.shell-main')).toHaveCSS('background-color', 'rgb(248, 250, 252)')
+  await expect(page.getByRole('heading', { name: '概览', exact: true })).toHaveCSS(
+    'color',
+    'rgb(51, 65, 85)',
+  )
 })
 
 test('Sub-App 嵌套路由与 Shell 同步，支持前进、后退及深链接刷新', async ({ page }) => {
   await page.goto('/__diagnostics')
   await expect(page.getByTestId('shell-route')).toHaveText('/__diagnostics')
-  await page.getByRole('link', { name: '示例子应用', exact: true }).click()
+  await openDemo(page)
   await expect(page.getByRole('heading', { name: '概览', exact: true })).toBeVisible()
   await page.getByRole('link', { name: '查看详情' }).click()
   await expect(page).toHaveURL(/\/apps\/demo\/details\/42$/)

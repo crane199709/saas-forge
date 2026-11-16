@@ -30,9 +30,13 @@ describe('技术验证诊断页', () => {
     expect(wrapper.get('[data-testid="shared-demo-pinia"]').text()).toBe('pinia: duplicate')
 
     const primary = () => document.documentElement.style.getPropertyValue('--forge-color-primary')
-    expect(primary()).toBe('#409eff')
+    expect(primary()).toBe('#4F46E5')
     await wrapper.get('[data-testid="shell-theme"]').trigger('click')
     expect(primary()).toBe('#8b5cf6')
+    expect(document.documentElement.style.getPropertyValue('--el-text-color-regular')).toBe(
+      '#334155',
+    )
+    expect(document.documentElement.style.getPropertyValue('--forge-color-page')).toBe('#F8FAFC')
   })
 
   it('首页不再显示诊断元素', async () => {
