@@ -45,6 +45,13 @@ export const consolePages = [
     component: () => import('./subapp/SubAppPage.vue'),
   },
   {
+    path: '/ai-models',
+    title: 'aiModel.title',
+    icon: 'collection',
+    permission: permissions.opsManage,
+    component: () => import('./aimodel/AiModelPage.vue'),
+  },
+  {
     path: '/operators',
     title: 'operator.title',
     icon: 'user',

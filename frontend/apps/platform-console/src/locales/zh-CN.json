@@ -261,6 +261,13 @@
     "task": {
       "alreadyRunning": "任务已在运行，请等待当前运行结束后重试",
       "tenantNotEligible": "该租户不处于试用或正常状态，无法重跑"
+    },
+    "model": {
+      "duplicate": "该提供方下的模型标识已存在",
+      "notFound": "模型不存在，请刷新目录"
+    },
+    "request": {
+      "invalid": "提交内容不符合要求，请检查后重试"
     }
   },
   "identity": {
@@ -568,5 +575,65 @@
     "deleteRule": "删除规则",
     "confirmDelete": "确认删除",
     "deleteImpact": "将删除“{name}”。删除后所有租户将无法再选择此规则；已被字段、分级或租户覆盖引用的规则不能删除。"
+  },
+  "aiModel": {
+    "title": "AI 模型",
+    "name": "名称",
+    "provider": "提供方",
+    "modelId": "模型标识",
+    "capabilities": "能力",
+    "contextWindow": "上下文窗口",
+    "credential": "凭据",
+    "providers": {
+      "DEEPSEEK": "DeepSeek",
+      "OPENAI_COMPATIBLE": "OpenAI 兼容服务"
+    },
+    "capabilityNames": {
+      "CHAT": "对话",
+      "TOOLS": "工具调用",
+      "VISION": "视觉",
+      "REASONING": "推理"
+    },
+    "credentials": {
+      "API_KEY": "直接密钥",
+      "REFERENCE": "部署引用"
+    },
+    "search": "按名称搜索",
+    "allStatuses": "全部状态",
+    "status": "状态",
+    "statuses": {
+      "ENABLED": "已启用",
+      "DISABLED": "已禁用"
+    },
+    "empty": "还没有模型。新增后可让租户选择并调用。",
+    "noResults": "没有符合条件的模型。",
+    "loading": "正在加载模型",
+    "retry": "重试",
+    "create": "新增模型",
+    "save": "保存",
+    "baseUrl": "接入地址",
+    "apiKey": "API Key",
+    "modelIdPlaceholder": "例如 deepseek-chat",
+    "baseUrlPlaceholder": "https://api.example.com/v1",
+    "actions": "操作",
+    "edit": "编辑",
+    "editTitle": "编辑模型：{name}",
+    "keepKeyPlaceholder": "留空保持现有密钥，填写新密钥即替换",
+    "apiKeyPlaceholder": "输入提供方的 API Key",
+    "referenceHint": "当前密钥由部署环境注入，填写新密钥将改为平台加密保存，原引用不再使用。",
+    "invalidName": "名称必填且不能超过 120 个字符",
+    "invalidModelId": "模型标识须以字母或数字开头，仅含字母、数字、点、下划线、冒号、斜杠或连字符，最多 200 个字符",
+    "invalidBaseUrl": "接入地址须为 HTTPS，且不包含账号、查询参数或片段",
+    "missingCapabilities": "请至少选择一项能力",
+    "invalidContextWindow": "上下文窗口须为大于等于 1 的整数",
+    "invalidApiKey": "请输入有效的 API Key（不含空格，最多 8192 个可见 ASCII 字符）",
+    "statusOf": "{name}的启用状态",
+    "disableTitle": "禁用模型：{name}",
+    "enableTitle": "启用模型：{name}",
+    "disableImpact": "禁用后所有租户的后续模型调用都会失效，已经打开的输出流可能继续。",
+    "enableImpact": "启用后租户可重新选择并调用该模型。",
+    "cancel": "取消",
+    "confirmDisable": "确认禁用",
+    "confirmEnable": "确认启用"
   }
 }

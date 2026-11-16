@@ -85,6 +85,26 @@ describe('路由守卫', () => {
     expect(wrapper.find('.shell-header').exists()).toBe(false)
   })
 
+  it('AI 模型菜单与路由仅向拥有 ops manage 的运营开放', async () => {
+    signedIn()
+    vi.stubGlobal('fetch', fakeFetch({ '/iam/platform/access': [grants(permissions.opsRead)] }))
+    const denied = await mountConsole('/ai-models')
+    expect(denied.router.currentRoute.value.fullPath).toBe('/403')
+    denied.wrapper.unmount()
+
+    vi.stubGlobal(
+      'fetch',
+      fakeFetch({
+        '/iam/platform/access': [grants(permissions.opsManage, permissions.subAppManage)],
+      }),
+    )
+    const { wrapper, router } = await mountConsole('/ai-models')
+    expect(router.currentRoute.value.fullPath).toBe('/ai-models')
+    const menu = wrapper.get('.shell-menu').text()
+    expect(menu).toContain('AI 模型')
+    expect(menu.indexOf('AI 模型')).toBeGreaterThan(menu.indexOf('应用注册表'))
+  })
+
   it('身份查询页与菜单按 platform:identity-mfa:reset 显示', async () => {
     signedIn()
     vi.stubGlobal('fetch', fakeFetch({ '/iam/platform/access': [grants(permissions.tenantRead)] }))
