@@ -1,6 +1,6 @@
 # AI 平台 v1 规格
 
-Status: ready-for-agent（已交接，后续实现位于独立 `ai-platform` 仓库）
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准；AI 领域的新术语在 `ai-platform` 仓库建立后迁入其 `GLOSSARY.md`。平台边界由 [ADR-0028](../../docs/adr/0028-ai-capability-as-separate-business-product.md) 记录。设计基线见 [design.md](design.md)。
 
@@ -111,3 +111,9 @@ v1 交付助手、Skill、MCP、模型、Prompt 五项，以及配额、审计�
 - `ai-platform` 建立后，把 [design.md](design.md) 的术语迁入其 `GLOSSARY.md`，把 6 个 ADR 候选写成正式 ADR，并把本规格的 issue 迁入该仓库的 issue tracker。
 - DSH 是开发者预览，固定版本与契约测试是硬约束；升级策略见 design.md。
 - 本规格的拆分见 `issues/`，编号 00 为跨仓库平台前置。
+
+## Comments
+
+### 2026-11-16 同步完成状态
+
+独立 `ai-platform` 仓库中工单 00—12 均已标记 `resolved`。按用户确认，同步关闭本仓库的 13 张旧票及本规格；详细实现与验收记录仍以该仓库的对应工单为准。本目录保留平台设计基线与交接历史。

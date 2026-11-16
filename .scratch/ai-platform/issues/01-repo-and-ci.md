@@ -4,7 +4,7 @@
 
 **Blocked by:** —
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] 仓库包含 `ai-service/`、`runner/`、`ai-sub-app/`、`deploy/`、`docs/`
 - [x] Java 服务可构建、可测试；Node runner 可构建、可测试；Sub-App 可构建
@@ -30,3 +30,7 @@
 - 本工单只交付骨架；真实IAM/网关/审计接入、DSH运行时与聊天能力分别继续按02、03、05等工单实施。
 
 执行仓库：https://github.com/crane199709/ai-platform/blob/main/.scratch/ai-platform/issues/01-repo-and-ci.md；本文件保留平台交接与完成记录，后续工单02—12以AI仓库为准。
+
+### 2026-11-16 同步完成状态
+
+已核对独立 `ai-platform` 仓库中[对应执行工单](https://github.com/crane199709/ai-platform/blob/main/.scratch/ai-platform/issues/01-repo-and-ci.md)的状态为 `resolved`；按用户确认，同步关闭本仓库旧票。详细实现与验收记录以对应执行工单为准。

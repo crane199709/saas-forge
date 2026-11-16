@@ -1,6 +1,6 @@
 # SDK 可交付规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准，关键决策见 [docs/adr/](../../docs/adr/)。本规格承接 [saas-forge-mvp](../saas-forge-mvp/spec.md) §1 的目标 2：「提供 Forge SDK，让内部团队快速搭建接入平台的 Business Service 与 Sub-App」。
 
@@ -205,3 +205,9 @@ Status: ready-for-agent
 
   1、2、3 互不依赖；8 依赖 4、5、6。
 - **顺带的整理**：saas-forge-mvp、unified-api-envelope、standard-table-columns、frontend-shell 中已完成工单的 `Status` 仍为 `ready-for-agent`，建议统一更新为表示已完成的状态，避免外部团队误判平台的完成度。
+
+## Comments
+
+### 2026-11-16 完成确认
+
+工单 01—08 已完成；用户确认以 `lowcode` 与 `ai-platform` 两个独立工程的实际接入结果完成仓库外试点验收，工单 09 同步关闭。九张工单均为 `resolved`，本规格标记完成。试点验收口径见 [工单 09](issues/09-pilot.md)。

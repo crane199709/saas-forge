@@ -4,7 +4,7 @@
 
 **Blocked by:** —
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Plan 增加 `tokenQuota`（nullable，NULL 表示不限）、校验与迁移，`COMMENT ON` 写中文描述
 - [x] `TenantPlanChanged` 增加 token 配额字段，随事件下发；现有订阅方保持兼容
@@ -35,3 +35,7 @@
 - [实际跨仓CI](https://github.com/crane199709/ai-platform/actions/runs/43558951586) 的 service、runner、sub-app 三项全部通过。ai-service 排除本机全部Forge缓存，从 GitHub Maven Packages 下载 `forge-sdk-provisioning:0.2.0-20261114.041435-1` 等已发布制品，5项测试及Manifest动作策略校验通过。
 - 覆盖 tokenQuota、历史JSON兼容、AI Manifest/Sub-App 编码与SDK必需表；新仓库每日北京时间10:45重复执行三套检查，统一入口 scripts/check.sh。00最后一项已补齐。
 - 该验收是工程及发布契约验收；实际IAM/网关/审计业务接入与DSH、聊天功能继续由AI仓库02及后续工单实施。
+
+### 2026-11-16 同步完成状态
+
+已核对独立 `ai-platform` 仓库中[对应执行工单](https://github.com/crane199709/ai-platform/blob/main/.scratch/ai-platform/issues/00-platform-prerequisites.md)的状态为 `resolved`；按用户确认，同步关闭本仓库旧票。详细实现与验收记录以对应执行工单为准。

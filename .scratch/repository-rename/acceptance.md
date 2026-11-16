@@ -1,5 +1,7 @@
 # 仓库与本地目录重命名验收
 
+Status: resolved
+
 日期：2026-11-11
 
 ## 结果与范围
@@ -34,7 +36,9 @@
 - `git diff --check`：通过。
 - CodeGraph 在新目录下读取现有索引成功，报告索引已同步。
 
-## 尚需用户处理与验证边界
+## 历史人工处理项与验证边界（2026-11-11）
+
+本任务已按 2026-11-16 用户确认完成，原人工处理提醒关闭；以下保留当时的记录与验证边界。
 
 - Codex 本地项目登记仍为旧目录。现有工具不支持编辑项目路径；需在项目菜单的 Edit project 中将目录改为新路径，并将其设为主目录。IDEA 也需从新目录重新打开项目。
 - Maven 真实制品下载尚未验证。本机 GitHub CLI 令牌缺少 `read:packages`；GHCR 已通过下述 Actions 迁移和完整拉取验证。
@@ -58,3 +62,7 @@
 - 一次性工作流使用临时分支，提交为 `b9a45adad0c995c763e00bb745fdbaaf535e5b99`；执行成功后已清理该临时分支，远程 `main` 保持 `76ef3a286f8517bb5159619373c63ce25ca375d9`。
 - 迁移清单见 [ghcr-migration-inventory.json](ghcr-migration-inventory.json)，新地址与 digest 逐项校验结果见 [ghcr-migration-verified.json](ghcr-migration-verified.json)，工作流摘要见 [ghcr-migration-summary.md](ghcr-migration-summary.md)。
 - `python3 scripts/images/test-check-package.py` 的 7 个场景通过；`git diff --check` 通过。
+
+## 完成确认（2026-11-16）
+
+用户确认仓库与本地目录重命名任务完成，状态置为 `resolved`，原 Codex 项目路径登记与 IDEA 重新打开的人工提醒一并关闭。历史执行与验证记录保留。
