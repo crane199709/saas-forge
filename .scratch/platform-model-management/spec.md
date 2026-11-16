@@ -1,6 +1,8 @@
 # 平台控制台 AI 模型管理
 
-状态：设计已确认，待实现。接口、加密与迁移在 ai-platform 仓库，后端规格见 `sub/ai-platform/.scratch/platform-model-management/spec.md`（本地路径 `/Users/liuhuan/workspace/coding/sub/ai-platform/.scratch/platform-model-management/spec.md`）。
+**Status:** resolved
+
+页面与配套后端已实现并完成本地验收。接口、加密与迁移在 ai-platform 仓库，后端规格见该仓库的 `.scratch/platform-model-management/spec.md`。
 
 ## 问题
 
@@ -137,3 +139,14 @@ API Key 的行为：
 - 删除模型、主密钥轮换、连通性测试。
 - 租户侧模型选择页的调整。
 - 平台控制台其它页面的重构。
+
+## 验收结论（2026-11-16）
+
+- 两张前端工单及两张后端工单均已完成，两个仓库分别交付本地集成分支 `codex/platform-model-management`。平台运营可在 `/ai-models` 新增、编辑、启用和禁用模型；权限门沿用 `platform:ops:manage`，不回显已保存凭据。
+- 前端组件测试 128 项、HTTP mock E2E 1 项、类型与样式检查通过。全量视觉 233 项通过，覆盖 247 张基线；新增模型页 12 张，重写平台既有 44 张，其余 191 张不变。平台 56 张图在同一构建下连续五轮逐字节一致，固定基线三次重复 174 项通过，两档截图均已逐张走查。
+- 重复验证发现的既有租户用量抽屉自动滚动已通过等待展开结束、避免额外自动滚动及断言正文滚动位置修正；失败原图与差异保留，不修改视觉容差。旧平台截图的主内容差异仅为菜单管理器增加模型节点后的预期位移，详见工单 02。
+- 后端使用新增 `V12__model_credentials.sql`，不改写已占用的 V10/V11 或既有迁移。直接密钥经 AES-256-GCM 加密并绑定目录 ID，引用型模型继续可用；编辑省略凭据时保持原值，解密或引用失败统一返回 503，响应与审计不含密钥、引用或密文。
+- 后端最终平台集成测试 56 项、服务 `verify` 19 项、真实 FullStack Java 2 项及浏览器 3 项全部通过、无跳过。真实控制台完成新增 201、编辑保留凭据 200、禁用 200；原租户端两档流程、用量、隔离和供应商调用次数断言保持通过。
+- 双轴审查为 Standards 1 项、Spec 1 项，均已修复并复验：测试类型引用改为显式导入；模型重试的地址、模型标识、上下文窗口和凭据统一使用同次解析的配置。新增两项公开 HTTP 回归先分别复现旧地址重复接收请求、缩小窗口后仍返回 200，再验证新实现正确切换供应商及拒绝越界重试。
+- 最终被测代码为前端 `4831e933`、后端 `752c26a`；后续关闭记录只改文档。联合验收摘要与版本证据位于 `/Users/liuhuan/.codex/visualizations/2026/11/16/01a1e2fa-176d-7701-bd1c-a1f527c05fd5/model-management/review-fixes/`，前端完整视觉证据位于 `/tmp/forge-model-management/visual/`。
+- 验证环境为本地 macOS Chromium、真实 Forge 平台与 Testcontainers；供应商边界使用适配器桩及确定性 HTTPS 桩，未调用真实付费供应商。未推送、触发远端 CI、部署或迁移现有运行数据库；后端原目录的未提交文档和既有开发服务保持原状。运行新后端前须配置 `AI_MODEL_CREDENTIAL_KEY`（Base64 编码的 32 字节主密钥），丢失后已加密密钥只能重新录入。
