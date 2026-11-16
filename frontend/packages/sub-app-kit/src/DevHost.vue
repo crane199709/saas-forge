@@ -58,15 +58,22 @@ form {
   gap: var(--forge-space-2);
 }
 .dev-host {
+  background-color: var(--el-bg-color);
   padding: var(--forge-space-2) var(--forge-space-4);
   border-bottom: 1px solid var(--el-border-color);
 }
 main {
+  background-color: var(--el-bg-color);
   padding: var(--forge-space-4);
 }
 </style>
 
 <style>
+/* 开发宿主也承担页面底色与正文色，不能只写入 token 而依赖 Shell 的内容面。 */
+body {
+  color: var(--el-text-color-regular);
+  background-color: var(--forge-color-page);
+}
 /*
  * 与 Shell 使用同一表格密度，Sub-App 的视觉基线才与线上一致：40px 行高 = 单元格上下内边距
  * --forge-space-2（8px × 2）+ 正文行高 23px + 1px 分隔线；正文字号保持 14px。

@@ -5,15 +5,18 @@ import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { test } from 'node:test'
 
-// 规范原文的替身：生成工程须原样带上标题，并在头部写入平台版本。
-const standards = '# Sub-App 页面规范\n\n## 改动页面的流程\n'
+// 从唯一来源取当前规范，两个生成入口都须原样分发新版全文并写入平台版本。
+const standards = await readFile(
+  new URL('../../../../docs/standards/sub-app.md', import.meta.url),
+  'utf8',
+)
 // 格式规则的替身：生成工程须原样复制平台的 Prettier 配置。
 const prettierConfig = '{ "semi": false }\n'
 
 async function assertStandards(app: string, version: string) {
   const doc = await readFile(join(app, 'docs/standards/sub-app.md'), 'utf8')
   assert.ok(doc.split('\n', 1)[0].includes(version), doc)
-  assert.ok(doc.includes(standards), doc)
+  assert.equal(doc.slice(doc.indexOf('\n\n') + 2), standards)
   const agents = await readFile(join(app, 'AGENTS.md'), 'utf8')
   assert.ok(agents.includes('docs/standards/sub-app.md'), agents)
   for (const command of [
@@ -47,7 +50,30 @@ async function assertStandards(app: string, version: string) {
   const home = await readFile(join(app, 'src/HomePage.vue'), 'utf8')
   for (const part of ['PageHeader', 'PageToolbar', 'ListPage', 'formatDateTime'])
     assert.ok(home.includes(part), part)
+  await assertThemeInheritance(app)
   await assertMatchesArchetypeOrders(home, spec)
+}
+
+// 通过生成结果约束宿主入口与升级指引；运行时配色另由真实发布包的浏览器验收覆盖。
+async function assertThemeInheritance(app: string) {
+  const dev = await readFile(join(app, 'src/dev.ts'), 'utf8')
+  assert.match(dev, /import \{ startDevHost \} from '@crane199709\/sub-app-kit\/dev-host'/)
+  assert.match(dev, /await startDevHost\(/)
+  for (const file of ['src/dev.ts', 'src/sub-app.ts', 'src/HomePage.vue']) {
+    const source = await readFile(join(app, file), 'utf8')
+    assert.doesNotMatch(
+      source,
+      /applyTheme|document\.documentElement|--(?:forge|el)-[\w-]+\s*:/,
+      file,
+    )
+    assert.doesNotMatch(source, /#[\da-f]{3,8}\b/i, file)
+  }
+  const agents = await readFile(join(app, 'AGENTS.md'), 'utf8')
+  assert.match(agents, /## 主题升级/)
+  assert.match(agents, /已部署.*Shell.*主题/)
+  assert.match(agents, /独立开发.*UI.*kit.*同.*版本/)
+  assert.match(agents, /临时工程.*docs\/standards/)
+  assert.match(agents, /写死.*颜色.*自行/)
 }
 
 // 首页与 forge-service-archetype 的订单接口配套：只用接口返回的字段与接受的参数，生成后前后端即可直接联调。
@@ -132,7 +158,12 @@ test('仓库外生成使用发布版本快照，支持目标目录且拒绝覆�
     assert.equal(pkg.devDependencies['postcss-html'], '2.0.0')
     assert.equal(pkg.devDependencies['@playwright/test'], '1.64.1')
     assert.equal(pkg.devDependencies.prettier, '3.9.10')
+    const originalHome = await readFile(join(root, 'billing-sub-app/src/HomePage.vue'), 'utf8')
     assert.equal(run().status, 1)
+    assert.equal(
+      await readFile(join(root, 'billing-sub-app/src/HomePage.vue'), 'utf8'),
+      originalHome,
+    )
     assert.equal(run('custom/app').status, 0)
     assert.equal(
       JSON.parse(await readFile(join(root, 'custom/app/package.json'), 'utf8')).name,
@@ -187,6 +218,17 @@ test('仓库命令继续默认生成到 apps 并支持独立编译配置', async
     assert.equal(pkg.devDependencies.stylelint, kit.devDependencies.stylelint)
     assert.equal(pkg.devDependencies['@playwright/test'], kit.devDependencies['@playwright/test'])
     assert.equal(pkg.devDependencies.prettier, kit.devDependencies.prettier)
+    const originalHome = await readFile(join(root, 'apps/billing-sub-app/src/HomePage.vue'), 'utf8')
+    const repeated = spawnSync(
+      process.execPath,
+      ['packages/sub-app-kit/bin/create.ts', '--workspace', 'billing', '5180'],
+      { cwd: root, encoding: 'utf8' },
+    )
+    assert.equal(repeated.status, 1)
+    assert.equal(
+      await readFile(join(root, 'apps/billing-sub-app/src/HomePage.vue'), 'utf8'),
+      originalHome,
+    )
   } finally {
     await rm(repo, { recursive: true, force: true })
   }

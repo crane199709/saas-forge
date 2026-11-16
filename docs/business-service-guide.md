@@ -2,7 +2,7 @@
 
 需要 JDK 17、Maven 3.9+（仅用于执行 archetype 生成，生成的工程自带 Maven Wrapper）、可用 Docker（Testcontainers）以及平台发布的 Maven 仓库。在 Maven settings.xml 配置该仓库和凭证，所有 Forge 制品须使用同一发布版本。以下以 SDK 0.1.0 为例。
 
-配套 Sub-App 通过同版本 sub-app-kit 创建，页面规范见 [Sub-App 页面规范](standards/sub-app.md#统一浅色主题)。Shell 与独立开发宿主统一调用共享 UI 的 `applyTheme()` 并载入共享主题样式；Sub-App 只读 Theme Token，不写文档根节点或复制色板。默认浅色主题为靛蓝 + Slate，成功、警告、危险保持语义色。升级时配套更新 UI/kit 与规范副本；token 名称、三层归属及布局档位保持兼容，默认配色可在变更说明及视觉验收后统一演进，写死的颜色不会自动迁移。后端脚手架只提供此配套指引，不增加前端依赖。
+配套 Sub-App 通过同版本 sub-app-kit 创建，页面规范见 [Sub-App 页面规范](standards/sub-app.md#统一浅色主题)。Shell 与独立开发宿主统一调用共享 UI 的 `applyTheme()` 并载入共享主题样式；Sub-App 只读 Theme Token，不写文档根节点或复制色板。默认浅色主题为靛蓝 + Slate，成功、警告、危险保持语义色。已部署的 Sub-App 在升级 Shell 后读取宿主当前主题；独立开发时将 SDK、UI/kit 对齐到配套 Shell 的同一平台版本并保留共享依赖精确版本，重新安装、构建与启动验收。用同版本 kit 生成临时工程，复制其中的规范并合入生成说明，保留业务代码；token 名称、三层归属及布局档位保持兼容，默认配色可在变更说明及视觉验收后统一演进，写死的颜色不会自动迁移。后端脚手架只提供此配套指引，不增加前端依赖。
 
 ## 生成与验证
 

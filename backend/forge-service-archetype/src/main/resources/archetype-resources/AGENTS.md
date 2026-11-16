@@ -23,7 +23,7 @@
 
 ## 配套 Sub-App
 
-需要业务前端时使用同版本 sub-app-kit，并阅读其生成的 `docs/standards/sub-app.md`「统一浅色主题」。Shell 与独立开发宿主共用 UI 默认主题，Sub-App 只读 Theme Token；UI/kit 配套升级并更新规范副本，写死的颜色不会自动迁移。后端工程不引入前端依赖。
+需要业务前端时使用同版本 sub-app-kit，并阅读其生成的 `docs/standards/sub-app.md`「统一浅色主题」。Shell 与独立开发宿主共用 UI 默认主题，Sub-App 只读 Theme Token；已部署的 Sub-App 读取升级后的 Shell 主题；独立开发须对齐配套 Shell 的 SDK、UI/kit 与共享依赖版本，重新安装、构建与启动验收。从同版本 kit 的临时工程更新规范副本及生成说明，保留业务代码；写死的颜色需自行迁移。后端工程不引入前端依赖。
 
 ## 命令
 

@@ -135,7 +135,11 @@ Shell 与独立开发宿主从 `@crane199709/ui` 的 `applyTheme()` 取得统一
 
 Theme Token 保留现有名称与 primitive / semantic / component 三层归属；布局尺寸、间距、字号、圆角等档位取值保持兼容。平台默认配色可以在 CHANGELOG 说明并完成视觉验收后统一演进。宿主拥有配色，Sub-App 使用 Element Plus 语义色，不另建 `--forge-color-*` 体系；既有 `--forge-color-primary` 与 `--forge-color-page` 名称继续保留。
 
-升级仓库外工程时，配套更新 UI 与 sub-app-kit 版本并重新复制本规范。挂在 Shell 中的 Sub-App 读取宿主当前主题；独立开发宿主读取配套 UI 版本的默认主题。页面写死的颜色不会自动升级，应改为现有 token。静态 favicon 的品牌主色随平台默认色同步；不自动重生成或发布已有工程。
+升级仓库外工程时，分别验证两种运行方式：
+
+1. 已部署的 Sub-App 读取 Shell 当前主题；升级 Shell 后，检查页面的按钮、文字和中性色是否跟随宿主。
+2. 独立开发宿主读取配套 UI 版本的默认主题。将 SDK、UI 与 sub-app-kit 对齐到配套 Shell 的同一平台版本，共享依赖保留对应精确版本；执行 `pnpm install`、`pnpm build`，再以 `pnpm dev` 验证开发宿主。
+3. 用同版本 kit 生成临时工程，从中复制本规范并合入 `AGENTS.md` 的新说明，保留现有业务代码。页面写死的颜色需自行改为现有 token；静态 favicon 的品牌主色随平台默认色同步。不自动重生成或发布已有工程。
 
 ### 密度
 
