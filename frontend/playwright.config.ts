@@ -15,6 +15,11 @@ export default defineConfig({
   },
   webServer: [
     {
+      command: 'pnpm --filter @forge/demo-sub-app dev --host 127.0.0.1 --port 5177',
+      url: 'http://127.0.0.1:5177',
+      reuseExistingServer: false,
+    },
+    {
       command:
         'pnpm --filter @forge/platform-console preview --host 127.0.0.1 --port 5173 --strictPort',
       url: 'http://127.0.0.1:5173',

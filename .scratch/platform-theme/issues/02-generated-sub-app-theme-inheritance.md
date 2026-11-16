@@ -22,6 +22,16 @@
 **2026-11-16：** 需求方确认本工单依赖 01，工单状态表示可由 agent 领取，实际开始须等待 01 完成。已有继承链能够满足验收的部分直接验证复用，不为本工单增加重复机制。
 
 
+**2026-11-16：审查修复验收（P3）**
+
+- 页面主任务仍为开发者在独立宿主登录并调试业务内容。本次仅将 DevHost 顶栏布局分隔线改读已有 `--el-border-color-light`，匹配规格 `#E2E8F0`；默认输入边框、色板、布局、字体与隔离契约保持原样。
+- 按已确认的真实宿主浏览器边界执行红→绿：持久回归加入现有 `e2e/theme.spec.ts`，使用 demo 独立开发入口；1440、1024 两档先因顶栏实际 `rgb(203, 213, 225)` 与规格 `rgb(226, 232, 240)` 不符而失败，最小修复后两项通过。测试覆盖真实页底、内容面、正文、顶栏和表格分隔色，并检查非空内容、无框架 overlay/控制台错误，以及弹窗打开/关闭。
+- 将 02 外部临时工程完整复制到 `/private/tmp/forge-platform-theme/03/theme-proof-sub-app/`，保留原 overrides；SDK/UI 继续消费 02 的真实 tarball，kit 从本修复源码重新 build/pack 并实际离线安装，新增包为 `03/tarballs/crane199709-sub-app-kit-0.2.0-SNAPSHOT.tgz`。原 01/02 工程与证据未修改。审计确认外部 `node_modules` 的 dist 入口、单一 SDK/UI 实例，且已安装 kit JS/CSS 与新 tarball 逐字节一致。
+- 外部旧包两档颜色红测同样复现，安装新包后两项浏览器通过，真实顶栏计算色为 `rgb(226, 232, 240)`；页底/内容面/文字、Slate200 表格线、Slate300 输入选择器、40px 行密度、无横向溢出，以及主按钮默认/hover/pressed 与白字对比度 6.29/7.32/8.53 均保持通过。Browser plugin not available，使用现有 Chromium Playwright；IAM/订单仍为外部边界 mock，未启动真实后端。
+- 相关验证通过：kit 测试 7 项、kit 类型、工具类型、DevHost stylelint、变更源文件格式、kit build/pack、外部类型与联邦构建（含隔离及样式 lint）。逐张查看源码宿主 2 张及外部 7 张截图，共 9 张，1440/1024 下内容与按钮清晰可达、无重叠遮挡。单条 DevHost CSS 消费者修复未触及视觉基线，沿用已通过的完整 492/221 与 01 基线证据，未重复全量更新。
+- 全部补充证据位于 `/private/tmp/forge-platform-theme/03/`：`red-devhost-regression.log` / `green-devhost-regression.log`、`red-external-devhost.log` / `green-external-devhost.log`、`devhost-final.json`、`package-audit.json`、`installed-resolutions.json` 与 `verification.md`。临时服务已关闭；无 push、发布或权限边界变化。本工单继续保持 resolved。
+
+
 ## Answer
 
 2026-11-16：实现与必要验收已完成。

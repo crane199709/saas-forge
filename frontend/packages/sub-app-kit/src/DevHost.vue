@@ -60,7 +60,7 @@ form {
 .dev-host {
   background-color: var(--el-bg-color);
   padding: var(--forge-space-2) var(--forge-space-4);
-  border-bottom: 1px solid var(--el-border-color);
+  border-bottom: 1px solid var(--el-border-color-light);
 }
 main {
   background-color: var(--el-bg-color);

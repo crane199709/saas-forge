@@ -119,3 +119,72 @@ test('浅色主题的表格分隔线使用 Slate200', async ({ page }) => {
     'rgb(226, 232, 240)',
   )
 })
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 1024, height: 768 },
+]) {
+  test(`开发宿主的页底、内容面、正文与顶栏分隔线使用统一浅色主题（${viewport.width}）`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize(viewport)
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    page.on('console', (message) => {
+      if (['error', 'warning'].includes(message.type())) errors.push(message.text())
+    })
+    await page.addInitScript(() =>
+      localStorage.setItem(
+        'forge.tenant.session',
+        JSON.stringify({
+          accessToken: 'theme-proof',
+          refreshToken: 'theme-proof',
+          membershipId: 'theme-member',
+          tenantId: 'theme-tenant',
+          tenantName: '主题验收租户',
+          identityName: '测试成员',
+        }),
+      ),
+    )
+    await page.route('**/api/iam/auth/access', (route) =>
+      route.fulfill({
+        json: {
+          code: 'ok',
+          httpStatus: 200,
+          data: { permissions: ['order:read', 'order:create'], menus: [], subApps: [] },
+        },
+      }),
+    )
+    await page.route('**/api/demo/orders?*', (route) =>
+      route.fulfill({
+        json: {
+          code: 'ok',
+          httpStatus: 200,
+          data: [{ id: 'theme-order', title: '主题验收订单', amount: 860, status: 'unpaid' }],
+          meta: { page: { number: 1, size: 20, totalElements: 1, totalPages: 1 } },
+        },
+      }),
+    )
+    await page.goto('http://127.0.0.1:5177/apps/demo/overview')
+    await expect(page).toHaveTitle('demo Sub-App 开发宿主')
+    await expect(page.getByText('主题验收订单', { exact: true })).toBeVisible()
+    await expect(page.locator('vite-error-overlay')).toHaveCount(0)
+    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(248, 250, 252)')
+    await expect(page.locator('body')).toHaveCSS('color', 'rgb(51, 65, 85)')
+    await expect(page.getByRole('main')).toHaveCSS('background-color', 'rgb(255, 255, 255)')
+    await expect(page.getByRole('main')).toHaveCSS('color', 'rgb(51, 65, 85)')
+    await expect(page.getByRole('banner')).toHaveCSS('background-color', 'rgb(255, 255, 255)')
+    await expect(page.getByRole('banner')).toHaveCSS('border-bottom-color', 'rgb(226, 232, 240)')
+    await expect(page.locator('.el-table th.el-table__cell').first()).toHaveCSS(
+      'border-bottom-color',
+      'rgb(226, 232, 240)',
+    )
+    await page.getByRole('button', { name: '打开弹窗', exact: true }).click()
+    await expect(page.getByRole('dialog', { name: '子应用弹窗' })).toBeVisible()
+    await page.getByRole('button', { name: '关闭', exact: true }).click()
+    await expect(page.getByRole('dialog', { name: '子应用弹窗' })).toBeHidden()
+    await page.mouse.move(0, 0)
+    await page.screenshot({ path: testInfo.outputPath('devhost.png'), animations: 'disabled' })
+    expect(errors).toEqual([])
+  })
+}
