@@ -104,23 +104,7 @@ for package in sdk ui sub-app-kit; do
   (cd "$root/frontend/packages/$package" && pnpm pack --pack-destination "$work/tarballs")
 done
 # 发布前检查实际 tarball，防止 workspace 协议或指向源码的入口流入仓库。
-python3 - "$work/tarballs" <<'PYCHECK'
-import json
-import sys
-import tarfile
-from pathlib import Path
-for path in Path(sys.argv[1]).glob('*.tgz'):
-    with tarfile.open(path) as archive:
-        package = json.load(archive.extractfile('package/package.json'))
-        assert not package.get('private'), path.name
-        assert 'workspace:' not in json.dumps(package), path.name
-        targets = list(package.get('bin', {}).values())
-        for export in package['exports'].values():
-            targets.extend(export.values())
-        for target in targets:
-            assert 'package/' + target.removeprefix('./') in archive.getnames(), target
-        assert all(target.endswith('.js') for target in package.get('bin', {}).values())
-PYCHECK
+python3 "$root/scripts/release/check_tarballs.py" "$work/tarballs"
 for archive in "$work"/tarballs/*.tgz; do
   npm publish "$archive" --registry "$NPM_RELEASE_REGISTRY" --access "$NPM_RELEASE_ACCESS" --provenance=false --tag "${NPM_RELEASE_TAG:-latest}"
 done

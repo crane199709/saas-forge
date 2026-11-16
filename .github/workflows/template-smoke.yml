@@ -23,6 +23,9 @@ jobs:
         with:
           scope: template-smoke
           force-full: ${{ inputs.force-full || false }}
+      - name: Test release scripts
+        if: steps.changes.outputs.run == 'true'
+        run: python3 -m unittest discover -s scripts/release -p 'test_*.py' -v
       - uses: actions/setup-java@v4
         if: steps.changes.outputs.run == 'true'
         with:
