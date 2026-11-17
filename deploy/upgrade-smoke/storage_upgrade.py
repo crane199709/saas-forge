@@ -37,9 +37,11 @@ def main():
     maven, upgraded = prepare(work, sys.argv[2] or None, old_setup=old_storage)
     old = work / 'old/retained-service'
     service = upgraded / 'src/main/java' / PACKAGE / 'document/service/DocumentService.java'
-    text = service.read_text().replace('public class DocumentService {', '''public class DocumentService {
+    text = service.read_text().replace('import java.util.UUID;', '''import java.time.Duration;
+import java.util.Set;
+import java.util.UUID;''').replace('public class DocumentService {', '''public class DocumentService {
     private static final StoragePurpose ATTACHMENT = new StoragePurpose(
-        "document-attachment", java.util.Set.of("txt"), 1024, java.time.Duration.ofMinutes(5), 30);''')
+        "document-attachment", Set.of("txt"), 1024, Duration.ofMinutes(5), 30);''')
     text = text.replace('storage.prepareUpload(filename,', 'storage.prepareUpload(ATTACHMENT, filename,')
     text = text.replace('storage.prepareDownload(id)', 'storage.prepareDownload(ATTACHMENT, id)')
     text = text.replace('storage.get(objectId)', 'storage.get(ATTACHMENT, objectId)')

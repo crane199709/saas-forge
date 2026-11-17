@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
@@ -19,6 +20,7 @@ import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactor
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -53,9 +55,9 @@ class UpgradeAcceptanceTest {
         String tokenB = TestTokens.forMembership(TENANT_B, MEMBER_B);
         String reader = TestTokens.forMembership(TestTokens.TENANT_ID, READ_ONLY);
         var jwks = new String[1];
-        TestTokens.register(new org.springframework.test.context.DynamicPropertyRegistry() {
+        TestTokens.register(new DynamicPropertyRegistry() {
             @Override
-            public void add(String name, java.util.function.Supplier<Object> value) {
+            public void add(String name, Supplier<Object> value) {
                 if (name.equals("forge.security.jwk-set-uri")) {
                     jwks[0] = (String) value.get();
                 }

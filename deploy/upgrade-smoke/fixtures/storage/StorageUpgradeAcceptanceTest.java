@@ -7,9 +7,11 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HexFormat;
@@ -18,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
@@ -25,6 +28,7 @@ import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactor
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.web.client.RestClient;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -80,9 +84,9 @@ class StorageUpgradeAcceptanceTest {
         tokenB = TestTokens.forMembership(TENANT_B, MEMBER_B);
         other = TestTokens.forMembership(TestTokens.TENANT_ID, OTHER_MEMBER);
         var jwks = new String[1];
-        TestTokens.register(new org.springframework.test.context.DynamicPropertyRegistry() {
+        TestTokens.register(new DynamicPropertyRegistry() {
             @Override
-            public void add(String name, java.util.function.Supplier<Object> value) {
+            public void add(String name, Supplier<Object> value) {
                 if (name.equals("forge.security.jwk-set-uri")) {
                     jwks[0] = (String) value.get();
                 }
@@ -232,9 +236,9 @@ class StorageUpgradeAcceptanceTest {
                 assertThat(usedBytes()).isEqualTo(beforeBytes);
                 newObject = upload(token, "候选新文件内容");
                 var active = lifecycle(newObject);
-                var deadline = java.time.OffsetDateTime.parse((String) active.get("retentionExpiresAt"));
-                assertThat(deadline).isAfter(java.time.OffsetDateTime.now().plusDays(29));
-                assertThat(deadline).isBefore(java.time.OffsetDateTime.now().plusDays(31));
+                var deadline = OffsetDateTime.parse((String) active.get("retentionExpiresAt"));
+                assertThat(deadline).isAfter(OffsetDateTime.now().plusDays(29));
+                assertThat(deadline).isBefore(OffsetDateTime.now().plusDays(31));
                 var ticket = data(
                         exchange(HttpMethod.GET, "/documents/objects/" + newObject + "/download", token, null, 200));
                 long totalBytes = beforeBytes + bytes("候选新文件内容").length;
@@ -242,8 +246,8 @@ class StorageUpgradeAcceptanceTest {
                 exchange(HttpMethod.DELETE, "/documents/objects/" + newObject, token, null, 200);
                 var expired = lifecycle(newObject);
                 assertThat(expired.get("status")).isEqualTo("EXPIRED");
-                assertThat(java.time.OffsetDateTime.parse((String) expired.get("purgeAfter")))
-                        .isEqualTo(java.time.OffsetDateTime.parse((String) expired.get("expiredAt"))
+                assertThat(OffsetDateTime.parse((String) expired.get("purgeAfter")))
+                        .isEqualTo(OffsetDateTime.parse((String) expired.get("expiredAt"))
                                 .plusDays(7));
                 assertThat(usedBytes()).isEqualTo(totalBytes);
                 exchange(HttpMethod.GET, "/documents/objects/" + newObject + "/download", token, null, 404);
@@ -311,7 +315,7 @@ class StorageUpgradeAcceptanceTest {
     }
 
     private byte[] bytes(String text) {
-        return text.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        return text.getBytes(StandardCharsets.UTF_8);
     }
 
     private String upload(String bearer, String contents) throws Exception {
@@ -321,7 +325,7 @@ class StorageUpgradeAcceptanceTest {
     }
 
     private String put(String bearer, String contents) throws Exception {
-        byte[] bytes = contents.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] bytes = contents.getBytes(StandardCharsets.UTF_8);
         var ticket = data(exchange(
                 HttpMethod.POST,
                 "/documents/upload",
