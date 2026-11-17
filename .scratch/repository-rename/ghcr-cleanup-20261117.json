@@ -1,0 +1,302 @@
+{
+  "authorizedScope": "Delete exactly six saas-forge-v2/ private container packages and all 31 versions; preserve saas-forge/ packages, including 0.1.0 and 0.2.0. User explicitly confirmed.",
+  "workflow": {
+    "run": 44048367317,
+    "url": "https://github.com/crane199709/saas-forge/actions/runs/44048367317",
+    "sourceCommit": "7d542cd014b8b18f1c2b4600aceb05358b107fa4",
+    "job": 133919620793,
+    "conclusion": "success",
+    "artifactId": 14312677202,
+    "artifactZipSha256": "11b9cfab86209995504442b4527bbbaf0c604589448480d8f7384da7dbf979cd",
+    "receiptSha256": "15b2e171bd4b189bb6ba86fe031200220107902f08d7f23269da1922fc1bbc75",
+    "temporaryBranch": "codex/cleanup-saas-forge-v2",
+    "temporaryRemoteBranchRemoved": true,
+    "mergedWorkflowIntoMain": false
+  },
+  "beforeCheck": {
+    "checkedAt": "2026-11-17T08:31:35.970354+00:00",
+    "imagePrefix": "ghcr.io/crane199709/saas-forge",
+    "comparisons": [
+      {
+        "image": "forge-gateway",
+        "oldPackage": "saas-forge-v2/forge-gateway",
+        "oldVersions": 4,
+        "newVersions": 5,
+        "missingDigests": [],
+        "missingTags": [],
+        "unchangedSinceMigration": true
+      },
+      {
+        "image": "forge-iam",
+        "oldPackage": "saas-forge-v2/forge-iam",
+        "oldVersions": 3,
+        "newVersions": 4,
+        "missingDigests": [],
+        "missingTags": [],
+        "unchangedSinceMigration": true
+      },
+      {
+        "image": "forge-platform",
+        "oldPackage": "saas-forge-v2/forge-platform",
+        "oldVersions": 3,
+        "newVersions": 4,
+        "missingDigests": [],
+        "missingTags": [],
+        "unchangedSinceMigration": true
+      },
+      {
+        "image": "demo-service",
+        "oldPackage": "saas-forge-v2/demo-service",
+        "oldVersions": 3,
+        "newVersions": 4,
+        "missingDigests": [],
+        "missingTags": [],
+        "unchangedSinceMigration": true
+      },
+      {
+        "image": "tenant-app",
+        "oldPackage": "saas-forge-v2/tenant-app",
+        "oldVersions": 9,
+        "newVersions": 12,
+        "missingDigests": [],
+        "missingTags": [],
+        "unchangedSinceMigration": true
+      },
+      {
+        "image": "platform-console",
+        "oldPackage": "saas-forge-v2/platform-console",
+        "oldVersions": 9,
+        "newVersions": 12,
+        "missingDigests": [],
+        "missingTags": [],
+        "unchangedSinceMigration": true
+      }
+    ]
+  },
+  "workflowReceipt": {
+    "checkedAt": "2026-11-17T08:38:04.251742+00:00",
+    "mode": "delete",
+    "checks": [
+      {
+        "oldName": "saas-forge-v2/forge-gateway",
+        "oldId": 16432859,
+        "oldVersions": 4,
+        "target": "saas-forge/forge-gateway",
+        "targetDigests": [
+          "sha256:5785a3bae87325fadd4839bd5b19917bd973c397afe2149b5833f85689b4ab0b",
+          "sha256:6677aea166997ddeb4144ddfd362565de096385d4f1acc06dc9aba723fae3946",
+          "sha256:92e92ed949cbc4b5d510cf5393ae6607290ff4d011e9188234f1f9caae5b17a0",
+          "sha256:e33c7ac4829526d3f27409f949e4743662a945af471c4195aad6edce943b6dd1",
+          "sha256:f7973ad732ab70661ebe033807a5be6f8a3e9f36c0e000fe48412c79329e7585"
+        ]
+      },
+      {
+        "oldName": "saas-forge-v2/forge-iam",
+        "oldId": 16432998,
+        "oldVersions": 3,
+        "target": "saas-forge/forge-iam",
+        "targetDigests": [
+          "sha256:05d6b25c5a889794089f24e9c0b41fcb6856806700775848d96b30b5eb4fcc1c",
+          "sha256:884f3f885179264586c292dbb375459b3b1ba472cc75b515ebd09c6e6f3bde5d",
+          "sha256:b6b69a6301de1176e7fb305bfe33dd466584f8a116942e45b6b2e131c49866fd",
+          "sha256:cbde537b1142b9ce8502bfd2d2543834cee41f0e3c2c23bd5e731ffd5f2f5273"
+        ]
+      },
+      {
+        "oldName": "saas-forge-v2/forge-platform",
+        "oldId": 16432999,
+        "oldVersions": 3,
+        "target": "saas-forge/forge-platform",
+        "targetDigests": [
+          "sha256:100f4e47542a64fcd362a43fd420a6fcdb3e97d1d38a61a8ea8009914e2f1422",
+          "sha256:6145605c34994e09ed3c99a2cebfe5c345879ccef72f84973c47807644dd4bd7",
+          "sha256:7dc605329a7da7bfad3a2e962c72662cbe044fdb45bb8db68a491361fe846f08",
+          "sha256:ae0b593d686a63a29e95e8a36bb411bd0fc4d60ccf09f64706414b33b104971f"
+        ]
+      },
+      {
+        "oldName": "saas-forge-v2/demo-service",
+        "oldId": 16433004,
+        "oldVersions": 3,
+        "target": "saas-forge/demo-service",
+        "targetDigests": [
+          "sha256:16642230047f1164d78fdb3594f1452519679651a256613bb7776c911de427a4",
+          "sha256:494b2f60eabb31c2f5b4ddefbe9d2329d68802aedba0f7e4df759d506873db65",
+          "sha256:814006d559a14319f2c1eeda7f504c85576e7e068df1331c40d1d83ee230b3d6",
+          "sha256:9494e6ef5de7104a119c5ad58adfe79dbda68bb373acd661078f0d3c6f8b6861"
+        ]
+      },
+      {
+        "oldName": "saas-forge-v2/tenant-app",
+        "oldId": 16433008,
+        "oldVersions": 9,
+        "target": "saas-forge/tenant-app",
+        "targetDigests": [
+          "sha256:0490461a332296b1fab5e1fcdf3b18e265854cc3a7f8ce6a87e37c021ff00f1b",
+          "sha256:2e17cbaa03577aaa1dfc1429e219205bb54e5c68245b4c2eaec9c44e934a7159",
+          "sha256:376c0d1105ff740e79786b25d6d2573236ef12a732711925b8ca35e5c06a250c",
+          "sha256:4baf7607f3511ffd5defa77157748427cae5822f9964f5257b4094cdd48a8f9b",
+          "sha256:56eadcc3a5465c27cadea4098bd5f0be5aedfdee11453ef0009111d5bcd9e2e4",
+          "sha256:9322c25445d2676fb07d60227f02ba923cdbb41d9693aef0bbc382292209af0a",
+          "sha256:a297140670f01503e12f9ec31884fb31700f191a86081fcb45f8619eab471857",
+          "sha256:bbd20cb44a8196d6699f15d7e8b3ad032f217133728d3b15d311ffdbc4a67e81",
+          "sha256:d98a646031f7528de2cde759ff66735ae364fbc0ee7f16648088885e2f54a27f",
+          "sha256:eae03474a5f7c00daa0f9703d2869824a1d428eae232298ad71b5646a87a24ff",
+          "sha256:ee65c1ae0c13e7fabaa69eb3d61c61c2c1ccb82ed578392543719198711cd59f",
+          "sha256:fcc37081eebf474c4120cb4d948dde6a0f78a28190683759a61ad4f67624c2e0"
+        ]
+      },
+      {
+        "oldName": "saas-forge-v2/platform-console",
+        "oldId": 16433011,
+        "oldVersions": 9,
+        "target": "saas-forge/platform-console",
+        "targetDigests": [
+          "sha256:1c79d94b153ac5ae15966f43eeae0ac482edbfcb184404a2c771ee1c68fdd344",
+          "sha256:3498bcb518263b77e86346b60ba5732711cc553fd206bdfa056733f9aba69350",
+          "sha256:4cdf3f1a0346dc1527dd4460820d894c352954c6eaf85f2f5b4acdefb3972929",
+          "sha256:6145b8f8ad527094c1760a350195458dd2209ade94396dd495b48522242c6594",
+          "sha256:624b8cc69d61f7aba2ba355b1748f105334f0deb46efcb15964ad89a542d9626",
+          "sha256:6ca03aa5ede66224f36c684013bd5535f6e44bb51ae19130540b5575f1f2ed50",
+          "sha256:727ae12ce7cef7246f6f16b351dba5e724bc2783d42751714034ab4758ec68c9",
+          "sha256:7bff180a97698b359ca1aa3d687c5bc0e5de04dc0b4d29ee9d8356d06241b705",
+          "sha256:98e60e2cc94a07522c632d3ce5a381133d733e8cafd8be15a6044f98c2d92dc2",
+          "sha256:a048d8d5bf9758c9f1a1df98ba2e75ca8f5d87559c39bbd8372832afdfd78407",
+          "sha256:ec89a4a98ea8919cca27545c7eb9a64307b87c48c27efcc07ade795340250827",
+          "sha256:f4b25c74755a1595f62d97a3308a7de1d9dec45cd02408bf4bbcf5e50ef127ea"
+        ]
+      }
+    ],
+    "deleted": [
+      {
+        "name": "saas-forge-v2/forge-gateway",
+        "id": 16432859,
+        "deletedAt": "2026-11-17T08:38:07.637538+00:00"
+      },
+      {
+        "name": "saas-forge-v2/forge-iam",
+        "id": 16432998,
+        "deletedAt": "2026-11-17T08:38:11.218091+00:00"
+      },
+      {
+        "name": "saas-forge-v2/forge-platform",
+        "id": 16432999,
+        "deletedAt": "2026-11-17T08:38:15.074142+00:00"
+      },
+      {
+        "name": "saas-forge-v2/demo-service",
+        "id": 16433004,
+        "deletedAt": "2026-11-17T08:38:18.941206+00:00"
+      },
+      {
+        "name": "saas-forge-v2/tenant-app",
+        "id": 16433008,
+        "deletedAt": "2026-11-17T08:38:22.582734+00:00"
+      },
+      {
+        "name": "saas-forge-v2/platform-console",
+        "id": 16433011,
+        "deletedAt": "2026-11-17T08:38:26.371358+00:00"
+      }
+    ],
+    "newPackagesVerified": true
+  },
+  "independentReadOnlyVerification": {
+    "checkedAt": "2026-11-17T08:40:29.012961+00:00",
+    "packages": [
+      {
+        "deletedName": "saas-forge-v2/forge-gateway",
+        "deletedId": 16432859,
+        "deletedVersions": 4,
+        "deletedGetStatus": 404,
+        "retainedName": "saas-forge/forge-gateway",
+        "retainedId": 16778996,
+        "retainedVisibility": "private",
+        "retainedVersionCount": 5,
+        "allPreviousVersionsAndTagsPreserved": true,
+        "releaseDigests": {
+          "0.2.0": "sha256:e33c7ac4829526d3f27409f949e4743662a945af471c4195aad6edce943b6dd1",
+          "0.1.0": "sha256:6677aea166997ddeb4144ddfd362565de096385d4f1acc06dc9aba723fae3946"
+        }
+      },
+      {
+        "deletedName": "saas-forge-v2/forge-iam",
+        "deletedId": 16432998,
+        "deletedVersions": 3,
+        "deletedGetStatus": 404,
+        "retainedName": "saas-forge/forge-iam",
+        "retainedId": 16779003,
+        "retainedVisibility": "private",
+        "retainedVersionCount": 4,
+        "allPreviousVersionsAndTagsPreserved": true,
+        "releaseDigests": {
+          "0.2.0": "sha256:884f3f885179264586c292dbb375459b3b1ba472cc75b515ebd09c6e6f3bde5d",
+          "0.1.0": "sha256:05d6b25c5a889794089f24e9c0b41fcb6856806700775848d96b30b5eb4fcc1c"
+        }
+      },
+      {
+        "deletedName": "saas-forge-v2/forge-platform",
+        "deletedId": 16432999,
+        "deletedVersions": 3,
+        "deletedGetStatus": 404,
+        "retainedName": "saas-forge/forge-platform",
+        "retainedId": 16779015,
+        "retainedVisibility": "private",
+        "retainedVersionCount": 4,
+        "allPreviousVersionsAndTagsPreserved": true,
+        "releaseDigests": {
+          "0.2.0": "sha256:100f4e47542a64fcd362a43fd420a6fcdb3e97d1d38a61a8ea8009914e2f1422",
+          "0.1.0": "sha256:6145605c34994e09ed3c99a2cebfe5c345879ccef72f84973c47807644dd4bd7"
+        }
+      },
+      {
+        "deletedName": "saas-forge-v2/demo-service",
+        "deletedId": 16433004,
+        "deletedVersions": 3,
+        "deletedGetStatus": 404,
+        "retainedName": "saas-forge/demo-service",
+        "retainedId": 16779028,
+        "retainedVisibility": "private",
+        "retainedVersionCount": 4,
+        "allPreviousVersionsAndTagsPreserved": true,
+        "releaseDigests": {
+          "0.2.0": "sha256:814006d559a14319f2c1eeda7f504c85576e7e068df1331c40d1d83ee230b3d6",
+          "0.1.0": "sha256:494b2f60eabb31c2f5b4ddefbe9d2329d68802aedba0f7e4df759d506873db65"
+        }
+      },
+      {
+        "deletedName": "saas-forge-v2/tenant-app",
+        "deletedId": 16433008,
+        "deletedVersions": 9,
+        "deletedGetStatus": 404,
+        "retainedName": "saas-forge/tenant-app",
+        "retainedId": 16779040,
+        "retainedVisibility": "private",
+        "retainedVersionCount": 12,
+        "allPreviousVersionsAndTagsPreserved": true,
+        "releaseDigests": {
+          "0.2.0": "sha256:0490461a332296b1fab5e1fcdf3b18e265854cc3a7f8ce6a87e37c021ff00f1b",
+          "0.1.0": "sha256:bbd20cb44a8196d6699f15d7e8b3ad032f217133728d3b15d311ffdbc4a67e81"
+        }
+      },
+      {
+        "deletedName": "saas-forge-v2/platform-console",
+        "deletedId": 16433011,
+        "deletedVersions": 9,
+        "deletedGetStatus": 404,
+        "retainedName": "saas-forge/platform-console",
+        "retainedId": 16779055,
+        "retainedVisibility": "private",
+        "retainedVersionCount": 12,
+        "allPreviousVersionsAndTagsPreserved": true,
+        "releaseDigests": {
+          "0.2.0": "sha256:6145b8f8ad527094c1760a350195458dd2209ade94396dd495b48522242c6594",
+          "0.1.0": "sha256:6ca03aa5ede66224f36c684013bd5535f6e44bb51ae19130540b5575f1f2ed50"
+        }
+      }
+    ],
+    "deletedPackages": 6,
+    "deletedVersions": 31,
+    "retainedVersions": 41
+  }
+}

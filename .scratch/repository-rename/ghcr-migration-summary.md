@@ -1,5 +1,7 @@
 # GHCR namespace migration
 
+2026-11-17 更新：用户确认后，六个旧 `saas-forge-v2/` 源包及 31 个历史版本已清理；新命名空间的 41 个版本和原有标签全部保留。见[清理验收](acceptance.md#旧命名空间包清理2026-11-17)及[前后对照](ghcr-cleanup-20261117.json)。下文保留 2026-11-11 迁移时的记录。
+
 Copied existing images to `ghcr.io/crane199709/saas-forge` with original digests and tags. Packages remain private. Source packages retained.
 
 | Image | Digest |

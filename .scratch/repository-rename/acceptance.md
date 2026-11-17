@@ -66,3 +66,23 @@ Status: resolved
 ## 完成确认（2026-11-16）
 
 用户确认仓库与本地目录重命名任务完成，状态置为 `resolved`，原 Codex 项目路径登记与 IDEA 重新打开的人工提醒一并关闭。历史执行与验证记录保留。
+
+## 旧命名空间包清理（2026-11-17）
+
+用户明确确认删除 `ghcr.io/crane199709/saas-forge-v2/` 下的六个旧私有 Container 包及其全部 31 个版本。删除前通过认证 API 逐包核对，旧包的 digest 与标签全部已存在于 `saas-forge/`，旧包自 11 月 11 日迁移后没有新增版本；当前 Actions variable `IMAGE_PREFIX` 指向新前缀，当前配置与源码未检出旧镜像地址引用。
+
+| 已删除旧包（均为 `saas-forge-v2/` 前缀） | 删除版本数 | 保留的新包版本数 |
+| --- | --- | --- |
+| forge-gateway | 4 | 5 |
+| forge-iam | 3 | 4 |
+| forge-platform | 3 | 4 |
+| demo-service | 3 | 4 |
+| tenant-app | 9 | 12 |
+| platform-console | 9 | 12 |
+| 合计 | 31 | 41 |
+
+[一次性清理 run 44048367317](https://github.com/crane199709/saas-forge/actions/runs/44048367317) 成功，源码提交 `7d542cd014b8b18f1c2b4600aceb05358b107fa4`。沿用仓库现有 Actions 包管理权限，没有扩展本机令牌权限或修改包可见性。工作流限定上述六个旧包的 ID、完整版本 ID/digest/标签，在全量预检及每次删除前再次核对迁移副本；实际删除后逐项确认旧包不存在、新包原有 digest 保留。
+
+2026-11-17 16:40（Asia/Shanghai），使用原先可读取旧包的独立 CLI 身份复核：六个旧包精确 GET 均返回 404；新包均返回 200，原有 41 个版本的 ID、digest、标签全部保留，六个 `0.1.0` 与 `0.2.0` 标签仍存在。`0.2.0` digest 与发布验收清单一致。完整前后对照和工作流回执见 [ghcr-cleanup-20261117.json](ghcr-cleanup-20261117.json)。
+
+一次性远端分支 `codex/cleanup-saas-forge-v2` 已删除，删除工作流没有合入 main。Maven/npm 制品、发布标签和运行环境未改变；已有未提交改动未由本次操作修改。历史记录中的“旧包保留作为回退副本”仅描述迁移当时状态；本次清理后旧镜像地址已停止提供拉取。
