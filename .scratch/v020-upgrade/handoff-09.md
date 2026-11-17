@@ -16,7 +16,9 @@
 
 已有只读预检 `/private/tmp/v020-upgrade/published-v020-preflight.json` 的时间为 `2026-11-17T04:24:56.354113+00:00`：当时三个 npm `0.2.0` 均 404。这只证明该时点 npm 前置未满足，没有据此推断 Maven 状态，也没有代为发布。09 保持待执行，开始时重新核对实际发布状态。
 
-最新认证只读预检在 `2026-11-17 05:30:17-05:30:30 UTC` 完成，证据 `/private/tmp/v020-upgrade/09-published-check/http-preflight.json` 与 `github-plugin.json`：22个必要Maven POM和三个npm 0.2.0均404；远端精确标签API404、matching为空，`git ls-remote` 退出2且输出为空。没有运行consume或发布。此前未认证401不作为未发布证据；本轮结果仍只对应检查时点，09开始时按实际外部状态执行。
+最新认证只读预检在 `2026-11-17 05:30:17-05:30:30 UTC` 完成，证据 `/private/tmp/v020-upgrade/09-published-check/http-preflight.json` 与 `github-plugin.json`：22 个必要 Maven POM 和三个 npm `0.2.0` 版本均 404；远端精确标签 API 404、matching 为空，`git ls-remote` 退出 2 且输出为空。05:32:21—05:32:25 UTC 用同一内存读取凭据对 `forge-parent:0.1.0` 单次 GET 返回 302，未跟随重定向或取得最终 POM 200，因此仍保留 Maven 最终读取可见性的边界，见 `maven-positive-control.json`。此前未认证 401 不作为未发布证据；标签缺失和 npm 404 已独立表明检查时点的外部前置未满足。没有运行 consume 或发布。
+
+08 已合入集成 `cc7748d69d2e0c51f5a6fcfd079642ab0b5a41f4`；09 当前为 `needs-info`，保留[待执行记录](acceptance-09.md)，未标记 resolved。以上证据只对应各自检查时点，真正消费前重新核对外部发布状态，再执行下列入口。
 
 1. 记录实际发布标签、提交与时间；所选源码全部坐标须为 `0.2.0`。`python3 scripts/release/version.py check v0.2.0` 必须通过；不能在 SNAPSHOT 树上放宽检查。候选本地版本提交没有发布标签，真正发布来源若不同，先比较源码和制品对应关系。
 2. 只给读取权限 `contents:read`、`packages:read`，凭证通过内存环境变量传给进程，Maven server id `forge-release`。使用已有仓库配置，不新增发布授权或写权限。
