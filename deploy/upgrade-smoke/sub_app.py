@@ -127,7 +127,8 @@ def main():
         else:
             shutil.copyfile(source, app / name)
     config.write_text(config.read_text().replace("apiPrefixes: ['/smoke'], ", ''))
-    run('pnpm', 'install', cwd=app)
+    # 此步骤已更新依赖，需显式重写旧锁文件；CI 默认冻结会阻止实际升级。
+    run('pnpm', 'install', '--no-frozen-lockfile', cwd=app)
     # 格式化是必要工具差异，先格式化旧源码，之后校验与业务基线只存在格式差异。
     run('pnpm', 'format', cwd=app)
     for command in ('format:check', 'lint', 'lint:style', 'typecheck', 'business:check', 'build'):
