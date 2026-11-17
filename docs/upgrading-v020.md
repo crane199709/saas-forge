@@ -20,7 +20,7 @@
 2. 从目标候选的实际 archetype/kit 在仓库外生成同名参数的参考工程，审阅差异。逐项合并父版本、SDK/UI/kit、必需依赖与配置、工具脚本、Agent 说明和规范副本；保留业务源码、页面、路由、业务标识、Maven profiles 和 Vite 覆盖。
 3. 保留所有已执行迁移原文；只按实际缺项新增 Flyway 版本，不将新模板合并后的 V1/V2 覆盖旧历史，不运行 clean/repair。已有 purpose 不重放用途迁移；未知旧文件保持 unspecified，不能按文件名猜用途。
 4. 后端先修 NeedBraces、原生中间件直引与格式红灯，再执行项目 verify。前端保留精确共享依赖并重新安装、格式/样式/类型/构建、业务回归与视觉走查。同名 `file:` 快照替换时刷新锁记录并核对安装内容；最终坐标使用实际 0.2.0 包。
-5. 核对独立 Maven 缓存和可执行 JAR 内嵌 Forge 包、前端安装内容与候选摘要；平台运行包与 Shell/console 也来自同一固定版本。业务 SDK 消费缓存与平台运行包分开，避免源码 install 覆盖候选来源。
+5. 核对独立 Maven 缓存和可执行 JAR 内嵌 Forge 包、前端安装内容与候选摘要；平台运行包与 Shell/console 也来自同一固定版本。业务 SDK 消费缓存与平台运行包分开，避免源码 install 覆盖候选来源。后续离线复验复用消费阶段同一份 Maven settings 和 repository/mirror 身份；本地文件存在但报 `present, but unavailable` 时，先核对 origin 是否从 `forge-candidate` 切成 `forge-release`，按原 settings 读取，不改缓存来源标记或用源码 install 掩盖。
 6. 运行业务自己的隔离产品验收、真实独立宿主和 Shell 挂载。更新浏览器的 `/api` 观察和 mock，并保持原业务路由；独立宿主的网关环境变量需显式传入 kit `gateway`，IAM 回调源必须匹配。
 
 成功判据是构建检查、权限/租户边界、原数据/文件/历史保留、新功能、两宿主和截图均通过且来源一致。失败时先看日志和 HTTP 结果，补齐本工程差异；保持原数据库及迁移历史，另建证据目录重验受影响路径。
