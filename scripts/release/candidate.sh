@@ -48,7 +48,7 @@ YAML
     done
     curl -fsS "$NPM_RELEASE_REGISTRY/-/ping" >/dev/null
     for archive in "$work"/tarballs/*.tgz; do
-      npm publish "$archive" --registry "$NPM_RELEASE_REGISTRY" --access restricted --provenance=false >/dev/null 2>&1
+      npm publish "$archive" --registry "$NPM_RELEASE_REGISTRY" --access restricted --provenance=false --tag latest >/dev/null
     done
     export FORGE_CANDIDATE_DIR="$work"
     printf '已校验候选制品；临时 npm registry：%s\n' "$NPM_RELEASE_REGISTRY"

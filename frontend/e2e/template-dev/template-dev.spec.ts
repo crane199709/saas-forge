@@ -10,11 +10,14 @@ test('仓库外生成工程的独立开发宿主可登录并读取真实订单',
   await page.getByLabel('密码', { exact: true }).fill('Demo-password-123!')
   await page.getByRole('button', { name: '登录', exact: true }).click()
   await expect(page.getByText('e2e-member @ E2E 租户 A')).toBeVisible()
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text())
+  })
   // 页面初始化时尚未登录；改变排序通过公开控件再次读取，响应来自同一隔离服务。
   const response = page.waitForResponse(
     (result) => result.url().includes('/api/smoke/orders?') && result.status() === 200,
   )
-  await page.getByRole('combobox', { name: '排序方式' }).click()
+  await page.getByText('最新创建', { exact: true }).click()
   await page.getByRole('option', { name: '金额从高到低', exact: true }).click()
   await response
   await expect(page.getByTestId('order-title')).toHaveText(['A 本人订单', '模板订单'])
