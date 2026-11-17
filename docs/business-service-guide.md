@@ -323,7 +323,7 @@ var download = storage.prepareDownload(ATTACHMENT, objectId);
 
 用途大小上限为 1 字节至 5 GiB，下载时长为 1 秒至 7 天的整秒；扩展名不含点、忽略大小写。SDK 在预留容量和写入之前拒绝不支持的扩展名或过大文件，错误码分别为 `storage.extensionNotAllowed`、`storage.fileTooLarge`；下载、导入和绑定的预期用途不一致时为 `storage.purposeMismatch`，跨租户仍为 `storage.objectNotFound`。业务权限仍须在使用对象前检查。前端沿用 `ApiError.userTip` 展示拒绝原因，申请失败后停止直传和业务确认。
 
-已有服务升级时，把 `io/saasforge/sdk/storage/upgrade-purpose.sql` 复制为新的 Flyway 迁移（demo 为 V14），不要改已执行的建表迁移。脚本增加必填 `purpose` 列、把旧行回填为 `unspecified`，随后移除列默认值；新登记必须显式提供用途。未知用途旧对象仍保留，普通用途不能下载；只有可信业务关联能够明确归类时，才在独立迁移中更新编码，不能根据扩展名猜用途。全局 `forge.storage.download-url-ttl` 已删除，改用用途的 `downloadUrlTtl`。参考 demo-service 的 attachment 功能及 V8/V14 迁移。
+已有服务按实际结构选择迁移及文件验收步骤，见 [storage 0.2.0 升级清单](upgrades/storage-0.2.0.md)。已有服务升级时，把 `io/saasforge/sdk/storage/upgrade-purpose.sql` 复制为新的 Flyway 迁移（demo 为 V14），不要改已执行的建表迁移。脚本增加必填 `purpose` 列、把旧行回填为 `unspecified`，随后移除列默认值；新登记必须显式提供用途。未知用途旧对象仍保留，普通用途不能下载；只有可信业务关联能够明确归类时，才在独立迁移中更新编码，不能根据扩展名猜用途。全局 `forge.storage.download-url-ttl` 已删除，改用用途的 `downloadUrlTtl`。参考 demo-service 的 attachment 功能及 V8/V14 迁移。
 
 storage 现在同时引入 `forge-sdk-audit` 与 `forge-sdk-scheduling`。除存储表外，须有基础 SDK 的 MQ 必需表、`forge-audit` Topic 和可用 Redis；配置 `forge.scheduling.iam-uri`、`forge.scheduling.token`，可分别引用 `${forge.manifest.iam-uri}`、`${forge.manifest.token}`。任务 `forge-storage-retention` 每小时在各试用/正常 Tenant 上运行，也可由现有任务运维入口触发。默认脚手架仍不启用 storage，不预加这些可选配置。
 
