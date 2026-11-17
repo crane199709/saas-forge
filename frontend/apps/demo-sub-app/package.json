@@ -1,6 +1,6 @@
 {
   "name": "@forge/demo-sub-app",
-  "version": "0.2.0-SNAPSHOT",
+  "version": "0.2.0",
   "private": true,
   "description": "示例 Sub-App",
   "type": "module",

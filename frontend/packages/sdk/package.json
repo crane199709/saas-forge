@@ -1,6 +1,6 @@
 {
   "name": "@crane199709/sdk",
-  "version": "0.2.0-SNAPSHOT",
+  "version": "0.2.0",
   "description": "SaaS Forge 前端 SDK：登录、Token 刷新、租户切换、请求拦截与权限指令",
   "type": "module",
   "exports": {
