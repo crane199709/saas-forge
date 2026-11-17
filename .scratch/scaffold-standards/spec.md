@@ -1,6 +1,6 @@
 # 脚手架带入规范规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-11-10 的设计拷问逐条确认。
 
@@ -94,3 +94,9 @@ Status: ready-for-agent
 
 - 遵守 `docs/agents/coding-standards.md` 与 `docs/agents/frontend-design.md`。
 - 迭代时只跑受影响的测试；交付前跑相关模块全量。
+
+## Comments
+
+### 2026-11-17 状态收口
+
+工单 01—04 均已标记 `resolved`。按用户本次确认，将本规格同步关闭；实现与验收记录以各工单为准，本次仅同步文档状态。

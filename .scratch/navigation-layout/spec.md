@@ -1,6 +1,6 @@
 # 导航布局规格
 
-Status: ready-for-agent
+Status: resolved
 
 术语以 [GLOSSARY.md](../../GLOSSARY.md) 为准。本规格的决策经 2026-11-09 至 2026-11-10 的设计拷问逐条确认。Navigation Layout 只决定位置，不决定可见性，沿用 [ADR-0018](../../docs/adr/0018-menu-is-not-an-authorization-unit.md) 的原则：导航不是访问控制。
 
@@ -168,3 +168,7 @@ SDK 生成与 iam 接收共用的清单校验（`ResourceManifest.validate()`）
 - 视觉回归：两端导航按默认分组显示。
 
 ## Comments
+
+### 2026-11-17 状态收口
+
+工单 01—05 均已标记 `resolved`。按用户本次确认，将本规格同步关闭；实现与验收记录以各工单为准，本次仅同步文档状态。
