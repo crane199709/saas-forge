@@ -1,6 +1,6 @@
 # 工单 08：统一升级质量门与最终坐标验收
 
-日期：2026-11-17。工单：[08](issues/08-upgrade-gate-and-acceptance.md)。最终候选的新建/消费、四个通用场景与两个独立试点最终 receipt 已全部核对通过，本票完成升级发布准备验收。整体代码审查和真正发布仍由后续流程独立执行。08 不等待外部发布后的 09，也未发布或切换环境。
+日期：2026-11-17。工单：[08](issues/08-upgrade-gate-and-acceptance.md)。最终候选的新建/消费、四个通用场景与两个独立试点最终 receipt 已全部核对通过，本票完成升级发布准备验收。整体代码审查与整改见 [双轴审查记录](review.md)，真正发布仍由后续流程独立执行。08 不等待外部发布后的 09，也未发布或切换环境。
 
 ## 候选与源码边界
 
@@ -17,6 +17,8 @@
 即便行为源码未变，版本、包字节、规范分发及运行包来源均已改变，因此实际重建并重验新建/空消费、服务、Sub-App、storage、IO 和两个试点受影响路径。新候选与快照的摘要差异明确保留，没有将旧快照结果充作本轮执行。
 
 候选固定后的改动 `5231644d` 只涉及 `report.py`、其 CLI 回归与 CI 路径选择：修复诊断中跨行秘密值与不完整 JSON，独立宿主配置精确触发前端/模板门。之后添加验收材料与未随包分发的集中指南，说明离线验证须复用同一 Maven settings 和 mirror。它们不进入 Maven/npm 制品；最终开发 tip 相对候选的完整差异另保存在 `08-final-source-diff/`，包含开发分支保留 SNAPSHOT 的预期版本差异，供真正发布标签构建核对。
+
+审查后的源码整改仅涉及 `deploy/upgrade-smoke/` 下三份测试 fixture 的显式 import，以及 storage 辅助脚本生成 Java 时的 Set/Duration import；均不进入真实 Maven/npm 候选包，没有修改 SDK、平台运行时、迁移或脚手架模板。AI 后续 `5d2dc925` 仅补 FullStackIT 新增两处 TimeUnit 的 import，原完整验收仍来自 `17a934e8`，文档收据提交仍是 `e4b16654`。本轮未重建候选或重跑四场景/两个试点重型测试，而是在新的 `/private/tmp/v020-upgrade/review-fix-checks/` 副本上执行四工程 Spotless、Checkstyle 与 test-compile，并确认受影响 12 个 class 的 `javap -c -p` 输出与原验收一致。原 `08-release-readiness.json`、通用及两个试点 receipt 不覆盖；独立补记见 `review-fix-receipt.json` / `.md`，日志与来源记录见 [双轴审查记录](review.md)。
 
 ## 统一入口、失败与 CI
 
@@ -38,7 +40,7 @@ TDD 与直接相关检查：CI 三处路径最初红灯，最小映射后 **10/1
 | [04](acceptance-04.md)：真实发布 storage0.1.0/schema，无 purpose/retention | `08-final/private/storage`：完整最高 HTTP 接缝 **1/1**；Flyway **9→15** 原九条不变，原文件字节和文档引用相同；逻辑删除引用仍归类、未知用途拒绝、PENDING 延续、新上传/用途校验/七天宽限内恢复/权限租户边界通过；再启动历史不变。 |
 | [05](acceptance-05.md)：历史未发布 IO 源码 `d9f2b032ebae06000e476ba3fe22f4ff90e88a99`，唯一构建坐标 `0.2.0-io-history-d9f2b032-SNAPSHOT`；不是 IO0.1.0 | `08-final/private/io`：完整最高 HTTP 接缝 **1/1**；Flyway **14→18** 原十四条不变，50 个原 src/main 保留；任务 **4→6**、订单 **2→4**，旧导出/报告字节不变，历史待确认继续且不回填 importModel，新导入/导出与成员/租户边界通过；再启动历史不变。 |
 | [06](acceptance-06.md)：Lowcode `29dea28a`，原已接入 0.2.0-SNAPSHOT，阶段升级 `cb974b9d` | 最终分支 `codex/v020-upgrade-lowcode-final`，提交 `28a49fef2dadb20c663db94a56b76cbd5f6ae14c`；后端 **185/185**（升级与图片 HTTP10），Maven31/Boot13/npm77 文件与候选逐字节匹配；前端直接检查与两宿主各 **1/1** 通过，六原图已查看。原代码、V1-V12、自身版本/Manifest2 与用户未提交项保留。最终证据在 `08-lowcode-final/receipt.md` 和 `receipt.json`。 |
-| [07](acceptance-07.md)：AI `c5cc07fd`，原已接入 0.2.0-SNAPSHOT，阶段升级 `62f31822` | 最终分支 `codex/v020-upgrade-ai-final`，提交 `e4b16654887e77af6334ca870cb9596c2bf3a634`，实际完整验收源码 `17a934e8`（之后仅文档）；Java **19/19**，Maven29/Boot12/npm77 文件匹配；retention **3/3**，前端 **14/14** 与直接检查，全栈Maven **3/3**、Shell/console **3/3**、独立宿主 **2/2**，视觉 **26/26** 均通过，30张基线不变、11原图已查看。187原主文件及当前194文件、九迁移、自身版本/Manifest8保持，不新增IO/storage。证据 `08-ai-final/receipt.md` 与 `receipt.json`。 |
+| [07](acceptance-07.md)：AI `c5cc07fd`，原已接入 0.2.0-SNAPSHOT，阶段升级 `62f31822` | 原完整验收收据对应 `codex/v020-upgrade-ai-final` 的 `e4b16654887e77af6334ca870cb9596c2bf3a634`，实际完整验收源码 `17a934e8`（至 e4b 仅追加文档）；最新测试规范修复为 `5d2dc9258ba9f88b14ba23acb286062103fba1c2`（`codex/v020-upgrade-ai-review-fix`，交专职 merger 合回 final），只调整新增 TimeUnit 引用并通过格式/编译，不把下列完整测试计数归到该修复提交；Java **19/19**，Maven29/Boot12/npm77 文件匹配；retention **3/3**，前端 **14/14** 与直接检查，全栈Maven **3/3**、Shell/console **3/3**、独立宿主 **2/2**，视觉 **26/26** 均通过，30张基线不变、11原图已查看。187原主文件及当前194文件、九迁移、自身版本/Manifest8保持，不新增IO/storage。证据 `08-ai-final/receipt.md` 与 `receipt.json`。 |
 
 `08-generic-receipt.json` 记录实际 baseline/HTTP JSON 摘要、候选身份、测试数量、历史前缀相同、旧文件/报告字节及截图摘要；`08-final/private/state.json` 的全部四场景 passed，统一进程 exit 0。`08-final/diagnostics` 已用最终导出器重新生成 55 文件并扫描无原始 HTTP/file/JDBC URL、JWT 或缓存/target 目录；实际材料识别了45个秘密值，其中14个无语义长值在50个导出文本中泄漏为0，见 `08-diagnostics-audit.json`。旧发布缓存每次核对原来源和摘要；默认框架排除本机全部 Forge 缓存，不使用本机同版本 install 代替真实输入。
 
