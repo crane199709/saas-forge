@@ -1,6 +1,6 @@
 # v0.2.0 脚手架交付与已有工程升级
 
-Status: ready-for-agent
+Status: needs-info
 
 ## Problem Statement
 
@@ -142,3 +142,5 @@ Status: ready-for-agent
 - 术语沿用根目录领域词汇表；既有决策继续约束独立构建部署、统一接口入口与 Theme Token，不将独立部署或主题契约兼容扩大为任意平台版本兼容。
 - 依据与先例：[领域词汇表](../../GLOSSARY.md)、[业务前端架构决策](../../docs/adr/0009-module-federation-micro-frontends.md)、[统一接口入口决策](../../docs/adr/0024-api-entry-stripped-by-shell.md)、[主题契约决策](../../docs/adr/0029-theme-token-three-layer-contract.md)、[业务服务指南](../../docs/business-service-guide.md)、[Sub-App 指南](../../docs/sub-app.md)、[版本发布说明](../../scripts/release/README.md)、[变更日志](../../CHANGELOG.md)。
 - 本文描述待实现和待验证的目标，规格完成不代表脚手架升级、试点验收或版本发布已经完成。
+
+- 2026-11-17 实施状态：01—08 的发布前准备已完成，见[08 验收](acceptance-08.md)；09 等待独立外部发布后的目标仓库只读消费，当前前置及未执行边界见[09 待执行记录](acceptance-09.md)。父规格记为 `needs-info`，不表示全部规格已完成，也不将发布前候选验收作为发布后消费结果。
