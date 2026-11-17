@@ -73,3 +73,9 @@ bash scripts/release/candidate.sh use /path/to/fixed-candidate \
 可追加一个已有真实发布缓存目录，目录须包含原始 `maven-provenance.json` 或入口生成的 `provenance.json` 及其记录的文件；先校验来源 URL 与 SHA-256，缺少的发布依赖仍只读下载。入口保留：发布文件来源/摘要、旧工程、候选参考工程、升级工程、业务文件和七条迁移的 SHA-256、旧/新服务 JAR、完整构建/测试日志与 HTTP/Flyway 证据。每次使用新证据目录；运行失败也保留诊断。Testcontainers 只回收本轮创建的容器，不接受外部数据库地址。
 
 固定候选变更后应重新生成参考工程并复验受影响路径。消费脚本变化时保留制品来源身份，同时记录脚本提交和本轮结果；不能把消费脚本提交冒充打包源码提交。
+
+## 已有快照接入工程
+
+试点不能统一当作 `0.1.0`：ai-platform 基线 `c5cc07fd` 已使用 `0.2.0-SNAPSHOT`，父 POM、Ops、校验 starter、NeedBraces、scheduling IAM 引用及 MQ 必需表均已存在。按候选实际差异决定改动，不重复追加表或机械修改业务版本、Manifest 版本、迁移历史；未使用 IO/storage 时也不引入它们。
+
+候选 Java 消费使用新 Maven 缓存，复用第三方依赖时排除全部 `io.saasforge`。将 `forge-release` 定向到固定候选 Maven 仓库，记录实际解析以及可执行业务 JAR 内 Forge 依赖的摘要。配套 IAM/Platform/Gateway 运行包可另行准备，避免准备平台运行环境时用源码 install 覆盖业务服务正在验收的候选 SDK。已有 scheduling 业务还须回归其 IAM 目录、租户边界与任务可观察结果；仅构建或健康检查不够。具体基线与范围见[AI 试点验收](../../.scratch/v020-upgrade/acceptance-07.md)。
