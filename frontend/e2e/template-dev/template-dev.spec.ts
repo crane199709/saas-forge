@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { checkUpgradedSubApp } from '../sub-app-upgrade'
 
 test('仓库外生成工程的独立开发宿主可登录并读取真实订单', async ({ page }) => {
   const errors: string[] = []
@@ -13,6 +14,17 @@ test('仓库外生成工程的独立开发宿主可登录并读取真实订单',
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text())
   })
+  if (process.env.FORGE_SUB_APP_UPGRADE === '1') {
+    await Promise.all([
+      page.waitForResponse(
+        (result) => result.url().includes('/api/smoke/orders?') && result.status() === 200,
+      ),
+      page.getByRole('button', { name: '刷新订单', exact: true }).click(),
+    ])
+    await checkUpgradedSubApp(page, 'dev-host', ['A 本人订单', '模板订单'])
+    expect(errors).toEqual([])
+    return
+  }
   // 页面初始化时尚未登录；改变排序通过公开控件再次读取，响应来自同一隔离服务。
   await page.getByRole('region', { name: '订单' }).getByText('最新创建', { exact: true }).click()
   await Promise.all([
