@@ -14,16 +14,23 @@ test('仓库外生成工程的独立开发宿主可登录并读取真实订单',
     if (message.type() === 'error') errors.push(message.text())
   })
   // 页面初始化时尚未登录；改变排序通过公开控件再次读取，响应来自同一隔离服务。
-  const response = page.waitForResponse(
-    (result) => result.url().includes('/api/smoke/orders?') && result.status() === 200,
-  )
-  await page.getByText('最新创建', { exact: true }).click()
-  await page.getByRole('option', { name: '金额从高到低', exact: true }).click()
-  await response
+  await page.getByRole('region', { name: '订单' }).getByText('最新创建', { exact: true }).click()
+  await Promise.all([
+    page.waitForResponse(
+      (result) => result.url().includes('/api/smoke/orders?') && result.status() === 200,
+    ),
+    page.getByRole('option', { name: '金额从高到低', exact: true }).click(),
+  ])
+  // 订单响应先于 Element Plus 的遮罩/下拉关闭过渡结束，终态截图须等两者退出。
+  await expect(page.locator('.el-loading-mask')).toBeHidden()
+  await expect(page.locator('.el-select-dropdown')).toBeHidden()
   await expect(page.getByTestId('order-title')).toHaveText(['A 本人订单', '模板订单'])
   await expect(page).toHaveURL('/apps/smoke/home')
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   expect(errors).toEqual([])
   if (process.env.FORGE_TEMPLATE_EVIDENCE_DIR)
-    await page.screenshot({ path: `${process.env.FORGE_TEMPLATE_EVIDENCE_DIR}/dev-host.png` })
+    await page.screenshot({
+      path: `${process.env.FORGE_TEMPLATE_EVIDENCE_DIR}/dev-host.png`,
+      animations: 'disabled',
+    })
 })
