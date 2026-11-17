@@ -90,7 +90,7 @@ class FunctionalPermissionTest {
                         new Permission("order:update", "修改订单", "订单"));
         var leaf = manifest.menus().get(0).children().get(0);
         assertThat(leaf.app()).isEqualTo("${pathPrefix}");
-        assertThat(leaf.path()).isEqualTo("overview");
+        assertThat(leaf.path()).isEqualTo("home");
         assertThat(leaf.permission()).isEqualTo("order:read");
     }
 

@@ -29,7 +29,7 @@
           "code": "${pathPrefix}.overview",
           "name": "订单概览",
           "app": "${pathPrefix}",
-          "path": "overview",
+          "path": "home",
           "permission": "order:read"
         }
       ]

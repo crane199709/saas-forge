@@ -19,7 +19,7 @@ python3 scripts/release/version.py dev
 1. `set <正式版本>`，更新根目录 CHANGELOG.md（单列不兼容变更），提交并打标签 `v<正式版本>`。
 2. 紧接着 `set <下一版本>-SNAPSHOT` 并提交，再一起推送分支与标签。分支 CI（Backend quality）执行 `version.py dev`，源码不是统一的 SNAPSHOT 版本即失败；标签构建跳过这一检查。
 
-发布标签必须为 `v<语义版本>`，拒绝 SNAPSHOT、标签与文件不一致。`publish.sh local`（含模板冒烟）以 `check --allow-snapshot` 接受当前 SNAPSHOT 源码，部署到临时仓库；Maven 开发快照使用下节独立入口。
+发布标签必须为 `v<语义版本>`，拒绝 SNAPSHOT、标签与文件不一致。`publish.sh local`（含模板冒烟）以 `check <标签> --allow-snapshot` 接受当前 SNAPSHOT 源码，部署到临时仓库；Maven 开发快照使用下节独立入口。
 
 ## SDK 开发快照与每日兼容验证
 
@@ -48,6 +48,31 @@ scripts/release/publish.sh local v0.2.0-SNAPSHOT  # 版本取当前源码
 完整模板冒烟执行 `bash deploy/template-smoke/run.sh`：在上述临时仓库存活期间生成仓库外服务和 Sub-App，运行构建与测试，并在新建隔离环境中验证 Manifest 上报、网关权限和内部接口拒绝。环境与日志说明见 [Business Service 接入指南](../../docs/business-service-guide.md)。
 
 只在新建的临时目录发布 Maven file 仓库，并在绑定 127.0.0.1 的临时 Verdaccio 容器中发布 npm 包。容器退出时清理，目录保留供排查。空 Maven 工程只导入 BOM 并声明 SDK/架构模块，不设内部依赖版本，使用独立 Maven 缓存解析（仅复用本机第三方缓存，排除全部 `io.saasforge`）；空 npm 工程安装三个包、编译类型使用示例、加载 Vite 配置并执行编译后的 lint CLI。验证服务制品不存在且 Java 模块附源码包。首次运行需要下载 Docker 镜像与 Maven/npm 依赖。
+
+## 固定候选与后续消费
+
+候选构建只使用本机临时仓库，不调用目标 Maven/npm 仓库的发布入口。先提交源码并确认工作区干净，再在仓库根目录执行：
+
+```sh
+bash scripts/release/candidate.sh build /private/tmp/v020-upgrade/candidate-<提交短号>
+```
+
+目标目录必须尚不存在。此命令复用 `publish.sh local` 与完整模板冒烟，实际生成和构建仓库外服务、Sub-App；启动本轮独立 PostgreSQL/Redis 容器后，用真实 IAM/网关验证 Manifest、成员权限、租户与内部接口边界，并分别打开生成 Sub-App 的独立开发宿主和配套 Shell 挂载页面。模板样例的 MQ 与 Nacos 在这个 HTTP 接缝关闭，不能据此宣称真实消息投递通过。
+
+目录中保留 `maven-repository/`、`tarballs/`、`consumer/`、`templates/` 和 `candidate.json`。清单记录源码提交、源码版本及全部实际 Maven/npm 文件的 SHA-256；`0.2.0-SNAPSHOT` 只是版本坐标，候选身份还必须包含提交和摘要。构建退出会删除本轮 Verdaccio，后续工单使用留存包重建临时 registry：
+
+```sh
+bash scripts/release/candidate.sh use /private/tmp/v020-upgrade/candidate-<提交短号> bash
+# 在此子 shell 内执行消费命令，退出后仅清理本轮 registry：
+# MAVEN_RELEASE_URL=file://.../maven-repository
+# NPM_RELEASE_REGISTRY=http://127.0.0.1:<随机端口>
+# NPM_CONFIG_USERCONFIG 指向仅限本轮的 @crane199709 scope registry 配置
+# FORGE_CANDIDATE_DIR 指向候选目录
+```
+
+`use` 先核对来源与摘要，再把原始 tarball 发布到绑定本机随机端口的新 Verdaccio；不会重建或覆盖原始包。Maven 消费方以 `forge-release` repository 指向 `$MAVEN_RELEASE_URL`，使用独立本地缓存，并排除既有全部 `io.saasforge` 缓存；npm 消费方在该子 shell 内安装配套精确版本，不用 workspace 链接或 tarball override。完整路径记录在工单验收文档。候选相关源码变化后须另建目录、重新构建，并重新验证受影响的新建/升级/试点路径，不能沿用旧摘要的结论。
+
+候选消费与目标仓库只读消费是不同执行时点；目标仓库消费继续使用下文的 `publish.sh consume`，在版本制品发布之后运行。
 
 ## 正式仓库配置
 

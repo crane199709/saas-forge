@@ -53,6 +53,8 @@ pnpm create:sub-app billing 5180
 | `pnpm --filter @forge/billing-sub-app test:visual` | 示例视觉用例，开发宿主 + `page.route` mock，不需要后端 |
 | `pnpm --filter @forge/billing-sub-app build` | 产出 `dist/remoteEntry.js`，部署后把地址登记到 App Registry |
 
+新生成 archetype 的默认订单菜单指向 `home`，与 kit 的默认相对路由配套。独立宿主的真实登录要求 IAM 配置的 tenant 回调地址与该宿主同源；切换联调宿主时同步配置，不能绕过 SDK 的同源校验。模板冒烟先在配套 Shell 加载生成的 `remoteEntry.js`，关闭本轮 Shell preview 后在同一回调源运行独立开发宿主，分别验证真实订单读取；候选复现见[候选制品说明](../scripts/release/README.md#固定候选与后续消费)。
+
 开发模式不启用 Module Federation，Sub-App 直接使用自己的依赖副本，因此 HMR 照常生效；联邦加载与共享单例只在 build/preview 下由真实 Shell 验证（`pnpm test:e2e`）。
 
 SDK 的 `api()` / `page()` 强制为业务路径添加 `/api`：源码仍传 `/billing/orders`，浏览器请求 `/api/billing/orders`，Shell 剥掉 `/api` 后网关收到 `/billing/orders`。开发 Vite、生产 Nginx 与独立开发宿主均固定两条代理 `/api`、`/iam`；新增服务无需改前端代理。认证登录、OAuth2 回调、Refresh 和 Cookie 继续使用 `/iam` 原路径。跨源地址仍被 SDK 拒绝。

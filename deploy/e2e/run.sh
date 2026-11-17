@@ -209,4 +209,8 @@ elif [[ "${FORGE_IMPORT_ROLLBACK_E2E:-}" == 1 ]]; then
   (cd frontend && pnpm exec playwright test -c playwright.import-rollback.config.ts "$@")
 else
   (cd frontend && pnpm exec playwright test -c playwright.main-flow.config.ts "$@")
+  if [[ -n "${FORGE_TEMPLATE_SUB_APP:-}" ]]; then
+    # Shell 的 preview 已由前一个 Playwright 清理；回调源保持 IAM 的同源契约。
+    (cd frontend && pnpm exec playwright test -c playwright.template-dev.config.ts)
+  fi
 fi

@@ -442,6 +442,11 @@ for (const [label, width, height] of viewports) {
 2. 独立开发时，将 SDK、UI 与 kit 对齐到配套 Shell 的同一平台版本，共享依赖保留对应精确版本；执行 \`pnpm install\`、\`pnpm build\`，再以 \`pnpm dev\` 验证开发宿主。
 3. 用同版本 kit 生成临时工程，从中复制 \`docs/standards/sub-app.md\` 并合入 \`AGENTS.md\` 的新说明；不要覆盖现有业务代码。写死的颜色需自行改为已有 token，静态 favicon 随默认品牌主色同步；不会自动重新生成或发布已有工程。
 
+## 接入联调
+
+- 默认页面的相对路由为 \`home\`，配套后端 Manifest 菜单使用 \`"app": "${code}"\`、\`"path": "home"\`；已有工程按自身路由核对，不机械改写。
+- 在 \`vite.config.ts\` 中按环境配置 \`gateway\` 与 \`shellOrigins\`。独立开发宿主的真实登录要求 IAM tenant 回调地址与宿主同源；Shell 加载时则配置 Shell 的回调源。
+
 ## 命令
 
 - \`pnpm dev\`：独立开发宿主 \`http://localhost:${port}\`，经代理访问本地网关
@@ -485,4 +490,4 @@ const next = workspace
   pnpm build     # 产物 dist/remoteEntry.js，入口地址登记到 App Registry`
 console.log(`已生成 ${target}
 ${next}
-并在业务服务的 manifest.json 菜单中以 "app": "${code}" 指向它，在 Plan 的 Feature Pack 中加入 ${code}。`)
+并在业务服务的 manifest.json 菜单中以 "app": "${code}"、"path": "home" 指向它，在 Plan 的 Feature Pack 中加入 ${code}。`)

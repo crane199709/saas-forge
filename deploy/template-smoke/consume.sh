@@ -18,7 +18,15 @@ maven=("$root/backend/mvnw" -B -s "$work/template-settings.xml" "-Dmaven.repo.lo
 (cd "$work/templates/smoke-service" && "${maven[@]}" verify)
 # CLI 从刚发布的 npm 包运行，生成应用不得使用 workspace 链接或 tarball overrides。
 (cd "$work/consumer/npm" && ./node_modules/.bin/forge-create-sub-app smoke 15176 "$work/templates/smoke-sub-app")
+# 与真实接入一样设置目标 Shell 的 CORS 与网关，业务源码保持服务路径。
+python3 - "$work/templates/smoke-sub-app/vite.config.ts" <<'PYCONFIG'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+path.write_text(path.read_text().replace("  port: 15176,", "  port: 15176,\n  gateway: 'http://127.0.0.1:18000',\n  shellOrigins: ['http://127.0.0.1:15174'],"))
+PYCONFIG
 (cd "$work/templates/smoke-sub-app" && pnpm install && pnpm format:check && pnpm lint && pnpm lint:style && pnpm typecheck && pnpm build)
 printf '仓库外模板生成与构建通过：%s\n' "$work/templates"
 
-FORGE_TEMPLATE_SERVICE="$work/templates/smoke-service/target/smoke-service-1.0.0-SNAPSHOT.jar" "$root/deploy/e2e/run.sh"
+mkdir -p "$work/evidence"
+FORGE_TEMPLATE_SUB_APP="$work/templates/smoke-sub-app" FORGE_TEMPLATE_EVIDENCE_DIR="$work/evidence" FORGE_TEMPLATE_SERVICE="$work/templates/smoke-service/target/smoke-service-1.0.0-SNAPSHOT.jar" "$root/deploy/e2e/run.sh"
