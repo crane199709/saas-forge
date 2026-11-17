@@ -2,7 +2,7 @@
 
 Status: needs-info
 
-2026-11-17：用户授权核对配置、按既有流程发布 SaaS Forge v0.2.0 并完成工单 09；保留已有未提交改动，不切换运行环境。当前等待有效的 npm 发布凭据，不能宣称 Maven/npm 发布或工单 09 消费验收完成。
+2026-11-17：用户授权核对配置、按既有流程发布 SaaS Forge v0.2.0 并完成工单 09；保留已有未提交改动，不切换运行环境。Maven 与镜像已经发布，当前准备 npm 专用恢复；工单 09 尚未完成。
 
 ## 来源与发布配置
 
@@ -25,15 +25,18 @@ Status: needs-info
 | 阶段 | 结果 |
 | --- | --- |
 | 六个 GHCR 镜像 | `images / images` 作业成功；六个 0.2.0 镜像已推送，并在 CI 按 digest 回拉及核对 image ID。 |
-| Maven/npm 发布 | `publish` 作业在 2026-11-17 07:10:02 UTC 的 `npm whoami` 预检返回 E401，发生在 Maven deploy/npm publish 之前，本次作业尚未上传 Maven/npm 制品。 |
-| 本机 npm 凭据 | `npm whoami` 同样 E401，且没有可复用的 NPM_RELEASE_TOKEN/NPM_TOKEN/NODE_AUTH_TOKEN 环境输入。 |
+| Maven 发布 | 第二次尝试的 Maven reactor 于 07:35:25 UTC BUILD SUCCESS，0.2.0 的 BOM、父 POM、SDK、architecture、archetype 及源码包已上传。 |
+| npm 发布 | 第一次尝试于 07:10:02 UTC 在身份预检返回 E401，未开始上传。用户更新 Secret 后，第二次认证通过，但于 07:35:36 UTC 首次 npm 发布返回 EOTP，需要发布用的二次认证能力。 |
+| npm 凭据恢复 | 用户已再次更新现有 Secret，确认处理 Bypass 2FA 发布令牌要求；使用 npm 专用恢复入口验证，不再执行 Maven deploy。 |
 | 工单 09 | 保持 needs-info，尚未运行实际发布制品的只读消费，所有验收项不提前勾选。 |
 
 六个镜像为 forge-gateway、forge-iam、forge-platform、demo-service、tenant-app、platform-console。实际 digest、source 与日志摘要封存在 `/private/tmp/v020-release-20261117/images-publication.json`。
 
 ## 恢复步骤
 
-维护者需将现有 GitHub Actions Secret `NPM_RELEASE_TOKEN` 更新为有效且覆盖三个 @crane199709 包的 npm 发布凭据；不将令牌发送到聊天或写入仓库。凭据更新后先核对实际制品状态及当前作业尝试，确认没有其他发布正在执行，再只重试失败的 publish 作业，保留成功镜像及质量门结果。
+第一次更新凭据后的重试已完成 Maven 发布，因此不能再次重跑原始 publish 作业。新增仅手动触发的 `Recover v0.2.0 npm publication`：固定 checkout 原标签与 `10b8f30d`，核对原发布质量门全部通过和 Maven 前置已发布，沿用原标签的 build/pack/check 命令，只发布缺少的三个 npm 版本并等待可消费。既有版本跳过，Maven 与镜像不重复发布。恢复只使用现有 npm Secret，未修改账号或包的 2FA 策略。
+
+当前 npm 自动化发布要求在创建 Granular Access Token 时选择发布权限并启用 Bypass two-factor authentication；如果包选择禁止 Token 发布，不能通过此方式恢复。用户负责配置自己的发布令牌，令牌不进入聊天或仓库；官方依据为 https://docs.npmjs.com/requiring-2fa-for-package-publishing-and-settings-modification/ 。
 
 Maven/npm 实际发布后，在 `v0.2.0` 源码 ref 执行 Verify published SDK / `publish.sh consume v0.2.0`，并保存目标归档、SHA-256、与候选的内容差异及来源对应关系。通过后才关闭工单 09 和父规格。不覆盖同版本、不移动标签、不切换共享或生产环境。
 

@@ -1,0 +1,113 @@
+name: Recover v0.2.0 npm publication
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: read
+concurrency:
+  group: release-refs/tags/v0.2.0
+  cancel-in-progress: false
+jobs:
+  recover-npm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NPM_RELEASE_REGISTRY: ${{ vars.NPM_RELEASE_REGISTRY }}
+      NPM_RELEASE_ACCESS: ${{ vars.NPM_RELEASE_ACCESS }}
+      NPM_RELEASE_TAG: ${{ vars.NPM_RELEASE_TAG || 'latest' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v0.2.0
+          persist-credentials: false
+      - name: Verify immutable source, passed gates and published Maven prerequisites
+        env:
+          GH_READ_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 scripts/release/version.py check v0.2.0
+          python3 - <<'PY'
+          import base64, importlib.util, json, os, subprocess, urllib.request
+          from pathlib import Path
+          expected = '10b8f30d82fcb036b550bc55a8a2540fc7576f46'
+          assert subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip() == expected
+          assert os.environ['GITHUB_REPOSITORY'] == 'crane199709/saas-forge'
+          assert os.environ['NPM_RELEASE_REGISTRY'].rstrip('/') == 'https://registry.npmjs.org'
+          assert os.environ['NPM_RELEASE_ACCESS'] == 'public'
+          api = 'https://api.github.com/repos/crane199709/saas-forge/actions/runs/44035010646'
+          def read(url):
+              with urllib.request.urlopen(url, timeout=30) as response:
+                  return json.load(response)
+          run = read(api)
+          assert run['head_sha'] == expected and run['status'] == 'completed'
+          jobs = {j['name']: j['conclusion'] for j in read(api + '/jobs?per_page=100')['jobs']}
+          gates = ['version', 'backend / verify', 'frontend / verify', 'main-flow / main-flow', 'template-smoke / template-smoke']
+          assert all(jobs.get(name) == 'success' for name in gates), jobs
+          spec = importlib.util.spec_from_file_location('published', 'deploy/upgrade-smoke/published_maven.py')
+          helper = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(helper)
+          auth = 'Basic ' + base64.b64encode(('forge-consumer:' + os.environ['GH_READ_TOKEN']).encode()).decode()
+          for name in ('forge-parent', 'forge-dependencies'):
+              url = f'https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/{name}/0.2.0/{name}-0.2.0.pom'
+              assert helper.fetch(url, auth)
+          print('Pinned v0.2.0 source and original quality gates verified; Maven already published.')
+          PY
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: frontend
+      - name: Build and pack the unchanged tagged npm packages
+        run: |
+          pnpm --dir frontend --filter @crane199709/sdk --filter @crane199709/ui --filter @crane199709/sub-app-kit build
+          mkdir "$RUNNER_TEMP/v020-tarballs"
+          for package in sdk ui sub-app-kit; do
+            (cd "frontend/packages/$package" && pnpm pack --pack-destination "$RUNNER_TEMP/v020-tarballs")
+          done
+          python3 scripts/release/check_tarballs.py "$RUNNER_TEMP/v020-tarballs"
+      - name: Publish only missing npm versions
+        env:
+          NPM_RELEASE_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
+        run: |
+          export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/v020-npmrc"
+          printf '@crane199709:registry=%s\n//registry.npmjs.org/:_authToken=${NPM_RELEASE_TOKEN}\n' "$NPM_RELEASE_REGISTRY" > "$NPM_CONFIG_USERCONFIG"
+          npm whoami --registry "$NPM_RELEASE_REGISTRY" >/dev/null
+          python3 - <<'PY'
+          import hashlib, json, os, subprocess, tarfile, urllib.error, urllib.request
+          from pathlib import Path
+          records = []
+          for archive in sorted((Path(os.environ['RUNNER_TEMP']) / 'v020-tarballs').glob('*.tgz')):
+              with tarfile.open(archive) as tar:
+                  package = json.load(tar.extractfile('package/package.json'))
+              name, version = package['name'], package['version']
+              assert name in ('@crane199709/sdk', '@crane199709/ui', '@crane199709/sub-app-kit') and version == '0.2.0'
+              url = f'https://registry.npmjs.org/{name}/0.2.0'
+              try:
+                  with urllib.request.urlopen(url, timeout=30) as response:
+                      existing = json.load(response)
+                  assert existing['name'] == name and existing['version'] == version
+                  result = 'already-published-skipped'
+              except urllib.error.HTTPError as error:
+                  if error.code != 404:
+                      raise
+                  subprocess.run(['npm', 'publish', str(archive), '--registry', os.environ['NPM_RELEASE_REGISTRY'],
+                                  '--access', 'public', '--provenance=false', '--tag', os.environ['NPM_RELEASE_TAG']], check=True)
+                  result = 'published'
+              records.append({'name': name, 'version': version, 'sha256': hashlib.sha256(archive.read_bytes()).hexdigest(), 'result': result})
+          assert len(records) == 3
+          (Path(os.environ['RUNNER_TEMP']) / 'v020-npm-publication.json').write_text(json.dumps(records, indent=2) + '\n')
+          PY
+          python3 scripts/release/wait_npm.py 0.2.0
+      # Maven 与镜像已发布，恢复过程不运行它们的构建、部署或推送入口。
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v020-npm-recovery
+          path: |
+            ${{ runner.temp }}/v020-tarballs/*.tgz
+            ${{ runner.temp }}/v020-npm-publication.json
+          retention-days: 7
