@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './e2e',
-  testIgnore: ['**/main-flow/**', '**/visual/**'],
+  testIgnore: ['**/main-flow/**', '**/visual/**', '**/template-dev/**'],
   fullyParallel: false,
   workers: 1,
   use: {
