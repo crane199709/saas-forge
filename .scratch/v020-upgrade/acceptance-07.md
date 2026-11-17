@@ -73,3 +73,9 @@ AI_FORGE_SOURCE=/path/to/matching-forge-source AI_E2E_OUTPUT=/tmp/new-ai-fullsta
 ## 最终坐标阶段交接
 
 08 将在隔离干净源码上设置最终 `0.2.0` 坐标并重新打候选；集成分支仍保持 SNAPSHOT。届时必须更新 AI 升级分支并复验受影响路径，不能复用本票结果充作最终坐标证明。最小版本改点、脚本位置与复验命令已交接到 `/private/tmp/v020-upgrade/07-ai/context.md`。本票 resolved 仅表示当前固定 SNAPSHOT 阶段完成；候选变化须更新相应记录。
+
+## 08 最终 0.2.0 坐标补充
+
+最终候选源码 `9f61c8a0073c82a900abeff45ce21c5600b6afb3 / 0.2.0`，清单摘要 `ceed5ff8789ffd51f5727e3861c63f2ae90c4750c7cbc387a991b979d98adc94`。AI独立最终分支 `codex/v020-upgrade-ai-final` 提交 `e4b16654887e77af6334ca870cb9596c2bf3a634`，实际完整验收源码 `17a934e8ad8a9ad6c727f2a234ddd35466de0d33`，之后仅文档。Java19项、真实TaskRunner retention3项、前端14项及直接检查、全栈Maven3项、Shell/console浏览器3项、独立宿主2项、视觉26项全部通过；Maven29文件、Boot12库、npm77文件匹配实际候选，固定三平台运行JAR摘要匹配。30张视觉基线不变，11张实际原图已查看。原187主文件和当前194文件、九迁移、自身版本/Manifest8保持，无IO/storage新增。
+
+release坐标暴露的离线origin红灯已在业务验证脚本最小修复：可选 `AI_MAVEN_SETTINGS` 默认原设置，实际复用候选的 `java/settings.xml`，保留forge-candidate来源，不修改_remote.repositories或源码install。retention和全栈复验通过，集中指南已回填。完整环境、来源、红绿及边界见 `/private/tmp/v020-upgrade/08-ai-final/receipt.md`、`receipt.json` 和 [08验收](acceptance-08.md)。原56项产品/30项Runner等快照证据按影响判断保留，本轮未重复而不冒称重新执行；无发布、push、共享切换或远端CI，发布后目标仓库消费仍交09。

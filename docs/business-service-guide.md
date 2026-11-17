@@ -1,5 +1,7 @@
 # Business Service 接入指南
 
+升级到 0.2.0 先读[集中升级清单](upgrading-v020.md)，其中包含按实际能力选择、统一质量门、配套切换和发布后只读复验。
+
 已有 `0.1.0` 工程升级见 [Business Service 0.2.0 升级清单](upgrades/business-service-0.2.0.md)，包含真实发布基线、工程差异、数据保留与隔离 HTTP 验收。
 
 需要 JDK 17、Maven 3.9+（仅用于执行 archetype 生成，生成的工程自带 Maven Wrapper）、可用 Docker（Testcontainers）以及平台发布的 Maven 仓库。在 Maven settings.xml 配置该仓库和凭证，所有 Forge 制品须使用同一发布版本。以下以 SDK 0.1.0 为例。

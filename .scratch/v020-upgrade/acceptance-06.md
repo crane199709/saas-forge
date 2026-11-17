@@ -71,3 +71,9 @@
 完整证据统一保存在 `/private/tmp/v020-upgrade/06-lowcode/`：`baseline.json`、候选消费摘要、红绿灯日志、全量报告 `surefire-reports/`、更新截图走查 `visual-review/`、实际构建输出 `outputs/` 及配套运行目录。真实平台原始运行目录含本轮随机密码、令牌和邀请链接，保持私有，不作为公开日志发送；交付仅引用已查看的无登录凭据截图及结果 JSON。
 
 本票未发布 Maven/npm、未推送 Lowcode 分支、未执行生产或共享环境数据变更。Oracle slow-dialect profile 未启用；本次未改外部驱动或连接实现。远程 CI 与目标仓库发布后只读消费不在本票通过范围。候选制品源码或内容变化时，重新比较摘要并复验受影响的后端、前端和平台浏览器路径。
+
+## 08 最终 0.2.0 坐标补充
+
+最终候选为干净源码 `9f61c8a0073c82a900abeff45ce21c5600b6afb3 / 0.2.0`，清单摘要 `ceed5ff8789ffd51f5727e3861c63f2ae90c4750c7cbc387a991b979d98adc94`。Lowcode 独立最终分支 `codex/v020-upgrade-lowcode-final` 在 `28a49fef2dadb20c663db94a56b76cbd5f6ae14c` 完成父版本、三包、锁及来源更新；完整后端185/185、前端直接检查、真实Shell与独立宿主各1/1通过。31个Maven文件、13个Boot内依赖、77个npm文件逐字节匹配，六张新截图已查看。原业务、V1至V12、自身版本、Manifest2及原checkout用户未提交项保留。
+
+证据 `/private/tmp/v020-upgrade/08-lowcode-final/receipt.md` 和 `receipt.json` 与 [08 统一验收](acceptance-08.md) 衔接，原SNAPSHOT红绿证据保留。常规CI固定 `98060f84` 加既有版本变换，干净完整Git tree与 `9f61c8a0` 相同；实际包消费与CI源码引导分别记录。远端CI、Oracle profile与目标仓库发布后消费未执行，未push、发布或共享切换。

@@ -1,6 +1,6 @@
 # Business Service：0.1.0 → 0.2.0
 
-本文适用于使用实际发布的 `0.1.0` archetype/SDK 创建的已有 Business Service。`0.1.0` 与 `0.2.0` 均不是产品正式版；发布前先用固定候选制品完成以下步骤，版本发布和共享环境切换另按发布流程执行。候选当前为 `0.2.0-SNAPSHOT`，发布后将其替换为实际发布坐标，不能将业务工程的版本机械改为 SDK 版本。
+本文适用于使用实际发布的 `0.1.0` archetype/SDK 创建的已有 Business Service。`0.1.0` 与 `0.2.0` 均不是产品正式版；发布前先用固定候选制品完成以下步骤，版本发布和共享环境切换另按发布流程执行。候选身份须同时核对提交、版本和摘要；最终发布准备使用隔离版本树真实构建的 `0.2.0`，发布后再从目标仓库消费，不能将业务工程的版本机械改为 SDK 版本。
 
 ## 1. 固定基线与参考工程
 
@@ -11,7 +11,7 @@
 ```sh
 mvn -B -s /path/to/settings.xml org.apache.maven.plugins:maven-archetype-plugin:3.4.1:generate \
   -DarchetypeGroupId=io.saasforge -DarchetypeArtifactId=forge-service-archetype \
-  -DarchetypeVersion=0.2.0-SNAPSHOT \
+  -DarchetypeVersion=0.2.0 \
   -DgroupId=com.example -DartifactId=orders-service -Dversion=7.4.0-SNAPSHOT \
   -Dpackage=com.example.orders -DserviceName=orders-service -DpathPrefix=orders \
   -DinteractiveMode=false -DarchetypeCatalog=local
