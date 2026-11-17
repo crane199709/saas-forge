@@ -1,6 +1,8 @@
 # 09：目标仓库只读消费交接
 
-08 的候选与新建/升级验收属于发布准备；09 等独立发布流程完成后执行。此次没有上传 Maven/npm 制品、创建或移动 `v0.2.0` 标签、切换共享或生产环境。
+09 已于 2026-11-17 完成，状态为 `resolved`。用户另行授权后，独立发布固定 `v0.2.0` 至 `10b8f30d82fcb036b550bc55a8a2540fc7576f46`，Maven/npm 与六个镜像已发布；[只读消费复验 44044837346](https://github.com/crane199709/saas-forge/actions/runs/44044837346)通过。实际输入、候选差异与验证边界见[最终验收](acceptance-09.md)、[制品来源及摘要](published-v020-provenance.json)和[发布记录](release-v020.md)。未切换运行环境。
+
+以下保留发布前交接时的输入和操作约定。08 的候选与新建/升级验收属于发布准备；当时没有上传 Maven/npm 制品或创建发布标签。原候选版本 worktree 已在验收归档后清理，后续以已发布标签和实际制品记录为准。
 
 ## 固定输入
 
@@ -18,7 +20,7 @@
 
 最新认证只读预检在 `2026-11-17 05:30:17-05:30:30 UTC` 完成，证据 `/private/tmp/v020-upgrade/09-published-check/http-preflight.json` 与 `github-plugin.json`：22 个必要 Maven POM 和三个 npm `0.2.0` 版本均 404；远端精确标签 API 404、matching 为空，`git ls-remote` 退出 2 且输出为空。05:32:21—05:32:25 UTC 用同一内存读取凭据对 `forge-parent:0.1.0` 单次 GET 返回 302，未跟随重定向或取得最终 POM 200，因此仍保留 Maven 最终读取可见性的边界，见 `maven-positive-control.json`。此前未认证 401 不作为未发布证据；标签缺失和 npm 404 已独立表明检查时点的外部前置未满足。没有运行 consume 或发布。
 
-08 已合入集成 `cc7748d69d2e0c51f5a6fcfd079642ab0b5a41f4`；09 当前为 `needs-info`，保留[待执行记录](acceptance-09.md)，未标记 resolved。以上证据只对应各自检查时点，真正消费前重新核对外部发布状态，再执行下列入口。
+发布前交接时，08 已合入集成 `cc7748d69d2e0c51f5a6fcfd079642ab0b5a41f4`，09 当时为 `needs-info`。以上证据只对应各自检查时点；最终发布及消费结果已另记于本文开头的验收记录。复用下列入口时仍须重新核对目标版本的发布状态。
 
 1. 记录实际发布标签、提交与时间；所选源码全部坐标须为 `0.2.0`。`python3 scripts/release/version.py check v0.2.0` 必须通过；不能在 SNAPSHOT 树上放宽检查。候选本地版本提交没有发布标签，真正发布来源若不同，先比较源码和制品对应关系。
 2. 只给读取权限 `contents:read`、`packages:read`，凭证通过内存环境变量传给进程，Maven server id `forge-release`。使用已有仓库配置，不新增发布授权或写权限。

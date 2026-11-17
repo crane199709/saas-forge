@@ -1,0 +1,990 @@
+{
+  "version": "0.2.0",
+  "startedAt": "2026-11-17T08:12:18.466488+00:00",
+  "completedAt": "2026-11-17T08:15:38.518820+00:00",
+  "candidateSource": "9f61c8a0073c82a900abeff45ce21c5600b6afb3",
+  "candidateManifestSha256": "ceed5ff8789ffd51f5727e3861c63f2ae90c4750c7cbc387a991b979d98adc94",
+  "releaseSource": "10b8f30d82fcb036b550bc55a8a2540fc7576f46",
+  "artifacts": [
+    {
+      "file": "maven-repository/io/saasforge/forge-architecture/0.2.0/forge-architecture-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-architecture/0.2.0/forge-architecture-0.2.0-sources.jar",
+      "size": 8045,
+      "sha256": "2b8d095c170070b20c9791ed781a6b6bdcebebf07d7d456beac0ed21b629e160",
+      "candidateSha256": "64360b6581c24e6cd4ca64c435d4db6a1774565f35326d5dc1915769f3e3133c",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 5
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-architecture/0.2.0/forge-architecture-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-architecture/0.2.0/forge-architecture-0.2.0.jar",
+      "size": 24700,
+      "sha256": "c149a3c1463347826f98fe7991de7310d92083e4eab4cde4e54b61617d8bd9a1",
+      "candidateSha256": "b51d0f1039d3e8ac00c46510fa31cfdd1fb451b5eb568c7299404461df94125e",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 14
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-architecture/0.2.0/forge-architecture-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-architecture/0.2.0/forge-architecture-0.2.0.pom",
+      "size": 1927,
+      "sha256": "83abddd887ef224954287ba4000facd91a2aba631729af46f83cfa44fc15e74a",
+      "candidateSha256": "83abddd887ef224954287ba4000facd91a2aba631729af46f83cfa44fc15e74a",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-dependencies/0.2.0/forge-dependencies-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-dependencies/0.2.0/forge-dependencies-0.2.0.pom",
+      "size": 17620,
+      "sha256": "0001ac9bf281520a51c0e75a1d0968fd566471c46a8bf60610ab887cfa0aa7e5",
+      "candidateSha256": "0001ac9bf281520a51c0e75a1d0968fd566471c46a8bf60610ab887cfa0aa7e5",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-parent/0.2.0/forge-parent-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-parent/0.2.0/forge-parent-0.2.0.pom",
+      "size": 5551,
+      "sha256": "5f5b6aa0131250be289a9be1eff138842b0af647544148a1a59fd3210e27bd10",
+      "candidateSha256": "5f5b6aa0131250be289a9be1eff138842b0af647544148a1a59fd3210e27bd10",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk/0.2.0/forge-sdk-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk/0.2.0/forge-sdk-0.2.0.pom",
+      "size": 3141,
+      "sha256": "e7254c318ec9437809bfeae65c0a431ecb1ef275ca315fe5e77db9c83fa2ce7d",
+      "candidateSha256": "e7254c318ec9437809bfeae65c0a431ecb1ef275ca315fe5e77db9c83fa2ce7d",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-abac/0.2.0/forge-sdk-abac-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-abac/0.2.0/forge-sdk-abac-0.2.0-sources.jar",
+      "size": 35816,
+      "sha256": "7101887720d17b09f5dedf9ed32ddd46c26c55f6b14405cf4d9fe80cb51d0958",
+      "candidateSha256": "840470be790b06ce999f62b808154e797e0bce7fbfa681de152bd6684ce8279f",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 26
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-abac/0.2.0/forge-sdk-abac-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-abac/0.2.0/forge-sdk-abac-0.2.0.jar",
+      "size": 65302,
+      "sha256": "c6db2ae6c9ab4fc4058825c00a9e6ea9782e78fec4aa30ca24e184cb649ced20",
+      "candidateSha256": "4e485448208469ec9cc193e62766edb4430c2f1cc3ef96ebb0507b8922700111",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [
+          "io/saasforge/sdk/abac/AttributeValues.class",
+          "io/saasforge/sdk/abac/PolicyEvaluator.class",
+          "io/saasforge/sdk/abac/PolicyParser$PolicyParserRun.class",
+          "io/saasforge/sdk/abac/PolicyParser$Shape.class",
+          "io/saasforge/sdk/abac/data/DataPermission.class"
+        ],
+        "unchangedCount": 37
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-abac/0.2.0/forge-sdk-abac-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-abac/0.2.0/forge-sdk-abac-0.2.0.pom",
+      "size": 4172,
+      "sha256": "c7e70968b77c1e6534197cbb38985c2fb80f57e8bb6c1f1ecd332d6e70a35d61",
+      "candidateSha256": "c7e70968b77c1e6534197cbb38985c2fb80f57e8bb6c1f1ecd332d6e70a35d61",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-audit/0.2.0/forge-sdk-audit-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-audit/0.2.0/forge-sdk-audit-0.2.0-sources.jar",
+      "size": 13055,
+      "sha256": "5cb4fc7c337e6b883b50c285c0ca1c3a71b1b6f1dad3113c425d7e3c5264a126",
+      "candidateSha256": "4e66d9be601a73cd964b8037493209e920cb4ee6eab9b2809cf1786202547dd6",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 13
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-audit/0.2.0/forge-sdk-audit-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-audit/0.2.0/forge-sdk-audit-0.2.0.jar",
+      "size": 17283,
+      "sha256": "2fb12d49be38b062cf48a040fe0ef17b0577d405d550d060ee258412b3067e9b",
+      "candidateSha256": "ef2fde9202f4036f47f512716f1f210d4cd0e5d7ab75549acdabf6276fefbea2",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 15
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-audit/0.2.0/forge-sdk-audit-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-audit/0.2.0/forge-sdk-audit-0.2.0.pom",
+      "size": 1672,
+      "sha256": "52306a1e1de7b070c77e95c275f0656be7a4b625868284478c4dc70c89f7e094",
+      "candidateSha256": "52306a1e1de7b070c77e95c275f0656be7a4b625868284478c4dc70c89f7e094",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-core/0.2.0/forge-sdk-core-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-core/0.2.0/forge-sdk-core-0.2.0-sources.jar",
+      "size": 38906,
+      "sha256": "362e6df2f79ebaf613bcd553f77d19291fcc1bdd6e91d586bd1c4a4caaef4d40",
+      "candidateSha256": "9629f73ab8bed7f0dec54c64d0f1fcae9c59dfb6f1f8048698f43e33e7b3c860",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 29
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-core/0.2.0/forge-sdk-core-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-core/0.2.0/forge-sdk-core-0.2.0.jar",
+      "size": 59049,
+      "sha256": "8152770f79d61a8fdaf7c27eff90a187ef456152958686b41a14f57d3bff7d78",
+      "candidateSha256": "3ba8460223d5ab13400f8335e689902cbfabcc9ae7253c8fd202bc88699d889d",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [
+          "io/saasforge/sdk/core/MembershipStateKeys.class",
+          "io/saasforge/sdk/core/OperatorStateKeys.class",
+          "io/saasforge/sdk/core/ReferenceDataKeys.class",
+          "io/saasforge/sdk/core/ResourceManifest$Parameter.class",
+          "io/saasforge/sdk/core/ResourceManifest.class"
+        ],
+        "unchangedCount": 36
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-core/0.2.0/forge-sdk-core-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-core/0.2.0/forge-sdk-core-0.2.0.pom",
+      "size": 3132,
+      "sha256": "035031380b15e51a38e3b90720a638a88ac6b7db7694f645ba71d51319cf2ca8",
+      "candidateSha256": "035031380b15e51a38e3b90720a638a88ac6b7db7694f645ba71d51319cf2ca8",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-io/0.2.0/forge-sdk-io-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-io/0.2.0/forge-sdk-io-0.2.0-sources.jar",
+      "size": 48932,
+      "sha256": "b5d2c2e9376e9f41e3a6051208d4a52fb531c1c53b2b73a7a436f6aed06d72f6",
+      "candidateSha256": "1865a2966d3f4dd472e54fe32ad085956211c21de7318da71f015d4e32257d5d",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 40
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-io/0.2.0/forge-sdk-io-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-io/0.2.0/forge-sdk-io-0.2.0.jar",
+      "size": 89411,
+      "sha256": "66502606389735bd3b5630585053353e49b9cc23d69cacac7087dceb06238fa8",
+      "candidateSha256": "dee93a859db5b4f58229b2fa4277b2b77d338f956ef8852442079938fd7f0ecf",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [
+          "io/saasforge/sdk/io/ExcelIo.class",
+          "io/saasforge/sdk/io/ExcelModel.class"
+        ],
+        "unchangedCount": 49
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-io/0.2.0/forge-sdk-io-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-io/0.2.0/forge-sdk-io-0.2.0.pom",
+      "size": 3238,
+      "sha256": "6f586773e0f6146bfe5193ecab2631da699ceadb68491f77eafb0d6795b03023",
+      "candidateSha256": "6f586773e0f6146bfe5193ecab2631da699ceadb68491f77eafb0d6795b03023",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-manifest/0.2.0/forge-sdk-manifest-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-manifest/0.2.0/forge-sdk-manifest-0.2.0-sources.jar",
+      "size": 15706,
+      "sha256": "c5626176f5c2d97dead4e69ba807db96d0d128784792139eca7b94b936443fcd",
+      "candidateSha256": "e8fd55dc2799dfd1ef76347b0a921b0c0134c5ca942400ee71d45442f2aceac2",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 15
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-manifest/0.2.0/forge-sdk-manifest-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-manifest/0.2.0/forge-sdk-manifest-0.2.0.jar",
+      "size": 25819,
+      "sha256": "afb4b56a356ff478209e1e949314d49316531dbfbe7c2109fb8bb58d09e623d9",
+      "candidateSha256": "b7701485f20612489918d6f3a95b3a87957fe9eeb146d240dfcac18d069fa79d",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 18
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-manifest/0.2.0/forge-sdk-manifest-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-manifest/0.2.0/forge-sdk-manifest-0.2.0.pom",
+      "size": 3155,
+      "sha256": "e3fb69187d92b04bcf5a6ff0e1db0ff0e59cbc7ad31324192b3c4ff33da2a2a3",
+      "candidateSha256": "e3fb69187d92b04bcf5a6ff0e1db0ff0e59cbc7ad31324192b3c4ff33da2a2a3",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-mq/0.2.0/forge-sdk-mq-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-mq/0.2.0/forge-sdk-mq-0.2.0-sources.jar",
+      "size": 30507,
+      "sha256": "ff9acf332d670289be02905bdd1374ef45a5521425c85458eae8c55e050ab0b1",
+      "candidateSha256": "22fea33c0ac7ecaceedb4d647639410f9e917acc657b9d8a9717003b5f3d8b5e",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 27
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-mq/0.2.0/forge-sdk-mq-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-mq/0.2.0/forge-sdk-mq-0.2.0.jar",
+      "size": 43470,
+      "sha256": "52b72b0d7ad0083a8bd2e5bf32a8052b289134ce07497b16f34168a9ce2a5e2f",
+      "candidateSha256": "24bafa035e36ab2fc96344b3576872dd7e57c1c7bb022dba821adf4b1dd6cff3",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 31
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-mq/0.2.0/forge-sdk-mq-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-mq/0.2.0/forge-sdk-mq-0.2.0.pom",
+      "size": 3882,
+      "sha256": "04eb0010fc1311708a2ea115374a2d51c12b9b365ece5636d22a1de192d33f0a",
+      "candidateSha256": "04eb0010fc1311708a2ea115374a2d51c12b9b365ece5636d22a1de192d33f0a",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-notification/0.2.0/forge-sdk-notification-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-notification/0.2.0/forge-sdk-notification-0.2.0-sources.jar",
+      "size": 9678,
+      "sha256": "9b26dd9c5bf5bbb8c878456d0302f20fb7079f28fb46f386c72f069b0295b5fc",
+      "candidateSha256": "ce4a69afc25b1c5b973401cac779f840cd26753836c82ace1ca3085b2f1834e2",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 13
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-notification/0.2.0/forge-sdk-notification-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-notification/0.2.0/forge-sdk-notification-0.2.0.jar",
+      "size": 12982,
+      "sha256": "48aeee79a91fa2dadbc35076614bd3c683caa59543c7cab009a6f44d2d97320f",
+      "candidateSha256": "2ef3d54a03666773ae790f22918aff54e8447fa72702a80b07a4e65c522dda2b",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 13
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-notification/0.2.0/forge-sdk-notification-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-notification/0.2.0/forge-sdk-notification-0.2.0.pom",
+      "size": 2005,
+      "sha256": "7eac091b541a5454e090dac37817757d2aa9010f9a8537d4fec8b9c2b6fd8b22",
+      "candidateSha256": "7eac091b541a5454e090dac37817757d2aa9010f9a8537d4fec8b9c2b6fd8b22",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-numbering/0.2.0/forge-sdk-numbering-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-numbering/0.2.0/forge-sdk-numbering-0.2.0-sources.jar",
+      "size": 11343,
+      "sha256": "b72c89dad58f82af738688c67d5a774feb510014bf6a30ca6122d50a4b3f8e35",
+      "candidateSha256": "24b045aa0cd7a0bbd0577744bfc76ab93d44935e75815a733df8d6fb6ad74359",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 12
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-numbering/0.2.0/forge-sdk-numbering-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-numbering/0.2.0/forge-sdk-numbering-0.2.0.jar",
+      "size": 12179,
+      "sha256": "31d314afdf00116ecff6a79e86847a396102954b9deb366cf4b948000a6e08ca",
+      "candidateSha256": "90bc4841ad882393e2ec8ea74e358262688a7152684b279c670de54a95bda4bb",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 12
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-numbering/0.2.0/forge-sdk-numbering-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-numbering/0.2.0/forge-sdk-numbering-0.2.0.pom",
+      "size": 1710,
+      "sha256": "cfa04e8fdc541f15f60904a080ad7e6b597d002efae20c3bc3648c941fb5a42f",
+      "candidateSha256": "cfa04e8fdc541f15f60904a080ad7e6b597d002efae20c3bc3648c941fb5a42f",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-openapi/0.2.0/forge-sdk-openapi-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-openapi/0.2.0/forge-sdk-openapi-0.2.0-sources.jar",
+      "size": 3654,
+      "sha256": "4c74fb402deda8ed49f9da4a5655c746de48b45e77f2be3aff7273d7da66a52a",
+      "candidateSha256": "9e40ffc47ed09db53d02ec63e00f4252e89ccef7cad0a17debb767d7a5d37f88",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 6
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-openapi/0.2.0/forge-sdk-openapi-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-openapi/0.2.0/forge-sdk-openapi-0.2.0.jar",
+      "size": 4058,
+      "sha256": "35743acf17e52f506906ad935a78a74ce230d6cc7242f353c7130d7cb9093c29",
+      "candidateSha256": "f8c39a9d2f8ae4d0da1d15534e246dd4c0f43e16b48f43f85bb7e00867419a63",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 6
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-openapi/0.2.0/forge-sdk-openapi-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-openapi/0.2.0/forge-sdk-openapi-0.2.0.pom",
+      "size": 1931,
+      "sha256": "1392ab60db22d19195697e7911fb73a249f557b150a53a09429a0dc3b1f37de3",
+      "candidateSha256": "1392ab60db22d19195697e7911fb73a249f557b150a53a09429a0dc3b1f37de3",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-ops/0.2.0/forge-sdk-ops-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-ops/0.2.0/forge-sdk-ops-0.2.0-sources.jar",
+      "size": 5584,
+      "sha256": "c81fd6b7bd1bbafdc1e80df5131c72f15880c678751a4dca8240813bd738c541",
+      "candidateSha256": "263d0cadebeccfd20653eceed998366a11c3d92d1d961df0bdf99ab22df2834c",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 8
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-ops/0.2.0/forge-sdk-ops-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-ops/0.2.0/forge-sdk-ops-0.2.0.jar",
+      "size": 8033,
+      "sha256": "369b70a6625413212153314e480e1d1aef0cec6ae87042e7d3dd2041275b8428",
+      "candidateSha256": "6dfd3023a833c5a879e10dc087baa8c19f8c419a024e632e59a6629e4c32b9a2",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 8
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-ops/0.2.0/forge-sdk-ops-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-ops/0.2.0/forge-sdk-ops-0.2.0.pom",
+      "size": 2184,
+      "sha256": "0883c17ba6501bc4252c96267169f957216220d0a0a73b0cb924240733b82dd7",
+      "candidateSha256": "0883c17ba6501bc4252c96267169f957216220d0a0a73b0cb924240733b82dd7",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-provisioning/0.2.0/forge-sdk-provisioning-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-provisioning/0.2.0/forge-sdk-provisioning-0.2.0-sources.jar",
+      "size": 15283,
+      "sha256": "60c9756c9bca567f4a89196142e42657f60ee6673b0855de3f28237813afd670",
+      "candidateSha256": "43f4270375cda564d426a3e82ee374bb05722406b27f49e731c0defd115a6694",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 19
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-provisioning/0.2.0/forge-sdk-provisioning-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-provisioning/0.2.0/forge-sdk-provisioning-0.2.0.jar",
+      "size": 21496,
+      "sha256": "10865991082f6dac420abb72e7d38dad27b905781b9600480ea0fddca178bded",
+      "candidateSha256": "afcea22e8380f1399cfde7888fe9f9436cb3382cd13155236e3971b47095d87e",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [
+          "io/saasforge/sdk/provisioning/TenantCleanupAutoConfiguration$1.class"
+        ],
+        "unchangedCount": 21
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-provisioning/0.2.0/forge-sdk-provisioning-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-provisioning/0.2.0/forge-sdk-provisioning-0.2.0.pom",
+      "size": 1402,
+      "sha256": "fabc426eb733264ba3b23b07ce51a3b32b1d12da265bbbb59441f8680f342988",
+      "candidateSha256": "fabc426eb733264ba3b23b07ce51a3b32b1d12da265bbbb59441f8680f342988",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-referencedata/0.2.0/forge-sdk-referencedata-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-referencedata/0.2.0/forge-sdk-referencedata-0.2.0-sources.jar",
+      "size": 12971,
+      "sha256": "b59b39a6ef94a45ff1b9034f67f6c4e4bad4ec95fa9cfa24a1b01e179962d648",
+      "candidateSha256": "419c80dea756705096ff08eb57b96a076998f20e81b59a26e1f47b7d2f0c8415",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 12
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-referencedata/0.2.0/forge-sdk-referencedata-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-referencedata/0.2.0/forge-sdk-referencedata-0.2.0.jar",
+      "size": 24192,
+      "sha256": "11bae5cd10d9a9c2b75c5b10c6b7a83d8a9b9841b1e41752c52053b4fe66d7ac",
+      "candidateSha256": "4c831b927dd11e40a5f2a3c3bb730aa34c3cf988979e1d268e14885d77f12120",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [
+          "io/saasforge/sdk/referencedata/ReferenceDataClient.class",
+          "io/saasforge/sdk/referencedata/ReferenceDataProperties.class"
+        ],
+        "unchangedCount": 18
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-referencedata/0.2.0/forge-sdk-referencedata-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-referencedata/0.2.0/forge-sdk-referencedata-0.2.0.pom",
+      "size": 3715,
+      "sha256": "f04959989dd63a415f384fb0301b128277a34ac5e079533fa229bf0c1c3859dd",
+      "candidateSha256": "f04959989dd63a415f384fb0301b128277a34ac5e079533fa229bf0c1c3859dd",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-scheduling/0.2.0/forge-sdk-scheduling-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-scheduling/0.2.0/forge-sdk-scheduling-0.2.0-sources.jar",
+      "size": 24066,
+      "sha256": "5429e84ccdcc9a7305a4667cb7c42e86aed182703321e9c160a34c63a47a35eb",
+      "candidateSha256": "2d1373cd0bc4dee5fd5005d6da306905effe3c0cec16f7c78bdd95e6952f7998",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 21
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-scheduling/0.2.0/forge-sdk-scheduling-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-scheduling/0.2.0/forge-sdk-scheduling-0.2.0.jar",
+      "size": 47020,
+      "sha256": "7b921ae53c733b7fe5ab92983826828ab0c782c6df70754d5491e079da979d38",
+      "candidateSha256": "6c426e2a4f87c4f75d83dfa01168a3b571395870a73b0f53ab9594d11c4f0c60",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [
+          "io/saasforge/sdk/scheduling/TaskRegistrar.class",
+          "io/saasforge/sdk/scheduling/TaskRunHistory$Current.class"
+        ],
+        "unchangedCount": 29
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-scheduling/0.2.0/forge-sdk-scheduling-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-scheduling/0.2.0/forge-sdk-scheduling-0.2.0.pom",
+      "size": 3505,
+      "sha256": "52ea80492490f8eba34cfe12d2cae249a16b417859fb4c7164a30d813ccceeb7",
+      "candidateSha256": "52ea80492490f8eba34cfe12d2cae249a16b417859fb4c7164a30d813ccceeb7",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-security/0.2.0/forge-sdk-security-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-security/0.2.0/forge-sdk-security-0.2.0-sources.jar",
+      "size": 46857,
+      "sha256": "059f1c746f39adf3f00933bcbd890d76e4e0cf0f4ab76dfcfbd3094953df40b8",
+      "candidateSha256": "6ee07b28aa3552ea8144c6c7611a75c963077cc308019b989e5bf17862e8ba7a",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 45
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-security/0.2.0/forge-sdk-security-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-security/0.2.0/forge-sdk-security-0.2.0.jar",
+      "size": 71532,
+      "sha256": "27acdbc87f11641fbf3a72e072af71d93b7da9e75b25dd6057c9e55b6009b92c",
+      "candidateSha256": "520bbaf69dd4b8280bb3cfaf3315bc31b40c8da6ce77e87fa6bf9aa5e43896dd",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [
+          "io/saasforge/sdk/security/PermissionAuthorizationManager.class"
+        ],
+        "unchangedCount": 55
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-security/0.2.0/forge-sdk-security-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-security/0.2.0/forge-sdk-security-0.2.0.pom",
+      "size": 4849,
+      "sha256": "c5f9da7cc34e823441b2451652663041beb95661f4b5e5db7299b13738ca59cc",
+      "candidateSha256": "c5f9da7cc34e823441b2451652663041beb95661f4b5e5db7299b13738ca59cc",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-storage/0.2.0/forge-sdk-storage-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-storage/0.2.0/forge-sdk-storage-0.2.0-sources.jar",
+      "size": 33910,
+      "sha256": "968cf00ca548d8cf45d816296f69aa47d559dbe7220d5fe372d15b7c37ccc15e",
+      "candidateSha256": "bc9fb566741c00ca8de9ec006632a97054523e00c31865fafe5498f5247ebc4f",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 27
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-storage/0.2.0/forge-sdk-storage-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-storage/0.2.0/forge-sdk-storage-0.2.0.jar",
+      "size": 48159,
+      "sha256": "aa6cbdac8c54734649a4b50e3acf3df83ff361f9aeae4ff5dc5b90c5e255604e",
+      "candidateSha256": "3a1344488ef8267b7874faedc1f5b36c2611606b9430d8e5cd5294362d2bca00",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [
+          "io/saasforge/sdk/storage/ObjectStorage.class",
+          "io/saasforge/sdk/storage/StorageProperties.class"
+        ],
+        "unchangedCount": 26
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-storage/0.2.0/forge-sdk-storage-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-storage/0.2.0/forge-sdk-storage-0.2.0.pom",
+      "size": 2263,
+      "sha256": "b5e92ef368a570e12d83acfb22b8666d8d83cf00c15e416c4d996ba836d3f694",
+      "candidateSha256": "b5e92ef368a570e12d83acfb22b8666d8d83cf00c15e416c4d996ba836d3f694",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-tenant/0.2.0/forge-sdk-tenant-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-tenant/0.2.0/forge-sdk-tenant-0.2.0-sources.jar",
+      "size": 19245,
+      "sha256": "4b56a08563b17687a8a4a4833c8e1de8d9ed417311a7a6b5e3ca3daff2b81efc",
+      "candidateSha256": "312f4d20b6d15d521d051642741bf73c14d4c0a3293f7e2160b26ad7a810bb26",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 19
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-tenant/0.2.0/forge-sdk-tenant-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-tenant/0.2.0/forge-sdk-tenant-0.2.0.jar",
+      "size": 25283,
+      "sha256": "496879c3610ed16cf44faf0ce96a5fe29cffe3b432330082eea559b4aaaad1d1",
+      "candidateSha256": "de1d493ffd0695b34c68468e3f2bf2b09769fa155a5859c18ee5d76c96637bc7",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [
+          "io/saasforge/sdk/tenant/TenantRedisTemplate$TenantKeySerializer.class",
+          "io/saasforge/sdk/tenant/TenantWriteGuardInnerInterceptor.class"
+        ],
+        "unchangedCount": 21
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-tenant/0.2.0/forge-sdk-tenant-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-tenant/0.2.0/forge-sdk-tenant-0.2.0.pom",
+      "size": 2353,
+      "sha256": "2ce300a9465122509c8ff298c1f3c939406f7ac66c05d517ad18d2bef0789998",
+      "candidateSha256": "2ce300a9465122509c8ff298c1f3c939406f7ac66c05d517ad18d2bef0789998",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-web/0.2.0/forge-sdk-web-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-web/0.2.0/forge-sdk-web-0.2.0-sources.jar",
+      "size": 21534,
+      "sha256": "da7b5770fae75de9bb99249d5bb07854651506f4fcd05aa6efbc983a27b7a3e1",
+      "candidateSha256": "fec233c42d5db945e796cca66aea7c9e286e06a0c415371f7068b581994c968a",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 19
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-web/0.2.0/forge-sdk-web-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-web/0.2.0/forge-sdk-web-0.2.0.jar",
+      "size": 33423,
+      "sha256": "66ce0b1cb412cceacd1d51fd09e4e44dded0842291ad846d934666d42616544e",
+      "candidateSha256": "89a1b04a45a68c11a544935210a55f68a6e315c2d0e8c1362395288193345968",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [
+          "io/saasforge/sdk/web/ApiExceptionHandler.class"
+        ],
+        "unchangedCount": 23
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-sdk-web/0.2.0/forge-sdk-web-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-sdk-web/0.2.0/forge-sdk-web-0.2.0.pom",
+      "size": 3859,
+      "sha256": "50fb759588983e9810d6b79997534b2035bfde8de1fbcbd93bc61143f3eb9063",
+      "candidateSha256": "50fb759588983e9810d6b79997534b2035bfde8de1fbcbd93bc61143f3eb9063",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-service-archetype/0.2.0/forge-service-archetype-0.2.0-sources.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-service-archetype/0.2.0/forge-service-archetype-0.2.0-sources.jar",
+      "size": 91981,
+      "sha256": "90003e46744a6f5ae5558db9c66e0f31c1e74052a46bbd3554a96e38d8b60566",
+      "candidateSha256": "6a54f7a6f8f8f75d5ab34b1650b2f18e69243ee1f7557286faa147dfc9b97c52",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 51
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-service-archetype/0.2.0/forge-service-archetype-0.2.0.jar",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-service-archetype/0.2.0/forge-service-archetype-0.2.0.jar",
+      "size": 91992,
+      "sha256": "7f6571d1b6a1c3a55edc643408e07fbd23e866f1a7543e90848b1e4e6bf143c1",
+      "candidateSha256": "cbec7a5262bf16b0b77389b9e3ee1dc37d9eefe49c65e1a31b6f69b5ceb054d3",
+      "comparison": {
+        "bytesEqual": false,
+        "onlyCandidate": [],
+        "onlyPublished": [],
+        "changed": [],
+        "unchangedCount": 51
+      }
+    },
+    {
+      "file": "maven-repository/io/saasforge/forge-service-archetype/0.2.0/forge-service-archetype-0.2.0.pom",
+      "url": "https://maven.pkg.github.com/crane199709/saas-forge/io/saasforge/forge-service-archetype/0.2.0/forge-service-archetype-0.2.0.pom",
+      "size": 3237,
+      "sha256": "a4535f5f10bb9622273871277dba487036ffef21695b80d43827c2da4514e867",
+      "candidateSha256": "a4535f5f10bb9622273871277dba487036ffef21695b80d43827c2da4514e867",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "tarballs/crane199709-sdk-0.2.0.tgz",
+      "url": "https://registry.npmjs.org/@crane199709/sdk/-/sdk-0.2.0.tgz",
+      "size": 15937,
+      "sha256": "89d39aec9091502911c45b734e6875314bbae7f305076e1a7c6f32a1d75eb041",
+      "integrity": "sha512-sYb5Wpo+kiOKMazZZerGD6PVeySiF917jFPddA8MxAUyaZmKEOuUaefg5wkQDWXezRP+3pft3jazWxlsmS4PIQ==",
+      "candidateSha256": "89d39aec9091502911c45b734e6875314bbae7f305076e1a7c6f32a1d75eb041",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "tarballs/crane199709-ui-0.2.0.tgz",
+      "url": "https://registry.npmjs.org/@crane199709/ui/-/ui-0.2.0.tgz",
+      "size": 36804,
+      "sha256": "0b6b43a30a9e557ff4934544a0f656b6d3ede134355204b8ec11e0a795a9d2a8",
+      "integrity": "sha512-p25thjm1vXng3LNGvaSEq+eYRteP5WElEsN9Yb8g2K0Da0B+ptE5rFqT5QCplIprQyMOGej5PpbuYq76vXgUMg==",
+      "candidateSha256": "0b6b43a30a9e557ff4934544a0f656b6d3ede134355204b8ec11e0a795a9d2a8",
+      "comparison": {
+        "bytesEqual": true
+      }
+    },
+    {
+      "file": "tarballs/crane199709-sub-app-kit-0.2.0.tgz",
+      "url": "https://registry.npmjs.org/@crane199709/sub-app-kit/-/sub-app-kit-0.2.0.tgz",
+      "size": 23284,
+      "sha256": "77002bcd4cea8f4bdc7b8545ce6979345d2cb06b54ffd785b03c713d0d19f580",
+      "integrity": "sha512-s//Rbo8fiyzWiLgqD4Y0XL1N4caINVrCqKp78d/z5NZpL1RG6KE1nWUpTRffT694EZi6D0LgIcJnhhorqlfIqw==",
+      "candidateSha256": "77002bcd4cea8f4bdc7b8545ce6979345d2cb06b54ffd785b03c713d0d19f580",
+      "comparison": {
+        "bytesEqual": true
+      }
+    }
+  ],
+  "sourceCorrespondence": {
+    "base": "45c051cbc8643db26322837f2397ef5d6ef58a80",
+    "releaseCommit": "10b8f30d82fcb036b550bc55a8a2540fc7576f46",
+    "version": "0.2.0",
+    "candidateSource": "9f61c8a0073c82a900abeff45ce21c5600b6afb3",
+    "packagedSourcePaths": [
+      "backend",
+      "frontend/apps",
+      "frontend/packages",
+      "frontend/package.json",
+      "frontend/pnpm-lock.yaml",
+      "frontend/pnpm-workspace.yaml",
+      "docs/standards"
+    ],
+    "packagedSourceMatchesCandidate": true,
+    "tagObject": "0ae2a779d88074e04388591896b4875a641d7019",
+    "developmentCommit": "b60923412803da8eaa7627c2fd91c505e9ee4389"
+  },
+  "publicApiComparison": [
+    {
+      "class": "io.saasforge.sdk.abac.AttributeValues",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.abac.PolicyEvaluator",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.abac.PolicyParser$PolicyParserRun",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.abac.PolicyParser$Shape",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.abac.data.DataPermission",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.core.MembershipStateKeys",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.core.OperatorStateKeys",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.core.ReferenceDataKeys",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.core.ResourceManifest$Parameter",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.core.ResourceManifest",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.io.ExcelIo",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.io.ExcelModel",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.provisioning.TenantCleanupAutoConfiguration$1",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.referencedata.ReferenceDataClient",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.referencedata.ReferenceDataProperties",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.scheduling.TaskRegistrar",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.scheduling.TaskRunHistory$Current",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.security.PermissionAuthorizationManager",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.storage.ObjectStorage",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.storage.StorageProperties",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.tenant.TenantRedisTemplate$TenantKeySerializer",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.tenant.TenantWriteGuardInnerInterceptor",
+      "publicApiEqual": true
+    },
+    {
+      "class": "io.saasforge.sdk.web.ApiExceptionHandler",
+      "publicApiEqual": true
+    }
+  ],
+  "images": {
+    "checkedAt": "2026-11-17T07:20:38.271471+00:00",
+    "sourceCommit": "10b8f30d82fcb036b550bc55a8a2540fc7576f46",
+    "version": "0.2.0",
+    "workflowRun": 44035010646,
+    "job": 133880652923,
+    "jobConclusion": "success",
+    "logSha256": "e75b1995955de3110524a6664d4c60eff7e446ab9999eff03c7bbbd622dc67a2",
+    "images": {
+      "forge-gateway": "ghcr.io/crane199709/saas-forge/forge-gateway@sha256:e33c7ac4829526d3f27409f949e4743662a945af471c4195aad6edce943b6dd1",
+      "forge-iam": "ghcr.io/crane199709/saas-forge/forge-iam@sha256:884f3f885179264586c292dbb375459b3b1ba472cc75b515ebd09c6e6f3bde5d",
+      "forge-platform": "ghcr.io/crane199709/saas-forge/forge-platform@sha256:100f4e47542a64fcd362a43fd420a6fcdb3e97d1d38a61a8ea8009914e2f1422",
+      "demo-service": "ghcr.io/crane199709/saas-forge/demo-service@sha256:814006d559a14319f2c1eeda7f504c85576e7e068df1331c40d1d83ee230b3d6",
+      "tenant-app": "ghcr.io/crane199709/saas-forge/tenant-app@sha256:0490461a332296b1fab5e1fcdf3b18e265854cc3a7f8ce6a87e37c021ff00f1b",
+      "platform-console": "ghcr.io/crane199709/saas-forge/platform-console@sha256:6145b8f8ad527094c1760a350195458dd2209ade94396dd495b48522242c6594"
+    },
+    "pullByDigestVerifiedByWorkflow": true
+  },
+  "workflows": [
+    {
+      "run": 44035010646,
+      "source": "10b8f30d82fcb036b550bc55a8a2540fc7576f46",
+      "conclusion": "failure",
+      "notes": "All quality gates and six image publications passed; attempt 2 Maven deploy succeeded, then npm EOTP. Never redeployed Maven."
+    },
+    {
+      "run": 44043705141,
+      "workflowSource": "85ab4e0b17be9875525dfc2ff89f3c5e734b791d",
+      "checkoutSource": "10b8f30d82fcb036b550bc55a8a2540fc7576f46",
+      "conclusion": "success",
+      "artifactId": 14310897686,
+      "artifactZipSha256": "4112d94cac58315ea0242998dc9e7b6e17fc6d186e26929597593cd0f6d8159e",
+      "completedAt": "2026-11-17T08:12:48Z"
+    },
+    {
+      "run": 44044837346,
+      "source": "10b8f30d82fcb036b550bc55a8a2540fc7576f46",
+      "conclusion": "success",
+      "consumedAt": "2026-11-17T08:14:06Z",
+      "logSha256": "d776cb8c94fd7437006ab24c5c4db7c1d0c9df535a225d851c3ca88276cc0614",
+      "checks": [
+        "strict version",
+        "Maven BOM and all SDK / architecture resolution with isolated Forge cache",
+        "npm three-package install",
+        "TypeScript",
+        "Vite config load",
+        "lint CLI"
+      ]
+    }
+  ]
+}

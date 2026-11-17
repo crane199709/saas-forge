@@ -1,6 +1,6 @@
 # v0.2.0 脚手架交付与已有工程升级
 
-Status: needs-info
+Status: resolved
 
 ## Problem Statement
 
@@ -143,4 +143,4 @@ Status: needs-info
 - 依据与先例：[领域词汇表](../../GLOSSARY.md)、[业务前端架构决策](../../docs/adr/0009-module-federation-micro-frontends.md)、[统一接口入口决策](../../docs/adr/0024-api-entry-stripped-by-shell.md)、[主题契约决策](../../docs/adr/0029-theme-token-three-layer-contract.md)、[业务服务指南](../../docs/business-service-guide.md)、[Sub-App 指南](../../docs/sub-app.md)、[版本发布说明](../../scripts/release/README.md)、[变更日志](../../CHANGELOG.md)。
 - 本文描述待实现和待验证的目标，规格完成不代表脚手架升级、试点验收或版本发布已经完成。
 
-- 2026-11-17 实施状态：01—08 的发布前准备已完成，见[08 验收](acceptance-08.md)；09 等待独立外部发布后的目标仓库只读消费，当前前置及未执行边界见[09 待执行记录](acceptance-09.md)。父规格记为 `needs-info`，不表示全部规格已完成，也不将发布前候选验收作为发布后消费结果。
+- 2026-11-17 实施状态：01—08 的发布前准备已完成，见[08 验收](acceptance-08.md)。用户另行授权的 `v0.2.0` 制品发布已完成；09 在标签 `10b8f30d` 上的目标仓库只读消费通过，实际 63 个制品的来源、摘要和与候选的差异见[09 验收](acceptance-09.md)及[发布记录](release-v020.md)。01—09 与父规格均为 `resolved`。该状态不表示 `0.2.0` 是产品正式版，也不表示执行过运行环境切换或生产迁移。
