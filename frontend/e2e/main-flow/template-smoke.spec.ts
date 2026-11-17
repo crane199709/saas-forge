@@ -1,6 +1,11 @@
 import { expect, test } from '@playwright/test'
 
 test('仓库外模板的 Manifest、网关路由与成员权限', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text())
+  })
   await page.goto('/')
   await page.getByLabel('账号或邮箱').fill('e2e-member')
   await page.getByLabel('密码', { exact: true }).fill('Demo-password-123!')
@@ -9,6 +14,14 @@ test('仓库外模板的 Manifest、网关路由与成员权限', async ({ page 
   // 菜单由模板的 Manifest 上报产生，同时验证 IAM 已接受清单。
   await page.getByTestId('menu-group-smoke').locator('.el-sub-menu__title').first().click()
   await expect(page.getByTestId('menu-smoke.overview')).toBeVisible()
+  await page.getByTestId('menu-smoke.overview').click()
+  await expect(page).toHaveURL('/apps/smoke/home')
+  await expect(page.getByTestId('order-title')).toHaveText(['A 本人订单'])
+  await expect(page.locator('vite-error-overlay')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: '订单', exact: true })).toBeVisible()
+  if (process.env.FORGE_TEMPLATE_EVIDENCE_DIR)
+    await page.screenshot({ path: `${process.env.FORGE_TEMPLATE_EVIDENCE_DIR}/shell.png` })
+  expect((await page.request.get('http://127.0.0.1:18000/smoke/orders')).status()).toBe(401)
   const headers = async () => ({
     Authorization: `Bearer ${await page.evaluate(() => JSON.parse(localStorage.getItem('forge.tenant.session')!).accessToken)}`,
   })
@@ -39,6 +52,9 @@ test('仓库外模板的 Manifest、网关路由与成员权限', async ({ page 
     page.getByRole('option', { name: 'E2E 租户 B', exact: true }).click(),
   ])
   await expect(page.getByTestId('workbench-greeting')).toHaveText('e2e-member · E2E 租户 B')
+  await page.getByTestId('menu-group-smoke').locator('.el-sub-menu__title').first().click()
+  await page.getByTestId('menu-smoke.overview').click()
+  await expect(page.getByTestId('order-title')).toHaveText(['B 他人订单', 'B 本人订单'])
   expect(
     (
       await page.request.post('http://127.0.0.1:18000/smoke/orders', {
@@ -47,4 +63,5 @@ test('仓库外模板的 Manifest、网关路由与成员权限', async ({ page 
       })
     ).status(),
   ).toBe(403)
+  expect(errors).toEqual([])
 })

@@ -425,6 +425,8 @@ Business Service 须提供带导入权限码的确认接口，调用 `ExcelIo.co
 
 ## 维护者：模板冒烟
 
-准备 Java 17、Node 24、pnpm 12.4.2 与可用的 Docker daemon，在仓库根目录运行 `bash deploy/template-smoke/run.sh`。脚本发布当前版本到临时 Maven/npm 仓库，在仓库外生成两个工程，运行后端 verify 和前端安装、lint、类型检查、构建，再复用主链路 E2E 环境启动生成服务。新服务使用独立 smoke schema、Manifest 令牌及 /smoke 网关路由；浏览器以真实 IAM 登录验证菜单、成员授权与内部路径拒绝。数据库写入仅限本次创建的临时容器，退出后删除容器和卷。MQ 与 Nacos 在此 HTTP 接缝关闭，不覆盖真实消息投递。
+准备 Java 17、Node 24、pnpm 12.4.2 与可用的 Docker daemon，在仓库根目录运行 `bash deploy/template-smoke/run.sh`。脚本发布当前版本到临时 Maven/npm 仓库，在仓库外生成两个工程，运行后端 verify 和前端安装、lint、类型检查、构建，再复用主链路 E2E 环境启动生成服务。新服务使用独立 smoke schema、Manifest 令牌及 /smoke 网关路由；浏览器以真实 IAM 登录后点击 Manifest 菜单，实际加载仓库外生成 Sub-App 并读取订单，验证成员授权、租户隔离与内部路径拒绝；随后在同一回调源顺序启动生成工程的独立开发宿主，再次登录并读取真实订单。数据库写入仅限本次创建的临时容器，退出后删除容器和卷。MQ 与 Nacos 在此 HTTP 接缝关闭，不覆盖真实消息投递。
+
+固定候选与可重建临时 npm 消费方式见 [候选制品说明](../scripts/release/README.md#固定候选与后续消费)。新生成 archetype 的订单菜单路径为 `home`，与同版本 kit 的默认路由配套；已有工程保留自有路由语义并核对 Manifest。
 
 完整输出保存在 `deploy/template-smoke/run.log`，服务日志保存在 `deploy/e2e/run-*`；CI 同时保留 Playwright 报告，独立工作流在 PR/main 运行并作为发布质量门。

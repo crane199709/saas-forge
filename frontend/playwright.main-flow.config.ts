@@ -26,7 +26,9 @@ export default defineConfig({
       env: { FORGE_DEV_GATEWAY: 'http://127.0.0.1:18000' },
     },
     {
-      command: 'pnpm --filter @forge/demo-sub-app preview --host 127.0.0.1 --port 15175',
+      command: process.env.FORGE_TEMPLATE_SUB_APP
+        ? 'pnpm --dir "$FORGE_TEMPLATE_SUB_APP" preview --host 127.0.0.1 --port 15175'
+        : 'pnpm --filter @forge/demo-sub-app preview --host 127.0.0.1 --port 15175',
       url: 'http://127.0.0.1:15175/remoteEntry.js',
       env: { FORGE_E2E: '1' },
       reuseExistingServer: false,
