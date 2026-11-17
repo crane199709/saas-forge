@@ -49,7 +49,7 @@ def checks_for_path(path):
             if name == "notification-flow.spec.ts":
                 return {"frontend"}
             return {"frontend"} | INTEGRATION
-        if path == "frontend/e2e/sub-app-upgrade.ts" or path.startswith("frontend/e2e/template-dev/"):
+        if path in {"frontend/e2e/sub-app-upgrade.ts", "frontend/playwright.template-dev.config.ts"} or path.startswith("frontend/e2e/template-dev/"):
             return {"frontend", "template-smoke"}
         if path.startswith("frontend/e2e/") or path in {
             "frontend/playwright.config.ts",

@@ -49,6 +49,7 @@ class DependencySelectionTest(unittest.TestCase):
             "scripts/release/consume.py": {"template-smoke"},
             "deploy/upgrade-smoke/storage.sh": {"template-smoke"},
             "frontend/e2e/sub-app-upgrade.ts": {"frontend", "template-smoke"},
+            "frontend/playwright.template-dev.config.ts": {"frontend", "template-smoke"},
             "frontend/e2e/template-dev/template-dev.spec.ts": {"frontend", "template-smoke"},
             ".github/workflows/frontend-quality.yml": {"frontend"},
             ".github/workflows/backend-quality.yml": {"backend"},
