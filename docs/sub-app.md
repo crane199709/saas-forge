@@ -1,5 +1,7 @@
 # Sub-App 接入与 App Registry
 
+升级到 0.2.0 先读[集中升级清单](upgrading-v020.md)，其中包含按实际能力选择、统一质量门、配套切换和发布后只读复验。
+
 工单：[21](../.scratch/saas-forge-mvp/issues/21-app-registry-dynamic-sub-apps.md)。接入契约见[规格第 12 节](../.scratch/saas-forge-mvp/spec.md#12-前端)与 [ADR-0009](adr/0009-module-federation-micro-frontends.md)，技术验证见[工单 02 结论](../.scratch/saas-forge-mvp/issues/02-module-federation-spike-results.md)。
 
 ## 加载链路

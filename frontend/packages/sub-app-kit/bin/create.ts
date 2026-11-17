@@ -436,6 +436,10 @@ for (const [label, width, height] of viewports) {
 - 敏感字段展示按 [规范「敏感字段展示」](docs/standards/sub-app.md#敏感字段展示) 消费服务端结果，页面不重算掩码；原文查看使用专用授权操作；预览失败不回显原样例，字段脱敏失败的导出任务没有结果文件；后端脱敏运行时的 IAM 地址和 Service Credential 不注入前端。
 - 视觉用例放 \`e2e/visual/\`：在 \`localStorage\` 预置假会话，用 \`page.route\` mock 接口，覆盖接近真实长度的数据、空值与空列表。
 
+## 平台版本升级
+
+升级至 0.2.0 时先读[集中升级清单](https://github.com/crane199709/saas-forge/blob/main/docs/upgrading-v020.md)，按同版本参考工程合并三包、配置和规范差异，保留业务源码、路由与自定义项；业务版本和 Resource Manifest 版本分别维护。
+
 ## 主题升级
 
 1. 已部署的 Sub-App 读取 Shell 当前主题；升级 Shell 后，检查页面的按钮、文字和中性色是否跟随宿主。

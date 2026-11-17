@@ -49,6 +49,8 @@ def checks_for_path(path):
             if name == "notification-flow.spec.ts":
                 return {"frontend"}
             return {"frontend"} | INTEGRATION
+        if path == "frontend/e2e/sub-app-upgrade.ts" or path.startswith("frontend/e2e/template-dev/"):
+            return {"frontend", "template-smoke"}
         if path.startswith("frontend/e2e/") or path in {
             "frontend/playwright.config.ts",
             "frontend/playwright.visual.config.ts",
@@ -64,7 +66,7 @@ def checks_for_path(path):
         ):
             return {"frontend"}
         return {"frontend"} | INTEGRATION
-    if path.startswith(("deploy/template-smoke/", "scripts/release/")):
+    if path.startswith(("deploy/template-smoke/", "deploy/upgrade-smoke/", "scripts/release/")):
         return {"template-smoke"}
     # 服务集成测试也直接读取部署目录中的数据库初始化脚本和 Nacos 配置。
     if path.startswith(("deploy/postgres/", "deploy/nacos/")):

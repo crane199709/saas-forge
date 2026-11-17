@@ -26,6 +26,9 @@ jobs:
     needs: version
     uses: ./.github/workflows/main-flow-e2e.yml
   template-smoke:
+    permissions:
+      contents: read
+      packages: read
     needs: version
     uses: ./.github/workflows/template-smoke.yml
   publish:

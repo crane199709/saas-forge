@@ -45,7 +45,7 @@ npm 先构建再使用 `pnpm pack`，由 pnpm 将 `workspace:` 替换为实际�
 scripts/release/publish.sh local v0.2.0-SNAPSHOT  # 版本取当前源码
 ```
 
-完整模板冒烟执行 `bash deploy/template-smoke/run.sh`：在上述临时仓库存活期间生成仓库外服务和 Sub-App，运行构建与测试，并在新建隔离环境中验证 Manifest 上报、网关权限和内部接口拒绝。环境与日志说明见 [Business Service 接入指南](../../docs/business-service-guide.md)。
+完整发布质量门执行 `bash deploy/upgrade-smoke/run.sh /tmp/forge-upgrade-new`，复用一次候选构建与新建模板，并顺序验证已有服务、Sub-App、storage 和 IO 升级；原始材料保留在 private，CI 只上传脱敏 diagnostics。集中步骤见 [0.2.0 升级清单](../../docs/upgrading-v020.md)。只运行新建模板时执行 `bash deploy/template-smoke/run.sh`：在上述临时仓库存活期间生成仓库外服务和 Sub-App，运行构建与测试，并在新建隔离环境中验证 Manifest 上报、网关权限和内部接口拒绝。环境与日志说明见 [Business Service 接入指南](../../docs/business-service-guide.md)。
 
 只在新建的临时目录发布 Maven file 仓库，并在绑定 127.0.0.1 的临时 Verdaccio 容器中发布 npm 包。容器退出时清理，目录保留供排查。空 Maven 工程只导入 BOM 并声明 SDK/架构模块，不设内部依赖版本，使用独立 Maven 缓存解析（仅复用本机第三方缓存，排除全部 `io.saasforge`）；空 npm 工程安装三个包、编译类型使用示例、加载 Vite 配置并执行编译后的 lint CLI。验证服务制品不存在且 Java 模块附源码包。首次运行需要下载 Docker 镜像与 Maven/npm 依赖。
 

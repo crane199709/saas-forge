@@ -432,3 +432,7 @@ Mapper XML 的 SQL 语义不属于字节码检查范围，仍需代码审查。
 使用统一脱敏执行通道时显式设置 `forge.field-masking.enabled=true`，并提供 `forge.field-masking.iam-uri`（IAM 内部 HTTP(S) 地址）与 `forge.field-masking.token`（本服务的 Service Credential）。地址和凭证不设默认值，启用后漏配会启动失败；未启用的旧服务不增加必配项。可复用本服务清单上报使用的 `FORGE_IAM_URI` 与 `FORGE_MANIFEST_TOKEN`，不得在浏览器环境注入这些凭证。
 
 `FieldMaskingPolicyProvider` 经 `/internal/field-masking/{tenantId}` 获取本服务当前租户的不可变策略快照，服务身份由 IAM 从凭证推导。首版不跨请求缓存，平台和租户修改提交后下次读取即生效。生效规则按租户覆盖、字段默认、分级默认依次选择；L4 禁止导出。IAM 不可用或配置破损时显式失败，不能将失败伪装为空规则或原文。一次导出或在线响应复用同一快照，避免处理中途切换规则。
+
+## 平台版本升级
+
+已有工程升级时先读 [0.2.0 集中升级清单](https://github.com/crane199709/saas-forge/blob/main/docs/upgrading-v020.md)，按实际能力审阅同版本参考工程差异，保留业务代码、自定义配置和已执行迁移；规范副本与 Agent 说明从参考工程合并。

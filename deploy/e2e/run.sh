@@ -46,6 +46,12 @@ cleanup() {
     "${COMPOSE[@]}" logs --no-color >"$RUN_DIR/compose.log" 2>&1 || true
   fi
   "${COMPOSE[@]}" down --volumes >"$RUN_DIR/cleanup.log" 2>&1 || true
+  if [[ -n "${FORGE_TEMPLATE_EVIDENCE_DIR:-}" ]]; then
+    mkdir -p "$FORGE_TEMPLATE_EVIDENCE_DIR/runtime"
+    for log in "$RUN_DIR"/*.log; do
+      if [[ -f "$log" ]]; then cp "$log" "$FORGE_TEMPLATE_EVIDENCE_DIR/runtime/"; fi
+    done
+  fi
   echo "E2E 日志：$RUN_DIR"
   exit "$result"
 }
