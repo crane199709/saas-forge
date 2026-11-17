@@ -30,7 +30,7 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def prepare(work, published_cache):
+def prepare(work, published_cache, old_setup=None):
     candidate = Path(os.environ['FORGE_CANDIDATE_DIR'])
     identity = json.loads((candidate / 'candidate.json').read_text())
     target_version = identity['sourceVersion']
@@ -89,6 +89,8 @@ def prepare(work, published_cache):
     pom = old / 'pom.xml'
     pom.write_text(pom.read_text().replace('<java.version>17</java.version>',
         '<java.version>17</java.version><business.contract>keep-business-7</business.contract>'))
+    if old_setup is not None:
+        old_setup(old, work)
     run(maven + ['-DskipTests', 'package'], old, work / 'build-old.log')
     old_jar = work / 'old-service.jar'
     shutil.copy2(old / f'target/retained-service-{VERSION}.jar', old_jar)
@@ -144,7 +146,11 @@ import java.math.BigDecimal;''').replace('@RequestBody OrderRequest', '@Valid @R
     dead_event = mq_schema[mq_schema.index('CREATE TABLE forge_dead_event'):]
     assert re.findall(r'CREATE TABLE (\w+)', dead_event) == ['forge_dead_event'], 'SDK schema 变化，须重新审阅增量范围'
     migration = upgraded / 'src/main/resources/db/migration'
-    (migration / 'V8__forge_dead_event.sql').write_text(
+    next_version = max(int(path.name.split('__')[0][1:]) for path in migration.glob('V*__*.sql')) + 1
+    default_migrations = []
+    dead_migration = migration / f'V{next_version}__forge_dead_event.sql'
+    default_migrations.append(dead_migration)
+    dead_migration.write_text(
         '-- 既有 Outbox/消费去重表保持不变；死信表为服务级基础设施，不启用 RLS。\n' + dead_event)
     old_tables = 'forge_outbox|forge_consumed_message|orders|order_notifications|order_categories'
     comments = []
@@ -152,7 +158,9 @@ import java.math.BigDecimal;''').replace('@RequestBody OrderRequest', '@Valid @R
         comments += re.findall(rf'^COMMENT ON (?:TABLE|COLUMN) (?:{old_tables})\b[^;]*;',
                                initial.read_text(), flags=re.MULTILINE)
     assert comments, '实际参考工程缺少注释来源'
-    (migration / 'V9__existing_schema_comments.sql').write_text(
+    comment_migration = migration / f'V{next_version + 1}__existing_schema_comments.sql'
+    default_migrations.append(comment_migration)
+    comment_migration.write_text(
         '-- 旧迁移不可改写；为现有表和字段补中文描述，不改变数据及约束。\n' + '\n'.join(comments) + '\n')
     fixture = ROOT / 'deploy/upgrade-smoke/fixtures/service/UpgradeAcceptanceTest.java'
     shutil.copy2(fixture, upgraded / 'src/test/java' / PACKAGE / fixture.name)
@@ -164,7 +172,7 @@ import java.math.BigDecimal;''').replace('@RequestBody OrderRequest', '@Valid @R
     report = {'oldVersion': '0.1.0', 'businessVersion': VERSION, 'manifestVersion': 11,
         'candidate': {'sourceCommit': identity['sourceCommit'], 'version': target_version,
                       'manifestSha256': digest(candidate / 'candidate.json')}, 'preservedSha256': before,
-        'incrementalMigrations': {path.name: digest(path) for path in sorted(migration.glob('V[89]__*.sql'))},
+        'incrementalMigrations': {path.name: digest(path) for path in default_migrations},
         'sdkMqJarSha256': digest(sdk_jar), 'sdkMqSchemaSha256': hashlib.sha256(mq_schema.encode()).hexdigest()}
     (work / 'baseline.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
     return maven, upgraded

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.retained.document.mapper.DocumentMapper">
+    <resultMap id="document" type="com.example.retained.document.service.DocumentService$Document">
+        <constructor><idArg column="id" javaType="java.util.UUID"/><arg column="object_id" javaType="java.util.UUID"/><arg column="title" javaType="string"/></constructor>
+    </resultMap>
+    <insert id="insert">INSERT INTO document_files (id, object_id, title, created_at, updated_at, created_by, updated_by, deleted) VALUES (#{id}, #{objectId}, #{title}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL, NULL, false)</insert>
+    <select id="find" resultMap="document">SELECT id, object_id, title FROM document_files WHERE id = #{id} AND NOT deleted</select>
+    <update id="delete">UPDATE document_files SET deleted = true, updated_at = CURRENT_TIMESTAMP, updated_by = NULL WHERE id = #{id} AND NOT deleted</update>
+</mapper>
