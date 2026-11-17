@@ -388,6 +388,8 @@ Demo 的 `GET /orders/import/{taskId}/rollback-preview` 使用独立 `order:impo
 
 IO 统一声明 `IoStoragePurposes.SOURCE`（`io-source`，仅 xlsx、20 MiB）和 `RESULT`（`io-result`，仅 xlsx、100 MiB），下载时长均为 5 分钟。上传入口复用 SOURCE；`ExcelIo.importFile` 在提交任务之前核对用途，导出和错误报告写入 RESULT，`IoTasks.download` 按 RESULT 签发。不要把附件或结果对象当作导入源文件，否则会被同步拒绝，既不创建任务也不删除原对象。
 
+历史工程升级与同库任务/文件验收见 [IO 0.2.0 升级清单](upgrades/io-0.2.0.md)。实际发布的 `0.1.0` 不含 IO；该专项使用可核对历史源码构建的未发布基线，不能将其称为已发布旧制品。
+
 SDK 自动提供 `/io/tasks`、`/io/tasks/{id}` 和 `/io/tasks/{id}/download`，均只允许提交人访问。业务提交和模板接口须挂自己的权限码；前端的 `ImportDialog`、`ExportButton` 通过回调绑定同一服务的任务接口。参考 demo-service 的 `OrderIoService`、V12 迁移及 demo-sub-app 订单页。
 
 前端 `IoTaskApi.list(page)` 接收从 1 开始的页码并返回 SDK `Page<IoTask>`。例如 ``list: (page) => client.page<IoTask>(`/demo/io/tasks?page=${page}&size=10`)``；升级时须将旧的无参列表回调改为转发页码，并移除取 `.items` 的操作。`ImportDialog` 与 `ExportButton` 使用分页元数据提供翻页入口，只有当前页参与刷新，较早待确认任务在重开弹窗或刷新页面后仍可翻页找到。

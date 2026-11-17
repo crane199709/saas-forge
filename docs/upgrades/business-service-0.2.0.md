@@ -46,7 +46,7 @@ mvn -B -s /path/to/settings.xml org.apache.maven.plugins:maven-archetype-plugin:
 2. 旧模板表/字段没有完整中文注释。以同版本参考工程中的 `COMMENT ON TABLE/COLUMN` 为依据，为仍使用的旧表追加注释迁移；模板固定样例涉及 `orders`、`order_notifications`、`order_categories`、`forge_outbox`、`forge_consumed_message`。业务已改名或删去示例时，按实际业务结构编写描述，不整段复制不存在的对象。此步骤让当前 `SchemaCommentTest` 验证全部表/字段。
 3. 业务字段、索引或约束若已因业务开发变化，按实际结构补增量，不重复执行已完成的升级。不要为了符合新模板改变已有数据语义、覆盖业务领域模型或推测数据用途。
 
-IO 与 storage 不属于默认 starter 的通过范围。使用它们时按[接入指南](../business-service-guide.md)的对应升级段，在独立场景验证原有任务/文件及业务行为；IO 的历史基线不是已发布的 `0.1.0`。未使用的可选能力不增加依赖、表或配置。
+IO 与 storage 不属于默认 starter 的通过范围。使用它们时按[接入指南](../business-service-guide.md)的对应升级段，在独立场景验证原有任务/文件及业务行为；IO 的历史基线不是已发布的 `0.1.0`，具体来源和迁移检查见 [IO 专项升级清单](io-0.2.0.md)。未使用的可选能力不增加依赖、表或配置。
 
 ## 4. 验收与失败处理
 
