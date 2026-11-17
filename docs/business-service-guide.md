@@ -6,6 +6,12 @@
 
 配套 Sub-App 通过同版本 sub-app-kit 创建，页面规范见 [Sub-App 页面规范](standards/sub-app.md#统一浅色主题)。Shell 与独立开发宿主统一调用共享 UI 的 `applyTheme()` 并载入共享主题样式；Sub-App 只读 Theme Token，不写文档根节点或复制色板。默认浅色主题为靛蓝 + Slate，成功、警告、危险保持语义色。已部署的 Sub-App 在升级 Shell 后读取宿主当前主题；独立开发时将 SDK、UI/kit 对齐到配套 Shell 的同一平台版本并保留共享依赖精确版本，重新安装、构建与启动验收。用同版本 kit 生成临时工程，复制其中的规范并合入生成说明，保留业务代码；token 名称、三层归属及布局档位保持兼容，默认配色可在变更说明及视觉验收后统一演进，写死的颜色不会自动迁移。后端脚手架只提供此配套指引，不增加前端依赖。
 
+## 已有快照工程升级
+
+先记录实际工程提交、父 POM、SDK 和前端锁文件的来源。同为 `0.2.0-SNAPSHOT` 的源码重建包、本地 tarball 与候选制品可能内容不同，版本字符串不能替代来源提交和摘要。保留已有本地包消费模式时，同步替换实际 tarball、锁文件完整性值与 CI 固定源码来源，并核对安装目录的实际内容，避免只改版本或覆盖同名快照后继续使用旧缓存；验收须隔离本机 Forge Maven 缓存，明确实际制品消费与源码重建的边界。
+
+迁移按工程实际结构选择：已有 `purpose` 的 storage 表不重复执行用途迁移，仅新增缺失的保留期迁移；原迁移不改。storage 的传递 scheduling 能力也要求配置 IAM 地址与服务凭据，不能只检查直接依赖。升级后的父 POM 会检查测试代码的大括号。前端业务路径保持原含义，浏览器用例的网络观察与 mock 须跟随 `/api` 入口；mock 回归不替代真实 Shell 与独立宿主验收。独立宿主的网关地址通过 kit 的 `gateway` 选项提供；沿用 Shell 的 `FORGE_DEV_GATEWAY` 环境变量时，要在工程 Vite 配置中显式传给该选项，kit 不会自动读取 Shell 的环境变量。
+
 ## 生成与验证
 
 在新仓库目录执行：
@@ -387,6 +393,8 @@ Demo 原追加导入继续使用三列模板及 `/orders/import`、`/orders/impo
 Demo 的 `GET /orders/import/{taskId}/rollback-preview` 使用独立 `order:importRollback`，清单版本升为 9；与导入权限分离，仍只允许查看本人任务。服务的 `ImportVersionReader` 按当前 Data Policy 读取数据库版本；其他租户或提交人任务仍为 404，只有导入权限仍为 403。已有 IO 服务新增迁移复制 `upgrade-import-rollback-preview.sql`（demo V16），增加后续实际覆盖标记，保持已有迁移不变。覆盖标记在业务行锁与确认事务内更新，只影响同租户、同模型、同记录的已存在快照，不依赖任务创建顺序。执行方必须在锁定当前可见业务行后调用 `ImportRollbacks.check(backup, reader)` 重查，并在同一事务中恢复，不能依赖先前的预览结果。执行入口如下；界面由导入历史与回滚对话框接入。
 
 IO 统一声明 `IoStoragePurposes.SOURCE`（`io-source`，仅 xlsx、20 MiB）和 `RESULT`（`io-result`，仅 xlsx、100 MiB），下载时长均为 5 分钟。上传入口复用 SOURCE；`ExcelIo.importFile` 在提交任务之前核对用途，导出和错误报告写入 RESULT，`IoTasks.download` 按 RESULT 签发。不要把附件或结果对象当作导入源文件，否则会被同步拒绝，既不创建任务也不删除原对象。
+
+历史工程升级与同库任务/文件验收见 [IO 0.2.0 升级清单](upgrades/io-0.2.0.md)。实际发布的 `0.1.0` 不含 IO；该专项使用可核对历史源码构建的未发布基线，不能将其称为已发布旧制品。
 
 SDK 自动提供 `/io/tasks`、`/io/tasks/{id}` 和 `/io/tasks/{id}/download`，均只允许提交人访问。业务提交和模板接口须挂自己的权限码；前端的 `ImportDialog`、`ExportButton` 通过回调绑定同一服务的任务接口。参考 demo-service 的 `OrderIoService`、V12 迁移及 demo-sub-app 订单页。
 
