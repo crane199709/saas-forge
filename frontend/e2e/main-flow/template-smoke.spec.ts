@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { checkUpgradedSubApp } from '../sub-app-upgrade'
 
 test('仓库外模板的 Manifest、网关路由与成员权限', async ({ page }) => {
   const errors: string[] = []
@@ -19,6 +20,8 @@ test('仓库外模板的 Manifest、网关路由与成员权限', async ({ page 
   await expect(page.getByTestId('order-title')).toHaveText(['A 本人订单'])
   await expect(page.locator('vite-error-overlay')).toHaveCount(0)
   await expect(page.getByRole('heading', { name: '订单', exact: true })).toBeVisible()
+  if (process.env.FORGE_SUB_APP_UPGRADE === '1')
+    await checkUpgradedSubApp(page, 'shell', ['A 本人订单'])
   if (process.env.FORGE_TEMPLATE_EVIDENCE_DIR)
     await page.screenshot({ path: `${process.env.FORGE_TEMPLATE_EVIDENCE_DIR}/shell.png` })
   expect((await page.request.get('http://127.0.0.1:18000/smoke/orders')).status()).toBe(401)
@@ -54,7 +57,12 @@ test('仓库外模板的 Manifest、网关路由与成员权限', async ({ page 
   await expect(page.getByTestId('workbench-greeting')).toHaveText('e2e-member · E2E 租户 B')
   await page.getByTestId('menu-group-smoke').locator('.el-sub-menu__title').first().click()
   await page.getByTestId('menu-smoke.overview').click()
-  await expect(page.getByTestId('order-title')).toHaveText(['B 他人订单', 'B 本人订单'])
+  // 旧业务页保留创建时间升序；新建模板默认降序，两者都必须只显示租户 B。
+  await expect(page.getByTestId('order-title')).toHaveText(
+    process.env.FORGE_SUB_APP_UPGRADE === '1'
+      ? ['B 本人订单', 'B 他人订单']
+      : ['B 他人订单', 'B 本人订单'],
+  )
   expect(
     (
       await page.request.post('http://127.0.0.1:18000/smoke/orders', {

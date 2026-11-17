@@ -13,6 +13,8 @@
 
 Sub-App 经共享的 `@crane199709/sdk` 取得 Token 与租户上下文：`useTenantClient()` 返回 Shell 的客户端，`session()` 带当前租户，`api()` 自动携带 Token 并在过期时刷新。Sub-App 自身不处理登录。
 
+已有工程升级见 [Sub-App 0.1.0 → 0.2.0 升级清单](upgrading-sub-app-v020.md)，包含配套版本、构建检查、接口入口、两种宿主与固定旧版样例的复现入口。
+
 ## 新建 Sub-App
 
 ### 仓库外开发
